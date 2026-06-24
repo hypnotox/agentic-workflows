@@ -99,24 +99,24 @@ exist yet, it simply does nothing."
    Document-map bullets (lines 65-67); because every `.layout.*` key is always populated,
    those guards collapse to **unconditional** output and the `{{ else }}docs/decisions{{ end }}`
    fallback becomes dead — the migration must drop the guards rather than translate them
-   verbatim. `{{ .vars.planTemplatePath }}` is handled separately (see note below): there is
-   no plan-template source, so it has no `.layout` analogue.
-   The doc-path vars are **removed** from config, from `ScaffoldConfig`'s seeded set
-   (automatic, since `.layout.*` is not scanned by `ReferencedVars`), and from this repo's
-   `.claude/awf.yaml`. Because layout lives outside `.vars`, an adopter cannot override a
-   layout path through `vars` — the structure is strictly awf-given.
+   verbatim. `{{ .vars.planTemplatePath }}` is **dropped, not migrated** (see note below): it
+   has no plan-template source, so it gets no `.layout` analogue.
+   The five migrated doc-path vars *and* `planTemplatePath` are **removed** from config, from
+   `ScaffoldConfig`'s seeded set (automatic, since `.layout.*` is not scanned by
+   `ReferencedVars`), and from this repo's `.claude/awf.yaml`. Because layout lives outside
+   `.vars`, an adopter cannot override a layout path through `vars` — the structure is
+   strictly awf-given.
 
-   > **`planTemplatePath` has no `.layout` analogue and is not migrated.** Unlike
+   > **`planTemplatePath` is dropped; plan-template support is deferred.** Unlike
    > `adrTemplatePath` (which resolves to `docs/decisions/template.md`, an existing committed
    > file), there is no plan-template source under `templates/` and `planTemplatePath` ships
    > empty (`""`) in this repo, guarded by `{{ if .vars.planTemplatePath }}` in
    > `writing-plans/SKILL.md.tmpl:51`. Folding it into the always-populated `.layout`
    > namespace would unconditionally enable that section pointing at a non-existent template.
-   > **Open question for the author (escalated):** does this ADR (a) drop `planTemplatePath`
-   > and the conditional section outright, leaving plan-template support to a future ADR, or
-   > (b) add a `planTemplate` key to the `.layout` table backed by a real
-   > `templates/plans/template.md.tmpl`? The Invariants/Consequences enumerations and the
-   > `.layout` table must be reconciled to whichever is chosen.
+   > This ADR therefore **removes** the `planTemplatePath` var and that conditional section
+   > outright (no `.layout.planTemplate` key); introducing a real `templates/plans/template.md.tmpl`
+   > and a `.layout.planTemplate` key is left to a future ADR if plan-template scaffolding is
+   > ever wanted.
 
 3. **Managed docs unify under `docsDir` (full unification).** Two distinct hardcoded
    `"docs/"` literals are rooted at `docsDir`: the `RenderAll` docs-loop output path
@@ -223,9 +223,9 @@ Harder / accepted trade-offs:
 - Template churn: every `.vars.{adrDir,plansDir,activeMdPath,adrReadme,adrTemplatePath}`
   reference across the skill/agent templates **and `agents-doc/AGENTS.md.tmpl`** migrates to
   `.layout.*` (`agents-doc`'s `{{ with }}` guards collapse to unconditional output);
-  `planTemplatePath` and its `{{ if .vars.planTemplatePath }}` section in `writing-plans`
-  resolve per the escalated open question in Decision item 2. The golden/spine/project tests
-  that assert those rendered paths or seed those vars update in lockstep.
+  `planTemplatePath` and its `{{ if .vars.planTemplatePath }}` section in `writing-plans` are
+  removed outright (Decision item 2). The golden/spine/project tests that assert those
+  rendered paths or seed those vars update in lockstep.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 - `docs/decisions/README.md` "ACTIVE.md" section is rewritten to describe sync-driven
