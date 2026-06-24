@@ -50,6 +50,21 @@ skills:
       - notes-auto-commit
       - notes-one-concern
       - notes-docs-travel
+  subagent-driven-development:
+    sections:
+      - positioning
+      - per-task-review-note
+      - when-to-invoke
+      - procedure-resolve-plan
+      - procedure-raise-concerns
+      - procedure-extract-context
+      - dispatch-conventions
+      - host-git-constraint
+      - per-task-review
+      - procedure-status-handling
+      - final-task-adr-flip
+      - terminal-step
+      - notes
   tdd:
     sections: [surfaces, notes]
 agents:

@@ -110,6 +110,46 @@ func TestExecutingPlansTemplate(t *testing.T) {
 	}
 }
 
+func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"workflowDoc":        "docs/workflow.md",
+			"plansDir":           "docs/plans",
+			"gateCmd":            "./x gate",
+			"gateCmdFull":        "./x gate full",
+			"activeMdRegenCmd":   "go test ./internal/adrtools/",
+			"activeMdPath":       "docs/decisions/ACTIVE.md",
+			"perTaskReviewAdrRef": "",
+			"keyInvariantAdrRef": "",
+			"hostGitAdrRef":      "",
+			"oracleStateDoc":     "",
+		},
+		"data": map[string]any{},
+		"sections": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "subagent-driven-development", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-subagent-driven-development") {
+		t.Errorf("expected 'name: example-subagent-driven-development' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to subagent-driven-development
+	loadBearing := []string{
+		"one subagent per task",
+		"Sequential dispatch only — never parallel",
+		"fresh context per task",
+		"example-reviewing-impl",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
