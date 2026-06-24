@@ -562,6 +562,7 @@ func TestReviewingAdrTemplate(t *testing.T) {
 			"adrDir":      "docs/decisions",
 			"commitScope": "docs(adr)",
 			"workflowDoc": "docs/workflow.md",
+			"plansDir":    "docs/plans",
 		},
 		"data": map[string]any{},
 	}
