@@ -77,7 +77,10 @@ Grounding discoveries that shape the design:
 
 - `templates/hooks/pre-commit.tmpl` contains no hardcoded `awf check`; it renders the check line
   via `checkCmd` with an inline `{{ else }}awf check{{ end }}` default. A pre-commit rendered with
-  an empty/unset `checkCmd` yields the line `awf check` and never `<no value>`.
+  an empty/unset `checkCmd` yields the line `awf check` and never `<no value>` (verified by a
+  golden render assertion in `internal/project/` over the hook template with both empty `checkCmd`
+  and `checkCmd: "./x check"`; the `{{ if .vars.checkCmd }}` guard is a condition, not an output
+  action, so it does not trip the `<no value>` render error under `missingkey=zero`).
 - This repo's `.claude/awf.yaml` sets `checkCmd: "./x check"`, and its rendered `.githooks/pre-commit`
   invokes `./x check` (not a bare `awf check`).
 - `awf setup` is idempotent: running it twice in succession leaves `core.hooksPath` equal to
@@ -97,7 +100,16 @@ Easier:
 
 Harder / accepted trade-offs:
 - The awf schema grows one var (`checkCmd`); adopters' scaffolded awf.yaml gains an empty
-  `checkCmd` line on next `awf init`.
+  `checkCmd` line on next `awf init`. Consumers of this var-union addition: (a) `ScaffoldConfig`
+  (`internal/project/scaffold.go`) auto-collects `checkCmd` from the template via
+  `render.ReferencedVars`, so it is seeded as `checkCmd: ""` with no code change; (b) the
+  golden pre-commit assertion in `internal/project/golden_test.go` (which checks the rendered
+  hook still contains `awf check`) stays green because its `sampleYAML` omits `checkCmd`, so
+  the inline `{{ else }}` default fires; (c) this repo's `.claude/awf.lock` re-renders when
+  `.claude/awf.yaml` gains `checkCmd: "./x check"` (the config hash changes), so the
+  `.githooks/pre-commit` line and lock entry update on the re-sync in the same commit — no
+  separate lock-format change. The lock format itself is unchanged: `checkCmd` is data inside
+  the existing config-hash input, not a new lock field.
 - `cmd/awf` gains an `os/exec` dependency (to shell `git config`) and the first git-aware
   subcommand; tests must stand up a temp git repo themselves (no existing helper).
 - `awf setup` mutates the user's local git config (`core.hooksPath`). This is reversible
@@ -106,6 +118,21 @@ Harder / accepted trade-offs:
 Downstream work unblocked: an implementation plan covering the catalog var + template default,
 the `awf setup` subcommand + tests, the `awf init` call, `./x setup`, doc updates (README +
 AGENTS layout part), re-sync, and finally activating the hooks in this repo.
+
+Doc-currency obligations the same implementing commit(s) must satisfy:
+- `.claude/awf/parts/agents-doc-layout.md` line 15 (the `.githooks/` description) hardcodes the
+  manual activation string `git config core.hooksPath .githooks` as literal prose, not a
+  `{{ .vars.X }}` interpolation. Since `awf setup` becomes the canonical activation step, that
+  line must be hand-edited to direct the reader to `awf setup` in the same change. This is a
+  static overlay *part* (a render input), so `awf check` will **not** flag it as drift — the
+  identical trap ADR-0002 documented for `agents-doc-conventions.md`. AGENTS.md re-renders from
+  the edited part on re-sync.
+- `README.md` carries the `go install` delivery convention (Decision item 1) and gains the
+  `awf setup` post-clone step.
+- When this ADR's status flips to Accepted or Implemented, the same commit must regenerate
+  `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`. (No `docs/decisions/README.md`
+  index row is owed: this repo's README is a how-to guide with no per-ADR rows — `ACTIVE.md` is
+  the generated index.)
 
 This ADR is the follow-up ADR-0002 flagged; it does not alter ADR-0002's decision that `./x`
 itself stays repo-local (item 5) — `./x setup` is a thin delegator, not a rendered artifact.
