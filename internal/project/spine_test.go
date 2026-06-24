@@ -153,6 +153,43 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 	}
 }
 
+func TestBugfixTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"tddSkill":              "example-tdd",
+			"gateCmd":               "./x gate",
+			"gateCmdFull":           "./x gate full",
+			"reviewingImplSkill":    "example-reviewing-impl",
+			"workflowDoc":           "docs/workflow.md",
+			"debuggingSkill":        "example-debugging",
+			"docCurrencyTargets":    "docs/ and docs/decisions/",
+			"pitfallsDoc":           "docs/pitfalls.md",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "bugfix", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-bugfix") {
+		t.Errorf("expected 'name: example-bugfix' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to bugfix
+	loadBearing := []string{
+		"regression test",
+		"root-cause fix",
+		"example-reviewing-impl",
+		"example-tdd",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

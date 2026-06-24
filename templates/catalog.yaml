@@ -67,6 +67,11 @@ skills:
       - notes
   tdd:
     sections: [surfaces, notes]
+  bugfix:
+    sections:
+      - test-tiers
+      - pitfalls-check
+      - oracle-note
 agents:
   code-reviewer:
     sections: []
