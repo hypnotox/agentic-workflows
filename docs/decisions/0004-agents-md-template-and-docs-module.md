@@ -81,7 +81,10 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
 
 1. **Reshape `templates/agents-doc/AGENTS.md.tmpl` to the family shape, minus negative framing.**
    The sections become: `## You and this project`, `## Identity`, `## Invariants`,
-   `## Workflow`, `## Commands (via ./x)`, `## Document map`. The exemplars' `## What this
+   `## Workflow`, `## Commands`, `## Document map`. The heading is deliberately plain `## Commands`
+   — **not** the exemplars' `## Commands (via ./x)` — because `./x` is awf's own runner; the
+   generic template must not assume any adopter uses it, and the command list is config-driven
+   (`agentsDoc.data.commands` / the `testCmd`/`gateCmd`/`checkCmd` fallbacks). The exemplars' `## What this
    project is NOT` is **dropped** (negative framing); any genuine non-goal is re-expressed
    positively inside Identity. `## Repository Layout` is **removed from AGENTS.md** — the family
    keeps layout in `docs/architecture.md` and links it from the Document map. `templates/catalog.yaml`
@@ -145,7 +148,7 @@ of the new template need neither.
 ## Invariants
 
 - `templates/agents-doc/AGENTS.md.tmpl` contains exactly the six headings `## You and this
-  project`, `## Identity`, `## Invariants`, `## Workflow`, `## Commands (via ./x)`,
+  project`, `## Identity`, `## Invariants`, `## Workflow`, `## Commands`,
   `## Document map`, and contains neither `## What this project is NOT` nor `## Repository Layout`.
 - Rendering the agents-doc template with an empty `agentsDoc.data` (`{}`) produces no `<no value>`
   token and yields every section with its guided fallback content.
