@@ -43,7 +43,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-1. **Re-review loop (3-round soft cap).** The `adr-reviewer` agent re-reviews the updated ADR after structural fixes and exits when: (a) no findings remain, (b) remaining findings are wording-only, or (c) the artifact is clean by inspection. After 3 rounds with remaining structural findings, the agent surfaces them as `user-decision` items and stops looping. Do not issue further dispatch without explicit user direction.
+1. **Re-review loop.** The `adr-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
@@ -59,5 +59,5 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:section notes -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `{{ .vars.workflowDoc }}` for full ADR lifecycle rules and the canonical workflow chain.
-- The `adr-reviewer` agent is lens-diverse internally; this skill does not orchestrate its internal review mechanics.
+- The `adr-reviewer` agent is lens-diverse internally; this skill does not orchestrate a panel and does not specify per-lens model routing.
 <!-- awf:end -->
