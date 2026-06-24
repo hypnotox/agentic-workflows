@@ -152,6 +152,20 @@ skills:
       - apply-fixes-commit
       - re-review-loop
       - notes
+  refactor-coupling-audit:
+    sections:
+      - when-to-invoke
+      - audit-shape-selection
+      - category-1-top-level-files
+      - category-2-sibling-tests
+      - category-3-subpackages
+      - category-4-codegen
+      - category-5-constructors
+      - category-6-init-visibility
+      - test-coupling-planning-rule
+      - output-format
+      - scope-shrink-rule
+      - notes
 agents:
   adr-reviewer:
     sections:

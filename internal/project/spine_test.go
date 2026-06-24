@@ -681,3 +681,33 @@ func TestReviewingImplTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestRefactorCouplingAuditTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"modulePrefix": "github.com/acme/example",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "refactor-coupling-audit", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-refactor-coupling-audit") {
+		t.Errorf("expected 'name: example-refactor-coupling-audit' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to refactor-coupling-audit
+	loadBearing := []string{
+		"coupling audit",
+		"Context section",
+		"Sibling test files",
+		"constructor",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
