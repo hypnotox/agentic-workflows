@@ -2,7 +2,7 @@
 name: {{ .prefix }}-adr-lifecycle
 description: >
   Use when transitioning a {{ .prefix }} ADR between lifecycle states.
-  Encodes the {{ len .data.adrStates }}-state lifecycle, supersedence
+  Encodes the {{ if .data.adrStates }}{{ len .data.adrStates }}-state{{ else }}multi-state{{ end }} lifecycle, supersedence
   flavours, and amendment-while-Proposed scope. Self-contained.
 ---
 

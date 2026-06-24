@@ -110,3 +110,48 @@ skills:
 		t.Errorf("expected error: section cannot both drop and replaceWith")
 	}
 }
+
+func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+skils: {}
+`)
+	_, err := Load(p)
+	if err == nil {
+		t.Errorf("expected error for unknown top-level key 'skils'")
+	}
+}
+
+func TestLoadRejectsUnknownSkillKey(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+skills:
+  tdd:
+    dat: {}
+`)
+	_, err := Load(p)
+	if err == nil {
+		t.Errorf("expected error for unknown skill key 'dat' (typo of 'data')")
+	}
+}
+
+func TestLoadValidConfigSucceeds(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+vars:
+  testCmd: go test ./...
+skills:
+  tdd:
+    data:
+      testSurfaces:
+        - {name: Logic, location: internal, kind: unit}
+    sections:
+      notes: {replaceWith: parts/tdd-notes.md}
+  bugfix: {}
+  adding-thing: {local: true}
+agents:
+  code-reviewer: {}
+hooks: [pre-commit]
+`)
+	_, err := Load(p)
+	if err != nil {
+		t.Errorf("expected valid config to load cleanly, got: %v", err)
+	}
+}

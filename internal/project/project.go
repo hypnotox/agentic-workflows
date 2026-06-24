@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
@@ -61,8 +62,18 @@ func (p *Project) validateAgainstCatalog() error {
 		if sc.Local {
 			continue
 		}
-		if _, ok := p.Cat.Skills[name]; !ok {
+		spec, ok := p.Cat.Skills[name]
+		if !ok {
 			return fmt.Errorf("skill %q is not in the catalog", name)
+		}
+		allowed := make(map[string]bool, len(spec.Sections))
+		for _, s := range spec.Sections {
+			allowed[s] = true
+		}
+		for sec := range sc.Sections {
+			if !allowed[sec] {
+				return fmt.Errorf("skill %q: unknown section %q (not declared in the catalog)", name, sec)
+			}
 		}
 	}
 	// Check agents against catalog.
@@ -72,8 +83,22 @@ func (p *Project) validateAgainstCatalog() error {
 	}
 	sort.Strings(agentNames)
 	for _, a := range agentNames {
-		if _, ok := p.Cat.Agents[a]; !ok {
+		ac := p.Cfg.Agents[a]
+		if ac.Local {
+			continue
+		}
+		aspec, ok := p.Cat.Agents[a]
+		if !ok {
 			return fmt.Errorf("agent %q is not in the catalog", a)
+		}
+		allowed := make(map[string]bool, len(aspec.Sections))
+		for _, s := range aspec.Sections {
+			allowed[s] = true
+		}
+		for sec := range ac.Sections {
+			if !allowed[sec] {
+				return fmt.Errorf("agent %q: unknown section %q (not declared in the catalog)", a, sec)
+			}
 		}
 	}
 	// Check hooks against catalog.
@@ -173,6 +198,9 @@ func (p *Project) renderTemplate(tid string, sections map[string]config.SectionO
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	if strings.Contains(content, "<no value>") {
+		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset in .claude/awf.yaml", outPath)
+	}
 	return RenderedFile{
 		Path: outPath, Content: content, TemplateID: tid,
 		TemplateHash: manifest.Hash(src),
@@ -209,7 +237,10 @@ func (p *Project) Sync() error {
 	if old, err := manifest.Load(p.lockPath()); err == nil {
 		for path := range old.Files {
 			if !want[path] {
-				_ = os.Remove(filepath.Join(p.Root, path))
+				file := filepath.Join(p.Root, path)
+				_ = os.Remove(file)
+				parentDir := filepath.Dir(file)
+				os.Remove(parentDir) // ignore error - only removes if empty
 			}
 		}
 	}
