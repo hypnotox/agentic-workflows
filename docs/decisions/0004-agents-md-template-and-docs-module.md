@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Proposed
 date: 2026-06-24
 supersedes: []
 superseded_by: ""
@@ -48,16 +48,23 @@ Grounding discoveries that shape the design (verified against source):
   with no `<no value>` token. The post-render `<no value>` guard (`project.go:213-214`) still
   forbids bare missing-var *output*, so optional `.data.*` and `.vars.*` interpolations are
   wrapped in `{{ if }}`/`{{ else }}` exactly as ADR-0003 established for `checkCmd`.
-- **A new opt-in `docs:` group mirrors `hooks:` and touches exactly five files** — no
-  lock-format change. The manifest `Entry` (`internal/manifest/manifest.go:12-17`) is a generic
-  path→hash record; each rendered doc is an ordinary entry. Wiring: `Config.Docs []string`
-  (`internal/config/config.go`), a `docs:` list in `templates/catalog.yaml`, `Catalog.Docs`
-  (`internal/catalog`), a render loop in `internal/project`, and the `//go:embed` line in
-  `templates/embed.go` (currently `catalog.yaml skills hooks agents agents-doc`). The
-  `Config.Docs` field is a **hard prerequisite**, not merely additive: `config.Load` decodes
-  with `dec.KnownFields(true)` (`internal/config/config.go:42`), so a `docs:` key in `awf.yaml`
-  is a parse error (`field docs not found`) until the struct field exists. The five-file wiring
-  must therefore land before any adopter — including the dogfood — can write `docs:`.
+- **A new opt-in `docs:` group is managed/locked and mirrors the `skills:`/`agents:` shape, not
+  the bare `hooks:` list** — no lock-format change. The manifest `Entry`
+  (`internal/manifest/manifest.go:12-17`) is a generic path→hash record; each rendered doc is an
+  ordinary entry, regenerated on every `sync` and drift-checked by `awf check` like any skill.
+  A project diverges not by hand-editing the rendered `docs/*.md` (that would drift) but by
+  overriding a doc's sections via `replaceWith`/`drop` in config — the same per-section overlay
+  the existing `skills:`/`agentsDoc:` blocks use (`render.Assemble`, `internal/render/render.go:16-37`).
+  This is why `docs:` takes `map[string]SkillConfig` (a `data`+`sections` block per doc), not a
+  bare `[]string`. Wiring: `Config.Docs map[string]config.SkillConfig`
+  (`internal/config/config.go`), a `docs:` block in `templates/catalog.yaml`, `Catalog.Docs`
+  (`internal/catalog`, a `DocSpec` carrying `title`/`desc`/`sections`), a render loop +
+  catalog validation in `internal/project`, and the `//go:embed` line in `templates/embed.go`
+  (currently `catalog.yaml skills hooks agents agents-doc`). The `Config.Docs` field is a
+  **hard prerequisite**, not merely additive: `config.Load` decodes with `dec.KnownFields(true)`
+  (`internal/config/config.go:42`), so a `docs:` key in `awf.yaml` is a parse error
+  (`field docs not found`) until the struct field exists. The wiring must therefore land before
+  any adopter — including the dogfood — can write `docs:`.
 - **Both `agentsDoc` and `docs` are opt-in by construction.** `ScaffoldConfig`
   (`internal/project/scaffold.go`) does not emit an `agentsDoc:` block, so a fresh `awf init`
   already produces no AGENTS.md unless the adopter adds the block; an absent `docs:` key likewise
@@ -107,16 +114,18 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    sentence (or omit the link) when the var is empty — the same empty-string discipline applied to
    the `.data.*` fallbacks, extended to `.vars.*` here.
 
-4. **Add an opt-in `docs:` module.** A new top-level `docs: []string` key in `awf.yaml`,
-   **absent by default** (not emitted by `ScaffoldConfig`; mirrors the `hooks:` list pattern).
-   When present it renders a new `templates/docs/*.md.tmpl` set — `architecture, workflow, testing,
-   development, debugging, pitfalls, glossary, roadmap` — into the project's `docs/` tree, one
-   file per listed entry. Wiring is the five files enumerated in Context plus the new template
-   directory; the manifest/lock format is unchanged (ordinary path→hash entries). The **adopter's**
-   `awf.yaml` `docs:` stays a bare `[]string` of doc names, symmetric with `hooks:` — there is no
-   adopter-facing schema asymmetry. The `title`/`desc` per doc lives only in the awf-internal
-   `templates/catalog.yaml` `docs:` entries, so enabling the module auto-annotates the
-   Document-map links with zero adopter effort.
+4. **Add an opt-in, managed `docs:` module.** A new top-level `docs:` key in `awf.yaml` taking a
+   `map[string]config.SkillConfig` (a `data`+`sections` block per doc, the same shape as
+   `skills:`/`agents:`), **absent by default** (not emitted by `ScaffoldConfig`). Each listed doc
+   renders from a new `templates/docs/<name>.md.tmpl` into the project's `docs/<name>.md`, and is
+   **managed**: regenerated on every `sync`, lock-tracked, drift-checked — so awf can push doc-template
+   updates and they reach adopters on re-sync. The template set is `architecture, workflow, testing,
+   development, debugging, pitfalls, glossary, roadmap`. The manifest/lock format is unchanged
+   (ordinary path→hash entries). A project **diverges by config, not by hand-edit**: it overrides a
+   doc's sections (`replaceWith` a part, or `drop`) and supplies `data`, exactly as the `agentsDoc:`
+   block already does — a hand-edit to a rendered `docs/*.md` is drift, by design. The
+   awf-internal `templates/catalog.yaml` `docs:` entries carry per-doc `title`/`desc`/`sections`;
+   `title`/`desc` feed the Document-map annotations with zero adopter effort.
 
 5. **Document map auto-links generated docs and stays extensible.** `internal/project` passes the
    resolved `docs:` list (with catalog titles/descriptions) into the agents-doc template data so
@@ -148,8 +157,12 @@ of the new template need neither.
   markdown link (`]()`), and no empty fenced command block; each universal-tier line degrades to a
   plain sentence.
 - With `docs:` absent from `awf.yaml`, no file under `docs/` is rendered and the Document map
-  omits the generated-docs block; with `docs:` listing N catalog entries, exactly N files render
-  under `docs/` and N annotated links appear in the Document map.
+  omits the generated-docs block; with `docs:` declaring N docs, exactly N files render under
+  `docs/` (lock-tracked) and N annotated links appear in the Document map.
+- A doc declared in `docs:` whose name is absent from the catalog `docs:` block, or that overrides
+  a section not declared for that doc in the catalog, fails `Open`/`sync`/`check` (via the existing
+  `checkSectionsAllowed`/catalog-membership validation), the same way an unknown skill or section
+  does today.
 - A fresh `awf init` (`ScaffoldConfig` output) emits neither an `agentsDoc:` block nor a `docs:`
   key — both modules are opt-in.
 - The manifest/lock format (`internal/manifest` `Entry` schema) is unchanged by the `docs:`
@@ -174,16 +187,20 @@ Harder / accepted trade-offs:
 - The template grows conditional fallbacks for every narrative section; it is more complex to
   read than the current flat template. Mitigated by golden tests covering the data-present,
   data-absent, docs-on, and docs-off render paths.
-- The awf schema grows: an opt-in top-level `docs:` key and the recognised `agentsDoc.data`
-  keys. Consumers of the `docs:` addition: `Config.Docs` (auto-unmarshals), `Catalog.Docs`,
-  the `project` render loop, `embed.go`, and `catalog.yaml` — enumerated and bounded; the lock
-  format is untouched.
+- The awf schema grows: an opt-in top-level `docs:` map and the recognised `agentsDoc.data`
+  keys. Consumers of the `docs:` addition: `Config.Docs` (a hard prerequisite under
+  `KnownFields(true)`, not auto-tolerated), `Catalog.Docs` (`DocSpec` with `title`/`desc`/`sections`),
+  the `project` render loop + catalog validation, `embed.go`, and `catalog.yaml` — enumerated and
+  bounded; the lock format is untouched.
 - Dogfooding moves the `Repository Layout` content out of `AGENTS.md` into `docs/architecture.md`.
+  Because `docs/architecture.md` is a managed/locked render, awf's real layout content lives in a
+  part that the architecture doc's section `replaceWith`-es (not a hand-edit to the rendered file).
   Readers who looked for layout in AGENTS.md now follow the Document map link.
-- The awf-internal catalog `docs:` entries are objects (`title`/`desc`), a slightly richer shape
-  than the bare-string `hooks:` catalog list — a small, deliberate asymmetry so links can be
-  annotated. The adopter-facing `awf.yaml` `docs:` schema stays a bare `[]string`, symmetric with
-  `hooks:`; the asymmetry is confined to the awf-owned catalog.
+- The `docs:` block takes the richer `map[string]SkillConfig` shape (per-doc `data`+`sections`)
+  rather than a bare `[]string` like `hooks:`. This is the deliberate cost of "managed but
+  divergeable": projects override a doc's sections in config instead of hand-editing the rendered
+  file. The awf-internal catalog `docs:` entries are correspondingly objects carrying
+  `title`/`desc`/`sections`.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 - `.claude/awf/parts/agents-doc-{overview,layout,conventions}.md` are static overlay parts that
@@ -219,6 +236,8 @@ re-sync), with golden tests at each step.
 | Pure placeholder skeleton (no auto-render) | A fresh `agentsDoc: {}` would yield an unusable stub; the family value is in the auto-rendered Workflow/Commands/Document-map sections. |
 | Add explicit `config.go` fields for the narrative prose (identity, invariants…) | The existing `agentsDoc.data map[string]any` already carries arbitrary structured data to the template; a typed schema adds surface for no gain. |
 | Generate the `docs/` set always-on | Clutters every fresh project with stub docs it may not want; the user requires the module be opt-in. |
+| Scaffold-once, project-owned docs (write-if-absent, untracked, hand-edited freely) | The user wants awf to **push doc-template updates** to adopters; untracked scaffolds freeze at creation and never receive updates. A managed/locked render keeps docs current and lets projects diverge through config/section overrides. |
+| Bare `docs: []string` like `hooks:` | Gives no per-doc customization hook, so a project could only diverge by hand-editing the rendered file (which drifts). The `map[string]SkillConfig` shape carries per-doc `data`+`sections` so divergence is expressed in config, consistent with `skills:`/`agentsDoc:`. |
 | Keep `## What this project is NOT` | Negative framing is a poor instruction shape for an LLM guide (user constraint); non-goals re-expressed positively in Identity. |
 | Split into two ADRs (template reshape vs docs module) | The docs module exists to serve the Document-map section; the two are one coupled decision about the agent-guide shape, so one ADR + one multi-task plan. |
 | Put doc `title`/`desc` in the adopter's `data.docMap` instead of the catalog | Would force the adopter to hand-list every generated doc to annotate it, defeating "auto-link when enabled"; catalog-internal `title`/`desc` annotates auto-links with zero adopter effort, while `data.docMap` covers only the disjoint set of extra non-generated links. |
