@@ -33,10 +33,22 @@ func TestEndToEndGolden(t *testing.T) {
 	if !strings.Contains(string(pre), "awf check") || !strings.Contains(string(pre), "make gate") {
 		t.Errorf("pre-commit hook wrong:\n%s", pre)
 	}
+	// Rendered hook must be a POSIX text file (trailing newline).
+	if !strings.HasSuffix(string(pre), "\n") {
+		t.Errorf("pre-commit must end with a newline:\n%q", pre)
+	}
 	// Hook must be executable.
 	info, _ := os.Stat(filepath.Join(root, ".githooks/pre-commit"))
 	if info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("pre-commit not executable: %v", info.Mode())
+	}
+
+	push, err := os.ReadFile(filepath.Join(root, ".githooks/pre-push"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(push), "make gate full") {
+		t.Errorf("pre-push hook wrong:\n%s", push)
 	}
 
 	// A fresh check on the synced tree is clean.
