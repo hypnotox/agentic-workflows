@@ -151,8 +151,6 @@ skills:
       - classify-route-findings
       - apply-fixes-commit
       - re-review-loop
-      - adr-status-flip
-      - digest-format
       - notes
 agents:
   adr-reviewer:

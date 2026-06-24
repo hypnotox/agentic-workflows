@@ -5,14 +5,14 @@ description: Terminal step after implementation commits. Dispatches the code-rev
 
 # {{ .prefix }}-reviewing-impl
 
-Invoked as the terminal step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings.
+Invoked as the terminal step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
 
 ## When this skill fires
 
 <!-- awf:section when-fires -->
 Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only.** Cite `.githooks/pre-commit` for the pattern list (do not restate). Exception: `docs/decisions/` changes always proceed to ensure ADR status-flip drift tests fire.
+**Skip when the session diff is docs-only.** Cite `.githooks/pre-commit` for the pattern list (do not restate). Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
 <!-- awf:end -->
 
 ## Procedure
@@ -26,63 +26,38 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section docs-only-check -->
-2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed — the status-flip drift test must fire. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` digest and return.
+1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `code-reviewer` subagent.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+1. **Dispatch the `code-reviewer` subagent.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
-   - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists).
-   - Instruction to check:
-     - **Correctness:** logic errors, edge cases, error-path handling, nil dereferences, unchecked error returns.
-     - **Plan-adherence:** does the diff match the plan's stated file paths and intent? No scope creep; no half-finished work (new type not registered, TODO in code, commented-out blocks).
-     - **Testing-discipline:** is a regression test present for behaviour-changing code? Does `{{ .vars.gateCmd }}` pass?
-     - **Doc-currency:** does any `docs/` file or CLAUDE.md need updating in the same commit? Check `{{ .vars.workflowDoc }}` "Keep documented state current, always".
-   - Instruct the agent to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
+   - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
+   - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope.
+
+   The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->
-4. **Classify each finding (use the agent's classification as-is, or re-assess):**
-   - **Mechanical fix** — apply directly.
-   - **Reasoned fix** — apply with a one-line rationale.
-   - **User-decision** — escalate.
+1. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
+   - **mechanical** — agent applies directly.
+   - **reasoned** — agent applies with a one-line rationale.
+   - **user-decision** — present to the user and wait.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Apply fixes as new commits on top.** Never `--amend` prior commits. Conventional Commits; run `{{ .vars.gateCmd }}` before committing.
+1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope; `{{ .vars.gateCmd }}` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-6. **Re-review loop, 3-round soft cap.** If applied fixes changed the diff's structure (new files, new commits), re-dispatch the `code-reviewer` subagent on the updated range and loop from step 4. Exit when: (a) a round produces no findings, (b) remaining findings are wording-only, or (c) the implementation diff is clean by inspection. After 3 rounds with remaining structural findings, surface as `user-decision` findings and stop looping without explicit direction.
-<!-- awf:end -->
-
-<!-- awf:section adr-status-flip -->
-7. **Flip ADR status.** If an ADR exists and was `Accepted` going into implementation, flip to `Implemented` in the final commit.
-<!-- awf:end -->
-
-<!-- awf:section digest-format -->
-8. **Digest.** When `P > 0` (user decisions needed), surface an Impl summary block:
-
-   ```
-   Impl summary:
-   - Commits: <one line per commit subject>
-   - Headline change: <1-2 sentences>
-   - Test additions: <file count or named test files>
-
-   Impl review complete (R rounds, N findings).
-   - Mechanical fixes applied: K
-   - Reasoned fixes applied: L
-   - User decisions needed: P
-     1. <question>
-   ```
-
-   When `P = 0`, the summary is optional — the chain auto-proceeds. When `P > 0`, wait for user decisions.
+1. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 <!-- awf:end -->
 
 ## Notes
 
 <!-- awf:section notes -->
-- This is the terminal step of the implementation phase: single `code-reviewer` subagent dispatch, not a panel.
-- The soft cap is 3 review rounds; escalate beyond it rather than looping.
+- This is the terminal step of the implementation phase: a single `code-reviewer` subagent dispatch, not a panel.
+- The ADR status flip (Accepted → Implemented) is made by `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->
