@@ -12,6 +12,25 @@ skills:
       - terminal-handoff
       - definitions
       - anti-patterns
+  writing-plans:
+    sections:
+      - positioning
+      - when-to-invoke
+      - conventions-path
+      - conventions-header
+      - conventions-tasks
+      - conventions-no-placeholders
+      - gate-tier-note
+      - conventions-test-first
+      - plan-template-ref
+      - procedure-confirm-scope
+      - procedure-write-plan
+      - doc-currency-check
+      - self-review
+      - plan-commit-step
+      - terminal-step
+      - plan-lifecycle
+      - plan-resync
   tdd:
     sections: [surfaces, notes]
 agents:

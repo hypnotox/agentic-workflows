@@ -32,6 +32,41 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return out
 }
 
+func TestWritingPlansTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"workflowDoc":      "docs/workflow.md",
+			"plansDir":         "docs/plans",
+			"gateCmd":          "./x gate",
+			"gateDuration":     "~2 min",
+			"planTemplatePath": "docs/plans/template.md",
+			"autonomousAdrRef": "",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "writing-plans", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-writing-plans") {
+		t.Errorf("expected 'name: example-writing-plans' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to writing-plans
+	loadBearing := []string{
+		"bite-sized",
+		"exact file paths",
+		"No placeholders",
+		"example-reviewing-plan",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
