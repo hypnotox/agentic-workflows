@@ -39,7 +39,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 			"invariantTestPath": "internal/adrtools/invariants_test.go",
 			"activeMdRegenCmd":  "go test ./internal/adrtools/",
 			"activeMdPath":      "docs/decisions/ACTIVE.md",
-			"stateDocsPath":     "docs/decisions/state/",
 		},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
