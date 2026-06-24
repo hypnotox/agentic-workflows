@@ -157,14 +157,11 @@ func TestBugfixTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"tddSkill":              "example-tdd",
-			"gateCmd":               "./x gate",
-			"gateCmdFull":           "./x gate full",
-			"reviewingImplSkill":    "example-reviewing-impl",
-			"workflowDoc":           "docs/workflow.md",
-			"debuggingSkill":        "example-debugging",
-			"docCurrencyTargets":    "docs/ and docs/decisions/",
-			"pitfallsDoc":           "docs/pitfalls.md",
+			"gateCmd":            "./x gate",
+			"gateCmdFull":        "./x gate full",
+			"workflowDoc":        "docs/workflow.md",
+			"docCurrencyTargets": "docs/ and docs/decisions/",
+			"pitfallsDoc":        "docs/pitfalls.md",
 		},
 		"data": map[string]any{},
 	}

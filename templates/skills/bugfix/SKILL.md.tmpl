@@ -1,24 +1,24 @@
 ---
 name: {{ .prefix }}-bugfix
-description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ .vars.reviewingImplSkill }}. Self-contained.
+description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ .prefix }}-reviewing-impl. Self-contained.
 ---
 
 # {{ .prefix }}-bugfix
 
-The fix-and-verify task skill. Companion to `{{ .vars.debuggingSkill }}`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.
+The fix-and-verify task skill. Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.
 
 ## When to invoke
 
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
 - **Trivial bugfix that validly skips the chain** — the narrow exception in `{{ .vars.workflowDoc }}` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
-- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .vars.reviewingImplSkill }}` pair.
+- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
 
-If the root cause is not yet known, invoke `{{ .vars.debuggingSkill }}` first.
+If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.
 
 ## Procedure
 
-1. **Ensure a regression test exists that fails for the right reason.** Invoke `{{ .vars.tddSkill }}` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
+1. **Ensure a regression test exists that fails for the right reason.** Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
 
 <!-- awf:section test-tiers -->
 ## Test tiers
@@ -27,18 +27,18 @@ The specific test tiers (unit, integration, e2e, etc.) and their locations are p
 
 <!-- awf:end -->
 
-2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
 
 <!-- awf:section pitfalls-check -->
-3. **Check `{{ .vars.pitfallsDoc }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+1. **Check `{{ .vars.pitfallsDoc }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 <!-- awf:end -->
 
-3. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+1. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
-4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .vars.workflowDoc }}`, fixes ship with a regression test.
+1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .vars.workflowDoc }}`, fixes ship with a regression test.
 
-5. **Invoke `{{ .vars.reviewingImplSkill }}` as the terminal step.**
+1. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
 
 <!-- awf:section oracle-note -->
 ## Oracle invariant
