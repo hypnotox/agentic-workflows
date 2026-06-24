@@ -133,6 +133,61 @@ func TestPlanReviewerAgent(t *testing.T) {
 	}
 }
 
+func TestCodeReviewerAgent(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data": map[string]any{
+			"correctnessTraps": []map[string]any{
+				{"description": "Check that error return paths use %w wrapping so callers can inspect the error chain."},
+				{"description": "Flag nil pointer dereferences in struct methods where the receiver may be nil."},
+			},
+			"docCurrencyItems": []map[string]any{
+				{"check": "docs/decisions/state/<domain>.md — update when the implementation shifts a tracked domain"},
+				{"check": "docs/decisions/ACTIVE.md — regenerate when ADR status flips to Implemented"},
+			},
+		},
+	}
+
+	out := renderAgentGolden(t, "code-reviewer", data)
+
+	// Assert frontmatter name line (agents are unprefixed)
+	if !strings.Contains(out, "name: code-reviewer") {
+		t.Errorf("expected 'name: code-reviewer' in output:\n%s", out)
+	}
+
+	// Assert description contains Specialised reviewer for example (kept green by TestEndToEndGolden too)
+	if !strings.Contains(out, "Specialised reviewer for example") {
+		t.Errorf("expected 'Specialised reviewer for example' in description:\n%s", out)
+	}
+
+	// Assert shared review-discipline spine phrases (verbatim from siblings)
+	sharedPhrases := []string{
+		"mechanical",
+		"reasoned",
+		"user-decision",
+		"3-round soft cap",
+		"suggested_fix",
+		"~80 words",
+	}
+	for _, phrase := range sharedPhrases {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected shared spine phrase %q in output:\n%s", phrase, out)
+		}
+	}
+
+	// Assert impl-lens phrases (correctness and plan-adherence are code-reviewer-specific)
+	implPhrases := []string{
+		"correctness",
+		"plan-adherence",
+	}
+	for _, phrase := range implPhrases {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected impl-lens phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")
