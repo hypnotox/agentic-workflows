@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -46,6 +47,9 @@ func (c *Config) Raw() []byte { return c.raw }
 func (c *Config) Validate() error {
 	if c.Prefix == "" {
 		return fmt.Errorf("prefix must not be empty")
+	}
+	if strings.ContainsAny(c.Prefix, "/\\") || strings.Contains(c.Prefix, "..") {
+		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
 	}
 	for name, sc := range c.Skills {
 		for sec, ov := range sc.Sections {

@@ -7,8 +7,25 @@ import (
 	"path/filepath"
 	"sort"
 
+	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/project"
 )
+
+// skillState returns the display state of a skill: "local", "tuned", "enabled", or "available".
+// enabled is true when the skill appears in the project config.
+func skillState(sc config.SkillConfig, enabled bool) string {
+	if !enabled {
+		return "available"
+	}
+	switch {
+	case sc.Local:
+		return "local"
+	case sc.Data != nil || sc.Sections != nil:
+		return "tuned"
+	default:
+		return "enabled"
+	}
+}
 
 func runList(root string) error {
 	p, err := project.Open(root)
@@ -21,18 +38,8 @@ func runList(root string) error {
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		state := "available"
-		if sc, ok := p.Cfg.Skills[n]; ok {
-			switch {
-			case sc.Local:
-				state = "local"
-			case sc.Data != nil || sc.Sections != nil:
-				state = "tuned"
-			default:
-				state = "enabled"
-			}
-		}
-		fmt.Printf("  %-24s %s\n", n, state)
+		sc, ok := p.Cfg.Skills[n]
+		fmt.Printf("  %-24s %s\n", n, skillState(sc, ok))
 	}
 	return nil
 }

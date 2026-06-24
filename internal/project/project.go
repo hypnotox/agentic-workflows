@@ -42,7 +42,50 @@ func Open(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Root: root, Cfg: cfg, Cat: cat}, nil
+	p := &Project{Root: root, Cfg: cfg, Cat: cat}
+	if err := p.validateAgainstCatalog(); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (p *Project) validateAgainstCatalog() error {
+	// Check non-local skills against catalog.
+	names := make([]string, 0, len(p.Cfg.Skills))
+	for n := range p.Cfg.Skills {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		sc := p.Cfg.Skills[name]
+		if sc.Local {
+			continue
+		}
+		if _, ok := p.Cat.Skills[name]; !ok {
+			return fmt.Errorf("skill %q is not in the catalog", name)
+		}
+	}
+	// Check agents against catalog.
+	catAgents := make(map[string]bool, len(p.Cat.Agents))
+	for _, a := range p.Cat.Agents {
+		catAgents[a] = true
+	}
+	for _, a := range p.Cfg.Agents {
+		if !catAgents[a] {
+			return fmt.Errorf("agent %q is not in the catalog", a)
+		}
+	}
+	// Check hooks against catalog.
+	catHooks := make(map[string]bool, len(p.Cat.Hooks))
+	for _, h := range p.Cat.Hooks {
+		catHooks[h] = true
+	}
+	for _, h := range p.Cfg.Hooks {
+		if !catHooks[h] {
+			return fmt.Errorf("hook %q is not in the catalog", h)
+		}
+	}
+	return nil
 }
 
 func (p *Project) parts() render.PartFunc {

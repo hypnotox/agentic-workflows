@@ -155,6 +155,75 @@ func TestSyncSkipsLocalSkill(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsUnknownAgent(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: [does-not-exist]
+hooks: []
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown agent")
+	}
+	if !strings.Contains(err.Error(), "does-not-exist") {
+		t.Errorf("error should mention the offending agent name, got: %v", err)
+	}
+}
+
+func TestOpenRejectsUnknownHook(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: []
+hooks: [typo-hook]
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown hook")
+	}
+	if !strings.Contains(err.Error(), "typo-hook") {
+		t.Errorf("error should mention the offending hook name, got: %v", err)
+	}
+}
+
+func TestOpenRejectsUnknownSkill(t *testing.T) {
+	yaml := `prefix: example
+skills:
+  no-such-skill: {}
+agents: []
+hooks: []
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown skill")
+	}
+	if !strings.Contains(err.Error(), "no-such-skill") {
+		t.Errorf("error should mention the offending skill name, got: %v", err)
+	}
+}
+
+func TestOpenValidConfigSucceeds(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	_, err := Open(root)
+	if err != nil {
+		t.Fatalf("expected valid config to open cleanly, got: %v", err)
+	}
+}
+
+func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
+	localYAML := strings.Replace(sampleYAML, `skills:
+  tdd:`, `skills:
+  totally-unknown-local: {local: true}
+  tdd:`, 1)
+	root := scaffold(t, localYAML)
+	_, err := Open(root)
+	if err != nil {
+		t.Fatalf("local skill not in catalog should be allowed, got: %v", err)
+	}
+}
+
 func TestSyncPrunesRemovedSkill(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)

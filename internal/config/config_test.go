@@ -64,6 +64,20 @@ func TestValidateRejectsEmptyPrefix(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsPathInPrefix(t *testing.T) {
+	cases := []string{"../evil", "foo/bar", "a\\b"}
+	for _, prefix := range cases {
+		p := writeTemp(t, "prefix: "+prefix+"\nskills: {}\n")
+		c, err := Load(p)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if err := c.Validate(); err == nil {
+			t.Errorf("expected error for prefix %q containing path separator", prefix)
+		}
+	}
+}
+
 func TestValidateRejectsDropAndReplace(t *testing.T) {
 	p := writeTemp(t, `prefix: example
 skills:
