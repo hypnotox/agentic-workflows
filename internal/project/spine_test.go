@@ -66,6 +66,50 @@ func TestWritingPlansTemplate(t *testing.T) {
 	}
 }
 
+func TestExecutingPlansTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"workflowDoc":      "docs/workflow.md",
+			"plansDir":         "docs/plans",
+			"gateCmd":          "./x gate",
+			"gateDuration":     "~2 min",
+			"activeMdRegenCmd": "go test ./internal/adrtools/",
+			"activeMdPath":     "docs/decisions/ACTIVE.md",
+			"hostGitAdrRef":    "docs/decisions/ADR-acme-001-host-git.md",
+			"oracleStateDoc":   "docs/decisions/state/acme-oracle.md",
+			"keyInvariantAdrRef": "",
+		},
+		"data": map[string]any{
+			"e2eSuitePaths": []map[string]any{
+				{"path": "tests/e2e/libraries/"},
+				{"path": "tests/e2e/web/"},
+				{"path": "cli_test.go"},
+			},
+		},
+	}
+
+	out := renderSkillGolden(t, "executing-plans", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-executing-plans") {
+		t.Errorf("expected 'name: example-executing-plans' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to executing-plans
+	loadBearing := []string{
+		"one commit per task",
+		"Proposed → Accepted",
+		"Implementation complete",
+		"example-reviewing-impl",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

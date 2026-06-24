@@ -32,6 +32,24 @@ skills:
       - plan-lifecycle
       - plan-resync
       - notes
+  executing-plans:
+    sections:
+      - positioning
+      - when-to-invoke
+      - procedure-resolve-plan
+      - procedure-raise-concerns
+      - procedure-per-task
+      - tdd-opt-in
+      - gate-tier-detail
+      - host-git-constraint
+      - procedure-adr-final-commit
+      - procedure-non-adr-final-commit
+      - terminal-step
+      - project-invariants
+      - notes-gate
+      - notes-auto-commit
+      - notes-one-concern
+      - notes-docs-travel
   tdd:
     sections: [surfaces, notes]
 agents:
