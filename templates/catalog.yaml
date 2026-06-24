@@ -142,6 +142,18 @@ skills:
       - status-flip
       - hand-off-to-resync
       - notes
+  reviewing-impl:
+    sections:
+      - when-fires
+      - sha-range-detection
+      - docs-only-check
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - adr-status-flip
+      - digest-format
+      - notes
 agents:
   adr-reviewer:
     sections:
