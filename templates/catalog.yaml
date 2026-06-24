@@ -110,6 +110,18 @@ skills:
       - test-tiers
       - pitfalls-check
       - oracle-note
+  reviewing-adr:
+    sections:
+      - when-fires
+      - procedure
+      - artifact-path-detection
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - status-flip
+      - hand-off-to-resync
+      - notes
 agents:
   adr-reviewer:
     sections:
