@@ -195,7 +195,10 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			continue
 		}
 		if rf.TemplateHash != e.TemplateHash || cfgHash != e.ConfigHash {
+			// stale takes precedence: a re-sync overwrites any hand-edit, so it
+			// is the actionable signal — one drift entry per path.
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf sync"})
+			continue
 		}
 		onDisk, err := os.ReadFile(filepath.Join(p.Root, path))
 		if err != nil {

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agentic-workflows/internal/manifest"
 )
 
 func scaffold(t *testing.T, awfYAML string) string {
@@ -81,6 +83,75 @@ func TestCheckDetectsHandEdit(t *testing.T) {
 	drift, _ := p.Check()
 	if len(drift) == 0 || drift[0].Kind != "hand-edited" {
 		t.Errorf("expected hand-edited drift, got %#v", drift)
+	}
+}
+
+func TestCheckStaleTakesPrecedence(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := ".claude/skills/example-tdd/SKILL.md"
+	// Make the lock entry stale by corrupting its TemplateHash.
+	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := lock.Files[skillPath]
+	e.TemplateHash = "sha256:bogus"
+	lock.Files[skillPath] = e
+	if err := lock.Save(filepath.Join(root, ".claude", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	// Also hand-edit the rendered file so its on-disk content differs too.
+	if err := os.WriteFile(filepath.Join(root, skillPath), []byte("hand edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var forPath []manifest.Drift
+	for _, d := range drift {
+		if d.Path == skillPath {
+			forPath = append(forPath, d)
+		}
+	}
+	if len(forPath) != 1 {
+		t.Fatalf("expected exactly one drift entry for %s, got %#v", skillPath, forPath)
+	}
+	if forPath[0].Kind != "stale" {
+		t.Errorf("expected stale, got %q", forPath[0].Kind)
+	}
+}
+
+func TestSyncSkipsLocalSkill(t *testing.T) {
+	localYAML := strings.Replace(sampleYAML, `skills:
+  tdd:`, `skills:
+  adding-thing: {local: true}
+  tdd:`, 1)
+	root := scaffold(t, localYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	localPath := ".claude/skills/example-adding-thing/SKILL.md"
+	if _, err := os.Stat(filepath.Join(root, localPath)); !os.IsNotExist(err) {
+		t.Errorf("local skill should not be written to disk")
+	}
+	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Files[localPath]; ok {
+		t.Errorf("local skill should be absent from lock")
+	}
+	if _, ok := lock.Files[".claude/skills/example-tdd/SKILL.md"]; !ok {
+		t.Errorf("tdd skill should still be present in lock")
 	}
 }
 
