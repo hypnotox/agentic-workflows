@@ -67,9 +67,15 @@ larger, separately load-bearing change.
 4. **Route the gate through `./x gate`** = `go test ./... && go vet ./... && go tool
    golangci-lint run` (`full` accepted as a synonym; awf has no slower tier). Set
    `gateCmd: "./x gate"` and `gateCmdFull: "./x gate full"` in `.claude/awf.yaml`, bump
-   `gateDuration`, then re-sync so the rendered hooks, skill files, and AGENTS.md adopt the
-   new gate command and `.claude/awf.lock` updates. This repairs the previously-broken
-   pre-push hook.
+   `gateDuration`, then re-sync so the rendered hooks, skill files, and the **var-driven**
+   portions of AGENTS.md adopt the new gate command and `.claude/awf.lock` updates. This
+   repairs the previously-broken pre-push hook. **The re-sync does not cover the static
+   AGENTS.md overlay parts:** `.claude/awf/parts/agents-doc-conventions.md` line 4 hardcodes
+   the gate string (`go test ./... && go vet ./... (≈10s)`) as literal prose, not a
+   `{{ .vars.gateCmd }}` interpolation, so it must be hand-edited in the same change to read
+   `./x gate` and the new duration — otherwise the rendered AGENTS.md will contain two
+   contradictory gate commands, and `awf check` will not flag it (the overlay part is a
+   render *input*, so the lock still matches after re-sync).
 
 5. **`.golangci.yml` and `./x` are hand-maintained repo files outside the awf render/lock
    set** — they are not rendered from templates and not tracked in `.claude/awf.lock`, so
@@ -80,13 +86,21 @@ larger, separately load-bearing change.
 ## Invariants
 
 - The gate invoked by `./x gate` runs golangci-lint; the pre-commit hook blocks any commit
-  with lint failures.
+  with lint failures **when hooks are active** (`git config core.hooksPath .githooks`). The
+  hooks are currently dormant in this repo (`core.hooksPath` is unset), so activating them
+  is a prerequisite for this invariant to bind — the implementation plan must either set
+  `core.hooksPath` or document the manual `./x gate` discipline; otherwise the gate is
+  advisory only.
 - The golangci-lint version is pinned in `go.mod` via the `tool` directive; running the gate
   requires no separate manual install.
 - `.golangci.yml` and `./x` are absent from `.claude/awf.lock` and never cause `awf check`
   to report drift.
 - `gateCmd` / `gateCmdFull` in `.claude/awf.yaml` reference `./x gate` (and `./x gate full`);
   the rendered `.githooks/pre-push` invokes a valid command — never a bare `go vet ./... full`.
+- No file under `.claude/awf/parts/` and no rendered file contains the literal string
+  `go test ./... && go vet ./...` as a *gate* command after the flip (grep is the test);
+  the only gate command that survives the change is `./x gate`. (`go vet ./...` may still
+  appear as a tool *description*, e.g. in `debugging-surfaces.md`, but not as the gate.)
 - The baseline `.golangci.yml` enables no per-package exclusions; introducing one is a
   signal that a package needs attention or the rule needs reconsideration.
 
@@ -106,6 +120,11 @@ Harder / accepted trade-offs:
 - The first `./x gate` run is slower while golangci-lint's analysis cache warms.
 - Editing `.claude/awf.yaml` (the gate vars) requires an immediate `./x sync` before
   committing, or the pre-commit `awf check` will fail on drift in the re-rendered files.
+- The gate string is hardcoded in `.claude/awf/parts/agents-doc-conventions.md` (a static
+  overlay part), so a gate change is *not* fully captured by re-sync — the part file must be
+  hand-edited in lockstep. `awf check` cannot catch a stale gate string there because the
+  part is a render input, not a rendered output. This is a pre-existing coupling the gate
+  change surfaces, not one this ADR introduces.
 
 Ruled out (for now):
 - Per-package exclusions and complexity gates in the baseline config.
@@ -113,7 +132,11 @@ Ruled out (for now):
 
 Downstream work unblocked: an implementation plan covering — add the tool dep + config,
 write `./x`, fix any lint findings the new config surfaces, flip the gate vars and re-sync,
-and update the gate docs.
+hand-edit the static gate string in `.claude/awf/parts/agents-doc-conventions.md`, and
+update the gate docs. When this ADR's status flips to Accepted or Implemented, the same
+commit must regenerate `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`.
+(No `docs/decisions/README.md` index row is owed: this repo's README is a how-to guide with
+no per-ADR rows — `ACTIVE.md` is the generated index.)
 
 ## Alternatives Considered
 
