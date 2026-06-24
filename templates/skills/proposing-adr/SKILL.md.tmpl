@@ -3,8 +3,7 @@ name: {{ .prefix }}-proposing-adr
 description: >
   Use to propose a new ADR under {{ .vars.adrDir }} for {{ .prefix }}.
   Writes the ADR file with required frontmatter and sections, regenerates
-  ACTIVE.md, commits, and{{ if .vars.adrReadme }} hands off to
-  {{ .prefix }}-reviewing-adr{{ else }} completes autonomously{{ end }}.
+  ACTIVE.md, commits, and hands off to {{ .prefix }}-reviewing-adr.
 ---
 
 # {{ .prefix }}-proposing-adr
@@ -30,7 +29,7 @@ Load-bearing triggers include:
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** copy section structure from `{{ .vars.adrTemplatePath }}` (inline the content via `Write`; do not shell-copy the file).
 - **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 domain label driving `ACTIVE.md` grouping), `related` (array of ADR numbers or `[]`).
-- **Required sections:** {{ range .data.adrSections }}{{ . }}, {{ end }}Delete the authoring checklist before committing.
+- **Required sections:** {{ range .data.adrSections }}{{ . }}, {{ end }}in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 <!-- awf:end -->
 
@@ -58,12 +57,12 @@ Load-bearing triggers include:
 1. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 <!-- awf:end -->
 
-<!-- awf:section invariants-rule -->
-1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.adrRegenCmd }}` to confirm.
-<!-- awf:end -->
-
 <!-- awf:section readme-index-update -->
 1. **Update the README index.** Add a row in the appropriate area table of `{{ .vars.adrReadme }}`. Columns: ADR link, title, Status, Notes.
+<!-- awf:end -->
+
+<!-- awf:section invariants-rule -->
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.adrRegenCmd }}` to confirm.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->

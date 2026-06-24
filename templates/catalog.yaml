@@ -83,8 +83,8 @@ skills:
       - procedure-write
       - state-doc-update
       - procedure-predecessor-flip
-      - invariants-rule
       - readme-index-update
+      - invariants-rule
       - procedure-regen
       - procedure-commit
       - autonomous-rule
