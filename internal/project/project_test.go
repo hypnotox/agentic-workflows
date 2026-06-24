@@ -342,3 +342,78 @@ skills: {}
 		t.Errorf("agent file should contain prefix 'myproject', got:\n%s", b)
 	}
 }
+
+// TestSyncErrorsOnMissingVar verifies that Sync returns an error when a
+// rendered template would contain the literal string "<no value>" due to a
+// missing var.  The tdd skill references {{ .vars.testCmd }} and
+// {{ .vars.gateCmd }} without guards, so omitting them from vars triggers the
+// check (Change R3).
+func TestSyncErrorsOnMissingVar(t *testing.T) {
+	missingVarsYAML := `prefix: example
+vars: {}
+skills:
+  tdd:
+    data:
+      testSurfaces:
+        - {name: Logic, location: internal, kind: Go unit}
+agents: {}
+hooks: []
+`
+	root := scaffold(t, missingVarsYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	err = p.Sync()
+	if err == nil {
+		t.Fatal("expected Sync to return an error when vars are missing, got nil")
+	}
+	if !strings.Contains(err.Error(), "<no value>") {
+		t.Errorf("error should mention \"<no value>\", got: %v", err)
+	}
+}
+
+// TestSyncPrunesEmptySkillDir verifies that after a skill is removed from the
+// config and Sync is run again, not only is the SKILL.md file removed, but the
+// now-empty parent directory .claude/skills/<prefix>-<skill>/ is also removed
+// (Change R5).
+func TestSyncPrunesEmptySkillDir(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("first Sync: %v", err)
+	}
+	skillDir := filepath.Join(root, ".claude/skills/example-tdd")
+	if _, err := os.Stat(skillDir); err != nil {
+		t.Fatalf("skill dir should exist after first sync: %v", err)
+	}
+
+	// Rewrite config without the tdd skill, re-open, re-sync.
+	noTDD := strings.Replace(sampleYAML, `skills:
+  tdd:
+    data:
+      testSurfaces:
+        - {name: Logic, location: internal, kind: Go unit}`, "skills: {}", 1)
+	if err := os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte(noTDD), 0o644); err != nil {
+		t.Fatalf("rewrite yaml: %v", err)
+	}
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open after removing tdd skill: %v", err)
+	}
+	if err := p2.Sync(); err != nil {
+		t.Fatalf("second Sync: %v", err)
+	}
+
+	// The SKILL.md file should be gone.
+	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); !os.IsNotExist(err) {
+		t.Errorf("SKILL.md should have been pruned")
+	}
+	// The parent directory should also be gone (R5: prune empty skill dirs).
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
+		t.Errorf("skill directory %s should have been pruned when empty", skillDir)
+	}
+}

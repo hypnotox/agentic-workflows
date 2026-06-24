@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
@@ -197,6 +198,9 @@ func (p *Project) renderTemplate(tid string, sections map[string]config.SectionO
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	if strings.Contains(content, "<no value>") {
+		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset in .claude/awf.yaml", outPath)
+	}
 	return RenderedFile{
 		Path: outPath, Content: content, TemplateID: tid,
 		TemplateHash: manifest.Hash(src),
@@ -233,7 +237,10 @@ func (p *Project) Sync() error {
 	if old, err := manifest.Load(p.lockPath()); err == nil {
 		for path := range old.Files {
 			if !want[path] {
-				_ = os.Remove(filepath.Join(p.Root, path))
+				file := filepath.Join(p.Root, path)
+				_ = os.Remove(file)
+				parentDir := filepath.Dir(file)
+				os.Remove(parentDir) // ignore error - only removes if empty
 			}
 		}
 	}
