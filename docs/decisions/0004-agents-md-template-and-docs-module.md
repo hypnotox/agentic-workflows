@@ -53,7 +53,11 @@ Grounding discoveries that shape the design (verified against source):
   path→hash record; each rendered doc is an ordinary entry. Wiring: `Config.Docs []string`
   (`internal/config/config.go`), a `docs:` list in `templates/catalog.yaml`, `Catalog.Docs`
   (`internal/catalog`), a render loop in `internal/project`, and the `//go:embed` line in
-  `templates/embed.go` (currently `catalog.yaml skills hooks agents agents-doc`).
+  `templates/embed.go` (currently `catalog.yaml skills hooks agents agents-doc`). The
+  `Config.Docs` field is a **hard prerequisite**, not merely additive: `config.Load` decodes
+  with `dec.KnownFields(true)` (`internal/config/config.go:42`), so a `docs:` key in `awf.yaml`
+  is a parse error (`field docs not found`) until the struct field exists. The five-file wiring
+  must therefore land before any adopter — including the dogfood — can write `docs:`.
 - **Both `agentsDoc` and `docs` are opt-in by construction.** `ScaffoldConfig`
   (`internal/project/scaffold.go`) does not emit an `agentsDoc:` block, so a fresh `awf init`
   already produces no AGENTS.md unless the adopter adds the block; an absent `docs:` key likewise
@@ -91,6 +95,15 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    — are emitted inline in the template from existing vars (`adrReadme`, `activeMdPath`, `gateCmd`).
    Adopter-supplied `data.invariants` are appended after them. The universal tier is suppressed
    only by the standard overlay mechanism (section `drop`/`replaceWith`), not by config absence.
+   **Caveat — these vars can be empty strings, not just absent.** `ScaffoldConfig` seeds every
+   referenced var (including `adrReadme`/`activeMdPath`/`gateCmd`) with `""`
+   (`internal/project/scaffold.go:74`), and an empty-string var passes the `<no value>` guard
+   silently (`missingkey=zero` only zero-fills *absent* keys). A fresh adopter who adds an
+   `agentsDoc:` block before filling these vars would otherwise render broken empty-target links
+   (`[ACTIVE.md]()`) or an empty gate command that `awf check` cannot catch. Each universal-tier
+   line that interpolates such a var must therefore be `{{ if }}`-guarded to fall back to a plain
+   sentence (or omit the link) when the var is empty — the same empty-string discipline applied to
+   the `.data.*` fallbacks, extended to `.vars.*` here.
 
 4. **Add an opt-in `docs:` module.** A new top-level `docs: []string` key in `awf.yaml`,
    **absent by default** (not emitted by `ScaffoldConfig`; mirrors the `hooks:` list pattern).
@@ -123,6 +136,10 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
 - The three universal invariants (append-only ADRs, docs-travel-with-the-change,
   green-gate-before-commit) appear in the rendered Invariants section even when
   `data.invariants` is unset; adopter `data.invariants` entries render after them.
+- Rendering the agents-doc template with `adrReadme`, `activeMdPath`, and `gateCmd` all set to
+  the empty string (the `ScaffoldConfig` default) produces no `<no value>` token, no empty-target
+  markdown link (`]()`), and no empty fenced command block; each universal-tier line degrades to a
+  plain sentence.
 - With `docs:` absent from `awf.yaml`, no file under `docs/` is rendered and the Document map
   omits the generated-docs block; with `docs:` listing N catalog entries, exactly N files render
   under `docs/` and N annotated links appear in the Document map.
@@ -158,12 +175,21 @@ Harder / accepted trade-offs:
   bare-string `hooks:` list — a small, deliberate asymmetry so links can be annotated.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
-- `.claude/awf/parts/agents-doc-layout.md` and `agents-doc-overview.md` are static overlay parts
-  that `awf check` will **not** flag as drift; the dogfood step must hand-migrate their content
-  (layout → `docs/architecture.md`; overview → the new Identity/You-and-this-project sections)
-  and re-sync so `AGENTS.md` re-renders. The current `agentsDoc.sections` overlay in
-  `.claude/awf.yaml` (which `replaceWith`s `overview`/`layout`/`conventions`) must be updated to
-  the new section names or those overrides will reference dropped sections.
+- `.claude/awf/parts/agents-doc-{overview,layout,conventions}.md` are static overlay parts that
+  `awf check` will **not** flag as drift; the dogfood step must hand-migrate their content
+  (overview → the new Identity / You-and-this-project sections; layout → `docs/architecture.md`;
+  conventions → the new Invariants / Workflow sections — the current `conventions` part carries
+  TDD/gate/commit/doc-currency rules that have no standalone heading in the new shape) and re-sync
+  so `AGENTS.md` re-renders.
+- **Same-commit hard requirement, not a soft obligation:** redefining the catalog
+  `agentsDoc.sections` list to the new section markers makes the existing `.claude/awf.yaml`
+  `agentsDoc.sections` overlay (which keys `overview`/`layout`/`conventions`) **fail validation**,
+  not merely dangle. `Project.Open` → `validateAgainstCatalog` → `checkSectionsAllowed`
+  (`internal/project/project.go:94,129-143`) rejects any override key absent from the catalog list
+  with `unknown section … (not declared in the catalog)`, so `awf sync`/`awf check` — and the
+  pre-commit hook — error out until the overlay keys are renamed (or dropped) in the same change
+  that redefines the catalog. The implementing plan must sequence the catalog redefinition, the
+  awf.yaml overlay rewrite, and the re-sync as one atomic step to keep the gate green.
 - When this ADR's status flips to Accepted or Implemented, the same commit regenerates
   `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`. No `docs/decisions/README.md`
   index row is owed — this repo's README is a how-to guide; `ACTIVE.md` is the generated index
