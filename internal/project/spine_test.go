@@ -191,14 +191,10 @@ func TestDebuggingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"workflowDoc":      "docs/workflow.md",
-			"debuggingDoc":     "docs/debugging.md",
-			"gateCmd":          "./x gate",
-			"gateCmdFull":      "./x gate full",
-			"bugfixSkill":      "example-bugfix",
-			"brainstormingSkill": "example-brainstorming",
-			"tddSkill":         "example-tdd",
-			"pitfallsDoc":      "",
+			"workflowDoc":  "docs/workflow.md",
+			"debuggingDoc": "docs/debugging.md",
+			"gateCmd":      "./x gate",
+			"gateCmdFull":  "./x gate full",
 		},
 		"data": map[string]any{},
 	}
@@ -213,7 +209,7 @@ func TestDebuggingTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to debugging
 	loadBearing := []string{
 		"falsifiable hypothesis",
-		"reproduce",
+		"reproduces the failure",
 		"root cause",
 		"example-bugfix",
 	}
