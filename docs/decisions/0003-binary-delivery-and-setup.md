@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-06-24
 supersedes: []
 superseded_by: ""
@@ -35,6 +35,12 @@ but **never activates them** — and git hooks are not activated by `git clone` 
 is local, uncommitted config). So both adopters and fresh clones of any awf repo need a
 one-time, idempotent activation step that today is undocumented manual `git config`.
 
+**Stated assumption (not changed by this ADR):** the adopter-delivery convention already
+documented in `README.md` — adopters obtain `awf` via `go install <module>/cmd/awf@latest`,
+putting `awf` on PATH — is what the default hook check command (`awf check`) relies on. The
+concrete go-gettable module path is resolved at the Phase-4 publish step. This ADR depends on
+that convention; it does not introduce or alter it.
+
 Grounding discoveries that shape the design:
 
 - **No catalog-level var defaults exist.** Vars are sourced from `.claude/awf.yaml`; `awf init`
@@ -47,28 +53,23 @@ Grounding discoveries that shape the design:
 
 ## Decision
 
-1. **Adopter delivery convention: `go install`.** The single documented way an adopter obtains
-   `awf` is `go install <module>/cmd/awf@latest`, putting `awf` on PATH. The default hook check
-   command (`awf check`, item 2) assumes this. The concrete go-gettable module path is resolved
-   at the Phase-4 publish step; until then `README.md` carries the convention.
-
-2. **Parameterise the hook check command via `checkCmd`.** Introduce a template var `checkCmd`.
+1. **Parameterise the hook check command via `checkCmd`.** Introduce a template var `checkCmd`.
    `templates/hooks/pre-commit.tmpl` renders it with an **inline default**:
    `{{ if .vars.checkCmd }}{{ .vars.checkCmd }}{{ else }}awf check{{ end }}`. Adopters (whose
    seeded `checkCmd` is empty) get `awf check`; this repo sets `checkCmd: "./x check"` in
    `.claude/awf.yaml`. The inline `{{ else }}` is mandatory because `missingkey=zero` would
    otherwise emit a render-failing `<no value>`. This mirrors the existing `gateCmd` parameter.
 
-3. **Add an `awf setup` subcommand** — the canonical one-time, idempotent step run after cloning
+2. **Add an `awf setup` subcommand** — the canonical one-time, idempotent step run after cloning
    any awf-adopting repo (and after `awf init`), to wire the local clone's hooks. It runs
    `git config core.hooksPath .githooks`. Behaviour:
    - Idempotent: re-running is a no-op (`git config` setting the same value).
    - Errors if `.githooks/` does not exist (message directs the user to run `awf sync` first).
    - If the working directory is not inside a git repository, it **warns and is a no-op** (exit 0)
-     rather than failing — so `awf init` chaining (item 4) never breaks in a not-yet-`git init`ed
+     rather than failing — so `awf init` chaining (item 3) never breaks in a not-yet-`git init`ed
      project.
 
-4. **`awf init` runs setup at the end**, and **`./x setup` delegates** to `go run ./cmd/awf setup`.
+3. **`awf init` runs setup at the end**, and **`./x setup` delegates** to `go run ./cmd/awf setup`.
    `runInit` calls `runSetup` after `runSync`; init's trailing setup is best-effort (a setup
    warning never fails init). The dogfood repo's `./x setup` invokes awf from source so it shares
    one implementation of the activation logic (no duplicated `git config` string).
@@ -127,8 +128,8 @@ Doc-currency obligations the same implementing commit(s) must satisfy:
   static overlay *part* (a render input), so `awf check` will **not** flag it as drift — the
   identical trap ADR-0002 documented for `agents-doc-conventions.md`. AGENTS.md re-renders from
   the edited part on re-sync.
-- `README.md` carries the `go install` delivery convention (Decision item 1) and gains the
-  `awf setup` post-clone step.
+- `README.md` carries the `go install` delivery convention (the Context's stated assumption) and
+  gains the `awf setup` post-clone step.
 - When this ADR's status flips to Accepted or Implemented, the same commit must regenerate
   `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`. (No `docs/decisions/README.md`
   index row is owed: this repo's README is a how-to guide with no per-ADR rows — `ACTIVE.md` is
