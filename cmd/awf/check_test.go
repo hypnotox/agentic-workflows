@@ -1,4 +1,3 @@
-// cmd/awf/check_test.go
 package main
 
 import (
@@ -14,7 +13,7 @@ skills:
     data:
       testSurfaces:
         - {name: Logic, location: internal, kind: Go unit}
-agents: []
+agents: {}
 hooks: []
 `
 

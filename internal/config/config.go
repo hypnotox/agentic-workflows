@@ -1,4 +1,4 @@
-// internal/config/config.go
+// Package config loads and validates the per-project .claude/awf.yaml configuration.
 package config
 
 import (
@@ -24,7 +24,7 @@ type Config struct {
 	Prefix string                 `yaml:"prefix"`
 	Vars   map[string]any         `yaml:"vars"`
 	Skills map[string]SkillConfig `yaml:"skills"`
-	Agents []string               `yaml:"agents"`
+	Agents map[string]SkillConfig `yaml:"agents"`
 	Hooks  []string               `yaml:"hooks"`
 	raw    []byte
 }

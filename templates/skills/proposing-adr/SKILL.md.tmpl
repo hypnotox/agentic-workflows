@@ -1,0 +1,91 @@
+---
+name: {{ .prefix }}-proposing-adr
+description: >
+  Use to propose a new ADR under {{ .vars.adrDir }} for {{ .prefix }}.
+  Writes the ADR file with required frontmatter and sections, regenerates
+  ACTIVE.md, commits, and hands off to {{ .prefix }}-reviewing-adr.
+---
+
+# {{ .prefix }}-proposing-adr
+
+<!-- awf:section positioning -->
+Writes a new ADR to `{{ .vars.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `{{ .vars.workflowDoc }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
+<!-- awf:end -->
+
+## When to invoke
+
+<!-- awf:section when-to-invoke -->
+Per `{{ .vars.workflowDoc }}`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+
+Load-bearing triggers include:
+{{ range .data.adrTriggers }}- {{ . }}
+{{ end }}
+<!-- awf:end -->
+
+## Conventions enforced
+
+<!-- awf:section conventions -->
+- **Next number:** list `{{ .vars.adrDir }}/NNNN-*.md`, take the highest existing number plus one. Never reuse numbers.
+- **Filename:** `NNNN-kebab-title.md`.
+- **Template:** copy section structure from `{{ .vars.adrTemplatePath }}` (inline the content via `Write`; do not shell-copy the file).
+- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 domain label driving `ACTIVE.md` grouping), `related` (array of ADR numbers or `[]`).
+- **Required sections:** {{ range .data.adrSections }}{{ . }}, {{ end }}in that order. Delete the authoring checklist before committing.
+- **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+<!-- awf:end -->
+
+## Procedure
+
+<!-- awf:section procedure-number -->
+1. **Pick the next ADR number.** List `{{ .vars.adrDir }}/NNNN-*.md` and take the maximum number plus one.
+<!-- awf:end -->
+
+<!-- awf:section procedure-write -->
+1. **Write the ADR file** using `Write`. Copy section structure from `{{ .vars.adrTemplatePath }}` and fill all sections:
+   - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
+   - **Decision:** numbered items, each a discrete commitment. Numbers matter for partial-item supersedence.
+   - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
+   - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
+   - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
+   - Delete the authoring checklist before committing.
+<!-- awf:end -->
+
+<!-- awf:section state-doc-update -->
+1. **Update or create the relevant state doc** under `{{ .vars.stateDocsPath }}` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
+<!-- awf:end -->
+
+<!-- awf:section procedure-predecessor-flip -->
+1. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+<!-- awf:end -->
+
+<!-- awf:section readme-index-update -->
+1. **Update the README index.** Add a row in the appropriate area table of `{{ .vars.adrReadme }}`. Columns: ADR link, title, Status, Notes.
+<!-- awf:end -->
+
+<!-- awf:section invariants-rule -->
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.activeMdRegenCmd }}` to confirm.
+<!-- awf:end -->
+
+<!-- awf:section procedure-regen -->
+1. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+<!-- awf:end -->
+
+<!-- awf:section procedure-commit -->
+1. **Commit everything in one commit.** Format: `{{ .vars.adrProposeCommitFmt }}`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+<!-- awf:end -->
+
+<!-- awf:section autonomous-rule -->
+1. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
+<!-- awf:end -->
+
+<!-- awf:section terminal-step -->
+1. **Terminal step: invoke `{{ .prefix }}-reviewing-adr`** via the `Skill` tool, passing the ADR path. The reviewer runs the lens panel and reports findings; route them per the reviewing skill's procedure.
+<!-- awf:end -->
+
+## Notes
+
+<!-- awf:section notes -->
+- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
+- `{{ .vars.activeMdPath }}` is never hand-edited; it is always regenerated via `{{ .vars.activeMdRegenCmd }}`.
+- Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
+- For the full ADR lifecycle, see `{{ .vars.workflowDoc }}`.
+<!-- awf:end -->

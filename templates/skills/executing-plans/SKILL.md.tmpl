@@ -1,0 +1,86 @@
+---
+name: {{ .prefix }}-executing-plans
+description: Use to execute a written {{ .prefix }} plan inline (one task at a time, in the current session) when the plan's tasks are tightly coupled or sequential. Codifies bite-sized tasks, one commit per task, {{ .vars.gateCmd }} per commit, ADR status flip in the final commit, terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-subagent-driven-development.
+---
+
+# {{ .prefix }}-executing-plans
+
+<!-- awf:section positioning -->
+The `implementation` chain node, inline shape. Wraps `{{ .vars.workflowDoc }}` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `{{ .prefix }}-subagent-driven-development`.
+<!-- awf:end -->
+
+<!-- awf:section when-to-invoke -->
+## When to invoke
+
+Invoke when:
+- A plan exists under `{{ .vars.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
+- Plan tasks are tightly coupled or sequential — state flows between tasks, each task informs the next, or the plan is short enough that subagent-per-task overhead is not justified, AND
+- Full main-session visibility into each step is valuable (debugging, exploratory iteration, or work that may need mid-flight redirection).
+
+The agent picks between this skill and `{{ .prefix }}-subagent-driven-development` by inspecting the plan's phase structure and task coupling. For plans whose tasks are mostly independent and benefit from fresh context per task, use `{{ .prefix }}-subagent-driven-development` instead.
+
+If no plan exists, implement directly without a chain skill, then invoke `{{ .prefix }}-reviewing-impl` at the end.
+<!-- awf:end -->
+
+## Procedure
+
+<!-- awf:section procedure-resolve-plan -->
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .vars.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+<!-- awf:end -->
+
+<!-- awf:section procedure-raise-concerns -->
+1. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
+<!-- awf:end -->
+
+<!-- awf:section procedure-per-task -->
+1. **Per task — execute, verify, commit (one commit per task):**
+   - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
+   - **Verify** with `{{ .vars.gateCmd }}` (fast tier). See `{{ .vars.workflowDoc }}` for the tier split and when to run the full tier.
+   - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
+<!-- awf:end -->
+
+<!-- awf:section tdd-opt-in -->
+<!-- awf:end -->
+
+<!-- awf:section gate-tier-detail -->
+{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmd }} full` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .vars.workflowDoc }}` "Regression-test discipline under the tier split".
+{{ end }}<!-- awf:end -->
+
+<!-- awf:section host-git-constraint -->
+{{ if .vars.hostGitAdrRef }}   **Git runs on the host, never in the container.** `git add` / `git commit` / `git push` run on the host shell only. The container git shim blocks write-mode git inside. (See `{{ .vars.hostGitAdrRef }}`.)
+{{ end }}<!-- awf:end -->
+
+<!-- awf:section procedure-adr-final-commit -->
+1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+<!-- awf:end -->
+
+<!-- awf:section procedure-non-adr-final-commit -->
+1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .vars.workflowDoc }}` "Planning files / Lifecycle").
+<!-- awf:end -->
+
+<!-- awf:section terminal-step -->
+1. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+<!-- awf:end -->
+
+## Notes
+
+<!-- awf:section project-invariants -->
+{{ if .vars.keyInvariantAdrRef }}- **Project invariants are non-negotiable.** See `{{ .vars.keyInvariantAdrRef }}` for the key invariants that must be preserved across all commits.
+{{ end }}{{ if .vars.oracleStateDoc }}- **The oracle state doc (`{{ .vars.oracleStateDoc }}`) is non-negotiable.** Never adjust expected output to make a test pass.
+{{ end }}<!-- awf:end -->
+
+<!-- awf:section notes-gate -->
+- Gates are mandatory; if red, fix the root cause. Do not bypass with `--no-verify` except in genuine emergencies, and follow up with a fix commit.
+<!-- awf:end -->
+
+<!-- awf:section notes-auto-commit -->
+- Auto-commit when green: tests pass + lint clean → commit without asking (per `{{ .vars.workflowDoc }}` "Auto-commit when green").
+<!-- awf:end -->
+
+<!-- awf:section notes-one-concern -->
+- One concern per commit; if a task accumulates unrelated tweaks, split it.
+<!-- awf:end -->
+
+<!-- awf:section notes-docs-travel -->
+- Docs travel with the change: any commit that changes reality updates the corresponding docs or `AGENTS.md` in the same commit.
+<!-- awf:end -->

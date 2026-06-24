@@ -1,0 +1,53 @@
+---
+name: {{ .prefix }}-bugfix
+description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ .prefix }}-reviewing-impl. Self-contained.
+---
+
+# {{ .prefix }}-bugfix
+
+The fix-and-verify task skill. Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.
+
+## When to invoke
+
+When the root cause is known and a fix is ready to land. Two callers in practice:
+
+- **Trivial bugfix that validly skips the chain** — the narrow exception in `{{ .vars.workflowDoc }}` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
+- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
+
+If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.
+
+## Procedure
+
+1. **Ensure a regression test exists that fails for the right reason.** Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
+
+<!-- awf:section test-tiers -->
+## Test tiers
+
+The specific test tiers (unit, integration, e2e, etc.) and their locations are project-specific. Refer to your project's testing guide.
+
+<!-- awf:end -->
+
+1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+
+<!-- awf:section pitfalls-check -->
+1. **Check `{{ .vars.pitfallsDoc }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+
+<!-- awf:end -->
+
+1. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+
+1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .vars.workflowDoc }}`, fixes ship with a regression test.
+
+1. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
+
+<!-- awf:section oracle-note -->
+## Oracle invariant
+
+The oracle is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
+
+<!-- awf:end -->
+
+## Notes
+
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
+- Doc-currency rule: if the fix invalidates anything documented in {{ .vars.docCurrencyTargets }}, update it in the same commit.

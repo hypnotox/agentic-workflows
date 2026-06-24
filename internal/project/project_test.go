@@ -1,4 +1,3 @@
-// internal/project/project_test.go
 package project
 
 import (
@@ -31,7 +30,8 @@ skills:
     data:
       testSurfaces:
         - {name: Logic, location: internal, kind: Go unit}
-agents: [code-reviewer]
+agents:
+  code-reviewer: {}
 hooks: [pre-commit, pre-push]
 `
 
@@ -158,7 +158,8 @@ func TestSyncSkipsLocalSkill(t *testing.T) {
 func TestOpenRejectsUnknownAgent(t *testing.T) {
 	yaml := `prefix: example
 skills: {}
-agents: [does-not-exist]
+agents:
+  does-not-exist: {}
 hooks: []
 `
 	root := scaffold(t, yaml)
@@ -174,7 +175,7 @@ hooks: []
 func TestOpenRejectsUnknownHook(t *testing.T) {
 	yaml := `prefix: example
 skills: {}
-agents: []
+agents: {}
 hooks: [typo-hook]
 `
 	root := scaffold(t, yaml)
@@ -191,7 +192,7 @@ func TestOpenRejectsUnknownSkill(t *testing.T) {
 	yaml := `prefix: example
 skills:
   no-such-skill: {}
-agents: []
+agents: {}
 hooks: []
 `
 	root := scaffold(t, yaml)
@@ -241,5 +242,30 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); !os.IsNotExist(err) {
 		t.Errorf("removed skill should be pruned")
+	}
+}
+
+func TestSyncRendersAgentFromMap(t *testing.T) {
+	agentYAML := `prefix: myproject
+agents:
+  code-reviewer: {}
+hooks: []
+skills: {}
+`
+	root := scaffold(t, agentYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	agentPath := filepath.Join(root, ".claude/agents/code-reviewer.md")
+	b, err := os.ReadFile(agentPath)
+	if err != nil {
+		t.Fatalf("agent file not written: %v", err)
+	}
+	if !strings.Contains(string(b), "myproject") {
+		t.Errorf("agent file should contain prefix 'myproject', got:\n%s", b)
 	}
 }

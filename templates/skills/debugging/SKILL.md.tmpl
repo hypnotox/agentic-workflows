@@ -1,0 +1,60 @@
+---
+name: {{ .prefix }}-debugging
+description: >
+  Use when investigating a {{ .prefix }} bug or unexpected behaviour,
+  before proposing a fix. Validates a falsifiable hypothesis against the
+  real system before touching code. Self-contained; encodes
+  {{ .prefix }}-specific debugging surfaces.
+---
+
+# {{ .prefix }}-debugging
+
+Self-contained systematic debugging for {{ .prefix }}. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
+
+<!-- awf:section symptom-list -->
+Use when behaviour is wrong and the cause is not yet known — unexpected output, test failures, state inconsistencies, build failures, or regressions. Skip only for a one-line fix whose failing test already exists and whose cause is obvious.
+
+<!-- awf:end -->
+
+## When to invoke
+
+Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious (invoke `{{ .prefix }}-bugfix` directly in that case). If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to `{{ .prefix }}-brainstorming` after confirming the root cause.
+
+## Procedure
+
+1. **State the bug concretely.** What is the observed behaviour? What was expected? Cite the failing test output, the error message, or the user report verbatim. Do not restate the bug abstractly until you have evidence.
+
+1. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
+
+<!-- awf:section debugging-surfaces -->
+1. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+
+<!-- awf:end -->
+
+<!-- awf:section test-isolation -->
+1. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.
+
+<!-- awf:end -->
+
+1. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `{{ .vars.gateCmd }}` (fast tier).{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the fast tier does not exercise.{{ end }}
+
+1. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `{{ .prefix }}-brainstorming` instead.
+
+<!-- awf:section oracle-invariant -->
+## Oracle invariant
+
+The oracle defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
+
+<!-- awf:end -->
+
+<!-- awf:section devdb-note -->
+## Dev environment note
+
+Development data stores are disposable. Do not attempt to preserve or restore dev state when investigating; rebuild from a known-good baseline if the environment becomes inconsistent.
+
+<!-- awf:end -->
+
+## Notes
+
+- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `{{ .vars.workflowDoc }}`.
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.{{ if .vars.debuggingDoc }} Full debugging recipes and surface-specific commands are in `{{ .vars.debuggingDoc }}`.{{ end }}

@@ -1,3 +1,4 @@
+// Package render parses awf section markers and renders templates with per-project overlays via text/template.
 package render
 
 import (

@@ -1,0 +1,69 @@
+---
+name: {{ .prefix }}-reviewing-plan
+description: >
+  Use after {{ .prefix }}-writing-plans writes a plan under {{ .vars.plansDir }}.
+  Dispatches the plan-reviewer subagent, routes findings
+  (mechanical / reasoned / user-decision), applies fixes, and hands off to
+  {{ .prefix }}-reviewing-plan-resync when an ADR exists, or to implementation
+  when none does.
+---
+
+# {{ .prefix }}-reviewing-plan
+
+<!-- awf:section when-fires -->
+## When this skill fires
+
+Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is written and committed under `{{ .vars.plansDir }}/`. The `plan-reviewer` subagent owns the review discipline: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, applies fixes with a 3-round soft cap, and returns a digest. This skill dispatches that agent, surfaces the digest, gates on user-decision findings, and chains to the next node.
+
+This skill owns the post-write **full** plan review only. The plan↔ADR resync pass after a linked ADR review converges is owned by the separate `{{ .prefix }}-reviewing-plan-resync` skill.
+<!-- awf:end -->
+
+## Procedure
+
+<!-- awf:section procedure -->
+1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .vars.plansDir }}/` matching the `YYYY-MM-DD-*.md` pattern.
+<!-- awf:end -->
+
+<!-- awf:section artifact-path-detection -->
+1. **Path detection detail.** When no explicit path is given: list `{{ .vars.plansDir }}/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+<!-- awf:end -->
+
+<!-- awf:section dispatch-subagent -->
+1. **Dispatch the `plan-reviewer` subagent.** Invoke the agent tool with subagent type `plan-reviewer` and a brief that includes:
+   - The absolute plan path.
+   - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
+   - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope.
+
+   The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
+<!-- awf:end -->
+
+<!-- awf:section classify-route-findings -->
+1. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+   - **mechanical** — agent applies directly.
+   - **reasoned** — agent applies with one-line rationale.
+   - **user-decision** — present to the user and wait.
+<!-- awf:end -->
+
+<!-- awf:section apply-fixes-commit -->
+1. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `{{ .vars.commitScope }}` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+<!-- awf:end -->
+
+<!-- awf:section re-review-loop -->
+1. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+<!-- awf:end -->
+
+<!-- awf:section hand-off -->
+1. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
+   - If a linked ADR exists (named in the plan header or the session context), invoke `{{ .prefix }}-reviewing-plan-resync` to catch plan-vs-finalised-ADR drift.
+   - If no ADR exists, the chain proceeds directly to implementation.
+<!-- awf:end -->
+
+## Notes
+
+<!-- awf:section notes -->
+- If the user asks to skip review, comply but warn that a chain step is being skipped.
+- See `{{ .vars.workflowDoc }}` for full plan lifecycle rules and the canonical workflow chain.
+- The `plan-reviewer` agent is lens-diverse internally; this skill does not orchestrate a panel and does not specify per-lens model routing.
+- The plan-resync pass (post-ADR-review drift check) is a separate skill: `{{ .prefix }}-reviewing-plan-resync`.
+<!-- awf:end -->

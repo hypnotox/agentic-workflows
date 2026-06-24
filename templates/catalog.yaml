@@ -1,8 +1,199 @@
 skills:
+  brainstorming:
+    sections:
+      - preamble
+      - when-to-invoke
+      - procedure
+      - example-clarifying-questions
+      - design-sections
+      - no-spec-rule
+      - grounding-check-output-format
+      - grounding-check-dispatch-template
+      - terminal-handoff
+      - definitions
+      - anti-patterns
+  writing-plans:
+    sections:
+      - positioning
+      - when-to-invoke
+      - conventions-path
+      - conventions-header
+      - conventions-tasks
+      - conventions-no-placeholders
+      - gate-tier-note
+      - conventions-test-first
+      - procedure-confirm-scope
+      - plan-template-ref
+      - procedure-write-plan
+      - doc-currency-check
+      - self-review
+      - plan-commit-step
+      - terminal-step
+      - plan-lifecycle
+      - plan-resync
+      - notes
+  executing-plans:
+    sections:
+      - positioning
+      - when-to-invoke
+      - procedure-resolve-plan
+      - procedure-raise-concerns
+      - procedure-per-task
+      - tdd-opt-in
+      - gate-tier-detail
+      - host-git-constraint
+      - procedure-adr-final-commit
+      - procedure-non-adr-final-commit
+      - terminal-step
+      - project-invariants
+      - notes-gate
+      - notes-auto-commit
+      - notes-one-concern
+      - notes-docs-travel
+  subagent-driven-development:
+    sections:
+      - positioning
+      - per-task-review-note
+      - when-to-invoke
+      - procedure-resolve-plan
+      - procedure-raise-concerns
+      - procedure-extract-context
+      - dispatch-conventions
+      - host-git-constraint
+      - procedure-status-handling
+      - per-task-review
+      - final-task-adr-flip
+      - terminal-step
+      - notes
   tdd:
     sections: [surfaces, notes]
+  debugging:
+    sections:
+      - symptom-list
+      - debugging-surfaces
+      - test-isolation
+      - oracle-invariant
+      - devdb-note
+  proposing-adr:
+    sections:
+      - positioning
+      - when-to-invoke
+      - conventions
+      - procedure-number
+      - procedure-write
+      - state-doc-update
+      - procedure-predecessor-flip
+      - readme-index-update
+      - invariants-rule
+      - procedure-regen
+      - procedure-commit
+      - autonomous-rule
+      - terminal-step
+      - notes
+  adr-lifecycle:
+    sections:
+      - states
+      - transitions
+      - supersedence-full
+      - supersedence-partial
+      - procedure-status-edit
+      - procedure-predecessor-flip
+      - readme-index-update
+      - state-doc-update
+      - procedure-regen
+      - procedure-gate
+      - commit-templates
+      - amendment-while-proposed
+      - notes
+  bugfix:
+    sections:
+      - test-tiers
+      - pitfalls-check
+      - oracle-note
+  reviewing-plan:
+    sections:
+      - when-fires
+      - procedure
+      - artifact-path-detection
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - hand-off
+      - notes
+  reviewing-plan-resync:
+    sections:
+      - when-fires
+      - dispatch-subagent-narrowed
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - hand-off-to-impl
+      - notes
+  reviewing-adr:
+    sections:
+      - when-fires
+      - procedure
+      - artifact-path-detection
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - status-flip
+      - hand-off-to-resync
+      - notes
+  reviewing-impl:
+    sections:
+      - when-fires
+      - sha-range-detection
+      - docs-only-check
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - notes
+  refactor-coupling-audit:
+    sections:
+      - when-to-invoke
+      - audit-shape-selection
+      - category-1-top-level-files
+      - category-2-sibling-tests
+      - category-3-subpackages
+      - category-4-codegen
+      - category-5-constructors
+      - category-6-init-visibility
+      - test-coupling-planning-rule
+      - output-format
+      - scope-shrink-rule
+      - notes
+  roadmap-graduation:
+    sections:
+      - when-fires
+      - failure-modes
+      - identify-entry
+      - reverify-measurements
+      - graduate-single-commit
+      - explicit-drop
+      - same-commit
+      - doc-currency
+      - notes
 agents:
-  - code-reviewer
+  adr-reviewer:
+    sections:
+      - universal-lenses
+      - project-focus
+      - doc-currency
+  plan-reviewer:
+    sections:
+      - universal-lenses
+      - project-focus
+      - doc-currency
+      - resync-note
+  code-reviewer:
+    sections:
+      - universal-lenses
+      - project-focus
+      - doc-currency
 hooks:
   - pre-commit
   - pre-push

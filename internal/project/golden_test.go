@@ -1,4 +1,3 @@
-// internal/project/golden_test.go
 package project
 
 import (

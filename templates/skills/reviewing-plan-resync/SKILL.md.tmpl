@@ -1,0 +1,58 @@
+---
+name: {{ .prefix }}-reviewing-plan-resync
+description: >
+  Invoked by {{ .prefix }}-reviewing-adr after ADR review settles.
+  Dispatches the plan-reviewer subagent in resync mode (scope-completeness +
+  doc-currency lenses only) to catch plan-vs-finalised-ADR drift and route
+  findings (mechanical / reasoned / user-decision).
+---
+
+# {{ .prefix }}-reviewing-plan-resync
+
+<!-- awf:section when-fires -->
+## When this skill fires
+
+Only when BOTH an ADR and a plan exist. Invoked by `{{ .prefix }}-reviewing-adr` as its terminal follow-on after the ADR review converges and the ADR status is flipped. Do NOT invoke when no plan was written.
+
+This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness + doc-currency lenses). The post-write full plan review is owned by the separate `{{ .prefix }}-reviewing-plan` skill.
+<!-- awf:end -->
+
+## Procedure
+
+<!-- awf:section dispatch-subagent-narrowed -->
+1. **Dispatch the `plan-reviewer` subagent in resync mode.** Identify the plan path (named in the just-settled ADR or the most recently-modified file under `{{ .vars.plansDir }}/` matching `YYYY-MM-DD-*.md`). Invoke the agent tool with subagent type `plan-reviewer` and a brief that includes:
+   - The absolute plan path.
+   - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR drift (scope items the ADR added or revised that the plan still treats by the older shape; doc-currency obligations the finalised ADR introduces)."
+   - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope.
+
+   The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
+<!-- awf:end -->
+
+<!-- awf:section classify-route-findings -->
+1. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+   - **mechanical** — agent applies directly.
+   - **reasoned** — agent applies with one-line rationale.
+   - **user-decision** — present to the user and wait.
+<!-- awf:end -->
+
+<!-- awf:section apply-fixes-commit -->
+1. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `{{ .vars.commitScope }}` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+<!-- awf:end -->
+
+<!-- awf:section re-review-loop -->
+1. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+<!-- awf:end -->
+
+<!-- awf:section hand-off-to-impl -->
+1. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `{{ .prefix }}-executing-plans` (for inline execution) or `{{ .prefix }}-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
+<!-- awf:end -->
+
+## Notes
+
+<!-- awf:section notes -->
+- This skill never edits the user's repository other than the plan file itself.
+- The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The other three ran during `{{ .prefix }}-reviewing-plan` and need not re-run.
+- The re-review loop (3-round soft cap) is owned by the `plan-reviewer` agent. This skill does not orchestrate a panel and does not specify per-lens model routing.
+- If the user asks to skip resync review, comply but warn that a chain step is being skipped.
+<!-- awf:end -->
