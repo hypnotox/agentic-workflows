@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|list|add> [args]")
+		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|list|add|setup> [args]")
 		os.Exit(2)
 	}
 	cwd, err := os.Getwd()
@@ -33,6 +33,8 @@ func main() {
 			fatal(errors.New("usage: awf add <skill>"))
 		}
 		fatalIf(runAdd(cwd, os.Args[2]))
+	case "setup":
+		fatalIf(runSetup(cwd))
 	default:
 		fatal(fmt.Errorf("unknown command %q", os.Args[1]))
 	}
@@ -53,7 +55,13 @@ func runInit(root string) error {
 		}
 		fmt.Printf("scaffolded %s\n", cfgPath)
 	}
-	return runSync(root)
+	if err := runSync(root); err != nil {
+		return err
+	}
+	if err := runSetup(root); err != nil {
+		fmt.Fprintln(os.Stderr, "awf init: hook setup skipped:", err)
+	}
+	return nil
 }
 
 func runSync(root string) error {
