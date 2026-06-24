@@ -1,13 +1,13 @@
 ---
 name: plan-reviewer
 description: >
-  Lens-diverse reviewer for plans under docs/the skills framework/plans/ in awf projects.
+  Lens-diverse reviewer for plans under docs/plans/ in awf projects.
   Returns structured findings per the shared review-discipline spine.
 ---
 
 # plan-reviewer
 
-Lens-diverse reviewer for plans under `docs/the skills framework/plans/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Lens-diverse reviewer for plans under `docs/plans/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
 
 ## Finding schema
 

@@ -23,7 +23,7 @@ vars:
   perTaskReviewAdrRef: ""
   pitfallsDoc: ""
   planTemplatePath: ""
-  plansDir: "docs/the skills framework/plans"
+  plansDir: "docs/plans"
   roadmapDoc: ""
   stateDocsPath: ""
   testCmd: "go test ./..."

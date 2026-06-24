@@ -10,7 +10,7 @@ The `implementation` chain node, inline shape. Wraps `AGENTS.md` step 6 ("Implem
 ## When to invoke
 
 Invoke when:
-- A plan exists under `docs/the skills framework/plans/YYYY-MM-DD-<topic>.md`, AND
+- A plan exists under `docs/plans/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are tightly coupled or sequential — state flows between tasks, each task informs the next, or the plan is short enough that subagent-per-task overhead is not justified, AND
 - Full main-session visibility into each step is valuable (debugging, exploratory iteration, or work that may need mid-flight redirection).
 
@@ -20,7 +20,7 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 ## Procedure
 
-1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/the skills framework/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
 
 1. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
 

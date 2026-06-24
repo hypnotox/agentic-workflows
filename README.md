@@ -18,4 +18,4 @@ from shared templates plus a per-project `.claude/awf.yaml`.
     awf add tdd   # enable a standard skill
 
 Rendered files are committed. Drift is tracked in `.claude/awf.lock`; rendered bodies carry
-no generator metadata. See `docs/the skills framework/specs/` for the design.
+no generator metadata.

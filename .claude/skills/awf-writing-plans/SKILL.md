@@ -1,11 +1,11 @@
 ---
 name: awf-writing-plans
-description: Use to write an implementation plan for a complex awf task under docs/the skills framework/plans. Enforces project plan conventions (bite-sized tasks, exact file paths, exact content, exact commands). Terminal step invokes awf-reviewing-plan or routes to an execution skill.
+description: Use to write an implementation plan for a complex awf task under docs/plans. Enforces project plan conventions (bite-sized tasks, exact file paths, exact content, exact commands). Terminal step invokes awf-reviewing-plan or routes to an execution skill.
 ---
 
 # awf-writing-plans
 
-Writes a plan to `docs/the skills framework/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
+Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
 
 ## When to invoke
 
@@ -13,7 +13,7 @@ Per `AGENTS.md`: complex ADR-driven work (multi-commit implementation) and compl
 
 ## Conventions enforced
 
-- **Path:** `docs/the skills framework/plans/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
+- **Path:** `docs/plans/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
 
 - **Required header:** goal, architecture summary, tech stack (language version, key packages touched), file structure (created / modified / deleted).
 

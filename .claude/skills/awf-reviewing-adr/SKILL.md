@@ -37,7 +37,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 
 1. **Flip ADR status when finalised.** After the review settles (no structural findings, or user decisions resolved), flip the ADR `status:` frontmatter from `Proposed` to `Accepted`. Flip to `Implemented` instead if this ADR ships its own code in the same commit series. Commit the flip.
 
-1. **Hand off to plan resync.** After the ADR review converges and the status is flipped, check whether a plan exists (a `docs/the skills framework/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
+1. **Hand off to plan resync.** After the ADR review converges and the status is flipped, check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
 
 ## Notes
 

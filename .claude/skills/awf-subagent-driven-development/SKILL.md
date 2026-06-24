@@ -12,7 +12,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `AGENTS.md` step
 ## When to invoke
 
 Invoke when:
-- A plan exists under `docs/the skills framework/plans/YYYY-MM-DD-<topic>.md`, AND
+- A plan exists under `docs/plans/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are mostly independent — each task can be implemented without seeing prior tasks' context, AND
 - Fresh context per task is valuable (each task touches a distinct subsystem; main-session context is preserved for coordination).
 
@@ -22,7 +22,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 
 ## Procedure
 
-1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/the skills framework/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
 
 1. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
 
