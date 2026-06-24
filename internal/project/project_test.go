@@ -245,6 +245,45 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
+	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
+	yaml := `prefix: example
+skills:
+  tdd:
+    sections:
+      bogus: {drop: true}
+agents:
+  code-reviewer: {}
+hooks: [pre-commit, pre-push]
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown section override 'bogus'")
+	}
+	if !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("error should mention 'bogus', got: %v", err)
+	}
+}
+
+func TestOpenAllowsValidSectionOverride(t *testing.T) {
+	// "notes" is a declared section for tdd.
+	yaml := `prefix: example
+skills:
+  tdd:
+    sections:
+      notes: {drop: true}
+agents:
+  code-reviewer: {}
+hooks: [pre-commit, pre-push]
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err != nil {
+		t.Fatalf("valid section override 'notes' should succeed, got: %v", err)
+	}
+}
+
 func TestSyncRendersAgentFromMap(t *testing.T) {
 	agentYAML := `prefix: myproject
 agents:

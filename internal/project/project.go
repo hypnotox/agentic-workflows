@@ -61,8 +61,18 @@ func (p *Project) validateAgainstCatalog() error {
 		if sc.Local {
 			continue
 		}
-		if _, ok := p.Cat.Skills[name]; !ok {
+		spec, ok := p.Cat.Skills[name]
+		if !ok {
 			return fmt.Errorf("skill %q is not in the catalog", name)
+		}
+		allowed := make(map[string]bool, len(spec.Sections))
+		for _, s := range spec.Sections {
+			allowed[s] = true
+		}
+		for sec := range sc.Sections {
+			if !allowed[sec] {
+				return fmt.Errorf("skill %q: unknown section %q (not declared in the catalog)", name, sec)
+			}
 		}
 	}
 	// Check agents against catalog.
@@ -72,8 +82,21 @@ func (p *Project) validateAgainstCatalog() error {
 	}
 	sort.Strings(agentNames)
 	for _, a := range agentNames {
-		if _, ok := p.Cat.Agents[a]; !ok {
+		ac := p.Cfg.Agents[a]
+		aspec, ok := p.Cat.Agents[a]
+		if !ok {
 			return fmt.Errorf("agent %q is not in the catalog", a)
+		}
+		if !ac.Local {
+			allowed := make(map[string]bool, len(aspec.Sections))
+			for _, s := range aspec.Sections {
+				allowed[s] = true
+			}
+			for sec := range ac.Sections {
+				if !allowed[sec] {
+					return fmt.Errorf("agent %q: unknown section %q (not declared in the catalog)", a, sec)
+				}
+			}
 		}
 	}
 	// Check hooks against catalog.
