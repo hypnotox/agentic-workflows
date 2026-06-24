@@ -284,6 +284,40 @@ hooks: [pre-commit, pre-push]
 	}
 }
 
+func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents:
+  my-custom-agent: {local: true}
+hooks: []
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err != nil {
+		t.Fatalf("local agent not in catalog should be allowed, got: %v", err)
+	}
+}
+
+func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
+	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
+	yaml := `prefix: example
+skills: {}
+agents:
+  code-reviewer:
+    sections:
+      bogus: {drop: true}
+hooks: []
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown agent section override 'bogus'")
+	}
+	if !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("error should mention 'bogus', got: %v", err)
+	}
+}
+
 func TestSyncRendersAgentFromMap(t *testing.T) {
 	agentYAML := `prefix: myproject
 agents:

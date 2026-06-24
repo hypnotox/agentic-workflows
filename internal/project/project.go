@@ -83,19 +83,20 @@ func (p *Project) validateAgainstCatalog() error {
 	sort.Strings(agentNames)
 	for _, a := range agentNames {
 		ac := p.Cfg.Agents[a]
+		if ac.Local {
+			continue
+		}
 		aspec, ok := p.Cat.Agents[a]
 		if !ok {
 			return fmt.Errorf("agent %q is not in the catalog", a)
 		}
-		if !ac.Local {
-			allowed := make(map[string]bool, len(aspec.Sections))
-			for _, s := range aspec.Sections {
-				allowed[s] = true
-			}
-			for sec := range ac.Sections {
-				if !allowed[sec] {
-					return fmt.Errorf("agent %q: unknown section %q (not declared in the catalog)", a, sec)
-				}
+		allowed := make(map[string]bool, len(aspec.Sections))
+		for _, s := range aspec.Sections {
+			allowed[s] = true
+		}
+		for sec := range ac.Sections {
+			if !allowed[sec] {
+				return fmt.Errorf("agent %q: unknown section %q (not declared in the catalog)", a, sec)
 			}
 		}
 	}
