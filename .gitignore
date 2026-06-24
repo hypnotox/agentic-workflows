@@ -1,3 +1,10 @@
 /awf
 *.test
 *.out
+
+# This repo IS the awf standard and dogfoods itself, so its rendered .claude/
+# (awf.yaml, lock, skills, agents, parts) is the committed deliverable —
+# override the user's global ~/.gitignore which ignores .claude everywhere.
+!.claude/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

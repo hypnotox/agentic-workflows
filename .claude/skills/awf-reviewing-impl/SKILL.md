@@ -1,0 +1,47 @@
+---
+name: awf-reviewing-impl
+description: Terminal step after implementation commits. Dispatches the code-reviewer subagent, routes findings, applies fixes.
+---
+
+# awf-reviewing-impl
+
+Invoked as the terminal step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
+
+## When this skill fires
+
+Terminal step of awf-executing-plans or awf-subagent-driven-development, after all code-touching commits have landed.
+
+**Skip when the session diff is docs-only.** Cite `.githooks/pre-commit` for the pattern list (do not restate). Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+
+## Procedure
+
+1. **Determine the session SHA range.**
+   - `headSha` = `git rev-parse HEAD`.
+   - `baseSha` = commit before the first implementation commit of this session.
+   - If `git log ${baseSha}..${headSha} --oneline | wc -l` returns more than 20, prompt the user for the actual session boundary.
+   - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^docs/plans/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
+
+1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
+
+1. **Dispatch the `code-reviewer` subagent.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+   - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
+   - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
+   - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using the `awf` scope.
+
+   The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
+
+1. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
+   - **mechanical** — agent applies directly.
+   - **reasoned** — agent applies with a one-line rationale.
+   - **user-decision** — present to the user and wait.
+
+1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `go test ./... && go vet ./...` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
+
+1. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+
+## Notes
+
+- This is the terminal step of the implementation phase: a single `code-reviewer` subagent dispatch, not a panel.
+- The ADR status flip (Accepted → Implemented) is made by `awf-executing-plans` / `awf-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
+- Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

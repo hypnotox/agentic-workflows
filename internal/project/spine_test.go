@@ -9,9 +9,9 @@ import (
 	"agentic-workflows/templates"
 )
 
-func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
+func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 	t.Helper()
-	src, err := fs.ReadFile(templates.FS, "agents/"+name+".md.tmpl")
+	src, err := fs.ReadFile(templates.FS, tmplPath)
 	if err != nil {
 		t.Fatalf("read template: %v", err)
 	}
@@ -19,6 +19,12 @@ func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
+	assertNoLeaks(t, out)
+	return out
+}
+
+func assertNoLeaks(t *testing.T, out string) {
+	t.Helper()
 	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
 		t.Errorf("markers leaked:\n%s", out)
 	}
@@ -28,7 +34,11 @@ func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
 	if strings.Contains(out, "{{") || strings.Contains(out, "}}") {
 		t.Errorf("unrendered template action:\n%s", out)
 	}
-	return out
+}
+
+func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
+	t.Helper()
+	return renderGolden(t, "agents/"+name+".md.tmpl", data)
 }
 
 func TestAdrReviewerAgent(t *testing.T) {
@@ -192,24 +202,7 @@ func TestCodeReviewerAgent(t *testing.T) {
 
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	t.Helper()
-	src, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")
-	if err != nil {
-		t.Fatalf("read template: %v", err)
-	}
-	out, err := render.Render(string(src), nil, func(string) (string, error) { return "", nil }, data)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
-		t.Errorf("markers leaked:\n%s", out)
-	}
-	if strings.Contains(out, "<no value>") {
-		t.Errorf("missing sample data (rendered <no value>):\n%s", out)
-	}
-	if strings.Contains(out, "{{") || strings.Contains(out, "}}") {
-		t.Errorf("unrendered template action:\n%s", out)
-	}
-	return out
+	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
 }
 
 func TestWritingPlansTemplate(t *testing.T) {
@@ -708,6 +701,30 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 		"Context section",
 		"Sibling test files",
 		"constructor",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
+func TestAgentsDocTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"testCmd":  "go test ./...",
+			"gateCmd":  "make gate",
+			"adrDir":   "docs/decisions",
+			"plansDir": "docs/plans",
+		},
+		"data": map[string]any{},
+	}
+	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	loadBearing := []string{
+		"example-brainstorming",
+		"example-reviewing-impl",
+		"make gate",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {

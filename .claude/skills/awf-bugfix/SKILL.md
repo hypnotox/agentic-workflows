@@ -1,0 +1,47 @@
+---
+name: awf-bugfix
+description: Use when applying a awf bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs awf-reviewing-impl. Self-contained.
+---
+
+# awf-bugfix
+
+The fix-and-verify task skill. Companion to `awf-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.
+
+## When to invoke
+
+When the root cause is known and a fix is ready to land. Two callers in practice:
+
+- **Trivial bugfix that validly skips the chain** — the narrow exception in `AGENTS.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
+- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `awf-reviewing-impl` pair.
+
+If the root cause is not yet known, invoke `awf-debugging` first.
+
+## Procedure
+
+1. **Ensure a regression test exists that fails for the right reason.** Invoke `awf-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
+
+## Test tiers
+
+The specific test tiers (unit, integration, e2e, etc.) and their locations are project-specific. Refer to your project's testing guide.
+
+
+1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+
+1. **Check `` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+
+
+1. **Verify via the gates.** `go test ./... && go vet ./...` (fast tier) is the default. Run `go test ./... && go vet ./...` when regression-test placement warrants the full tier.
+
+1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `AGENTS.md`, fixes ship with a regression test.
+
+1. **Invoke `awf-reviewing-impl` as the terminal step.**
+
+## Oracle invariant
+
+The oracle is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
+
+
+## Notes
+
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
+- Doc-currency rule: if the fix invalidates anything documented in AGENTS.md, docs/decisions/README.md, update it in the same commit.
