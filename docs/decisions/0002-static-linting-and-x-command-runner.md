@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-06-24
 supersedes: []
 superseded_by: ""
@@ -62,7 +62,13 @@ larger, separately load-bearing change.
 
 3. **Introduce `./x`**, an executable bash command-runner at the repo root, as the single
    entry point for repo interactions. Subcommands: `gate [full]`, `lint`, `test`, `sync`,
-   `check`, `adr`, `build`, `install`, `fmt`.
+   `check`, `adr`, `build`, `install`, `fmt`. The awf-invoking subcommands run the CLI
+   **from source** — `./x sync` → `go run ./cmd/awf sync`, `./x check` → `go run ./cmd/awf
+   check` — so the dogfooded render always matches the current source tree and can never
+   use a stale binary (awf renders its own `.claude/` files; a stale binary would emit
+   wrong output). `./x build` (`go build`) and `./x install` (`go install ./cmd/awf`) are
+   separate convenience wrappers and are **not** on the sync/check path. `./x` is not on
+   PATH and depends on no installed `awf`.
 
 4. **Route the gate through `./x gate`** = `go test ./... && go vet ./... && go tool
    golangci-lint run` (`full` accepted as a synonym; awf has no slower tier). Set
