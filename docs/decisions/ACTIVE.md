@@ -3,8 +3,8 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Accepted
 
 ## Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](0002-static-linting-and-x-command-runner.md) — Implemented
+- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Implemented

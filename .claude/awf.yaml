@@ -10,6 +10,7 @@ vars:
   commitScope: "awf"
   debuggingDoc: ""
   docCurrencyTargets: "AGENTS.md, docs/decisions/README.md"
+  checkCmd: "./x check"
   gateCmd: "./x gate"
   gateCmdFull: "./x gate full"
   gateDuration: "~15s"

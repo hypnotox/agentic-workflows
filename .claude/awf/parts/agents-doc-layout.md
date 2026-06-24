@@ -12,4 +12,4 @@ Key directories:
 - **`docs/the skills framework/plans/`** — implementation plans written by `awf-writing-plans`.
 - **`.claude/skills/awf-*/`** — rendered skill files (committed; do not hand-edit).
 - **`.claude/agents/`** — rendered agent files (committed; do not hand-edit).
-- **`.githooks/`** — rendered pre-commit and pre-push hooks (committed; run `git config core.hooksPath .githooks` to activate).
+- **`.githooks/`** — rendered pre-commit and pre-push hooks (committed; run `awf setup` — or `./x setup` in this repo — to activate via `core.hooksPath`).

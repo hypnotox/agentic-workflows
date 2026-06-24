@@ -10,7 +10,8 @@ from shared templates plus a per-project `.claude/awf.yaml`.
 ## Use
 
     cd your-project
-    awf init      # scaffold .claude/awf.yaml + render
+    awf init      # scaffold .claude/awf.yaml + render + activate hooks
+    awf setup     # activate git hooks (core.hooksPath); run once after cloning
     awf sync      # re-render after template or config changes
     awf check     # fail on stale or hand-edited rendered output
     awf list      # show standard skills and their per-project state

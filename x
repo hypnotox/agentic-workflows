@@ -28,6 +28,9 @@ case "$cmd" in
   check)
     go run ./cmd/awf check "$@"
     ;;
+  setup)
+    go run ./cmd/awf setup "$@"
+    ;;
   adr)
     # Regenerate docs/decisions/ACTIVE.md (the generator runs as a test).
     go test ./internal/adrtools/
@@ -39,7 +42,7 @@ case "$cmd" in
     go install ./cmd/awf
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|adr|build|install>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|setup|adr|build|install>" >&2
     exit 2
     ;;
 esac
