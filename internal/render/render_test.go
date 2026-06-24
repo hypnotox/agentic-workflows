@@ -1,6 +1,7 @@
 package render
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -65,5 +66,20 @@ func TestRenderReplaceWith(t *testing.T) {
 	}
 	if !strings.Contains(out, "CUSTOM example") || strings.Contains(out, "NOTE") {
 		t.Errorf("replaceWith failed:\n%s", out)
+	}
+}
+
+func TestRenderPartError(t *testing.T) {
+	ov := map[string]config.SectionOverride{"notes": {ReplaceWith: "parts/missing.md"}}
+	parts := func(name string) (string, error) {
+		return "", errors.New("boom")
+	}
+	_, err := Render(tmpl, ov, parts, sampleData())
+	if err == nil {
+		t.Fatal("expected error from PartFunc, got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "notes") || !strings.Contains(msg, "parts/missing.md") {
+		t.Errorf("error missing wrapping context: %q", msg)
 	}
 }
