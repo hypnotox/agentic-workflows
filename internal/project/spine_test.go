@@ -187,6 +187,43 @@ func TestBugfixTemplate(t *testing.T) {
 	}
 }
 
+func TestDebuggingTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"workflowDoc":      "docs/workflow.md",
+			"debuggingDoc":     "docs/debugging.md",
+			"gateCmd":          "./x gate",
+			"gateCmdFull":      "./x gate full",
+			"bugfixSkill":      "example-bugfix",
+			"brainstormingSkill": "example-brainstorming",
+			"tddSkill":         "example-tdd",
+			"pitfallsDoc":      "",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "debugging", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-debugging") {
+		t.Errorf("expected 'name: example-debugging' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to debugging
+	loadBearing := []string{
+		"falsifiable hypothesis",
+		"reproduce",
+		"root cause",
+		"example-bugfix",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
