@@ -716,8 +716,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"roadmapDoc":    "docs/roadmap.md",
-			"proposingSkill": "example-proposing-adr",
+			"roadmapDoc": "docs/roadmap.md",
 		},
 		"data": map[string]any{},
 	}

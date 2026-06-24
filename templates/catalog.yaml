@@ -170,7 +170,6 @@ skills:
     sections:
       - when-fires
       - failure-modes
-      - procedure
       - identify-entry
       - reverify-measurements
       - graduate-single-commit
