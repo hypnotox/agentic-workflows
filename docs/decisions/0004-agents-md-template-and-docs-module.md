@@ -79,7 +79,9 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    positively inside Identity. `## Repository Layout` is **removed from AGENTS.md** — the family
    keeps layout in `docs/architecture.md` and links it from the Document map. `templates/catalog.yaml`
    `agentsDoc.sections` is redefined to the new section markers (replacing `overview, build-test,
-   workflow-chain, layout, conventions`).
+   workflow-chain, layout, conventions`). The rendered Workflow section frames **both** planning
+   and ADRs as *warranted-conditional* (planning by complexity, an ADR by load-bearing-ness; many
+   tasks need neither) and presents reviews as lightweight — never as mandatory linear steps.
 
 2. **Config-driven prose via the existing `agentsDoc.data` map.** Recognised keys:
    `ownership` (string), `identity` (string), `invariants` (list of `{text, ref?}`),
@@ -110,9 +112,11 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    When present it renders a new `templates/docs/*.md.tmpl` set — `architecture, workflow, testing,
    development, debugging, pitfalls, glossary, roadmap` — into the project's `docs/` tree, one
    file per listed entry. Wiring is the five files enumerated in Context plus the new template
-   directory; the manifest/lock format is unchanged (ordinary path→hash entries). The catalog
-   `docs:` entries carry a `title`/`desc` (richer than bare-string `hooks:`) so the Document map
-   can annotate the auto-generated links.
+   directory; the manifest/lock format is unchanged (ordinary path→hash entries). The **adopter's**
+   `awf.yaml` `docs:` stays a bare `[]string` of doc names, symmetric with `hooks:` — there is no
+   adopter-facing schema asymmetry. The `title`/`desc` per doc lives only in the awf-internal
+   `templates/catalog.yaml` `docs:` entries, so enabling the module auto-annotates the
+   Document-map links with zero adopter effort.
 
 5. **Document map auto-links generated docs and stays extensible.** `internal/project` passes the
    resolved `docs:` list (with catalog titles/descriptions) into the agents-doc template data so
@@ -121,10 +125,13 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    entries render regardless. Adding a `data.docMap` entry and re-running `awf sync` adds the link
    — no template edit needed.
 
-6. **Dogfood on awf itself.** Rewrite this repo's `.claude/awf.yaml` `agentsDoc.data`
-   (ownership, identity, invariants, docMap), enable a small `docs:` subset, regenerate
-   `AGENTS.md`, and migrate the current `Repository Layout` content into a generated
-   `docs/architecture.md`. `awf check` is clean after `./x sync`.
+Applying this change to awf's own repo (the dogfood — rewriting `.claude/awf.yaml`, migrating
+`Repository Layout` into `docs/architecture.md`, re-syncing) is **not** a Decision item: it is
+adopter work, not a standard-definition commitment the project must remember. It is the final
+task of the implementation plan, executed like any other adoption — see Downstream work. The same
+"if warranted" framing applies to this very change: it earns an ADR because it is load-bearing
+(new schema key, changed standard shape) and a plan because it is multi-commit; routine adoptions
+of the new template need neither.
 
 ## Invariants
 
@@ -147,8 +154,10 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
   key — both modules are opt-in.
 - The manifest/lock format (`internal/manifest` `Entry` schema) is unchanged by the `docs:`
   module; each rendered doc is an ordinary path→hash entry.
-- The rendered Workflow section presents the chain with lightweight reviews (no linear
-  `*-reviewing-plan-resync` step in the primary sequence), matching the skill design.
+- The rendered Workflow section's primary chain sequence contains no `reviewing-plan-resync`
+  step (golden test asserts the literal string is absent from the Workflow block). The broader
+  intent — that the section reads as lightweight-review and warranted-conditional — is design
+  guidance captured in Consequences, not a render assertion.
 
 ## Consequences
 
@@ -171,8 +180,10 @@ Harder / accepted trade-offs:
   format is untouched.
 - Dogfooding moves the `Repository Layout` content out of `AGENTS.md` into `docs/architecture.md`.
   Readers who looked for layout in AGENTS.md now follow the Document map link.
-- The catalog `docs:` entries are objects (`title`/`desc`), a slightly richer shape than the
-  bare-string `hooks:` list — a small, deliberate asymmetry so links can be annotated.
+- The awf-internal catalog `docs:` entries are objects (`title`/`desc`), a slightly richer shape
+  than the bare-string `hooks:` catalog list — a small, deliberate asymmetry so links can be
+  annotated. The adopter-facing `awf.yaml` `docs:` schema stays a bare `[]string`, symmetric with
+  `hooks:`; the asymmetry is confined to the awf-owned catalog.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 - `.claude/awf/parts/agents-doc-{overview,layout,conventions}.md` are static overlay parts that
@@ -210,4 +221,4 @@ re-sync), with golden tests at each step.
 | Generate the `docs/` set always-on | Clutters every fresh project with stub docs it may not want; the user requires the module be opt-in. |
 | Keep `## What this project is NOT` | Negative framing is a poor instruction shape for an LLM guide (user constraint); non-goals re-expressed positively in Identity. |
 | Split into two ADRs (template reshape vs docs module) | The docs module exists to serve the Document-map section; the two are one coupled decision about the agent-guide shape, so one ADR + one multi-task plan. |
-| Bare-string `docs:` entries like `hooks:` | The Document map needs a human-readable annotation per link; carrying `title`/`desc` in the catalog entry is the minimal way to get annotated auto-links. |
+| Put doc `title`/`desc` in the adopter's `data.docMap` instead of the catalog | Would force the adopter to hand-list every generated doc to annotate it, defeating "auto-link when enabled"; catalog-internal `title`/`desc` annotates auto-links with zero adopter effort, while `data.docMap` covers only the disjoint set of extra non-generated links. |
