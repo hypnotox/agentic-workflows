@@ -39,6 +39,7 @@ func TestAdrReviewerAgent(t *testing.T) {
 			"invariantTestPath": "internal/adrtools/invariants_test.go",
 			"activeMdRegenCmd":  "go test ./internal/adrtools/",
 			"activeMdPath":      "docs/decisions/ACTIVE.md",
+			"adrDir":            "docs/decisions",
 		},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
@@ -83,7 +84,9 @@ func TestAdrReviewerAgent(t *testing.T) {
 func TestPlanReviewerAgent(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
-		"vars":   map[string]any{},
+		"vars": map[string]any{
+			"plansDir": "docs/plans",
+		},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
 				{
@@ -404,7 +407,8 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"vars": map[string]any{
 			"adrDir":               "docs/decisions",
 			"adrTemplatePath":      "docs/decisions/template.md",
-			"adrRegenCmd":          "go test ./internal/adrtools/",
+			"activeMdRegenCmd":     "go test ./internal/adrtools/",
+			"activeMdPath":         "docs/decisions/ACTIVE.md",
 			"adrReadme":            "docs/decisions/README.md",
 			"workflowDoc":          "docs/workflow.md",
 			"stateDocsPath":        "docs/decisions/state/",
@@ -453,12 +457,13 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrDir":      "docs/decisions",
-			"adrRegenCmd": "go test ./internal/adrtools/",
-			"adrReadme":   "docs/decisions/README.md",
-			"workflowDoc": "docs/workflow.md",
-			"stateDocsPath": "docs/decisions/state/",
-			"gateCmd":     "./x gate",
+			"adrDir":           "docs/decisions",
+			"activeMdRegenCmd": "go test ./internal/adrtools/",
+			"activeMdPath":     "docs/decisions/ACTIVE.md",
+			"adrReadme":        "docs/decisions/README.md",
+			"workflowDoc":      "docs/workflow.md",
+			"stateDocsPath":    "docs/decisions/state/",
+			"gateCmd":          "./x gate",
 		},
 		"data": map[string]any{
 			"adrStates": []map[string]any{
@@ -514,9 +519,8 @@ func TestBrainstormingTemplate(t *testing.T) {
 			"workflowDoc":        "docs/workflow.md",
 			"stateDocsPath":      "docs/decisions/state/",
 			"adrReadme":          "docs/decisions/README.md",
-			"autonomousAdrRef":   "",
-			"noDivingAdrRef":     "",
-			"groundingCheckAdrRef": "",
+			"autonomousAdrRef": "",
+			"noDivingAdrRef":   "",
 		},
 		"data": map[string]any{
 			"errorBoundaries": []map[string]any{
@@ -687,6 +691,7 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 		"prefix": "example",
 		"vars": map[string]any{
 			"modulePrefix": "github.com/acme/example",
+			"workflowDoc":  "docs/workflow.md",
 		},
 		"data": map[string]any{},
 	}

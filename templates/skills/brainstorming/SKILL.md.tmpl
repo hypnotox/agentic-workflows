@@ -57,7 +57,7 @@ Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Nar
 
 <!-- awf:section terminal-handoff -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
-   - **Load-bearing + complex** → invoke `{{ .prefix }}-writing-plans` first, then `{{ .prefix }}-proposing-adr`.
+   - **Load-bearing + complex** → invoke `{{ .prefix }}-proposing-adr` first (which chains through `{{ .prefix }}-reviewing-adr`); once the ADR is settled, invoke `{{ .prefix }}-writing-plans`.
    - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed.{{ if .vars.autonomousAdrRef }} (See `{{ .vars.autonomousAdrRef }}`.){{ end }}
    - **Complex but not load-bearing** → invoke `{{ .prefix }}-writing-plans` only.
    - **Neither** → implement directly without a plan or ADR.

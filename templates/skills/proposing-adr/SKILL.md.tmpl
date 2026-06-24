@@ -62,11 +62,11 @@ Load-bearing triggers include:
 <!-- awf:end -->
 
 <!-- awf:section invariants-rule -->
-1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.adrRegenCmd }}` to confirm.
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.activeMdRegenCmd }}` to confirm.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-1. **Regenerate ACTIVE.md.** Run `{{ .vars.adrRegenCmd }}` to regenerate `{{ .vars.adrDir }}/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+1. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
@@ -85,7 +85,7 @@ Load-bearing triggers include:
 
 <!-- awf:section notes -->
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
-- `{{ .vars.adrDir }}/ACTIVE.md` is never hand-edited; it is always regenerated via `{{ .vars.adrRegenCmd }}`.
+- `{{ .vars.activeMdPath }}` is never hand-edited; it is always regenerated via `{{ .vars.activeMdRegenCmd }}`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
 - For the full ADR lifecycle, see `{{ .vars.workflowDoc }}`.
 <!-- awf:end -->
