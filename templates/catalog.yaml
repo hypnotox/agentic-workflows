@@ -166,6 +166,18 @@ skills:
       - output-format
       - scope-shrink-rule
       - notes
+  roadmap-graduation:
+    sections:
+      - when-fires
+      - failure-modes
+      - procedure
+      - identify-entry
+      - reverify-measurements
+      - graduate-single-commit
+      - explicit-drop
+      - same-commit
+      - doc-currency
+      - notes
 agents:
   adr-reviewer:
     sections:

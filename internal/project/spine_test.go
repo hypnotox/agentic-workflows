@@ -711,3 +711,34 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestRoadmapGraduationTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"roadmapDoc":    "docs/roadmap.md",
+			"proposingSkill": "example-proposing-adr",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "roadmap-graduation", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-roadmap-graduation") {
+		t.Errorf("expected 'name: example-roadmap-graduation' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to roadmap-graduation
+	loadBearing := []string{
+		"same commit",
+		"roadmap",
+		"benchmark",
+		"docs(roadmap): drop",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
