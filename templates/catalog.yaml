@@ -121,6 +121,15 @@ skills:
       - re-review-loop
       - hand-off
       - notes
+  reviewing-plan-resync:
+    sections:
+      - when-fires
+      - dispatch-subagent-narrowed
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - hand-off-to-impl
+      - notes
   reviewing-adr:
     sections:
       - when-fires

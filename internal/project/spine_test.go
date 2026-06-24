@@ -587,6 +587,36 @@ func TestReviewingPlanTemplate(t *testing.T) {
 	}
 }
 
+func TestReviewingPlanResyncTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"plansDir":    "docs/plans",
+			"commitScope": "docs(plans)",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "reviewing-plan-resync", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-reviewing-plan-resync") {
+		t.Errorf("expected 'name: example-reviewing-plan-resync' in output:\n%s", out)
+	}
+
+	// Assert thin-dispatcher load-bearing phrases
+	loadBearing := []string{
+		"plan-reviewer",
+		"scope-completeness",
+		"doc-currency",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestReviewingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
