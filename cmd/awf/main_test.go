@@ -38,15 +38,3 @@ func containsLine(s, line string) bool {
 	return false
 }
 
-func splitLines(s string) []string {
-	var out, cur = []string{}, ""
-	for _, r := range s {
-		if r == '\n' {
-			out = append(out, cur)
-			cur = ""
-		} else {
-			cur += string(r)
-		}
-	}
-	return append(out, cur)
-}

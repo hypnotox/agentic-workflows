@@ -43,7 +43,7 @@ func Render(src string, ov map[string]config.SectionOverride, parts PartFunc, da
 	if err != nil {
 		return "", err
 	}
-	t, err := template.New("skill").Option("missingkey=error").Parse(assembled)
+	t, err := template.New("skill").Option("missingkey=zero").Parse(assembled)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
 	}
