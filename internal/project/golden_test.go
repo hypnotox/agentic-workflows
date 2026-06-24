@@ -56,3 +56,25 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
 	}
 }
+
+func TestPreCommitCheckCmdOverride(t *testing.T) {
+	yaml := strings.Replace(sampleYAML, "gateCmd: make gate", "gateCmd: make gate\n  checkCmd: ./x check", 1)
+	root := scaffold(t, yaml)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	pre, err := os.ReadFile(filepath.Join(root, ".githooks/pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pre), "./x check") {
+		t.Errorf("pre-commit should use checkCmd override:\n%s", pre)
+	}
+	if strings.Contains(string(pre), "awf check") {
+		t.Errorf("pre-commit should not contain the default when checkCmd is set:\n%s", pre)
+	}
+}

@@ -111,7 +111,7 @@
     },
     ".githooks/pre-commit": {
       "templateId": "hooks/pre-commit.tmpl",
-      "templateHash": "sha256:86457b48ae0fc7d08af9d891497738a9c0c4b03bd8ea81b97f26fe780ce4827f",
+      "templateHash": "sha256:d92c75eabd2f3c5bf259a862647b69e393c40c7e0e5ff9adc96863abbea68be1",
       "configHash": "sha256:baabe2ed691c1ce7af60ba642962b55c34507786af83f2d620333efb1fefede3",
       "outputHash": "sha256:04f315c2e8ac4df5d30d80f743b3984712f69e0e3b008b3d805752c624349646"
     },
