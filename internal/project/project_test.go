@@ -231,6 +231,48 @@ docs:
 	}
 }
 
+// TestSyncAutoLinksDocsInAgentsDoc covers the project-level wiring that the
+// template golden cannot: RenderAll injects resolvedDocs() into the agents-doc
+// data map so the Document map auto-links every declared (non-local) doc with
+// its catalog title/desc. A local doc must not appear.
+func TestSyncAutoLinksDocsInAgentsDoc(t *testing.T) {
+	yaml := `prefix: example
+vars:
+  adrReadme: ""
+  activeMdPath: ""
+  gateCmd: ""
+skills: {}
+agents: {}
+hooks: []
+docs:
+  architecture: {}
+  glossary: {local: true}
+agentsDoc: {}
+`
+	root := scaffold(t, yaml)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("AGENTS.md not written: %v", err)
+	}
+	got := string(b)
+	if !strings.Contains(got, "[docs/architecture.md](docs/architecture.md)") {
+		t.Errorf("Document map should auto-link the declared architecture doc:\n%s", got)
+	}
+	if !strings.Contains(got, "system shape, packages, key components, dependencies") {
+		t.Errorf("Document map should carry the catalog desc for architecture:\n%s", got)
+	}
+	if strings.Contains(got, "docs/glossary.md") {
+		t.Errorf("local doc must not appear in the Document map:\n%s", got)
+	}
+}
+
 func TestOpenRejectsUnknownSkill(t *testing.T) {
 	yaml := `prefix: example
 skills:
