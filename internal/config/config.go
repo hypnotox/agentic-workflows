@@ -1,4 +1,4 @@
-// internal/config/config.go
+// Package config loads and validates the per-project .claude/awf.yaml configuration.
 package config
 
 import (

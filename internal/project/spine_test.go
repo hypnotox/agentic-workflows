@@ -1,4 +1,3 @@
-// internal/project/spine_test.go
 package project
 
 import (
@@ -251,14 +250,14 @@ func TestExecutingPlansTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"workflowDoc":      "docs/workflow.md",
-			"plansDir":         "docs/plans",
-			"gateCmd":          "./x gate",
-			"gateDuration":     "~2 min",
-			"activeMdRegenCmd": "go test ./internal/adrtools/",
-			"activeMdPath":     "docs/decisions/ACTIVE.md",
-			"hostGitAdrRef":    "docs/decisions/ADR-acme-001-host-git.md",
-			"oracleStateDoc":   "docs/decisions/state/acme-oracle.md",
+			"workflowDoc":        "docs/workflow.md",
+			"plansDir":           "docs/plans",
+			"gateCmd":            "./x gate",
+			"gateDuration":       "~2 min",
+			"activeMdRegenCmd":   "go test ./internal/adrtools/",
+			"activeMdPath":       "docs/decisions/ACTIVE.md",
+			"hostGitAdrRef":      "docs/decisions/ADR-acme-001-host-git.md",
+			"oracleStateDoc":     "docs/decisions/state/acme-oracle.md",
 			"keyInvariantAdrRef": "",
 		},
 		"data": map[string]any{
@@ -295,16 +294,16 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"workflowDoc":        "docs/workflow.md",
-			"plansDir":           "docs/plans",
-			"gateCmd":            "./x gate",
-			"gateCmdFull":        "./x gate full",
-			"activeMdRegenCmd":   "go test ./internal/adrtools/",
-			"activeMdPath":       "docs/decisions/ACTIVE.md",
+			"workflowDoc":         "docs/workflow.md",
+			"plansDir":            "docs/plans",
+			"gateCmd":             "./x gate",
+			"gateCmdFull":         "./x gate full",
+			"activeMdRegenCmd":    "go test ./internal/adrtools/",
+			"activeMdPath":        "docs/decisions/ACTIVE.md",
 			"perTaskReviewAdrRef": "",
-			"keyInvariantAdrRef": "",
-			"hostGitAdrRef":      "",
-			"oracleStateDoc":     "",
+			"keyInvariantAdrRef":  "",
+			"hostGitAdrRef":       "",
+			"oracleStateDoc":      "",
 		},
 		"data": map[string]any{},
 	}
@@ -405,14 +404,14 @@ func TestProposingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrDir":               "docs/decisions",
-			"adrTemplatePath":      "docs/decisions/template.md",
-			"activeMdRegenCmd":     "go test ./internal/adrtools/",
-			"activeMdPath":         "docs/decisions/ACTIVE.md",
-			"adrReadme":            "docs/decisions/README.md",
-			"workflowDoc":          "docs/workflow.md",
-			"stateDocsPath":        "docs/decisions/state/",
-			"adrProposeCommitFmt":  "docs(adr): propose NNNN <short title>",
+			"adrDir":              "docs/decisions",
+			"adrTemplatePath":     "docs/decisions/template.md",
+			"activeMdRegenCmd":    "go test ./internal/adrtools/",
+			"activeMdPath":        "docs/decisions/ACTIVE.md",
+			"adrReadme":           "docs/decisions/README.md",
+			"workflowDoc":         "docs/workflow.md",
+			"stateDocsPath":       "docs/decisions/state/",
+			"adrProposeCommitFmt": "docs(adr): propose NNNN <short title>",
 		},
 		"data": map[string]any{
 			"adrTriggers": []string{
@@ -468,24 +467,24 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"data": map[string]any{
 			"adrStates": []map[string]any{
 				{
-					"name":        "Proposed",
-					"meaning":     "Under discussion; all sections mutable",
-					"mutability":  "Mutable; amendments encouraged",
+					"name":       "Proposed",
+					"meaning":    "Under discussion; all sections mutable",
+					"mutability": "Mutable; amendments encouraged",
 				},
 				{
-					"name":        "Accepted",
-					"meaning":     "Design final; implementation in progress",
-					"mutability":  "Append-only; only `status` editable in place",
+					"name":       "Accepted",
+					"meaning":    "Design final; implementation in progress",
+					"mutability": "Append-only; only `status` editable in place",
 				},
 				{
-					"name":        "Implemented",
-					"meaning":     "Implementation complete; decision enacted",
-					"mutability":  "Append-only; only `status` editable in place",
+					"name":       "Implemented",
+					"meaning":    "Implementation complete; decision enacted",
+					"mutability": "Append-only; only `status` editable in place",
 				},
 				{
-					"name":        "Superseded by ADR-NNNN",
-					"meaning":     "Replaced by a later ADR",
-					"mutability":  "Terminal; in-place status edit only at supersedence",
+					"name":       "Superseded by ADR-NNNN",
+					"meaning":    "Replaced by a later ADR",
+					"mutability": "Terminal; in-place status edit only at supersedence",
 				},
 			},
 		},
@@ -516,9 +515,9 @@ func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"workflowDoc":        "docs/workflow.md",
-			"stateDocsPath":      "docs/decisions/state/",
-			"adrReadme":          "docs/decisions/README.md",
+			"workflowDoc":      "docs/workflow.md",
+			"stateDocsPath":    "docs/decisions/state/",
+			"adrReadme":        "docs/decisions/README.md",
 			"autonomousAdrRef": "",
 			"noDivingAdrRef":   "",
 		},

@@ -1,4 +1,3 @@
-// cmd/awf/list_add.go
 package main
 
 import (

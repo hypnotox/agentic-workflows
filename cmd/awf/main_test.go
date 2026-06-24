@@ -1,4 +1,3 @@
-// cmd/awf/main_test.go
 package main
 
 import (
@@ -37,4 +36,3 @@ func containsLine(s, line string) bool {
 	}
 	return false
 }
-

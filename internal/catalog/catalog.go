@@ -1,3 +1,4 @@
+// Package catalog loads the embedded catalog.yaml that declares the standard's skills, agents, and hooks.
 package catalog
 
 import (

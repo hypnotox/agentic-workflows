@@ -1,4 +1,3 @@
-// internal/project/project_test.go
 package project
 
 import (

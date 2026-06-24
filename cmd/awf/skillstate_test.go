@@ -1,4 +1,3 @@
-// cmd/awf/skillstate_test.go
 package main
 
 import (

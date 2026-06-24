@@ -1,3 +1,4 @@
+// Package templates embeds the standard's template tree (catalog.yaml, skills, agents, hooks).
 package templates
 
 import "embed"

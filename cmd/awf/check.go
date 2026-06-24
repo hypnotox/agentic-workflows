@@ -1,4 +1,3 @@
-// cmd/awf/check.go
 package main
 
 import (

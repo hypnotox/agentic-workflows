@@ -1,4 +1,4 @@
-// cmd/awf/main.go
+// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .claude/awf.yaml.
 package main
 
 import (

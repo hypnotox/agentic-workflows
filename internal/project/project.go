@@ -1,4 +1,4 @@
-// internal/project/project.go
+// Package project ties config, catalog, render, and manifest together to sync rendered files into a project and check them for drift.
 package project
 
 import (

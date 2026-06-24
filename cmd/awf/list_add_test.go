@@ -1,4 +1,3 @@
-// cmd/awf/list_add_test.go
 package main
 
 import (
