@@ -668,6 +668,7 @@ func TestAgentsDocTemplate(t *testing.T) {
 		"## Identity",
 		"## Invariants",
 		"## Workflow",
+		"## Commands",
 		"## Document map",
 		"example-brainstorming",
 		"example-reviewing-impl",
