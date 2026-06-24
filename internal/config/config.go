@@ -56,10 +56,28 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
 	}
 	for name, sc := range c.Skills {
-		for sec, ov := range sc.Sections {
-			if ov.Drop && ov.ReplaceWith != "" {
-				return fmt.Errorf("skill %q section %q: cannot both drop and replaceWith", name, sec)
-			}
+		if err := checkSections("skill", name, sc); err != nil {
+			return err
+		}
+	}
+	for name, ac := range c.Agents {
+		if err := checkSections("agent", name, ac); err != nil {
+			return err
+		}
+	}
+	if c.AgentsDoc != nil {
+		if err := checkSections("agentsDoc", "agentsDoc", *c.AgentsDoc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkSections rejects a section override that sets both drop and replaceWith.
+func checkSections(kind, name string, sc SkillConfig) error {
+	for sec, ov := range sc.Sections {
+		if ov.Drop && ov.ReplaceWith != "" {
+			return fmt.Errorf("%s %q section %q: cannot both drop and replaceWith", kind, name, sec)
 		}
 	}
 	return nil

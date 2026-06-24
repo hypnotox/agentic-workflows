@@ -111,6 +111,26 @@ skills:
 	}
 }
 
+func TestValidateRejectsDropAndReplaceOnAgentAndDoc(t *testing.T) {
+	agentCfg := writeTemp(t, `prefix: example
+agents:
+  code-reviewer:
+    sections:
+      doc-currency: {drop: true, replaceWith: parts/x.md}
+`)
+	if c, _ := Load(agentCfg); c.Validate() == nil {
+		t.Errorf("expected error for agent section drop+replaceWith")
+	}
+	docCfg := writeTemp(t, `prefix: example
+agentsDoc:
+  sections:
+    overview: {drop: true, replaceWith: parts/x.md}
+`)
+	if c, _ := Load(docCfg); c.Validate() == nil {
+		t.Errorf("expected error for agentsDoc section drop+replaceWith")
+	}
+}
+
 func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	p := writeTemp(t, `prefix: example
 skils: {}
