@@ -80,6 +80,59 @@ func TestAdrReviewerAgent(t *testing.T) {
 	}
 }
 
+func TestPlanReviewerAgent(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data": map[string]any{
+			"focusItems": []map[string]any{
+				{
+					"name":        "convention-alignment-extra",
+					"description": "Verify commit subjects follow Conventional Commits; flag subjects over 72 chars or missing scope.",
+				},
+			},
+			"docCurrencyItems": []map[string]any{
+				{"check": "docs/decisions/state/<domain>.md — update when plan shifts a tracked domain"},
+				{"check": "docs/workflow.md — update when plan changes a workflow rule"},
+				{"check": "AGENTS.md — update when plan changes chain, principles, or invariants"},
+				{"check": "docs/decisions/ACTIVE.md — regenerate when plan flips an ADR status"},
+			},
+		},
+	}
+
+	out := renderAgentGolden(t, "plan-reviewer", data)
+
+	// Assert frontmatter name line (agents are unprefixed)
+	if !strings.Contains(out, "name: plan-reviewer") {
+		t.Errorf("expected 'name: plan-reviewer' in output:\n%s", out)
+	}
+
+	// Assert shared review-discipline spine phrases
+	sharedPhrases := []string{
+		"mechanical",
+		"reasoned",
+		"user-decision",
+		"3-round soft cap",
+		"suggested_fix",
+	}
+	for _, phrase := range sharedPhrases {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected shared spine phrase %q in output:\n%s", phrase, out)
+		}
+	}
+
+	// Assert plan-specific lens phrases
+	planPhrases := []string{
+		"scope-completeness",
+		"executability",
+	}
+	for _, phrase := range planPhrases {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected plan-lens phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")

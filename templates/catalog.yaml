@@ -116,6 +116,12 @@ agents:
       - universal-lenses
       - project-focus
       - doc-currency
+  plan-reviewer:
+    sections:
+      - universal-lenses
+      - project-focus
+      - doc-currency
+      - resync-note
   code-reviewer:
     sections: []
 hooks:
