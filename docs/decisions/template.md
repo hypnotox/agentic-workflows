@@ -1,0 +1,38 @@
+---
+status: Proposed
+date: YYYY-MM-DD
+supersedes: []
+superseded_by: ""
+tags: []
+related: []
+---
+# ADR-NNNN: Title
+
+## Context
+
+What situation prompted this decision? What constraints, forces, or prior art shaped the
+problem space? Include any measurements or observations that are verifiable.
+
+## Decision
+
+The chosen approach. Be precise enough that a reader can implement it correctly without
+further consultation.
+
+## Invariants
+
+Checkable constraints that must hold as long as this decision stands — conditions that
+should trigger a new ADR if violated:
+
+- ...
+
+## Consequences
+
+What becomes easier, what becomes harder, what is explicitly ruled out by this choice.
+Include known risks and how they are mitigated.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Option A | ... |
+| Option B | ... |
