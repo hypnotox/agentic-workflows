@@ -1,59 +1,71 @@
 # {{ .prefix }} — Agent Guide
 
-This document is the authoritative reference for AI agents working in the
-`{{ .prefix }}` repository. Read it before taking any action; keep it current
-as decisions evolve.
+This document is the authoritative reference for AI agents working in the `{{ .prefix }}`
+repository. Read it before taking any action; keep it current as decisions evolve.
 
-<!-- awf:section overview -->
-This repository contains the `{{ .prefix }}` project. Update this section with
-a one-paragraph description of what the project does and who it serves.
+<!-- awf:section you-and-this-project -->
+## You and this project
+
+{{ with .data.ownership }}{{ . }}{{ else }}You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.{{ end }}
 <!-- awf:end -->
 
-## Build & Test
+<!-- awf:section identity -->
+## Identity
 
-<!-- awf:section build-test -->
-Run the test suite:
-
-```
-{{ .vars.testCmd }}
-```
-
-Run the full gate before committing or handing off:
-
-```
-{{ .vars.gateCmd }}
-```
-
-The gate must be green before any commit lands on the main branch.
+{{ with .data.identity }}{{ . }}{{ else }}<!-- One dense paragraph: what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. Set `agentsDoc.data.identity` in `.claude/awf.yaml`. -->{{ end }}
 <!-- awf:end -->
 
-## Workflow Chain
+<!-- awf:section invariants -->
+## Invariants
 
-<!-- awf:section workflow-chain -->
-Follow this canonical chain for feature and fix work:
+Hard rules every change must respect:
 
-1. **{{ .prefix }}-brainstorming** — explore intent, surface constraints, pick approach
-2. **{{ .prefix }}-proposing-adr** — record significant decisions; ADRs live under `{{ .vars.adrDir }}`
-3. **{{ .prefix }}-reviewing-adr** — review the proposed ADR before acceptance
-4. **{{ .prefix }}-writing-plans** — write a bite-sized implementation plan; plans live under `{{ .vars.plansDir }}`
-5. **{{ .prefix }}-reviewing-plan** — review the plan before execution starts
-6. **{{ .prefix }}-reviewing-plan-resync** — re-review after plan adjustments
-7. **{{ .prefix }}-executing-plans** / **{{ .prefix }}-subagent-driven-development** — execute tasks one-by-one, gate after each
-8. **{{ .prefix }}-reviewing-impl** — review the finished implementation before merge
-
-Never skip steps; each gate keeps later steps cheap.
+- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated — never hand-edited{{ end }}.
+- **Docs travel with the change.** Reality and its documentation update in the same commit.
+- **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
+{{- range .data.invariants }}
+- {{ .text }}{{ with .ref }} ({{ . }}){{ end }}
+{{- end }}
 <!-- awf:end -->
 
-## Repository Layout
+<!-- awf:section workflow -->
+## Workflow
 
-<!-- awf:section layout -->
-Update this section with the key directories and what lives in each one.
+Canonical chain for non-trivial work:
+
+```
+brainstorming → planning (if warranted) → ADR (if warranted) → review → implementation → review
+```
+
+Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* (multi-commit, interdependent steps); an **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember). Many tasks need neither. Reviews are lightweight: the grounding-check inside `{{ .prefix }}-brainstorming` subsumes plan/ADR review, and `{{ .prefix }}-reviewing-impl` is the single terminal review.
+
+**Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`. **Task skills** (as needed): `{{ .prefix }}-tdd`, `{{ .prefix }}-bugfix`, `{{ .prefix }}-debugging`, `{{ .prefix }}-adr-lifecycle`.
+
+{{ with .vars.gateCmd }}Run `{{ . }}` before every commit{{ with $.vars.gateCmdFull }}; `{{ . }}` is the full tier{{ end }}. {{ end }}Conventional Commits; one concern per commit.{{ with .vars.workflowDoc }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->
 
-## Conventions & Invariants
+<!-- awf:section commands -->
+## Commands
 
-<!-- awf:section conventions -->
-Update this section with project-specific conventions, coding standards, and
-invariants that every agent must respect (e.g. naming rules, forbidden
-patterns, required doc updates).
+{{ if .data.commands -}}
+```
+{{ range .data.commands }}{{ .cmd }} — {{ .desc }}
+{{ end -}}
+```
+{{- else -}}
+{{ with .vars.testCmd }}- `{{ . }}` — run the test suite
+{{ end }}{{ with .vars.gateCmd }}- `{{ . }}` — run the gate before committing
+{{ end }}{{ with .vars.checkCmd }}- `{{ . }}` — check rendered files for drift
+{{ end }}{{- end }}
+<!-- awf:end -->
+
+<!-- awf:section document-map -->
+## Document map
+
+{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}) — architecture decisions and lifecycle.
+{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}) — generated status index; do not hand-edit.
+{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}) — implementation plans for complex work.
+{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+{{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }} — {{ . }}{{ end }}
+{{ end -}}
 <!-- awf:end -->

@@ -24,6 +24,13 @@ func TestLoadFromEmbed(t *testing.T) {
 	if len(cat.Hooks) != 2 {
 		t.Errorf("hooks = %v", cat.Hooks)
 	}
+	arch, ok := cat.Docs["architecture"]
+	if !ok {
+		t.Fatalf("architecture not in docs map, got: %v", cat.Docs)
+	}
+	if arch.Title != "Architecture" || len(arch.Sections) == 0 {
+		t.Errorf("architecture doc spec = %+v", arch)
+	}
 }
 
 func TestAgentsDocSectionsNonEmpty(t *testing.T) {
@@ -34,7 +41,7 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 	if len(cat.AgentsDoc.Sections) == 0 {
 		t.Error("expected AgentsDoc.Sections to be non-empty")
 	}
-	expected := []string{"overview", "build-test", "workflow-chain", "layout", "conventions"}
+	expected := []string{"you-and-this-project", "identity", "invariants", "workflow", "commands", "document-map"}
 	for _, s := range expected {
 		found := false
 		for _, sec := range cat.AgentsDoc.Sections {

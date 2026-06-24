@@ -1,76 +1,53 @@
 # awf — Agent Guide
 
-This document is the authoritative reference for AI agents working in the
-`awf` repository. Read it before taking any action; keep it current
-as decisions evolve.
+This document is the authoritative reference for AI agents working in the `awf`
+repository. Read it before taking any action; keep it current as decisions evolve.
 
-This repository contains `awf` — the **Agentic Workflows** CLI and standard. `awf` scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, and git hooks into any Go project from a single `.claude/awf.yaml` config file. It is both the tool that publishes the standard and the first adopter of it.
+## You and this project
 
-The full workflow chain (brainstorming → ADR → plan → execution → review) is expressed as project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`. Hooks under `.githooks/` enforce the gate before commits and pushes land.
+You are a developer on `awf` — the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.
 
 
-## Build & Test
+## Identity
 
-Run the test suite:
+`awf` scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any Go project from a single `.claude/awf.yaml` config file. The full workflow chain is expressed as project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. Module path `agentic-workflows`; Go 1.26; private, pre-1.0, no external API stability.
+
+
+## Invariants
+
+Hard rules every change must respect:
+
+- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated — never hand-edited.
+- **Docs travel with the change.** Reality and its documentation update in the same commit.
+- **Green gate before every commit.** `./x gate` must pass before any commit lands.
+- **Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify. (ADR-0001)
+- **`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file.
+- **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
+
+## Workflow
+
+Canonical chain for non-trivial work:
 
 ```
-go test ./...
+brainstorming → planning (if warranted) → ADR (if warranted) → review → implementation → review
 ```
 
-Run the full gate before committing or handing off:
+Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* (multi-commit, interdependent steps); an **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember). Many tasks need neither. Reviews are lightweight: the grounding-check inside `awf-brainstorming` subsumes plan/ADR review, and `awf-reviewing-impl` is the single terminal review.
 
-```
-./x gate
-```
+**Chain skills** (invoke in order): `awf-brainstorming`, `awf-writing-plans`, `awf-proposing-adr`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
 
-The gate must be green before any commit lands on the main branch.
+Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [AGENTS.md](AGENTS.md).
 
-## Workflow Chain
+## Commands
 
-Follow this canonical chain for feature and fix work:
-
-1. **awf-brainstorming** — explore intent, surface constraints, pick approach
-2. **awf-proposing-adr** — record significant decisions; ADRs live under `docs/decisions`
-3. **awf-reviewing-adr** — review the proposed ADR before acceptance
-4. **awf-writing-plans** — write a bite-sized implementation plan; plans live under `docs/plans`
-5. **awf-reviewing-plan** — review the plan before execution starts
-6. **awf-reviewing-plan-resync** — re-review after plan adjustments
-7. **awf-executing-plans** / **awf-subagent-driven-development** — execute tasks one-by-one, gate after each
-8. **awf-reviewing-impl** — review the finished implementation before merge
-
-Never skip steps; each gate keeps later steps cheap.
-
-## Repository Layout
-
-Key directories:
-
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add` subcommands.
-- **`internal/config/`** — parses and validates `.claude/awf.yaml`; owns the config schema.
-- **`internal/catalog/`** — reads `templates/catalog.yaml`; describes which skills/agents/hooks/sections are available.
-- **`internal/render/`** — Go `text/template` rendering with `missingkey=zero`; applies `data`, `sections` (drop / replaceWith), and per-template part injection.
-- **`internal/manifest/`** — writes and reads `.claude/awf.lock`; drives drift detection for `awf check`.
-- **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and `Check()`; golden tests live here.
-- **`internal/adrtools/`** — regenerates `docs/decisions/ACTIVE.md` from ADR frontmatter; run via `go test ./internal/adrtools/`.
-- **`templates/`** — embedded skill, agent, hook, and agents-doc templates; catalog lives at `templates/catalog.yaml`.
-- **`docs/decisions/`** — ADRs for this repository; `ACTIVE.md` is auto-generated; `README.md` is the human index.
-- **`docs/plans/`** — implementation plans written by `awf-writing-plans`.
-- **`.claude/skills/awf-*/`** — rendered skill files (committed; do not hand-edit).
-- **`.claude/agents/`** — rendered agent files (committed; do not hand-edit).
-- **`.githooks/`** — rendered pre-commit and pre-push hooks (committed; run `awf setup` — or `./x setup` in this repo — to activate via `core.hooksPath`).
+- `go test ./...` — run the test suite
+- `./x gate` — run the gate before committing
+- `./x check` — check rendered files for drift
 
 
-## Conventions & Invariants
+## Document map
 
-Conventions every agent must respect:
-
-- **TDD first.** Write a failing test before the implementation change. Use `go test -run TestX -v ./...` to confirm the test fails for the right reason before fixing.
-- **Gate before every commit.** Run `./x gate` (≈15s; runs tests, vet, and golangci-lint). Never commit with a failing gate; never skip with `--no-verify`.
-- **Publication-safe templates.** All templates render with `missingkey=zero`. A template must never produce a no-value token when a var is an empty string — wrap optional content in a conditional block. Run `awf check` after any sync to verify.
-- **`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part file, run `./x sync && ./x check`. A clean check means on-disk rendered files match the lock. Commit rendered files alongside config changes.
-- **ADRs live under `docs/decisions/`.** Follow the template at `docs/decisions/template.md`. Regenerate `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/` after any ADR status change. Never hand-edit `ACTIVE.md`.
-- **Plans live under `docs/plans/`.** Use `awf-writing-plans` to write them; `awf-reviewing-plan` to review them before execution.
-- **Conventional Commits with `awf` scope** for tool and workflow changes: `feat(awf):`, `fix(awf):`, `docs(adr):`, `refactor(awf):`. Subject lines ≤72 chars, imperative mood.
-- **One concern per commit.** No incidental refactors riding alongside a feature. No `git add -A` — stage files explicitly.
-- **Do not hand-edit rendered files.** Edit `.claude/awf.yaml` or part files under `.claude/awf/parts/`, then re-sync. Rendered files are committed as generated artifacts.
-- **`.the skills framework/` files are never committed.** They are session-local tooling artifacts.
-
+- **ADR index:** [docs/decisions/README.md](docs/decisions/README.md) — architecture decisions and lifecycle.
+- **Active ADRs:** [docs/decisions/ACTIVE.md](docs/decisions/ACTIVE.md) — generated status index; do not hand-edit.
+- **Plans:** [docs/plans](docs/plans) — implementation plans for complex work.
+- **Architecture:** [docs/architecture.md](docs/architecture.md) — system shape, packages, key components, dependencies

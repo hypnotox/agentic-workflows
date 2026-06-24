@@ -232,8 +232,9 @@ docs:
     sections: [body]
 agentsDoc:
   sections:
-    - overview
-    - build-test
-    - workflow-chain
-    - layout
-    - conventions
+    - you-and-this-project
+    - identity
+    - invariants
+    - workflow
+    - commands
+    - document-map

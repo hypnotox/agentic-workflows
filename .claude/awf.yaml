@@ -121,10 +121,19 @@ hooks:
   - pre-commit
   - pre-push
 agentsDoc:
-  sections:
-    overview:
-      replaceWith: parts/agents-doc-overview.md
-    layout:
-      replaceWith: parts/agents-doc-layout.md
-    conventions:
-      replaceWith: parts/agents-doc-conventions.md
+  data:
+    ownership: |
+      You are a developer on `awf` — the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.
+    identity: |
+      `awf` scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any Go project from a single `.claude/awf.yaml` config file. The full workflow chain is expressed as project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. Module path `agentic-workflows`; Go 1.26; private, pre-1.0, no external API stability.
+    invariants:
+      - text: "**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify."
+        ref: ADR-0001
+      - text: "**`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file."
+      - text: "**Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`)."
+    docMap: []
+docs:
+  architecture:
+    sections:
+      body:
+        replaceWith: parts/doc-architecture.md

@@ -629,12 +629,15 @@ agentsDoc:
       - text: "**`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file."
       - text: "**Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`)."
     docMap: []
-  docs:
-    architecture:
-      sections:
-        body:
-          replaceWith: parts/doc-architecture.md
+docs:
+  architecture:
+    sections:
+      body:
+        replaceWith: parts/doc-architecture.md
 ```
+
+(Note: `docs:` is a **top-level** key — a sibling of `agentsDoc:`, not nested under it —
+because it maps to `Config.Docs`. Nesting it under `agentsDoc:` fails `KnownFields(true)`.)
 
 ### Task 2.5 — Delete the obsolete agents-doc parts
 

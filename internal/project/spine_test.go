@@ -721,15 +721,58 @@ func TestAgentsDocTemplate(t *testing.T) {
 		"data": map[string]any{},
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
-	loadBearing := []string{
+	for _, phrase := range []string{
+		"## You and this project",
+		"## Identity",
+		"## Invariants",
+		"## Workflow",
+		"## Commands",
+		"## Document map",
 		"example-brainstorming",
 		"example-reviewing-impl",
 		"make gate",
-	}
-	for _, phrase := range loadBearing {
+	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
+	}
+	if strings.Contains(out, "reviewing-plan-resync") {
+		t.Errorf("Workflow must not present reviewing-plan-resync as a primary step:\n%s", out)
+	}
+}
+
+func TestAgentsDocTemplateConfigDriven(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"adrReadme":    "",
+			"activeMdPath": "",
+			"gateCmd":      "",
+		},
+		"data": map[string]any{
+			"identity":  "Example is a widget.",
+			"ownership": "You own example.",
+			"invariants": []map[string]any{
+				{"text": "**Custom rule.**", "ref": "ADR-0009"},
+			},
+		},
+		"docs": []map[string]any{
+			{"title": "Architecture", "desc": "system shape", "path": "docs/architecture.md"},
+		},
+	}
+	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	for _, phrase := range []string{
+		"Example is a widget.",
+		"You own example.",
+		"**Custom rule.** (ADR-0009)",
+		"[docs/architecture.md](docs/architecture.md)",
+	} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	if strings.Contains(out, "]()") {
+		t.Errorf("empty-string vars must not render empty-target links:\n%s", out)
 	}
 }
 
