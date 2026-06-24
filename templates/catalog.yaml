@@ -1,4 +1,17 @@
 skills:
+  brainstorming:
+    sections:
+      - preamble
+      - when-to-invoke
+      - procedure
+      - example-clarifying-questions
+      - design-sections
+      - no-spec-rule
+      - grounding-check-output-format
+      - grounding-check-dispatch-template
+      - terminal-handoff
+      - definitions
+      - anti-patterns
   tdd:
     sections: [surfaces, notes]
 agents:
