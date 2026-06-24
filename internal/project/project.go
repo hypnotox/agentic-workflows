@@ -52,12 +52,7 @@ func Open(root string) (*Project, error) {
 
 func (p *Project) validateAgainstCatalog() error {
 	// Check non-local skills against catalog.
-	names := make([]string, 0, len(p.Cfg.Skills))
-	for n := range p.Cfg.Skills {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	for _, name := range names {
+	for _, name := range sortedKeys(p.Cfg.Skills) {
 		sc := p.Cfg.Skills[name]
 		if sc.Local {
 			continue
@@ -66,23 +61,12 @@ func (p *Project) validateAgainstCatalog() error {
 		if !ok {
 			return fmt.Errorf("skill %q is not in the catalog", name)
 		}
-		allowed := make(map[string]bool, len(spec.Sections))
-		for _, s := range spec.Sections {
-			allowed[s] = true
-		}
-		for sec := range sc.Sections {
-			if !allowed[sec] {
-				return fmt.Errorf("skill %q: unknown section %q (not declared in the catalog)", name, sec)
-			}
+		if err := checkSectionsAllowed("skill", name, spec.Sections, sc.Sections); err != nil {
+			return err
 		}
 	}
 	// Check agents against catalog.
-	agentNames := make([]string, 0, len(p.Cfg.Agents))
-	for n := range p.Cfg.Agents {
-		agentNames = append(agentNames, n)
-	}
-	sort.Strings(agentNames)
-	for _, a := range agentNames {
+	for _, a := range sortedKeys(p.Cfg.Agents) {
 		ac := p.Cfg.Agents[a]
 		if ac.Local {
 			continue
@@ -91,14 +75,8 @@ func (p *Project) validateAgainstCatalog() error {
 		if !ok {
 			return fmt.Errorf("agent %q is not in the catalog", a)
 		}
-		allowed := make(map[string]bool, len(aspec.Sections))
-		for _, s := range aspec.Sections {
-			allowed[s] = true
-		}
-		for sec := range ac.Sections {
-			if !allowed[sec] {
-				return fmt.Errorf("agent %q: unknown section %q (not declared in the catalog)", a, sec)
-			}
+		if err := checkSectionsAllowed("agent", a, aspec.Sections, ac.Sections); err != nil {
+			return err
 		}
 	}
 	// Check hooks against catalog.
@@ -113,14 +91,8 @@ func (p *Project) validateAgainstCatalog() error {
 	}
 	// Check agentsDoc section overrides against catalog.
 	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
-		allowed := make(map[string]bool, len(p.Cat.AgentsDoc.Sections))
-		for _, s := range p.Cat.AgentsDoc.Sections {
-			allowed[s] = true
-		}
-		for sec := range p.Cfg.AgentsDoc.Sections {
-			if !allowed[sec] {
-				return fmt.Errorf("agentsDoc: unknown section %q (not declared in the catalog)", sec)
-			}
+		if err := checkSectionsAllowed("agentsDoc", "agentsDoc", p.Cat.AgentsDoc.Sections, p.Cfg.AgentsDoc.Sections); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -141,6 +113,31 @@ func (p *Project) data(sc config.SkillConfig) map[string]any {
 	}
 }
 
+// sortedKeys returns the keys of m in ascending sorted order.
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// checkSectionsAllowed verifies that every key in used appears in declared.
+// kind and name are used only for error formatting.
+func checkSectionsAllowed(kind, name string, declared []string, used map[string]config.SectionOverride) error {
+	allowed := make(map[string]bool, len(declared))
+	for _, s := range declared {
+		allowed[s] = true
+	}
+	for sec := range used {
+		if !allowed[sec] {
+			return fmt.Errorf("%s %q: unknown section %q (not declared in the catalog)", kind, name, sec)
+		}
+	}
+	return nil
+}
+
 func nonNil(m map[string]any) map[string]any {
 	if m == nil {
 		return map[string]any{}
@@ -151,12 +148,7 @@ func nonNil(m map[string]any) map[string]any {
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Skills (sorted for deterministic order).
-	names := make([]string, 0, len(p.Cfg.Skills))
-	for n := range p.Cfg.Skills {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	for _, name := range names {
+	for _, name := range sortedKeys(p.Cfg.Skills) {
 		sc := p.Cfg.Skills[name]
 		if sc.Local {
 			continue
@@ -170,12 +162,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		out = append(out, rf)
 	}
 	// Agents (sorted for deterministic order).
-	agentNames := make([]string, 0, len(p.Cfg.Agents))
-	for n := range p.Cfg.Agents {
-		agentNames = append(agentNames, n)
-	}
-	sort.Strings(agentNames)
-	for _, name := range agentNames {
+	for _, name := range sortedKeys(p.Cfg.Agents) {
 		ac := p.Cfg.Agents[name]
 		if ac.Local {
 			continue
@@ -286,12 +273,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		rendered[f.Path] = f
 	}
 	var drift []manifest.Drift
-	paths := make([]string, 0, len(lock.Files))
-	for path := range lock.Files {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-	for _, path := range paths {
+	for _, path := range sortedKeys(lock.Files) {
 		e := lock.Files[path]
 		rf, ok := rendered[path]
 		if !ok {

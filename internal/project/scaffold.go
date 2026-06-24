@@ -3,7 +3,6 @@ package project
 import (
 	"fmt"
 	"io/fs"
-	"sort"
 	"strings"
 
 	"agentic-workflows/internal/catalog"
@@ -48,25 +47,13 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 	}
 
 	// Build sorted var names.
-	varNames := make([]string, 0, len(varSet))
-	for v := range varSet {
-		varNames = append(varNames, v)
-	}
-	sort.Strings(varNames)
+	varNames := sortedKeys(varSet)
 
 	// Build sorted skill names.
-	skillNames := make([]string, 0, len(cat.Skills))
-	for name := range cat.Skills {
-		skillNames = append(skillNames, name)
-	}
-	sort.Strings(skillNames)
+	skillNames := sortedKeys(cat.Skills)
 
 	// Build sorted agent names.
-	agentNames := make([]string, 0, len(cat.Agents))
-	for name := range cat.Agents {
-		agentNames = append(agentNames, name)
-	}
-	sort.Strings(agentNames)
+	agentNames := sortedKeys(cat.Agents)
 
 	// Preserve catalog hook order (already deterministic).
 	hookList := make([]string, len(cat.Hooks))

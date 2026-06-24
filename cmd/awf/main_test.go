@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -29,7 +30,7 @@ func TestRunInitScaffoldsAndSyncs(t *testing.T) {
 }
 
 func containsLine(s, line string) bool {
-	for _, l := range splitLines(s) {
+	for _, l := range strings.Split(s, "\n") {
 		if l == line {
 			return true
 		}

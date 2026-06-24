@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/project"
@@ -72,41 +73,17 @@ func runAdd(root, skill string) error {
 // appendSkill inserts "  <skill>: {}" immediately after the "skills:" line.
 // Handles the "skills: {}" empty-map form by converting it to a block mapping.
 func appendSkill(src, skill string) (string, error) {
-	lines := splitLines(src)
+	lines := strings.Split(src, "\n")
 	for i, l := range lines {
 		if l == "skills: {}" {
 			lines[i] = "skills:"
 			rest := append([]string{"  " + skill + ": {}"}, lines[i+1:]...)
-			return joinLines(append(lines[:i+1], rest...)), nil
+			return strings.Join(append(lines[:i+1], rest...), "\n"), nil
 		}
 		if l == "skills:" {
 			rest := append([]string{"  " + skill + ": {}"}, lines[i+1:]...)
-			return joinLines(append(lines[:i+1], rest...)), nil
+			return strings.Join(append(lines[:i+1], rest...), "\n"), nil
 		}
 	}
 	return "", fmt.Errorf("no skills: key in awf.yaml")
-}
-
-func joinLines(ls []string) string {
-	out := ""
-	for i, l := range ls {
-		if i > 0 {
-			out += "\n"
-		}
-		out += l
-	}
-	return out
-}
-
-func splitLines(s string) []string {
-	var out, cur = []string{}, ""
-	for _, r := range s {
-		if r == '\n' {
-			out = append(out, cur)
-			cur = ""
-		} else {
-			cur += string(r)
-		}
-	}
-	return append(out, cur)
 }

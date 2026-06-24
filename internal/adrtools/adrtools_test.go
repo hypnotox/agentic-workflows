@@ -138,10 +138,3 @@ func TestGenerateActiveMD(t *testing.T) {
 	}
 	t.Fatalf("ACTIVE.md was stale — regenerated; re-stage it")
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
