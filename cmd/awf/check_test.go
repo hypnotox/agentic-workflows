@@ -14,7 +14,7 @@ skills:
     data:
       testSurfaces:
         - {name: Logic, location: internal, kind: Go unit}
-agents: []
+agents: {}
 hooks: []
 `
 

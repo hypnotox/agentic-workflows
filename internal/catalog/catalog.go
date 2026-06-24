@@ -13,7 +13,7 @@ type SkillSpec struct {
 
 type Catalog struct {
 	Skills map[string]SkillSpec `yaml:"skills"`
-	Agents []string             `yaml:"agents"`
+	Agents map[string]SkillSpec `yaml:"agents"`
 	Hooks  []string             `yaml:"hooks"`
 }
 

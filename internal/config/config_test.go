@@ -29,7 +29,8 @@ skills:
       notes: {replaceWith: parts/tdd-notes.md}
   bugfix: {}
   adding-thing: {local: true}
-agents: [code-reviewer]
+agents:
+  code-reviewer: {}
 hooks: [pre-commit]
 `)
 	c, err := Load(p)
@@ -50,6 +51,26 @@ hooks: [pre-commit]
 	}
 	if len(c.Raw()) == 0 {
 		t.Errorf("Raw() should retain original bytes")
+	}
+}
+
+func TestLoadParsesAgentMap(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+agents:
+  code-reviewer:
+    data:
+      foo: bar
+`)
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ac, ok := c.Agents["code-reviewer"]
+	if !ok {
+		t.Fatal("code-reviewer not in Agents map")
+	}
+	if ac.Data["foo"] != "bar" {
+		t.Errorf("Agents[code-reviewer].Data[foo] = %v, want bar", ac.Data["foo"])
 	}
 }
 

@@ -2,7 +2,8 @@ skills:
   tdd:
     sections: [surfaces, notes]
 agents:
-  - code-reviewer
+  code-reviewer:
+    sections: []
 hooks:
   - pre-commit
   - pre-push

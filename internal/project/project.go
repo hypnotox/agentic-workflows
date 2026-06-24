@@ -66,12 +66,13 @@ func (p *Project) validateAgainstCatalog() error {
 		}
 	}
 	// Check agents against catalog.
-	catAgents := make(map[string]bool, len(p.Cat.Agents))
-	for _, a := range p.Cat.Agents {
-		catAgents[a] = true
+	agentNames := make([]string, 0, len(p.Cfg.Agents))
+	for n := range p.Cfg.Agents {
+		agentNames = append(agentNames, n)
 	}
-	for _, a := range p.Cfg.Agents {
-		if !catAgents[a] {
+	sort.Strings(agentNames)
+	for _, a := range agentNames {
+		if _, ok := p.Cat.Agents[a]; !ok {
 			return fmt.Errorf("agent %q is not in the catalog", a)
 		}
 	}
@@ -131,11 +132,20 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rf)
 	}
-	// Agents.
-	for _, a := range p.Cfg.Agents {
-		tid := fmt.Sprintf("agents/%s.md.tmpl", a)
-		rf, err := p.renderTemplate(tid, nil, p.data(config.SkillConfig{}),
-			fmt.Sprintf(".claude/agents/%s.md", a))
+	// Agents (sorted for deterministic order).
+	agentNames := make([]string, 0, len(p.Cfg.Agents))
+	for n := range p.Cfg.Agents {
+		agentNames = append(agentNames, n)
+	}
+	sort.Strings(agentNames)
+	for _, name := range agentNames {
+		ac := p.Cfg.Agents[name]
+		if ac.Local {
+			continue
+		}
+		tid := fmt.Sprintf("agents/%s.md.tmpl", name)
+		rf, err := p.renderTemplate(tid, ac.Sections, p.data(ac),
+			fmt.Sprintf(".claude/agents/%s.md", name))
 		if err != nil {
 			return nil, err
 		}

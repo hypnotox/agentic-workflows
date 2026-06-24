@@ -12,7 +12,7 @@ func TestRunAddAppendsAndRejects(t *testing.T) {
 	root := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(root, ".claude"), 0o755)
 	_ = os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"),
-		[]byte("prefix: example\nvars: {}\nskills: {}\nagents: []\nhooks: []\n"), 0o644)
+		[]byte("prefix: example\nvars: {}\nskills: {}\nagents: {}\nhooks: []\n"), 0o644)
 
 	if err := runAdd(root, "no-such-skill"); err == nil {
 		t.Errorf("expected error adding unknown skill")
