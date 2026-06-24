@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -50,7 +51,7 @@ func (c *Config) Raw() []byte { return c.raw }
 
 func (c *Config) Validate() error {
 	if c.Prefix == "" {
-		return fmt.Errorf("prefix must not be empty")
+		return errors.New("prefix must not be empty")
 	}
 	if strings.ContainsAny(c.Prefix, "/\\") || strings.Contains(c.Prefix, "..") {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)

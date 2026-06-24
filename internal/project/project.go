@@ -184,7 +184,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	for _, h := range p.Cfg.Hooks {
 		tid := fmt.Sprintf("hooks/%s.tmpl", h)
 		rf, err := p.renderTemplate(tid, nil, p.data(config.SkillConfig{}),
-			fmt.Sprintf(".githooks/%s", h))
+			".githooks/"+h)
 		if err != nil {
 			return nil, err
 		}

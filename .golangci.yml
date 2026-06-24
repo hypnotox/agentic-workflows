@@ -1,0 +1,67 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    # Bug detection
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - nilerr
+    - bodyclose
+    - errorlint
+    - durationcheck
+    - asasalint
+    - nilnesserr
+    - gocheckcompilerdirectives
+    - makezero
+    - nilnil
+    - exhaustive
+    # Code quality
+    - unused
+    - unconvert
+    - unparam
+    - wastedassign
+    - predeclared
+    - gocritic
+    - dupword
+    - perfsprint
+    - intrange
+    - usestdlibvars
+    - usetesting
+    - misspell
+    # Style
+    - revive
+    - whitespace
+  settings:
+    govet:
+      enable:
+        - nilness
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    predeclared:
+      ignore:
+        - min
+        - max
+        - copy
+    staticcheck:
+      checks:
+        - "all"
+        - "-ST1000"
+        - "-ST1003"
+  exclusions:
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

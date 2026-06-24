@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func main() {
 		fatalIf(runList(cwd))
 	case "add":
 		if len(os.Args) < 3 {
-			fatal(fmt.Errorf("usage: awf add <skill>"))
+			fatal(errors.New("usage: awf add <skill>"))
 		}
 		fatalIf(runAdd(cwd, os.Args[2]))
 	default:

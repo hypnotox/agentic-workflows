@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,5 +86,5 @@ func appendSkill(src, skill string) (string, error) {
 			return strings.Join(append(lines[:i+1], rest...), "\n"), nil
 		}
 	}
-	return "", fmt.Errorf("no skills: key in awf.yaml")
+	return "", errors.New("no skills: key in awf.yaml")
 }
