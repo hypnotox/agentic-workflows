@@ -110,6 +110,17 @@ skills:
       - test-tiers
       - pitfalls-check
       - oracle-note
+  reviewing-plan:
+    sections:
+      - when-fires
+      - procedure
+      - artifact-path-detection
+      - dispatch-subagent
+      - classify-route-findings
+      - apply-fixes-commit
+      - re-review-loop
+      - hand-off
+      - notes
   reviewing-adr:
     sections:
       - when-fires
