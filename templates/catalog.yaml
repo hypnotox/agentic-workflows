@@ -90,6 +90,21 @@ skills:
       - autonomous-rule
       - terminal-step
       - notes
+  adr-lifecycle:
+    sections:
+      - states
+      - transitions
+      - supersedence-full
+      - supersedence-partial
+      - procedure-status-edit
+      - procedure-predecessor-flip
+      - readme-index-update
+      - state-doc-update
+      - procedure-regen
+      - procedure-gate
+      - commit-templates
+      - amendment-while-proposed
+      - notes
   bugfix:
     sections:
       - test-tiers

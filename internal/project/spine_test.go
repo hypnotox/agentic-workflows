@@ -271,6 +271,68 @@ func TestProposingAdrTemplate(t *testing.T) {
 	}
 }
 
+func TestAdrLifecycleTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"adrDir":      "docs/decisions",
+			"adrRegenCmd": "go test ./internal/adrtools/",
+			"adrReadme":   "docs/decisions/README.md",
+			"workflowDoc": "docs/workflow.md",
+			"stateDocsPath": "docs/decisions/state/",
+			"gateCmd":     "./x gate",
+		},
+		"data": map[string]any{
+			"adrStates": []map[string]any{
+				{
+					"name":        "Proposed",
+					"meaning":     "Under discussion; all sections mutable",
+					"mutability":  "Mutable; amendments encouraged",
+					"transitions": "May move to Accepted, Implemented, Deferred, or Declined",
+				},
+				{
+					"name":        "Accepted",
+					"meaning":     "Design final; implementation in progress",
+					"mutability":  "Append-only; only `status` editable in place",
+					"transitions": "May move to Implemented or Superseded",
+				},
+				{
+					"name":        "Implemented",
+					"meaning":     "Implementation complete; decision enacted",
+					"mutability":  "Append-only; only `status` editable in place",
+					"transitions": "May move to Superseded",
+				},
+				{
+					"name":        "Superseded by ADR-NNNN",
+					"meaning":     "Replaced by a later ADR",
+					"mutability":  "Terminal; in-place status edit only at supersedence",
+					"transitions": "Terminal state",
+				},
+			},
+		},
+	}
+
+	out := renderSkillGolden(t, "adr-lifecycle", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-adr-lifecycle") {
+		t.Errorf("expected 'name: example-adr-lifecycle' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to adr-lifecycle
+	loadBearing := []string{
+		"supersedes",
+		"status transition",
+		"regenerate",
+		"Append-only",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
