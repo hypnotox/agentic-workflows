@@ -197,3 +197,10 @@ agents:
 hooks:
   - pre-commit
   - pre-push
+agentsDoc:
+  sections:
+    - overview
+    - build-test
+    - workflow-chain
+    - layout
+    - conventions

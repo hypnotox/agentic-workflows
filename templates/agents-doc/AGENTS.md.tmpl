@@ -1,0 +1,59 @@
+# {{ .prefix }} — Agent Guide
+
+This document is the authoritative reference for AI agents working in the
+`{{ .prefix }}` repository. Read it before taking any action; keep it current
+as decisions evolve.
+
+<!-- awf:section overview -->
+This repository contains the `{{ .prefix }}` project. Update this section with
+a one-paragraph description of what the project does and who it serves.
+<!-- awf:end -->
+
+## Build & Test
+
+<!-- awf:section build-test -->
+Run the test suite:
+
+```
+{{ .vars.testCmd }}
+```
+
+Run the full gate before committing or handing off:
+
+```
+{{ .vars.gateCmd }}
+```
+
+The gate must be green before any commit lands on the main branch.
+<!-- awf:end -->
+
+## Workflow Chain
+
+<!-- awf:section workflow-chain -->
+Follow this canonical chain for feature and fix work:
+
+1. **{{ .prefix }}-brainstorming** — explore intent, surface constraints, pick approach
+2. **{{ .prefix }}-proposing-adr** — record significant decisions; ADRs live under `{{ .vars.adrDir }}`
+3. **{{ .prefix }}-reviewing-adr** — review the proposed ADR before acceptance
+4. **{{ .prefix }}-writing-plans** — write a bite-sized implementation plan; plans live under `{{ .vars.plansDir }}`
+5. **{{ .prefix }}-reviewing-plan** — review the plan before execution starts
+6. **{{ .prefix }}-reviewing-plan-resync** — re-review after plan adjustments
+7. **{{ .prefix }}-executing-plans** / **{{ .prefix }}-subagent-driven-development** — execute tasks one-by-one, gate after each
+8. **{{ .prefix }}-reviewing-impl** — review the finished implementation before merge
+
+Never skip steps; each gate keeps later steps cheap.
+<!-- awf:end -->
+
+## Repository Layout
+
+<!-- awf:section layout -->
+Update this section with the key directories and what lives in each one.
+<!-- awf:end -->
+
+## Conventions & Invariants
+
+<!-- awf:section conventions -->
+Update this section with project-specific conventions, coding standards, and
+invariants that every agent must respect (e.g. naming rules, forbidden
+patterns, required doc updates).
+<!-- awf:end -->

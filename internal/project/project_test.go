@@ -373,6 +373,61 @@ hooks: []
 	}
 }
 
+func TestSyncRendersAgentsDoc(t *testing.T) {
+	t.Run("with agentsDoc config", func(t *testing.T) {
+		yaml := `prefix: example
+vars:
+  testCmd: go test ./...
+  gateCmd: make gate
+  adrDir: docs/decisions
+  plansDir: docs/plans
+skills: {}
+agents: {}
+hooks: []
+agentsDoc: {}
+`
+		root := scaffold(t, yaml)
+		p, err := Open(root)
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if err := p.Sync(); err != nil {
+			t.Fatalf("Sync: %v", err)
+		}
+		agentsPath := filepath.Join(root, "AGENTS.md")
+		b, err := os.ReadFile(agentsPath)
+		if err != nil {
+			t.Fatalf("AGENTS.md not written: %v", err)
+		}
+		if !strings.Contains(string(b), "example") {
+			t.Errorf("AGENTS.md should contain prefix 'example', got:\n%s", b)
+		}
+	})
+
+	t.Run("without agentsDoc config", func(t *testing.T) {
+		yaml := `prefix: example
+vars:
+  testCmd: go test ./...
+  gateCmd: make gate
+skills: {}
+agents: {}
+hooks: []
+`
+		root := scaffold(t, yaml)
+		p, err := Open(root)
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if err := p.Sync(); err != nil {
+			t.Fatalf("Sync: %v", err)
+		}
+		agentsPath := filepath.Join(root, "AGENTS.md")
+		if _, err := os.Stat(agentsPath); !os.IsNotExist(err) {
+			t.Errorf("AGENTS.md should not exist when agentsDoc is not configured")
+		}
+	})
+}
+
 // TestSyncPrunesEmptySkillDir verifies that after a skill is removed from the
 // config and Sync is run again, not only is the SKILL.md file removed, but the
 // now-empty parent directory .claude/skills/<prefix>-<skill>/ is also removed

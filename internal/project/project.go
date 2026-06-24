@@ -111,6 +111,18 @@ func (p *Project) validateAgainstCatalog() error {
 			return fmt.Errorf("hook %q is not in the catalog", h)
 		}
 	}
+	// Check agentsDoc section overrides against catalog.
+	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
+		allowed := make(map[string]bool, len(p.Cat.AgentsDoc.Sections))
+		for _, s := range p.Cat.AgentsDoc.Sections {
+			allowed[s] = true
+		}
+		for sec := range p.Cfg.AgentsDoc.Sections {
+			if !allowed[sec] {
+				return fmt.Errorf("agentsDoc: unknown section %q (not declared in the catalog)", sec)
+			}
+		}
+	}
 	return nil
 }
 
@@ -181,6 +193,14 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		tid := fmt.Sprintf("hooks/%s.tmpl", h)
 		rf, err := p.renderTemplate(tid, nil, p.data(config.SkillConfig{}),
 			fmt.Sprintf(".githooks/%s", h))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rf)
+	}
+	// AgentsDoc.
+	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
+		rf, err := p.renderTemplate("agents-doc/AGENTS.md.tmpl", p.Cfg.AgentsDoc.Sections, p.data(*p.Cfg.AgentsDoc), "AGENTS.md")
 		if err != nil {
 			return nil, err
 		}

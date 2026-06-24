@@ -716,6 +716,46 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	}
 }
 
+func TestAgentsDocTemplate(t *testing.T) {
+	src, err := fs.ReadFile(templates.FS, "agents-doc/AGENTS.md.tmpl")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"testCmd":  "go test ./...",
+			"gateCmd":  "make gate",
+			"adrDir":   "docs/decisions",
+			"plansDir": "docs/plans",
+		},
+		"data": map[string]any{},
+	}
+	out, err := render.Render(string(src), nil, func(string) (string, error) { return "", nil }, data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
+		t.Errorf("markers leaked:\n%s", out)
+	}
+	if strings.Contains(out, "<no value>") {
+		t.Errorf("missing sample data (rendered <no value>):\n%s", out)
+	}
+	if strings.Contains(out, "{{") || strings.Contains(out, "}}") {
+		t.Errorf("unrendered template action:\n%s", out)
+	}
+	loadBearing := []string{
+		"example-brainstorming",
+		"example-reviewing-impl",
+		"make gate",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
