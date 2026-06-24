@@ -43,8 +43,11 @@ func runInit(root string) error {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
 			return err
 		}
-		scaffold := fmt.Sprintf("prefix: %s\nvars: {}\nskills: {}\nagents: {}\nhooks: []\n", filepath.Base(root))
-		if err := os.WriteFile(cfgPath, []byte(scaffold), 0o644); err != nil {
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {
 			return err
 		}
 		fmt.Printf("scaffolded %s\n", cfgPath)
