@@ -134,9 +134,15 @@ exist yet, it simply does nothing."
    `ACTIVE.md` (no empty-file artifact) and the existing prune logic removes any previously
    generated `ACTIVE.md` from disk and lock.
 
-5. **`awf check` detects `ACTIVE.md` staleness via a dedicated path.** Independently of the
-   template-hash drift loop, `check` regenerates `ACTIVE.md` in memory from the current ADR
-   frontmatter and compares it to the on-disk file: a content mismatch (frontmatter changed
+5. **`awf check` detects `ACTIVE.md` staleness via a dedicated path.** The generic `Check`
+   lock-iteration loop (`project.go:329-350`) must **skip** the `ACTIVE.md` lock entry: that
+   loop looks each locked path up in the `RenderAll` output (line 331) and `ACTIVE.md` is not
+   a rendered file, so it would be flagged `orphaned` every run; and its empty `ConfigHash`
+   against the live non-empty `cfgHash` (line 336) would otherwise read as `stale`. Excluding
+   it from the generic loop and handling it only here avoids both false positives.
+   Independently of the template-hash drift loop, `check` regenerates `ACTIVE.md` in memory
+   from the current ADR frontmatter and compares it to the on-disk file: a content mismatch
+   (frontmatter changed
    since last sync, or hand-edit) yields a drift entry; an absent file when ADRs exist yields
    a `missing` drift; when zero ADRs exist and no `ACTIVE.md` is locked, there is nothing to
    flag.
@@ -183,7 +189,9 @@ the implementation plan's tests.)
   a pruned `ACTIVE.md` never deletes the decisions dir.)
 - `awf check` reports drift for `ACTIVE.md` when the on-disk content differs from a fresh
   regeneration (frontmatter change, hand-edit) or when it is absent while ADRs exist — via a
-  path that does not depend on `TemplateHash`/`ConfigHash`.
+  path that does not depend on `TemplateHash`/`ConfigHash`. A synced, unchanged `ACTIVE.md`
+  produces **no** drift entry (not `orphaned`, not `stale`): the generic lock-iteration loop
+  skips the `ACTIVE.md` path entirely.
 - The `manifest`/lock format is unchanged: the `ACTIVE.md` entry carries empty
   `TemplateID`/`TemplateHash` and is an ordinary path→hash record.
 - The repository contains no `./x adr` target and no write-then-fail `TestGenerateActiveMD`;
@@ -204,8 +212,10 @@ Easier:
 
 Harder / accepted trade-offs:
 - `Project.Check` grows a second drift path for a non-template, generated-from-frontmatter
-  artifact. Bounded to `ACTIVE.md`; mitigated by tests covering stale / hand-edited / missing
-  / zero-ADR cases. `Project.Sync` now does I/O against the decisions dir on every run.
+  artifact **and** an exclusion in its generic lock-iteration loop so the `ACTIVE.md` entry is
+  not mis-flagged `orphaned`/`stale`. Bounded to `ACTIVE.md`; mitigated by tests covering
+  stale / hand-edited / missing / zero-ADR cases plus a synced-clean case asserting no false
+  drift. `Project.Sync` now does I/O against the decisions dir on every run.
 - A new render-data namespace (`.layout`) is a contract with consumers: `Project.data`
   (producer), every skill/agent template that references a doc path (migrated from `.vars.*`),
   and `ScaffoldConfig`/`ReferencedVars` (which must continue to ignore it). Enumerated and
