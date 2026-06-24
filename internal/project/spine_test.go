@@ -554,3 +554,35 @@ func TestBrainstormingTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewingAdrTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"adrDir":      "docs/decisions",
+			"commitScope": "docs(adr)",
+			"workflowDoc": "docs/workflow.md",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "reviewing-adr", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-reviewing-adr") {
+		t.Errorf("expected 'name: example-reviewing-adr' in output:\n%s", out)
+	}
+
+	// Assert thin-dispatcher load-bearing phrases
+	loadBearing := []string{
+		"adr-reviewer",
+		"user-decision",
+		"example-reviewing-plan-resync",
+		"Proposed",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
