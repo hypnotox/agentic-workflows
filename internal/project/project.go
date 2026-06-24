@@ -91,7 +91,7 @@ func (p *Project) validateAgainstCatalog() error {
 	}
 	// Check agentsDoc section overrides against catalog.
 	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
-		if err := checkSectionsAllowed("agentsDoc", "agentsDoc", p.Cat.AgentsDoc.Sections, p.Cfg.AgentsDoc.Sections); err != nil {
+		if err := checkSectionsAllowed("agentsDoc", "", p.Cat.AgentsDoc.Sections, p.Cfg.AgentsDoc.Sections); err != nil {
 			return err
 		}
 	}
@@ -124,15 +124,20 @@ func sortedKeys[V any](m map[string]V) []string {
 }
 
 // checkSectionsAllowed verifies that every key in used appears in declared.
-// kind and name are used only for error formatting.
+// kind and name are used only for error formatting; name may be empty for a
+// singleton (e.g. agentsDoc).
 func checkSectionsAllowed(kind, name string, declared []string, used map[string]config.SectionOverride) error {
 	allowed := make(map[string]bool, len(declared))
 	for _, s := range declared {
 		allowed[s] = true
 	}
+	label := kind
+	if name != "" {
+		label = fmt.Sprintf("%s %q", kind, name)
+	}
 	for sec := range used {
 		if !allowed[sec] {
-			return fmt.Errorf("%s %q: unknown section %q (not declared in the catalog)", kind, name, sec)
+			return fmt.Errorf("%s: unknown section %q (not declared in the catalog)", label, sec)
 		}
 	}
 	return nil
