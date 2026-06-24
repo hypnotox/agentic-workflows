@@ -60,7 +60,7 @@ Pick the status transition, then:
 
 1. **Regenerate ACTIVE.md.** Run `go test ./internal/adrtools/` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 
-1. **Run `go test ./... && go vet ./...`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
+1. **Run `./x gate`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 ## Commit subject templates
 

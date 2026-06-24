@@ -1,6 +1,6 @@
 ---
 name: awf-executing-plans
-description: Use to execute a written awf plan inline (one task at a time, in the current session) when the plan's tasks are tightly coupled or sequential. Codifies bite-sized tasks, one commit per task, go test ./... && go vet ./... per commit, ADR status flip in the final commit, terminal handoff to awf-reviewing-impl. Companion to awf-subagent-driven-development.
+description: Use to execute a written awf plan inline (one task at a time, in the current session) when the plan's tasks are tightly coupled or sequential. Codifies bite-sized tasks, one commit per task, ./x gate per commit, ADR status flip in the final commit, terminal handoff to awf-reviewing-impl. Companion to awf-subagent-driven-development.
 ---
 
 # awf-executing-plans
@@ -26,7 +26,7 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 1. **Per task — execute, verify, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
-   - **Verify** with `go test ./... && go vet ./...` (fast tier). See `AGENTS.md` for the tier split and when to run the full tier.
+   - **Verify** with `./x gate` (fast tier). See `AGENTS.md` for the tier split and when to run the full tier.
    - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
 
 

@@ -36,7 +36,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - **reasoned** — agent applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 
-1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `go test ./... && go vet ./...` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
+1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `./x gate` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
 
 1. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 

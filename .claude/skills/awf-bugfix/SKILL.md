@@ -30,7 +30,7 @@ The specific test tiers (unit, integration, e2e, etc.) and their locations are p
 1. **Check `` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
-1. **Verify via the gates.** `go test ./... && go vet ./...` (fast tier) is the default. Run `go test ./... && go vet ./...` when regression-test placement warrants the full tier.
+1. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
 1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `AGENTS.md`, fixes ship with a regression test.
 

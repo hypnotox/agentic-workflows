@@ -34,7 +34,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 
 1. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **`go test ./... && go vet ./...` per commit.** Fast tier by default; `go test ./... && go vet ./...` for the pre-push tier when a pre-push-only surface is involved. See `AGENTS.md`.
+   - **`./x gate` per commit.** Fast tier by default; `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `AGENTS.md`.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.

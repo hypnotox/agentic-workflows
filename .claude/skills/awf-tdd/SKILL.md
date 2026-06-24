@@ -18,7 +18,7 @@ The test-first discipline as a project-owned task skill.
 1. Write the failing test capturing the wrong (bug) or missing (feature) behaviour.
 2. Run it and confirm it fails for the right reason: `go test ./...`.
 3. Implement the minimal change to pass.
-4. Run the gate: `go test ./... && go vet ./...`.
+4. Run the gate: `./x gate`.
 
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.

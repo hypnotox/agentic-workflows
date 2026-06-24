@@ -41,7 +41,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 1. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
 
 
-1. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `go test ./... && go vet ./...` (fast tier). Run `go test ./... && go vet ./...` when the regression test lives in a slower surface that the fast tier does not exercise.
+1. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `./x gate` (fast tier). Run `./x gate full` when the regression test lives in a slower surface that the fast tier does not exercise.
 
 1. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
 

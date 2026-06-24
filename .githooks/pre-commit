@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 awf check
-go test ./... && go vet ./...
+./x gate
