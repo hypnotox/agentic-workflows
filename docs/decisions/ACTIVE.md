@@ -3,3 +3,7 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
+
+## Proposed
+
+- [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](0002-static-linting-and-x-command-runner.md) — Proposed
