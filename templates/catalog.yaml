@@ -197,6 +197,39 @@ agents:
 hooks:
   - pre-commit
   - pre-push
+docs:
+  architecture:
+    title: Architecture
+    desc: system shape, packages, key components, dependencies
+    sections: [body]
+  workflow:
+    title: Workflow
+    desc: principles, the brainstorm/plan/ADR chain, commit discipline
+    sections: [body]
+  testing:
+    title: Testing
+    desc: gate tiers, test layout, what each tier covers
+    sections: [body]
+  development:
+    title: Development
+    desc: local setup, the command runner, dependency reference
+    sections: [body]
+  debugging:
+    title: Debugging
+    desc: recipes for common failure modes
+    sections: [body]
+  pitfalls:
+    title: Pitfalls
+    desc: recurring bugs and tricky areas
+    sections: [body]
+  glossary:
+    title: Glossary
+    desc: project jargon and term ownership
+    sections: [body]
+  roadmap:
+    title: Roadmap
+    desc: uncommitted ideas and future phases
+    sections: [body]
 agentsDoc:
   sections:
     - overview

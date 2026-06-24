@@ -29,6 +29,7 @@ type Config struct {
 	Agents    map[string]SkillConfig `yaml:"agents"`
 	Hooks     []string               `yaml:"hooks"`
 	AgentsDoc *SkillConfig           `yaml:"agentsDoc"`
+	Docs      map[string]SkillConfig `yaml:"docs"`
 	raw       []byte
 }
 
@@ -63,6 +64,11 @@ func (c *Config) Validate() error {
 	}
 	for name, ac := range c.Agents {
 		if err := checkSections("agent", name, ac); err != nil {
+			return err
+		}
+	}
+	for name, dc := range c.Docs {
+		if err := checkSections("doc", name, dc); err != nil {
 			return err
 		}
 	}

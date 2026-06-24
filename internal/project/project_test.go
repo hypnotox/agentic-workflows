@@ -188,6 +188,49 @@ hooks: [typo-hook]
 	}
 }
 
+func TestOpenRejectsUnknownDoc(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: {}
+hooks: []
+docs:
+  nonexistent: {}
+`
+	root := scaffold(t, yaml)
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error for unknown doc")
+	}
+	if !strings.Contains(err.Error(), "nonexistent") {
+		t.Errorf("error should mention the offending doc name, got: %v", err)
+	}
+}
+
+func TestSyncRendersDeclaredDoc(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: {}
+hooks: []
+docs:
+  architecture: {}
+`
+	root := scaffold(t, yaml)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "docs", "architecture.md"))
+	if err != nil {
+		t.Fatalf("docs/architecture.md not written: %v", err)
+	}
+	if !strings.Contains(string(b), "# Architecture") {
+		t.Errorf("docs/architecture.md missing heading:\n%s", b)
+	}
+}
+
 func TestOpenRejectsUnknownSkill(t *testing.T) {
 	yaml := `prefix: example
 skills:

@@ -95,6 +95,20 @@ func (p *Project) validateAgainstCatalog() error {
 			return err
 		}
 	}
+	// Check docs against catalog.
+	for _, name := range sortedKeys(p.Cfg.Docs) {
+		dc := p.Cfg.Docs[name]
+		if dc.Local {
+			continue
+		}
+		spec, ok := p.Cat.Docs[name]
+		if !ok {
+			return fmt.Errorf("doc %q is not in the catalog", name)
+		}
+		if err := checkSectionsAllowed("doc", name, spec.Sections, dc.Sections); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -111,6 +125,25 @@ func (p *Project) data(sc config.SkillConfig) map[string]any {
 		"vars":   nonNil(p.Cfg.Vars),
 		"data":   nonNil(sc.Data),
 	}
+}
+
+// resolvedDocs builds the Document-map entries for the agents-doc template from
+// the docs declared in config, annotated with the catalog's title/desc.
+func (p *Project) resolvedDocs() []map[string]any {
+	out := []map[string]any{}
+	for _, name := range sortedKeys(p.Cfg.Docs) {
+		if p.Cfg.Docs[name].Local {
+			continue
+		}
+		spec := p.Cat.Docs[name]
+		out = append(out, map[string]any{
+			"name":  name,
+			"title": spec.Title,
+			"desc":  spec.Desc,
+			"path":  "docs/" + name + ".md",
+		})
+	}
+	return out
 }
 
 // sortedKeys returns the keys of m in ascending sorted order.
@@ -190,9 +223,24 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rf)
 	}
+	// Docs.
+	for _, name := range sortedKeys(p.Cfg.Docs) {
+		dc := p.Cfg.Docs[name]
+		if dc.Local {
+			continue
+		}
+		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
+		rf, err := p.renderTemplate(tid, dc.Sections, p.data(dc), "docs/"+name+".md")
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rf)
+	}
 	// AgentsDoc.
 	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
-		rf, err := p.renderTemplate("agents-doc/AGENTS.md.tmpl", p.Cfg.AgentsDoc.Sections, p.data(*p.Cfg.AgentsDoc), "AGENTS.md")
+		data := p.data(*p.Cfg.AgentsDoc)
+		data["docs"] = p.resolvedDocs()
+		rf, err := p.renderTemplate("agents-doc/AGENTS.md.tmpl", p.Cfg.AgentsDoc.Sections, data, "AGENTS.md")
 		if err != nil {
 			return nil, err
 		}

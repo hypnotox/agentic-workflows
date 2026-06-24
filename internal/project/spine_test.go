@@ -733,6 +733,17 @@ func TestAgentsDocTemplate(t *testing.T) {
 	}
 }
 
+func TestDocArchitectureTemplate(t *testing.T) {
+	out := renderGolden(t, "docs/architecture.md.tmpl", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data":   map[string]any{},
+	})
+	if !strings.Contains(out, "# Architecture") {
+		t.Errorf("expected '# Architecture' heading:\n%s", out)
+	}
+}
+
 func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

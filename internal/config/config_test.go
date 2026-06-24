@@ -153,6 +153,35 @@ skills:
 	}
 }
 
+func TestLoadParsesDocsMap(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+docs:
+  architecture:
+    sections:
+      body: {replaceWith: parts/doc-architecture.md}
+`)
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Docs["architecture"].Sections["body"].ReplaceWith != "parts/doc-architecture.md" {
+		t.Errorf("docs.architecture.body replaceWith = %q", c.Docs["architecture"].Sections["body"].ReplaceWith)
+	}
+}
+
+func TestValidateRejectsDropAndReplaceOnDoc(t *testing.T) {
+	p := writeTemp(t, `prefix: example
+docs:
+  architecture:
+    sections:
+      body: {drop: true, replaceWith: parts/x.md}
+`)
+	c, _ := Load(p)
+	if err := c.Validate(); err == nil {
+		t.Errorf("expected error: doc section cannot both drop and replaceWith")
+	}
+}
+
 func TestLoadValidConfigSucceeds(t *testing.T) {
 	p := writeTemp(t, `prefix: example
 vars:
