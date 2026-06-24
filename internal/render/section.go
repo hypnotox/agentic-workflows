@@ -8,7 +8,10 @@ type Segment struct {
 	Text      string
 }
 
-var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+) -->\n(.*?)\n<!-- awf:end -->`)
+// The body capture (group 2) is non-greedy; the optional `\n?` before the
+// closing marker absorbs the body's trailing newline so a normal body excludes
+// it, while an empty-body block (markers on consecutive lines) captures "".
+var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+) -->\n(.*?)\n?<!-- awf:end -->`)
 
 // ParseSections splits src into ordered literal and section segments.
 // Marker lines are consumed; a section segment's Text is the inner body.
