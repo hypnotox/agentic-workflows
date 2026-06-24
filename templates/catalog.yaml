@@ -22,8 +22,8 @@ skills:
       - conventions-no-placeholders
       - gate-tier-note
       - conventions-test-first
-      - plan-template-ref
       - procedure-confirm-scope
+      - plan-template-ref
       - procedure-write-plan
       - doc-currency-check
       - self-review
@@ -31,6 +31,7 @@ skills:
       - terminal-step
       - plan-lifecycle
       - plan-resync
+      - notes
   tdd:
     sections: [surfaces, notes]
 agents:

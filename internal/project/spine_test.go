@@ -41,7 +41,6 @@ func TestWritingPlansTemplate(t *testing.T) {
 			"gateCmd":          "./x gate",
 			"gateDuration":     "~2 min",
 			"planTemplatePath": "docs/plans/template.md",
-			"autonomousAdrRef": "",
 		},
 		"data": map[string]any{},
 	}

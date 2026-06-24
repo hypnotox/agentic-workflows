@@ -48,11 +48,11 @@ Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementat
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
-{{ if .vars.planTemplatePath }}2. **Use `{{ .vars.planTemplatePath }}` as the starting shape** for the plan file. The template carries the required header fields and task structure.
+{{ if .vars.planTemplatePath }}1. **Use `{{ .vars.planTemplatePath }}` as the starting shape** for the plan file. The template carries the required header fields and task structure.
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-write-plan -->
-3. **Write the plan file in one go** using `Write`. Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
+1. **Write the plan file in one go** using `Write`. Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
 <!-- awf:end -->
 
 <!-- awf:section doc-currency-check -->
@@ -65,17 +65,19 @@ Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementat
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-4. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the `Skill` tool, passing the plan path. The reviewer runs the lens panel and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
+1. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the `Skill` tool, passing the plan path. The reviewer runs the lens panel and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
 <!-- awf:end -->
 
+## Notes
+
 <!-- awf:section plan-lifecycle -->
+- Plans are mutable while the corresponding ADR is `Proposed` (or while non-ADR implementation is in flight); they freeze when the ADR flips to `Accepted`/`Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
 <!-- awf:end -->
 
 <!-- awf:section plan-resync -->
 <!-- awf:end -->
 
-## Notes
-
-- Plans are mutable while the corresponding ADR is `Proposed` (or while non-ADR implementation is in flight); they freeze when the ADR flips to `Accepted`/`Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
+<!-- awf:section notes -->
 - The plan is the execution record. The design lives in the linked ADR. Do not duplicate design rationale in the plan — link to the ADR instead.
 - Plans stay in the repo permanently after freezing. They are the historical record of how a complex change rolled out.
+<!-- awf:end -->
