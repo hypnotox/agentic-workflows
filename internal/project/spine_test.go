@@ -220,6 +220,57 @@ func TestDebuggingTemplate(t *testing.T) {
 	}
 }
 
+func TestProposingAdrTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"adrDir":               "docs/decisions",
+			"adrTemplatePath":      "docs/decisions/template.md",
+			"adrRegenCmd":          "go test ./internal/adrtools/",
+			"adrReadme":            "docs/decisions/README.md",
+			"workflowDoc":          "docs/workflow.md",
+			"stateDocsPath":        "docs/decisions/state/",
+			"adrProposeCommitFmt":  "docs(adr): propose NNNN <short title>",
+		},
+		"data": map[string]any{
+			"adrTriggers": []string{
+				"new package boundary or top-level directory",
+				"auth or security behaviour change",
+				"non-trivial new dependency",
+				"workflow rule change",
+			},
+			"adrSections": []string{
+				"Context",
+				"Decision",
+				"Invariants",
+				"Consequences",
+				"Alternatives Considered",
+			},
+		},
+	}
+
+	out := renderSkillGolden(t, "proposing-adr", data)
+
+	// Assert frontmatter name line
+	if !strings.Contains(out, "name: example-proposing-adr") {
+		t.Errorf("expected 'name: example-proposing-adr' in output:\n%s", out)
+	}
+
+	// Assert load-bearing phrases unique to proposing-adr
+	loadBearing := []string{
+		"one decision per ADR",
+		"Context",
+		"Consequences",
+		"status: Proposed",
+		"example-reviewing-adr",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestBrainstormingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

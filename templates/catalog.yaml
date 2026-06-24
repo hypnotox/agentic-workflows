@@ -74,6 +74,22 @@ skills:
       - test-isolation
       - oracle-invariant
       - devdb-note
+  proposing-adr:
+    sections:
+      - positioning
+      - when-to-invoke
+      - conventions
+      - procedure-number
+      - procedure-write
+      - state-doc-update
+      - procedure-predecessor-flip
+      - invariants-rule
+      - readme-index-update
+      - procedure-regen
+      - procedure-commit
+      - autonomous-rule
+      - terminal-step
+      - notes
   bugfix:
     sections:
       - test-tiers
