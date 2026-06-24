@@ -10,7 +10,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .vars.workfl
 <!-- awf:end -->
 
 <!-- awf:section per-task-review-note -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — there is no panel backstop in this model, so the whole-branch review absorbs everything per-task review would have caught.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -57,16 +57,16 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 {{ if .vars.hostGitAdrRef }}   **Git runs on the host, never in the container.** `git add` / `git commit` / `git push` run on the host shell only. The container git shim blocks write-mode git inside. (See `{{ .vars.hostGitAdrRef }}`.)
 {{ end }}<!-- awf:end -->
 
-<!-- awf:section per-task-review -->
-1. **After the implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces.{{ if .vars.perTaskReviewAdrRef }} (Convention: `{{ .vars.perTaskReviewAdrRef }}`){{ end }} Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the full session diff; this per-task review is the gate before advancing.
-<!-- awf:end -->
-
 <!-- awf:section procedure-status-handling -->
 1. **Handle the implementer's status:**
-   - **`DONE`** → proceed to per-task review, then the next task.
+   - **`DONE`** → run the per-task review if present, then advance to the next task.
    - **`DONE_WITH_CONCERNS`** → read the concerns before proceeding. If they are about correctness or scope, address them before review. If they are observations, note them and proceed.
    - **`NEEDS_CONTEXT`** → provide the missing context and re-dispatch the implementer.
    - **`BLOCKED`** → assess: context gap → re-dispatch with more context; task too large → escalate; reasoning failure → re-dispatch with a more capable model, or escalate. Never blindly retry without changes.
+<!-- awf:end -->
+
+<!-- awf:section per-task-review -->
+1. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces.{{ if .vars.perTaskReviewAdrRef }} (Convention: `{{ .vars.perTaskReviewAdrRef }}`){{ end }} Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
@@ -74,14 +74,14 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-1. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the full session SHA range, classifies findings, and applies fixes as new commits on top.
+1. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 <!-- awf:end -->
 
 ## Notes
 
 <!-- awf:section notes -->
 - **Sequential dispatch only — never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
-- The whole-branch review at the terminal step covers the full session diff; the per-task review is a lighter gate before advancing to the next task.
+- The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
 - One concern per commit; auto-commit when green.{{ if .vars.keyInvariantAdrRef }}
 - **Project invariants are non-negotiable.** See `{{ .vars.keyInvariantAdrRef }}` for the key invariants that must travel into every dispatched subagent prompt.{{ end }}{{ if .vars.oracleStateDoc }}
 - **The oracle state doc (`{{ .vars.oracleStateDoc }}`) is non-negotiable.** Never adjust expected output to make a test pass. This rule travels into the dispatched prompt verbatim.{{ end }}

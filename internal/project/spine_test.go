@@ -126,7 +126,6 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 			"oracleStateDoc":     "",
 		},
 		"data": map[string]any{},
-		"sections": map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "subagent-driven-development", data)
@@ -142,6 +141,10 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"Sequential dispatch only — never parallel",
 		"fresh context per task",
 		"example-reviewing-impl",
+		"example-executing-plans",
+		"DONE_WITH_CONCERNS",
+		"dispatch one review subagent",
+		"Proposed → Accepted",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
