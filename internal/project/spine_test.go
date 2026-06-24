@@ -10,6 +10,77 @@ import (
 	"agentic-workflows/templates"
 )
 
+func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
+	t.Helper()
+	src, err := fs.ReadFile(templates.FS, "agents/"+name+".md.tmpl")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	out, err := render.Render(string(src), nil, func(string) (string, error) { return "", nil }, data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
+		t.Errorf("markers leaked:\n%s", out)
+	}
+	if strings.Contains(out, "<no value>") {
+		t.Errorf("missing sample data (rendered <no value>):\n%s", out)
+	}
+	if strings.Contains(out, "{{") || strings.Contains(out, "}}") {
+		t.Errorf("unrendered template action:\n%s", out)
+	}
+	return out
+}
+
+func TestAdrReviewerAgent(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"invariantTestPath": "internal/adrtools/invariants_test.go",
+			"activeMdRegenCmd":  "go test ./internal/adrtools/",
+			"activeMdPath":      "docs/decisions/ACTIVE.md",
+			"stateDocsPath":     "docs/decisions/state/",
+		},
+		"data": map[string]any{
+			"focusItems": []map[string]any{
+				{
+					"name":        "context-grounding",
+					"description": "Verify factual claims in the Context section against named files, ADRs, and state docs; flag stale claims and drift since brainstorm.",
+				},
+			},
+			"docCurrencyItems": []map[string]any{
+				{"check": "docs/decisions/state/<domain>.md — state-doc update or creation when ADR shifts a domain"},
+				{"check": "Predecessor status flip when supersedes: is non-empty"},
+				{"check": "docs/workflow.md — update when ADR changes a workflow rule"},
+				{"check": "AGENTS.md — update when ADR changes chain, principles, or invariants"},
+				{"check": "Frontmatter completeness: status, date, supersedes, superseded_by, tags, related"},
+				{"check": "docs/decisions/ACTIVE.md — regenerate when status lands as Accepted or Implemented"},
+			},
+		},
+	}
+
+	out := renderAgentGolden(t, "adr-reviewer", data)
+
+	// Assert frontmatter name line (agents are unprefixed)
+	if !strings.Contains(out, "name: adr-reviewer") {
+		t.Errorf("expected 'name: adr-reviewer' in output:\n%s", out)
+	}
+
+	// Assert shared review-discipline spine phrases
+	loadBearing := []string{
+		"mechanical",
+		"reasoned",
+		"user-decision",
+		"3-round soft cap",
+		"suggested_fix",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, "skills/"+skill+"/SKILL.md.tmpl")

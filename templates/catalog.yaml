@@ -111,6 +111,11 @@ skills:
       - pitfalls-check
       - oracle-note
 agents:
+  adr-reviewer:
+    sections:
+      - universal-lenses
+      - project-focus
+      - doc-currency
   code-reviewer:
     sections: []
 hooks:
