@@ -1,0 +1,8 @@
+skills:
+  tdd:
+    sections: [surfaces, notes]
+agents:
+  - code-reviewer
+hooks:
+  - pre-commit
+  - pre-push
