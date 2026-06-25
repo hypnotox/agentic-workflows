@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [tooling, testing]
-related: [0002]
+related: [0002, 0008]
 ---
 # ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention
 
@@ -66,12 +66,15 @@ decided here.
    dogfoods its own rule), it is unit-testable against fixture profiles, and its
    enforcement logic can carry the `// invariant:` backing comment the `*.go` glob
    requires. The package parses Go's coverprofile format
-   (`file:startLine.col,endLine.col numStmt count`), drops blocks tagged for ignore (see
-   item 3), and reports `Σcovered / Σstatements` over the survivors.
+   (`file:startLine.col,endLine.col numStmt count`) and, because the profile carries no
+   comment text, reads each profiled source file to locate ignore markers; it then drops
+   blocks tagged for ignore (see item 3) and reports `Σcovered / Σstatements` over the
+   survivors.
 
 3. **Establish the `// coverage-ignore: <reason>` convention** as the last-resort escape
-   hatch for genuinely-unreachable defensive branches. A block whose statement's line (or
-   the line immediately above it) carries the marker is dropped from **both** numerator
+   hatch for genuinely-unreachable defensive branches. A block whose start line (the
+   `startLine` the profile reports for that block) — or the source line immediately above
+   that start line — carries the marker is dropped from **both** numerator
    and denominator — an ignored line neither inflates nor deflates the total. The reason
    is **mandatory**: a bare `// coverage-ignore` with no non-empty reason fails the
    checker. Use is audited at `awf-reviewing-impl`; the marker is greppable so every use
@@ -135,8 +138,12 @@ Ruled out (for now):
 Downstream work unblocked: an implementation plan covering — build `internal/coverage` +
 `cmd/covercheck` with its own tests, wire it into `./x gate`, refactor the `cmd/awf`
 entrypoint into the `run()` seam, then drive every package to 100% via fixture tests. When
-this ADR flips to Implemented, the same commit backs the tagged invariant slugs and
-regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+this ADR flips to Implemented, the same commit backs the tagged invariant slugs,
+records the 100% gate and the `// coverage-ignore: <reason>` escape hatch in `AGENTS.md`
+(the repo-local agent guide — not the rendered standard, which is out of scope here) so
+contributors know the convention exists and how to use it, and regenerates
+`docs/decisions/ACTIVE.md` via `./x sync`. No `docs/decisions/README.md` index row is
+owed (this repo's README is a how-to guide; `ACTIVE.md` is the generated index).
 
 ## Alternatives Considered
 
