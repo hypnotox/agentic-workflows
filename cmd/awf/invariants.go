@@ -20,7 +20,7 @@ func runInvariants(root string) error {
 		return nil
 	}
 	for _, f := range findings {
-		fmt.Printf("  %s — invariant %q has no backing // invariant: test\n", f.ADR, f.Slug)
+		fmt.Printf("  %s — invariant %q has no backing `// invariant: <slug>` test\n", f.ADR, f.Slug)
 	}
 	return fmt.Errorf("awf invariants: %d unbacked invariant(s)", len(findings))
 }
