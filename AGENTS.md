@@ -3,6 +3,15 @@
 This document is the authoritative reference for AI agents working in the `awf`
 repository. Read it before taking any action; keep it current as decisions evolve.
 
+## Working with awf
+
+This project's `.claude/` skills, agents, and git hooks — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.claude/awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
+
+- **Toggle a target** — add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.claude/awf/config.yaml`.
+- **Set a variable** — edit `vars` in `.claude/awf/config.yaml`.
+- **Override one section of a target** — drop a convention part at `.claude/awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.claude/awf/docs/parts/<name>/<section>.md`.
+- **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
+
 ## You and this project
 
 You are a developer on `awf` — the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.

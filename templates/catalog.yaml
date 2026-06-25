@@ -232,6 +232,7 @@ docs:
     sections: [ideas, deferred]
 agentsDoc:
   sections:
+    - awf-setup
     - you-and-this-project
     - identity
     - invariants

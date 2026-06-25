@@ -124,9 +124,9 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:04ba3dda46efccb8a59e9c7725992294e062c422e21f7850dfc9e18356165470",
+      "templateHash": "sha256:5e59b3465c0e5f7e850101bdd95fb8cf438f0c0fbf59382224ef071b126e1d88",
       "configHash": "sha256:02fe65be3938e7291ce0b05f2ab417a30385522be35e587721087329fe808fa7",
-      "outputHash": "sha256:4d8793c2a2d2913425e5cee696411434590e732857d6f94b7ffde523360fa766"
+      "outputHash": "sha256:4d39a0f6db29cf59b3615428599dc91325046dff6dfe0a4d4242d2e870b39495"
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
