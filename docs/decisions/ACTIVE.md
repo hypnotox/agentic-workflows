@@ -3,6 +3,7 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
+- [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](0007-invariant-backing-tooling.md) — Accepted
 
 ## Implemented
 
@@ -11,7 +12,3 @@
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](0004-agents-md-template-and-docs-module.md) — Implemented
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](0005-docsdir-layout-and-builtin-active-md.md) — Implemented
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](0006-frontmatter-parser-and-skill-validation.md) — Implemented
-
-## Proposed
-
-- [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](0007-invariant-backing-tooling.md) — Proposed
