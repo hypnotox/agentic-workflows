@@ -124,7 +124,29 @@ func (p *Project) data(sc config.SkillConfig) map[string]any {
 		"prefix": p.Cfg.Prefix,
 		"vars":   nonNil(p.Cfg.Vars),
 		"data":   nonNil(sc.Data),
+		"layout": p.layout(),
 	}
+}
+
+// layout returns the fixed, awf-given docs layout derived from cfg.DocsDir.
+// These paths are exposed to templates under the .layout namespace; they are
+// not configurable through vars.
+func (p *Project) layout() map[string]any {
+	d := strings.TrimRight(p.Cfg.DocsDir, "/")
+	dec := d + "/decisions"
+	return map[string]any{
+		"docsDir":     d,
+		"adrDir":      dec,
+		"activeMd":    dec + "/ACTIVE.md",
+		"adrReadme":   dec + "/README.md",
+		"adrTemplate": dec + "/template.md",
+		"plansDir":    d + "/plans",
+	}
+}
+
+// docOutPath is the output path for a managed doc, rooted at docsDir.
+func (p *Project) docOutPath(name string) string {
+	return strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + name + ".md"
 }
 
 // resolvedDocs builds the Document-map entries for the agents-doc template from
@@ -140,7 +162,7 @@ func (p *Project) resolvedDocs() []map[string]any {
 			"name":  name,
 			"title": spec.Title,
 			"desc":  spec.Desc,
-			"path":  "docs/" + name + ".md",
+			"path":  p.docOutPath(name),
 		})
 	}
 	return out
@@ -230,7 +252,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			continue
 		}
 		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
-		rf, err := p.renderTemplate(tid, dc.Sections, p.data(dc), "docs/"+name+".md")
+		rf, err := p.renderTemplate(tid, dc.Sections, p.data(dc), p.docOutPath(name))
 		if err != nil {
 			return nil, err
 		}

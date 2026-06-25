@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/manifest"
 )
 
@@ -555,5 +556,26 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	// The parent directory should also be gone (R5: prune empty skill dirs).
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
 		t.Errorf("skill directory %s should have been pruned when empty", skillDir)
+	}
+}
+
+func TestLayoutDerivesFromDocsDir(t *testing.T) {
+	p := &Project{Cfg: &config.Config{DocsDir: "documentation"}}
+	l := p.layout()
+	want := map[string]string{
+		"docsDir":     "documentation",
+		"adrDir":      "documentation/decisions",
+		"activeMd":    "documentation/decisions/ACTIVE.md",
+		"adrReadme":   "documentation/decisions/README.md",
+		"adrTemplate": "documentation/decisions/template.md",
+		"plansDir":    "documentation/plans",
+	}
+	for k, v := range want {
+		if got := l[k]; got != v {
+			t.Errorf("layout[%q] = %v, want %q", k, got, v)
+		}
+	}
+	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
+		t.Errorf("docOutPath = %q, want documentation/architecture.md", got)
 	}
 }
