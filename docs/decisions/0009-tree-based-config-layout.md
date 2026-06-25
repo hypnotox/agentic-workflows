@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [tooling, schema]
-related: [0001, 0005, 0006, 0008]
+related: [0001, 0005, 0006, 0007, 0008]
 ---
 # ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root
 
@@ -145,10 +145,19 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    > sidecar `drop` > sidecar explicit `replaceWith` > convention part file > template default
 
    Convention-part resolution is a distinct precedence tier evaluated in section
-   assembly: the project layer (which knows kind/target and can stat the tree)
-   supplies the convention lookup to `render.Assemble`. Explicit `replaceWith` in a
-   sidecar remains an escape hatch for pointing at a non-conventional path and wins
-   over the convention file; `drop` still wins over both.
+   assembly. `render.Assemble`'s `PartFunc` is today a flat `func(name string)
+   (string, error)` with no per-section kind/target context (`render.go:12`,
+   `project.go:119-124`), so the convention lookup is owned by the project layer
+   (which alone knows kind/target and can stat the tree). The chosen, lower-churn
+   shape: the project layer pre-computes the per-section override map it passes to
+   `Assemble`, injecting a synthetic `SectionOverride{ReplaceWith: <convention
+   path>}` for any section whose convention part exists and that the sidecar did not
+   already `drop` or explicitly `replaceWith`. This reuses the existing
+   `replaceWith` tier in `Assemble`'s switch (`render.go:24-35`) without adding an
+   `Assemble` parameter, while preserving the four-tier ordering. Explicit
+   `replaceWith` in a sidecar remains an escape hatch for pointing at a
+   non-conventional path and wins over the convention file (the project layer skips
+   injection when the sidecar already set the section); `drop` still wins over both.
 
 5. **`local` lives in the sidecar and local targets are now frontmatter-checked.** A
    local target is named in its kind's enable list and carries `local: true` in its
@@ -156,7 +165,13 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    from catalog validation and from awf rendering (they are project-authored, not
    catalog-rendered). **New:** `sync` and `check` validate a declared local
    skill's/agent's hand-authored frontmatter at the conventional output path awf
-   would otherwise render it to, reusing `validateFrontmatter`; a local target whose
+   would otherwise render it to, reusing `validateFrontmatter`. Because local targets
+   are skipped from `RenderAll` they have no `RenderedFile`, so the output path is
+   derived *structurally* from `prefix`+`name` by a shared helper — skill:
+   `.claude/skills/<prefix>-<name>/SKILL.md`; agent: `.claude/agents/<name>.md` (the
+   same formulas `RenderAll` uses, `project.go:255,269`) — without invoking the
+   template. `sync`/`check` read that on-disk file and run `validateFrontmatter` on it;
+   a local target whose
    on-disk file has missing/empty `name`/`description` fails with the same
    `invalid-frontmatter` signal as a rendered target (ADR-0006). A declared local
    target with no file at that path is a `check`/`sync` error.
@@ -174,11 +189,16 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
 
 7. **agentsDoc is re-modelled as a docs-kind target `agents-doc` with prose in
    parts.** `templates/agents-doc/AGENTS.md.tmpl` is restructured so the
-   `you-and-this-project` and `identity` section **bodies** carry their prose
-   directly (a generic, publication-safe default), replacing the
-   `{{ with .data.ownership }}` / `{{ with .data.identity }}` scalar indirection;
-   the `ownership` and `identity` data scalars are removed. A project overrides that
-   prose via convention parts at `.claude/awf/docs/parts/agents-doc/{you-and-this-project,identity}.md`.
+   `you-and-this-project` and `identity` section **bodies** carry **generic,
+   adopter-neutral** prose directly (publication-safe, with no awf-specific content),
+   replacing the `{{ with .data.ownership }}` / `{{ with .data.identity }}` scalar
+   indirection; the `ownership` and `identity` data scalars are removed. A project
+   overrides that prose via convention parts at
+   `.claude/awf/docs/parts/agents-doc/{you-and-this-project,identity}.md`. This repo's
+   own specific identity/ownership prose (currently `agentsDoc.data.{ownership,identity}`
+   in `.claude/awf.yaml`) therefore moves into those convention parts, so the
+   byte-identical-output invariant below depends on those parts existing for the
+   dogfood port.
    The `invariants[]` and `docMap[]` structured data stay as `data` in
    `.claude/awf/docs/agents-doc.yaml`. agentsDoc's always-on rendering to the
    repo-root `AGENTS.md` (not under `docsDir`) is unchanged; only its config home and
@@ -259,6 +279,18 @@ Harder / accepted trade-offs:
   assembly; `config.Load`'s signature/shape and `config.Validate` must account for
   sidecars (validating a sidecar's section names against the catalog, reporting which
   file an error came from). Bounded and covered by tests.
+- The `map[string]SkillConfig` → `[]string` change breaks every map-iterating call
+  site that reads a target's `Local`/`Sections`/`Data` directly off the map value;
+  each must now recover those from a sidecar lookup keyed by enable-list name:
+  `validateAgainstCatalog` (reads `sc.Local`/`sc.Sections`, `project.go:57-117`),
+  `RenderAll` (reads `sc.Local`/`sc.Sections`/`sc.Data`, `project.go:245-309`),
+  `resolvedDocs` (reads `Docs[name].Local`, `project.go:158-173`), and
+  `Config.Validate`→`checkSections` (reads `sc.Sections`, `config.go:84-98`).
+  `runList`'s map-membership test (`sc, ok := p.Cfg.Skills[n]`, `list_add.go:42`)
+  becomes a slice-membership test plus a sidecar load, and `skillState`'s signature
+  changes from `(config.SkillConfig, bool)` to take a name plus a loaded sidecar (or
+  nil) so its `tuned` detection reads `data`/`sections` from the sidecar. Compile-time
+  breakage; covered by tests.
 - Drift detection must compose a multi-file source set per rendered file; mis-scoping
   it would either miss edits or over-flag. Mitigated by tests covering "edit a
   sidecar", "edit a part", "orphan sidecar/part", and "byte-identical after port".
@@ -280,7 +312,11 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   branches, sidecars, convention parts) and the relocated lock.
 - `AGENTS.md`'s "`awf check` is the drift oracle" invariant text and any reference to
   `.claude/awf.yaml` update to the `.claude/awf/config.yaml` path and the broadened
-  source set; re-rendered from the ported config.
+  source set. That text lives in the agents-doc invariants data (today
+  `agentsDoc.data.invariants` in `.claude/awf.yaml`, relocating to
+  `.claude/awf/docs/agents-doc.yaml`'s `data.invariants`); edit the `.claude/awf.yaml`
+  reference there and the publication-safe invariant's "`awf check` after any sync"
+  phrasing if affected, then re-render from the ported config.
 - When this ADR flips to Accepted/Implemented, the same commit regenerates `ACTIVE.md`
   via `./x sync`. No `docs/decisions/README.md` index row is owed (this repo's README
   is a how-to guide; `ACTIVE.md` is the generated index — ADR-0005).
