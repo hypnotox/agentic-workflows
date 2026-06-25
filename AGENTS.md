@@ -23,6 +23,7 @@ Hard rules every change must respect:
 - **Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify. (ADR-0001)
 - **`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
+- **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
 
 ## Workflow
 
