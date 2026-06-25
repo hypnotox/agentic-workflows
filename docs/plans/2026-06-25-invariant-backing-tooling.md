@@ -49,7 +49,7 @@ fails.
 | `frontmatter-split` | 0006 | `TestSplitWellFormed` + `TestSplitNoFrontmatter` (frontmatter_test.go) |
 | `render-active-md` | 0006 | `TestRenderActiveMDGroupsByStatus` + `TestRenderActiveMDEmptyWhenNoADRs` (adr_test.go) |
 | `check-invalid-frontmatter` | 0006 | `TestCheckDetectsInvalidFrontmatter` (project_test.go) |
-| `templates-valid-frontmatter` | 0006 | `TestAllTemplatesProduceValidFrontmatter` (frontmatter_test.go) |
+| `templates-valid-frontmatter` | 0006 | `TestAllTemplatesProduceValidFrontmatter` (internal/project/frontmatter_test.go) |
 
 ---
 
