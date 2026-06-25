@@ -3,10 +3,10 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](0005-docsdir-layout-and-builtin-active-md.md) — Accepted
 
 ## Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](0002-static-linting-and-x-command-runner.md) — Implemented
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Implemented
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](0004-agents-md-template-and-docs-module.md) — Implemented
+- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](0005-docsdir-layout-and-builtin-active-md.md) — Implemented
