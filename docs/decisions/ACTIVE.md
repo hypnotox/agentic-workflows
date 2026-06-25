@@ -3,7 +3,6 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](0009-tree-based-config-layout.md) — Accepted
 
 ## Implemented
 
@@ -17,4 +16,5 @@
 
 ## Proposed
 
+- [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](0009-tree-based-config-layout.md) — Proposed
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](0010-versioned-lock-and-awf-upgrade.md) — Proposed

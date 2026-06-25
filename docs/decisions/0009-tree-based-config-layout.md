@@ -1,10 +1,10 @@
 ---
-status: Accepted
+status: Proposed
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [tooling, schema]
-related: [0001, 0005, 0006, 0007, 0008]
+related: [0001, 0005, 0006, 0007, 0008, 0010]
 ---
 # ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root
 
@@ -98,8 +98,10 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
 ## Decision
 
 1. **`.claude/awf/` is the single config root.** Configuration loads from
-   `.claude/awf/config.yaml`; the lock lives at `.claude/awf/awf.lock`. The legacy
-   `.claude/awf.yaml` and `.claude/awf.lock` paths are no longer read or written.
+   `.claude/awf/config.yaml`; the lock lives at `.claude/awf/awf.lock`. No normal
+   load/render/sync/check path reads or writes the legacy `.claude/awf.yaml` or
+   `.claude/awf.lock`; the sole exception is the `internal/migrate` package under
+   `awf upgrade`, which reads the legacy file once to port it forward (ADR-0010).
    Per-kind branches `skills/`, `agents/`, `docs/` live directly under
    `.claude/awf/`, each containing optional `<target>.yaml` sidecars and a local
    `parts/<target>/<section>.md` convention directory. Concretely:
@@ -247,8 +249,10 @@ backed by tests landing with implementation (enforced by `awf check` once this A
 is `Implemented`; ADR-0008); untagged bullets are textual contracts.
 
 - `inv: config-root` — Config loads from `.claude/awf/config.yaml` and the lock is
-  written to/read from `.claude/awf/awf.lock`; no code path reads or writes
-  `.claude/awf.yaml` or `.claude/awf.lock`.
+  written to/read from `.claude/awf/awf.lock`; no normal load/render/sync/check path
+  reads or writes `.claude/awf.yaml` or `.claude/awf.lock`. The `internal/migrate`
+  package under `awf upgrade` is the single named exception, reading the legacy file
+  only to port it forward (ADR-0010 `inv: legacy-read-isolation`).
 - `inv: enable-arrays` — `config.Config.Skills`/`Agents`/`Docs` are string arrays
   whose entries enable targets by presence; a `data:`, `sections:`, or `local:` key
   at the root of `config.yaml` is rejected at load (`KnownFields(true)`).
