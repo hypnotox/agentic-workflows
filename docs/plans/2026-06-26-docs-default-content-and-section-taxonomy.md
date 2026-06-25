@@ -674,7 +674,9 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   `<!-- awf:section you-and-this-project -->`.)
 
 - [ ] **Task 5.2 — Add `awf-setup` to `agentsDoc.sections` in `templates/catalog.yaml`.**
-  Replace:
+  `agentsDoc.sections` already holds six entries (`you-and-this-project`, `identity`,
+  `invariants`, `workflow`, `commands`, `document-map`); insert `awf-setup` as the new first
+  list item, leaving the rest in place. Replace the three lines:
   ```
   agentsDoc:
     sections:
@@ -687,6 +689,8 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
       - awf-setup
       - you-and-this-project
   ```
+  (The `- you-and-this-project` line is the first under `agentsDoc.sections:`; the remaining five
+  entries follow unchanged.)
 
 - [ ] **Task 5.3 — Re-sync and verify.**
   ```
