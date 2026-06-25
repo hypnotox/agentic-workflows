@@ -91,27 +91,53 @@ the tool version), an **ordered migration registry** (not a one-off), and **both
    `internal/migrate` (not via `config.Load`, which now reads the new path). Legacy
    layout is detected by `.claude/awf.yaml` existing while `.claude/awf/config.yaml`
    does not. This legacy read is performed **only** by the migrate registry, **only**
-   under `awf upgrade` — never by any render/sync/check load path. This **refines**
-   (does not reverse) ADR-0009 Decision 1 / `inv: config-root`: that invariant's
-   backing test asserts no *normal load/render* path touches the legacy path, with the
-   migrate package as the single named exception. ADR-0009 stays `Accepted`; this ADR
-   `relates` to it.
+   under `awf upgrade` — never by any render/sync/check load path. ADR-0009
+   `inv: config-root` is worded absolutely ("no code path reads or writes
+   `.claude/awf.yaml`"), so introducing a migrate-package reader **narrows that wording**:
+   the operative contract becomes "no *normal load/render/sync/check* path reads the legacy
+   path, with `internal/migrate` under `awf upgrade` as the single named exception." This
+   ADR does **not** edit ADR-0009's file, its Decision text, or its `inv: config-root`
+   slug; ADR-0009 stays `Accepted` and this ADR `relates` to it. The reinterpretation is
+   carried entirely by the **shared backing test**, which this ADR's `inv:
+   legacy-read-isolation` and ADR-0009's `inv: config-root` co-own and which is authored to
+   permit exactly the migrate package (Consequences). Whether refining a frozen Accepted
+   ADR's absolute invariant via its backing test (rather than amending ADR-0009 explicitly)
+   is acceptable is an open escalation — see the user-decision in the digest.
 
-4. **`awf sync` and `awf check` hard-fail when the schema is behind.** Before the
-   normal open/render path, each determines the project's effective generation: if the
-   legacy layout is detected, or the loaded lock's `schemaVersion` is below current,
-   and a registered migration covers the gap (item 5), the command exits non-zero with
-   a message naming the gap and instructing `run awf upgrade`. Because the pre-commit
-   hook runs `awf check`, a stale layout blocks commits until upgraded. A project
-   already at the current schema (a fresh `awf init`, or a just-upgraded project) never
-   gates.
+4. **The gate lives in `runSync`/`runCheck` (cmd/awf), ahead of `project.Open`, and
+   hard-fails when the schema is behind.** The check **cannot** live in `project.Sync`/
+   `project.Check`: those are methods on an already-opened `*Project`, and `project.Open`
+   (`project.go:38-39`) calls `config.Load` on the post-ADR-0009 path and so cannot open
+   a legacy single-file project — by the time `Sync`/`Check` run, a stale-layout project
+   has already failed to open. The gate therefore runs in the `cmd/awf` handlers
+   (`runSync`, `runCheck`) **before** `project.Open`, keyed on filesystem/lock state. Each
+   handler determines the project's **effective generation** — `0` if the legacy layout is
+   detected (`.claude/awf.yaml` exists and `.claude/awf/config.yaml` does not), else the
+   loaded lock's `schemaVersion`. **Gate predicate:** if the effective generation is below
+   current **and at least one** registered migration has a `To` in the open interval
+   `(generation, current]`, the command exits non-zero with a message naming the gap and
+   instructing `run awf upgrade`. Because the pre-commit hook runs `awf check`, a stale
+   layout blocks commits until upgraded. A project already at the current schema (a fresh
+   `awf init`, or a just-upgraded project) never gates.
 
-5. **A schema gap with no registered migration auto-bumps on sync.** If the effective
-   generation is below current but **no** registered migration has a `To` in the open
-   gap (i.e. the version range was reserved without a file transformation), `sync` does
-   not gate: it silently writes the lock at the current schema version. This keeps
-   format-version bumps that need no on-disk change frictionless, per the user's
-   "automatically upgrade the lock file version with the next sync."
+5. **A schema gap covered by *no* registered migration auto-bumps on sync.** If the
+   effective generation is below current but **no** registered migration has a `To` in the
+   open interval `(generation, current]` (i.e. the whole gap is reserved version numbers
+   with no file transformation), `sync` does not gate: it writes the lock at the current
+   schema version (Decision 1 already has `Sync` stamp the current version into every lock
+   it writes, so the bump is implicit once the gate passes). Auto-bump presupposes the new
+   layout already loads — a legacy-layout project (generation `0`) always has the
+   `tree-layout` migration (`To: 1`) in its gap, so it gates and never auto-bumps; only a
+   project whose tree already loads but whose lock records a reserved-but-empty older
+   generation auto-bumps. The gate (item 4) and auto-bump are therefore mutually exclusive
+   on the same project at the same time: a single predicate ("does any migration cover the
+   open interval?") routes to exactly one of gate-or-bump. This keeps format-version bumps
+   that need no on-disk change frictionless, per the user's "automatically upgrade the lock
+   file version with the next sync." When a gap mixes reserved and transforming versions
+   (e.g. migrations for `To:1` and `To:3` exist but not `To:2`, generation `0`), the
+   predicate is satisfied by the `To:1`/`To:3` migrations, so the project **gates**;
+   `awf upgrade` then runs every covering migration in ascending order and writes the lock
+   at `3`, carrying the project past the reserved `To:2` in one pass (`inv: migration-ordering`).
 
 6. **A new `upgrade` subcommand.** `cmd/awf` gains `case "upgrade": runUpgrade(cwd)`.
    `runUpgrade` runs the registry from the detected generation, prints each applied
@@ -138,19 +164,22 @@ by tests landing with implementation (enforced by `awf check` once this ADR is
   lock written by `Sync` has `schemaVersion` equal to the current schema version (the
   highest registered migration `To`), and `AWFVersion` remains an independent tool
   release string.
-- `inv: upgrade-gate` — `awf sync` and `awf check` exit non-zero with a "run
-  `awf upgrade`" message when the project's effective generation (legacy layout, or
-  `lock.schemaVersion`) is below current **and** a registered migration covers the gap;
-  a project at the current schema does not gate.
+- `inv: upgrade-gate` — `awf sync` and `awf check` (in their `cmd/awf` handlers, before
+  `project.Open`) exit non-zero with a "run `awf upgrade`" message when the project's
+  effective generation (legacy layout → `0`, else `lock.schemaVersion`) is below current
+  **and at least one** registered migration has a `To` in the open interval
+  `(generation, current]`; a project at the current schema does not gate.
 - `inv: migration-ordering` — `awf upgrade` applies exactly the registered migrations
   with `To` greater than the detected generation, in ascending `To` order, and is
   idempotent: re-running at the current schema applies nothing and exits zero.
 - `inv: legacy-read-isolation` — The legacy `.claude/awf.yaml` is read only by the
   `internal/migrate` registry under `awf upgrade`; no `config.Load`/render/`Sync`/`Check`
   path reads it (the named exemption to ADR-0009 `inv: config-root`).
-- `inv: noop-autobump` — When the effective generation is below current but no
-  registered migration covers the gap, `awf sync` writes the lock at the current schema
-  version without gating and without error.
+- `inv: noop-autobump` — When the effective generation is below current but **no**
+  registered migration has a `To` in the open interval `(generation, current]`, `awf sync`
+  writes the lock at the current schema version without gating and without error. (This
+  case only arises for a project whose tree layout already loads; a legacy-layout project
+  always has the `tree-layout` migration in its gap and gates instead.)
 - An older lock lacking `schemaVersion` unmarshals to generation `0` and is treated as
   legacy, not as a parse error.
 
@@ -171,12 +200,20 @@ Harder / accepted trade-offs:
   the `tree-layout` migration can keep parsing legacy files. That snapshot is a
   standing maintenance cost (it must not drift toward the live config structs) until a
   future ADR drops generation-0 support.
-- `Sync` and `Check` gain a pre-flight generation check ahead of their normal path; the
-  `Check` gate must distinguish "behind with a covering migration" (gate) from "behind
-  but no covering migration" (auto-bump on sync) so it does not falsely block.
-- The ADR-0009 `inv: config-root` backing test must encode the migrate-package
-  exemption, so the two invariants (`config-root`, `legacy-read-isolation`) are written
-  to agree.
+- The `runSync`/`runCheck` handlers in `cmd/awf` gain a pre-flight generation check
+  ahead of `project.Open` (it cannot live in `project.Sync`/`Check`, which run on an
+  already-opened project — Decision 4); the gate must distinguish "behind with a covering
+  migration" (gate) from "behind but no covering migration" (auto-bump on sync) so it does
+  not falsely block. The auto-bump branch's lock write is performed by `project.Sync`'s
+  normal stamping (Decision 1), so its rendered output still passes the publication-safe
+  `<no value>` check (`renderTemplate`, ADR-0001); the migration's terminal `sync`
+  (Decision 6) likewise re-renders, so a botched `tree-layout` transformation surfaces as a
+  render/frontmatter failure rather than a silent bad lock.
+- The ADR-0009 `inv: config-root` backing test (a `.go` test, per `invariants.sources`)
+  must encode the migrate-package exemption, so the two invariants (`config-root`,
+  `legacy-read-isolation`) are written to agree. This edits the *test*, not ADR-0009's
+  file or invariant slug — but it does change the enforced meaning of an Accepted ADR's
+  absolute invariant, which is the escalation flagged in Decision 3.
 - Schema version is a second versioning axis beside `AWFVersion`; contributors must
   learn that a breaking *format* change bumps the registry (a new migration), not the
   tool semver.
