@@ -9,11 +9,11 @@ import (
 // invariant: invariants-in-check
 func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	yaml := "prefix: example\ninvariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\nskills: {}\nagents: {}\nhooks: []\n"
-	if err := os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte(yaml), 0o644); err != nil {
+	yaml := "prefix: example\ninvariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\nskills: []\nagents: []\nhooks: []\n"
+	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte(yaml), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := runSync(root); err != nil {

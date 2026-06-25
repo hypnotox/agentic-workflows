@@ -1,4 +1,4 @@
-// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .claude/awf.yaml.
+// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .claude/awf/ config tree.
 package main
 
 import (
@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -45,7 +46,7 @@ func main() {
 }
 
 func runInit(root string) error {
-	cfgPath := filepath.Join(root, ".claude", "awf.yaml")
+	cfgPath := filepath.Join(root, ".claude", "awf", "config.yaml")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
 			return err
@@ -68,7 +69,22 @@ func runInit(root string) error {
 	return nil
 }
 
+// gate refuses to operate against a stale config layout. It runs before
+// project.Open (which cannot open a pre-tree project): on a covered schema gap it
+// errors with a "run awf upgrade" message; an uncovered gap ("autobump") proceeds
+// and the subsequent sync stamps the current schema version.
+func gate(root string) error {
+	if migrate.GateState(root) == "gate" {
+		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade",
+			migrate.Generation(root), migrate.Current())
+	}
+	return nil
+}
+
 func runSync(root string) error {
+	if err := gate(root); err != nil {
+		return err
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err

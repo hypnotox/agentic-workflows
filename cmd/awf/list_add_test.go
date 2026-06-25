@@ -9,9 +9,10 @@ import (
 
 func TestRunAddAppendsAndRejects(t *testing.T) {
 	root := t.TempDir()
-	_ = os.MkdirAll(filepath.Join(root, ".claude"), 0o755)
-	_ = os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"),
-		[]byte("prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: {}\nagents: {}\nhooks: []\n"), 0o644)
+	awf := filepath.Join(root, ".claude", "awf")
+	_ = os.MkdirAll(awf, 0o755)
+	_ = os.WriteFile(filepath.Join(awf, "config.yaml"),
+		[]byte("prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\nhooks: []\n"), 0o644)
 
 	if err := runAdd(root, "no-such-skill"); err == nil {
 		t.Errorf("expected error adding unknown skill")
@@ -19,8 +20,8 @@ func TestRunAddAppendsAndRejects(t *testing.T) {
 	if err := runAdd(root, "tdd"); err != nil {
 		t.Fatalf("runAdd tdd: %v", err)
 	}
-	b, _ := os.ReadFile(filepath.Join(root, ".claude", "awf.yaml"))
-	if !strings.Contains(string(b), "tdd:") {
+	b, _ := os.ReadFile(filepath.Join(awf, "config.yaml"))
+	if !strings.Contains(string(b), "- tdd") {
 		t.Errorf("tdd not appended:\n%s", b)
 	}
 	if err := runAdd(root, "tdd"); err == nil {

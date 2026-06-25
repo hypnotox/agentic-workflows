@@ -7,6 +7,9 @@ import (
 )
 
 func runCheck(root string) error {
+	if err := gate(root); err != nil {
+		return err
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err

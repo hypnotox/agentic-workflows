@@ -17,14 +17,14 @@ func TestRunInitScaffoldsAndSyncs(t *testing.T) {
 	if err := runInit(proj); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
-	cfg, err := os.ReadFile(filepath.Join(proj, ".claude", "awf.yaml"))
+	cfg, err := os.ReadFile(filepath.Join(proj, ".claude", "awf", "config.yaml"))
 	if err != nil {
 		t.Fatalf("config not scaffolded: %v", err)
 	}
 	if !containsLine(string(cfg), "prefix: acme") {
 		t.Errorf("scaffold prefix wrong:\n%s", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(proj, ".claude", "awf.lock")); err != nil {
+	if _, err := os.Stat(filepath.Join(proj, ".claude", "awf", "awf.lock")); err != nil {
 		t.Errorf("lock not written: %v", err)
 	}
 }

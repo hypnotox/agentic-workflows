@@ -10,11 +10,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// ScaffoldConfig generates the bytes of a .claude/awf.yaml that enables every
-// skill, agent, and hook in the embedded catalog and pre-populates the vars
-// block with the union of all {{ .vars.X }} names referenced by those templates.
-// Each var is seeded with an empty string so that strict render (missingkey=zero
-// + <no value> check) does not fail on sync.
+// ScaffoldConfig generates the bytes of a .claude/awf/config.yaml that enables
+// every skill, agent, and hook in the embedded catalog (as flat name arrays) and
+// pre-populates the vars block with the union of all {{ .vars.X }} names
+// referenced by those templates. Each var is seeded with an empty string so that
+// strict render (missingkey=zero + <no value> check) does not fail on sync.
 func ScaffoldConfig(prefix string) ([]byte, error) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil {
@@ -76,16 +76,16 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 
 	b.WriteString("skills:\n")
 	for _, name := range skillNames {
-		b.WriteString("  ")
+		b.WriteString("  - ")
 		b.WriteString(name)
-		b.WriteString(": {}\n")
+		b.WriteString("\n")
 	}
 
 	b.WriteString("agents:\n")
 	for _, name := range agentNames {
-		b.WriteString("  ")
+		b.WriteString("  - ")
 		b.WriteString(name)
-		b.WriteString(": {}\n")
+		b.WriteString("\n")
 	}
 
 	b.WriteString("hooks:\n")

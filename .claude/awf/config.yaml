@@ -1,0 +1,55 @@
+agents:
+    - adr-reviewer
+    - code-reviewer
+    - plan-reviewer
+docs:
+    - architecture
+hooks:
+    - pre-commit
+    - pre-push
+invariants:
+    disabled: false
+    sources:
+        - globs:
+            - '*.go'
+          marker: //
+prefix: awf
+skills:
+    - adr-lifecycle
+    - brainstorming
+    - bugfix
+    - debugging
+    - executing-plans
+    - proposing-adr
+    - refactor-coupling-audit
+    - reviewing-adr
+    - reviewing-impl
+    - reviewing-plan
+    - reviewing-plan-resync
+    - roadmap-graduation
+    - subagent-driven-development
+    - tdd
+    - writing-plans
+vars:
+    activeMdRegenCmd: ./x sync
+    adrProposeCommitFmt: 'docs(adr): propose NNNN <short title>'
+    autonomousAdrRef: ""
+    checkCmd: ./x check
+    commitScope: awf
+    debuggingDoc: ""
+    docCurrencyTargets: AGENTS.md, docs/decisions/README.md
+    gateCmd: ./x gate
+    gateCmdFull: ./x gate full
+    gateDuration: ~15s
+    hostGitAdrRef: ""
+    invariantTestPath: ""
+    keyInvariantAdrRef: ""
+    modulePrefix: github.com/hypnotox/agentic-workflows
+    noDivingAdrRef: ""
+    oracleStateDoc: ""
+    perTaskReviewAdrRef: ""
+    pitfallsDoc: ""
+    roadmapDoc: ""
+    stateDocsPath: ""
+    testCmd: go test ./...
+    workflowDoc: AGENTS.md

@@ -16,8 +16,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
+
+	"gopkg.in/yaml.v3"
 )
 
 const Version = "0.1.0"
@@ -27,6 +30,7 @@ type RenderedFile struct {
 	Content      string
 	TemplateID   string
 	TemplateHash string
+	ConfigHash   string
 }
 
 type Project struct {
@@ -36,7 +40,7 @@ type Project struct {
 }
 
 func Open(root string) (*Project, error) {
-	cfg, err := config.Load(filepath.Join(root, ".claude", "awf.yaml"))
+	cfg, err := config.Load(filepath.Join(root, ".claude", "awf"))
 	if err != nil {
 		return nil, err
 	}
@@ -54,36 +58,47 @@ func Open(root string) (*Project, error) {
 	return p, nil
 }
 
+// validateAgainstCatalog checks that every enabled non-local target is in the
+// catalog and that its sidecar's section overrides name declared sections.
 func (p *Project) validateAgainstCatalog() error {
-	// Check non-local skills against catalog.
-	for _, name := range sortedKeys(p.Cfg.Skills) {
-		sc := p.Cfg.Skills[name]
-		if sc.Local {
-			continue
+	checkKind := func(kind string, names []string, specs func(string) ([]string, bool)) error {
+		for _, name := range names {
+			sc, err := p.Cfg.Sidecar(kind, name)
+			if err != nil {
+				return err
+			}
+			if sc.Local {
+				continue
+			}
+			declared, ok := specs(name)
+			if !ok {
+				return fmt.Errorf("%s %q is not in the catalog", strings.TrimSuffix(kind, "s"), name)
+			}
+			if err := checkSectionsAllowed(kind, name, declared, sc.Sections); err != nil {
+				return err
+			}
 		}
-		spec, ok := p.Cat.Skills[name]
-		if !ok {
-			return fmt.Errorf("skill %q is not in the catalog", name)
-		}
-		if err := checkSectionsAllowed("skill", name, spec.Sections, sc.Sections); err != nil {
-			return err
-		}
+		return nil
 	}
-	// Check agents against catalog.
-	for _, a := range sortedKeys(p.Cfg.Agents) {
-		ac := p.Cfg.Agents[a]
-		if ac.Local {
-			continue
-		}
-		aspec, ok := p.Cat.Agents[a]
-		if !ok {
-			return fmt.Errorf("agent %q is not in the catalog", a)
-		}
-		if err := checkSectionsAllowed("agent", a, aspec.Sections, ac.Sections); err != nil {
-			return err
-		}
+	if err := checkKind("skills", p.Cfg.Skills, func(n string) ([]string, bool) {
+		s, ok := p.Cat.Skills[n]
+		return s.Sections, ok
+	}); err != nil {
+		return err
 	}
-	// Check hooks against catalog.
+	if err := checkKind("agents", p.Cfg.Agents, func(n string) ([]string, bool) {
+		a, ok := p.Cat.Agents[n]
+		return a.Sections, ok
+	}); err != nil {
+		return err
+	}
+	if err := checkKind("docs", p.Cfg.Docs, func(n string) ([]string, bool) {
+		d, ok := p.Cat.Docs[n]
+		return d.Sections, ok
+	}); err != nil {
+		return err
+	}
+	// Hooks against catalog.
 	catHooks := make(map[string]bool, len(p.Cat.Hooks))
 	for _, h := range p.Cat.Hooks {
 		catHooks[h] = true
@@ -93,37 +108,33 @@ func (p *Project) validateAgainstCatalog() error {
 			return fmt.Errorf("hook %q is not in the catalog", h)
 		}
 	}
-	// Check agentsDoc section overrides against catalog.
-	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
-		if err := checkSectionsAllowed("agentsDoc", "", p.Cat.AgentsDoc.Sections, p.Cfg.AgentsDoc.Sections); err != nil {
-			return err
-		}
+	// agents-doc section overrides against catalog (always-on singleton).
+	ad, err := p.Cfg.Sidecar("agents-doc", "")
+	if err != nil {
+		return err
 	}
-	// Check docs against catalog.
-	for _, name := range sortedKeys(p.Cfg.Docs) {
-		dc := p.Cfg.Docs[name]
-		if dc.Local {
-			continue
-		}
-		spec, ok := p.Cat.Docs[name]
-		if !ok {
-			return fmt.Errorf("doc %q is not in the catalog", name)
-		}
-		if err := checkSectionsAllowed("doc", name, spec.Sections, dc.Sections); err != nil {
+	if !ad.Local {
+		if err := checkSectionsAllowed("agents-doc", "", p.Cat.AgentsDoc.Sections, ad.Sections); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// parts resolves an absolute part path verbatim (convention parts pass an
+// absolute path); a relative name resolves under <root>/.claude/awf.
 func (p *Project) parts() render.PartFunc {
 	return func(name string) (string, error) {
-		b, err := os.ReadFile(filepath.Join(p.Root, ".claude", "awf", name))
+		path := name
+		if !filepath.IsAbs(name) {
+			path = filepath.Join(p.Root, ".claude", "awf", name)
+		}
+		b, err := os.ReadFile(path)
 		return string(b), err
 	}
 }
 
-func (p *Project) data(sc config.SkillConfig) map[string]any {
+func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
 		"prefix": p.Cfg.Prefix,
 		"vars":   nonNil(p.Cfg.Vars),
@@ -154,11 +165,18 @@ func (p *Project) docOutPath(name string) string {
 }
 
 // resolvedDocs builds the Document-map entries for the agents-doc template from
-// the docs declared in config, annotated with the catalog's title/desc.
-func (p *Project) resolvedDocs() []map[string]any {
+// the docs declared in config, annotated with the catalog's title/desc. Local
+// docs are excluded.
+func (p *Project) resolvedDocs() ([]map[string]any, error) {
 	out := []map[string]any{}
-	for _, name := range sortedKeys(p.Cfg.Docs) {
-		if p.Cfg.Docs[name].Local {
+	names := append([]string(nil), p.Cfg.Docs...)
+	sort.Strings(names)
+	for _, name := range names {
+		sc, err := p.Cfg.Sidecar("docs", name)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Local {
 			continue
 		}
 		spec := p.Cat.Docs[name]
@@ -168,6 +186,27 @@ func (p *Project) resolvedDocs() []map[string]any {
 			"desc":  spec.Desc,
 			"path":  p.docOutPath(name),
 		})
+	}
+	return out, nil
+}
+
+// overlaySections returns sidecar sections with convention parts injected for any
+// catalog-declared section that the sidecar did not drop or explicitly replace and
+// whose convention part file exists. Precedence: drop > explicit replaceWith >
+// convention part > template default.
+func (p *Project) overlaySections(kind, target string, declared []string, sec map[string]config.SectionOverride) map[string]config.SectionOverride {
+	out := map[string]config.SectionOverride{}
+	for k, v := range sec {
+		out[k] = v
+	}
+	for _, s := range declared {
+		if _, set := out[s]; set {
+			continue
+		}
+		pp := p.Cfg.PartPath(kind, target, s)
+		if _, err := os.Stat(pp); err == nil {
+			out[s] = config.SectionOverride{ReplaceWith: pp}
+		}
 	}
 	return out
 }
@@ -184,7 +223,7 @@ func sortedKeys[V any](m map[string]V) []string {
 
 // checkSectionsAllowed verifies that every key in used appears in declared.
 // kind and name are used only for error formatting; name may be empty for a
-// singleton (e.g. agentsDoc).
+// singleton (e.g. agents-doc).
 func checkSectionsAllowed(kind, name string, declared []string, used map[string]config.SectionOverride) error {
 	allowed := make(map[string]bool, len(declared))
 	for _, s := range declared {
@@ -242,30 +281,49 @@ func validateFrontmatter(content []byte) error {
 	return nil
 }
 
+// localOutPath returns the conventional output path awf would render a local
+// skill/agent to (the same formulas RenderAll uses).
+func (p *Project) localOutPath(kind, name string) string {
+	switch kind {
+	case "skills":
+		return fmt.Sprintf(".claude/skills/%s-%s/SKILL.md", p.Cfg.Prefix, name)
+	case "agents":
+		return fmt.Sprintf(".claude/agents/%s.md", name)
+	default:
+		return ""
+	}
+}
+
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
-	// Skills (sorted for deterministic order).
-	for _, name := range sortedKeys(p.Cfg.Skills) {
-		sc := p.Cfg.Skills[name]
+	// Skills.
+	for _, name := range sortedStrings(p.Cfg.Skills) {
+		sc, err := p.Cfg.Sidecar("skills", name)
+		if err != nil {
+			return nil, err
+		}
 		if sc.Local {
 			continue
 		}
-		tid := fmt.Sprintf("skills/%s/SKILL.md.tmpl", name)
-		rf, err := p.renderTemplate(tid, sc.Sections, p.data(sc),
+		rf, err := p.renderTarget("skills", name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name),
+			p.Cat.Skills[name].Sections, sc, p.data(sc),
 			fmt.Sprintf(".claude/skills/%s-%s/SKILL.md", p.Cfg.Prefix, name))
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
 	}
-	// Agents (sorted for deterministic order).
-	for _, name := range sortedKeys(p.Cfg.Agents) {
-		ac := p.Cfg.Agents[name]
-		if ac.Local {
+	// Agents.
+	for _, name := range sortedStrings(p.Cfg.Agents) {
+		sc, err := p.Cfg.Sidecar("agents", name)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Local {
 			continue
 		}
-		tid := fmt.Sprintf("agents/%s.md.tmpl", name)
-		rf, err := p.renderTemplate(tid, ac.Sections, p.data(ac),
+		rf, err := p.renderTarget("agents", name, fmt.Sprintf("agents/%s.md.tmpl", name),
+			p.Cat.Agents[name].Sections, sc, p.data(sc),
 			fmt.Sprintf(".claude/agents/%s.md", name))
 		if err != nil {
 			return nil, err
@@ -274,32 +332,43 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	}
 	// Hooks.
 	for _, h := range p.Cfg.Hooks {
-		tid := fmt.Sprintf("hooks/%s.tmpl", h)
-		rf, err := p.renderTemplate(tid, nil, p.data(config.SkillConfig{}),
-			".githooks/"+h)
+		rf, err := p.renderTarget("hooks", h, fmt.Sprintf("hooks/%s.tmpl", h),
+			nil, config.Sidecar{}, p.data(config.Sidecar{}), ".githooks/"+h)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
 	}
 	// Docs.
-	for _, name := range sortedKeys(p.Cfg.Docs) {
-		dc := p.Cfg.Docs[name]
-		if dc.Local {
+	for _, name := range sortedStrings(p.Cfg.Docs) {
+		sc, err := p.Cfg.Sidecar("docs", name)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Local {
 			continue
 		}
-		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
-		rf, err := p.renderTemplate(tid, dc.Sections, p.data(dc), p.docOutPath(name))
+		rf, err := p.renderTarget("docs", name, fmt.Sprintf("docs/%s.md.tmpl", name),
+			p.Cat.Docs[name].Sections, sc, p.data(sc), p.docOutPath(name))
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
 	}
-	// AgentsDoc.
-	if p.Cfg.AgentsDoc != nil && !p.Cfg.AgentsDoc.Local {
-		data := p.data(*p.Cfg.AgentsDoc)
-		data["docs"] = p.resolvedDocs()
-		rf, err := p.renderTemplate("agents-doc/AGENTS.md.tmpl", p.Cfg.AgentsDoc.Sections, data, "AGENTS.md")
+	// agents-doc (always-on singleton unless its sidecar is local).
+	ad, err := p.Cfg.Sidecar("agents-doc", "")
+	if err != nil {
+		return nil, err
+	}
+	if !ad.Local {
+		data := p.data(ad)
+		docs, err := p.resolvedDocs()
+		if err != nil {
+			return nil, err
+		}
+		data["docs"] = docs
+		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
+			p.Cat.AgentsDoc.Sections, ad, data, "AGENTS.md")
 		if err != nil {
 			return nil, err
 		}
@@ -308,28 +377,92 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	return out, nil
 }
 
-func (p *Project) renderTemplate(tid string, sections map[string]config.SectionOverride, data map[string]any, outPath string) (RenderedFile, error) {
+// renderTarget assembles a target (sidecar sections + convention parts), executes
+// the template, rejects publication-unsafe <no value> output, and projects the
+// per-target ConfigHash over the target's effective inputs.
+func (p *Project) renderTarget(kind, target, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string) (RenderedFile, error) {
 	src, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
-	content, err := render.Render(string(src), sections, p.parts(), data)
+	ov := p.overlaySections(kind, target, declared, sc.Sections)
+	assembled, err := render.Assemble(render.ParseSections(string(src)), ov, p.parts())
+	if err != nil {
+		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+	}
+	content, err := render.Execute(assembled, data)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if strings.Contains(content, "<no value>") {
-		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset in .claude/awf.yaml", outPath)
+		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset", outPath)
+	}
+	cfgHash, err := p.targetConfigHash(assembled, sc, p.consumedParts(ov))
+	if err != nil {
+		return RenderedFile{}, err
 	}
 	return RenderedFile{
 		Path: outPath, Content: content, TemplateID: tid,
-		TemplateHash: manifest.Hash(src),
+		TemplateHash: manifest.Hash(src), ConfigHash: cfgHash,
 	}, nil
+}
+
+// consumedParts returns the absolute paths of the part files a target consumed:
+// the convention parts (absolute ReplaceWith) and any explicit relative
+// replaceWith resolved under <root>/.claude/awf. Editing any of them reflags the
+// target's drift.
+func (p *Project) consumedParts(ov map[string]config.SectionOverride) []string {
+	var paths []string
+	for _, o := range ov {
+		if o.Drop || o.ReplaceWith == "" {
+			continue
+		}
+		path := o.ReplaceWith
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(p.Root, ".claude", "awf", path)
+		}
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+// targetConfigHash projects the drift signal onto one rendered file: the prefix, the
+// subset of vars the assembled template references, the target's sidecar (marshalled),
+// and the bytes of every convention part it consumed — in deterministic order.
+func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
+	refs := render.ReferencedVars(assembled)
+	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout()}
+	vs := map[string]any{}
+	for _, r := range refs {
+		vs[r] = p.Cfg.Vars[r]
+	}
+	proj["vars"] = vs
+	proj["sidecar"] = sc
+	sort.Strings(partPaths)
+	parts := map[string]string{}
+	for _, pp := range partPaths {
+		b, err := os.ReadFile(pp)
+		if err != nil {
+			return "", err
+		}
+		parts[filepath.Base(filepath.Dir(pp))+"/"+filepath.Base(pp)] = manifest.Hash(b)
+	}
+	proj["parts"] = parts
+	enc, err := yaml.Marshal(proj)
+	if err != nil {
+		return "", err
+	}
+	return manifest.Hash(enc), nil
+}
+
+func sortedStrings(s []string) []string {
+	out := append([]string(nil), s...)
+	sort.Strings(out)
+	return out
 }
 
 // generateActiveMD renders the ADR index for the project's decisions directory,
 // or returns nil when that directory holds no ADRs (so no index file is produced).
-// ACTIVE.md is generated from ADR frontmatter, not a template, so it carries no
-// TemplateID/TemplateHash in the lock.
 func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
 	dir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
 	content, err := adr.RenderActiveMD(dir)
@@ -340,6 +473,36 @@ func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
 		return RenderedFile{}, false, nil
 	}
 	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, true, nil
+}
+
+// checkLocalFrontmatter validates the on-disk frontmatter of every declared local
+// skill/agent at its conventional output path. fail wraps a path+error into the
+// caller's accumulator (a hard error for Sync, a drift entry for Check).
+func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error {
+	for _, kv := range []struct {
+		kind  string
+		names []string
+	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
+		for _, name := range kv.names {
+			sc, err := p.Cfg.Sidecar(kv.kind, name)
+			if err != nil {
+				return err
+			}
+			if !sc.Local {
+				continue
+			}
+			rel := p.localOutPath(kv.kind, name)
+			b, err := os.ReadFile(filepath.Join(p.Root, rel))
+			if err != nil {
+				fail(rel, fmt.Errorf("local %s file absent", strings.TrimSuffix(kv.kind, "s")))
+				continue
+			}
+			if err := validateFrontmatter(b); err != nil {
+				fail(rel, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (p *Project) Sync() error {
@@ -354,13 +517,23 @@ func (p *Project) Sync() error {
 			}
 		}
 	}
+	var localErr error
+	if err := p.checkLocalFrontmatter(func(path string, e error) {
+		if localErr == nil {
+			localErr = fmt.Errorf("local target %s: %w", path, e)
+		}
+	}); err != nil {
+		return err
+	}
+	if localErr != nil {
+		return localErr
+	}
 	if amd, ok, err := p.generateActiveMD(); err != nil {
 		return err
 	} else if ok {
 		files = append(files, amd)
 	}
-	cfgHash := manifest.Hash(p.Cfg.Raw())
-	lock := &manifest.Lock{AWFVersion: Version, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	want := map[string]bool{}
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
@@ -376,7 +549,7 @@ func (p *Project) Sync() error {
 		}
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,
-			ConfigHash: cfgHash, OutputHash: manifest.Hash([]byte(f.Content)),
+			ConfigHash: f.ConfigHash, OutputHash: manifest.Hash([]byte(f.Content)),
 		}
 		want[f.Path] = true
 	}
@@ -395,7 +568,7 @@ func (p *Project) Sync() error {
 }
 
 func (p *Project) lockPath() string {
-	return filepath.Join(p.Root, ".claude", "awf.lock")
+	return filepath.Join(p.Root, ".claude", "awf", "awf.lock")
 }
 
 // CheckInvariants reports Implemented-ADR invariant slugs that lack a backing
@@ -403,6 +576,64 @@ func (p *Project) lockPath() string {
 // sources) under the project root.
 func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root, p.Cfg.Invariants)
+}
+
+// orphans reports sidecar and convention-part files whose target is not in the
+// matching enable list (the second clause of inv: drift-source-set).
+func (p *Project) orphans() []manifest.Drift {
+	enabled := map[string]map[string]bool{
+		"skills": sliceSet(p.Cfg.Skills),
+		"agents": sliceSet(p.Cfg.Agents),
+		"docs":   sliceSet(p.Cfg.Docs),
+	}
+	var drift []manifest.Drift
+	for _, kind := range []string{"skills", "agents", "docs"} {
+		base := filepath.Join(p.Root, ".claude", "awf", kind)
+		// Sidecars: <kind>/<name>.yaml.
+		entries, err := os.ReadDir(base)
+		if err != nil {
+			continue // kind branch absent → nothing to orphan
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+				continue
+			}
+			name := strings.TrimSuffix(e.Name(), ".yaml")
+			if !enabled[kind][name] {
+				drift = append(drift, manifest.Drift{
+					Path: filepath.Join(".claude", "awf", kind, e.Name()),
+					Kind: "orphaned", Detail: "sidecar for a target not in the enable list",
+				})
+			}
+		}
+		// Parts: <kind>/parts/<target>/<section>.md.
+		partsDir := filepath.Join(base, "parts")
+		targets, err := os.ReadDir(partsDir)
+		if err != nil {
+			continue
+		}
+		for _, t := range targets {
+			if !t.IsDir() {
+				continue
+			}
+			if !enabled[kind][t.Name()] {
+				drift = append(drift, manifest.Drift{
+					Path: filepath.Join(".claude", "awf", kind, "parts", t.Name()),
+					Kind: "orphaned", Detail: "convention parts for a target not in the enable list",
+				})
+			}
+		}
+	}
+	sort.Slice(drift, func(i, j int) bool { return drift[i].Path < drift[j].Path })
+	return drift
+}
+
+func sliceSet(s []string) map[string]bool {
+	m := make(map[string]bool, len(s))
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
@@ -414,7 +645,6 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfgHash := manifest.Hash(p.Cfg.Raw())
 	rendered := map[string]RenderedFile{}
 	for _, f := range files {
 		rendered[f.Path] = f
@@ -431,7 +661,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
 			continue
 		}
-		if rf.TemplateHash != e.TemplateHash || cfgHash != e.ConfigHash {
+		if rf.TemplateHash != e.TemplateHash || rf.ConfigHash != e.ConfigHash {
 			// stale takes precedence: a re-sync overwrites any hand-edit, so it
 			// is the actionable signal — one drift entry per path.
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf sync"})
@@ -454,6 +684,15 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			}
 		}
 	}
+	// Local skills/agents are not rendered, so their hand-authored frontmatter is
+	// validated directly on disk.
+	if err := p.checkLocalFrontmatter(func(path string, e error) {
+		drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: e.Error()})
+	}); err != nil {
+		return nil, err
+	}
+	// Orphan sidecars/parts (second clause of inv: drift-source-set).
+	drift = append(drift, p.orphans()...)
 	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness
 	// cannot be detected by the template/config hash comparison above. Regenerate and
 	// compare directly.

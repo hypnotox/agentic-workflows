@@ -1,0 +1,11 @@
+data:
+    testSurfaces:
+        - kind: Go _test.go
+          location: internal/<pkg>
+          name: Package unit tests
+        - kind: render assertions
+          location: internal/project/spine_test.go
+          name: Template golden tests
+        - kind: subprocess/temp-dir
+          location: cmd/awf
+          name: CLI integration tests

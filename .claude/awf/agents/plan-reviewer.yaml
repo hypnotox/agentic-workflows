@@ -1,0 +1,4 @@
+data:
+    docCurrencyItems:
+        - check: docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
+        - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain

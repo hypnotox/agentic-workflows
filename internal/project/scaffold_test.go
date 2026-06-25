@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TestReferencedVarsInScaffold verifies that ScaffoldConfig("example") produces YAML
+// TestScaffoldParsesCleanly verifies that ScaffoldConfig("example") produces YAML
 // that parses cleanly under the strict config.Load decoder.
 func TestScaffoldParsesCleanly(t *testing.T) {
 	b, err := ScaffoldConfig("example")
@@ -33,6 +34,17 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	}
 }
 
+// writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and
+// returns the dir (the argument config.Load expects).
+func writeScaffold(t *testing.T, b []byte) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 // TestScaffoldEnablesAllCatalogSkills asserts that the scaffolded config enables
 // exactly the set of skills declared in the catalog (no more, no less).
 func TestScaffoldEnablesAllCatalogSkills(t *testing.T) {
@@ -40,8 +52,7 @@ func TestScaffoldEnablesAllCatalogSkills(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
-	cfgPath := writeTemp(t, b)
-	cfg, err := config.Load(cfgPath)
+	cfg, err := config.Load(writeScaffold(t, b))
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
@@ -51,17 +62,12 @@ func TestScaffoldEnablesAllCatalogSkills(t *testing.T) {
 		t.Fatalf("catalog.Load: %v", err)
 	}
 
-	// Every catalog skill must be present in the scaffolded config.
 	for name := range cat.Skills {
-		if _, ok := cfg.Skills[name]; !ok {
+		if !slices.Contains(cfg.Skills, name) {
 			t.Errorf("scaffold missing catalog skill %q", name)
 		}
 	}
-	// No extra non-local skills should be present.
-	for name, sc := range cfg.Skills {
-		if sc.Local {
-			continue
-		}
+	for _, name := range cfg.Skills {
 		if _, ok := cat.Skills[name]; !ok {
 			t.Errorf("scaffold contains unknown skill %q (not in catalog)", name)
 		}
@@ -75,8 +81,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
-	cfgPath := writeTemp(t, b)
-	cfg, err := config.Load(cfgPath)
+	cfg, err := config.Load(writeScaffold(t, b))
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
@@ -87,14 +92,11 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 	}
 
 	for name := range cat.Agents {
-		if _, ok := cfg.Agents[name]; !ok {
+		if !slices.Contains(cfg.Agents, name) {
 			t.Errorf("scaffold missing catalog agent %q", name)
 		}
 	}
-	for name, ac := range cfg.Agents {
-		if ac.Local {
-			continue
-		}
+	for _, name := range cfg.Agents {
 		if _, ok := cat.Agents[name]; !ok {
 			t.Errorf("scaffold contains unknown agent %q (not in catalog)", name)
 		}
@@ -108,8 +110,7 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
-	cfgPath := writeTemp(t, b)
-	cfg, err := config.Load(cfgPath)
+	cfg, err := config.Load(writeScaffold(t, b))
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
@@ -119,18 +120,14 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 		t.Fatalf("catalog.Load: %v", err)
 	}
 
+	for _, h := range cat.Hooks {
+		if !slices.Contains(cfg.Hooks, h) {
+			t.Errorf("scaffold missing catalog hook %q", h)
+		}
+	}
 	catHookSet := map[string]bool{}
 	for _, h := range cat.Hooks {
 		catHookSet[h] = true
-	}
-	cfgHookSet := map[string]bool{}
-	for _, h := range cfg.Hooks {
-		cfgHookSet[h] = true
-	}
-	for _, h := range cat.Hooks {
-		if !cfgHookSet[h] {
-			t.Errorf("scaffold missing catalog hook %q", h)
-		}
 	}
 	for _, h := range cfg.Hooks {
 		if !catHookSet[h] {
@@ -140,15 +137,13 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 }
 
 // TestScaffoldVarsCoverReferenced asserts that the scaffolded vars block is a
-// superset of the ReferencedVars for representative skill templates (tdd,
-// executing-plans).
+// superset of the ReferencedVars for representative skill templates.
 func TestScaffoldVarsCoverReferenced(t *testing.T) {
 	b, err := ScaffoldConfig("example")
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
-	cfgPath := writeTemp(t, b)
-	cfg, err := config.Load(cfgPath)
+	cfg, err := config.Load(writeScaffold(t, b))
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
@@ -170,7 +165,7 @@ func TestScaffoldVarsCoverReferenced(t *testing.T) {
 }
 
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
-// temp directory and opening + syncing it produces zero drift.
+// temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
 	b, err := ScaffoldConfig("testproject")
 	if err != nil {
@@ -178,12 +173,11 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	cfgDir := filepath.Join(root, ".claude")
-	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+	awfDir := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(awfDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfgPath := filepath.Join(cfgDir, "awf.yaml")
-	if err := os.WriteFile(cfgPath, b, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(awfDir, "config.yaml"), b, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -216,15 +210,4 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 	if strings.Contains(string(b), "{{") {
 		t.Errorf("scaffold YAML contains unrendered template action:\n%s", b)
 	}
-}
-
-// writeTemp writes bytes to a temp file and returns the path.
-func writeTemp(t *testing.T, b []byte) string {
-	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "awf.yaml")
-	if err := os.WriteFile(path, b, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return path
 }

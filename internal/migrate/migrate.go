@@ -29,7 +29,9 @@ func Current() int { return registry[len(registry)-1].To }
 
 // Generation reports the project's schema generation: 0 if the legacy single-file
 // layout is present (.claude/awf.yaml exists and .claude/awf/config.yaml does not),
-// else the lock's SchemaVersion (0 when no lock).
+// else the lock's SchemaVersion. A tree project with no lock yet (a fresh awf init
+// or a just-upgraded project before its terminal sync) reports Current() — it is
+// on the current layout and must not gate; the next sync stamps the lock.
 func Generation(root string) int {
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
 	tree := filepath.Join(root, ".claude", "awf", "config.yaml")
@@ -40,7 +42,7 @@ func Generation(root string) int {
 	}
 	l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
 	if err != nil {
-		return 0
+		return Current()
 	}
 	return l.SchemaVersion
 }

@@ -37,13 +37,9 @@ func Assemble(segs []Segment, ov map[string]config.SectionOverride, parts PartFu
 	return b.String(), nil
 }
 
-// Render parses src, applies the overlay, then executes text/template over the
-// assembled source with the given data.
-func Render(src string, ov map[string]config.SectionOverride, parts PartFunc, data map[string]any) (string, error) {
-	assembled, err := Assemble(ParseSections(src), ov, parts)
-	if err != nil {
-		return "", err
-	}
+// Execute runs text/template over an already-assembled source with the given
+// data under missingkey=zero.
+func Execute(assembled string, data map[string]any) (string, error) {
 	t, err := template.New("skill").Option("missingkey=zero").Parse(assembled)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
@@ -53,4 +49,14 @@ func Render(src string, ov map[string]config.SectionOverride, parts PartFunc, da
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 	return out.String(), nil
+}
+
+// Render parses src, applies the overlay, then executes text/template over the
+// assembled source with the given data.
+func Render(src string, ov map[string]config.SectionOverride, parts PartFunc, data map[string]any) (string, error) {
+	assembled, err := Assemble(ParseSections(src), ov, parts)
+	if err != nil {
+		return "", err
+	}
+	return Execute(assembled, data)
 }

@@ -1,0 +1,13 @@
+data:
+    adrSections:
+        - Context
+        - Decision
+        - Invariants
+        - Consequences
+        - Alternatives Considered
+    adrTriggers:
+        - Introducing a new internal package or changing package boundaries
+        - Changing the render pipeline (template engine, section overlay, missingkey behaviour)
+        - Changing the awf.yaml schema (new top-level keys, data/sections shape)
+        - Adopting a new external dependency
+        - Changing the manifest / lock file format

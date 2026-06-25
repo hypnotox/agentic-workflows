@@ -9,37 +9,37 @@ import (
 func TestSkillState(t *testing.T) {
 	cases := []struct {
 		name    string
-		sc      config.SkillConfig
+		sc      config.Sidecar
 		enabled bool
 		want    string
 	}{
 		{
 			name:    "available when not enabled",
-			sc:      config.SkillConfig{},
+			sc:      config.Sidecar{},
 			enabled: false,
 			want:    "available",
 		},
 		{
 			name:    "enabled when present with no customization",
-			sc:      config.SkillConfig{},
+			sc:      config.Sidecar{},
 			enabled: true,
 			want:    "enabled",
 		},
 		{
 			name:    "tuned when data set",
-			sc:      config.SkillConfig{Data: map[string]any{"key": "val"}},
+			sc:      config.Sidecar{Data: map[string]any{"key": "val"}},
 			enabled: true,
 			want:    "tuned",
 		},
 		{
 			name:    "tuned when sections set",
-			sc:      config.SkillConfig{Sections: map[string]config.SectionOverride{"notes": {Drop: true}}},
+			sc:      config.Sidecar{Sections: map[string]config.SectionOverride{"notes": {Drop: true}}},
 			enabled: true,
 			want:    "tuned",
 		},
 		{
 			name:    "local when local flag set",
-			sc:      config.SkillConfig{Local: true},
+			sc:      config.Sidecar{Local: true},
 			enabled: true,
 			want:    "local",
 		},

@@ -10,16 +10,43 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-func scaffold(t *testing.T, awfYAML string) string {
+// scaffold writes a .claude/awf/config.yaml tree under a fresh temp root.
+func scaffold(t *testing.T, configYAML string) string {
+	return scaffoldFiles(t, configYAML, nil)
+}
+
+// scaffoldFiles writes config.yaml plus optional sidecar/part files keyed by path
+// relative to .claude/awf/ (e.g. "skills/tdd.yaml", "skills/parts/x/y.md").
+func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+	awf := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(awf, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte(awfYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(configYAML), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	for rel, body := range files {
+		p := filepath.Join(awf, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return root
+}
+
+// lockFile is the relocated lock path under the tree.
+func lockFile(root string) string {
+	return filepath.Join(root, ".claude", "awf", "awf.lock")
+}
+
+// configPath is the tree config file path.
+func configPath(root string) string {
+	return filepath.Join(root, ".claude", "awf", "config.yaml")
 }
 
 const sampleYAML = `prefix: example
@@ -27,12 +54,9 @@ vars:
   testCmd: go test ./...
   gateCmd: make gate
 skills:
-  tdd:
-    data:
-      testSurfaces:
-        - {name: Logic, location: internal, kind: Go unit}
+  - tdd
 agents:
-  code-reviewer: {}
+  - code-reviewer
 hooks: [pre-commit, pre-push]
 `
 
@@ -53,7 +77,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	if !strings.Contains(string(b), "# example-tdd") || strings.Contains(string(b), "awf:section") {
 		t.Errorf("rendered skill wrong:\n%s", b)
 	}
-	for _, rel := range []string{".claude/agents/code-reviewer.md", ".githooks/pre-commit", ".githooks/pre-push", ".claude/awf.lock"} {
+	for _, rel := range []string{".claude/agents/code-reviewer.md", ".githooks/pre-commit", ".githooks/pre-push", ".claude/awf/awf.lock"} {
 		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
 			t.Errorf("missing %s: %v", rel, err)
 		}
@@ -95,14 +119,14 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	}
 	skillPath := ".claude/skills/example-tdd/SKILL.md"
 	// Make the lock entry stale by corrupting its TemplateHash.
-	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := lock.Files[skillPath]
 	e.TemplateHash = "sha256:bogus"
 	lock.Files[skillPath] = e
-	if err := lock.Save(filepath.Join(root, ".claude", "awf.lock")); err != nil {
+	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
 	// Also hand-edit the rendered file so its on-disk content differs too.
@@ -128,11 +152,23 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 }
 
 func TestSyncSkipsLocalSkill(t *testing.T) {
-	localYAML := strings.Replace(sampleYAML, `skills:
-  tdd:`, `skills:
-  adding-thing: {local: true}
-  tdd:`, 1)
-	root := scaffold(t, localYAML)
+	cfg := `prefix: example
+vars:
+  testCmd: go test ./...
+  gateCmd: make gate
+skills:
+  - adding-thing
+  - tdd
+agents:
+  - code-reviewer
+hooks: [pre-commit, pre-push]
+`
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"skills/adding-thing.yaml": "local: true\n",
+	})
+	// A local skill is hand-authored; provide its on-disk file with valid frontmatter.
+	localPath := ".claude/skills/example-adding-thing/SKILL.md"
+	writeLocalSkill(t, root, localPath)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -140,11 +176,7 @@ func TestSyncSkipsLocalSkill(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	localPath := ".claude/skills/example-adding-thing/SKILL.md"
-	if _, err := os.Stat(filepath.Join(root, localPath)); !os.IsNotExist(err) {
-		t.Errorf("local skill should not be written to disk")
-	}
-	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,14 +188,21 @@ func TestSyncSkipsLocalSkill(t *testing.T) {
 	}
 }
 
+// writeLocalSkill writes a hand-authored local skill file with valid frontmatter.
+func writeLocalSkill(t *testing.T, root, rel string) {
+	t.Helper()
+	abs := filepath.Join(root, rel)
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "---\nname: local-skill\ndescription: a hand-authored local skill\n---\nbody\n"
+	if err := os.WriteFile(abs, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestOpenRejectsUnknownAgent(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents:
-  does-not-exist: {}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: [does-not-exist]\nhooks: []\n")
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent")
@@ -174,12 +213,7 @@ hooks: []
 }
 
 func TestOpenRejectsUnknownHook(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents: {}
-hooks: [typo-hook]
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: [typo-hook]\n")
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown hook")
@@ -190,14 +224,7 @@ hooks: [typo-hook]
 }
 
 func TestOpenRejectsUnknownDoc(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents: {}
-hooks: []
-docs:
-  nonexistent: {}
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [nonexistent]\n")
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown doc")
@@ -208,14 +235,7 @@ docs:
 }
 
 func TestSyncRendersDeclaredDoc(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents: {}
-hooks: []
-docs:
-  architecture: {}
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [architecture]\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -237,18 +257,19 @@ docs:
 // data map so the Document map auto-links every declared (non-local) doc with
 // its catalog title/desc. A local doc must not appear.
 func TestSyncAutoLinksDocsInAgentsDoc(t *testing.T) {
-	yaml := `prefix: example
+	cfg := `prefix: example
 vars:
   gateCmd: ""
-skills: {}
-agents: {}
+skills: []
+agents: []
 hooks: []
 docs:
-  architecture: {}
-  glossary: {local: true}
-agentsDoc: {}
+  - architecture
+  - glossary
 `
-	root := scaffold(t, yaml)
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"docs/glossary.yaml": "local: true\n",
+	})
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -273,13 +294,7 @@ agentsDoc: {}
 }
 
 func TestOpenRejectsUnknownSkill(t *testing.T) {
-	yaml := `prefix: example
-skills:
-  no-such-skill: {}
-agents: {}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: [no-such-skill]\nagents: []\nhooks: []\n")
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown skill")
@@ -298,11 +313,10 @@ func TestOpenValidConfigSucceeds(t *testing.T) {
 }
 
 func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
-	localYAML := strings.Replace(sampleYAML, `skills:
-  tdd:`, `skills:
-  totally-unknown-local: {local: true}
-  tdd:`, 1)
-	root := scaffold(t, localYAML)
+	cfg := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills:\n  - totally-unknown-local\n  - tdd\n", 1)
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"skills/totally-unknown-local.yaml": "local: true\n",
+	})
 	_, err := Open(root)
 	if err != nil {
 		t.Fatalf("local skill not in catalog should be allowed, got: %v", err)
@@ -314,12 +328,8 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	p, _ := Open(root)
 	_ = p.Sync()
 	// Rewrite config without the tdd skill, re-open, re-sync.
-	noTDD := strings.Replace(sampleYAML, `skills:
-  tdd:
-    data:
-      testSurfaces:
-        - {name: Logic, location: internal, kind: Go unit}`, "skills: {}", 1)
-	_ = os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte(noTDD), 0o644)
+	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
+	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(root)
 	if err := p2.Sync(); err != nil {
 		t.Fatal(err)
@@ -331,16 +341,10 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 
 func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
-	yaml := `prefix: example
-skills:
-  tdd:
-    sections:
-      bogus: {drop: true}
-agents:
-  code-reviewer: {}
-hooks: [pre-commit, pre-push]
-`
-	root := scaffold(t, yaml)
+	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\nhooks: [pre-commit, pre-push]\n"
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
+	})
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown section override 'bogus'")
@@ -352,16 +356,10 @@ hooks: [pre-commit, pre-push]
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	// "notes" is a declared section for tdd.
-	yaml := `prefix: example
-skills:
-  tdd:
-    sections:
-      notes: {drop: true}
-agents:
-  code-reviewer: {}
-hooks: [pre-commit, pre-push]
-`
-	root := scaffold(t, yaml)
+	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\nhooks: [pre-commit, pre-push]\n"
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
+	})
 	_, err := Open(root)
 	if err != nil {
 		t.Fatalf("valid section override 'notes' should succeed, got: %v", err)
@@ -369,13 +367,10 @@ hooks: [pre-commit, pre-push]
 }
 
 func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents:
-  my-custom-agent: {local: true}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	cfg := "prefix: example\nskills: []\nagents: [my-custom-agent]\nhooks: []\n"
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"agents/my-custom-agent.yaml": "local: true\n",
+	})
 	_, err := Open(root)
 	if err != nil {
 		t.Fatalf("local agent not in catalog should be allowed, got: %v", err)
@@ -384,15 +379,10 @@ hooks: []
 
 func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
-	yaml := `prefix: example
-skills: {}
-agents:
-  code-reviewer:
-    sections:
-      bogus: {drop: true}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	cfg := "prefix: example\nskills: []\nagents: [code-reviewer]\nhooks: []\n"
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
+	})
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent section override 'bogus'")
@@ -403,13 +393,7 @@ hooks: []
 }
 
 func TestSyncRendersAgentFromMap(t *testing.T) {
-	agentYAML := `prefix: myproject
-agents:
-  code-reviewer: {}
-hooks: []
-skills: {}
-`
-	root := scaffold(t, agentYAML)
+	root := scaffold(t, "prefix: myproject\nagents: [code-reviewer]\nhooks: []\nskills: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -427,23 +411,12 @@ skills: {}
 	}
 }
 
-// TestSyncErrorsOnMissingVar verifies that Sync returns an error when a
-// rendered template would contain the literal string "<no value>" due to a
-// missing var.  The tdd skill references {{ .vars.testCmd }} and
-// {{ .vars.gateCmd }} without guards, so omitting them from vars triggers the
-// check (Change R3).
+// TestSyncErrorsOnMissingVar verifies that Sync returns an error when a rendered
+// template would contain the literal string "<no value>" due to a missing var.
+// The tdd skill references {{ .vars.testCmd }} and {{ .vars.gateCmd }} without
+// guards, so omitting them from vars triggers the check.
 func TestSyncErrorsOnMissingVar(t *testing.T) {
-	missingVarsYAML := `prefix: example
-vars: {}
-skills:
-  tdd:
-    data:
-      testSurfaces:
-        - {name: Logic, location: internal, kind: Go unit}
-agents: {}
-hooks: []
-`
-	root := scaffold(t, missingVarsYAML)
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\nhooks: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -458,17 +431,8 @@ hooks: []
 }
 
 func TestSyncRendersAgentsDoc(t *testing.T) {
-	t.Run("with agentsDoc config", func(t *testing.T) {
-		yaml := `prefix: example
-vars:
-  testCmd: go test ./...
-  gateCmd: make gate
-skills: {}
-agents: {}
-hooks: []
-agentsDoc: {}
-`
-		root := scaffold(t, yaml)
+	t.Run("always-on by default", func(t *testing.T) {
+		root := scaffold(t, "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\nhooks: []\n")
 		p, err := Open(root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -476,8 +440,7 @@ agentsDoc: {}
 		if err := p.Sync(); err != nil {
 			t.Fatalf("Sync: %v", err)
 		}
-		agentsPath := filepath.Join(root, "AGENTS.md")
-		b, err := os.ReadFile(agentsPath)
+		b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
 		if err != nil {
 			t.Fatalf("AGENTS.md not written: %v", err)
 		}
@@ -486,16 +449,10 @@ agentsDoc: {}
 		}
 	})
 
-	t.Run("without agentsDoc config", func(t *testing.T) {
-		yaml := `prefix: example
-vars:
-  testCmd: go test ./...
-  gateCmd: make gate
-skills: {}
-agents: {}
-hooks: []
-`
-		root := scaffold(t, yaml)
+	t.Run("a local agents-doc sidecar suppresses it", func(t *testing.T) {
+		root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n", map[string]string{
+			"agents-doc.yaml": "local: true\n",
+		})
 		p, err := Open(root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -503,17 +460,15 @@ hooks: []
 		if err := p.Sync(); err != nil {
 			t.Fatalf("Sync: %v", err)
 		}
-		agentsPath := filepath.Join(root, "AGENTS.md")
-		if _, err := os.Stat(agentsPath); !os.IsNotExist(err) {
-			t.Errorf("AGENTS.md should not exist when agentsDoc is not configured")
+		if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
+			t.Errorf("AGENTS.md should not exist when agents-doc is local")
 		}
 	})
 }
 
-// TestSyncPrunesEmptySkillDir verifies that after a skill is removed from the
-// config and Sync is run again, not only is the SKILL.md file removed, but the
-// now-empty parent directory .claude/skills/<prefix>-<skill>/ is also removed
-// (Change R5).
+// TestSyncPrunesEmptySkillDir verifies that after a skill is removed from config
+// and Sync runs again, both the SKILL.md file and its now-empty parent directory
+// are removed.
 func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
@@ -528,14 +483,9 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 		t.Fatalf("skill dir should exist after first sync: %v", err)
 	}
 
-	// Rewrite config without the tdd skill, re-open, re-sync.
-	noTDD := strings.Replace(sampleYAML, `skills:
-  tdd:
-    data:
-      testSurfaces:
-        - {name: Logic, location: internal, kind: Go unit}`, "skills: {}", 1)
-	if err := os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte(noTDD), 0o644); err != nil {
-		t.Fatalf("rewrite yaml: %v", err)
+	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
+	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
+		t.Fatalf("rewrite config: %v", err)
 	}
 	p2, err := Open(root)
 	if err != nil {
@@ -545,11 +495,9 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 		t.Fatalf("second Sync: %v", err)
 	}
 
-	// The SKILL.md file should be gone.
 	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); !os.IsNotExist(err) {
 		t.Errorf("SKILL.md should have been pruned")
 	}
-	// The parent directory should also be gone (R5: prune empty skill dirs).
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
 		t.Errorf("skill directory %s should have been pruned when empty", skillDir)
 	}
@@ -580,18 +528,13 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 // invariant: sync-generates-active-md
 // invariant: check-active-md-stale
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents: {}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	adr := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
-	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adr), 0o644); err != nil {
+	adrBody := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
+	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adrBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -614,7 +557,7 @@ hooks: []
 	}
 
 	// Change frontmatter status; the on-disk ACTIVE.md is now stale.
-	adr2 := strings.Replace(adr, "status: Accepted", "status: Implemented", 1)
+	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
 	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adr2), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -634,12 +577,7 @@ hooks: []
 }
 
 func TestSyncProducesNoActiveMDWithoutADRs(t *testing.T) {
-	yaml := `prefix: example
-skills: {}
-agents: {}
-hooks: []
-`
-	root := scaffold(t, yaml)
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -669,14 +607,14 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 	// Re-point the lock OutputHash to the edited content so the file is "in sync"
 	// by hash and the frontmatter check is what fires.
-	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := lock.Files[skillPath]
 	e.OutputHash = manifest.Hash([]byte(broken))
 	lock.Files[skillPath] = e
-	if err := lock.Save(filepath.Join(root, ".claude", "awf.lock")); err != nil {
+	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := p.Check()
