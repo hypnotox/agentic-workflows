@@ -263,4 +263,10 @@ func TestInvariantGlobValidation(t *testing.T) {
 	if err := bad.Validate(); err == nil {
 		t.Error("expected malformed glob to be rejected")
 	}
+	emptyMarker := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Globs: []string{"*.go"}}},
+	}}
+	if err := emptyMarker.Validate(); err == nil {
+		t.Error("expected empty marker to be rejected (a bare marker would match prose)")
+	}
 }

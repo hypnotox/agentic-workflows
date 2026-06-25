@@ -103,6 +103,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Invariants != nil {
 		for _, src := range c.Invariants.Sources {
+			if src.Marker == "" {
+				return fmt.Errorf("invariants source %v has an empty marker; set a literal comment marker (e.g. \"//\", \"#\")", src.Globs)
+			}
 			for _, g := range src.Globs {
 				if strings.Contains(g, "/") {
 					return fmt.Errorf("invariants glob %q must be a filename pattern, not a path", g)
