@@ -18,11 +18,12 @@ var statusOrder = []string{"Accepted", "Implemented", "Proposed", "Superseded"}
 
 // ADR is a parsed ADR record.
 type ADR struct {
-	Number   string // e.g. "0001"
-	Title    string // e.g. "ADR-0001: Template Overlay Rendering Engine"
-	Status   string // e.g. "Accepted"
-	Filename string // e.g. "0001-template-overlay-rendering-engine.md"
-	Path     string // path as globbed
+	Number   string            // e.g. "0001"
+	Title    string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
+	Status   string            // e.g. "Accepted"
+	Filename string            // e.g. "0001-template-overlay-rendering-engine.md"
+	Path     string            // path as globbed
+	Sections map[string]string // `## ` heading -> section body
 }
 
 var fileRe = regexp.MustCompile(`^(\d{4})-.*\.md$`)
@@ -66,7 +67,7 @@ func parse(data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	a := ADR{Status: fm.Status}
+	a := ADR{Status: fm.Status, Sections: sections(string(body))}
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")
@@ -123,4 +124,31 @@ func RenderActiveMD(dir string) (string, error) {
 		}
 	}
 	return sb.String(), nil
+}
+
+// sections splits a markdown body into a map of `## ` heading text -> section
+// body (the lines until the next `## ` heading).
+func sections(body string) map[string]string {
+	out := map[string]string{}
+	var name string
+	var b strings.Builder
+	flush := func() {
+		if name != "" {
+			out[name] = b.String()
+		}
+		b.Reset()
+	}
+	for _, line := range strings.Split(body, "\n") {
+		if h, ok := strings.CutPrefix(line, "## "); ok {
+			flush()
+			name = strings.TrimSpace(h)
+			continue
+		}
+		if name != "" {
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+	}
+	flush()
+	return out
 }

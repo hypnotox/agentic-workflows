@@ -147,3 +147,26 @@ func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 		t.Errorf("unexpected ADR: %+v", got)
 	}
 }
+
+// invariant: adr-sections-parsed
+func TestParseDirExtractsSections(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0009: S\n## Context\nctx body\n## Invariants\n- `inv: example-slug` — a thing.\n## Consequences\ncons\n"
+	if err := os.WriteFile(filepath.Join(dir, "0009-s.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+	if len(adrs) != 1 {
+		t.Fatalf("expected 1 ADR, got %d", len(adrs))
+	}
+	inv := adrs[0].Sections["Invariants"]
+	if !strings.Contains(inv, "inv: example-slug") {
+		t.Errorf("Invariants section missing tag; got: %q", inv)
+	}
+	if !strings.Contains(adrs[0].Sections["Context"], "ctx body") {
+		t.Errorf("Context section wrong: %q", adrs[0].Sections["Context"])
+	}
+}
