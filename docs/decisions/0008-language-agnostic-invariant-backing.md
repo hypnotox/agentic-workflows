@@ -30,13 +30,22 @@ Grounding discoveries (verified against source):
   decodes to `nil` when absent, and `Validate` already uses the `if c.AgentsDoc != nil` nil-guard
   pattern (`config.go:82`).
 - **`filepath.Match` matches a basename pattern** (`*.go`) but **not** `**` — so globs are
-  filename patterns over a recursive walk, needing no new dependency. A malformed pattern returns
-  an error, so it can be rejected in `Validate`.
+  filename patterns over a recursive walk, needing no new dependency. A syntactically malformed
+  pattern (e.g. `[`) returns an error and is rejected in `Validate`. Note that a *path-shaped*
+  glob is **not** an error: `**/*.go` and `src/*.go` both compile cleanly under `filepath.Match`
+  but never match a bare basename, so they would silently match nothing. `Validate` therefore also
+  rejects any glob containing a path separator (`/`), so the basename-only contract fails loudly
+  rather than silently matching zero files.
 - **Scanner call sites are bounded:** `internal/invariants.Check(decisionsDir, root)` is called by
   `Project.CheckInvariants` (`internal/project/project.go`), which is called by `runCheck`
   (`cmd/awf/check.go`) and `runInvariants` (`cmd/awf/invariants.go`). `runCheck` already returns
   non-zero when any finding exists — so an "unchecked" finding makes `awf check` fail with no new
-  wiring.
+  exit-code wiring. The **printed message**, however, does need updating: both `runCheck`
+  (`check.go:26`, label `unbacked-inv`) and `runInvariants` (`invariants.go:23`) hardcode
+  "has no backing `` `// invariant: <slug>` `` test", which is wrong for an `unchecked` finding
+  (whose remedy is to configure `invariants.sources` or set `disabled: true`) and Go-specific for an
+  `unbacked` one. `Project.CheckInvariants`'s signature must also pass `p.Cfg.Invariants` through to
+  `invariants.Check`.
 - **`cfgHash` already covers `awf.yaml`** (`manifest.Hash(p.Cfg.Raw())`), so adding/editing the
   `invariants` block (and the identity string) re-syncs the lock normally.
 - **`ScaffoldConfig` won't emit `invariants`** (it only emits referenced `.vars.X`), so a fresh
@@ -62,7 +71,9 @@ a default way of setting up things and the tooling to enforce parts of it."
    `Globs` are **filename (basename) patterns** matched with `filepath.Match` over a recursive walk
    (`*.go`, `*.py`, `*_test.rb`) — no `**`, no new dependency. `Marker` is a **literal string**
    (e.g. `//`, `#`, `--`), never interpreted as a regex. `Config.Validate` rejects a glob that
-   `filepath.Match` reports malformed.
+   `filepath.Match` reports malformed **and** any glob containing a path separator (`/`), since a
+   path-shaped pattern (`**/*.go`, `src/*.go`) compiles cleanly but never matches a basename and
+   would silently scan nothing — basename-only is enforced, not merely documented.
 
 2. **Three enforcement states.** The required invariant set is every `inv: <slug>` tag in the
    Invariants section of an `Implemented` ADR (unchanged from ADR-0007; language-neutral). Given a
@@ -77,14 +88,23 @@ a default way of setting up things and the tooling to enforce parts of it."
    - **Enforced** — `Sources` non-empty (and not disabled): each required slug must be backed.
    - A project whose `Implemented` ADRs declare no `inv:` slugs is clean under any/empty config.
 
-3. **Generalize the scanner** (`internal/invariants`). `Check` takes the `*InvariantConfig`; it
-   walks `root` (skipping `.git`/`vendor`/`node_modules`), matches each file's basename against
-   each source's `Globs`, and detects backing by locating the literal `Marker` in a line and then
-   extracting `invariant: <slug>` (`slug = [a-z0-9-]+`) after it — marker by string search, slug by
-   an internal regex; the marker is never compiled as a regex. `Finding` gains a status
-   (`unbacked` | `unchecked`). **This revises ADR-0007 Decision item 3** (the `.go`/`//`-only scan)
-   via partial-item supersedence: ADR-0007 stays `Implemented`/live and this ADR carries
-   `related: [0007]`; ADR-0007 is **not** flipped to `Superseded`.
+3. **Generalize the scanner** (`internal/invariants`). `Check` takes the `*InvariantConfig` (so
+   `Project.CheckInvariants` passes `p.Cfg.Invariants` through); it walks `root` (skipping
+   `.git`/`vendor`/`node_modules`), matches each file's basename against each source's `Globs`, and
+   detects backing by locating the literal `Marker` in a line and then extracting
+   `invariant: <slug>` (`slug = [a-z0-9-]+`) after it, **tolerating optional whitespace between the
+   marker and `invariant:`** (so the existing `` `// invariant: <slug>` `` comments — `//`, then a
+   space, then `invariant:` — remain backed under `{globs:["*.go"], marker:"//"}`; no regression for
+   ADRs 0005–0007). Marker is matched by string search, slug by an internal regex; the marker is
+   never compiled as a regex. `Finding` gains a status (`unbacked` | `unchecked`), and the two
+   command-side printers (`runCheck`, `runInvariants`) are updated to emit a status-appropriate,
+   non-Go-specific message — `unbacked` advises adding a backing marker comment; `unchecked` advises
+   configuring `invariants.sources` or `invariants.disabled: true`. **This revises ADR-0007 Decision
+   item 3** (whose scan is `.go`/`//`-only; the duplicate-slug-is-an-error and `Implemented`-only
+   rules of that item are preserved unchanged) via partial-item supersedence: ADR-0007 stays
+   `Implemented`/live and this ADR carries `related: [0007]`; ADR-0007 is **not** flipped to
+   `Superseded`. This ADR's prose explicitly cites the overridden item per the partial-supersedence
+   convention.
 
 4. **Untestable invariants stay untagged.** An invariant that cannot be exercised by a test simply
    carries no `inv:` slug — it remains prose, outside the enforced roster. Every tagged slug is
@@ -123,8 +143,12 @@ Checkable contracts, tagged per the convention (each backed by an `internal/inva
   (e.g. `marker: "#"`, `globs: ["*.py"]`).
 - `inv: invariants-marker-literal` — the marker is matched as a literal string; a marker containing
   regex metacharacters is not interpreted as a regex.
+- `inv: invariants-marker-whitespace` — a slug is detected when optional whitespace separates the
+  marker from `invariant:` (e.g. `// invariant: <slug>` with `marker: "//"`), so existing C-style
+  backing comments stay backed under `{globs:["*.go"], marker:"//"}`.
 - `inv: invariants-glob-basename` — globs match file basenames via `filepath.Match` (`*.go` matches
-  a nested file), and `Config.Validate` rejects a malformed glob pattern.
+  a nested file), and `Config.Validate` rejects both a syntactically malformed glob and a glob
+  containing a path separator (e.g. `**/*.go`, `src/*.go`).
 - `inv: invariants-zero-slugs-clean` — a project whose `Implemented` ADRs declare no `inv:` slugs is
   clean regardless of the `invariants` config (including absent).
 
@@ -151,6 +175,10 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - `proposing-adr` skill, `docs/decisions/template.md`, and `refactor-coupling-audit` skill are
   de-Go-ified; `agentsDoc.data.identity` and `README.md` carry the polyglot positioning; all
   re-rendered via `./x sync`.
+- The `agentsDoc.data.invariants` "Backed invariants" bullet in `.claude/awf.yaml` (rendered into
+  `AGENTS.md`) is reworded so the marker is described as the project's configured marker rather than
+  a hardcoded `` `// invariant: <slug>` ``; for this repo the concrete example stays `//` since the
+  repo's source is Go.
 - This repo's `.claude/awf.yaml` gains the `invariants` block so ADRs 0005–0008 `inv:` slugs stay
   enforced.
 - When this ADR flips to Implemented, `./x sync` regenerates `ACTIVE.md`. No
