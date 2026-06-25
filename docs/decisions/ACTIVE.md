@@ -14,3 +14,7 @@
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](0006-frontmatter-parser-and-skill-validation.md) — Implemented
 - [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](0007-invariant-backing-tooling.md) — Implemented
 - [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](0008-language-agnostic-invariant-backing.md) — Implemented
+
+## Proposed
+
+- [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](0010-versioned-lock-and-awf-upgrade.md) — Proposed
