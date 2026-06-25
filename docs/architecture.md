@@ -11,7 +11,7 @@ Key directories:
 - **`internal/render/`** — Go `text/template` rendering with `missingkey=zero`; applies `data`, `sections` (drop / replaceWith), and per-template part injection.
 - **`internal/manifest/`** — writes and reads `.claude/awf.lock`; drives drift detection for `awf check`.
 - **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and `Check()`; golden tests live here.
-- **`internal/adrtools/`** — regenerates `docs/decisions/ACTIVE.md` from ADR frontmatter; run via `go test ./internal/adrtools/`.
+- **`internal/adrtools/`** — regenerates `docs/decisions/ACTIVE.md` from ADR frontmatter; invoked by `awf sync` (`./x sync`).
 - **`templates/`** — embedded skill, agent, hook, doc, and agents-doc templates; catalog lives at `templates/catalog.yaml`.
 - **`docs/decisions/`** — ADRs; `ACTIVE.md` is auto-generated; `README.md` is the human index.
 - **`docs/plans/`** — implementation plans written by `awf-writing-plans`.

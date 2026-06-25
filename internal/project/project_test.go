@@ -239,8 +239,6 @@ docs:
 func TestSyncAutoLinksDocsInAgentsDoc(t *testing.T) {
 	yaml := `prefix: example
 vars:
-  adrReadme: ""
-  activeMdPath: ""
   gateCmd: ""
 skills: {}
 agents: {}
@@ -465,8 +463,6 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 vars:
   testCmd: go test ./...
   gateCmd: make gate
-  adrDir: docs/decisions
-  plansDir: docs/plans
 skills: {}
 agents: {}
 hooks: []

@@ -58,7 +58,7 @@ Pick the status transition, then:
 
 1. **Update any state doc** under `` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
 
-1. **Regenerate ACTIVE.md.** Run `go test ./internal/adrtools/` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 
 1. **Run `./x gate`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
@@ -85,5 +85,5 @@ Once `Accepted` or `Implemented`, the body is frozen — only the `status` field
 
 - **Authoritative source:** `AGENTS.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
-- **`docs/decisions/ACTIVE.md` is auto-generated** by `go test ./internal/adrtools/` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
+- **`docs/decisions/ACTIVE.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

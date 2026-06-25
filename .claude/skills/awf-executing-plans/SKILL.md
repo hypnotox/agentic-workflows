@@ -35,7 +35,7 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 
 
-1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `go test ./internal/adrtools/` to regenerate `docs/decisions/ACTIVE.md` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 
 1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `AGENTS.md` "Planning files / Lifecycle").
 

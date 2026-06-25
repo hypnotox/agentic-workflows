@@ -51,7 +51,7 @@ Load-bearing triggers include:
 
 1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `./x gate` to confirm.
 
-1. **Regenerate ACTIVE.md.** Run `go test ./internal/adrtools/` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 
 1. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
@@ -62,6 +62,6 @@ Load-bearing triggers include:
 ## Notes
 
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `awf-adr-lifecycle`, not this skill.
-- `docs/decisions/ACTIVE.md` is never hand-edited; it is always regenerated via `go test ./internal/adrtools/`.
+- `docs/decisions/ACTIVE.md` is never hand-edited; it is always regenerated via `./x sync`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
 - For the full ADR lifecycle, see `AGENTS.md`.
