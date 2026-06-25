@@ -1,7 +1,9 @@
 # agentic-workflows
 
-`awf` renders standardised `.claude` skills, review agents, and git hooks into a project
-from shared templates plus a per-project `.claude/awf.yaml`.
+`awf` is a generic agentic-development-workflow tool: it renders a standardised suite of Claude
+Code skills, review agents, git hooks, and docs into any project from shared templates plus a
+per-project `.claude/awf.yaml`, and supplies the tooling to drift-check and enforce parts of the
+standard. The awf tool is a Go binary; the standard it renders is language-agnostic.
 
 ## Install
 

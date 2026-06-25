@@ -41,7 +41,9 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 For each hit, decide: does this caller need to update its import path after the move? Can it stay where it is, or does it move with the symbol?
 
 ```bash
-grep -rn "<MovedSymbol>" <original-package-path>/ --include='*.go' | grep -v _test.go
+# Search the original package's production source for <MovedSymbol>
+# (scope the file filter to your language's source extension; exclude test files).
+grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 <!-- awf:end -->
 
@@ -53,7 +55,8 @@ grep -rn "<MovedSymbol>" <original-package-path>/ --include='*.go' | grep -v _te
 Capture **N** (production call sites) and **M** (test call sites) separately — M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
 
 ```bash
-grep -rn "<MovedSymbol>" <original-package-path>/ --include='*_test.go'
+# Search the package's test files (your language's test-file convention).
+grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 <!-- awf:end -->
 
@@ -63,7 +66,8 @@ grep -rn "<MovedSymbol>" <original-package-path>/ --include='*_test.go'
 1. Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
 
 ```bash
-grep -rn "\"{{ .vars.modulePrefix }}/<original-package-path>\"" <original-package-path>/
+# For languages with import paths, find importers of the original package.
+grep -rn "{{ .vars.modulePrefix }}/<original-package-path>" <original-package-path>/
 ```
 
 For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).
@@ -74,10 +78,12 @@ For each subpackage hit, decide: does the subpackage's import path remain valid 
 
 1. If any code generation refers to the symbols being moved (by path or identifier), the move forces edits to the codegen configuration as well.
 
-Check `go:generate` directives in the moved files and their callers:
+Check code-generation that references the moved symbols — Go `go:generate` directives,
+build scripts, schema/codegen configs, or derived-table generators in your toolchain:
 
 ```bash
-grep -rn "go:generate" --include='*.go' | grep -i "<symbol-or-package>"
+# Go example; adapt to your project's codegen.
+grep -rn "go:generate" | grep -i "<symbol-or-package>"
 ```
 
 <!-- replaceWith: project-specific codegen tables, emit-site files, or derived-table regeneration commands that reference symbols by name -->
@@ -89,7 +95,8 @@ grep -rn "go:generate" --include='*.go' | grep -i "<symbol-or-package>"
 1. Symbols called from constructors or initialisation paths create **transitive** imports that the destination package may not be allowed to add (a new import could introduce a cycle).
 
 ```bash
-grep -rn "<MovedSymbol>" <path>/init.go <path>/constructor.go <path>/new*.go 2>/dev/null
+# Your language's constructor / initialisation entry points.
+grep -rn "<MovedSymbol>" <constructor-or-init-files>
 ```
 
 Trace each constructor up to its caller: does the caller's package end up importing the destination after the move?
@@ -100,10 +107,11 @@ Trace each constructor up to its caller: does the caller's package end up import
 <!-- awf:section category-6-init-visibility -->
 ### 6. `init()` ordering and cross-package method visibility
 
-1. Methods on a moved type with cross-package callers cannot move without exporting (Go visibility) or inverting (interface in the original package).
+1. Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
 
 ```bash
-grep -rn "^func (\w\+ \*<MovedType>)" --include='*.go'
+# Find functions/methods defined on the moved type (Go method-receiver example shown; adapt).
+grep -rn "<MovedType>" <original-package-path>/
 ```
 
 For each method: is it called from a sibling package? Then it needs to remain reachable — either the type stays exported in its current package, or an interface is introduced in the original package with an implementation in the destination.

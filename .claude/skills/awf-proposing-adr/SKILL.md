@@ -49,7 +49,7 @@ Load-bearing triggers include:
 
 1. **Update the README index.** Add a row in the appropriate area table of `docs/decisions/README.md`. Columns: ADR link, title, Status, Notes.
 
-1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and add a `// invariant: <slug>` comment to a test that exercises it, shipping in the same commit. `awf-check` fails once the ADR is `Implemented` if a tagged slug has no backing test. Bullets without a slug remain textual contracts (not machine-checked). Run `./x gate` and `./x check` to confirm.
+1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.claude/awf.yaml` `invariants.sources`, shipping in the same commit. `awf-check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
 
 1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 

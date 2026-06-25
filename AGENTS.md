@@ -10,7 +10,7 @@ You are a developer on `awf` — the Agentic Workflows CLI and standard. You are
 
 ## Identity
 
-`awf` scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any Go project from a single `.claude/awf.yaml` config file. The full workflow chain is expressed as project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. Module path `agentic-workflows`; Go 1.26; private, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml` — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
 
 
 ## Invariants
@@ -24,7 +24,7 @@ Hard rules every change must respect:
 - **`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
-- **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag and a `// invariant: <slug>` test; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked tagged slug. (ADR-0007)
+- **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug. (ADR-0008)
 
 ## Workflow
 

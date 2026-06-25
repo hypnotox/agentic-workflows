@@ -36,7 +36,9 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 For each hit, decide: does this caller need to update its import path after the move? Can it stay where it is, or does it move with the symbol?
 
 ```bash
-grep -rn "<MovedSymbol>" <original-package-path>/ --include='*.go' | grep -v _test.go
+# Search the original package's production source for <MovedSymbol>
+# (scope the file filter to your language's source extension; exclude test files).
+grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 
 ### 2. Sibling test files
@@ -46,7 +48,8 @@ grep -rn "<MovedSymbol>" <original-package-path>/ --include='*.go' | grep -v _te
 Capture **N** (production call sites) and **M** (test call sites) separately — M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
 
 ```bash
-grep -rn "<MovedSymbol>" <original-package-path>/ --include='*_test.go'
+# Search the package's test files (your language's test-file convention).
+grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 
 ### 3. Subpackages
@@ -54,7 +57,8 @@ grep -rn "<MovedSymbol>" <original-package-path>/ --include='*_test.go'
 1. Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
 
 ```bash
-grep -rn "\"agentic-workflows/<original-package-path>\"" <original-package-path>/
+# For languages with import paths, find importers of the original package.
+grep -rn "agentic-workflows/<original-package-path>" <original-package-path>/
 ```
 
 For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).
@@ -65,10 +69,11 @@ For each subpackage hit, decide: does the subpackage's import path remain valid 
 
 ### 6. `init()` ordering and cross-package method visibility
 
-1. Methods on a moved type with cross-package callers cannot move without exporting (Go visibility) or inverting (interface in the original package).
+1. Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
 
 ```bash
-grep -rn "^func (\w\+ \*<MovedType>)" --include='*.go'
+# Find functions/methods defined on the moved type (Go method-receiver example shown; adapt).
+grep -rn "<MovedType>" <original-package-path>/
 ```
 
 For each method: is it called from a sibling package? Then it needs to remain reachable — either the type stays exported in its current package, or an interface is introduced in the original package with an implementation in the destination.
