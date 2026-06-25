@@ -124,7 +124,9 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    that target. The root file carries **no** per-target `data`, `sections`, or
    `local` — those move to sidecars. `config.Config`'s `Skills`/`Agents`/`Docs`
    fields change from `map[string]SkillConfig` to `[]string`; a `data:`/`sections:`
-   key at the root is a parse error (`KnownFields(true)`).
+   key at the root is a parse error (`KnownFields(true)`). `agentsDoc` is **not**
+   one of these lists: it remains the always-on singleton `config.Config.AgentsDoc`
+   and is excluded from the enable-list schema (item 7).
 
 3. **Per-target sidecars hold everything non-prose.** A target's structured `data`,
    its `sections` overrides (`drop` / explicit `replaceWith`), and its `local` flag
@@ -176,33 +178,47 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    `invalid-frontmatter` signal as a rendered target (ADR-0006). A declared local
    target with no file at that path is a `check`/`sync` error.
 
-6. **Drift spans the full per-target source set.** With config split across files,
-   the per-rendered-file `ConfigHash` must incorporate every source that file
-   depends on: the root `config.yaml` skeleton slice that reaches it, its sidecar
-   (if any), and the bytes of any convention part file it consumed. Editing a
-   sidecar or a part file therefore flags exactly the rendered files that consume
-   it as stale; a sidecar or part file for no enabled/declared target is reported as
-   an orphan. `manifest.Entry` stays a generic `path→hash` record — `ConfigHash`
-   remains a single string — so the lock **format** is unchanged; only its
-   composition broadens. The lock file relocates to `.claude/awf/awf.lock`; its
+6. **Drift uses a per-target projection, not a whole-tree hash.** Today
+   `cfgHash = manifest.Hash(p.Cfg.Raw())` is the whole config file's bytes, shared
+   by every rendered file (`project.go:362,417`); once config splits, `Raw()` no
+   longer captures sidecars or parts. The replacement composes, **per rendered
+   file**, a `ConfigHash` over exactly that file's effective inputs: (a) the global
+   skeleton fields it actually reads (`prefix`, the `vars` it references, its own
+   enable-list membership), (b) its sidecar's `data`/`sections`/`local` (the
+   resolved override set, or empty if no sidecar), and (c) the bytes of any
+   convention part file it consumed. These are assembled into a deterministic
+   canonical encoding (a re-marshalled per-target sub-document plus the appended
+   part bytes in fixed order) and hashed. The operational consequence is the point
+   of choosing projection over a single whole-tree digest: editing `skills/tdd.yaml`
+   re-flags only `tdd`'s outputs, not every rendered file. A sidecar or part file
+   matching no enabled/declared target is reported as an orphan. `manifest.Entry`
+   stays a generic `path→hash` record — `ConfigHash` remains a single string per
+   entry — so the lock **format** is unchanged; only how each entry's `ConfigHash`
+   is computed changes. The lock file relocates to `.claude/awf/awf.lock`; its
    `AWFVersion` field is untouched here (ADR-B owns version-gating).
 
-7. **agentsDoc is re-modelled as a docs-kind target `agents-doc` with prose in
-   parts.** `templates/agents-doc/AGENTS.md.tmpl` is restructured so the
+7. **agentsDoc stays a distinct singleton kind; its prose moves to parts.**
+   `agentsDoc` is **not** folded into the `Docs` map: it remains the top-level
+   `config.Config.AgentsDoc *SkillConfig` singleton with its six named sections,
+   always-on, rendering to the repo-root `AGENTS.md` (not under `docsDir`) — folding
+   it into `Docs` (a body-only `DocSpec` with title/desc, rendered under `docsDir`
+   and listed in the agents-doc Document-map by `resolvedDocs()`, `project.go:158-173`)
+   would give it fields it has no use for and make it list itself. Only its config
+   home and prose-delivery change: its sidecar lives at `.claude/awf/agents-doc.yaml`
+   and its convention parts at `.claude/awf/parts/agents-doc/<section>.md` (a
+   top-level `parts/` branch for the singleton, reusing today's `.claude/awf/parts/`
+   location). `templates/agents-doc/AGENTS.md.tmpl` is restructured so the
    `you-and-this-project` and `identity` section **bodies** carry **generic,
    adopter-neutral** prose directly (publication-safe, with no awf-specific content),
    replacing the `{{ with .data.ownership }}` / `{{ with .data.identity }}` scalar
    indirection; the `ownership` and `identity` data scalars are removed. A project
    overrides that prose via convention parts at
-   `.claude/awf/docs/parts/agents-doc/{you-and-this-project,identity}.md`. This repo's
-   own specific identity/ownership prose (currently `agentsDoc.data.{ownership,identity}`
+   `.claude/awf/parts/agents-doc/{you-and-this-project,identity}.md`. This repo's own
+   specific identity/ownership prose (currently `agentsDoc.data.{ownership,identity}`
    in `.claude/awf.yaml`) therefore moves into those convention parts, so the
    byte-identical-output invariant below depends on those parts existing for the
-   dogfood port.
-   The `invariants[]` and `docMap[]` structured data stay as `data` in
-   `.claude/awf/docs/agents-doc.yaml`. agentsDoc's always-on rendering to the
-   repo-root `AGENTS.md` (not under `docsDir`) is unchanged; only its config home and
-   the prose-delivery mechanism change. Re-modelled section bodies must render
+   dogfood port. The `invariants[]` and `docMap[]` structured data stay as `data` in
+   `.claude/awf/agents-doc.yaml`. Re-modelled section bodies must render
    publication-safe with no part override and with empty `invariants`/`docMap`
    (ADR-0001).
 
@@ -217,7 +233,7 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
 Applying this layout to awf's own repo — hand-porting `.claude/awf.yaml` into
 `.claude/awf/config.yaml` + the per-kind sidecars + the extracted parts (including
 this repo's specific identity/ownership prose into
-`.claude/awf/docs/parts/agents-doc/*.md`), then re-syncing so rendered output is
+`.claude/awf/parts/agents-doc/*.md`), then re-syncing so rendered output is
 byte-identical — is **not** a Decision item: it is adopter (dogfood) work, the final
 task of the implementation plan, not a standard-definition commitment. This change
 earns an ADR because it is load-bearing (new top-level config layout, changed config
@@ -247,13 +263,15 @@ is `Implemented`; ADR-0008); untagged bullets are textual contracts.
   frontmatter validated by `sync` and `check` at its conventional output path;
   missing/empty `name`/`description` fails identically to a rendered target, and an
   absent file for a declared local target is an error.
-- `inv: drift-source-set` — `awf check` reports a rendered file as stale when the
-  root `config.yaml` slice it depends on, its sidecar, or any convention part file it
-  consumed changes since the last `sync`; a sidecar or part file matching no
+- `inv: drift-source-set` — Each rendered file's `ConfigHash` is a per-target
+  projection over only its own effective inputs (the skeleton fields it reads, its
+  sidecar, its consumed parts); `awf check` reports that file stale when any of those
+  inputs change since the last `sync`, and editing one target's sidecar or part does
+  **not** flag unrelated targets' files. A sidecar or part file matching no
   enabled/declared target is reported as an orphan.
 - `inv: agentsdoc-parts` — The `agents-doc` `you-and-this-project` and `identity`
   section bodies are overridable via convention parts under
-  `.claude/awf/docs/parts/agents-doc/`, and render publication-safe with no override
+  `.claude/awf/parts/agents-doc/`, and render publication-safe with no override
   and empty `invariants`/`docMap`.
 - The lock **format** is unchanged: `manifest.Entry` remains a generic `path→hash`
   record with a single-string `ConfigHash`; only the relocation and the
@@ -314,7 +332,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   `.claude/awf.yaml` update to the `.claude/awf/config.yaml` path and the broadened
   source set. That text lives in the agents-doc invariants data (today
   `agentsDoc.data.invariants` in `.claude/awf.yaml`, relocating to
-  `.claude/awf/docs/agents-doc.yaml`'s `data.invariants`); edit the `.claude/awf.yaml`
+  `.claude/awf/agents-doc.yaml`'s `data.invariants`); edit the `.claude/awf.yaml`
   reference there and the publication-safe invariant's "`awf check` after any sync"
   phrasing if affected, then re-render from the ported config.
 - When this ADR flips to Accepted/Implemented, the same commit regenerates `ACTIVE.md`
@@ -338,4 +356,6 @@ adopters from the single-file layout to this tree.
 | Externalize `data` arrays into `.md`/separate files too | Scope was explicitly "prose bodies only"; structured `data` stays as YAML in the sidecar where it is schema-checkable and close to its `sections`. |
 | Keep agentsDoc prose as `data` scalars in its sidecar | Leaves the config's largest prose as multi-line YAML, partially defeating the goal; re-modelling the two section bodies into convention parts is the one template change that yields the biggest conciseness win. |
 | Fold the migration mechanism (versioned lock + `awf upgrade` + gate) into this ADR | Couples a reusable, forward-looking migration mechanism to one layout change; one-decision-per-ADR keeps it as ADR-B (user-selected two-ADR split). |
-| Change the lock format to record per-source hashes | Unnecessary: `ConfigHash` stays a single string composed over the broader source set, so `manifest.Entry` is untouched and the format stays stable. |
+| Fold `agents-doc` into the `Docs` map for a uniform per-kind tree | `agentsDoc` is a 6-section, always-on singleton rendering to repo-root `AGENTS.md`; `Docs` is a body-only `DocSpec` (title/desc) rendered under `docsDir` and folded into the Document-map by `resolvedDocs()`. Folding would force unused title/desc, push 6 sections through a body-only spec, and make it list itself — more special-casing than keeping it a distinct singleton kind (item 7). |
+| Whole-config-tree hash instead of per-target projection (item 6) | A single digest over `config.yaml` + all sidecars + all parts is simpler, but any edit re-flags every rendered file as stale, erasing the locality that makes drift output actionable. Per-target projection costs a per-target re-encode and is worth it. |
+| Change the lock format to record per-source hashes | Per-source hashes (one each for skeleton-slice / sidecar / part) would let `check` name *which* source drifted, not just which target. But `ConfigHash` is a single string per `manifest.Entry`; per-source hashes need a format change, and the per-target projection already localizes drift to the offending target — `check` can re-hash a target's components on demand to attribute further. The format change isn't warranted now. |
