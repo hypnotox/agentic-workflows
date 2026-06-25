@@ -341,7 +341,7 @@ func RenderActiveMD(dir string) (string, error) {
 
 ### Task 2.3 — Update `internal/adr/adr_test.go`
 
-- [ ] In `internal/adr/adr_test.go`: change the package clause to `package adr_test`, the import to `"agentic-workflows/internal/adr"`, and every `adrtools.GenerateActiveMD(` call to `adr.RenderActiveMD(`. Rename the two test functions `TestGenerateActiveMDGroupsByStatus` → `TestRenderActiveMDGroupsByStatus` and `TestGenerateActiveMDEmptyWhenNoADRs` → `TestRenderActiveMDEmptyWhenNoADRs`.
+- [ ] In `internal/adr/adr_test.go`: change the package clause to `package adr_test`, the import to `"agentic-workflows/internal/adr"`, and every `adrtools.GenerateActiveMD(` call to `adr.RenderActiveMD(`. Rename the two test functions `TestGenerateActiveMDGroupsByStatus` → `TestRenderActiveMDGroupsByStatus` and `TestGenerateActiveMDEmptyWhenNoADRs` → `TestRenderActiveMDEmptyWhenNoADRs`. Also update the now-stale references to the old name: the doc comment on line ~12 (`// TestGenerateActiveMDGroupsByStatus …`) and both `t.Fatalf("GenerateActiveMD: %v", err)` message strings → `t.Fatalf("RenderActiveMD: %v", err)`. (`os` and `filepath` are already imported, so the new `ParseDir` test below needs no import change.)
 - [ ] Append a `ParseDir` test to `internal/adr/adr_test.go`:
 
 ```go
