@@ -127,6 +127,8 @@ agentsDoc:
       - text: "**Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`)."
       - text: "**Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise."
         ref: ADR-0006
+      - text: "**Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag and a `// invariant: <slug>` test; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked tagged slug."
+        ref: ADR-0007
     docMap: []
 docs:
   architecture:

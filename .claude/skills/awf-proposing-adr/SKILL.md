@@ -49,7 +49,7 @@ Load-bearing triggers include:
 
 1. **Update the README index.** Add a row in the appropriate area table of `docs/decisions/README.md`. Columns: ADR link, title, Status, Notes.
 
-1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `./x gate` to confirm.
+1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and add a `// invariant: <slug>` comment to a test that exercises it, shipping in the same commit. `awf-check` fails once the ADR is `Implemented` if a tagged slug has no backing test. Bullets without a slug remain textual contracts (not machine-checked). Run `./x gate` and `./x check` to confirm.
 
 1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 

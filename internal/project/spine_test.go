@@ -394,6 +394,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 		"vars": map[string]any{
 			"activeMdRegenCmd":    "go test ./internal/adrtools/",
 			"gateCmd":             "./x gate",
+			"checkCmd":            "./x check",
 			"workflowDoc":         "docs/workflow.md",
 			"stateDocsPath":       "docs/decisions/state/",
 			"adrProposeCommitFmt": "docs(adr): propose NNNN <short title>",

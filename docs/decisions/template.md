@@ -21,9 +21,11 @@ further consultation.
 ## Invariants
 
 Checkable constraints that must hold as long as this decision stands — conditions that
-should trigger a new ADR if violated:
+should trigger a new ADR if violated. Tag each machine-enforceable bullet with a slug and back
+it with a `// invariant: <slug>` test; `awf check` enforces tagged slugs once the ADR is
+`Implemented`. Untagged bullets are textual contracts.
 
-- ...
+- `inv: <slug>` — ...
 
 ## Consequences
 
