@@ -69,7 +69,10 @@ binary as well, so adopters can utilise it."
    `check`): `project.Open` → `Project.CheckInvariants()` → `invariants.Check(<docsDir>/decisions,
    root)`; it prints findings and exits non-zero on any. `awf check` **also** calls
    `CheckInvariants` and fails when it reports findings — so the existing pre-commit `awf check`
-   (which adopters already run) enforces invariant backing automatically.
+   (which adopters already run) enforces invariant backing automatically. `invariants.Finding` and
+   `manifest.Drift` stay distinct types: `runCheck` calls `Check` and `CheckInvariants` separately,
+   prints each set in its own format, and exits non-zero when **either** is non-empty — no type
+   merge, no shared printer.
 
 5. **Convention surfaces.** Rewrite the `proposing-adr` skill's invariant-pairing rule to the
    explicit-slug form and state that `awf check` enforces it for Implemented ADRs; update
@@ -119,9 +122,15 @@ Harder / accepted trade-offs:
 - `awf check` carries a second concern (invariant findings alongside render/ACTIVE.md drift); they
   are reported together and either failing fails the command.
 - The `*.go` scanner is a line-comment regex, so a `// invariant: <slug>` string embedded in a Go
-  string literal (e.g. a test fixture) would register as a backing tag. Accepted: fixture slugs are
-  kept distinct from real ADR slugs, and the `internal/invariants` tests scan temp dirs, not the
-  repo, so no real slug is satisfied by a fixture.
+  string literal (e.g. a test fixture) would register as a backing tag. Accepted on two fronts.
+  (a) *Test fixtures:* fixture slugs are kept distinct from real ADR slugs, and the
+  `internal/invariants` tests scan temp dirs, not the repo, so no real slug is satisfied by a
+  fixture. (b) *The scanner's own source (the dogfood run, Decision 6):* `awf invariants` run on
+  this repo scans `internal/invariants` and the extended `internal/adr`, whose source carries the
+  `// invariant:` marker as part of the regex pattern literal — but that literal is the *pattern*
+  (`// invariant: ([a-z0-9-]+)` or similar), not a concrete slug, so it captures no real ADR slug
+  and cannot spuriously satisfy one. The mitigation therefore holds for the production self-scan, not
+  only for unit tests.
 - Enforcement is per-bullet opt-in and `Implemented`-only by design; an un-tagged or
   not-yet-Implemented invariant is not machine-checked.
 
