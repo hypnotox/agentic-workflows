@@ -17,9 +17,9 @@ func writeADR(t *testing.T, dir, name, status, invBody string) {
 	}
 }
 
-func goSrc(t *testing.T, root, name, body string) {
+func goSrc(t *testing.T, root, body string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "x.go"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -51,7 +51,7 @@ func TestCheckImplementedOnly(t *testing.T) {
 func TestCheckUnbackedAndBacked(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-backed` — x.\n- `inv: fixture-missing` — y.")
-	goSrc(t, root, "x.go", "package x\n// invariant: fixture-backed\nfunc T() {}\n")
+	goSrc(t, root, "package x\n// invariant: fixture-backed\nfunc T() {}\n")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestCheckThreeState(t *testing.T) {
 		t.Fatalf("sources unbacked: want 1 unbacked, got %#v", f)
 	}
 	// sources, backed -> clean
-	goSrc(t, root, "x.go", "package x\n// invariant: fixture-one\n")
+	goSrc(t, root, "package x\n// invariant: fixture-one\n")
 	f, _ = invariants.Check(dir, root, &config.InvariantConfig{Sources: src})
 	if len(f) != 0 {
 		t.Errorf("sources backed: want clean, got %#v", f)
@@ -142,11 +142,51 @@ func TestCheckMarkerWhitespace(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-a` — x.\n- `inv: fixture-b` — y.")
 	// one with a space after the marker, one without.
-	goSrc(t, root, "x.go", "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
+	goSrc(t, root, "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
 	f, _ := invariants.Check(dir, root, cfg)
 	if len(f) != 0 {
 		t.Errorf("whitespace-tolerant marker should match both, got %#v", f)
+	}
+}
+
+// TestCheckIgnoresProseCrossReference pins that only a slug leading an invariant
+// list item is a declaration: an `inv: <slug>` token in mid-prose (e.g. a
+// parenthetical cross-reference to another ADR's slug) is not. Regression for the
+// false duplicate ADR-0009/0010 hit when one ADR's Invariants section referenced
+// the other's slug in backticks.
+func TestCheckIgnoresProseCrossReference(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	// ADR-1 declares real-slug and, in prose, cross-references ADR-2's slug.
+	writeADR(t, dir, "0001-a.md", "Implemented",
+		"- `inv: real-slug` — the real one (co-owned with ADR-2 `inv: shared-slug`).")
+	// ADR-2 legitimately declares shared-slug.
+	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: shared-slug` — the real declaration.")
+	goSrc(t, root, "package x\n// invariant: real-slug\n// invariant: shared-slug\n")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatalf("a prose cross-reference must not register as a declaration (no duplicate): %v", err)
+	}
+	if len(f) != 0 {
+		t.Errorf("both slugs are declared once and backed; got %#v", f)
+	}
+}
+
+// TestCheckRecognisesDoubleBacktickDeclaration pins that the double-backtick
+// declaration form ADR-0007 uses (a bullet whose tag is wrapped in double
+// backticks so the inner single backticks render literally) is still recognised
+// as a declaration — see the fixture body for the exact shape.
+func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `inv: dbl-slug` `` — declared with double backticks.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "dbl-slug" {
+		t.Fatalf("double-backtick declaration must be required (and unbacked here); got %#v", f)
 	}
 }
 

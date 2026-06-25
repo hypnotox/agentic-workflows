@@ -41,7 +41,14 @@ func (f Finding) Detail() string {
 }
 
 var (
-	tagRe  = regexp.MustCompile("`inv:\\s*([a-z0-9-]+)`")
+	// declRe matches an invariant DECLARATION: an `inv: <slug>` tag that leads a
+	// markdown list item (optionally indented). Only backticks and spaces may sit
+	// between the bullet and the tag, so both the single-backtick form
+	// (`- `+"`inv: x`") and the double-backtick form ADR-0007 uses to render
+	// literal backticks (`- `+"``  `inv: x`  ``") are recognised, while a
+	// mid-prose cross-reference to another ADR's slug is not (it does not lead a
+	// list item) — which would otherwise phantom-duplicate that slug.
+	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*inv:\\s*([a-z0-9-]+)")
 	slugRe = regexp.MustCompile(`^\s*invariant:\s*([a-z0-9-]+)`)
 )
 
@@ -58,7 +65,7 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 		if a.Status != "Implemented" {
 			continue
 		}
-		for _, m := range tagRe.FindAllStringSubmatch(a.Sections["Invariants"], -1) {
+		for _, m := range declRe.FindAllStringSubmatch(a.Sections["Invariants"], -1) {
 			slug := m[1]
 			if prev, ok := required[slug]; ok {
 				return nil, fmt.Errorf("duplicate inv slug %q (in %s and %s)", slug, prev, a.Filename)
