@@ -17,7 +17,7 @@ vars:
   hostGitAdrRef: ""
   invariantTestPath: ""
   keyInvariantAdrRef: ""
-  modulePrefix: "agentic-workflows"
+  modulePrefix: "github.com/hypnotox/agentic-workflows"
   noDivingAdrRef: ""
   oracleStateDoc: ""
   perTaskReviewAdrRef: ""
@@ -123,7 +123,7 @@ agentsDoc:
     ownership: |
       You are a developer on `awf` — the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.
     identity: |
-      `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml` — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
+      `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml` — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
     invariants:
       - text: "**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify."
         ref: ADR-0001

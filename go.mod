@@ -1,4 +1,4 @@
-module agentic-workflows
+module github.com/hypnotox/agentic-workflows
 
 go 1.26
 

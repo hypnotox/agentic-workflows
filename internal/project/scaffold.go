@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"strings"
 
-	"agentic-workflows/internal/catalog"
-	"agentic-workflows/internal/render"
-	"agentic-workflows/templates"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // ScaffoldConfig generates the bytes of a .claude/awf.yaml that enables every

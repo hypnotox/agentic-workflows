@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/config"
-	"agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 func scaffold(t *testing.T, awfYAML string) string {

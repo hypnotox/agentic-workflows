@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 func runInvariants(root string) error {

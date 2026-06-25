@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 type PartFunc func(name string) (string, error)

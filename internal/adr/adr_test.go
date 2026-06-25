@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 )
 
 // TestRenderActiveMDGroupsByStatus is a hermetic unit test using a temp dir.

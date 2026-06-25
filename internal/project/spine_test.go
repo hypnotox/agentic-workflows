@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/render"
-	"agentic-workflows/templates"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {

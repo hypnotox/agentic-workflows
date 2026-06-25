@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
 // statusOrder defines the section order in ACTIVE.md.

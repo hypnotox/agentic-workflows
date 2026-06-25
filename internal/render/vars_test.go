@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 func TestReferencedVars(t *testing.T) {

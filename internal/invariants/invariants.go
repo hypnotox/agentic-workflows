@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"agentic-workflows/internal/adr"
-	"agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // Status classifies an invariant finding.

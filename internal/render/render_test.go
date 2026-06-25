@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 func noParts(name string) (string, error) { return "", nil }

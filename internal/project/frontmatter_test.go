@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/catalog"
-	"agentic-workflows/internal/frontmatter"
-	"agentic-workflows/internal/render"
-	"agentic-workflows/templates"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // TestAllTemplatesProduceValidFrontmatter renders every catalog skill and agent

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agentic-workflows/internal/config"
-	"agentic-workflows/internal/invariants"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/invariants"
 )
 
 func writeADR(t *testing.T, dir, name, status, invBody string) {

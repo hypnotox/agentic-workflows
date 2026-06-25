@@ -3,7 +3,7 @@ package catalog
 import (
 	"testing"
 
-	"agentic-workflows/templates"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 func TestLoadFromEmbed(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 func main() {

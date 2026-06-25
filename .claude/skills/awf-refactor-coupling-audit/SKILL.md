@@ -58,7 +58,7 @@ grep -rn "<MovedSymbol>" <original-package-path>/
 
 ```bash
 # For languages with import paths, find importers of the original package.
-grep -rn "agentic-workflows/<original-package-path>" <original-package-path>/
+grep -rn "github.com/hypnotox/agentic-workflows/<original-package-path>" <original-package-path>/
 ```
 
 For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).

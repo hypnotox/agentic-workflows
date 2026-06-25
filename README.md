@@ -7,7 +7,7 @@ standard. The awf tool is a Go binary; the standard it renders is language-agnos
 
 ## Install
 
-    go install agentic-workflows/cmd/awf@latest
+    go install github.com/hypnotox/agentic-workflows/cmd/awf@latest
 
 ## Use
 

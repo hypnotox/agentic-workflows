@@ -10,14 +10,14 @@ import (
 	"sort"
 	"strings"
 
-	"agentic-workflows/internal/adr"
-	"agentic-workflows/internal/catalog"
-	"agentic-workflows/internal/config"
-	"agentic-workflows/internal/frontmatter"
-	"agentic-workflows/internal/invariants"
-	"agentic-workflows/internal/manifest"
-	"agentic-workflows/internal/render"
-	"agentic-workflows/templates"
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/invariants"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 const Version = "0.1.0"

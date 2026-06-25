@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
 // invariant: frontmatter-split

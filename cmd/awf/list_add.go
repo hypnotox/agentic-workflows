@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"agentic-workflows/internal/config"
-	"agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 // skillState returns the display state of a skill: "local", "tuned", "enabled", or "available".
