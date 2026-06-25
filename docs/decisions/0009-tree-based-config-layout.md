@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
@@ -252,7 +252,7 @@ is `Implemented`; ADR-0008); untagged bullets are textual contracts.
   written to/read from `.claude/awf/awf.lock`; no normal load/render/sync/check path
   reads or writes `.claude/awf.yaml` or `.claude/awf.lock`. The `internal/migrate`
   package under `awf upgrade` is the single named exception, reading the legacy file
-  only to port it forward (ADR-0010 `inv: legacy-read-isolation`).
+  only to port it forward (ADR-0010 `legacy-read-isolation`).
 - `inv: enable-arrays` — `config.Config.Skills`/`Agents`/`Docs` are string arrays
   whose entries enable targets by presence; a `data:`, `sections:`, or `local:` key
   at the root of `config.yaml` is rejected at load (`KnownFields(true)`).

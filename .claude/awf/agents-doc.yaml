@@ -1,9 +1,18 @@
 data:
     docMap: []
+    commands:
+        - cmd: go test ./...
+          desc: run the test suite
+        - cmd: ./x gate
+          desc: run the gate before committing
+        - cmd: ./x check
+          desc: check rendered files for drift (also enforces the schema-version gate)
+        - cmd: awf upgrade
+          desc: migrate the config tree to the current schema after upgrading awf
     invariants:
         - ref: ADR-0001
           text: '**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify.'
-        - text: '**`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file.'
+        - text: '**`awf check` is the drift oracle.** After editing `.claude/awf/config.yaml`, a sidecar, or any part, run `./x sync && ./x check`; it also gates a stale config layout with a "run `awf upgrade`" message. Commit rendered files alongside config changes; never hand-edit a rendered file.'
         - text: '**Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).'
         - ref: ADR-0006
           text: '**Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise.'

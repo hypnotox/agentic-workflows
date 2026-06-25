@@ -21,7 +21,7 @@ Hard rules every change must respect:
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
 - **Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify. (ADR-0001)
-- **`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file.
+- **`awf check` is the drift oracle.** After editing `.claude/awf/config.yaml`, a sidecar, or any part, run `./x sync && ./x check`; it also gates a stale config layout with a "run `awf upgrade`" message. Commit rendered files alongside config changes; never hand-edit a rendered file.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
 - **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug. (ADR-0008)
@@ -42,10 +42,12 @@ Run `./x gate` before every commit; `./x gate full` is the full tier. Convention
 
 ## Commands
 
-- `go test ./...` — run the test suite
-- `./x gate` — run the gate before committing
-- `./x check` — check rendered files for drift
-
+```
+go test ./... — run the test suite
+./x gate — run the gate before committing
+./x check — check rendered files for drift (also enforces the schema-version gate)
+awf upgrade — migrate the config tree to the current schema after upgrading awf
+```
 
 ## Document map
 

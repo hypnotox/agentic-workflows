@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
@@ -171,7 +171,7 @@ by tests landing with implementation (enforced by `awf check` once this ADR is
   idempotent: re-running at the current schema applies nothing and exits zero.
 - `inv: legacy-read-isolation` — The legacy `.claude/awf.yaml` is read only by the
   `internal/migrate` registry under `awf upgrade`; no `config.Load`/render/`Sync`/`Check`
-  path reads it (the named exemption to ADR-0009 `inv: config-root`).
+  path reads it (the named exemption to ADR-0009 `config-root`).
 - `inv: noop-autobump` — When the effective generation is below current but **no**
   registered migration has a `To` in the open interval `(generation, current]`, `awf sync`
   writes the lock at the current schema version without gating and without error. (This
