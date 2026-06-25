@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
@@ -77,9 +77,11 @@ decided here.
    that start line — carries the marker is dropped from **both** numerator
    and denominator — an ignored line neither inflates nor deflates the total. The reason
    is **mandatory**: a bare `// coverage-ignore` with no non-empty reason fails the
-   checker. Use is audited at `awf-reviewing-impl`; the marker is greppable so every use
-   is auditable. It is reserved for branches no fixture can reach (e.g. marshalling a
-   static struct), never a substitute for a missing test.
+   checker. Use is audited as a repo-local review practice during implementation review
+   (the `awf-reviewing-impl` pass), not as a new obligation added to the rendered standard
+   skill; the marker is greppable so every use is auditable. It is reserved for branches no
+   fixture can reach (e.g. marshalling a static struct), never a substitute for a missing
+   test.
 
 4. **Refactor the `cmd/awf` entrypoint into a testable seam.** Extract dispatch into
    `run(args []string, stdout, stderr io.Writer) int` returning an exit code; `main`
@@ -91,10 +93,10 @@ decided here.
 
 5. **Coverage is measured across the whole module.** `go test ./...` with a single
    merged profile; zero-statement packages (`templates`) do not contribute. Tests favour
-   real fixtures (`t.TempDir`, malformed inputs, missing files) over permission tricks;
-   `chmod`-based error injection is avoided where another injection works, and guarded by
-   a root-skip helper where it is the only option (it is a no-op under `root`, common in
-   CI).
+   real fixtures (`t.TempDir`, malformed inputs, missing files) over permission tricks and
+   mock-the-world seams. The concrete test tactics for otherwise-hard-to-reach branches
+   (e.g. when `chmod`-based injection is acceptable and how it is guarded under `root`) are
+   detailed in the implementation plan, not fixed here.
 
 ## Invariants
 
@@ -104,9 +106,9 @@ decided here.
 - `inv: coverage-ignore-reason` — a `// coverage-ignore` marker with no non-empty reason
   causes the checker to fail rather than silently dropping the block. Backed by a checker
   test over a fixture carrying a reasonless marker.
-- After the entrypoint refactor, `os.Exit` appears only in `cmd/awf/main.go`'s `main`,
-  whose body is solely `os.Exit(run(...))`; no `fatal`/`fatalIf` helpers remain. (Textual
-  contract — grep is the test.)
+- `inv: single-os-exit` — within `cmd/awf`, `os.Exit` appears only in `main.go`'s `main`,
+  whose body is solely `os.Exit(run(...))`; no `fatal`/`fatalIf` helpers remain. Backed by
+  a tree-walking test over the `cmd/awf` package sources.
 - Every `// coverage-ignore` marker in the tree carries a justification reviewed under
   `awf-reviewing-impl`; the marker is never used in place of a writable test. (Textual
   contract.)
