@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -23,15 +24,31 @@ type SkillConfig struct {
 }
 
 type Config struct {
-	Prefix    string                 `yaml:"prefix"`
-	DocsDir   string                 `yaml:"docsDir"`
-	Vars      map[string]any         `yaml:"vars"`
-	Skills    map[string]SkillConfig `yaml:"skills"`
-	Agents    map[string]SkillConfig `yaml:"agents"`
-	Hooks     []string               `yaml:"hooks"`
-	AgentsDoc *SkillConfig           `yaml:"agentsDoc"`
-	Docs      map[string]SkillConfig `yaml:"docs"`
-	raw       []byte
+	Prefix     string                 `yaml:"prefix"`
+	DocsDir    string                 `yaml:"docsDir"`
+	Vars       map[string]any         `yaml:"vars"`
+	Skills     map[string]SkillConfig `yaml:"skills"`
+	Agents     map[string]SkillConfig `yaml:"agents"`
+	Hooks      []string               `yaml:"hooks"`
+	AgentsDoc  *SkillConfig           `yaml:"agentsDoc"`
+	Docs       map[string]SkillConfig `yaml:"docs"`
+	Invariants *InvariantConfig       `yaml:"invariants"`
+	raw        []byte
+}
+
+// InvariantConfig configures language-agnostic invariant backing. A nil
+// *InvariantConfig (key absent) means "unchecked"; Disabled is the explicit
+// opt-out; a non-empty Sources enables enforcement.
+type InvariantConfig struct {
+	Disabled bool              `yaml:"disabled"`
+	Sources  []InvariantSource `yaml:"sources"`
+}
+
+// InvariantSource pairs filename globs (matched against a file's basename) with
+// the literal comment marker that prefixes a backing `invariant: <slug>` tag.
+type InvariantSource struct {
+	Globs  []string `yaml:"globs"`
+	Marker string   `yaml:"marker"`
 }
 
 func Load(path string) (*Config, error) {
@@ -82,6 +99,18 @@ func (c *Config) Validate() error {
 	if c.AgentsDoc != nil {
 		if err := checkSections("agentsDoc", "agentsDoc", *c.AgentsDoc); err != nil {
 			return err
+		}
+	}
+	if c.Invariants != nil {
+		for _, src := range c.Invariants.Sources {
+			for _, g := range src.Globs {
+				if strings.Contains(g, "/") {
+					return fmt.Errorf("invariants glob %q must be a filename pattern, not a path", g)
+				}
+				if _, err := filepath.Match(g, "x"); err != nil {
+					return fmt.Errorf("invariants glob %q is malformed: %w", g, err)
+				}
+			}
 		}
 	}
 	return nil

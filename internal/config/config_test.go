@@ -242,3 +242,25 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 		t.Fatal("expected error for escaping docsDir")
 	}
 }
+
+// invariant: invariants-glob-basename
+func TestInvariantGlobValidation(t *testing.T) {
+	ok := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Globs: []string{"*.go", "*_test.py"}, Marker: "//"}},
+	}}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("valid basename globs rejected: %v", err)
+	}
+	pathGlob := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
+	}}
+	if err := pathGlob.Validate(); err == nil {
+		t.Error("expected path-separator glob to be rejected")
+	}
+	bad := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Globs: []string{"[", "*.go"}, Marker: "//"}},
+	}}
+	if err := bad.Validate(); err == nil {
+		t.Error("expected malformed glob to be rejected")
+	}
+}

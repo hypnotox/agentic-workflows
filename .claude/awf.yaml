@@ -1,4 +1,8 @@
 prefix: awf
+invariants:
+  sources:
+    - globs: ["*.go"]
+      marker: "//"
 vars:
   activeMdRegenCmd: "./x sync"
   adrProposeCommitFmt: "docs(adr): propose NNNN <short title>"
