@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|invariants|list|add|setup> [args]")
+		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|invariants|list|add|setup|upgrade> [args]")
 		os.Exit(2)
 	}
 	cwd, err := os.Getwd()
@@ -37,6 +37,8 @@ func main() {
 		fatalIf(runAdd(cwd, os.Args[2]))
 	case "setup":
 		fatalIf(runSetup(cwd))
+	case "upgrade":
+		fatalIf(runUpgrade(cwd))
 	default:
 		fatal(fmt.Errorf("unknown command %q", os.Args[1]))
 	}
