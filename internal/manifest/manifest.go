@@ -17,8 +17,9 @@ type Entry struct {
 }
 
 type Lock struct {
-	AWFVersion string           `json:"awfVersion"`
-	Files      map[string]Entry `json:"files"`
+	AWFVersion    string           `json:"awfVersion"`
+	SchemaVersion int              `json:"schemaVersion"`
+	Files         map[string]Entry `json:"files"`
 }
 
 type Drift struct{ Path, Kind, Detail string }

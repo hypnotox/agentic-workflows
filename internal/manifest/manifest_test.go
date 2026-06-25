@@ -20,6 +20,22 @@ func TestHashStableAndPrefixed(t *testing.T) {
 	}
 }
 
+func TestLoadOldLockZeroSchema(t *testing.T) {
+	// A lock JSON predating the schemaVersion field unmarshals with the zero value.
+	p := filepath.Join(t.TempDir(), "awf.lock")
+	old := `{"awfVersion":"0.1.0","files":{}}` + "\n"
+	if err := os.WriteFile(p, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	l, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.SchemaVersion != 0 {
+		t.Errorf("SchemaVersion = %d, want 0 for a lock with no schemaVersion field", l.SchemaVersion)
+	}
+}
+
 func TestSaveLoadRoundTrip(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "awf.lock")
 	l := &Lock{
