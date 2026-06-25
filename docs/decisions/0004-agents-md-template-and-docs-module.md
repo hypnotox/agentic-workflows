@@ -12,7 +12,7 @@ related: [0001]
 
 The standard's generated agent guide (`templates/agents-doc/AGENTS.md.tmpl`) has drifted
 structurally from the mature, hand-written exemplars in the sibling repos that seeded this
-standard: `a reference project/AGENTS.md` and `a reference project/AGENTS.md`. Those two share an identical section shape:
+standard: two mature sibling Go projects. Their AGENTS.md files share an identical section shape:
 
 ```
 ## You and this project   ## Identity   ## Invariants
@@ -178,7 +178,7 @@ of the new template need neither.
 ## Consequences
 
 Easier:
-- The generated agent guide matches the internal reference projects family shape, so an adopter's AGENTS.md
+- The generated agent guide matches the sibling-project family shape, so an adopter's AGENTS.md
   and awf's own guide read the same way, and the guide stops teaching a heavier review process
   than the skills run.
 - `awf-brainstorming` step 1 finally has real context-gathering targets in any project that

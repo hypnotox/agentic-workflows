@@ -16,10 +16,10 @@ catches a narrow class of issues; there is no errcheck, staticcheck, errorlint,
 bodyclose, revive, formatting enforcement, or any of the higher-signal analyses that
 keep a Go codebase clean.
 
-Three sibling repos already lint (`internal reference projects`). They show two
-shapes: a lean curated set (a reference project: ~9 linters) and a comprehensive set (a reference project: ~40
+Three internal sibling Go repos already lint. They show two
+shapes: a lean curated set (~9 linters) and a comprehensive set (~40
 linters with golines and heavy per-package exclusions tuned for a large transpiler).
-`a reference project` declares golangci-lint as a Go `tool` dependency and runs `go tool
+One declares golangci-lint as a Go `tool` dependency and runs `go tool
 golangci-lint run`, pinning the version in `go.mod` with no separate install. All of
 the user's repos drive repo interactions through a single `./x` command-runner script;
 this is a proven per-repo idiom.
@@ -149,7 +149,7 @@ no per-ADR rows — `ACTIVE.md` is the generated index.)
 | Alternative | Why not chosen |
 |---|---|
 | Edit `pre-push.tmpl` to use `gateCmdFull` instead of introducing `./x` | Changes the shared, published hook template — alters the standard for every adopter; out of scope. A repo-local `./x` conforms to the existing template convention without touching the standard. |
-| golangci-lint via separate install / CI action (a reference project) | This repo has no CI; local hooks are the only gate. A `go tool` dep guarantees every contributor runs the same pinned version with zero setup. |
-| Lean curated linter set (a reference project, ~9 linters) | Lower signal; the codebase is clean enough to pass a stricter set, and the goal is highest practical quality. |
-| Comprehensive set with complexity gates + per-package exclusions (a reference project) | Requires tuning and exclusions that a small, clean codebase does not yet warrant; ratchet on later if needed. |
+| golangci-lint via separate install / CI action | This repo has no CI; local hooks are the only gate. A `go tool` dep guarantees every contributor runs the same pinned version with zero setup. |
+| Lean curated linter set (~9 linters) | Lower signal; the codebase is clean enough to pass a stricter set, and the goal is highest practical quality. |
+| Comprehensive set with complexity gates + per-package exclusions | Requires tuning and exclusions that a small, clean codebase does not yet warrant; ratchet on later if needed. |
 | Make linting part of the awf standard now (rendered config + catalog entry) | Larger, separately load-bearing change to the published standard; defer until the in-repo baseline is proven. |

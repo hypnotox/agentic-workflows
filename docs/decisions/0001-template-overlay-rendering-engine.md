@@ -24,7 +24,7 @@ Templates need to accommodate variable interpolation (`{{ .vars.testCmd }}`), da
 with a project-authored file, or drop it entirely). The rendered output must contain **no**
 generator metadata in its body — provenance lives only in `awf.lock`.
 
-Three reference projects (`a reference project`, `a reference project`, `a reference project`) share near-identical skill families that
+Three internal reference Go projects share near-identical skill families that
 have already drifted. The engine must remain legible to skill authors reading raw templates.
 
 ## Decision

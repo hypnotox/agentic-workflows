@@ -5,7 +5,7 @@ plan is the execution record only — do not duplicate rationale; link to the AD
 
 ## Goal
 
-Reshape `templates/agents-doc/AGENTS.md.tmpl` to the internal reference projects six-section family shape
+Reshape `templates/agents-doc/AGENTS.md.tmpl` to the sibling-project six-section family shape
 (config-driven via `agentsDoc.data` + guarded fallbacks), and add an opt-in, managed `docs:`
 module (`map[string]config.SkillConfig`, rendered + lock-tracked like skills) whose generated docs
 auto-link from the new Document-map section. Dogfood both on awf.
