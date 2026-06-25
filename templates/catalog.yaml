@@ -217,19 +217,19 @@ docs:
   debugging:
     title: Debugging
     desc: recipes for common failure modes
-    sections: [body]
+    sections: [surfaces, recipes]
   pitfalls:
     title: Pitfalls
     desc: recurring bugs and tricky areas
-    sections: [body]
+    sections: [entries]
   glossary:
     title: Glossary
     desc: project jargon and term ownership
-    sections: [body]
+    sections: [terms]
   roadmap:
     title: Roadmap
     desc: uncommitted ideas and future phases
-    sections: [body]
+    sections: [ideas, deferred]
 agentsDoc:
   sections:
     - you-and-this-project
