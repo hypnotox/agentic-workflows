@@ -205,15 +205,15 @@ docs:
   workflow:
     title: Workflow
     desc: principles, the brainstorm/plan/ADR chain, commit discipline
-    sections: [body]
+    sections: [principles, chain, commit-discipline, doc-currency]
   testing:
     title: Testing
     desc: gate tiers, test layout, what each tier covers
-    sections: [body]
+    sections: [gate, tiers, layout]
   development:
     title: Development
     desc: local setup, the command runner, dependency reference
-    sections: [body]
+    sections: [setup, command-runner, dependencies]
   debugging:
     title: Debugging
     desc: recipes for common failure modes
