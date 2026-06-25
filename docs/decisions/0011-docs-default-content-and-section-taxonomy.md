@@ -37,12 +37,17 @@ Two further gaps surfaced while scoping this (verified against source):
   detection flags a whole `<kind>/parts/<target>/` directory only when the *target* is disabled
   (`internal/project/project.go:609-625`); it does not flag a part file whose *section* is no
   longer declared. A convention part at a mistyped or removed section name is therefore silently
-  ignored rather than reported — the exact failure the drift oracle exists to catch.
+  ignored rather than reported — the exact failure the drift oracle exists to catch. (The *sidecar*
+  half is already covered: `checkSectionsAllowed` rejects a sidecar `sections` key not in the
+  target's declared set as a hard render error during `RenderAll`,
+  `internal/project/project.go:77,117`. The gap is specifically the convention-part file, which is
+  read by filesystem probe in `overlaySections` and never validated against the declared set.)
 
 Adopters also lack an always-on explanation of *how to interact with awf* in a rendered project:
 that `.claude` artifacts are generated, that config lives under `.claude/awf/`, that a doc section
 is overridden by dropping a convention part, and that edits are followed by sync then check.
-`AGENTS.md` has identity/invariants/workflow/commands/document-map but no such section.
+`AGENTS.md` has you-and-this-project/identity/invariants/workflow/commands/document-map but no
+such section.
 
 ## Decision
 
@@ -72,15 +77,19 @@ is overridden by dropping a convention part, and that edits are followed by sync
    of the doc's defaults.
 
 3. **A new always-on AGENTS.md section `awf-setup` ("Working with awf")** is added to
-   `agentsDoc.sections` with default prose: `.claude` skills/agents/hooks and the agent guide are
+   `agentsDoc.sections` as the first section (before `you-and-this-project`), with a matching
+   `<!-- awf:section awf-setup -->` block first in `agents-doc/AGENTS.md.tmpl`, with default prose:
+   `.claude` skills/agents/hooks and the agent guide are
    rendered by awf from `.claude/awf/` and must not be hand-edited; targets toggle via the
    `config.yaml` enable arrays; a doc section is overridden by dropping
    `.claude/awf/docs/parts/<name>/<section>.md`; after any config or part edit, run sync then check.
 
-4. **`awf check` gains section-level orphan detection.** A convention part
-   `<kind>/parts/<target>/<section>.md` — or a sidecar `sections` key — whose `<section>` is not
-   among the target's catalog-declared sections, for an otherwise-enabled target, is reported as
-   drift. This extends the existing target-level orphan check; it does not replace it.
+4. **`awf check` gains section-level orphan detection for convention parts.** A convention part
+   `<kind>/parts/<target>/<section>.md` whose `<section>` is not among the target's
+   catalog-declared sections, for an otherwise-enabled target, is reported as drift. This extends
+   the existing target-level orphan check in `orphans()`; it does not replace it. (Undeclared
+   *sidecar* `sections` keys are already a hard render error via `checkSectionsAllowed` and need no
+   change; the new code closes only the convention-part-file gap.)
 
 5. **Doc default content stays static.** Default bodies contain no `.vars.X` / `.data.X`
    interpolation, so they render publication-safe under `missingkey=zero` with no `<no value>`
@@ -103,8 +112,9 @@ untagged bullets are textual contracts.
   the set of `<!-- awf:section NAME -->` marker blocks in its template, and the doc renders from
   template defaults with no `<no value>` token.
 - `inv: section-orphan-flagged` — `awf check` reports a convention part
-  `<kind>/parts/<target>/<section>.md`, or a sidecar `sections` override key, as drift whenever
-  `<section>` is not among the enabled target's catalog-declared sections.
+  `<kind>/parts/<target>/<section>.md` as drift whenever `<section>` is not among the enabled
+  target's catalog-declared sections. (An undeclared sidecar `sections` key is separately rejected
+  as a render error by `checkSectionsAllowed`, covered by the existing config tests.)
 - Every rendered doc body contains author-facing default content — generic prose or a visible
   `###` skeleton — and never consists solely of an HTML comment.
 - Doc default content interpolates no `.vars.X` or `.data.X` token, preserving publication-safety
