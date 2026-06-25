@@ -23,7 +23,7 @@ further consultation.
 Checkable constraints that must hold as long as this decision stands — conditions that
 should trigger a new ADR if violated. Tag each machine-enforceable bullet with a slug and back it
 with a comment tag (`<your marker> invariant: <slug>`, e.g. `// invariant: <slug>` or
-`# invariant: <slug>`) in a source matching your `.claude/awf.yaml` `invariants.sources`; `awf
+`# invariant: <slug>`) in a source matching your `.claude/awf/config.yaml` `invariants.sources`; `awf
 check` enforces tagged slugs once the ADR is `Implemented`. Untagged bullets are textual contracts.
 
 - `inv: <slug>` — ...
