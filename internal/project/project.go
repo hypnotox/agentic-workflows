@@ -2,6 +2,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"agentic-workflows/internal/adr"
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
+	"agentic-workflows/internal/frontmatter"
 	"agentic-workflows/internal/manifest"
 	"agentic-workflows/internal/render"
 	"agentic-workflows/templates"
@@ -206,6 +208,39 @@ func nonNil(m map[string]any) map[string]any {
 	return m
 }
 
+// skillFrontmatter is the rendered skill/agent frontmatter contract Claude Code
+// requires.
+type skillFrontmatter struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+}
+
+// isSkillOrAgent reports whether a template id renders a skill or agent (the
+// outputs that must carry name/description frontmatter).
+func isSkillOrAgent(templateID string) bool {
+	return strings.HasPrefix(templateID, "skills/") || strings.HasPrefix(templateID, "agents/")
+}
+
+// validateFrontmatter checks that content has parseable frontmatter with a
+// non-empty name and description.
+func validateFrontmatter(content []byte) error {
+	var fm skillFrontmatter
+	_, found, err := frontmatter.Parse(content, &fm)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errors.New("missing frontmatter")
+	}
+	if strings.TrimSpace(fm.Name) == "" {
+		return errors.New("frontmatter name is empty")
+	}
+	if strings.TrimSpace(fm.Description) == "" {
+		return errors.New("frontmatter description is empty")
+	}
+	return nil
+}
+
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Skills (sorted for deterministic order).
@@ -311,6 +346,13 @@ func (p *Project) Sync() error {
 	if err != nil {
 		return err
 	}
+	for _, f := range files {
+		if isSkillOrAgent(f.TemplateID) {
+			if err := validateFrontmatter([]byte(f.Content)); err != nil {
+				return fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
+			}
+		}
+	}
 	if amd, ok, err := p.generateActiveMD(); err != nil {
 		return err
 	} else if ok {
@@ -394,6 +436,14 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		}
 		if manifest.Hash(onDisk) != e.OutputHash {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock"})
+			continue
+		}
+		// In-sync skill/agent files must still carry valid frontmatter (subordinate
+		// to the hash kinds above — a re-sync is the fix for those).
+		if isSkillOrAgent(rf.TemplateID) {
+			if err := validateFrontmatter(onDisk); err != nil {
+				drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()})
+			}
 		}
 	}
 	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness

@@ -651,3 +651,41 @@ hooks: []
 		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)
 	}
 }
+
+func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := ".claude/skills/example-tdd/SKILL.md"
+	broken := "---\nname: \"\"\ndescription: \"\"\n---\nbody\n"
+	if err := os.WriteFile(filepath.Join(root, skillPath), []byte(broken), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Re-point the lock OutputHash to the edited content so the file is "in sync"
+	// by hash and the frontmatter check is what fires.
+	lock, err := manifest.Load(filepath.Join(root, ".claude", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := lock.Files[skillPath]
+	e.OutputHash = manifest.Hash([]byte(broken))
+	lock.Files[skillPath] = e
+	if err := lock.Save(filepath.Join(root, ".claude", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range drift {
+		if d.Path == skillPath && d.Kind == "invalid-frontmatter" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected invalid-frontmatter drift for %s, got %#v", skillPath, drift)
+	}
+}
