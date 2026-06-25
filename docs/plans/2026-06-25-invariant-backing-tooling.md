@@ -18,7 +18,8 @@ fails.
   Implemented ADRs' Invariants sections vs `// invariant:` tags in `*.go`; duplicate slug = error.
 - `internal/project`: `CheckInvariants()` wraps `invariants.Check(<docsDir>/decisions, root)`.
 - `cmd/awf`: `awf invariants` subcommand; `runCheck` folds in `CheckInvariants` (distinct from drift).
-- Convention: `proposing-adr` skill, `docs/decisions/template.md`, `docs/decisions/README.md`.
+- Convention: `proposing-adr` skill, `docs/decisions/template.md`, `docs/decisions/README.md`,
+  and the `AGENTS.md` invariant row (via `agentsDoc.data.invariants` in `.claude/awf.yaml`).
 - Retro-tag ADR-0005/0006 invariant bullets + the named backing tests.
 
 ## Tech stack
@@ -30,7 +31,7 @@ fails.
 
 **Created:** `internal/invariants/invariants.go`, `internal/invariants/invariants_test.go`, `cmd/awf/invariants.go`, `cmd/awf/invariants_test.go`
 
-**Modified:** `internal/adr/adr.go` (+`Sections`), `internal/adr/adr_test.go` (sections test), `internal/project/project.go` (+`CheckInvariants`), `cmd/awf/main.go` (dispatch+usage), `cmd/awf/check.go` (fold), `x` (invariants target), `templates/skills/proposing-adr/SKILL.md.tmpl`, `docs/decisions/template.md`, `docs/decisions/README.md`, `docs/decisions/0005-*.md` + `0006-*.md` (retro-tag bullets), `internal/config/config_test.go` + `internal/project/project_test.go` + `internal/frontmatter/frontmatter_test.go` (backing `// invariant:` comments), `docs/decisions/0007-*.md` (Implemented flip).
+**Modified:** `internal/adr/adr.go` (+`Sections`), `internal/adr/adr_test.go` (sections test), `internal/project/project.go` (+`CheckInvariants`), `cmd/awf/main.go` (dispatch+usage), `cmd/awf/check.go` (fold), `x` (invariants target), `templates/skills/proposing-adr/SKILL.md.tmpl`, `docs/decisions/template.md`, `docs/decisions/README.md`, `.claude/awf.yaml` (+AGENTS.md invariant row) + `AGENTS.md` (re-rendered), `docs/decisions/0005-*.md` + `0006-*.md` (retro-tag bullets), `internal/config/config_test.go` + `internal/project/project_test.go` + `internal/frontmatter/frontmatter_test.go` (backing `// invariant:` comments), `docs/decisions/0007-*.md` (Implemented flip).
 
 **Slug ↔ test map** (authoritative for this plan):
 
@@ -551,11 +552,27 @@ are not yet enforced (tests land with implementation); Superseded ADRs are skipp
 without a slug are textual contracts, not machine-checked.
 ```
 
-### Task 4.4 — Re-sync and commit
+### Task 4.4 — AGENTS.md invariant row
 
-- [ ] `./x sync` — re-renders `.claude/skills/awf-proposing-adr/SKILL.md`.
+This repo's `AGENTS.md` "Invariants" list is the agent guide's record of machine-enforced
+conventions; ADR-0006 added a row there for its frontmatter-validation convention (the
+`ref: ADR-0006` entry under `agentsDoc.data.invariants`). ADR-0007 introduces a directly
+analogous machine-enforced convention, so it gets a parallel row (kept in lockstep with the
+README/skill/template surfaces of Tasks 4.1–4.3).
+
+- [ ] In `.claude/awf.yaml`, add an entry to `agentsDoc.data.invariants` (after the
+  `ref: ADR-0006` entry):
+
+```yaml
+      - text: "**Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag and a `// invariant: <slug>` test; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked tagged slug."
+        ref: ADR-0007
+```
+
+### Task 4.5 — Re-sync and commit
+
+- [ ] `./x sync` — re-renders `.claude/skills/awf-proposing-adr/SKILL.md` and `AGENTS.md`.
 - [ ] `./x gate` → `0 issues.`; `./x check` → `awf check: clean`.
-- [ ] `git add templates/skills/proposing-adr/SKILL.md.tmpl docs/decisions/template.md docs/decisions/README.md .claude/`
+- [ ] `git add templates/skills/proposing-adr/SKILL.md.tmpl docs/decisions/template.md docs/decisions/README.md .claude/ AGENTS.md`
 - [ ] `git commit -m "docs(awf): document inv: tagging convention and checker"`
 
 ---
