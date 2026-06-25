@@ -655,6 +655,7 @@ hooks: []
 	}
 }
 
+// invariant: check-invalid-frontmatter
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)

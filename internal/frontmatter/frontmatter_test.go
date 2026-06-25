@@ -7,6 +7,7 @@ import (
 	"agentic-workflows/internal/frontmatter"
 )
 
+// invariant: frontmatter-split
 func TestSplitWellFormed(t *testing.T) {
 	in := "---\nname: x\ndesc: y\n---\nbody here\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))
@@ -21,6 +22,7 @@ func TestSplitWellFormed(t *testing.T) {
 	}
 }
 
+// invariant: frontmatter-split
 func TestSplitNoFrontmatter(t *testing.T) {
 	in := "# heading\nno frontmatter\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))

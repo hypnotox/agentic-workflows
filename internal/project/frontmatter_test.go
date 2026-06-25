@@ -16,6 +16,7 @@ import (
 // template with a minimal-adopter data set (prefix + every referenced var seeded
 // empty + full layout) and asserts the frontmatter parses with non-empty
 // name/description and no leaked <no value> token.
+// invariant: templates-valid-frontmatter
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil {

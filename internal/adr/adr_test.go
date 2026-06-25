@@ -10,6 +10,7 @@ import (
 )
 
 // TestRenderActiveMDGroupsByStatus is a hermetic unit test using a temp dir.
+// invariant: render-active-md
 func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	dir := t.TempDir()
 
@@ -110,6 +111,7 @@ Done.
 	checkEntry("Proposed", "ADR-0002: A Proposal", "0002-a-proposal.md")
 }
 
+// invariant: render-active-md
 func TestRenderActiveMDEmptyWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()
 	// A non-ADR markdown file must not count.
