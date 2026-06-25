@@ -35,6 +35,49 @@ func syncAndReadDebugging(t *testing.T, root string) string {
 	return string(b)
 }
 
+// syncAndReadAgents syncs the project and returns the rendered AGENTS.md.
+func syncAndReadAgents(t *testing.T, root string) string {
+	t.Helper()
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	return string(b)
+}
+
+// invariant: agentsdoc-parts
+func TestAgentsDocPartsOverride(t *testing.T) {
+	cfg := "prefix: example\nskills: []\nagents: []\nhooks: []\n"
+
+	// Absent → the generic, adopter-neutral default renders publication-safe with
+	// empty invariants/docMap.
+	def := syncAndReadAgents(t, scaffold(t, cfg))
+	if strings.Contains(def, "<no value>") {
+		t.Errorf("default agents-doc must be publication-safe:\n%s", def)
+	}
+	if !strings.Contains(def, "is a software project") {
+		t.Errorf("expected the generic identity default:\n%s", def)
+	}
+
+	// A convention part overrides the identity section body.
+	got := syncAndReadAgents(t, scaffoldFiles(t, cfg, map[string]string{
+		"parts/agents-doc/identity.md": "## Identity\n\nExample is a widget.\n",
+	}))
+	if !strings.Contains(got, "Example is a widget.") {
+		t.Errorf("convention part should override the identity section:\n%s", got)
+	}
+	if strings.Contains(got, "is a software project") {
+		t.Errorf("the part should replace the generic default:\n%s", got)
+	}
+}
+
 func writeFileAt(t *testing.T, root, rel, body string) {
 	t.Helper()
 	abs := filepath.Join(root, rel)

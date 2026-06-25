@@ -751,8 +751,6 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 			"activeMd": "docs/decisions/ACTIVE.md", "plansDir": "docs/plans",
 		},
 		"data": map[string]any{
-			"identity":  "Example is a widget.",
-			"ownership": "You own example.",
 			"invariants": []map[string]any{
 				{"text": "**Custom rule.**", "ref": "ADR-0009"},
 			},
@@ -763,8 +761,6 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	for _, phrase := range []string{
-		"Example is a widget.",
-		"You own example.",
 		"**Custom rule.** (ADR-0009)",
 		"[docs/architecture.md](docs/architecture.md)",
 	} {

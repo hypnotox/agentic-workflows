@@ -6,13 +6,13 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:section you-and-this-project -->
 ## You and this project
 
-{{ with .data.ownership }}{{ . }}{{ else }}You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.{{ end }}
+You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.
 <!-- awf:end -->
 
 <!-- awf:section identity -->
 ## Identity
 
-{{ with .data.identity }}{{ . }}{{ else }}<!-- One dense paragraph: what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. Set `agentsDoc.data.identity` in `.claude/awf.yaml`. -->{{ end }}
+`{{ .prefix }}` is a software project. Override this paragraph with a convention part at `.claude/awf/parts/agents-doc/identity.md`: one dense paragraph stating what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves.
 <!-- awf:end -->
 
 <!-- awf:section invariants -->
