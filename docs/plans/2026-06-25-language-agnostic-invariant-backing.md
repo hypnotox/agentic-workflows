@@ -26,7 +26,7 @@ marker prose; reposition the identity as a generic polyglot tool.
 
 ## File structure
 
-**Modified:** `internal/config/config.go` (+types, field, Validate, `path/filepath` import), `internal/config/config_test.go` (glob-validation test), `internal/invariants/invariants.go` (scanner rewrite + package doc), `internal/invariants/invariants_test.go` (state/marker/glob tests, backing the 6 slugs), `internal/project/project.go` (CheckInvariants signature), `cmd/awf/check.go` + `cmd/awf/invariants.go` (status-aware printers), `.claude/awf.yaml` (invariants block + identity + backed-invariants bullet), `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, `templates/skills/proposing-adr/SKILL.md.tmpl`, `docs/decisions/template.md`, `README.md`, plus re-synced `.claude/**` + `AGENTS.md`, `docs/decisions/0008-*.md` (Implemented flip).
+**Modified:** `internal/config/config.go` (+types, field, Validate, `path/filepath` import), `internal/config/config_test.go` (glob-validation test), `internal/invariants/invariants.go` (scanner rewrite + package doc), `internal/invariants/invariants_test.go` (state/marker/glob tests backing the 6 new 0008 slugs, plus the retained 0007 slug tests updated to the 3-arg signature), `internal/project/project.go` (CheckInvariants signature), `cmd/awf/check.go` + `cmd/awf/invariants.go` (status-aware printers), `cmd/awf/invariants_test.go` (add an `invariants` block so the three-state scanner reaches enforced), `.claude/awf.yaml` (invariants block + identity + backed-invariants bullet), `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, `templates/skills/proposing-adr/SKILL.md.tmpl`, `docs/decisions/template.md`, `README.md`, plus re-synced `.claude/**` + `AGENTS.md`, `docs/decisions/0008-*.md` (Implemented flip).
 
 **ADR-0008 slug → backing test (authoritative):**
 
@@ -382,6 +382,55 @@ func goSrc(t *testing.T, root, name, body string) {
 	}
 }
 
+// The three tests below preserve the ADR-0007 invariant slugs (their only
+// backing comments live in this file, which this task rewrites). They are
+// retained, updated to the new three-arg Check signature, so the dogfood
+// `*.go`/`//` scan keeps finding `invariants-implemented-only`,
+// `invariants-unbacked-detected`, and `invariants-duplicate-slug`.
+
+// invariant: invariants-implemented-only
+func TestCheckImplementedOnly(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-impl` — x.")
+	writeADR(t, dir, "0002-b.md", "Proposed", "- `inv: fixture-prop` — x.")
+	writeADR(t, dir, "0003-c.md", "Accepted", "- `inv: fixture-acc` — x.")
+	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `inv: fixture-sup` — x.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-impl" {
+		t.Errorf("expected only fixture-impl required, got %#v", f)
+	}
+}
+
+// invariant: invariants-unbacked-detected
+func TestCheckUnbackedAndBacked(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-backed` — x.\n- `inv: fixture-missing` — y.")
+	goSrc(t, root, "x.go", "package x\n// invariant: fixture-backed\nfunc T() {}\n")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-missing" {
+		t.Errorf("expected only fixture-missing unbacked, got %#v", f)
+	}
+}
+
+// invariant: invariants-duplicate-slug
+func TestCheckDuplicateSlug(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-dup` — x.")
+	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: fixture-dup` — y.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	if _, err := invariants.Check(dir, root, cfg); err == nil {
+		t.Error("expected error for duplicate slug")
+	}
+}
+
 // invariant: invariants-three-state
 func TestCheckThreeState(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
@@ -472,11 +521,33 @@ func TestCheckZeroSlugsClean(t *testing.T) {
 }
 ```
 
-### Task 2.4 — Verify + commit
+### Task 2.4 — Update the cmd-level invariants test for three-state
 
-- [ ] `go test ./internal/...` → `ok` (config, invariants, project all pass).
+The existing `cmd/awf/invariants_test.go` (`TestRunCheckFailsOnUnbackedInvariant`,
+backing `invariants-in-check`) builds an `awf.yaml` with **no** `invariants` block, then
+expects `runCheck` to go clean once the slug is backed by a `.go` file. Under the new
+three-state scanner a `nil` `Invariants` reports `unchecked` (never clean), so the test
+would fail. Add an `invariants` block to its yaml so the path reaches the enforced state.
+
+- [ ] In `cmd/awf/invariants_test.go`, change the `yaml` literal:
+
+old:
+```go
+	yaml := "prefix: example\nskills: {}\nagents: {}\nhooks: []\n"
+```
+new:
+```go
+	yaml := "prefix: example\ninvariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\nskills: {}\nagents: {}\nhooks: []\n"
+```
+
+(The slug `invariants-in-check` stays backed by the existing `// invariant: invariants-in-check`
+comment above the test func — keep it.)
+
+### Task 2.5 — Verify + commit
+
+- [ ] `go test ./internal/... ./cmd/...` → `ok` (config, invariants, project, cmd all pass).
 - [ ] `./x sync`; `./x gate` → `0 issues.`; `./x check` → `awf check: clean` (0005-0007 slugs now enforced under the dogfood `*.go`/`//` config and backed by existing comments); `./x invariants` → `awf invariants: clean`.
-- [ ] `git add internal/invariants/ internal/project/project.go cmd/awf/check.go cmd/awf/invariants.go .claude/awf.lock`
+- [ ] `git add internal/invariants/ internal/project/project.go cmd/awf/check.go cmd/awf/invariants.go cmd/awf/invariants_test.go .claude/awf.lock`
 - [ ] `git commit -m "feat(awf): language-configurable invariant scanner (globs + markers, three states)"`
 
 ---
@@ -564,10 +635,11 @@ check` enforces tagged slugs once the ADR is `Implemented`. Untagged bullets are
       `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml` — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
 ```
 
-- [ ] In `.claude/awf.yaml`, replace the "Backed invariants" invariant bullet `text:` with:
+- [ ] In `.claude/awf.yaml`, replace the "Backed invariants" invariant bullet's `text:` line (the `ref:` line below it changes from `ADR-0007` to `ADR-0008`, since this bullet now states the ADR-0008-revised behaviour):
 
-```
+```yaml
       - text: "**Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug."
+        ref: ADR-0008
 ```
 
 - [ ] In `README.md`, replace the description paragraph (lines 3-4):
