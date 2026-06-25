@@ -138,3 +138,18 @@ func TestGenerateActiveMD(t *testing.T) {
 	}
 	t.Fatalf("ACTIVE.md was stale — regenerated; re-stage it")
 }
+
+func TestGenerateActiveMDEmptyWhenNoADRs(t *testing.T) {
+	dir := t.TempDir()
+	// A non-ADR markdown file must not count.
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := adrtools.GenerateActiveMD(dir)
+	if err != nil {
+		t.Fatalf("GenerateActiveMD: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty output for an ADR-less dir, got:\n%s", got)
+	}
+}

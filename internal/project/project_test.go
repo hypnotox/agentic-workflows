@@ -579,3 +579,79 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		t.Errorf("docOutPath = %q, want documentation/architecture.md", got)
 	}
 }
+
+func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: {}
+hooks: []
+`
+	root := scaffold(t, yaml)
+	adrDir := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(adrDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	adr := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
+	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adr), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	active, err := os.ReadFile(filepath.Join(adrDir, "ACTIVE.md"))
+	if err != nil {
+		t.Fatalf("ACTIVE.md not generated: %v", err)
+	}
+	if !strings.Contains(string(active), "ADR-0001: First") {
+		t.Errorf("ACTIVE.md missing the ADR entry:\n%s", active)
+	}
+	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
+	}
+
+	// Change frontmatter status; the on-disk ACTIVE.md is now stale.
+	adr2 := strings.Replace(adr, "status: Accepted", "status: Implemented", 1)
+	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adr2), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	found := false
+	for _, d := range drift {
+		if strings.HasSuffix(d.Path, "decisions/ACTIVE.md") && d.Kind == "stale" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected stale drift for ACTIVE.md, got %#v", drift)
+	}
+}
+
+func TestSyncProducesNoActiveMDWithoutADRs(t *testing.T) {
+	yaml := `prefix: example
+skills: {}
+agents: {}
+hooks: []
+`
+	root := scaffold(t, yaml)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "decisions", "ACTIVE.md")); !os.IsNotExist(err) {
+		t.Errorf("expected no ACTIVE.md when no ADRs exist, stat err=%v", err)
+	}
+	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)
+	}
+}

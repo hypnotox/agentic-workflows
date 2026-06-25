@@ -68,6 +68,10 @@ func GenerateActiveMD(decisionsDir string) (string, error) {
 		})
 	}
 
+	if len(entries) == 0 {
+		return "", nil // no ADRs — signal "produce nothing"
+	}
+
 	// Group by status.
 	groups := make(map[string][]adrEntry)
 	for _, e := range entries {

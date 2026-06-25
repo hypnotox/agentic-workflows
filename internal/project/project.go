@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"agentic-workflows/internal/adrtools"
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/manifest"
@@ -289,10 +290,31 @@ func (p *Project) renderTemplate(tid string, sections map[string]config.SectionO
 	}, nil
 }
 
+// generateActiveMD renders the ADR index for the project's decisions directory,
+// or returns nil when that directory holds no ADRs (so no index file is produced).
+// ACTIVE.md is generated from ADR frontmatter, not a template, so it carries no
+// TemplateID/TemplateHash in the lock.
+func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
+	dir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
+	content, err := adrtools.GenerateActiveMD(dir)
+	if err != nil {
+		return RenderedFile{}, false, err
+	}
+	if content == "" {
+		return RenderedFile{}, false, nil
+	}
+	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, true, nil
+}
+
 func (p *Project) Sync() error {
 	files, err := p.RenderAll()
 	if err != nil {
 		return err
+	}
+	if amd, ok, err := p.generateActiveMD(); err != nil {
+		return err
+	} else if ok {
+		files = append(files, amd)
 	}
 	cfgHash := manifest.Hash(p.Cfg.Raw())
 	lock := &manifest.Lock{AWFVersion: Version, Files: map[string]manifest.Entry{}}
@@ -347,8 +369,12 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	for _, f := range files {
 		rendered[f.Path] = f
 	}
+	activeMdRel := strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md"
 	var drift []manifest.Drift
 	for _, path := range sortedKeys(lock.Files) {
+		if path == activeMdRel {
+			continue // generated artifact — checked separately below
+		}
 		e := lock.Files[path]
 		rf, ok := rendered[path]
 		if !ok {
@@ -369,6 +395,23 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		if manifest.Hash(onDisk) != e.OutputHash {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock"})
 		}
+	}
+	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness
+	// cannot be detected by the template/config hash comparison above. Regenerate and
+	// compare directly.
+	amd, ok, err := p.generateActiveMD()
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		onDisk, err := os.ReadFile(filepath.Join(p.Root, activeMdRel))
+		if err != nil {
+			drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"})
+		} else if manifest.Hash(onDisk) != manifest.Hash([]byte(amd.Content)) {
+			drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"})
+		}
+	} else if _, locked := lock.Files[activeMdRel]; locked {
+		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "orphaned", Detail: "no ADRs remain; run awf sync"})
 	}
 	return drift, nil
 }
