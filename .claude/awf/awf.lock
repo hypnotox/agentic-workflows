@@ -130,9 +130,9 @@
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
-      "templateHash": "sha256:bc627576cf4efbfba9ff32ec1763fb22b189d2a609c5f32c1e0fc983f06e9570",
-      "configHash": "sha256:b053558dd7e14620f6d2a18788a8042e5218ed8dfaff9d579ad643228e75ec37",
-      "outputHash": "sha256:018928d0a1fd700d0d41de1caf07b6a06ff6f6c42053a6f14616b187f0ae4559"
+      "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",
+      "configHash": "sha256:ef7db72e5a6d80a1bbe472b78f2ee1de76b5be3b250de53cd018b714163363aa",
+      "outputHash": "sha256:0f24f5322aa0f010b59c0248b1f80acf505b34b7cfc546181709a48d657b40c7"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",

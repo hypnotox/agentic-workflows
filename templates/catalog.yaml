@@ -201,7 +201,7 @@ docs:
   architecture:
     title: Architecture
     desc: system shape, packages, key components, dependencies
-    sections: [body]
+    sections: [overview, components, data-flow, dependencies]
   workflow:
     title: Workflow
     desc: principles, the brainstorm/plan/ADR chain, commit discipline
