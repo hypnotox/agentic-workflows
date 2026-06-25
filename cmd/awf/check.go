@@ -23,11 +23,11 @@ func runCheck(root string) error {
 		fmt.Printf("  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
 	}
 	for _, f := range findings {
-		fmt.Printf("  %-14s %s — invariant %q has no backing `// invariant: <slug>` test\n", "unbacked-inv", f.ADR, f.Slug)
+		fmt.Printf("  %-14s %s — invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
 	}
 	if len(drift) == 0 && len(findings) == 0 {
 		fmt.Println("awf check: clean")
 		return nil
 	}
-	return fmt.Errorf("awf check: %d drift(s), %d unbacked invariant(s)", len(drift), len(findings))
+	return fmt.Errorf("awf check: %d drift(s), %d invariant issue(s)", len(drift), len(findings))
 }

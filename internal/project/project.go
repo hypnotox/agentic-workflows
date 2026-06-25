@@ -401,7 +401,7 @@ func (p *Project) lockPath() string {
 // CheckInvariants reports Implemented-ADR invariant slugs that lack a backing
 // `// invariant: <slug>` comment under the project root.
 func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
-	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root)
+	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root, p.Cfg.Invariants)
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
