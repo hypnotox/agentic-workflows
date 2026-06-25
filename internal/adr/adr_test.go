@@ -1,4 +1,4 @@
-package adrtools_test
+package adr_test
 
 import (
 	"os"
@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"agentic-workflows/internal/adrtools"
+	"agentic-workflows/internal/adr"
 )
 
-// TestGenerateActiveMDGroupsByStatus is a hermetic unit test using a temp dir.
-func TestGenerateActiveMDGroupsByStatus(t *testing.T) {
+// TestRenderActiveMDGroupsByStatus is a hermetic unit test using a temp dir.
+func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	dir := t.TempDir()
 
 	files := map[string]string{
@@ -49,9 +49,9 @@ Done.
 		}
 	}
 
-	got, err := adrtools.GenerateActiveMD(dir)
+	got, err := adr.RenderActiveMD(dir)
 	if err != nil {
-		t.Fatalf("GenerateActiveMD: %v", err)
+		t.Fatalf("RenderActiveMD: %v", err)
 	}
 
 	// Must start with the generator header comment.
@@ -110,17 +110,40 @@ Done.
 	checkEntry("Proposed", "ADR-0002: A Proposal", "0002-a-proposal.md")
 }
 
-func TestGenerateActiveMDEmptyWhenNoADRs(t *testing.T) {
+func TestRenderActiveMDEmptyWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()
 	// A non-ADR markdown file must not count.
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := adrtools.GenerateActiveMD(dir)
+	got, err := adr.RenderActiveMD(dir)
 	if err != nil {
-		t.Fatalf("GenerateActiveMD: %v", err)
+		t.Fatalf("RenderActiveMD: %v", err)
 	}
 	if got != "" {
 		t.Errorf("expected empty output for an ADR-less dir, got:\n%s", got)
+	}
+}
+
+func TestParseDirExtractsStatusAndTitle(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0007: Example Title\n## Context\nx\n"
+	if err := os.WriteFile(filepath.Join(dir, "0007-example.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A non-ADR file must be skipped.
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+	if len(adrs) != 1 {
+		t.Fatalf("expected 1 ADR, got %d", len(adrs))
+	}
+	got := adrs[0]
+	if got.Number != "0007" || got.Status != "Accepted" || got.Title != "ADR-0007: Example Title" || got.Filename != "0007-example.md" {
+		t.Errorf("unexpected ADR: %+v", got)
 	}
 }

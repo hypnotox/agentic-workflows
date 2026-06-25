@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"agentic-workflows/internal/adrtools"
+	"agentic-workflows/internal/adr"
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/manifest"
@@ -296,7 +296,7 @@ func (p *Project) renderTemplate(tid string, sections map[string]config.SectionO
 // TemplateID/TemplateHash in the lock.
 func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
 	dir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
-	content, err := adrtools.GenerateActiveMD(dir)
+	content, err := adr.RenderActiveMD(dir)
 	if err != nil {
 		return RenderedFile{}, false, err
 	}

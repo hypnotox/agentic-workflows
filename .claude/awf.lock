@@ -131,7 +131,7 @@
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:bc627576cf4efbfba9ff32ec1763fb22b189d2a609c5f32c1e0fc983f06e9570",
       "configHash": "sha256:757d3c74abae5dfe28f43e4453d92e980c7de76835d9bd2141f6b8b1699b04ac",
-      "outputHash": "sha256:9c66520407a141e4e9dabbd4c77c2c2c3651eb8926fb0943966cf95ffed92701"
+      "outputHash": "sha256:da8f685dc5451d3e93fefea1316b72645d4575d6a5fd14c2d2baf6fef2ec3259"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
