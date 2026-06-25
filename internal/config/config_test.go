@@ -205,6 +205,7 @@ hooks: [pre-commit]
 	}
 }
 
+// invariant: docsdir-default
 func TestDocsDirDefaultsToDocs(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "awf.yaml")

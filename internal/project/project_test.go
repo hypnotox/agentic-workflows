@@ -555,6 +555,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	}
 }
 
+// invariant: layout-derivation
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation"}}
 	l := p.layout()
@@ -576,6 +577,8 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	}
 }
 
+// invariant: sync-generates-active-md
+// invariant: check-active-md-stale
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	yaml := `prefix: example
 skills: {}
