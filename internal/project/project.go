@@ -579,7 +579,8 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 }
 
 // orphans reports sidecar and convention-part files whose target is not in the
-// matching enable list (the second clause of inv: drift-source-set).
+// matching enable list, plus convention-part files of an enabled target whose
+// section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) orphans() []manifest.Drift {
 	enabled := map[string]map[string]bool{
 		"skills": sliceSet(p.Cfg.Skills),
@@ -621,11 +622,42 @@ func (p *Project) orphans() []manifest.Drift {
 					Path: filepath.Join(".claude", "awf", kind, "parts", t.Name()),
 					Kind: "orphaned", Detail: "convention parts for a target not in the enable list",
 				})
+				continue
+			}
+			// Enabled target: flag part files whose section is not catalog-declared.
+			declared := sliceSet(p.declaredSections(kind, t.Name()))
+			sections, err := os.ReadDir(filepath.Join(partsDir, t.Name()))
+			if err != nil {
+				continue
+			}
+			for _, sf := range sections {
+				if sf.IsDir() || !strings.HasSuffix(sf.Name(), ".md") {
+					continue
+				}
+				if section := strings.TrimSuffix(sf.Name(), ".md"); !declared[section] {
+					drift = append(drift, manifest.Drift{
+						Path: filepath.Join(".claude", "awf", kind, "parts", t.Name(), sf.Name()),
+						Kind: "orphaned", Detail: "convention part for a section not in the target's declared set",
+					})
+				}
 			}
 		}
 	}
 	sort.Slice(drift, func(i, j int) bool { return drift[i].Path < drift[j].Path })
 	return drift
+}
+
+// declaredSections returns the catalog-declared section names for a target.
+func (p *Project) declaredSections(kind, name string) []string {
+	switch kind {
+	case "skills":
+		return p.Cat.Skills[name].Sections
+	case "agents":
+		return p.Cat.Agents[name].Sections
+	case "docs":
+		return p.Cat.Docs[name].Sections
+	}
+	return nil
 }
 
 func sliceSet(s []string) map[string]bool {
