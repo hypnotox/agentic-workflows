@@ -104,6 +104,20 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	if got := GateState(upgraded); got != "ok" {
 		t.Errorf("GateState(current) = %q, want ok", got)
 	}
+
+	// A tree project with no lock yet (a fresh awf init, or a just-upgraded
+	// project before its terminal sync) reports Current() and must not gate —
+	// otherwise sync/check would falsely block the very command that stamps the
+	// lock. (Exercises the no-lock branch of Generation.)
+	noLock := t.TempDir()
+	mustMkdir(t, filepath.Join(noLock, ".claude", "awf"))
+	mustWrite(t, filepath.Join(noLock, ".claude", "awf", "config.yaml"), "prefix: ex\n")
+	if got := Generation(noLock); got != Current() {
+		t.Errorf("Generation(tree, no lock) = %d, want Current()=%d", got, Current())
+	}
+	if got := GateState(noLock); got != "ok" {
+		t.Errorf("GateState(tree, no lock) = %q, want ok (fresh init/post-upgrade must not gate)", got)
+	}
 }
 
 func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
