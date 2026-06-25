@@ -24,6 +24,7 @@ type SkillConfig struct {
 
 type Config struct {
 	Prefix    string                 `yaml:"prefix"`
+	DocsDir   string                 `yaml:"docsDir"`
 	Vars      map[string]any         `yaml:"vars"`
 	Skills    map[string]SkillConfig `yaml:"skills"`
 	Agents    map[string]SkillConfig `yaml:"agents"`
@@ -45,6 +46,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	c.raw = b
+	if c.DocsDir == "" {
+		c.DocsDir = "docs"
+	}
 	return &c, nil
 }
 
@@ -56,6 +60,9 @@ func (c *Config) Validate() error {
 	}
 	if strings.ContainsAny(c.Prefix, "/\\") || strings.Contains(c.Prefix, "..") {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
+	}
+	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
+		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
 	}
 	for name, sc := range c.Skills {
 		if err := checkSections("skill", name, sc); err != nil {

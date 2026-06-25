@@ -204,3 +204,40 @@ hooks: [pre-commit]
 		t.Errorf("expected valid config to load cleanly, got: %v", err)
 	}
 }
+
+func TestDocsDirDefaultsToDocs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "awf.yaml")
+	if err := os.WriteFile(path, []byte("prefix: example\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.DocsDir != "docs" {
+		t.Errorf("DocsDir = %q, want \"docs\"", c.DocsDir)
+	}
+}
+
+func TestDocsDirExplicitValue(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "awf.yaml")
+	if err := os.WriteFile(path, []byte("prefix: example\ndocsDir: documentation\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.DocsDir != "documentation" {
+		t.Errorf("DocsDir = %q, want \"documentation\"", c.DocsDir)
+	}
+}
+
+func TestDocsDirRejectsEscapingPath(t *testing.T) {
+	c := &Config{Prefix: "example", DocsDir: "../escape"}
+	if err := c.Validate(); err == nil {
+		t.Fatal("expected error for escaping docsDir")
+	}
+}
