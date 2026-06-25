@@ -91,18 +91,15 @@ the tool version), an **ordered migration registry** (not a one-off), and **both
    `internal/migrate` (not via `config.Load`, which now reads the new path). Legacy
    layout is detected by `.claude/awf.yaml` existing while `.claude/awf/config.yaml`
    does not. This legacy read is performed **only** by the migrate registry, **only**
-   under `awf upgrade` — never by any render/sync/check load path. ADR-0009
-   `inv: config-root` is worded absolutely ("no code path reads or writes
-   `.claude/awf.yaml`"), so introducing a migrate-package reader **narrows that wording**:
-   the operative contract becomes "no *normal load/render/sync/check* path reads the legacy
-   path, with `internal/migrate` under `awf upgrade` as the single named exception." This
-   ADR does **not** edit ADR-0009's file, its Decision text, or its `inv: config-root`
-   slug; ADR-0009 stays `Accepted` and this ADR `relates` to it. The reinterpretation is
-   carried entirely by the **shared backing test**, which this ADR's `inv:
-   legacy-read-isolation` and ADR-0009's `inv: config-root` co-own and which is authored to
-   permit exactly the migrate package (Consequences). Whether refining a frozen Accepted
-   ADR's absolute invariant via its backing test (rather than amending ADR-0009 explicitly)
-   is acceptable is an open escalation — see the user-decision in the digest.
+   under `awf upgrade` — never by any render/sync/check load path. ADR-0009's
+   `inv: config-root` was originally worded absolutely ("no code path reads or writes
+   `.claude/awf.yaml`"); rather than leave its words at odds with its enforced meaning,
+   ADR-0009 was reopened (`Accepted → Proposed`) and its Decision 1 and `inv: config-root`
+   reworded to bake in this exemption — "no *normal load/render/sync/check* path reads the
+   legacy path, with `internal/migrate` under `awf upgrade` as the single named exception"
+   — then re-accepted. ADR-0009 and this ADR cross-reference via `related`, and ADR-0009's
+   `inv: config-root` and this ADR's `inv: legacy-read-isolation` co-own the shared backing
+   test that permits exactly the migrate package.
 
 4. **The gate lives in `runSync`/`runCheck` (cmd/awf), ahead of `project.Open`, and
    hard-fails when the schema is behind.** The check **cannot** live in `project.Sync`/
