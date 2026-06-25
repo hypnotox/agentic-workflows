@@ -3,6 +3,7 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
+- [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](0008-language-agnostic-invariant-backing.md) — Accepted
 
 ## Implemented
 
@@ -12,7 +13,3 @@
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](0005-docsdir-layout-and-builtin-active-md.md) — Implemented
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](0006-frontmatter-parser-and-skill-validation.md) — Implemented
 - [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](0007-invariant-backing-tooling.md) — Implemented
-
-## Proposed
-
-- [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](0008-language-agnostic-invariant-backing.md) — Proposed
