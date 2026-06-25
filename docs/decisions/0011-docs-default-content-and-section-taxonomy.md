@@ -55,7 +55,7 @@ such section.
    default content, never a bare placeholder comment. Content is *hybrid*: docs awf is
    authoritative about render as real generic prose true-by-default for any awf project (the
    workflow chain, the gate, the command-runner convention); inherently project-specific docs
-   render a visible skeleton — `###` sub-headings with a one-line italic prompt under each — that
+   render a visible skeleton — `##` section headings with a one-line italic prompt under each — that
    the project fills in place.
 
 2. **Each doc is decomposed into a named section taxonomy**, declared in `templates/catalog.yaml`
@@ -116,7 +116,7 @@ untagged bullets are textual contracts.
   target's catalog-declared sections. (An undeclared sidecar `sections` key is separately rejected
   as a render error by `checkSectionsAllowed`, covered by the existing config tests.)
 - Every rendered doc body contains author-facing default content — generic prose or a visible
-  `###` skeleton — and never consists solely of an HTML comment.
+  `##` skeleton — and never consists solely of an HTML comment.
 - Doc default content interpolates no `.vars.X` or `.data.X` token, preserving publication-safety
   under `missingkey=zero` (ADR-0001).
 - The `awf-setup` section is a member of `agentsDoc.sections` and is rendered by default,
