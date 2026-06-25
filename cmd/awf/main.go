@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|list|add|setup> [args]")
+		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|invariants|list|add|setup> [args]")
 		os.Exit(2)
 	}
 	cwd, err := os.Getwd()
@@ -26,6 +26,8 @@ func main() {
 		fatalIf(runSync(cwd))
 	case "check":
 		fatalIf(runCheck(cwd))
+	case "invariants":
+		fatalIf(runInvariants(cwd))
 	case "list":
 		fatalIf(runList(cwd))
 	case "add":
