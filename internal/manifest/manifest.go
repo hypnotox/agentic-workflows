@@ -1,4 +1,4 @@
-// Package manifest reads and writes the .claude/awf.lock and detects drift between rendered output and its sources.
+// Package manifest reads and writes the .claude/awf/awf.lock and detects drift between rendered output and its sources.
 package manifest
 
 import (
