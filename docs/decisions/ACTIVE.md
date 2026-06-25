@@ -3,7 +3,6 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](0011-docs-default-content-and-section-taxonomy.md) — Accepted
 
 ## Implemented
 
@@ -16,3 +15,4 @@
 - [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](0008-language-agnostic-invariant-backing.md) — Implemented
 - [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](0009-tree-based-config-layout.md) — Implemented
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](0010-versioned-lock-and-awf-upgrade.md) — Implemented
+- [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](0011-docs-default-content-and-section-taxonomy.md) — Implemented
