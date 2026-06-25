@@ -43,7 +43,12 @@ Grounding discoveries that shape the design (verified against source):
 - **`gopkg.in/yaml.v3` is a direct dependency**, usable by a new `internal/frontmatter` package.
 - **Every current skill/agent description renders non-empty** under existing configs (the
   conditionals/ranges in `adr-lifecycle` and others all have non-empty fallbacks), so the
-  validation contract will not spuriously fail the existing template set.
+  validation contract will not spuriously fail the existing template set. The contract checks
+  *emptiness*, not *quality*: a description that interpolates an empty var but retains surrounding
+  literal text (e.g. `roadmap-graduation` renders `Use when a  entry is becoming…` when
+  `vars.roadmapDoc` is `""` in this repo) still passes — it is non-empty and Claude-Code-parseable.
+  Catching such degraded-but-non-empty renders is out of scope; the `<no value>` guard already
+  catches the wholly-unset case.
 - The existing magic-offset splitter is LF-only and fragile; a generic primitive replaces it.
 
 **User constraints driving the design (verbatim intent):** "does this mean we currently don't
@@ -86,7 +91,12 @@ shouldn't be duplicated. It should be at one location and fully tested."
    never reaches disk). `Check` re-parses each on-disk skill/agent file's frontmatter and emits a
    new `invalid-frontmatter` drift entry when it is missing, unparseable, or has an empty
    `name`/`description` — so `awf check` (and the pre-commit hook that runs it) guards the
-   contract on the committed tree.
+   contract on the committed tree. The frontmatter check participates in `Check`'s existing
+   one-drift-per-path loop and is subordinate to the hash-based kinds: a skill/agent that is
+   already `stale`, `orphaned`, `missing`, or `hand-edited` reports that kind (a re-sync is the
+   actionable fix and will re-validate); `invalid-frontmatter` is reported only for a file that is
+   otherwise in sync yet carries broken frontmatter (e.g. a lock baked from a pre-validation
+   template).
 
 5. **Add golden coverage for template frontmatter.** A test renders every catalog skill and
    agent template with representative data and asserts the frontmatter parses with non-empty
@@ -114,9 +124,10 @@ implementation plan's tests.)
   `""` when the directory holds no ADRs.
 - `awf sync` returns an error and writes nothing when any rendered skill or agent output has
   missing or unparseable frontmatter, or an empty `name` or `description`.
-- `awf check` reports an `invalid-frontmatter` drift entry for any on-disk skill/agent file whose
-  frontmatter is missing, unparseable, or has an empty `name`/`description`; a clean synced tree
-  reports no such entry.
+- `awf check` reports an `invalid-frontmatter` drift entry for an on-disk skill/agent file that is
+  otherwise in sync (not `stale`/`orphaned`/`missing`/`hand-edited`) but whose frontmatter is
+  missing, unparseable, or has an empty `name`/`description`; a clean synced tree reports no such
+  entry, and at most one drift entry is reported per path.
 - Frontmatter validation applies to skill and agent outputs only; rendering hooks, docs, or
   `AGENTS.md` never triggers it.
 - Every catalog skill and agent template, rendered with representative data, produces frontmatter
