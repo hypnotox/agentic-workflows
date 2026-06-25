@@ -578,9 +578,35 @@ Affected files (from `grep -rn '\.vars\.\(adrDir\|plansDir\|adrReadme\|activeMdP
 `skills/reviewing-adr/SKILL.md.tmpl`, `skills/reviewing-plan/SKILL.md.tmpl`,
 `skills/reviewing-plan-resync/SKILL.md.tmpl`, `skills/brainstorming/SKILL.md.tmpl`.
 
-`{{ .vars.activeMdRegenCmd }}` is **not** touched — it stays a var (a command, not a path).
+`{{ .vars.activeMdRegenCmd }}` is **not** touched by the global rename — it stays a var (a
+command, not a path). See the one targeted exception in Task 5.1b.
 
 - [ ] Verify no stragglers: `grep -rn '\.vars\.\(adrDir\|plansDir\|adrReadme\|activeMdPath\|adrTemplatePath\)' templates/skills templates/agents` → no output.
+
+### Task 5.1b — Repoint the invariant-confirmation command in `proposing-adr`
+
+`templates/skills/proposing-adr/SKILL.md.tmpl:65` reuses `{{ .vars.activeMdRegenCmd }}` to mean
+"run the tests to confirm each Invariant has a `// invariant:` test" — this only works today
+because the regen command happens to be a test command. Once Task 5.6 repoints
+`activeMdRegenCmd` to `./x sync` (which runs no tests), that instruction becomes wrong. Point
+this one line at the gate command instead (the gate runs the tests). The other two
+`activeMdRegenCmd` references in this file (lines ~69, ~88, the actual ACTIVE.md regeneration
+steps) are **not** changed.
+
+- [ ] In `templates/skills/proposing-adr/SKILL.md.tmpl`, on the "Pair each Invariant with a test"
+  step, replace only that line's command:
+
+old:
+```
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.activeMdRegenCmd }}` to confirm.
+```
+new:
+```
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `{{ .vars.gateCmd }}` to confirm.
+```
+
+(The `// invariant:` convention itself remains dormant and is made real by ADR-0006; this edit
+only prevents the `activeMdRegenCmd` repoint from corrupting the instruction's meaning.)
 
 ### Task 5.2 — `agents-doc/AGENTS.md.tmpl`: drop the guards (collapse to unconditional)
 
@@ -658,7 +684,9 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
 - [ ] `TestSubagentDrivenDevelopmentTemplate` — remove `plansDir`, `activeMdPath`; add the same
   `layout` block as above.
 - [ ] `TestProposingAdrTemplate` — remove `adrDir`, `adrTemplatePath`, `activeMdPath`,
-  `adrReadme` (keep `activeMdRegenCmd`, `workflowDoc`, `stateDocsPath`, `adrProposeCommitFmt`); add:
+  `adrReadme` (keep `activeMdRegenCmd`, `workflowDoc`, `stateDocsPath`, `adrProposeCommitFmt`);
+  **add `"gateCmd": "./x gate"` to `vars`** (Task 5.1b introduces a new bare `{{ .vars.gateCmd }}`
+  reference in this template — without it the golden render emits `<no value>`); add:
 ```go
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
