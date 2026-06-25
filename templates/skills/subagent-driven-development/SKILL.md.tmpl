@@ -17,7 +17,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .vars.workfl
 ## When to invoke
 
 Invoke when:
-- A plan exists under `{{ .vars.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
+- A plan exists under `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are mostly independent — each task can be implemented without seeing prior tasks' context, AND
 - Fresh context per task is valuable (each task touches a distinct subsystem; main-session context is preserved for coordination).
 
@@ -29,7 +29,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .vars.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
@@ -70,7 +70,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-1. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
+1. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->

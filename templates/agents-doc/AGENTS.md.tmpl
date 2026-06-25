@@ -20,7 +20,7 @@ repository. Read it before taking any action; keep it current as decisions evolv
 
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated — never hand-edited{{ end }}.
+- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated — never hand-edited.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
 {{- range .data.invariants }}
@@ -62,10 +62,10 @@ Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity
 <!-- awf:section document-map -->
 ## Document map
 
-{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}) — architecture decisions and lifecycle.
-{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}) — generated status index; do not hand-edit.
-{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}) — implementation plans for complex work.
-{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}) — architecture decisions and lifecycle.
+- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}) — generated status index; do not hand-edit.
+- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}) — implementation plans for complex work.
+{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }} — {{ . }}{{ end }}
 {{ end -}}
 <!-- awf:end -->

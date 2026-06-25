@@ -1,7 +1,7 @@
 ---
 name: {{ .prefix }}-reviewing-plan
 description: >
-  Use after {{ .prefix }}-writing-plans writes a plan under {{ .vars.plansDir }}.
+  Use after {{ .prefix }}-writing-plans writes a plan under {{ .layout.plansDir }}.
   Dispatches the plan-reviewer subagent, routes findings
   (mechanical / reasoned / user-decision), applies fixes, and hands off to
   {{ .prefix }}-reviewing-plan-resync when an ADR exists, or to implementation
@@ -13,7 +13,7 @@ description: >
 <!-- awf:section when-fires -->
 ## When this skill fires
 
-Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is written and committed under `{{ .vars.plansDir }}/`. The `plan-reviewer` subagent owns the review discipline: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, applies fixes with a 3-round soft cap, and returns a digest. This skill dispatches that agent, surfaces the digest, gates on user-decision findings, and chains to the next node.
+Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is written and committed under `{{ .layout.plansDir }}/`. The `plan-reviewer` subagent owns the review discipline: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, applies fixes with a 3-round soft cap, and returns a digest. This skill dispatches that agent, surfaces the digest, gates on user-decision findings, and chains to the next node.
 
 This skill owns the post-write **full** plan review only. The plan↔ADR resync pass after a linked ADR review converges is owned by the separate `{{ .prefix }}-reviewing-plan-resync` skill.
 <!-- awf:end -->
@@ -21,11 +21,11 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 ## Procedure
 
 <!-- awf:section procedure -->
-1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .vars.plansDir }}/` matching the `YYYY-MM-DD-*.md` pattern.
+1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.plansDir }}/` matching the `YYYY-MM-DD-*.md` pattern.
 <!-- awf:end -->
 
 <!-- awf:section artifact-path-detection -->
-1. **Path detection detail.** When no explicit path is given: list `{{ .vars.plansDir }}/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+1. **Path detection detail.** When no explicit path is given: list `{{ .layout.plansDir }}/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->

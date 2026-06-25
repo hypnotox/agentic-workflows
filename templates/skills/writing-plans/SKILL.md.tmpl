@@ -1,12 +1,12 @@
 ---
 name: {{ .prefix }}-writing-plans
-description: Use to write an implementation plan for a complex {{ .prefix }} task under {{ .vars.plansDir }}. Enforces project plan conventions (bite-sized tasks, exact file paths, exact content, exact commands). Terminal step invokes {{ .prefix }}-reviewing-plan or routes to an execution skill.
+description: Use to write an implementation plan for a complex {{ .prefix }} task under {{ .layout.plansDir }}. Enforces project plan conventions (bite-sized tasks, exact file paths, exact content, exact commands). Terminal step invokes {{ .prefix }}-reviewing-plan or routes to an execution skill.
 ---
 
 # {{ .prefix }}-writing-plans
 
 <!-- awf:section positioning -->
-Writes a plan to `{{ .vars.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
+Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -18,7 +18,7 @@ Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementat
 ## Conventions enforced
 
 <!-- awf:section conventions-path -->
-- **Path:** `{{ .vars.plansDir }}/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
+- **Path:** `{{ .layout.plansDir }}/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
 <!-- awf:end -->
 
 <!-- awf:section conventions-header -->
@@ -48,8 +48,7 @@ Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementat
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
-{{ if .vars.planTemplatePath }}1. **Use `{{ .vars.planTemplatePath }}` as the starting shape** for the plan file. The template carries the required header fields and task structure.
-{{ end }}<!-- awf:end -->
+<!-- awf:end -->
 
 <!-- awf:section procedure-write-plan -->
 1. **Write the plan file in one go** using `Write`. Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.

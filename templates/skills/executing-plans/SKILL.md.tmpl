@@ -13,7 +13,7 @@ The `implementation` chain node, inline shape. Wraps `{{ .vars.workflowDoc }}` s
 ## When to invoke
 
 Invoke when:
-- A plan exists under `{{ .vars.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
+- A plan exists under `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are tightly coupled or sequential — state flows between tasks, each task informs the next, or the plan is short enough that subagent-per-task overhead is not justified, AND
 - Full main-session visibility into each step is valuable (debugging, exploratory iteration, or work that may need mid-flight redirection).
 
@@ -25,7 +25,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .vars.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
@@ -51,7 +51,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->
-1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section procedure-non-adr-final-commit -->

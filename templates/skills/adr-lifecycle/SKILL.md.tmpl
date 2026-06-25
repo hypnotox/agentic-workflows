@@ -8,7 +8,7 @@ description: >
 
 # {{ .prefix }}-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `{{ .vars.workflowDoc }}` and `{{ .vars.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `{{ .vars.workflowDoc }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -37,7 +37,7 @@ The successor replaces the predecessor wholesale. Apply when most of the predece
 
 - Successor frontmatter: `supersedes: [predecessor-number]`.
 - Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; the only allowed edit on a non-Proposed ADR).
-- `{{ .vars.activeMdPath }}` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
+- `{{ .layout.activeMd }}` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
 <!-- awf:end -->
 
 <!-- awf:section supersedence-partial -->
@@ -48,7 +48,7 @@ The successor overrides specific Decision items or Invariants of the predecessor
 - Successor frontmatter: `related: [predecessor-number]` (NOT `supersedes:`).
 - Predecessor's `status` field is **NOT** flipped — stays `Accepted`/`Implemented`.
 - Successor's prose **explicitly cites the overridden items** (e.g. "Supersedes predecessor Decision item M and Invariant N").
-- `{{ .vars.activeMdPath }}` continues to list both ADRs as live; the override information lives in the successor's prose and `related:` linkage.
+- `{{ .layout.activeMd }}` continues to list both ADRs as live; the override information lives in the successor's prose and `related:` linkage.
 <!-- awf:end -->
 
 ## Procedure
@@ -64,7 +64,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section readme-index-update -->
-1. **Update the README index.** Find the ADR's row in `{{ .vars.adrReadme }}` under the right area table and update its Status column. If the new state warrants a Notes change (supersession target, deferral reason), update Notes in the same edit.
+1. **Update the README index.** Find the ADR's row in `{{ .layout.adrReadme }}` under the right area table and update its Status column. If the new state warrants a Notes change (supersession target, deferral reason), update Notes in the same edit.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
@@ -72,7 +72,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-1. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .vars.activeMdPath }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+1. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
@@ -105,8 +105,8 @@ Once `Accepted` or `Implemented`, the body is frozen — only the `status` field
 ## Notes
 
 <!-- awf:section notes -->
-- **Authoritative source:** `{{ .vars.workflowDoc }}` and `{{ .vars.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
+- **Authoritative source:** `{{ .vars.workflowDoc }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
-- **`{{ .vars.activeMdPath }}` is auto-generated** by `{{ .vars.activeMdRegenCmd }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
+- **`{{ .layout.activeMd }}` is auto-generated** by `{{ .vars.activeMdRegenCmd }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

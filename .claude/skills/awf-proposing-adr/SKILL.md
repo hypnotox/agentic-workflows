@@ -49,7 +49,7 @@ Load-bearing triggers include:
 
 1. **Update the README index.** Add a row in the appropriate area table of `docs/decisions/README.md`. Columns: ADR link, title, Status, Notes.
 
-1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `go test ./internal/adrtools/` to confirm.
+1. **Pair each Invariant with a test.** Each Invariants section bullet must be accompanied by at least one `// invariant: <normalised bullet title>` test shipping in the same commit. Run `./x gate` to confirm.
 
 1. **Regenerate ACTIVE.md.** Run `go test ./internal/adrtools/` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 

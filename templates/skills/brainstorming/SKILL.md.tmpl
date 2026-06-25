@@ -32,7 +32,7 @@ Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Nar
 <!-- awf:end -->
 
 <!-- awf:section no-spec-rule -->
-5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `{{ .vars.adrReadme }}` for when an ADR is warranted.
+5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `{{ .layout.adrReadme }}` for when an ADR is warranted.
 <!-- awf:end -->
 
 <!-- awf:section grounding-check-output-format -->
@@ -66,7 +66,7 @@ Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Nar
 <!-- awf:section definitions -->
 ## Definitions
 
-- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project:{{ range .data.loadBearingExamples }} {{ .item }};{{ end }} see `{{ .vars.adrReadme }}` "When to write an ADR".
+- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project:{{ range .data.loadBearingExamples }} {{ .item }};{{ end }} see `{{ .layout.adrReadme }}` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `{{ .vars.workflowDoc }}` "Planning files".
 <!-- awf:end -->
 

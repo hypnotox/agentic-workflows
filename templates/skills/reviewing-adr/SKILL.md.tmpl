@@ -1,7 +1,7 @@
 ---
 name: {{ .prefix }}-reviewing-adr
 description: >
-  Use after {{ .prefix }}-proposing-adr writes an ADR under {{ .vars.adrDir }}
+  Use after {{ .prefix }}-proposing-adr writes an ADR under {{ .layout.adrDir }}
   (status Proposed). Dispatches the adr-reviewer subagent, routes findings
   (mechanical / reasoned / user-decision), applies fixes, and hands off to
   {{ .prefix }}-reviewing-plan-resync when a plan exists.
@@ -18,11 +18,11 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 ## Procedure
 
 <!-- awf:section procedure -->
-1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .vars.adrDir }}/` matching the `NNNN-*.md` pattern.
+1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.adrDir }}/` matching the `NNNN-*.md` pattern.
 <!-- awf:end -->
 
 <!-- awf:section artifact-path-detection -->
-1. **Path detection detail.** When no explicit path is given: list `{{ .vars.adrDir }}/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+1. **Path detection detail.** When no explicit path is given: list `{{ .layout.adrDir }}/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
@@ -54,7 +54,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->
-1. **Hand off to plan resync.** After the ADR review converges and the status is flipped, check whether a plan exists (a `{{ .vars.plansDir }}/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `{{ .prefix }}-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
+1. **Hand off to plan resync.** After the ADR review converges and the status is flipped, check whether a plan exists (a `{{ .layout.plansDir }}/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `{{ .prefix }}-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
 <!-- awf:end -->
 
 ## Notes

@@ -1,13 +1,13 @@
 ---
 name: adr-reviewer
 description: >
-  Lens-diverse reviewer for ADRs under {{ .vars.adrDir }}/ in {{ .prefix }} projects.
+  Lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.
   Returns structured findings per the shared review-discipline spine.
 ---
 
 # adr-reviewer
 
-Lens-diverse reviewer for ADRs under `{{ .vars.adrDir }}/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
 
 ## Finding schema
 
@@ -68,7 +68,7 @@ For each item below, flag a finding if the gating condition is met AND the ADR d
 
 {{ range .data.docCurrencyItems }}- {{ .check }}
 {{ end }}
-When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .vars.activeMdPath }}` must be present. Regen command: `{{ .vars.activeMdRegenCmd }}`.
+When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.activeMd }}` must be present. Regen command: `{{ .vars.activeMdRegenCmd }}`.
 <!-- awf:end -->
 
 ## Dedup rule

@@ -47,9 +47,8 @@ func TestAdrReviewerAgent(t *testing.T) {
 		"vars": map[string]any{
 			"invariantTestPath": "internal/adrtools/invariants_test.go",
 			"activeMdRegenCmd":  "go test ./internal/adrtools/",
-			"activeMdPath":      "docs/decisions/ACTIVE.md",
-			"adrDir":            "docs/decisions",
 		},
+		"layout": map[string]any{"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md"},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
 				{
@@ -93,9 +92,8 @@ func TestAdrReviewerAgent(t *testing.T) {
 func TestPlanReviewerAgent(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
-		"vars": map[string]any{
-			"plansDir": "docs/plans",
-		},
+		"vars":   map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
 				{
@@ -209,13 +207,12 @@ func TestWritingPlansTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"workflowDoc":      "docs/workflow.md",
-			"plansDir":         "docs/plans",
-			"gateCmd":          "./x gate",
-			"gateDuration":     "~2 min",
-			"planTemplatePath": "docs/plans/template.md",
+			"workflowDoc":  "docs/workflow.md",
+			"gateCmd":      "./x gate",
+			"gateDuration": "~2 min",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "writing-plans", data)
@@ -244,15 +241,14 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"prefix": "example",
 		"vars": map[string]any{
 			"workflowDoc":        "docs/workflow.md",
-			"plansDir":           "docs/plans",
 			"gateCmd":            "./x gate",
 			"gateDuration":       "~2 min",
 			"activeMdRegenCmd":   "go test ./internal/adrtools/",
-			"activeMdPath":       "docs/decisions/ACTIVE.md",
 			"hostGitAdrRef":      "docs/decisions/ADR-acme-001-host-git.md",
 			"oracleStateDoc":     "docs/decisions/state/acme-oracle.md",
 			"keyInvariantAdrRef": "",
 		},
+		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},
 		"data": map[string]any{
 			"e2eSuitePaths": []map[string]any{
 				{"path": "tests/e2e/libraries/"},
@@ -288,17 +284,16 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"prefix": "example",
 		"vars": map[string]any{
 			"workflowDoc":         "docs/workflow.md",
-			"plansDir":            "docs/plans",
 			"gateCmd":             "./x gate",
 			"gateCmdFull":         "./x gate full",
 			"activeMdRegenCmd":    "go test ./internal/adrtools/",
-			"activeMdPath":        "docs/decisions/ACTIVE.md",
 			"perTaskReviewAdrRef": "",
 			"keyInvariantAdrRef":  "",
 			"hostGitAdrRef":       "",
 			"oracleStateDoc":      "",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "subagent-driven-development", data)
@@ -397,14 +392,15 @@ func TestProposingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrDir":              "docs/decisions",
-			"adrTemplatePath":     "docs/decisions/template.md",
 			"activeMdRegenCmd":    "go test ./internal/adrtools/",
-			"activeMdPath":        "docs/decisions/ACTIVE.md",
-			"adrReadme":           "docs/decisions/README.md",
+			"gateCmd":             "./x gate",
 			"workflowDoc":         "docs/workflow.md",
 			"stateDocsPath":       "docs/decisions/state/",
 			"adrProposeCommitFmt": "docs(adr): propose NNNN <short title>",
+		},
+		"layout": map[string]any{
+			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
+			"activeMd": "docs/decisions/ACTIVE.md", "adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{
 			"adrTriggers": []string{
@@ -449,13 +445,14 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrDir":           "docs/decisions",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
-			"activeMdPath":     "docs/decisions/ACTIVE.md",
-			"adrReadme":        "docs/decisions/README.md",
 			"workflowDoc":      "docs/workflow.md",
 			"stateDocsPath":    "docs/decisions/state/",
 			"gateCmd":          "./x gate",
+		},
+		"layout": map[string]any{
+			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
+			"adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{
 			"adrStates": []map[string]any{
@@ -510,10 +507,10 @@ func TestBrainstormingTemplate(t *testing.T) {
 		"vars": map[string]any{
 			"workflowDoc":      "docs/workflow.md",
 			"stateDocsPath":    "docs/decisions/state/",
-			"adrReadme":        "docs/decisions/README.md",
 			"autonomousAdrRef": "",
 			"noDivingAdrRef":   "",
 		},
+		"layout": map[string]any{"adrReadme": "docs/decisions/README.md"},
 		"data": map[string]any{
 			"errorBoundaries": []map[string]any{
 				{"name": "HTTP input"},
@@ -555,11 +552,11 @@ func TestReviewingPlanTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"plansDir":    "docs/plans",
 			"commitScope": "docs(plans)",
 			"workflowDoc": "docs/workflow.md",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-plan", data)
@@ -587,10 +584,10 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"plansDir":    "docs/plans",
 			"commitScope": "docs(plans)",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"plansDir": "docs/plans"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-plan-resync", data)
@@ -617,12 +614,11 @@ func TestReviewingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrDir":      "docs/decisions",
 			"commitScope": "docs(adr)",
 			"workflowDoc": "docs/workflow.md",
-			"plansDir":    "docs/plans",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-adr", data)
@@ -713,10 +709,12 @@ func TestAgentsDocTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"testCmd":  "go test ./...",
-			"gateCmd":  "make gate",
-			"adrDir":   "docs/decisions",
-			"plansDir": "docs/plans",
+			"testCmd": "go test ./...",
+			"gateCmd": "make gate",
+		},
+		"layout": map[string]any{
+			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
+			"adrReadme": "docs/decisions/README.md", "plansDir": "docs/plans",
 		},
 		"data": map[string]any{},
 	}
@@ -745,9 +743,11 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"adrReadme":    "",
-			"activeMdPath": "",
-			"gateCmd":      "",
+			"gateCmd": "",
+		},
+		"layout": map[string]any{
+			"adrDir": "docs/decisions", "adrReadme": "docs/decisions/README.md",
+			"activeMd": "docs/decisions/ACTIVE.md", "plansDir": "docs/plans",
 		},
 		"data": map[string]any{
 			"identity":  "Example is a widget.",
