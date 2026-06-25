@@ -15,12 +15,19 @@ func runCheck(root string) error {
 	if err != nil {
 		return err
 	}
-	if len(drift) == 0 {
+	findings, err := p.CheckInvariants()
+	if err != nil {
+		return err
+	}
+	for _, d := range drift {
+		fmt.Printf("  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
+	}
+	for _, f := range findings {
+		fmt.Printf("  %-14s %s — invariant %q has no backing // invariant: test\n", "unbacked-inv", f.ADR, f.Slug)
+	}
+	if len(drift) == 0 && len(findings) == 0 {
 		fmt.Println("awf check: clean")
 		return nil
 	}
-	for _, d := range drift {
-		fmt.Printf("  %-12s %s — %s\n", d.Kind, d.Path, d.Detail)
-	}
-	return fmt.Errorf("awf check: %d drift(s) found", len(drift))
+	return fmt.Errorf("awf check: %d drift(s), %d unbacked invariant(s)", len(drift), len(findings))
 }

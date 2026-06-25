@@ -14,6 +14,7 @@ import (
 	"agentic-workflows/internal/catalog"
 	"agentic-workflows/internal/config"
 	"agentic-workflows/internal/frontmatter"
+	"agentic-workflows/internal/invariants"
 	"agentic-workflows/internal/manifest"
 	"agentic-workflows/internal/render"
 	"agentic-workflows/templates"
@@ -395,6 +396,12 @@ func (p *Project) Sync() error {
 
 func (p *Project) lockPath() string {
 	return filepath.Join(p.Root, ".claude", "awf.lock")
+}
+
+// CheckInvariants reports Implemented-ADR invariant slugs that lack a backing
+// // invariant: test under the project root.
+func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
+	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root)
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
