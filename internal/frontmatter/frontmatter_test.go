@@ -76,6 +76,26 @@ func TestParseIntoStruct(t *testing.T) {
 	}
 }
 
+func TestParseNoFrontmatter(t *testing.T) {
+	var fm struct {
+		Name string `yaml:"name"`
+	}
+	in := "# heading\nno frontmatter here\n"
+	body, found, err := frontmatter.Parse([]byte(in), &fm)
+	if err != nil {
+		t.Fatalf("Parse: unexpected err=%v", err)
+	}
+	if found {
+		t.Error("expected not found when content has no frontmatter")
+	}
+	if string(body) != in {
+		t.Errorf("body should equal input, got %q", body)
+	}
+	if fm.Name != "" {
+		t.Errorf("out should be unchanged, got Name=%q", fm.Name)
+	}
+}
+
 func TestParseMalformedYAML(t *testing.T) {
 	var fm struct {
 		Name string `yaml:"name"`
