@@ -338,10 +338,17 @@ Modified (status, final phase):
   coverage gate fails on this intermediate commit, fold Phase 1 into the Phase 3 commit instead —
   prefer one green commit over a red intermediate.)
 
-> Note: because the 100% coverage gate is per-commit, Phases 1–4 may need to land as **one** commit
-> if intermediate commits cannot reach 100%. Author the code phase-by-phase but stage/commit at the
-> first point the gate is green (typically after Phase 4 tests). Each "Commit Phase N" step below is
-> a checkpoint; collapse adjacent ones when the gate demands it.
+> Note: the 100% coverage gate is **per-commit**, so the checkpoint commits below cannot all stand
+> alone. Concretely:
+> - **Phase 1** (types + `git.go`, no tests) can never be green alone — always fold it into Phase 3.
+> - **Phase 2** (config + config_test) is self-contained and independent of `internal/audit`; it
+>   stays a separate green commit.
+> - **Phase 3** is green alone *only if* its `git_test.go` drives `audit.Run` directly (see that
+>   step), covering `Run`; otherwise fold Phase 3 into Phase 4.
+> - **Phase 4** (project + cmd) is green once its tests land.
+>
+> Author the code phase-by-phase but stage/commit at the first point the gate is green. Each "Commit
+> Phase N" step is a checkpoint; collapse adjacent ones (1→3, or 3→4) when the gate demands it.
 
 ## Phase 2 — Config block
 
@@ -416,8 +423,12 @@ Modified (status, final phase):
   	}
   }
   ```
-  If the existing glob check is inline (not a `validateBasenameGlob` helper), extract it into that
-  helper first (mechanical) so both `invariants` and `audit` call it — note this in the commit.
+  The existing check is **inline** (config.go ~140-147, not a helper): extract it into a
+  `validateBasenameGlob(g string) error` first (mechanical), keeping **both** sub-checks — the
+  path-separator rejection (`strings.Contains(g, "/")`) and the `filepath.Match` malformed-pattern
+  rejection. Each caller wraps the returned error with its own prefix so the messages stay
+  caller-specific; `TestInvariantGlobValidation` (`// invariant: invariants-glob-basename`) only
+  asserts error *presence*, so the extraction is safe. Note the extraction in the commit body.
 
 - [ ] **Add `internal/config/config_test.go` cases:** nil-Audit defaults; explicit-empty
   `allowedTypes`/`allowedScopes` (accept-any); explicit `baseBranch`/manifests/`*int` overrides
@@ -568,14 +579,10 @@ Modified (status, final phase):
   	if text == "" {
   		return ""
   	}
-  	fm, _, err := frontmatter.Split(text)
-  	if err != nil || fm == "" {
-  		return ""
-  	}
   	var meta struct {
   		Status string `yaml:"status"`
   	}
-  	if frontmatter.Parse(fm, &meta) != nil {
+  	if _, found, err := frontmatter.Parse([]byte(text), &meta); err != nil || !found {
   		return ""
   	}
   	return meta.Status
@@ -603,9 +610,10 @@ Modified (status, final phase):
   	return false
   }
   ```
-  Confirm the actual `internal/frontmatter` API (`Split`, `Parse`) against `frontmatter.go`; adjust
-  the `statusOf` calls to the real signatures if they differ (memory: `Split` returns the frontmatter
-  block + body, `Parse` unmarshals into a struct).
+  Verified against `internal/frontmatter/frontmatter.go`: `Parse(content []byte, out any) (body
+  []byte, found bool, err error)` splits and unmarshals in one call — there is no string-taking
+  `Split`-then-`Parse` two-step (`Split([]byte) (yamlBlock, body []byte, found bool)` returns no
+  error and takes `[]byte`). The `statusOf` above uses `Parse` directly with the real signature.
 
 - [ ] **Create `internal/audit/audit_test.go`** — table-driven `evaluate` tests constructing
   `[]Commit` directly (no git), one tag-comment per rule invariant on the relevant test:
@@ -629,7 +637,11 @@ Modified (status, final phase):
   Cover: a normal range (Collect returns the HEAD-only commits with correct subjects/changes/stats);
   the unrelated-histories error; a not-a-repo error; and, tagged
   `// invariant: audit-empty-range-clean`, a branch equal to base → `Collect` returns nil and
-  `evaluate(nil, Inputs{})` returns no findings.
+  `evaluate(nil, Inputs{})` returns no findings. **Drive at least one case through `audit.Run`**
+  (e.g. the empty-range case via `Run(root, Inputs{BaseBranch: base})` asserting `nil` findings, and
+  a bad-base case asserting `Run` propagates the error) so `Run`'s two branches are covered inside
+  this package's tests — otherwise `Run` stays uncovered until the Phase 4 cmd test and Phase 3
+  cannot be a standalone green commit.
 
 - [ ] **Run** `go test ./internal/audit/... -coverpkg=./internal/audit/...` — expected: `ok` with
   `coverage: 100.0%` for the package (add cases for any uncovered branch).
@@ -647,16 +659,18 @@ Modified (status, final phase):
   // Audit runs the process-conformance audit (ADR-0017) over the branch range.
   // baseOverride wins over the configured base branch when non-empty.
   func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
-  	base, types, scopes, manifests, subjectMax, threshold := p.cfg.AuditSettings()
+  	base, types, scopes, manifests, subjectMax, threshold := p.Cfg.AuditSettings()
   	if baseOverride != "" {
   		base = baseOverride
   	}
   	lay := p.layout()
   	generated := map[string]bool{}
-  	for path := range p.lock.Files {
-  		generated[path] = true
+  	if lock, err := manifest.Load(p.lockPath()); err == nil {
+  		for path := range lock.Files {
+  			generated[path] = true
+  		}
   	}
-  	return audit.Run(p.root, audit.Inputs{
+  	return audit.Run(p.Root, audit.Inputs{
   		BaseBranch:          base,
   		AllowedTypes:        types,
   		AllowedScopes:       scopes,
@@ -664,15 +678,18 @@ Modified (status, final phase):
   		DependencyManifests: manifests,
   		DiffThreshold:       threshold,
   		GeneratedPaths:      generated,
-  		ADRDir:              lay["adrDir"],
-  		ActiveMd:            lay["activeMd"],
-  		PlansDir:            lay["plansDir"],
+  		ADRDir:              lay["adrDir"].(string),
+  		ActiveMd:            lay["activeMd"].(string),
+  		PlansDir:            lay["plansDir"].(string),
   	})
   }
   ```
-  Confirm the real field names: `p.cfg` (config), `p.lock` (`manifest.Lock` with `Files`), `p.root`,
-  and that `layout()` returns a `map[string]string` with those keys (project.go ~155-165). Adjust
-  accessors to match; add the `internal/audit` import.
+  Verified against project.go: the exported fields are `p.Cfg` and `p.Root` (not `p.cfg`/`p.root`),
+  there is **no** cached `lock` field — load it via `manifest.Load(p.lockPath())`, mirroring
+  `initCollisions` in `cmd/awf/main.go` (the `err == nil` guard makes the no-lock case a
+  statement-free no-op, so 100% coverage holds without a synthetic missing-lock test). `layout()`
+  returns `map[string]any`, so the `adrDir`/`activeMd`/`plansDir` values need the `.(string)` type
+  assertions shown. `manifest` is already imported in project.go; add the `internal/audit` import.
 
 - [ ] **Create `cmd/awf/audit.go`:**
   ```go
@@ -719,14 +736,20 @@ Modified (status, final phase):
   }
   ```
 
-- [ ] **Wire dispatch in `cmd/awf/main.go`** — add an `audit` case alongside `check`/`invariants`,
-  parsing an optional `--base <ref>` flag, and add `audit` to the usage text. Match the file's
-  existing arg-parsing style (read `main.go` first).
+- [ ] **Wire dispatch in `cmd/awf/main.go`** — add an `audit` case alongside `check`/`invariants`
+  that calls `runAudit(cwd, base, stdout)`, and add `audit` to the usage line
+  (`usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade> [args]`). Note: the existing
+  helper `hasFlag` only detects **boolean** flags; `--base <ref>` is a **value** flag, so it needs a
+  small extractor (scan `args[2:]` for `--base` and take the next element, defaulting to `""`) — add
+  a tiny `flagValue(args, "--base")` helper rather than reusing `hasFlag`. Cover both the
+  flag-present and flag-absent paths in `main_test.go`.
 
 - [ ] **Create `cmd/awf/audit_test.go`** — tagged `// invariant: audit-warn-exit-zero`: build a
   temp project + go-git repo where the range yields a warnings-only result and assert `runAudit`
   returns `nil`; build one with an `Error` finding and assert it returns non-nil. Add a clean-range
-  case ("awf audit: clean", nil) and the `project.Open` error path.
+  case ("awf audit: clean", nil), the `project.Open` error path, and a `p.Audit` error path (e.g. an
+  unresolvable `--base` ref) so `runAudit`'s `if err != nil` arm after `p.Audit` is covered — the
+  100% gate needs that branch exercised, not just the `project.Open` one.
 
 - [ ] **Add `cmd/awf/main_test.go` cases** for the `audit` dispatch + usage line.
 
@@ -750,10 +773,11 @@ Modified (status, final phase):
   manifest set, threshold 400.)
 
 - [ ] **Add the command row to `.awf/agents-doc.yaml`** under `commands:`, after the `awf upgrade`
-  row:
+  row. Match the existing rows' **8-space** indentation for the `- cmd:` (the surrounding rows live
+  at that depth under `data.commands:`):
   ```yaml
-        - cmd: awf audit
-          desc: report workflow-conformance findings over the branch's commits (advisory)
+          - cmd: awf audit
+            desc: report workflow-conformance findings over the branch's commits (advisory)
   ```
 
 - [ ] **Add the `run-audit` section to `templates/skills/reviewing-impl/SKILL.md.tmpl`**, before the
@@ -769,11 +793,15 @@ Modified (status, final phase):
   Then add `- run-audit` to the `reviewing-impl` `sections:` list in `templates/catalog.yaml`,
   immediately before `re-review-loop`.
 
-- [ ] **Add the `audit` target to `x`** (hand-maintained, mirror the `invariants` target):
+- [ ] **Add the `audit` target to `x`** (hand-maintained, mirror the `invariants` target). The top
+  of `x` already does `shift` once, and every arm is a bare `go run` — do **not** add a second
+  `shift` or an `exec` (that would drop the first `audit` arg). Match the `invariants)` arm exactly:
   ```
-  audit) shift; exec go run ./cmd/awf audit "$@" ;;
+  audit)
+    go run ./cmd/awf audit "$@"
+    ;;
   ```
-  Match the existing `case` style in `x`; add `audit` to its usage/help string.
+  Then add `audit` to the `usage:` help string at the bottom of `x`.
 
 - [ ] **Re-render and verify:**
   ```
@@ -793,7 +821,7 @@ Modified (status, final phase):
 - [ ] **Commit Phase 5:**
   ```
   git add .awf/config.yaml .awf/agents-doc.yaml templates/catalog.yaml templates/skills/reviewing-impl/SKILL.md.tmpl x .claude/skills/awf-reviewing-impl/SKILL.md AGENTS.md .awf/awf.lock
-  git commit -m "feat(awf): dogfood awf audit and run it from the impl reviewer (ADR-0017)"
+  git commit -m "feat(awf): dogfood awf audit and run from the impl reviewer (ADR-0017)"
   ```
 
 ## Phase 6 — Flip ADR to Implemented
