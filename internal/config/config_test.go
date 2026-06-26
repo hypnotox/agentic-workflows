@@ -233,6 +233,61 @@ func TestSidecarRejectsUnknownKey(t *testing.T) {
 	}
 }
 
+func TestLoadMissingConfigErrors(t *testing.T) {
+	dir := t.TempDir() // no config.yaml written
+	if _, err := Load(dir); err == nil {
+		t.Fatal("expected error when config.yaml is absent")
+	} else if !strings.Contains(err.Error(), "read config") {
+		t.Errorf("error = %v, want it wrapped with \"read config\"", err)
+	}
+}
+
+// invariant: sidecar-optional
+func TestSidecarAgentsDocSingleton(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Absent agents-doc.yaml resolves via the singleton branch to a zero Sidecar.
+	sc, err := c.Sidecar("agents-doc", "")
+	if err != nil {
+		t.Fatalf("absent agents-doc sidecar should be empty, not an error: %v", err)
+	}
+	if sc.Data != nil || sc.Sections != nil || sc.Local {
+		t.Errorf("absent agents-doc sidecar should be the zero Sidecar, got %#v", sc)
+	}
+	// Present singleton is read from <root>/agents-doc.yaml (not a kind subdir).
+	if err := os.WriteFile(filepath.Join(dir, "agents-doc.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sc, err = c.Sidecar("agents-doc", "")
+	if err != nil {
+		t.Fatalf("Sidecar agents-doc: %v", err)
+	}
+	if !sc.Local {
+		t.Errorf("agents-doc sidecar local = %v, want true", sc.Local)
+	}
+}
+
+func TestSidecarReadErrorWhenPathIsDir(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A directory squatting on the expected sidecar file path makes ReadFile
+	// fail with a non-ErrNotExist error (EISDIR), exercising the wrap branch.
+	if err := os.MkdirAll(filepath.Join(dir, "skills", "tdd.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Sidecar("skills", "tdd"); err == nil {
+		t.Fatal("expected a read error when the sidecar path is a directory")
+	} else if !strings.Contains(err.Error(), "read sidecar") {
+		t.Errorf("error = %v, want it wrapped with \"read sidecar\"", err)
+	}
+}
+
 func TestPartPath(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\n")
 	c, _ := Load(dir)
