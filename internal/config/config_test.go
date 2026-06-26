@@ -324,6 +324,20 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 	}
 }
 
+// invariant: domain-name-validated
+func TestValidateRejectsBadDomainName(t *testing.T) {
+	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
+		c := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{bad}}
+		if err := c.Validate(); err == nil {
+			t.Errorf("expected error for domain name %q", bad)
+		}
+	}
+	ok := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{"rendering", "config"}}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("clean domain names should validate, got: %v", err)
+	}
+}
+
 func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskils: []\n")
 	if _, err := Load(dir); err == nil {

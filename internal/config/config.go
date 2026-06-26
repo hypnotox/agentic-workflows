@@ -39,6 +39,7 @@ type Config struct {
 	Agents     []string         `yaml:"agents"`
 	Hooks      []string         `yaml:"hooks"`
 	Docs       []string         `yaml:"docs"`
+	Domains    []string         `yaml:"domains"`
 	Invariants *InvariantConfig `yaml:"invariants"`
 	root       string           // <project>/.claude/awf, for sidecar/part resolution
 }
@@ -123,6 +124,14 @@ func (c *Config) Validate() error {
 	}
 	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
 		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
+	}
+	for _, d := range c.Domains {
+		if d == "" {
+			return errors.New("domain name must not be empty")
+		}
+		if strings.ContainsAny(d, "/\\") || strings.Contains(d, "..") {
+			return fmt.Errorf("domain %q must not contain path separators or \"..\"", d)
+		}
 	}
 	if c.Invariants != nil {
 		for _, src := range c.Invariants.Sources {
