@@ -67,6 +67,10 @@ process properties over history*, which is the audit's sole concern.
    | Warn | `dependency-adr` | a `dependencyManifests` file changed somewhere on the branch but no ADR file changed on the branch |
    | Warn | `plan-for-large-change` | branch-aggregate **non-generated** changed-lines exceed `diffThreshold` but no file under `plansDir` was touched |
 
+   Merge commits (more than one parent) are exempt from `conventional-commits`: a merge subject
+   ("Merge branch …") is not a Conventional Commit and the audit imposes no branching strategy
+   (constraint 2), so flagging merges would penalise a legitimate merge-based workflow.
+
    Rules deliberately excluded as redundant with working-tree drift: per-commit rendered-file
    hand-edit detection and stale-`ACTIVE.md`-now.
 
@@ -74,13 +78,21 @@ process properties over history*, which is the audit's sole concern.
    `config.Validate`): `baseBranch` (default `main`), `allowedTypes` (default the conventional set),
    `allowedScopes` (default empty = any scope; this repo sets `[awf]`), `subjectMaxLength` (default
    72), `dependencyManifests` (the broad cross-ecosystem default set), `diffThreshold` (default 400).
-   String lists are case-insensitive; an empty list (or `0` threshold / length) disables that rule.
+   String lists are case-insensitive. An empty `allowedTypes` or `allowedScopes` means *accept any*
+   (the corresponding membership sub-check passes, not the whole rule disabled); an empty
+   `dependencyManifests` disables `dependency-adr`; a `0` `subjectMaxLength` skips the length
+   sub-check and a `0` `diffThreshold` disables `plan-for-large-change`.
    `dependencyManifests` reuses the ADR-0008 basename-glob validation (`filepath.Match` on basename;
    reject path separators and malformed patterns).
 
 6. **Generated-file exclusion is caller-supplied.** `Project.Audit()` iterates the lock's
    `Files` keys and passes the generated-path set into `audit.Run`, so the threshold counts only
    non-generated lines and the `audit` package stays decoupled from `internal/manifest`.
+   `Project.Audit()` likewise supplies the layout paths the rules key off — the ADR directory and
+   `ACTIVE.md` (for `adr-status-cochange`) and `plansDir` (for `plan-for-large-change`) — from
+   `p.layout()`, so the `audit` package stays decoupled from `internal/project`'s layout too. An
+   *ADR file* is one matching the `NNNN-*.md` ADR-naming convention under the ADR directory, so
+   `ACTIVE.md`, `README.md`, and `template.md` are not themselves treated as ADRs.
 
 7. **The terminal reviewer runs the audit.** `awf-reviewing-impl` gains a catalog-declared section
    that runs `awf audit` and routes its findings through the existing review-discipline spine.
@@ -105,7 +117,9 @@ implementation (`// invariant: <slug>`, `*.go` per `invariants.sources`):
 - `inv: audit-empty-range-clean` — a branch with no commits beyond the base yields zero findings.
 
 The `dependencyManifests` basename-glob validation is the same contract already backed by ADR-0008's
-`invariants-glob-basename`; it is reused, not re-tagged.
+`invariants-glob-basename`; it is reused, not re-tagged. The shared validator is unit-tested at the
+`audit` config call site as well, so the 100% coverage gate (ADR-0012) is met without minting a new
+slug.
 
 ## Consequences
 
@@ -120,6 +134,11 @@ The `dependencyManifests` basename-glob validation is the same contract already 
   audit never gates. Findings on already-pushed commits cannot be "fixed"; surfacing the policy
   decision (block or not) is left to the adopter's CI. Adopters who never run `awf audit` are wholly
   unaffected — it is outside the gate.
+- **Doc-currency:** when this ADR flips to Implemented, `./x sync` regenerates `ACTIVE.md`; the new
+  `awf audit` command and the `awf-reviewing-impl` catalog-section change re-render `AGENTS.md` and
+  that agent from `.awf` config in the same commit; and the six `inv:` slugs must be backed before
+  the flip. No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md`; the
+  README is a how-to (ADR-0003/0004).
 - **Ruled out:** gating on history; a pre-push/branch-policy hook; per-format dependency parsing
   (the warning is a manifest-changed heuristic, so a pure version bump may false-positive — hence
   `Warning` severity and wording that says so).
