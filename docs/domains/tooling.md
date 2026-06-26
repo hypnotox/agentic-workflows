@@ -11,13 +11,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 ## Decisions
 
-### Accepted
-
-- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
-
 ### Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md)
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
+- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 
