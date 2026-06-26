@@ -15,7 +15,7 @@ func TestRunInitScaffoldsAndSyncs(t *testing.T) {
 	if err := os.MkdirAll(proj, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(proj, io.Discard, io.Discard); err != nil {
+	if err := runInit(proj, false, io.Discard, io.Discard); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(proj, ".claude", "awf", "config.yaml"))

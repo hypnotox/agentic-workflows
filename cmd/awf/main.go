@@ -7,7 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -31,7 +34,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var cmdErr error
 	switch args[1] {
 	case "init":
-		cmdErr = runInit(cwd, stdout, stderr)
+		cmdErr = runInit(cwd, hasFlag(args, "--force"), stdout, stderr)
 	case "sync":
 		cmdErr = runSync(cwd, stdout)
 	case "check":
@@ -61,8 +64,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func runInit(root string, stdout, stderr io.Writer) error {
+// hasFlag reports whether flag appears anywhere in args[2:].
+func hasFlag(args []string, flag string) bool {
+	for _, a := range args[2:] {
+		if a == flag {
+			return true
+		}
+	}
+	return false
+}
+
+func runInit(root string, force bool, stdout, stderr io.Writer) error {
 	cfgPath := filepath.Join(root, ".claude", "awf", "config.yaml")
+	scaffolded := false
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
@@ -74,7 +88,19 @@ func runInit(root string, stdout, stderr io.Writer) error {
 		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write; fails only on a permission fault that root bypasses
 			return err
 		}
+		scaffolded = true
 		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
+	}
+	if !force {
+		if collisions, err := initCollisions(root); err != nil {
+			return err
+		} else if len(collisions) > 0 {
+			if scaffolded {
+				os.RemoveAll(filepath.Dir(cfgPath)) // writes nothing on abort
+			}
+			return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
+				strings.Join(collisions, "\n  "))
+		}
 	}
 	if err := runSync(root, stdout); err != nil {
 		return err
@@ -83,6 +109,37 @@ func runInit(root string, stdout, stderr io.Writer) error {
 		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
+}
+
+// initCollisions returns planned output paths that already exist on disk and are
+// not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
+// already exists is not a collision — re-init is idempotent.
+func initCollisions(root string) ([]string, error) {
+	p, err := project.Open(root)
+	if err != nil {
+		return nil, err
+	}
+	planned, err := p.PlannedOutputs()
+	if err != nil {
+		return nil, err
+	}
+	managed := map[string]bool{}
+	if lock, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock")); err == nil {
+		for path := range lock.Files {
+			managed[path] = true
+		}
+	}
+	var collisions []string
+	for _, rel := range planned {
+		if managed[rel] {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
+			collisions = append(collisions, rel)
+		}
+	}
+	sort.Strings(collisions)
+	return collisions, nil
 }
 
 // gate refuses to operate against a stale config layout. It runs before

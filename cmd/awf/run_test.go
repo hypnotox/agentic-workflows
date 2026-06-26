@@ -282,7 +282,7 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, io.Discard, io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
 	}
 }
@@ -388,7 +388,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(root, io.Discard, io.Discard); err != nil {
+	if err := runInit(root, false, io.Discard, io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
@@ -471,5 +471,108 @@ func TestRunAddAppendSkillError(t *testing.T) {
 	}
 	if err := runAdd(root, "tdd", io.Discard); err == nil {
 		t.Error("expected appendSkill error for a config with no skills: key")
+	}
+}
+
+// invariant: init-collision-guard
+func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
+	root := t.TempDir()
+	// A pre-existing, non-awf CLAUDE.md is a collision.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to fail on collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	// Nothing written: the scaffolded config tree was rolled back.
+	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Fatal("expected .claude/awf to be rolled back")
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) != "mine\n" {
+		t.Fatalf("CLAUDE.md clobbered: %q", b)
+	}
+	// --force overwrites and completes.
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+		t.Fatalf("init --force failed: %s", errb.String())
+	}
+}
+
+func TestInitIdempotentReinitNoCollision(t *testing.T) {
+	root := scaffoldProject(t)
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("first init failed: %s", errb.String())
+	}
+	// Re-init over the now-managed tree: every planned path is in the prior lock,
+	// so initCollisions skips them all and init proceeds without --force.
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("re-init failed: %s", errb.String())
+	}
+}
+
+func TestInitCollisionsOpenError(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Unknown field → strict config.Load fails → project.Open errors.
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := initCollisions(root); err == nil {
+		t.Fatal("expected initCollisions to surface the Open error")
+	}
+}
+
+func TestInitCollisionsPlannedOutputsError(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"),
+		[]byte("prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Open succeeds (ADRs are not parsed at Open); the malformed ADR fails
+	// generateActiveMD inside PlannedOutputs.
+	dd := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(dd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := initCollisions(root); err == nil {
+		t.Fatal("expected initCollisions to surface the PlannedOutputs error")
+	}
+}
+
+func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
+	root := t.TempDir()
+	// A malformed ADR makes PlannedOutputs (inside initCollisions) fail after the
+	// config is scaffolded, exercising runInit's initCollisions error forward.
+	dd := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(dd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to fail when initCollisions errors")
 	}
 }

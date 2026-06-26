@@ -432,6 +432,33 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	return out, nil
 }
 
+// PlannedOutputs returns the project-relative paths Sync would write: every
+// RenderAll output plus the generated ACTIVE.md and domain docs. Used by
+// awf init to detect collisions before writing (ADR-0016).
+func (p *Project) PlannedOutputs() ([]string, error) {
+	files, err := p.RenderAll()
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, f := range files {
+		paths = append(paths, f.Path)
+	}
+	if amd, ok, err := p.generateActiveMD(); err != nil {
+		return nil, err
+	} else if ok {
+		paths = append(paths, amd.Path)
+	}
+	dds, err := p.generateDomainDocs()
+	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+		return nil, err
+	}
+	for _, dd := range dds {
+		paths = append(paths, dd.Path)
+	}
+	return paths, nil
+}
+
 // renderTarget assembles a target (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-target ConfigHash over the target's effective inputs.

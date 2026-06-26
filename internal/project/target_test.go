@@ -45,3 +45,38 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 		t.Fatalf("CLAUDE.md missing provenance banner:\n%s", got.Content)
 	}
 }
+
+func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\ndomains: [rendering]\n", nil)
+	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planned, err := p.PlannedOutputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, rel := range planned {
+		set[rel] = true
+	}
+	for _, want := range []string{"CLAUDE.md", "AGENTS.md", "docs/decisions/ACTIVE.md", "docs/domains/rendering.md"} {
+		if !set[want] {
+			t.Errorf("PlannedOutputs missing %q; got %v", want, planned)
+		}
+	}
+}
+
+func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
+	corruptSidecar(t, root, "skills/tdd.yaml")
+	if _, err := p.PlannedOutputs(); err == nil {
+		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
+	}
+}
