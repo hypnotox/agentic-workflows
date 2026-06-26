@@ -8,9 +8,16 @@ shift || true
 
 case "$cmd" in
   gate)
-    # Full gate: tests + vet + lint. The optional `full` arg is accepted for
-    # hook compatibility (pre-push runs `./x gate full`); awf has no slower tier.
-    go test ./... && go vet ./... && go tool golangci-lint run
+    # Full gate: profiled tests + 100% coverage check + vet + lint. The optional
+    # `full` arg is accepted for hook compatibility (pre-push runs `./x gate full`);
+    # awf has no slower tier. The coverage step (ADR-0012) fails below 100% of
+    # non-ignored statements; -coverpkg=./... so every package contributes.
+    prof="$(mktemp)"
+    trap 'rm -f "$prof"' EXIT
+    go test ./... -coverpkg=./... -coverprofile="$prof"
+    go run ./cmd/covercheck "$prof"
+    go vet ./...
+    go tool golangci-lint run
     ;;
   lint)
     go tool golangci-lint run "$@"

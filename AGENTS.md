@@ -34,6 +34,7 @@ Hard rules every change must respect:
 - **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
 - **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug. (ADR-0008)
+- **100% coverage gate.** `./x gate` fails below 100% statement coverage (`go test ./... -coverpkg=./...` piped through `cmd/covercheck`). A genuinely-unreachable defensive branch may be excluded with a trailing `// coverage-ignore: <reason>` directive — a non-empty reason is mandatory and every use is audited at review. (ADR-0012)
 
 ## Workflow
 
