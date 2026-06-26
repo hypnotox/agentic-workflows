@@ -17,3 +17,7 @@
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](0010-versioned-lock-and-awf-upgrade.md) — Implemented
 - [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](0011-docs-default-content-and-section-taxonomy.md) — Implemented
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](0012-full-coverage-gate-and-conventions.md) — Implemented
+
+## Proposed
+
+- [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](0013-doc-cross-references-via-layout.md) — Proposed
