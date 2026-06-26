@@ -76,7 +76,7 @@ process properties over history*, which is the audit's sole concern.
 
 5. **New `Audit *AuditConfig` config block** (strict `KnownFields` parse, validated in
    `config.Validate`): `baseBranch` (default `main`), `allowedTypes` (default the conventional set),
-   `allowedScopes` (default empty = any scope; this repo sets `[awf]`), `subjectMaxLength` (default
+   `allowedScopes` (default empty = any scope; this repo sets `[adr, awf, plans]`), `subjectMaxLength` (default
    72), `dependencyManifests` (the broad cross-ecosystem default set), `diffThreshold` (default 400).
    String lists are case-insensitive. An empty `allowedTypes` or `allowedScopes` means *accept any*
    (the corresponding membership sub-check passes, not the whole rule disabled); an empty
