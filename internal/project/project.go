@@ -34,9 +34,10 @@ type RenderedFile struct {
 }
 
 type Project struct {
-	Root string
-	Cfg  *config.Config
-	Cat  *catalog.Catalog
+	Root   string
+	Cfg    *config.Config
+	Cat    *catalog.Catalog
+	Target Target
 }
 
 func Open(root string) (*Project, error) {
@@ -51,7 +52,7 @@ func Open(root string) (*Project, error) {
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
 		return nil, err
 	}
-	p := &Project{Root: root, Cfg: cfg, Cat: cat}
+	p := &Project{Root: root, Cfg: cfg, Cat: cat, Target: claudeTarget}
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}
@@ -323,9 +324,9 @@ func validateFrontmatter(content []byte) error {
 func (p *Project) localOutPath(kind, name string) string {
 	switch kind {
 	case "skills":
-		return fmt.Sprintf(".claude/skills/%s-%s/SKILL.md", p.Cfg.Prefix, name)
+		return p.Target.SkillPath(p.Cfg.Prefix, name)
 	case "agents":
-		return fmt.Sprintf(".claude/agents/%s.md", name)
+		return p.Target.AgentPath(name)
 	default:
 		return ""
 	}
@@ -350,7 +351,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		rf, err := p.renderTarget("skills", name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name),
 			p.Cat.Skills[name].Sections, sc, p.data(sc),
-			fmt.Sprintf(".claude/skills/%s-%s/SKILL.md", p.Cfg.Prefix, name))
+			p.Target.SkillPath(p.Cfg.Prefix, name))
 		if err != nil {
 			return nil, err
 		}
@@ -367,7 +368,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		rf, err := p.renderTarget("agents", name, fmt.Sprintf("agents/%s.md.tmpl", name),
 			p.Cat.Agents[name].Sections, sc, p.data(sc),
-			fmt.Sprintf(".claude/agents/%s.md", name))
+			p.Target.AgentPath(name))
 		if err != nil {
 			return nil, err
 		}
