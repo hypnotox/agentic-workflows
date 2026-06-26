@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [tooling, rendering, config]
-related: [0001, 0006, 0009, 0011]
+related: [0001, 0006, 0009, 0010, 0011]
 domains: [rendering, config]
 ---
 # ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides
@@ -59,7 +59,9 @@ convention-only overrides is its enabling simplification.
 
 2. **Frontmatter-aware banner placement.** For targets carrying YAML frontmatter (skills,
    agents), the banner is emitted immediately *after* the closing `---`, never before it, so
-   frontmatter parsing (ADR-0006) is preserved. For all other targets it is the first line.
+   frontmatter parsing (ADR-0006) is preserved. For shell hooks the banner follows the `#!`
+   shebang line (which must remain line 1 for the script to stay executable), never before it.
+   For all other targets it is the first line.
 
 3. **Per-section edit pointer.** Each rendered, non-dropped section is immediately preceded by an
    `awf:edit` comment naming the winning source and the deterministic edit target:
@@ -70,29 +72,47 @@ convention-only overrides is its enabling simplification.
 4. **Convention-only overrides.** Remove the config-facing `replaceWith` field from
    `config.SectionOverride`; `drop` is retained. A section body is replaced *only* by a convention
    part file existing at its conventional path. Per-section precedence collapses to
-   `drop > convention part > template default`. This overrides **ADR-0001 Decision item 2** (the
-   `replaceWith` overlay step) and the precedence documented by **ADR-0009**.
+   `drop > convention part > template default`. Because the convention part can no longer ride the
+   removed `replaceWith` field into `render.Assemble` (today the project layer injects a synthetic
+   `SectionOverride{ReplaceWith: <convention path>}` at `project.go:224` and `Assemble` renders it
+   via its `replaceWith` branch at `render.go:27`), the project layer instead resolves the
+   convention part and passes it to `Assemble` through a dedicated, non-`replaceWith` channel, so
+   `Assemble`'s overlay switch collapses to `drop > convention part > default`. This overrides
+   **ADR-0001 Decision item 2** (the `replaceWith` overlay step) and the precedence documented by
+   **ADR-0009** (its Decision item 4 and `inv: parts-convention`).
 
-5. **Migration.** `awf upgrade` bumps the config-tree schema version. A sidecar still carrying a
-   `replaceWith:` is migrated by relocating the referenced part to its conventional path and
-   dropping the field; if the conventional path is already occupied by a different file, `upgrade`
-   fails with an actionable message rather than silently overwriting.
+5. **Migration.** `awf upgrade` (ADR-0010) bumps the config-tree schema version. A sidecar still
+   carrying a `replaceWith:` is migrated by relocating the referenced part to the section's
+   conventional path — `.claude/awf/<kind>/parts/<target>/<section>.md`, or
+   `.claude/awf/parts/agents-doc/<section>.md` for the agents-doc singleton (ADR-0009 item 7) — and
+   dropping the field. If the conventional path is already occupied by a *different* file (an
+   identical file is a no-op), or the referenced part is missing, `upgrade` fails with an
+   actionable message rather than silently overwriting or dropping content.
 
-6. **Scope of supersedence.** This ADR overrides **ADR-0001 Invariants bullet 1** ("zero
-   provenance metadata in body") and its Context claim that "provenance lives only in `awf.lock`".
-   The rest of ADR-0001 remains in force — Engine B, `missingkey=zero`, and the rule that
-   `awf:section`/`awf:end` markers never appear in rendered output. ADR-0001 stays `Accepted`;
-   this is partial-item supersedence recorded via `related`, not a full replacement.
+6. **Scope of supersedence.** This ADR overrides **ADR-0001 Invariants bullet 1** ("zero `awf`
+   markers or provenance metadata"), narrowing it to permit the banner and `awf:edit` pointers,
+   and its Context claim that "provenance lives only in `awf.lock`"; plus **ADR-0001 Decision item
+   2** (the `replaceWith` overlay step, per Decision item 4). It also overrides **ADR-0009 Decision
+   item 4** and its `inv: parts-convention`, collapsing that ADR's four-tier precedence
+   (`drop > explicit replaceWith > convention part > template default`) to the three-tier
+   `drop > convention part > template default`. The rest of ADR-0001 remains in force — Engine B,
+   `missingkey=zero`, and bullet 4's rule that `awf:section`/`awf:end` markers never appear in
+   rendered output. Both ADR-0001 and ADR-0009 keep their existing status (`Accepted` and
+   `Implemented` respectively); this is partial-item supersedence recorded via `related`, not a
+   full replacement. Because ADR-0009 is `Implemented`, its `parts-convention` backing test is
+   updated in lockstep when this ADR reaches `Implemented`.
 
 ## Invariants
 
-- `inv: provenance-banner` — every rendered file begins with the awf generated-by banner (placed
-  after the closing frontmatter delimiter for targets that carry frontmatter).
+- `inv: provenance-banner` — every rendered file carries the awf generated-by banner as its first
+  line, except where it must follow a leading construct: after the closing frontmatter delimiter
+  for targets that carry frontmatter, and after the `#!` shebang line for shell hooks.
 - `inv: section-edit-pointer` — every rendered, non-dropped section is immediately preceded by an
   `awf:edit` pointer naming its conventional part path.
 - `inv: no-section-marker-leak` — `awf:section` / `awf:end` markers never appear in rendered
   output; `awf:edit` pointers and the banner are the only awf markers a rendered file may carry.
-  (Re-homed from ADR-0001 Invariants bullet 4, narrowed to permit provenance comments.)
+  (Restates ADR-0001 Invariants bullet 4's section-marker ban, which remains in force, and narrows
+  bullet 1's "zero `awf` markers" clause to permit the banner and `awf:edit` pointers.)
 - `inv: no-replacewith` — `config.SectionOverride` exposes no `replaceWith` field; the sole
   section-replacement mechanism is a convention part.
 
@@ -103,8 +123,10 @@ Easier:
   lookup, no precedence reasoning, no extra turn.
 - The conventional part path is the single deterministic edit target, so the pointer is
   unambiguous and default sections advertise exactly where to create an override.
-- Less config surface: `replaceWith` and the explicit-replace branch in `Assemble` are gone, and
-  `assertNoLeaks` narrows to "reject section markers, allow `awf:edit`/banner".
+- Less config surface: `replaceWith` and the explicit-replace branch in `Assemble` are gone.
+  `assertNoLeaks` (`spine_test.go:53`) already rejects only `awf:section`/`awf:end`, so it
+  tolerates `awf:edit`/banner today; it gains *positive* assertions that the banner and per-section
+  pointers are present rather than needing to be loosened.
 
 Harder:
 - Rendered files gain comment surface (invisible in rendered markdown, present in source). awf's
@@ -118,6 +140,17 @@ Ruled out:
   the rendered file.
 - Round-trip reverse-sync (edit the rendered file, awf writes the delta back) — attribution is
   ambiguous and it breaks the never-hand-edit-a-rendered-file invariant.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+- `docs/architecture.md` updates the per-section precedence it documents (currently
+  `drop > explicit replaceWith > convention part > template default` at the layout and render-flow
+  sections) to `drop > convention part > template default`, removes the `replaceWith` references,
+  and notes the in-file banner / `awf:edit` provenance now present in rendered output.
+- ADR-0009's `inv: parts-convention` backing test is updated to the new precedence in the same
+  change that flips this ADR to `Implemented`.
+- When this ADR flips to `Accepted`/`Implemented`, the same commit regenerates
+  `docs/decisions/ACTIVE.md` via `./x sync`. No `docs/decisions/README.md` index row is owed (the
+  README is a how-to guide; `ACTIVE.md` is the generated index — ADR-0005).
 
 ## Alternatives Considered
 
