@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
@@ -683,6 +684,34 @@ func (p *Project) lockPath() string {
 // sources) under the project root.
 func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root, p.Cfg.Invariants)
+}
+
+// Audit runs the process-conformance audit (ADR-0017) over the branch range.
+// baseOverride wins over the configured base branch when non-empty.
+func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
+	base, types, scopes, manifests, subjectMax, threshold := p.Cfg.AuditSettings()
+	if baseOverride != "" {
+		base = baseOverride
+	}
+	lay := p.layout()
+	generated := map[string]bool{}
+	if lock, err := manifest.Load(p.lockPath()); err == nil {
+		for path := range lock.Files {
+			generated[path] = true
+		}
+	}
+	return audit.Run(p.Root, audit.Inputs{
+		BaseBranch:          base,
+		AllowedTypes:        types,
+		AllowedScopes:       scopes,
+		SubjectMaxLength:    subjectMax,
+		DependencyManifests: manifests,
+		DiffThreshold:       threshold,
+		GeneratedPaths:      generated,
+		ADRDir:              lay["adrDir"].(string),
+		ActiveMd:            lay["activeMd"].(string),
+		PlansDir:            lay["plansDir"].(string),
+	})
 }
 
 // orphans reports sidecar and convention-part files whose target is not in the

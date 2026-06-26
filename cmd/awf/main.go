@@ -23,7 +23,7 @@ var getwd = os.Getwd
 // output goes to the injected writers so the dispatch is unit-testable.
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|list|add|setup|upgrade> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade> [args]")
 		return 2
 	}
 	cwd, err := getwd()
@@ -41,6 +41,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		cmdErr = runCheck(cwd, stdout)
 	case "invariants":
 		cmdErr = runInvariants(cwd, stdout)
+	case "audit":
+		cmdErr = runAudit(cwd, baseFlag(args), stdout)
 	case "list":
 		cmdErr = runList(cwd, stdout)
 	case "add":
@@ -72,6 +74,18 @@ func hasFlag(args []string, flag string) bool {
 		}
 	}
 	return false
+}
+
+// baseFlag returns the value after --base in args[2:], or "" if it is absent or
+// has no following value.
+func baseFlag(args []string) string {
+	rest := args[2:]
+	for i, a := range rest {
+		if a == "--base" && i+1 < len(rest) {
+			return rest[i+1]
+		}
+	}
+	return ""
 }
 
 func runInit(root string, force bool, stdout, stderr io.Writer) error {
