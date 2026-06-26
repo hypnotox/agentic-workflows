@@ -1,0 +1,231 @@
+package audit
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+)
+
+var testSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+
+func initRepo(t *testing.T) (*git.Repository, string) {
+	t.Helper()
+	dir := t.TempDir()
+	repo, err := git.PlainInit(dir, false)
+	if err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	return repo, dir
+}
+
+// commit writes/removes files in the worktree and commits, returning the hash.
+func commit(t *testing.T, repo *git.Repository, dir, msg string, write map[string]string, remove ...string) plumbing.Hash {
+	t.Helper()
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatalf("worktree: %v", err)
+	}
+	for name, content := range write {
+		if werr := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); werr != nil {
+			t.Fatalf("write %s: %v", name, werr)
+		}
+		if _, aerr := wt.Add(name); aerr != nil {
+			t.Fatalf("add %s: %v", name, aerr)
+		}
+	}
+	for _, name := range remove {
+		if _, rerr := wt.Remove(name); rerr != nil {
+			t.Fatalf("remove %s: %v", name, rerr)
+		}
+	}
+	h, err := wt.Commit(msg, &git.CommitOptions{Author: testSig, Committer: testSig})
+	if err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	return h
+}
+
+// orphan stores an unrelated root commit (empty tree, no parents).
+func orphan(t *testing.T, repo *git.Repository) plumbing.Hash {
+	t.Helper()
+	tree := &object.Tree{}
+	to := repo.Storer.NewEncodedObject()
+	if err := tree.Encode(to); err != nil {
+		t.Fatalf("encode tree: %v", err)
+	}
+	treeHash, err := repo.Storer.SetEncodedObject(to)
+	if err != nil {
+		t.Fatalf("store tree: %v", err)
+	}
+	c := &object.Commit{Author: *testSig, Committer: *testSig, Message: "orphan\n", TreeHash: treeHash}
+	co := repo.Storer.NewEncodedObject()
+	if err := c.Encode(co); err != nil {
+		t.Fatalf("encode commit: %v", err)
+	}
+	h, err := repo.Storer.SetEncodedObject(co)
+	if err != nil {
+		t.Fatalf("store commit: %v", err)
+	}
+	return h
+}
+
+func findChange(changes []FileChange, path string) (FileChange, bool) {
+	for _, ch := range changes {
+		if ch.Path == path {
+			return ch, true
+		}
+	}
+	return FileChange{}, false
+}
+
+func TestCollectNormalRange(t *testing.T) {
+	repo, dir := initRepo(t)
+	base := commit(t, repo, dir, "feat(awf): base", map[string]string{
+		"go.mod": "module x\n",
+		"a.md":   "---\nstatus: Proposed\n---\nold body\n",
+	})
+	commit(t, repo, dir, "feat(awf): one", map[string]string{
+		"a.md":  "---\nstatus: Accepted\n---\nnew longer body\nwith more lines\n",
+		"b.txt": "data\n",
+	})
+	commit(t, repo, dir, "fix(awf): two", map[string]string{"c.md": "new\n"}, "b.txt")
+
+	commits, err := Collect(dir, base.String())
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(commits) != 2 {
+		t.Fatalf("got %d commits, want 2", len(commits))
+	}
+	if commits[0].Subject != "fix(awf): two" || commits[1].Subject != "feat(awf): one" {
+		t.Fatalf("unexpected order: %q, %q", commits[0].Subject, commits[1].Subject)
+	}
+	// commit "one": a.md modified (md content captured + stats), b.txt added (non-md, no text).
+	one := commits[1]
+	amd, ok := findChange(one.Changes, "a.md")
+	if !ok || amd.Action != Modified {
+		t.Fatalf("a.md change missing/not modified: %+v", amd)
+	}
+	if amd.OldText == "" || amd.NewText == "" {
+		t.Errorf("a.md md text not captured: old=%q new=%q", amd.OldText, amd.NewText)
+	}
+	if amd.Added == 0 && amd.Deleted == 0 {
+		t.Errorf("a.md stats empty: +%d -%d", amd.Added, amd.Deleted)
+	}
+	btxt, ok := findChange(one.Changes, "b.txt")
+	if !ok || btxt.Action != Added {
+		t.Fatalf("b.txt change missing/not added: %+v", btxt)
+	}
+	if btxt.OldText != "" || btxt.NewText != "" {
+		t.Errorf("non-md b.txt should carry no text: old=%q new=%q", btxt.OldText, btxt.NewText)
+	}
+	// commit "two": b.txt deleted, c.md added.
+	two := commits[0]
+	if del, ok := findChange(two.Changes, "b.txt"); !ok || del.Action != Deleted {
+		t.Fatalf("b.txt not deleted in commit two: %+v", del)
+	}
+	if cmd, ok := findChange(two.Changes, "c.md"); !ok || cmd.Action != Added || cmd.NewText != "new\n" {
+		t.Fatalf("c.md add/content wrong: %+v", cmd)
+	}
+}
+
+// invariant: audit-empty-range-clean
+func TestCollectEmptyRangeIsClean(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	head := commit(t, repo, dir, "feat(awf): head", map[string]string{"a.txt": "x\n"})
+
+	commits, err := Collect(dir, head.String())
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if commits != nil {
+		t.Fatalf("empty range should be nil, got %d commits", len(commits))
+	}
+	// Drive Run for the empty range: clean, no error.
+	findings, err := Run(dir, Inputs{BaseBranch: head.String()})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("empty range yielded findings: %v", findings)
+	}
+}
+
+func TestRunPropagatesCollectError(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	if _, err := Run(dir, Inputs{BaseBranch: "no-such-ref"}); err == nil {
+		t.Fatal("expected Run to propagate an unresolvable-base error")
+	}
+}
+
+func TestCollectUnrelatedHistories(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "feat(awf): head", map[string]string{"go.mod": "module x\n"})
+	base := orphan(t, repo)
+	_, err := Collect(dir, base.String())
+	if err == nil {
+		t.Fatal("expected an unrelated-histories error")
+	}
+}
+
+func TestCollectNotARepo(t *testing.T) {
+	if _, err := Collect(t.TempDir(), "main"); err == nil {
+		t.Fatal("expected a not-a-repo error")
+	}
+}
+
+func TestCollectEmptyRepoHeadError(t *testing.T) {
+	_, dir := initRepo(t)
+	if _, err := Collect(dir, "main"); err == nil {
+		t.Fatal("expected a HEAD-resolution error on a commit-less repo")
+	}
+}
+
+func TestCollectBadBase(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	if _, err := Collect(dir, "no-such-ref"); err == nil {
+		t.Fatal("expected an unresolvable-base error")
+	}
+}
+
+func TestSplitMessage(t *testing.T) {
+	if s, b := splitMessage("just a subject"); s != "just a subject" || b != "" {
+		t.Errorf("no-newline: %q / %q", s, b)
+	}
+	if s, b := splitMessage("subject line\n\nbody text\nmore\n"); s != "subject line" || b != "body text\nmore" {
+		t.Errorf("multiline: %q / %q", s, b)
+	}
+}
+
+// toCommit on a root commit exercises the no-parent (nil parentTree) path that
+// Collect never reaches (a valid range's base is always a common ancestor).
+func TestToCommitRootAndFileText(t *testing.T) {
+	repo, dir := initRepo(t)
+	root := commit(t, repo, dir, "feat(awf): root", map[string]string{"a.md": "---\nstatus: Proposed\n---\nx\n"})
+	rc, err := repo.CommitObject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nc, err := toCommit(rc)
+	if err != nil {
+		t.Fatalf("toCommit root: %v", err)
+	}
+	if amd, ok := findChange(nc.Changes, "a.md"); !ok || amd.Action != Added || amd.NewText == "" {
+		t.Fatalf("root a.md: %+v", amd)
+	}
+	tree, err := rc.Tree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fileText(tree, "missing.md") != "" {
+		t.Error("fileText(missing) should be empty")
+	}
+}
