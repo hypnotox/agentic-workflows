@@ -127,12 +127,19 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	}
 }
 
-func TestDomainDocRenderError(t *testing.T) {
+// TestGenerateDomainDocsPropagatesIndexError exercises generateDomainDocs's
+// RenderDomainIndex error arm directly. Through Sync/Check this arm is unreachable
+// (generateActiveMD parses the same decisions dir and fails first, covered by
+// TestSyncFailsOnMalformedADR), so the method is called directly here.
+func TestGenerateDomainDocsPropagatesIndexError(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-broken.md", "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, _ := Open(root)
-	if err := p.Sync(); err == nil {
-		t.Error("expected Sync error from a malformed ADR feeding the domain index")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := p.generateDomainDocs(); err == nil {
+		t.Error("expected generateDomainDocs to propagate the RenderDomainIndex parse error")
 	}
 }
 

@@ -507,7 +507,7 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range sortedStrings(p.Cfg.Domains) {
 		index, err := adr.RenderDomainIndex(decisionsDir, name)
-		if err != nil { // coverage-ignore: RenderDomainIndex fails only on a ParseDir error, but generateActiveMD parses the same decisions dir earlier in Sync/Check and fails first
+		if err != nil {
 			return nil, err
 		}
 		data := p.data(config.Sidecar{})
@@ -816,7 +816,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "stale", Detail: "domain doc out of date; run awf sync"})
 		}
 	}
-	for path := range lock.Files {
+	for _, path := range sortedKeys(lock.Files) {
 		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
 		}
