@@ -37,6 +37,13 @@ func TestParseSectionsEmptyBody(t *testing.T) {
 	}
 }
 
+func TestParseSectionsEmptyInput(t *testing.T) {
+	segs := ParseSections("")
+	if len(segs) != 1 || segs[0].IsSection || segs[0].Text != "" {
+		t.Errorf("empty input should yield one empty literal segment, got %#v", segs)
+	}
+}
+
 func TestParseSectionsMultiLineBody(t *testing.T) {
 	src := "<!-- awf:section multi -->\nline one\nline two\n<!-- awf:end -->\n"
 	segs := ParseSections(src)

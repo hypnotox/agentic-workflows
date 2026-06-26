@@ -69,6 +69,27 @@ func TestRenderReplaceWith(t *testing.T) {
 	}
 }
 
+func TestExecuteParseError(t *testing.T) {
+	_, err := Execute("{{ .prefix", sampleData())
+	if err == nil {
+		t.Fatal("expected parse error from malformed template, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse template") {
+		t.Errorf("error missing parse context: %q", err.Error())
+	}
+}
+
+func TestExecuteExecError(t *testing.T) {
+	// .prefix is a string; ranging over it is a parse-valid but execution-time error.
+	_, err := Execute("{{ range .prefix }}{{ end }}", sampleData())
+	if err == nil {
+		t.Fatal("expected execution error, got nil")
+	}
+	if !strings.Contains(err.Error(), "execute template") {
+		t.Errorf("error missing execute context: %q", err.Error())
+	}
+}
+
 func TestRenderPartError(t *testing.T) {
 	ov := map[string]config.SectionOverride{"notes": {ReplaceWith: "parts/missing.md"}}
 	parts := func(name string) (string, error) {
