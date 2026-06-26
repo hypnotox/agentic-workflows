@@ -1,3 +1,5 @@
+# Implementation complete (2026-06-27)
+
 # Plan: Align agentic-workflow vocabulary across instruction surfaces
 
 ## Goal

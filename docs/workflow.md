@@ -4,7 +4,7 @@
 <!-- awf:edit principles — default; create .awf/docs/parts/workflow/principles.md to override -->
 ## Principles
 
-You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change — reality and its docs move together, the gate is green before every commit, and each commit carries exactly one concern.
+You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change — reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
 <!-- awf:edit chain — default; create .awf/docs/parts/workflow/chain.md to override -->
 ## The chain
