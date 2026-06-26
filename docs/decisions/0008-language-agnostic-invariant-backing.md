@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling, schema, workflow]
 related: [0007]
+domains: [invariants]
 ---
 # ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard
 

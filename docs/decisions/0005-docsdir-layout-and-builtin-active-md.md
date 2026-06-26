@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling, schema]
 related: [0001, 0004]
+domains: [config, adr-system]
 ---
 # ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation
 

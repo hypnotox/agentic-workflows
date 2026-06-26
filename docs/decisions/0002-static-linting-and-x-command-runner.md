@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling]
 related: []
+domains: [tooling]
 ---
 # ADR-0002: Static Linting via golangci-lint and the ./x Command Runner
 

@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [docs, layout, templates]
 related: [0005, 0011]
+domains: [rendering]
 ---
 # ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars
 

@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling, workflow]
 related: [0005, 0006]
+domains: [invariants]
 ---
 # ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker
 

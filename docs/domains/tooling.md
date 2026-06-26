@@ -1,0 +1,15 @@
+# tooling
+
+## Current state
+
+All repo interactions go through the `./x` command runner (`gate`, `lint`, `fmt`, `test`, `sync`, `check`, `setup`, `build`, `install`), which runs awf from source rather than a stale binary. The gate is `go test ./... && go vet && golangci-lint`, with a hard 100% statement-coverage floor (`cmd/covercheck`; a genuinely-unreachable branch may carry a justified `// coverage-ignore:`). golangci-lint is a pinned `go tool` dependency; git hooks under `.githooks/` run the gate on commit/push.
+
+
+## Decisions
+
+### Implemented
+
+- [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
+- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md)
+- [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
+

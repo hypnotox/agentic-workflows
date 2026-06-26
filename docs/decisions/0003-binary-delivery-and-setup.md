@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling]
 related: [0002]
+domains: [tooling]
 ---
 # ADR-0003: awf Binary Delivery and Hook-Activation Setup
 

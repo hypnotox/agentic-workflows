@@ -5,6 +5,7 @@ supersedes: []
 superseded_by: ""
 tags: [tooling, testing]
 related: [0002, 0008]
+domains: [tooling]
 ---
 # ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention
 

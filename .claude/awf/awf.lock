@@ -140,6 +140,36 @@
       "configHash": "sha256:df508dca9f536bae873488f5c517858f4d25aef5c3a819e99f52ae3f7b1bade2",
       "outputHash": "sha256:68dbae6b450f1e98fc505dc43e81a12509e22777e637b0398a4497e090552f18"
     },
+    "docs/domains/adr-system.md": {
+      "templateId": "",
+      "templateHash": "",
+      "configHash": "",
+      "outputHash": "sha256:d16826699f22d9ae9e83a5cced76bb6b3668e699f70c983662f09384a7eb827b"
+    },
+    "docs/domains/config.md": {
+      "templateId": "",
+      "templateHash": "",
+      "configHash": "",
+      "outputHash": "sha256:4a108d283b8640b057ebd7b98b4419b83968c9bb09c795beeedeb2794b6f7322"
+    },
+    "docs/domains/invariants.md": {
+      "templateId": "",
+      "templateHash": "",
+      "configHash": "",
+      "outputHash": "sha256:c5573aac07cec1ee09f7ac1c5d16048cb36456ff52bdb101cc7951293ea2ed8e"
+    },
+    "docs/domains/rendering.md": {
+      "templateId": "",
+      "templateHash": "",
+      "configHash": "",
+      "outputHash": "sha256:10c8823d076f8446c550be58117f0ae5f72fb4f09e0c3c0ce28ae571af573904"
+    },
+    "docs/domains/tooling.md": {
+      "templateId": "",
+      "templateHash": "",
+      "configHash": "",
+      "outputHash": "sha256:81fca3061ed471583f18380cdb27f8b25a6c836d5f966cf41e4b54d36e594641"
+    },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:07419666c4af9479b93cebeeed2895917290ce22fbe71c198dd6d6404d688818",

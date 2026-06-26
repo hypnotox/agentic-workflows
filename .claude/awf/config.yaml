@@ -9,6 +9,12 @@ docs:
     - pitfalls
     - testing
     - workflow
+domains:
+    - adr-system
+    - config
+    - invariants
+    - rendering
+    - tooling
 hooks:
     - pre-commit
     - pre-push

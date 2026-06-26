@@ -1,0 +1,20 @@
+# rendering
+
+## Current state
+
+The render engine is a marker-section overlay (`<!-- awf:section -->`) layered onto Go `text/template` with `missingkey=zero`, guarded by a hard publication-safety check that rejects any unresolved-variable placeholder. Doc paths are awf-given via the `.layout` namespace (never `.vars`); skills cite docs through `.layout.docs.*`/`.layout.workflowRef`, and a doc-gated skill is suppressed when its doc is disabled. Catalog docs ship static default content with a per-doc section taxonomy; domain docs are the one data-driven exception, injecting a generated index as forced body.
+
+
+## Decisions
+
+### Accepted
+
+- [ADR-0001: Template Overlay Rendering Engine](../decisions/0001-template-overlay-rendering-engine.md)
+- [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
+
+### Implemented
+
+- [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md)
+- [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](../decisions/0011-docs-default-content-and-section-taxonomy.md)
+- [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](../decisions/0013-doc-cross-references-via-layout.md)
+

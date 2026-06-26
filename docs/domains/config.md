@@ -1,0 +1,15 @@
+# config
+
+## Current state
+
+Per-project configuration lives in a `.claude/awf/` tree: a skeleton `config.yaml` (prefix, vars, flat enable arrays for skills/agents/docs/domains/hooks, invariants) plus per-target sidecars and convention parts. The config is strict-parsed (`KnownFields`), and drift is tracked in a schema-versioned `awf.lock`. Schema migrations are an ordered registry applied by `awf upgrade`; `awf sync`/`check` gate a stale layout. Additive optional fields (like `domains`) are backward-safe and need no version bump.
+
+
+## Decisions
+
+### Implemented
+
+- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md)
+- [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](../decisions/0009-tree-based-config-layout.md)
+- [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](../decisions/0010-versioned-lock-and-awf-upgrade.md)
+
