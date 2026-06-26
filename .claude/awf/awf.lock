@@ -132,7 +132,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:6deeb793b06127580f1c71fa05695c78e892e18da48a9957a8d95524ba86b07e"
+      "outputHash": "sha256:105b854c7db677a9d7451cf5ae6751e5e40e47403fa58aad456540b6a6a81510"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
