@@ -146,6 +146,7 @@ skills:
       - dispatch-subagent
       - classify-route-findings
       - apply-fixes-commit
+      - run-audit
       - re-review-loop
       - notes
   refactor-coupling-audit:

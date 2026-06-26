@@ -45,6 +45,12 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
 1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `./x gate` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
 
+<!-- awf:edit run-audit — default; create .awf/skills/parts/reviewing-impl/run-audit.md to override -->
+1. **Run the process-conformance audit.** After the code-review findings are routed, run
+   `awf audit` (or this project's runner alias for it) over the branch. Treat `Error` findings as
+   blocking and `Warning` findings as advisory — surface both in the digest. The audit is advisory
+   and never gates; it does not replace the gate or the drift check.
+
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
 1. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 

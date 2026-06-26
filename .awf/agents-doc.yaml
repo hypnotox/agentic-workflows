@@ -9,6 +9,8 @@ data:
           desc: check rendered files for drift (also enforces the schema-version gate)
         - cmd: awf upgrade
           desc: migrate the config tree to the current schema after upgrading awf
+        - cmd: awf audit
+          desc: report workflow-conformance findings over the branch's commits (advisory)
     invariants:
         - ref: ADR-0001
           text: '**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify.'

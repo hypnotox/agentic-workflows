@@ -2,6 +2,11 @@ agents:
     - adr-reviewer
     - code-reviewer
     - plan-reviewer
+audit:
+    allowedScopes:
+        - adr
+        - awf
+        - plans
 docs:
     - architecture
     - development
