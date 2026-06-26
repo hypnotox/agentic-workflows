@@ -100,10 +100,15 @@ Grounding discoveries that shape the design (verified against source):
 
 3. **Relocate awf's config tree `.claude/awf/` → `.awf/`.** Configuration loads from
    `.awf/config.yaml`; the lock is `.awf/awf.lock`. Every surface naming the old root moves:
-   the `awfDir` passed at `project.go:43` and `main.go:65`; `lockPath()` (`project.go:639`); the
-   migrate lock path (`migrate.go:44,55`); the provenance **banner text** (`project.go:280`,
-   "change `.awf/`"); and the `awf:edit` pointer relative paths (`project.go:201,203`,
-   `.awf/<kind>/parts/...`). `Config.root` becomes `.awf`, so `PartPath`/`Sidecar` follow
+   the `awfDir` passed at `project.go:43` and `main.go:65`; the `awf add` config path
+   (`list_add.go:68`); `lockPath()` (`project.go:639`); the orphan scanner's scan base **and** its
+   reported drift paths (`project.go:661,674,691,708`) — a normal `check`-path reader/reporter of the
+   config tree; the migrate lock path (`migrate.go:44,55`); the provenance **banner text**
+   (`project.go:280`, "change `.awf/`"); and the `awf:edit` pointer relative paths
+   (`project.go:201,203`, `.awf/<kind>/parts/...`). Adapter-output literals (`.claude/skills/…`,
+   `.claude/agents/…` at `project.go:326,328,353,370`) and the frozen legacy/intermediate migration
+   paths (`migrate.go:37`, `treelayout.go`, `dropreplacewith.go`, `legacy.go`) deliberately do **not**
+   move. `Config.root` becomes `.awf`, so `PartPath`/`Sidecar` follow
    automatically. After this ADR, `.claude/` holds **only** the Claude adapter's rendered output
    (`.claude/skills/`, `.claude/agents/`); awf no longer writes its own config there. The
    `internal/migrate` legacy reader stays frozen on `.claude/awf.yaml` (ADR-0010); the relocation
@@ -132,10 +137,14 @@ Grounding discoveries that shape the design (verified against source):
    `{To:3, "awf-dir-relocation", applyAwfRelocation}` to the registry; `Current()` becomes `3`.
    `applyAwfRelocation` moves `.claude/awf/{config.yaml, awf.lock, skills/, agents/, docs/,
    domains/, parts/, …}` to `.awf/…` and re-stamps the lock to schema 3; it is idempotent (no-op if
-   `.claude/awf/` is absent). `Generation(root)` learns three states: `.awf/config.yaml` present →
-   read `.awf/awf.lock` `SchemaVersion`; else `.claude/awf/config.yaml` present → the
-   pre-relocation tree, whose `.claude/awf/awf.lock` carries schema ≤ 2 (< `Current()`), so `gate()`
-   blocks with "run awf upgrade"; else legacy `.claude/awf.yaml` → `0`. `awf upgrade` runs
+   `.claude/awf/` is absent). `Generation(root)` learns three states, **keyed on directory presence, not on a readable
+   lock**, checked in order: `.awf/config.yaml` present → read `.awf/awf.lock` `SchemaVersion` (no
+   lock yet → `Current()`, per the existing fresh-init branch); else `.claude/awf/config.yaml` present
+   → the pre-relocation tree, reported as a generation strictly below `Current()` (its
+   `.claude/awf/awf.lock` schema ≤ 2 when present, and a sentinel < `Current()` when the lock is
+   absent — so a pre-relocation tree always gates, never silently fails `project.Open` against a
+   missing `.awf/config.yaml`); so `gate()` blocks with "run awf upgrade"; else legacy
+   `.claude/awf.yaml` → `0`. `awf upgrade` runs
    migrations then syncs; `Sync` stamps `SchemaVersion: migrate.Current()`. `runSync`/`runCheck`
    keep calling `gate()` before `project.Open` (`main.go:92-98`).
 
@@ -144,8 +153,9 @@ Grounding discoveries that shape the design (verified against source):
    narrows **ADR-0015 `inv: provenance-banner`** only insofar as the banner text now names `.awf/`
    rather than `.claude/awf/`. Both predecessors keep their `Implemented` status — this is
    partial-item supersedence recorded via `related`, not a full replacement — and their backing
-   tests (`config-root`, `provenance-banner`, and any `awf:edit`-pointer assertion) update in the
-   same commit that flips this ADR to `Implemented`. ADR-0010 `legacy-read-isolation` is unaffected
+   tests (`config-root`, `provenance-banner`, any `awf:edit`-pointer assertion, **and the orphan/drift
+   tests asserting `.claude/awf/…` paths** — `drift_test.go`, `docs_sections_test.go`,
+   `coverage_test.go`) update in the same commit that flips this ADR to `Implemented`. ADR-0010 `legacy-read-isolation` is unaffected
    (item 3). The CLAUDE.md bridge realises the AGENTS.md↔runtime link left open by ADR-0004.
 
 Applying this to awf's own repo — running `awf upgrade` to relocate `.claude/awf/` → `.awf/` and
@@ -211,7 +221,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - `docs/architecture.md` documents the target seam, the neutral/adapter taxonomy, the `.awf/`
   config root, and the `CLAUDE.md` bridge; the `config` and `tooling` domain docs' current-state
   narratives are refreshed.
-- ADR-0009's `config-root` and ADR-0015's `provenance-banner` (and any `awf:edit`-pointer)
+- ADR-0009's `config-root` and ADR-0015's `provenance-banner` (and any `awf:edit`-pointer, plus the
+  orphan/drift path assertions in `drift_test.go`/`docs_sections_test.go`/`coverage_test.go`)
   backing tests update to the `.awf/` paths in the commit that flips this ADR to `Implemented`.
 - When this ADR flips to Accepted/Implemented, the same commit regenerates
   `docs/decisions/ACTIVE.md` via `./x sync`. No `docs/decisions/README.md` index row is owed
