@@ -544,10 +544,10 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 
 // invariant: doc-gated-skill-suppressed
 func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
-	// roadmap-graduation references only .vars.roadmapDoc; agents-doc is suppressed
-	// via a local sidecar so RenderAll renders only the gated skill (and, when its
-	// doc is enabled, the roadmap doc itself).
-	cfg := "prefix: example\nvars:\n  roadmapDoc: \"docs/roadmap.md\"\nskills: [roadmap-graduation]\nagents: []\nhooks: []\n"
+	// roadmap-graduation cites .layout.docs.roadmap (populated when the roadmap doc
+	// is enabled); agents-doc is suppressed via a local sidecar so RenderAll renders
+	// only the gated skill (and, when its doc is enabled, the roadmap doc itself).
+	cfg := "prefix: example\nskills: [roadmap-graduation]\nagents: []\nhooks: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
 	p, err := Open(root)
 	if err != nil {
