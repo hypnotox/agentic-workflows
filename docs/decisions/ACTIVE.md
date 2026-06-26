@@ -20,3 +20,7 @@
 - [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](0013-doc-cross-references-via-layout.md) — Implemented
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](0014-domain-docs-with-generated-adr-index.md) — Implemented
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](0015-in-file-provenance-and-convention-only-overrides.md) — Implemented
+
+## Proposed
+
+- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](0016-tool-agnostic-target-seam-and-awf-relocation.md) — Proposed
