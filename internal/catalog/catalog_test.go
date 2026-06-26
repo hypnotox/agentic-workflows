@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"testing"
+	"testing/fstest"
 
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -30,6 +31,21 @@ func TestLoadFromEmbed(t *testing.T) {
 	}
 	if arch.Title != "Architecture" || len(arch.Sections) == 0 {
 		t.Errorf("architecture doc spec = %+v", arch)
+	}
+}
+
+func TestLoadMissingFile(t *testing.T) {
+	if _, err := Load(fstest.MapFS{}); err == nil {
+		t.Fatal("expected error for missing catalog.yaml, got nil")
+	}
+}
+
+func TestLoadMalformedYAML(t *testing.T) {
+	fsys := fstest.MapFS{
+		"catalog.yaml": &fstest.MapFile{Data: []byte("skills: [this is: not valid mapping")},
+	}
+	if _, err := Load(fsys); err == nil {
+		t.Fatal("expected error for malformed catalog.yaml, got nil")
 	}
 }
 
