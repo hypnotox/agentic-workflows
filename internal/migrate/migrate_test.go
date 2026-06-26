@@ -127,8 +127,10 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "tree-layout" {
-		t.Errorf("first Upgrade applied = %v, want [tree-layout]", applied)
+	// A legacy (gen-0) Upgrade runs every migration: tree-layout then
+	// drop-replacewith (a no-op here — tree-layout already ports replaceWith parts).
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith" {
+		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith]", applied)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "config.yaml")); err != nil {
 		t.Errorf("tree not produced: %v", err)
@@ -556,5 +558,140 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 		if !strings.Contains(string(src), want) {
 			t.Errorf("legacy.go missing documented contract %q", want)
 		}
+	}
+}
+
+func TestCurrentIsTwo(t *testing.T) {
+	if Current() != 2 {
+		t.Errorf("Current() = %d, want 2", Current())
+	}
+}
+
+// awfFile writes a file under <root>/.claude/awf/<rel>.
+func awfFile(t *testing.T, root, rel, body string) {
+	t.Helper()
+	mustWrite(t, filepath.Join(root, ".claude", "awf", rel), body)
+}
+
+func TestDropReplaceWithNoop(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/a.yaml", "sections:\n  s:\n    drop: true\n")
+	before, _ := os.ReadFile(filepath.Join(root, ".claude", "awf", "skills", "a.yaml"))
+	if err := applyDropReplaceWith(root); err != nil {
+		t.Fatalf("applyDropReplaceWith: %v", err)
+	}
+	after, _ := os.ReadFile(filepath.Join(root, ".claude", "awf", "skills", "a.yaml"))
+	if string(before) != string(after) {
+		t.Errorf("sidecar changed:\n%s\n---\n%s", before, after)
+	}
+}
+
+func TestDropReplaceWithConverts(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	// skills/x: replaceWith + drop + data + local → rewritten, retaining the rest.
+	awfFile(t, root, "skills/x.yaml", "data:\n  k: v\nsections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n  d:\n    drop: true\nlocal: true\n")
+	awfFile(t, root, "skills/parts/x/legacy.md", "LEGACY BODY\n")
+	// agents/y: only a replaceWith section → sidecar becomes empty and is removed.
+	awfFile(t, root, "agents/y.yaml", "sections:\n  s2:\n    replaceWith: agents/parts/y/legacy2.md\n")
+	awfFile(t, root, "agents/parts/y/legacy2.md", "Y BODY\n")
+	// agents-doc singleton → part lands under parts/agents-doc/.
+	awfFile(t, root, "agents-doc.yaml", "sections:\n  identity:\n    replaceWith: parts/agents-doc/legacy3.md\n")
+	awfFile(t, root, "parts/agents-doc/legacy3.md", "AD BODY\n")
+
+	if err := applyDropReplaceWith(root); err != nil {
+		t.Fatalf("applyDropReplaceWith: %v", err)
+	}
+	awf := filepath.Join(root, ".claude", "awf")
+	if b, _ := os.ReadFile(filepath.Join(awf, "skills", "parts", "x", "s.md")); string(b) != "LEGACY BODY\n" {
+		t.Errorf("convention part s.md = %q", b)
+	}
+	sc, _ := os.ReadFile(filepath.Join(awf, "skills", "x.yaml"))
+	if strings.Contains(string(sc), "replaceWith") {
+		t.Errorf("rewritten sidecar still has replaceWith:\n%s", sc)
+	}
+	if !strings.Contains(string(sc), "k: v") || !strings.Contains(string(sc), "drop: true") || !strings.Contains(string(sc), "local: true") {
+		t.Errorf("rewritten sidecar dropped data/drop/local:\n%s", sc)
+	}
+	if _, err := os.Stat(filepath.Join(awf, "agents", "y.yaml")); !os.IsNotExist(err) {
+		t.Errorf("emptied agents/y.yaml should be removed, stat err = %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(awf, "agents", "parts", "y", "s2.md")); string(b) != "Y BODY\n" {
+		t.Errorf("agents convention part s2.md = %q", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(awf, "parts", "agents-doc", "identity.md")); string(b) != "AD BODY\n" {
+		t.Errorf("agents-doc convention part identity.md = %q", b)
+	}
+	if _, err := os.Stat(filepath.Join(awf, "agents-doc.yaml")); !os.IsNotExist(err) {
+		t.Errorf("emptied agents-doc.yaml should be removed, stat err = %v", err)
+	}
+}
+
+func TestDropReplaceWithIdempotent(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
+	awfFile(t, root, "skills/parts/x/legacy.md", "BODY\n")
+	awfFile(t, root, "skills/parts/x/s.md", "BODY\n") // dst already present, identical
+	if err := applyDropReplaceWith(root); err != nil {
+		t.Fatalf("applyDropReplaceWith: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "skills", "x.yaml")); !os.IsNotExist(err) {
+		t.Errorf("emptied sidecar should be removed, stat err = %v", err)
+	}
+}
+
+func TestDropReplaceWithConflict(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
+	awfFile(t, root, "skills/parts/x/legacy.md", "NEW\n")
+	awfFile(t, root, "skills/parts/x/s.md", "OLD DIFFERENT\n")
+	err := applyDropReplaceWith(root)
+	if err == nil || !strings.Contains(err.Error(), "already exists with different content") {
+		t.Errorf("want conflict error, got: %v", err)
+	}
+}
+
+func TestDropReplaceWithMissingPart(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/x.yaml", "sections:\n  s:\n    replaceWith: skills/parts/x/legacy.md\n")
+	err := applyDropReplaceWith(root)
+	if err == nil || !strings.Contains(err.Error(), "legacy.md") {
+		t.Errorf("want missing-part error mentioning legacy.md, got: %v", err)
+	}
+}
+
+// A tree→tree upgrade keeps its lock; Upgrade must restamp it to Current() so the
+// terminal sync's schema gate passes.
+func TestUpgradeStampsTreeLock(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	stampLock(t, root, 1)
+	applied, err := Upgrade(root)
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+	if strings.Join(applied, ",") != "drop-replacewith" {
+		t.Errorf("applied = %v, want [drop-replacewith]", applied)
+	}
+	l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
+	if err != nil {
+		t.Fatalf("load lock: %v", err)
+	}
+	if l.SchemaVersion != Current() {
+		t.Errorf("lock SchemaVersion = %d, want %d", l.SchemaVersion, Current())
+	}
+}
+
+func TestDropReplaceWithMalformedSidecar(t *testing.T) {
+	root := t.TempDir()
+	awfFile(t, root, "config.yaml", "prefix: ex\n")
+	awfFile(t, root, "skills/x.yaml", "sections: [not-a-map\n")
+	err := applyDropReplaceWith(root)
+	if err == nil || !strings.Contains(err.Error(), "parse sidecar") {
+		t.Errorf("want parse-sidecar error, got: %v", err)
 	}
 }

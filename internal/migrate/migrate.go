@@ -22,6 +22,7 @@ type Migration struct {
 // registry is ordered ascending by To; current schema = last To.
 var registry = []Migration{
 	{To: 1, Name: "tree-layout", Apply: applyTreeLayout},
+	{To: 2, Name: "drop-replacewith", Apply: applyDropReplaceWith},
 }
 
 // Current is the current schema generation (the highest registered To).
@@ -45,6 +46,22 @@ func Generation(root string) int {
 		return Current()
 	}
 	return l.SchemaVersion
+}
+
+// stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
+// missing lock (e.g. just after the legacy tree-layout port, before the first
+// sync) is a no-op — Generation's no-lock branch already reports Current().
+func stampLockSchema(root string) error {
+	lockPath := filepath.Join(root, ".claude", "awf", "awf.lock")
+	if !fileExists(lockPath) {
+		return nil // no lock yet; the terminal sync stamps it
+	}
+	l, err := manifest.Load(lockPath)
+	if err != nil { // coverage-ignore: Stat above confirmed the lock exists and is readable
+		return err
+	}
+	l.SchemaVersion = Current()
+	return l.Save(lockPath)
 }
 
 // registryTos returns the To values of every registered migration.
@@ -79,6 +96,9 @@ func GateState(root string) string {
 // Upgrade applies every registered migration with To > Generation(root), in
 // ascending To order, and returns the applied migration names. Idempotent: at the
 // current generation it applies nothing and returns an empty slice, nil error.
+// After applying any migration it restamps an existing tree lock to Current() so
+// Generation reflects the new state and the terminal sync's schema gate passes
+// (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
 func Upgrade(root string) ([]string, error) {
 	from := Generation(root)
 	var applied []string
@@ -90,6 +110,11 @@ func Upgrade(root string) ([]string, error) {
 			return applied, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)
+	}
+	if len(applied) > 0 {
+		if err := stampLockSchema(root); err != nil { // coverage-ignore: stampLockSchema only fails on a lock Save fault, unreachable in a writable tree
+			return applied, err
+		}
 	}
 	return applied, nil
 }

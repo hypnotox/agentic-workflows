@@ -14,8 +14,7 @@ import (
 )
 
 type SectionOverride struct {
-	ReplaceWith string `yaml:"replaceWith"`
-	Drop        bool   `yaml:"drop"`
+	Drop bool `yaml:"drop"`
 }
 
 // Sidecar holds a single target's non-prose configuration: structured render
@@ -101,9 +100,6 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	if err := dec.Decode(&s); err != nil {
 		return Sidecar{}, fmt.Errorf("parse sidecar %s: %w", rel, err)
 	}
-	if err := checkSections(kind, name, s); err != nil {
-		return Sidecar{}, err
-	}
 	return s, nil
 }
 
@@ -146,21 +142,6 @@ func (c *Config) Validate() error {
 					return fmt.Errorf("invariants glob %q is malformed: %w", g, err)
 				}
 			}
-		}
-	}
-	return nil
-}
-
-// checkSections rejects a section override that sets both drop and replaceWith.
-// kind/name are used only for error formatting (name may be empty for a singleton).
-func checkSections(kind, name string, sc Sidecar) error {
-	label := kind
-	if name != "" {
-		label = fmt.Sprintf("%s %q", kind, name)
-	}
-	for sec, ov := range sc.Sections {
-		if ov.Drop && ov.ReplaceWith != "" {
-			return fmt.Errorf("%s section %q: cannot both drop and replaceWith", label, sec)
 		}
 	}
 	return nil

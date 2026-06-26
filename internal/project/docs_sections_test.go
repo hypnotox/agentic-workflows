@@ -41,7 +41,6 @@ func TestDocsSectionParity(t *testing.T) {
 			t.Errorf("%s: section mismatch: catalog %v vs template markers %v", name, want, got)
 		}
 		out, err := render.Render(string(src), nil,
-			func(string) (string, error) { return "", nil },
 			map[string]any{"prefix": "awf", "vars": map[string]any{},
 				"layout": map[string]any{"adrReadme": "docs/decisions/README.md"}, "data": map[string]any{}})
 		if err != nil {

@@ -51,7 +51,7 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 			vars[v] = ""
 		}
 		data := map[string]any{"prefix": "awf", "vars": vars, "layout": layout, "data": map[string]any{}}
-		out, err := render.Render(string(src), nil, func(string) (string, error) { return "", nil }, data)
+		out, err := render.Render(string(src), nil, data)
 		if err != nil {
 			t.Fatalf("render %s: %v", tid, err)
 		}

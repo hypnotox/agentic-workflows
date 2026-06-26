@@ -204,18 +204,21 @@ func TestSidecarAbsentIsEmpty(t *testing.T) {
 	}
 }
 
-func TestSidecarRejectsDropAndReplace(t *testing.T) {
+// A stale schema-1 sidecar carrying replaceWith fails closed at the strict
+// decoder (the migration converts it before load); see ADR-0015.
+func TestSidecarRejectsReplaceWith(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
 	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	bad := "sections:\n  notes:\n    drop: true\n    replaceWith: parts/x.md\n"
+	bad := "sections:\n  notes:\n    replaceWith: parts/x.md\n"
 	if err := os.WriteFile(filepath.Join(dir, "skills", "tdd.yaml"), []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c, _ := Load(dir)
-	if _, err := c.Sidecar("skills", "tdd"); err == nil {
-		t.Error("expected error: section cannot both drop and replaceWith")
+	_, err := c.Sidecar("skills", "tdd")
+	if err == nil || !strings.Contains(err.Error(), "replaceWith") {
+		t.Errorf("expected a strict-decoder error mentioning replaceWith, got: %v", err)
 	}
 }
 

@@ -113,20 +113,6 @@ func TestConventionPartPrecedence(t *testing.T) {
 	if strings.Contains(out, "CONVENTION PART BODY") {
 		t.Errorf("drop should beat the convention part:\n%s", out)
 	}
-
-	// (3) An explicit replaceWith beats the convention part.
-	root = scaffoldFiles(t, cfg, map[string]string{
-		part:                    "CONVENTION PART BODY\n",
-		"skills/debugging.yaml": "sections:\n  debugging-surfaces:\n    replaceWith: custom.md\n",
-		"custom.md":             "EXPLICIT REPLACEMENT\n",
-	})
-	out = syncAndReadDebugging(t, root)
-	if !strings.Contains(out, "EXPLICIT REPLACEMENT") {
-		t.Errorf("explicit replaceWith should win:\n%s", out)
-	}
-	if strings.Contains(out, "CONVENTION PART BODY") {
-		t.Errorf("explicit replaceWith should beat the convention part:\n%s", out)
-	}
 }
 
 // invariant: sidecar-optional

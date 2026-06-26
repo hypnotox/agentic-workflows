@@ -1,14 +1,9 @@
 package render
 
 import (
-	"errors"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/config"
 )
-
-func noParts(name string) (string, error) { return "", nil }
 
 func sampleData() map[string]any {
 	return map[string]any{
@@ -25,7 +20,7 @@ func sampleData() map[string]any {
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
 func TestRenderDefault(t *testing.T) {
-	out, err := Render(tmpl, nil, noParts, sampleData())
+	out, err := Render(tmpl, nil, sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,14 +28,18 @@ func TestRenderDefault(t *testing.T) {
 		!strings.Contains(out, "run go test ./...") || !strings.Contains(out, "NOTE") {
 		t.Errorf("unexpected output:\n%s", out)
 	}
+	if !strings.Contains(out, "<!-- awf:edit surfaces — default;") ||
+		!strings.Contains(out, "<!-- awf:edit notes — default;") {
+		t.Errorf("default edit pointers missing:\n%s", out)
+	}
 	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
 		t.Errorf("markers leaked into output:\n%s", out)
 	}
 }
 
 func TestRenderDropsSection(t *testing.T) {
-	ov := map[string]config.SectionOverride{"notes": {Drop: true}}
-	out, err := Render(tmpl, ov, noParts, sampleData())
+	plan := map[string]SectionPlan{"notes": {Drop: true}}
+	out, err := Render(tmpl, plan, sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,20 +51,17 @@ func TestRenderDropsSection(t *testing.T) {
 	}
 }
 
-func TestRenderReplaceWith(t *testing.T) {
-	ov := map[string]config.SectionOverride{"notes": {ReplaceWith: "parts/notes.md"}}
-	parts := func(name string) (string, error) {
-		if name != "parts/notes.md" {
-			t.Fatalf("unexpected part %q", name)
-		}
-		return "CUSTOM {{ .prefix }}", nil
-	}
-	out, err := Render(tmpl, ov, parts, sampleData())
+func TestRenderConventionPart(t *testing.T) {
+	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".claude/awf/x.md"}}
+	out, err := Render(tmpl, plan, sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out, "CUSTOM example") || strings.Contains(out, "NOTE") {
-		t.Errorf("replaceWith failed:\n%s", out)
+		t.Errorf("convention part substitution failed:\n%s", out)
+	}
+	if !strings.Contains(out, "<!-- awf:edit notes — from .claude/awf/x.md -->") {
+		t.Errorf("convention part pointer missing:\n%s", out)
 	}
 }
 
@@ -87,20 +83,5 @@ func TestExecuteExecError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "execute template") {
 		t.Errorf("error missing execute context: %q", err.Error())
-	}
-}
-
-func TestRenderPartError(t *testing.T) {
-	ov := map[string]config.SectionOverride{"notes": {ReplaceWith: "parts/missing.md"}}
-	parts := func(name string) (string, error) {
-		return "", errors.New("boom")
-	}
-	_, err := Render(tmpl, ov, parts, sampleData())
-	if err == nil {
-		t.Fatal("expected error from PartFunc, got nil")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "notes") || !strings.Contains(msg, "parts/missing.md") {
-		t.Errorf("error missing wrapping context: %q", msg)
 	}
 }
