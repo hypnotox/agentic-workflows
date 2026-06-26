@@ -169,6 +169,9 @@ func mustMkdir(t *testing.T, dir string) {
 
 func mustWrite(t *testing.T, path, body string) {
 	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -301,6 +304,213 @@ func readFile(t *testing.T, path string) string {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(b)
+}
+
+// writeLegacyRoot lays down a temp project root containing a .claude/awf dir and
+// the given legacy awf.yaml body, returning the root. Convention parts and squat
+// directories are added by individual tests.
+func writeLegacyRoot(t *testing.T, body string) string {
+	t.Helper()
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".claude", "awf"))
+	mustWrite(t, filepath.Join(root, ".claude", "awf.yaml"), body)
+	return root
+}
+
+func TestApplyTreeLayoutNoopWhenLegacyAbsent(t *testing.T) {
+	// No .claude/awf.yaml → already ported (or never legacy): a nil no-op.
+	root := t.TempDir()
+	if err := applyTreeLayout(root); err != nil {
+		t.Fatalf("applyTreeLayout(no legacy) = %v, want nil", err)
+	}
+}
+
+func TestReadLegacyReadError(t *testing.T) {
+	// A path that cannot be read (absent) surfaces a wrapped read error.
+	_, err := readLegacy(filepath.Join(t.TempDir(), "does-not-exist.yaml"))
+	if err == nil || !strings.Contains(err.Error(), "read legacy config") {
+		t.Fatalf("readLegacy(absent) = %v, want a read-legacy-config error", err)
+	}
+}
+
+func TestReadLegacyParseError(t *testing.T) {
+	// An unknown field trips the strict (KnownFields) decoder.
+	p := filepath.Join(t.TempDir(), "awf.yaml")
+	mustWrite(t, p, "prefix: ex\nbogusUnknownField: 1\n")
+	_, err := readLegacy(p)
+	if err == nil || !strings.Contains(err.Error(), "parse legacy config") {
+		t.Fatalf("readLegacy(unknown field) = %v, want a parse-legacy-config error", err)
+	}
+}
+
+func TestUpgradePropagatesMigrationError(t *testing.T) {
+	// A malformed legacy file at generation 0 makes the tree-layout migration
+	// fail; Upgrade wraps it with the migration name and returns it.
+	root := writeLegacyRoot(t, "prefix: ex\nbogusUnknownField: 1\n")
+	if got := Generation(root); got != 0 {
+		t.Fatalf("Generation(malformed legacy) = %d, want 0", got)
+	}
+	applied, err := Upgrade(root)
+	if err == nil || !strings.Contains(err.Error(), "tree-layout") {
+		t.Fatalf("Upgrade(malformed legacy) err = %v, want a tree-layout migration error", err)
+	}
+	if len(applied) != 0 {
+		t.Errorf("Upgrade applied = %v, want [] on failure", applied)
+	}
+}
+
+func TestApplyTreeLayoutConfigWriteError(t *testing.T) {
+	// A directory squatting on config.yaml's path makes the skeleton write fail.
+	root := writeLegacyRoot(t, "prefix: ex\n")
+	mustMkdir(t, filepath.Join(root, ".claude", "awf", "config.yaml"))
+	if err := applyTreeLayout(root); err == nil {
+		t.Fatal("applyTreeLayout with config.yaml dir = nil, want a write error")
+	}
+}
+
+func TestApplyTreeLayoutSidecarMkdirError(t *testing.T) {
+	// A regular file squatting on the skills/ dir makes the sidecar MkdirAll fail.
+	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  alpha:\n    data:\n      k: v\n")
+	mustWrite(t, filepath.Join(root, ".claude", "awf", "skills"), "not a dir\n")
+	if err := applyTreeLayout(root); err == nil {
+		t.Fatal("applyTreeLayout with skills/ as a file = nil, want a mkdir error")
+	}
+}
+
+func TestApplyTreeLayoutMissingPartSource(t *testing.T) {
+	// A replaceWith pointing at an absent legacy part makes copyPart's read fail.
+	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  gamma:\n    sections:\n      sec:\n        replaceWith: parts/missing.md\n")
+	err := applyTreeLayout(root)
+	if err == nil || !strings.Contains(err.Error(), "read part") {
+		t.Fatalf("applyTreeLayout(missing part) = %v, want a read-part error", err)
+	}
+}
+
+func TestApplyTreeLayoutCopyPartWriteError(t *testing.T) {
+	// A directory squatting on a convention part's destination makes copyPart's
+	// write fail (the source reads fine; only the write target is hostile).
+	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  beta:\n    sections:\n      sec:\n        replaceWith: parts/p.md\n")
+	mustWrite(t, filepath.Join(root, ".claude", "awf", "parts", "p.md"), "BODY\n")
+	mustMkdir(t, filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"))
+	if err := applyTreeLayout(root); err == nil {
+		t.Fatal("applyTreeLayout with squatted part dst = nil, want a write error")
+	}
+}
+
+func TestApplyTreeLayoutLockRemoveError(t *testing.T) {
+	// A non-empty directory squatting on the legacy awf.lock makes the terminal
+	// os.Remove fail with a real (non-NotExist) error after a successful port.
+	root := writeMonolith(t)
+	lock := filepath.Join(root, ".claude", "awf.lock")
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	mustMkdir(t, lock)
+	mustWrite(t, filepath.Join(lock, "occupant"), "x\n")
+	if err := applyTreeLayout(root); err == nil {
+		t.Fatal("applyTreeLayout with non-empty awf.lock dir = nil, want a remove error")
+	}
+}
+
+func TestPortAgentsDocSectionsLocalAndData(t *testing.T) {
+	// agentsDoc with a successful replaceWith section, a drop section, extra data,
+	// and local:true exercises the full sidecar-assembly path.
+	root := writeLegacyRoot(t, "prefix: ex\n"+
+		"agentsDoc:\n"+
+		"  local: true\n"+
+		"  data:\n"+
+		"    ownership: \"Own.\"\n"+
+		"    identity: \"Id.\"\n"+
+		"    extra: keep\n"+
+		"  sections:\n"+
+		"    sec-a:\n"+
+		"      replaceWith: parts/adp.md\n"+
+		"    sec-b:\n"+
+		"      drop: true\n")
+	mustWrite(t, filepath.Join(root, ".claude", "awf", "parts", "adp.md"), "AD PART\n")
+	if err := applyTreeLayout(root); err != nil {
+		t.Fatalf("applyTreeLayout: %v", err)
+	}
+	awfDir := filepath.Join(root, ".claude", "awf")
+	if got := readFile(t, filepath.Join(awfDir, "parts", "agents-doc", "sec-a.md")); got != "AD PART\n" {
+		t.Errorf("sec-a convention part = %q", got)
+	}
+	var ad struct {
+		Data     map[string]any            `yaml:"data"`
+		Sections map[string]map[string]any `yaml:"sections"`
+		Local    bool                      `yaml:"local"`
+	}
+	readYAML(t, filepath.Join(awfDir, "agents-doc.yaml"), &ad)
+	if ad.Data["extra"] != "keep" {
+		t.Errorf("agents-doc.yaml data.extra = %v, want keep", ad.Data["extra"])
+	}
+	if d, _ := ad.Sections["sec-b"]["drop"].(bool); !d {
+		t.Errorf("agents-doc.yaml sec-b drop not preserved: %v", ad.Sections)
+	}
+	if !ad.Local {
+		t.Errorf("agents-doc.yaml local = false, want true")
+	}
+}
+
+func TestPortAgentsDocSkipsAbsentOwnershipIdentity(t *testing.T) {
+	// agentsDoc whose data lacks ownership/identity skips the prose-part writes
+	// and keeps the remaining data in the sidecar.
+	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    extra: keep\n")
+	if err := applyTreeLayout(root); err != nil {
+		t.Fatalf("applyTreeLayout: %v", err)
+	}
+	awfDir := filepath.Join(root, ".claude", "awf")
+	if _, err := os.Stat(filepath.Join(awfDir, "parts", "agents-doc")); !os.IsNotExist(err) {
+		t.Errorf("no prose parts expected without ownership/identity, stat err = %v", err)
+	}
+	var ad struct {
+		Data map[string]any `yaml:"data"`
+	}
+	readYAML(t, filepath.Join(awfDir, "agents-doc.yaml"), &ad)
+	if ad.Data["extra"] != "keep" {
+		t.Errorf("agents-doc.yaml data.extra = %v, want keep", ad.Data["extra"])
+	}
+}
+
+func TestPortAgentsDocEmptySidecarOmitted(t *testing.T) {
+	// agentsDoc with only ownership/identity yields prose parts and no sidecar.
+	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    ownership: \"Own.\"\n    identity: \"Id.\"\n")
+	if err := applyTreeLayout(root); err != nil {
+		t.Fatalf("applyTreeLayout: %v", err)
+	}
+	awfDir := filepath.Join(root, ".claude", "awf")
+	if _, err := os.Stat(filepath.Join(awfDir, "agents-doc.yaml")); !os.IsNotExist(err) {
+		t.Errorf("agents-doc.yaml should be omitted when the sidecar is empty, stat err = %v", err)
+	}
+	if got := readFile(t, filepath.Join(awfDir, "parts", "agents-doc", "you-and-this-project.md")); !strings.HasPrefix(got, "## You and this project\n\n") {
+		t.Errorf("you-and-this-project part = %q", got)
+	}
+}
+
+func TestPortAgentsDocSectionCopyError(t *testing.T) {
+	// A replaceWith section pointing at an absent part surfaces a copy error
+	// through portAgentsDoc (after the ownership prose part writes fine).
+	root := writeLegacyRoot(t, "prefix: ex\n"+
+		"agentsDoc:\n"+
+		"  data:\n"+
+		"    ownership: \"Own.\"\n"+
+		"  sections:\n"+
+		"    sec:\n"+
+		"      replaceWith: parts/missing.md\n")
+	err := applyTreeLayout(root)
+	if err == nil || !strings.Contains(err.Error(), "read part") {
+		t.Fatalf("applyTreeLayout(agentsDoc missing part) = %v, want a read-part error", err)
+	}
+}
+
+func TestPortAgentsDocProseWriteError(t *testing.T) {
+	// A directory squatting on the you-and-this-project prose part makes the
+	// ownership write fail.
+	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    ownership: \"Own.\"\n")
+	mustMkdir(t, filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"))
+	if err := applyTreeLayout(root); err == nil {
+		t.Fatal("applyTreeLayout with squatted prose part = nil, want a write error")
+	}
 }
 
 func TestLegacyReadOnlyInMigrate(t *testing.T) {
