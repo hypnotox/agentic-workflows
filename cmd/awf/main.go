@@ -1,4 +1,4 @@
-// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .claude/awf/ config tree.
+// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .awf/ config tree.
 package main
 
 import (
@@ -75,7 +75,7 @@ func hasFlag(args []string, flag string) bool {
 }
 
 func runInit(root string, force bool, stdout, stderr io.Writer) error {
-	cfgPath := filepath.Join(root, ".claude", "awf", "config.yaml")
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
 	scaffolded := false
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
@@ -124,7 +124,7 @@ func initCollisions(root string) ([]string, error) {
 		return nil, err
 	}
 	managed := map[string]bool{}
-	if lock, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock")); err == nil {
+	if lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock")); err == nil {
 		for path := range lock.Files {
 			managed[path] = true
 		}

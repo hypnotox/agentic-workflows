@@ -23,36 +23,46 @@ type Migration struct {
 var registry = []Migration{
 	{To: 1, Name: "tree-layout", Apply: applyTreeLayout},
 	{To: 2, Name: "drop-replacewith", Apply: applyDropReplaceWith},
+	{To: 3, Name: "awf-dir-relocation", Apply: applyAwfRelocation},
 }
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }
 
-// Generation reports the project's schema generation: 0 if the legacy single-file
-// layout is present (.claude/awf.yaml exists and .claude/awf/config.yaml does not),
-// else the lock's SchemaVersion. A tree project with no lock yet (a fresh awf init
-// or a just-upgraded project before its terminal sync) reports Current() — it is
-// on the current layout and must not gate; the next sync stamps the lock.
+// Generation reports the project's schema generation. Detection is by layout:
+// a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet —
+// fresh init / just-upgraded); a pre-relocation .claude/awf/ tree reports its
+// lock's schema, or Current()-1 when no lock, so the To:3 relocation gates; the
+// legacy single file reports 0; nothing present reports Current().
 func Generation(root string) int {
+	newTree := filepath.Join(root, ".awf", "config.yaml")
+	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
-	tree := filepath.Join(root, ".claude", "awf", "config.yaml")
-	_, legacyErr := os.Stat(legacy)
-	_, treeErr := os.Stat(tree)
-	if legacyErr == nil && os.IsNotExist(treeErr) {
+	if _, err := os.Stat(newTree); err == nil {
+		l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+		if err != nil {
+			return Current()
+		}
+		return l.SchemaVersion
+	}
+	if _, err := os.Stat(oldTree); err == nil {
+		l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
+		if err != nil {
+			return Current() - 1
+		}
+		return l.SchemaVersion
+	}
+	if _, err := os.Stat(legacy); err == nil {
 		return 0
 	}
-	l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
-	if err != nil {
-		return Current()
-	}
-	return l.SchemaVersion
+	return Current()
 }
 
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op — Generation's no-lock branch already reports Current().
 func stampLockSchema(root string) error {
-	lockPath := filepath.Join(root, ".claude", "awf", "awf.lock")
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
 	if !fileExists(lockPath) {
 		return nil // no lock yet; the terminal sync stamps it
 	}

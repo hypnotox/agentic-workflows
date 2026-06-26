@@ -1,4 +1,4 @@
-// Package config loads and validates the per-project .claude/awf/ configuration:
+// Package config loads and validates the per-project .awf/ configuration:
 // a skeleton config.yaml plus per-target sidecar YAMLs and convention parts.
 package config
 
@@ -43,7 +43,7 @@ type Config struct {
 	Docs       []string         `yaml:"docs"`
 	Domains    []string         `yaml:"domains"`
 	Invariants *InvariantConfig `yaml:"invariants"`
-	root       string           // <project>/.claude/awf, for sidecar/part resolution
+	root       string           // <project>/.awf, for sidecar/part resolution
 }
 
 // InvariantConfig configures language-agnostic invariant backing. A nil

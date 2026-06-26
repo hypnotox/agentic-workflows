@@ -52,7 +52,7 @@ func TestRenderDropsSection(t *testing.T) {
 }
 
 func TestRenderConventionPart(t *testing.T) {
-	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".claude/awf/x.md"}}
+	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".awf/x.md"}}
 	out, err := Render(tmpl, plan, sampleData())
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestRenderConventionPart(t *testing.T) {
 	if !strings.Contains(out, "CUSTOM example") || strings.Contains(out, "NOTE") {
 		t.Errorf("convention part substitution failed:\n%s", out)
 	}
-	if !strings.Contains(out, "<!-- awf:edit notes — from .claude/awf/x.md -->") {
+	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
 		t.Errorf("convention part pointer missing:\n%s", out)
 	}
 }

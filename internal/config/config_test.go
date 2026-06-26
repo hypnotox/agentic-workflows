@@ -76,14 +76,15 @@ func TestEnableListsAreArrays(t *testing.T) {
 }
 
 // invariant: config-root
-// TestLoadReadsTreeRoot pins the config root to .claude/awf/config.yaml and
+// invariant: awf-config-root
+// TestLoadReadsTreeRoot pins the config root to .awf/config.yaml and
 // co-owns (with the migrate package's TestLegacyReadOnlyInMigrate, ADR-0010
 // inv: legacy-read-isolation) the exemption that ONLY internal/migrate reads the
 // legacy .claude/awf.yaml: the import-graph assertion below scans the repo and
 // fails if any non-migrate, non-test source references the legacy path.
 func TestLoadReadsTreeRoot(t *testing.T) {
 	root := t.TempDir()
-	awfDir := filepath.Join(root, ".claude", "awf")
+	awfDir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awfDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +92,9 @@ func TestLoadReadsTreeRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A legacy decoy sibling; Load must ignore it.
+	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(root, ".claude", "awf.yaml"), []byte("prefix: legacy-decoy\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

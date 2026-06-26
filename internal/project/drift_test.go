@@ -47,7 +47,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 	b0 := configHashOf(t, root, B)
 
 	// (1) Editing target A's sidecar changes A's hash but not B's.
-	writeFileAt(t, root, ".claude/awf/skills/tdd.yaml", "data:\n  testSurfaces:\n    - {name: Changed, location: x, kind: y}\n")
+	writeFileAt(t, root, ".awf/skills/tdd.yaml", "data:\n  testSurfaces:\n    - {name: Changed, location: x, kind: y}\n")
 	a1 := configHashOf(t, root, A)
 	b1 := configHashOf(t, root, B)
 	if a1 == a0 {
@@ -58,14 +58,14 @@ func TestPerTargetDriftProjection(t *testing.T) {
 	}
 
 	// (2) Editing a part A consumes changes A.
-	writeFileAt(t, root, ".claude/awf/skills/parts/tdd/notes.md", "NEW NOTES BODY\n")
+	writeFileAt(t, root, ".awf/skills/parts/tdd/notes.md", "NEW NOTES BODY\n")
 	a2 := configHashOf(t, root, A)
 	if a2 == a1 {
 		t.Error("editing a part A consumes should change A's ConfigHash")
 	}
 
 	// (3) An unrelated vars edit (a var A does not reference) does not change A's hash.
-	writeFileAt(t, root, ".claude/awf/config.yaml", cfg("now-set"))
+	writeFileAt(t, root, ".awf/config.yaml", cfg("now-set"))
 	a3 := configHashOf(t, root, A)
 	if a3 != a2 {
 		t.Errorf("a var A does not reference (pitfallsDoc) must not change A's ConfigHash:\n%s\n%s", a2, a3)
@@ -90,8 +90,8 @@ func TestPerTargetDriftProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantOrphans := map[string]bool{
-		".claude/awf/skills/debugging.yaml":      false,
-		".claude/awf/skills/parts/orphan-target": false,
+		".awf/skills/debugging.yaml":      false,
+		".awf/skills/parts/orphan-target": false,
 	}
 	for _, d := range drift {
 		if d.Kind == "orphaned" {

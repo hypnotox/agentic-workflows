@@ -173,7 +173,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	awfDir := filepath.Join(root, ".claude", "awf")
+	awfDir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awfDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

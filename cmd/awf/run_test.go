@@ -23,7 +23,7 @@ hooks: []
 func scaffoldProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	awf := filepath.Join(root, ".claude", "awf")
+	awf := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awf, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestRunDispatchArms(t *testing.T) {
 	}
 	t.Run("add", func(t *testing.T) {
 		root := t.TempDir()
-		awf := filepath.Join(root, ".claude", "awf")
+		awf := filepath.Join(root, ".awf")
 		if err := os.MkdirAll(awf, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -244,7 +244,7 @@ func TestRunCheckErrorPaths(t *testing.T) {
 func TestRunListSidecarError(t *testing.T) {
 	// A malformed sidecar for the enabled skill makes Sidecar() error.
 	root := scaffoldProject(t)
-	skillsDir := filepath.Join(root, ".claude", "awf", "skills")
+	skillsDir := filepath.Join(root, ".awf", "skills")
 	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func TestAppendSkill(t *testing.T) {
 func TestRunAddAppendSkillError(t *testing.T) {
 	// A config that parses but has no skills: key -> appendSkill error path.
 	root := t.TempDir()
-	awf := filepath.Join(root, ".claude", "awf")
+	awf := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awf, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -490,8 +490,8 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("stderr = %q", errb.String())
 	}
 	// Nothing written: the scaffolded config tree was rolled back.
-	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "config.yaml")); !os.IsNotExist(err) {
-		t.Fatal("expected .claude/awf to be rolled back")
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Fatal("expected .awf to be rolled back")
 	}
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md clobbered: %q", b)
@@ -522,7 +522,7 @@ func TestInitIdempotentReinitNoCollision(t *testing.T) {
 
 func TestInitCollisionsOpenError(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, ".claude", "awf")
+	dir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +537,7 @@ func TestInitCollisionsOpenError(t *testing.T) {
 
 func TestInitCollisionsPlannedOutputsError(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, ".claude", "awf")
+	dir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -161,9 +161,9 @@ func TestDomainPartOrphan(t *testing.T) {
 		t.Fatalf("Check: %v", err)
 	}
 	for _, want := range []string{
-		filepath.Join(".claude", "awf", "domains", "parts", "rendering", "decisions.md"),
-		filepath.Join(".claude", "awf", "domains", "parts", "rendering", "bogus.md"),
-		filepath.Join(".claude", "awf", "domains", "parts", "other"),
+		filepath.Join(".awf", "domains", "parts", "rendering", "decisions.md"),
+		filepath.Join(".awf", "domains", "parts", "rendering", "bogus.md"),
+		filepath.Join(".awf", "domains", "parts", "other"),
 	} {
 		if !hasDrift(drift, want, "orphaned") {
 			t.Errorf("expected orphaned drift for %s, got: %#v", want, drift)

@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// ScaffoldConfig generates the bytes of a .claude/awf/config.yaml that enables
+// ScaffoldConfig generates the bytes of a .awf/config.yaml that enables
 // every skill, agent, and hook in the embedded catalog (as flat name arrays) and
 // pre-populates the vars block with the union of all {{ .vars.X }} names
 // referenced by those templates. Each var is seeded with an empty string so that

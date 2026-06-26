@@ -17,10 +17,10 @@ hooks: []
 
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := runSync(root, io.Discard); err != nil {
@@ -45,10 +45,10 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 // only invariants.Check does — so its error must propagate out of runCheck.
 func TestRunCheckSurfacesInvariantError(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := runSync(root, io.Discard); err != nil {

@@ -10,17 +10,17 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// corruptSidecar overwrites a sidecar (relative to .claude/awf) with YAML that
+// corruptSidecar overwrites a sidecar (relative to .awf) with YAML that
 // the strict decoder rejects (unknown field), so a fresh Sidecar read fails.
 func corruptSidecar(t *testing.T, root, rel string) {
 	t.Helper()
-	writeFileAt(t, root, filepath.Join(".claude", "awf", rel), "bogusUnknownField: true\n")
+	writeFileAt(t, root, filepath.Join(".awf", rel), "bogusUnknownField: true\n")
 }
 
 // --- Open error paths ---
 
 func TestOpenMissingConfigFails(t *testing.T) {
-	// A bare temp dir with no .claude/awf/config.yaml: config.Load fails.
+	// A bare temp dir with no .awf/config.yaml: config.Load fails.
 	_, err := Open(t.TempDir())
 	if err == nil {
 		t.Fatal("expected Open to fail with no config.yaml")
@@ -209,9 +209,9 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 	cases := []struct {
 		name, cfg, partDir string
 	}{
-		{"agent", "prefix: example\nskills: []\nagents: [code-reviewer]\nhooks: []\n", ".claude/awf/agents/parts/code-reviewer/doc-currency.md"},
-		{"doc", "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [architecture]\n", ".claude/awf/docs/parts/architecture/overview.md"},
-		{"agents-doc", "prefix: example\nskills: []\nagents: []\nhooks: []\n", ".claude/awf/parts/agents-doc/identity.md"},
+		{"agent", "prefix: example\nskills: []\nagents: [code-reviewer]\nhooks: []\n", ".awf/agents/parts/code-reviewer/doc-currency.md"},
+		{"doc", "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [architecture]\n", ".awf/docs/parts/architecture/overview.md"},
+		{"agents-doc", "prefix: example\nskills: []\nagents: []\nhooks: []\n", ".awf/parts/agents-doc/identity.md"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -390,7 +390,7 @@ func TestOrphansSkipsNonDirAndNonMarkdown(t *testing.T) {
 		"skills/parts/debugging/debugging-surfaces.md": "## Surfaces\n\nbody\n",
 	})
 	// A subdirectory inside the section parts dir is skipped too.
-	writeFileAt(t, root, filepath.Join(".claude", "awf", "skills", "parts", "debugging", "sub", "x.md"), "nested\n")
+	writeFileAt(t, root, filepath.Join(".awf", "skills", "parts", "debugging", "sub", "x.md"), "nested\n")
 
 	p, err := Open(root)
 	if err != nil {

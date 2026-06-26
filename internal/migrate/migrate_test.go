@@ -89,34 +89,47 @@ func writeMonolith(t *testing.T) string {
 
 func TestGateBlocksWhenBehind(t *testing.T) {
 	// invariant: upgrade-gate
-	root := writeMonolith(t) // legacy layout → generation 0, current 1
+	root := writeMonolith(t) // legacy layout → generation 0
 	if got := Generation(root); got != 0 {
 		t.Fatalf("Generation(legacy) = %d, want 0", got)
 	}
 	if got := GateState(root); got != "gate" {
 		t.Errorf("GateState(legacy) = %q, want gate", got)
 	}
-	// A project already at the current schema does not gate.
+	// A .awf/ tree already at the current schema does not gate.
 	upgraded := t.TempDir()
-	mustMkdir(t, filepath.Join(upgraded, ".claude", "awf"))
-	mustWrite(t, filepath.Join(upgraded, ".claude", "awf", "config.yaml"), "prefix: ex\n")
-	stampLock(t, upgraded, Current())
+	mustWrite(t, filepath.Join(upgraded, ".awf", "config.yaml"), "prefix: ex\n")
+	stampLockAt(t, filepath.Join(upgraded, ".awf", "awf.lock"), Current())
 	if got := GateState(upgraded); got != "ok" {
 		t.Errorf("GateState(current) = %q, want ok", got)
 	}
 
-	// A tree project with no lock yet (a fresh awf init, or a just-upgraded
-	// project before its terminal sync) reports Current() and must not gate —
-	// otherwise sync/check would falsely block the very command that stamps the
-	// lock. (Exercises the no-lock branch of Generation.)
+	// A .awf/ tree with no lock yet (a fresh awf init, or a just-upgraded project
+	// before its terminal sync) reports Current() and must not gate — otherwise
+	// sync/check would falsely block the very command that stamps the lock.
 	noLock := t.TempDir()
-	mustMkdir(t, filepath.Join(noLock, ".claude", "awf"))
-	mustWrite(t, filepath.Join(noLock, ".claude", "awf", "config.yaml"), "prefix: ex\n")
+	mustWrite(t, filepath.Join(noLock, ".awf", "config.yaml"), "prefix: ex\n")
 	if got := Generation(noLock); got != Current() {
-		t.Errorf("Generation(tree, no lock) = %d, want Current()=%d", got, Current())
+		t.Errorf("Generation(.awf, no lock) = %d, want Current()=%d", got, Current())
 	}
 	if got := GateState(noLock); got != "ok" {
-		t.Errorf("GateState(tree, no lock) = %q, want ok (fresh init/post-upgrade must not gate)", got)
+		t.Errorf("GateState(.awf, no lock) = %q, want ok (fresh init/post-upgrade must not gate)", got)
+	}
+
+	// A pre-relocation .claude/awf/ tree with no lock returns Current()-1 and gates
+	// (it still needs the awf-dir-relocation migration).
+	preReloc := t.TempDir()
+	mustWrite(t, filepath.Join(preReloc, ".claude", "awf", "config.yaml"), "prefix: ex\n")
+	if got := Generation(preReloc); got != Current()-1 {
+		t.Errorf("Generation(.claude/awf, no lock) = %d, want Current()-1=%d", got, Current()-1)
+	}
+	if got := GateState(preReloc); got != "gate" {
+		t.Errorf("GateState(.claude/awf, no lock) = %q, want gate", got)
+	}
+
+	// Nothing present at all reports Current() (a bare dir is treated as current).
+	if got := Generation(t.TempDir()); got != Current() {
+		t.Errorf("Generation(empty) = %d, want Current()=%d", got, Current())
 	}
 }
 
@@ -127,17 +140,18 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	// A legacy (gen-0) Upgrade runs every migration: tree-layout then
-	// drop-replacewith (a no-op here — tree-layout already ports replaceWith parts).
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith" {
-		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith]", applied)
+	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
+	// (a no-op here — tree-layout already ports replaceWith parts), then
+	// awf-dir-relocation, which moves the finished tree to .awf/.
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation" {
+		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation]", applied)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "awf", "config.yaml")); err != nil {
-		t.Errorf("tree not produced: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+		t.Errorf("tree not produced at .awf: %v", err)
 	}
 	// runUpgrade's terminal sync stamps the lock; simulate it, then re-running
 	// upgrade at the current schema applies nothing and exits zero.
-	stampLock(t, root, Current())
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current())
 	again, err := Upgrade(root)
 	if err != nil {
 		t.Fatalf("second Upgrade: %v", err)
@@ -183,6 +197,15 @@ func stampLock(t *testing.T, root string, schema int) {
 	t.Helper()
 	l := &manifest.Lock{AWFVersion: "0.1.0", SchemaVersion: schema, Files: map[string]manifest.Entry{}}
 	if err := l.Save(filepath.Join(root, ".claude", "awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// stampLockAt writes a schema-stamped lock at an explicit path (for .awf/ trees).
+func stampLockAt(t *testing.T, lockPath string, schema int) {
+	t.Helper()
+	l := &manifest.Lock{AWFVersion: "0.1.0", SchemaVersion: schema, Files: map[string]manifest.Entry{}}
+	if err := l.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -561,9 +584,62 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-func TestCurrentIsTwo(t *testing.T) {
-	if Current() != 2 {
-		t.Errorf("Current() = %d, want 2", Current())
+func TestCurrentIsThree(t *testing.T) {
+	if Current() != 3 {
+		t.Errorf("Current() = %d, want 3", Current())
+	}
+}
+
+// invariant: awf-relocation-migration
+func TestAwfRelocationGatesAndMoves(t *testing.T) {
+	root := t.TempDir()
+	old := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(old, "config.yaml"), []byte("prefix: awf\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(old, "awf.lock"),
+		[]byte(`{"awfVersion":"0.1.0","schemaVersion":2,"files":{}}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := Generation(root); got != 2 {
+		t.Fatalf("pre-relocation Generation = %d, want 2", got)
+	}
+	if GateState(root) != "gate" {
+		t.Fatalf("expected gate state, got %q", GateState(root))
+	}
+	if _, err := Upgrade(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+		t.Fatalf("config not relocated: %v", err)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Fatal("old .claude/awf not removed")
+	}
+	if got := Generation(root); got != Current() {
+		t.Fatalf("post-relocation Generation = %d, want %d", got, Current())
+	}
+}
+
+func TestAwfRelocationNoopWhenAbsent(t *testing.T) {
+	if err := applyAwfRelocation(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAwfRelocationRefusesExistingTarget(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := applyAwfRelocation(root); err == nil {
+		t.Fatal("expected error when .awf already exists")
 	}
 }
 
@@ -674,10 +750,10 @@ func TestUpgradeStampsTreeLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "drop-replacewith" {
-		t.Errorf("applied = %v, want [drop-replacewith]", applied)
+	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation" {
+		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation]", applied)
 	}
-	l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
+	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {
 		t.Fatalf("load lock: %v", err)
 	}

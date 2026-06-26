@@ -87,9 +87,9 @@ func TestSectionOrphanDetection(t *testing.T) {
 			continue
 		}
 		switch d.Path {
-		case ".claude/awf/docs/parts/architecture/" + orphan + ".md":
+		case ".awf/docs/parts/architecture/" + orphan + ".md":
 			sawOrphan = true
-		case ".claude/awf/docs/parts/architecture/" + valid + ".md":
+		case ".awf/docs/parts/architecture/" + valid + ".md":
 			sawValid = true
 		}
 	}

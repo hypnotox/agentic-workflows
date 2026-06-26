@@ -10,7 +10,7 @@ import (
 
 func TestRunAddAppendsAndRejects(t *testing.T) {
 	root := t.TempDir()
-	awf := filepath.Join(root, ".claude", "awf")
+	awf := filepath.Join(root, ".awf")
 	_ = os.MkdirAll(awf, 0o755)
 	_ = os.WriteFile(filepath.Join(awf, "config.yaml"),
 		[]byte("prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\nhooks: []\n"), 0o644)

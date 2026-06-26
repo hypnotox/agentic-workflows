@@ -65,7 +65,7 @@ func runAdd(root, skill string, stdout io.Writer) error {
 	if slices.Contains(p.Cfg.Skills, skill) {
 		return fmt.Errorf("%q already enabled", skill)
 	}
-	cfgPath := filepath.Join(root, ".claude", "awf", "config.yaml")
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
 	b, err := os.ReadFile(cfgPath)
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
