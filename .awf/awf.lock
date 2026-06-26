@@ -138,7 +138,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:b0eac14ce3b5d8b963eebf906178a06547a07b8d9f5cd95a6c01ad095944ace8"
+      "outputHash": "sha256:0b6e265bc1da9272a19f986f1e64811d93440a7bed88c8d3b4658fd34d91d915"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
@@ -168,7 +168,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:a7e12f17b70f005772c2c4d407e966687767bcbdfdabbbe0a689481da2a5930e"
+      "outputHash": "sha256:0bd44a8ee4186502ee00fecf821493d57a2177098d2ce78de7c591ad33882abc"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
