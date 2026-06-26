@@ -35,12 +35,12 @@ Hard rules every change must respect:
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated — never hand-edited.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
-- **Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify. (ADR-0001)
-- **`awf check` is the drift oracle.** After editing `.awf/config.yaml`, a sidecar, or any part, run `./x sync && ./x check`; it also gates a stale config layout with a "run `awf upgrade`" message. Commit rendered files alongside config changes; never hand-edit a rendered file.
-- **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
-- **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
-- **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug. (ADR-0008)
-- **100% coverage gate.** `./x gate` fails below 100% statement coverage (`go test ./... -coverpkg=./...` piped through `cmd/covercheck`). A genuinely-unreachable defensive branch may be excluded with a trailing `// coverage-ignore: <reason>` directive — a non-empty reason is mandatory and every use is audited at review. (ADR-0012)
+- **Publication-safe templates.** Wrap optional output in a conditional; no var leaks an unresolved-value token. (ADR-0001)
+- **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
+- **Conventional Commits, `awf` scope.** One concern per commit; stage explicitly, no `git add -A`.
+- **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`. (ADR-0006)
+- **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source. (ADR-0008)
+- **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
