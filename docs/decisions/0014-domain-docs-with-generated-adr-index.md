@@ -12,7 +12,7 @@ domains: [adr-system, rendering]
 ## Context
 
 ADR-0013 reserved `<docsDir>/domains` (`.layout.domainsDir`) as the awf-given home for
-per-domain "current position" docs, and `proposing-adr`/`adr-lifecycle` already instruct
+per-domain "current state" docs, and `proposing-adr`/`adr-lifecycle` already instruct
 authors to "update the domain doc under `docs/domains` when an ADR shifts a domain's state."
 Today those skills also mandate hand-maintaining a "Load-bearing ADRs table" inside each
 domain doc — a manual index that drifts the moment an ADR is added, retagged, or superseded
@@ -25,7 +25,7 @@ records its successor in `superseded_by`. But `internal/adr.adrFrontmatter` pars
 mostly "parse fields that already exist and render," reusing the exact grouping/link machinery
 that already builds `ACTIVE.md` (`internal/adr.RenderActiveMD`).
 
-A domain doc is a hybrid: hand-authored narrative ("current position") plus a generated index.
+A domain doc is a hybrid: hand-authored narrative ("current state") plus a generated index.
 Its index content depends on **external ADR frontmatter state**, not just its own template +
 config + parts. That breaks the normal managed-doc drift check, which compares on-disk content
 against the *locked* hash: retag an ADR without re-syncing and the domain doc's on-disk content
@@ -61,15 +61,15 @@ applied uniformly, but not as a one-off exception here.
 
 2. **New domain-doc artifact kind.** A single template `templates/domains/domain.md.tmpl` is
    instantiated once per declared domain, rendered to `<docsDir>/domains/<name>.md`. It has
-   exactly **one overlay section**, `current-position` (hand-authored narrative —
-   convention-part-overridable at `.claude/awf/domains/parts/<name>/current-position.md`,
+   exactly **one overlay section**, `current-state` (hand-authored narrative —
+   convention-part-overridable at `.claude/awf/domains/parts/<name>/current-state.md`,
    template default = skeleton prompt). The generated `## Decisions` index is **forced body**,
    not an overlay section: it is plain template (outside any `awf:section` marker) with the
    index injected as render data, rendered last, beneath the narrative — always present and
    structurally un-overridable (no marker → no overlay → a convention part cannot replace it).
    It is treated like frontmatter: awf-owned and forced, not author-controlled. Because
    `decisions` is not a declared section, `orphans()` flags any domain part other than
-   `current-position` (e.g. a stray `decisions.md`) rather than letting it silently shadow the
+   `current-state` (e.g. a stray `decisions.md`) rather than letting it silently shadow the
    index.
 
 3. **`internal/adr` extension.** `adrFrontmatter` gains `domains []string` and starts parsing
@@ -94,17 +94,17 @@ applied uniformly, but not as a one-off exception here.
 6. **Workflow change.** `docs/decisions/template.md` gains `domains: []` and the `## Frontmatter`
    reference block in `docs/decisions/README.md` documents the new field; `proposing-adr` and
    `adr-lifecycle` require setting it. `adr-lifecycle`'s domain-doc step today reads "Add to the
-   Load-bearing ADRs table; refresh the Current-position prose" (the explicit table mandate lives
+   Load-bearing ADRs table; refresh the Current-state prose" (the explicit table mandate lives
    there; `proposing-adr` carries only a generic "update the domain doc" instruction). The
    table-maintenance half is **dropped** — the per-domain index now maintains that table
-   automatically — while the current-position prose-refresh obligation is **retained**. Setting
+   automatically — while the current-state prose-refresh obligation is **retained**. Setting
    `domains:` on a new ADR is thus the single action that keeps every affected domain doc's
-   generated `decisions` index current; the hand-authored `current-position` narrative is still
+   generated `decisions` index current; the hand-authored `current-state` narrative is still
    refreshed by hand when a domain's position materially shifts.
 
 7. **First-adopter dogfood.** This repo declares domains `[rendering, config, invariants,
    tooling, adr-system]`, retro-tags all existing ADRs with `domains:`, and ships a brief
-   `current-position` narrative per domain.
+   `current-state` narrative per domain.
 
 ## Invariants
 
