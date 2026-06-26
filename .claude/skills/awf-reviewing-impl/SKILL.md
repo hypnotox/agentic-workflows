@@ -13,7 +13,7 @@ Invoked as the terminal step of the implementation phase. Dispatches the `code-r
 <!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of awf-executing-plans or awf-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only.** Cite `.githooks/pre-commit` for the pattern list (do not restate). Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+**Skip when the session diff is docs-only** — every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
 
 ## Procedure
 
@@ -25,7 +25,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^docs/plans/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
 
 <!-- awf:edit docs-only-check — default; create .awf/skills/parts/reviewing-impl/docs-only-check.md to override -->
-1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
+1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
 1. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:

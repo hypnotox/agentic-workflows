@@ -12,7 +12,7 @@ Invoked as the terminal step of the implementation phase. Dispatches the `code-r
 <!-- awf:section when-fires -->
 Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only.** Cite `.githooks/pre-commit` for the pattern list (do not restate). Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+**Skip when the session diff is docs-only** — every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
 <!-- awf:end -->
 
 ## Procedure
@@ -26,7 +26,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section docs-only-check -->
-1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
+1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->

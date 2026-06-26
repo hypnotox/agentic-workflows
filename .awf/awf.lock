@@ -70,9 +70,9 @@
     },
     ".claude/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:06489aa252861ab61516750416f0022f02bb91819984b7cc928d9a52bcf82e8c",
+      "templateHash": "sha256:589f5ccf6b66d7cb8db0622226e0361b79f4a1c75cd855413fbea231eb9f331c",
       "configHash": "sha256:b2c3af304df86d3ba8ae49fa4d86f505c46a3aee7155da5e0386d262b4970b09",
-      "outputHash": "sha256:252dbe6c55deb62814a8bc672b29217a7f47b467532ecef2375b87f4f3b29837"
+      "outputHash": "sha256:5c0eed94d643e2812bd1a030b255ef00ce1c33b2fdca27b04164070c6a956ef3"
     },
     ".claude/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
@@ -100,9 +100,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:54bb50850dc062306e7f69696be0e9a2fd3b857323f54f17e9e0506c1fa9e2e2",
+      "templateHash": "sha256:a8be5dec3dd850839d63d260e5d1bb2b699c74c47058bd3dc7903442a7fd1c08",
       "configHash": "sha256:60bfac5ddfc70be646d9942d7191ad82858161169a9b64b4cceb71d2a6f9f58e",
-      "outputHash": "sha256:c25b2f0f30740998ea58b9522f7b82d72c33bfeb0c09b52cc6ad8fcb108e7295"
+      "outputHash": "sha256:9f2d243eb20dcd2e1bfa8c3cbede5a07b133ce227e17d26e10f105ba53cef694"
     },
     ".githooks/pre-commit": {
       "templateId": "hooks/pre-commit.tmpl",

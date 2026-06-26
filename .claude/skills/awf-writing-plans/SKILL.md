@@ -29,7 +29,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 - **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.
 
 <!-- awf:edit gate-tier-note — default; create .awf/skills/parts/writing-plans/gate-tier-note.md to override -->
-- **Gate cost:** `./x gate` (~~15s) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `docs/workflow.md`.
+- **Gate cost:** `./x gate` (~~15s) runs before every commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. A docs-only commit still runs the gate — it just passes quickly with no code to test. See `docs/workflow.md`.
 
 <!-- awf:edit conventions-test-first — default; create .awf/skills/parts/writing-plans/conventions-test-first.md to override -->
 - **Test-first for bugs:** add a failing test as its own task before the fix task.

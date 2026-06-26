@@ -34,7 +34,7 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-note -->
-- **Gate cost:** `{{ .vars.gateCmd }}` (~{{ .vars.gateDuration }}) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `{{ .layout.workflowRef }}`.
+- **Gate cost:** `{{ .vars.gateCmd }}` (~{{ .vars.gateDuration }}) runs before every commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. A docs-only commit still runs the gate — it just passes quickly with no code to test. See `{{ .layout.workflowRef }}`.
 <!-- awf:end -->
 
 <!-- awf:section conventions-test-first -->
