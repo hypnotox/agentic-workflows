@@ -1,6 +1,6 @@
 ## Overview
 
-awf ties a per-project `.claude/awf/` config tree to an embedded template catalog, renders the
+awf ties a per-project `.awf/` config tree to an embedded template catalog, renders the
 standard's skills, agents, hooks, docs, and agent guide, and drift-checks the rendered output
 against a lock file. awf is both the tool that publishes the standard and its own first adopter,
 so this repo's `.claude/` is rendered by the same engine it ships. Every rendered file opens with a
@@ -8,7 +8,7 @@ so this repo's `.claude/` is rendered by the same engine it ships. Every rendere
 convention part to edit (ADR-0015), so an agent reading rendered output knows in-context where its
 source lives.
 
-The config tree (ADR-0009) lives under a single `.claude/awf/` root:
+The config tree (ADR-0009) lives under a single `.awf/` root:
 
 - **`config.yaml`** — the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
   arrays (`skills`, `agents`, `docs`, `hooks` — a name's presence enables that target).
@@ -19,3 +19,13 @@ The config tree (ADR-0009) lives under a single `.claude/awf/` root:
 - **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`** — the always-on agent-guide singleton.
 - **`awf.lock`** — the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-target
   projection over exactly that file's inputs, so a sidecar or part edit reflags only that target.
+
+Rendered artifacts split into two layers (ADR-0016). **Neutral** artifacts are owned by no runtime
+and render to fixed or `docsDir`-derived paths: `AGENTS.md` (the cross-tool instruction standard),
+docs, domain docs, the ADR index, and git hooks under `.githooks/`. **Adapter** artifacts are
+placed at a runtime-specific path supplied by a `Target` value rather than a hardcoded literal:
+skills, review agents, and a whole-file `CLAUDE.md` bridge whose body is the `@AGENTS.md` import so
+Claude Code reliably ingests the guide. `claudeTarget` is the sole built-in target
+(`.claude/skills/`, `.claude/agents/`, `CLAUDE.md`); awf's own config tree lives at `.awf/`,
+decoupled from any one runtime's directory, so a second adapter is a new `Target` plus its
+placement, not a render-loop change.

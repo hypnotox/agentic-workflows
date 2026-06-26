@@ -7,11 +7,11 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:edit awf-setup — default; create .awf/parts/agents-doc/awf-setup.md to override -->
 ## Working with awf
 
-This project's `.claude/` skills, agents, and git hooks — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.claude/awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
+This project's `.claude/` skills, agents, and git hooks — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
 
-- **Toggle a target** — add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.claude/awf/config.yaml`.
-- **Set a variable** — edit `vars` in `.claude/awf/config.yaml`.
-- **Override one section of a target** — drop a convention part at `.claude/awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.claude/awf/docs/parts/<name>/<section>.md`.
+- **Toggle a target** — add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.awf/config.yaml`.
+- **Set a variable** — edit `vars` in `.awf/config.yaml`.
+- **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`.
 - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
 
 <!-- awf:edit you-and-this-project — from .awf/parts/agents-doc/you-and-this-project.md -->
@@ -23,7 +23,7 @@ You are a developer on `awf` — the Agentic Workflows CLI and standard. You are
 <!-- awf:edit identity — from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a committed `.claude/awf/` config tree — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a committed `.awf/` config tree — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants — default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -35,7 +35,7 @@ Hard rules every change must respect:
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
 - **Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a no-value token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify. (ADR-0001)
-- **`awf check` is the drift oracle.** After editing `.claude/awf/config.yaml`, a sidecar, or any part, run `./x sync && ./x check`; it also gates a stale config layout with a "run `awf upgrade`" message. Commit rendered files alongside config changes; never hand-edit a rendered file.
+- **`awf check` is the drift oracle.** After editing `.awf/config.yaml`, a sidecar, or any part, run `./x sync && ./x check`; it also gates a stale config layout with a "run `awf upgrade`" message. Commit rendered files alongside config changes; never hand-edit a rendered file.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`).
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable YAML frontmatter with non-empty `name`/`description`; `awf sync` fails fast and `awf check` reports `invalid-frontmatter` otherwise. (ADR-0006)
 - **Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug. (ADR-0008)
