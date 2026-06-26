@@ -150,6 +150,104 @@ func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 	}
 }
 
+// TestParseDirGlobError exercises the glob-pattern failure path: a directory
+// whose name contains an unterminated "[" yields an ErrBadPattern from Glob.
+func TestParseDirGlobError(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "bad[")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.ParseDir(dir); err == nil {
+		t.Fatal("expected glob error for malformed pattern, got nil")
+	}
+}
+
+// TestParseDirReadError exercises the os.ReadFile failure path: a directory
+// squatting on a path that matches the ADR filename pattern cannot be read as a
+// file (fails for all users, including root).
+func TestParseDirReadError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "0001-squatter.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.ParseDir(dir); err == nil {
+		t.Fatal("expected read error for directory in file's place, got nil")
+	}
+}
+
+// TestParseDirParseError exercises the parse failure path: malformed YAML
+// frontmatter in an ADR file makes parse return an error.
+func TestParseDirParseError(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
+	if err := os.WriteFile(filepath.Join(dir, "0001-broken.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.ParseDir(dir); err == nil {
+		t.Fatal("expected parse error for malformed frontmatter, got nil")
+	}
+}
+
+// TestRenderActiveMDParseError ensures RenderActiveMD propagates a ParseDir
+// error instead of producing output.
+func TestRenderActiveMDParseError(t *testing.T) {
+	dir := t.TempDir()
+	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
+	if err := os.WriteFile(filepath.Join(dir, "0001-broken.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := adr.RenderActiveMD(dir)
+	if err == nil {
+		t.Fatal("expected error from malformed frontmatter, got nil")
+	}
+	if got != "" {
+		t.Errorf("expected empty output on error, got: %q", got)
+	}
+}
+
+// TestRenderActiveMDSortsWithinStatusAndOrdersExtra covers two paths: sorting
+// multiple ADRs within one status group (by number), and appending a status not
+// present in statusOrder (sorted after the known statuses).
+func TestRenderActiveMDSortsWithinStatusAndOrdersExtra(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"0002-second-accepted.md": "---\nstatus: Accepted\n---\n# ADR-0002: Second Accepted\n",
+		"0001-first-accepted.md":  "---\nstatus: Accepted\n---\n# ADR-0001: First Accepted\n",
+		"0003-draft-status.md":    "---\nstatus: Draft\n---\n# ADR-0003: Draft Status\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write fixture %s: %v", name, err)
+		}
+	}
+
+	got, err := adr.RenderActiveMD(dir)
+	if err != nil {
+		t.Fatalf("RenderActiveMD: %v", err)
+	}
+
+	// Within the Accepted group, 0001 must be listed before 0002.
+	first := strings.Index(got, "ADR-0001: First Accepted")
+	second := strings.Index(got, "ADR-0002: Second Accepted")
+	if first < 0 || second < 0 {
+		t.Fatalf("missing accepted entries; got:\n%s", got)
+	}
+	if first > second {
+		t.Errorf("0001 (%d) should be listed before 0002 (%d)", first, second)
+	}
+
+	// The unknown "Draft" status must appear as its own section, after the
+	// known statuses.
+	acceptedPos := strings.Index(got, "## Accepted")
+	draftPos := strings.Index(got, "## Draft")
+	if draftPos < 0 {
+		t.Fatalf("missing ## Draft section; got:\n%s", got)
+	}
+	if acceptedPos > draftPos {
+		t.Errorf("Accepted (%d) should come before extra status Draft (%d)", acceptedPos, draftPos)
+	}
+}
+
 // invariant: adr-sections-parsed
 func TestParseDirExtractsSections(t *testing.T) {
 	dir := t.TempDir()
