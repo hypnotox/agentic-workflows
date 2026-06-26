@@ -225,15 +225,16 @@ func startLineOf(span string) (int, error) {
 	return n, nil
 }
 
-// ignoredLines returns, per file, the set of block start lines to drop. A block
-// is dropped when its start line, or the source line directly above it, carries
-// the ignore directive. A directive without a non-empty reason is an error.
+// ignoredLines returns, per file, the set of block start lines to drop. A
+// trailing directive (code before the comment) drops the block on its own line;
+// a standalone directive (only whitespace before the comment) drops the block on
+// the line directly below it. A directive without a non-empty reason is an error.
 func ignoredLines(blocks []block, srcRoot, modPath string) (map[string]map[int]bool, error) {
 	files := map[string]bool{}
 	for _, b := range blocks {
 		files[b.file] = true
 	}
-	markerLines := map[string]map[int]bool{}
+	ignored := map[string]map[int]bool{}
 	for file := range files {
 		rel := strings.TrimPrefix(file, modPath+"/")
 		src, err := os.ReadFile(filepath.Join(srcRoot, rel))
@@ -251,18 +252,14 @@ func ignoredLines(blocks []block, srcRoot, modPath string) (map[string]map[int]b
 				return nil, fmt.Errorf("%s:%d: %s requires a non-empty reason (use %q)",
 					rel, i+1, marker, marker+": <why>")
 			}
-			set[i+1] = true // 1-based line numbers
+			lineNo := i + 1 // 1-based
+			if strings.TrimSpace(line[:idx]) == "" {
+				set[lineNo+1] = true // standalone directive -> block on the line below
+			} else {
+				set[lineNo] = true // trailing directive -> block on this line
+			}
 		}
-		markerLines[file] = set
-	}
-	ignored := map[string]map[int]bool{}
-	for _, b := range blocks {
-		if ignored[b.file] == nil {
-			ignored[b.file] = map[int]bool{}
-		}
-		if markerLines[b.file][b.startLine] || markerLines[b.file][b.startLine-1] {
-			ignored[b.file][b.startLine] = true
-		}
+		ignored[file] = set
 	}
 	return ignored, nil
 }
@@ -1053,6 +1050,12 @@ learn the gate and the escape hatch.
 - **The two `main` directives** (`cmd/awf`, `cmd/covercheck`) are the expected canonical
   `// coverage-ignore` uses — one-line `os.Exit(run(...))` wrappers whose logic is tested via
   `run`. Any further directive must be justified at impl review.
+- **Merged-profile dedup (discovered in execution):** `go test ./... -coverpkg=./...` emits
+  each instrumented block once *per test binary*, so the merged profile carries every block ~N
+  times with differing counts. `coverage.Check` merges blocks by identity (file + span), OR-ing
+  the counts (mode: set) exactly as `go tool cover` does, before counting — otherwise the
+  denominator is inflated N× and the gate reports a spuriously low percentage. Backed by
+  `TestCheckMergesDuplicateBlocks`.
 - **Self-scan safety:** `internal/coverage` builds its own marker string by concatenation so
   the checker, when reading `coverage.go` from a profile, does not see a literal reasonless
   directive on the definition line. Test files carrying literal directives are never scanned

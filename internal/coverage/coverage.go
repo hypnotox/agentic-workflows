@@ -57,17 +57,39 @@ func CheckProfile(profilePath string) (Report, error) {
 // Check parses the coverprofile at profilePath and returns a Report over blocks
 // not marked for ignore. srcRoot is the module root on disk; modPath is the
 // go.mod module path, used to map profile paths to files on disk.
+//
+// A profile produced by `go test ./... -coverpkg=./...` emits each instrumented
+// block once per test binary, so the same block recurs many times with differing
+// counts. Blocks are first merged by identity (file + span), OR-ing the counts
+// (mode: set), exactly as `go tool cover` does — otherwise the denominator is
+// inflated by the duplication.
 func Check(profilePath, srcRoot, modPath string) (Report, error) {
 	blocks, err := parseProfile(profilePath)
 	if err != nil {
 		return Report{}, err
 	}
-	ignored, err := ignoredLines(blocks, srcRoot, modPath)
+	merged := map[string]block{}
+	for _, b := range blocks {
+		k := b.file + ":" + b.span
+		if prev, ok := merged[k]; ok {
+			if b.count > prev.count {
+				prev.count = b.count
+				merged[k] = prev
+			}
+			continue
+		}
+		merged[k] = b
+	}
+	uniq := make([]block, 0, len(merged))
+	for _, b := range merged {
+		uniq = append(uniq, b)
+	}
+	ignored, err := ignoredLines(uniq, srcRoot, modPath)
 	if err != nil {
 		return Report{}, err
 	}
 	var rep Report
-	for _, b := range blocks {
+	for _, b := range uniq {
 		if ignored[b.file][b.startLine] {
 			continue
 		}
@@ -82,6 +104,7 @@ func Check(profilePath, srcRoot, modPath string) (Report, error) {
 // block is one parsed coverprofile line.
 type block struct {
 	file      string // module-qualified source path, e.g. mod/pkg/file.go
+	span      string // raw "startLine.col,endLine.col" — block identity within a file
 	startLine int
 	numStmt   int
 	count     int
@@ -139,7 +162,7 @@ func parseLine(line string) (block, error) {
 	if err != nil {
 		return block{}, fmt.Errorf("coverage: bad count in %q: %w", line, err)
 	}
-	return block{file: line[:colon], startLine: startLine, numStmt: numStmt, count: count}, nil
+	return block{file: line[:colon], span: fields[0], startLine: startLine, numStmt: numStmt, count: count}, nil
 }
 
 // startLineOf extracts startLine from "startLine.startCol,endLine.endCol".

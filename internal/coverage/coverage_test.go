@@ -206,6 +206,24 @@ func TestCheckProfileNoModuleLine(t *testing.T) {
 	}
 }
 
+func TestCheckMergesDuplicateBlocks(t *testing.T) {
+	// `go test ./... -coverpkg=./...` emits each block once per test binary. The
+	// same block must be counted once, OR-ing the counts: here one statement,
+	// covered in exactly one of three emissions -> 100%, Total 1 (not 3).
+	root, modPath := module(t, "package m\nfunc F() {}\n")
+	prof := writeProfile(t, root,
+		modPath+"/f.go:2.1,2.5 1 0\n"+
+			modPath+"/f.go:2.1,2.5 1 1\n"+
+			modPath+"/f.go:2.1,2.5 1 0\n")
+	rep, err := Check(prof, root, modPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Total != 1 || rep.Covered != 1 {
+		t.Fatalf("duplicate blocks not merged: %+v, want Covered 1 Total 1", rep)
+	}
+}
+
 func TestPercentEmptyIs100(t *testing.T) {
 	if (Report{}).Percent() != 100 {
 		t.Fatal("empty report should be 100%")
