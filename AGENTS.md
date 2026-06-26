@@ -73,8 +73,10 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **ADR index:** [docs/decisions/README.md](docs/decisions/README.md) — architecture decisions and lifecycle.
 - **Active ADRs:** [docs/decisions/ACTIVE.md](docs/decisions/ACTIVE.md) — generated status index; do not hand-edit.
 - **Plans:** [docs/plans](docs/plans) — implementation plans for complex work.
+- **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md) — layout, content, and rules for the agent guide
 - **Architecture:** [docs/architecture.md](docs/architecture.md) — system shape, packages, key components, dependencies
 - **Development:** [docs/development.md](docs/development.md) — local setup, the command runner, dependency reference
+- **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md) — how-to-write rules for all awf-managed prose
 - **Glossary:** [docs/glossary.md](docs/glossary.md) — project jargon and term ownership
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md) — recurring bugs and tricky areas
 - **Testing:** [docs/testing.md](docs/testing.md) — gate tiers, test layout, what each tier covers

@@ -8,8 +8,10 @@ audit:
         - awf
         - plans
 docs:
+    - agents-md-standard
     - architecture
     - development
+    - doc-standard
     - glossary
     - pitfalls
     - testing
