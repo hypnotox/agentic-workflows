@@ -28,7 +28,7 @@ Load-bearing triggers include:
 - **Next number:** list `{{ .layout.adrDir }}/NNNN-*.md`, take the highest existing number plus one. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** copy section structure from `{{ .layout.adrTemplate }}` (inline the content via `Write`; do not shell-copy the file).
-- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 domain label driving `ACTIVE.md` grouping), `related` (array of ADR numbers or `[]`).
+- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `{{ .layout.domainsDir }}/<domain>.md` index).
 - **Required sections:** {{ range .data.adrSections }}{{ . }}, {{ end }}in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 <!-- awf:end -->

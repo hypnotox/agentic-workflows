@@ -34,9 +34,14 @@ supersedes: []        # list of ADR numbers this replaces, e.g. [0001]
 superseded_by: ""     # ADR number that replaced this (empty if still active)
 tags: [tooling]
 related: []           # related ADR numbers
+domains: [rendering]  # coarse domain keys driving the docs/domains/<d>.md indexes
 ---
 # ADR-NNNN: Title
 ```
+
+`domains:` lists the coarse domains this decision belongs to; each one's generated
+`## Decisions` index in `docs/domains/<domain>.md` is built from this field, so set it
+on every ADR (use the project's existing domain names).
 
 ## Invariant tagging
 

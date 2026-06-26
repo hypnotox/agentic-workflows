@@ -68,7 +68,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
-1. **Update any domain doc** under `{{ .layout.domainsDir }}` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
+1. **Update any domain doc** under `{{ .layout.domainsDir }}` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->

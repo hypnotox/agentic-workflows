@@ -27,7 +27,7 @@ Load-bearing triggers include:
 - **Next number:** list `docs/decisions/NNNN-*.md`, take the highest existing number plus one. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** copy section structure from `docs/decisions/template.md` (inline the content via `Write`; do not shell-copy the file).
-- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 domain label driving `ACTIVE.md` grouping), `related` (array of ADR numbers or `[]`).
+- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `docs/domains/<domain>.md` index).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
