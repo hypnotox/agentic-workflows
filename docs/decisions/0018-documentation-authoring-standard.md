@@ -21,7 +21,8 @@ terseness, voice, what to leave out, when to link instead of restate. A grep acr
 Two concrete symptoms:
 
 - **`AGENTS.md` is loaded every session and narrates mechanism it should not.** Its Invariants
-  section is 262 words / ~37 words per rule; several bullets spend two or three sentences
+  section runs ~270 words across nine bullets; several of its six adopter-supplied bullets
+  (`data.invariants` in `.awf/agents-doc.yaml`) spend two or three sentences
   explaining the *mechanism* of a rule that tooling already enforces and an ADR already documents
   (missingkey=zero, the drift oracle, `coverage-ignore`, frontmatter validation). This is the
   "linter-rules in prose" anti-pattern: the agent hits the gate regardless, so the always-loaded
@@ -42,8 +43,9 @@ apply to itself.
    *principles* (docs orient and link; detail lives in the most specific doc; the document map is
    the index — progressive disclosure); *rules* (terse, since managed docs are read repeatedly;
    linter-rules out of prose — state a tooling-enforced rule once and cite its ADR rather than
-   narrating the mechanism; no editorializing or dating, per ADR-0015's provenance discipline;
-   reference ADRs by id rather than restating them; present-tense, authoritative voice);
+   narrating the mechanism; no editorializing or dating (a discipline this standard itself
+   establishes; no existing ADR owns it); reference ADRs by id rather than restating them;
+   present-tense, authoritative voice);
    *structure* (`awf:section` markers, per-section content prompts, override via convention parts,
    docs travel with the change).
 
@@ -90,8 +92,11 @@ applies to every catalog doc automatically, so this ADR introduces no new tagged
 
 ## Consequences
 
-- The always-loaded `AGENTS.md` gets lighter (Invariants ~262 → ~90 words) and stops paying, every
-  session, to re-explain machine-enforced rules.
+- The always-loaded `AGENTS.md` gets lighter: the six adopter-supplied Invariants bullets
+  (`data.invariants`) drop from ~200 to ~90 words. The three universal bullets (append-only ADRs,
+  docs-travel, green-gate) are template-fixed and unchanged, so the rendered Invariants section
+  shrinks from ~270 to ~160 words and stops paying, every session, to re-explain machine-enforced
+  rules.
 - awf now ships an opinionated, documented authoring standard adopters can follow, with the writing
   rules in one canonical place and the rule shown in-context where a section is edited.
 - Two more managed docs to maintain; the catalog and document map grow by two entries each.
@@ -99,6 +104,14 @@ applies to every catalog doc automatically, so this ADR introduces no new tagged
   Their conformance sweep is created as known downstream work, explicitly deferred (Decision 5).
 - The pre-existing gap that agents-doc section-parity is untested (`docs_sections_test.go` covers
   `cat.Docs`, not `cat.AgentsDoc`) is unchanged by this ADR and remains out of scope.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The Proposed→Accepted status flip regenerates `docs/decisions/ACTIVE.md` via `./x sync` in the
+  same commit. No `docs/decisions/README.md` index row is owed — the README is a how-to guide;
+  `ACTIVE.md` is the generated index (ADR-0005).
+- The dogfood edit to `.awf/agents-doc.yaml` (Decision 5) re-renders `AGENTS.md`/`CLAUDE.md` via
+  `./x sync` in the same commit, kept green by `./x check`.
 
 ## Alternatives Considered
 
