@@ -12,6 +12,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ### Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](../decisions/0001-template-overlay-rendering-engine.md)
+- [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 
 ### Implemented
 
@@ -21,8 +22,4 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
-
-### Proposed
-
-- [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 
