@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,10 +22,10 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runSync(root); err != nil {
+	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root); err != nil {
+	if err := runCheck(root, io.Discard); err != nil {
 		t.Errorf("expected clean check, got %v", err)
 	}
 	// Hand-edit the rendered skill.
@@ -32,7 +33,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := os.WriteFile(skill, []byte("tampered\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root); err == nil {
+	if err := runCheck(root, io.Discard); err == nil {
 		t.Errorf("expected drift error after hand-edit")
 	}
 }

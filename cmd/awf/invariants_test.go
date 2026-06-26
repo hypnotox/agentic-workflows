@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +17,7 @@ func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte(yaml), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runSync(root); err != nil {
+	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -29,10 +30,10 @@ func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 	}
 	// Re-sync so ACTIVE.md is generated and the tree stays drift-clean; the only
 	// outstanding issue is the unbacked invariant.
-	if err := runSync(root); err != nil {
+	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
-	if err := runCheck(root); err == nil {
+	if err := runCheck(root, io.Discard); err == nil {
 		t.Error("expected runCheck to fail on unbacked invariant")
 	}
 	// Back the slug with a .go file under root -> runCheck clean.
@@ -40,7 +41,7 @@ func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "backing.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root); err != nil {
+	if err := runCheck(root, io.Discard); err != nil {
 		t.Errorf("expected runCheck clean after backing, got: %v", err)
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -30,7 +31,7 @@ func skillState(sc config.Sidecar, enabled bool) string {
 	}
 }
 
-func runList(root string) error {
+func runList(root string, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
@@ -48,12 +49,12 @@ func runList(root string) error {
 				return err
 			}
 		}
-		fmt.Printf("  %-24s %s\n", n, skillState(sc, enabled))
+		fmt.Fprintf(stdout, "  %-24s %s\n", n, skillState(sc, enabled))
 	}
 	return nil
 }
 
-func runAdd(root, skill string) error {
+func runAdd(root, skill string, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func runAdd(root, skill string) error {
 	if err := os.WriteFile(cfgPath, []byte(updated), 0o644); err != nil {
 		return err
 	}
-	return runSync(root)
+	return runSync(root, stdout)
 }
 
 // appendSkill adds "- <skill>" under the "skills:" key in config.yaml, handling

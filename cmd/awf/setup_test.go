@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +18,7 @@ func TestRunSetupActivatesHooksIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range 2 { // idempotent: run twice
-		if err := runSetup(root); err != nil {
+		if err := runSetup(root, io.Discard, io.Discard); err != nil {
 			t.Fatalf("runSetup #%d: %v", i, err)
 		}
 	}
@@ -32,7 +33,7 @@ func TestRunSetupActivatesHooksIdempotent(t *testing.T) {
 
 func TestRunSetupNoGithooksErrors(t *testing.T) {
 	root := t.TempDir()
-	if err := runSetup(root); err == nil {
+	if err := runSetup(root, io.Discard, io.Discard); err == nil {
 		t.Error("expected error when .githooks/ is absent")
 	}
 }
@@ -42,7 +43,7 @@ func TestRunSetupNonGitWarnsNoop(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".githooks"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runSetup(root); err != nil {
+	if err := runSetup(root, io.Discard, io.Discard); err != nil {
 		t.Errorf("non-git dir should be a no-op, got: %v", err)
 	}
 }

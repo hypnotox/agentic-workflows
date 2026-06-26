@@ -4,6 +4,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,41 +12,56 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: awf <init|sync|check|invariants|list|add|setup|upgrade> [args]")
-		os.Exit(2)
+func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
+
+var getwd = os.Getwd
+
+// run dispatches a subcommand and returns a process exit code. All user-facing
+// output goes to the injected writers so the dispatch is unit-testable.
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) < 2 {
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|list|add|setup|upgrade> [args]")
+		return 2
 	}
-	cwd, err := os.Getwd()
+	cwd, err := getwd()
 	if err != nil {
-		fatal(err)
+		fmt.Fprintln(stderr, "awf:", err)
+		return 1
 	}
-	switch os.Args[1] {
+	var cmdErr error
+	switch args[1] {
 	case "init":
-		fatalIf(runInit(cwd))
+		cmdErr = runInit(cwd, stdout, stderr)
 	case "sync":
-		fatalIf(runSync(cwd))
+		cmdErr = runSync(cwd, stdout)
 	case "check":
-		fatalIf(runCheck(cwd))
+		cmdErr = runCheck(cwd, stdout)
 	case "invariants":
-		fatalIf(runInvariants(cwd))
+		cmdErr = runInvariants(cwd, stdout)
 	case "list":
-		fatalIf(runList(cwd))
+		cmdErr = runList(cwd, stdout)
 	case "add":
-		if len(os.Args) < 3 {
-			fatal(errors.New("usage: awf add <skill>"))
+		if len(args) < 3 {
+			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf add <skill>"))
+			return 1
 		}
-		fatalIf(runAdd(cwd, os.Args[2]))
+		cmdErr = runAdd(cwd, args[2], stdout)
 	case "setup":
-		fatalIf(runSetup(cwd))
+		cmdErr = runSetup(cwd, stdout, stderr)
 	case "upgrade":
-		fatalIf(runUpgrade(cwd))
+		cmdErr = runUpgrade(cwd, stdout)
 	default:
-		fatal(fmt.Errorf("unknown command %q", os.Args[1]))
+		fmt.Fprintln(stderr, "awf:", fmt.Errorf("unknown command %q", args[1]))
+		return 1
 	}
+	if cmdErr != nil {
+		fmt.Fprintln(stderr, "awf:", cmdErr)
+		return 1
+	}
+	return 0
 }
 
-func runInit(root string) error {
+func runInit(root string, stdout, stderr io.Writer) error {
 	cfgPath := filepath.Join(root, ".claude", "awf", "config.yaml")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
@@ -58,13 +74,13 @@ func runInit(root string) error {
 		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {
 			return err
 		}
-		fmt.Printf("scaffolded %s\n", cfgPath)
+		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
 	}
-	if err := runSync(root); err != nil {
+	if err := runSync(root, stdout); err != nil {
 		return err
 	}
-	if err := runSetup(root); err != nil {
-		fmt.Fprintln(os.Stderr, "awf init: hook setup skipped:", err)
+	if err := runSetup(root, stdout, stderr); err != nil {
+		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
 }
@@ -81,7 +97,7 @@ func gate(root string) error {
 	return nil
 }
 
-func runSync(root string) error {
+func runSync(root string, stdout io.Writer) error {
 	if err := gate(root); err != nil {
 		return err
 	}
@@ -92,17 +108,6 @@ func runSync(root string) error {
 	if err := p.Sync(); err != nil {
 		return err
 	}
-	fmt.Println("awf sync: done")
+	fmt.Fprintln(stdout, "awf sync: done")
 	return nil
-}
-
-func fatal(err error) {
-	fmt.Fprintln(os.Stderr, "awf:", err)
-	os.Exit(1)
-}
-
-func fatalIf(err error) {
-	if err != nil {
-		fatal(err)
-	}
 }

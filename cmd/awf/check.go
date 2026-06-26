@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func runCheck(root string) error {
+func runCheck(root string, stdout io.Writer) error {
 	if err := gate(root); err != nil {
 		return err
 	}
@@ -23,13 +24,13 @@ func runCheck(root string) error {
 		return err
 	}
 	for _, d := range drift {
-		fmt.Printf("  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
+		fmt.Fprintf(stdout, "  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
 	}
 	for _, f := range findings {
-		fmt.Printf("  %-14s %s — invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
+		fmt.Fprintf(stdout, "  %-14s %s — invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
 	}
 	if len(drift) == 0 && len(findings) == 0 {
-		fmt.Println("awf check: clean")
+		fmt.Fprintln(stdout, "awf check: clean")
 		return nil
 	}
 	return fmt.Errorf("awf check: %d drift(s), %d invariant issue(s)", len(drift), len(findings))

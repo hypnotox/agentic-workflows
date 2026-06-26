@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func runInvariants(root string) error {
+func runInvariants(root string, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
@@ -16,11 +17,11 @@ func runInvariants(root string) error {
 		return err
 	}
 	if len(findings) == 0 {
-		fmt.Println("awf invariants: clean")
+		fmt.Fprintln(stdout, "awf invariants: clean")
 		return nil
 	}
 	for _, f := range findings {
-		fmt.Printf("  %s — invariant %q %s\n", f.ADR, f.Slug, f.Detail())
+		fmt.Fprintf(stdout, "  %s — invariant %q %s\n", f.ADR, f.Slug, f.Detail())
 	}
 	return fmt.Errorf("awf invariants: %d invariant issue(s)", len(findings))
 }
