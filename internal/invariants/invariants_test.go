@@ -3,6 +3,7 @@ package invariants_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -187,6 +188,116 @@ func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
 	}
 	if len(f) != 1 || f[0].Slug != "dbl-slug" {
 		t.Fatalf("double-backtick declaration must be required (and unbacked here); got %#v", f)
+	}
+}
+
+// TestFindingDetail pins the human remedy line for each Status: the Unchecked
+// branch points at the invariants config, the Unbacked branch names the missing
+// slug and the comment to add.
+func TestFindingDetail(t *testing.T) {
+	unchecked := invariants.Finding{Slug: "fixture-x", Status: invariants.Unchecked}.Detail()
+	if !strings.Contains(unchecked, "unchecked") || !strings.Contains(unchecked, "invariants.sources") {
+		t.Errorf("unchecked detail unexpected: %q", unchecked)
+	}
+	unbacked := invariants.Finding{Slug: "fixture-y", Status: invariants.Unbacked}.Detail()
+	if !strings.Contains(unbacked, "unbacked") || !strings.Contains(unbacked, "fixture-y") {
+		t.Errorf("unbacked detail unexpected: %q", unbacked)
+	}
+}
+
+// TestCheckParseDirError pins that a decisions dir holding a malformed ADR (here,
+// unparseable YAML frontmatter) surfaces the parse error rather than being
+// silently skipped.
+func TestCheckParseDirError(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	bad := "---\nstatus: \"unterminated\n---\n# ADR-X: T\n"
+	if err := os.WriteFile(filepath.Join(dir, "0001-fixture-bad.md"), []byte(bad), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := invariants.Check(dir, root, nil); err == nil {
+		t.Error("expected error for malformed ADR frontmatter")
+	}
+}
+
+// TestCheckSortsMultipleFindings pins deterministic slug-sorted output for both
+// the Unchecked (nil cfg) and Unbacked (sources configured, nothing backing)
+// paths when more than one slug is required.
+func TestCheckSortsMultipleFindings(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-zeta` — z.\n- `inv: fixture-alpha` — a.")
+	src := []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}
+
+	f, err := invariants.Check(dir, root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 2 || f[0].Slug != "fixture-alpha" || f[1].Slug != "fixture-zeta" {
+		t.Fatalf("nil cfg: want alpha,zeta unchecked in order, got %#v", f)
+	}
+
+	f, err = invariants.Check(dir, root, &config.InvariantConfig{Sources: src})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 2 || f[0].Slug != "fixture-alpha" || f[1].Slug != "fixture-zeta" {
+		t.Fatalf("sources: want alpha,zeta unbacked in order, got %#v", f)
+	}
+}
+
+// TestCheckSkipsVCSDirsAndNonMatchingFiles pins that backing comments living
+// inside .git/vendor/node_modules are not honoured (those dirs are skipped) and
+// that a file not matching any source glob is ignored without error.
+func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-skip` — x.")
+	for _, skip := range []string{".git", "vendor", "node_modules"} {
+		sub := filepath.Join(root, skip)
+		if err := os.Mkdir(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// A backing comment here must be ignored because the dir is skipped.
+		if err := os.WriteFile(filepath.Join(sub, "x.go"), []byte("// invariant: fixture-skip\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A non-matching file in root must be walked past without matching a marker.
+	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("// invariant: fixture-skip\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-skip" || f[0].Status != invariants.Unbacked {
+		t.Fatalf("backings in skipped dirs / non-matching files must not count, want fixture-skip unbacked, got %#v", f)
+	}
+}
+
+// TestCheckScanWalkError pins that a WalkDir error during the source scan (here,
+// a non-existent root) propagates out of Check rather than being swallowed.
+func TestCheckScanWalkError(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-walk` — x.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	if _, err := invariants.Check(dir, filepath.Join(root, "does-not-exist"), cfg); err == nil {
+		t.Error("expected WalkDir error for non-existent root")
+	}
+}
+
+// TestCheckScanReadError pins that an unreadable matched source file surfaces the
+// read error. A dangling symlink whose name matches a glob is used so the scan
+// matches the path but os.ReadFile (which follows the link) fails — no chmod
+// fixtures, which are unportable and root-fragile.
+func TestCheckScanReadError(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-sym` — x.")
+	if err := os.Symlink(filepath.Join(root, "missing-target"), filepath.Join(root, "bad.go")); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	if _, err := invariants.Check(dir, root, cfg); err == nil {
+		t.Error("expected read error for dangling symlink source file")
 	}
 }
 
