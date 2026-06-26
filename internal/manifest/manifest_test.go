@@ -36,6 +36,46 @@ func TestLoadOldLockZeroSchema(t *testing.T) {
 	}
 }
 
+func TestLoadMissingFile(t *testing.T) {
+	// A non-existent lock path surfaces a wrapped read error.
+	p := filepath.Join(t.TempDir(), "absent.lock")
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("Load on a missing file: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "read lock") {
+		t.Errorf("error = %q, want it to mention \"read lock\"", err)
+	}
+}
+
+func TestLoadMalformedJSON(t *testing.T) {
+	// Invalid JSON content surfaces a wrapped parse error.
+	p := filepath.Join(t.TempDir(), "awf.lock")
+	if err := os.WriteFile(p, []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("Load on malformed JSON: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse lock") {
+		t.Errorf("error = %q, want it to mention \"parse lock\"", err)
+	}
+}
+
+func TestSaveDirectoryAtPath(t *testing.T) {
+	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
+	dir := t.TempDir()
+	p := filepath.Join(dir, "awf.lock")
+	if err := os.Mkdir(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	l := &Lock{AWFVersion: "0.1.0"}
+	if err := l.Save(p); err == nil {
+		t.Fatal("Save onto a directory path: want error, got nil")
+	}
+}
+
 func TestSaveLoadRoundTrip(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "awf.lock")
 	l := &Lock{

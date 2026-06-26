@@ -43,7 +43,7 @@ func Load(path string) (*Lock, error) {
 
 func (l *Lock) Save(path string) error {
 	b, err := json.MarshalIndent(l, "", "  ")
-	if err != nil {
+	if err != nil { // coverage-ignore: Lock holds only strings, an int, and a string-keyed map of string fields; MarshalIndent has no unsupported type to fail on
 		return err
 	}
 	b = append(b, '\n')
