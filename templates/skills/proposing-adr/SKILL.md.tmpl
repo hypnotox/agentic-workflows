@@ -9,13 +9,13 @@ description: >
 # {{ .prefix }}-proposing-adr
 
 <!-- awf:section positioning -->
-Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `{{ .vars.workflowDoc }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
+Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `{{ .layout.workflowRef }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
 <!-- awf:end -->
 
 ## When to invoke
 
 <!-- awf:section when-to-invoke -->
-Per `{{ .vars.workflowDoc }}`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
 
 Load-bearing triggers include:
 {{ range .data.adrTriggers }}- {{ . }}
@@ -50,7 +50,7 @@ Load-bearing triggers include:
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
-1. **Update or create the relevant state doc** under `{{ .vars.stateDocsPath }}` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
+1. **Update or create the relevant domain doc** under `{{ .layout.domainsDir }}` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
 <!-- awf:end -->
 
 <!-- awf:section procedure-predecessor-flip -->
@@ -87,5 +87,5 @@ Load-bearing triggers include:
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
 - `{{ .layout.activeMd }}` is never hand-edited; it is always regenerated via `{{ .vars.activeMdRegenCmd }}`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
-- For the full ADR lifecycle, see `{{ .vars.workflowDoc }}`.
+- For the full ADR lifecycle, see `{{ .layout.workflowRef }}`.
 <!-- awf:end -->

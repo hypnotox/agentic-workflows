@@ -15,12 +15,39 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 	if err != nil {
 		t.Fatalf("read template: %v", err)
 	}
+	withLayoutDefaults(data)
 	out, err := render.Render(string(src), nil, func(string) (string, error) { return "", nil }, data)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	assertNoLeaks(t, out)
 	return out
+}
+
+// withLayoutDefaults seeds the always-present .layout members ADR-0013 added
+// (docs/workflowRef/domainsDir) into a golden test's layout fixture when absent,
+// so templates citing them render without a <no value> token. The docs map
+// carries the docs the templates cite so guarded clauses render as before; a test
+// that needs different values sets them explicitly and this leaves them untouched.
+func withLayoutDefaults(data map[string]any) {
+	l, _ := data["layout"].(map[string]any)
+	if l == nil {
+		l = map[string]any{}
+		data["layout"] = l
+	}
+	if _, ok := l["docs"]; !ok {
+		l["docs"] = map[string]any{
+			"debugging": "docs/debugging.md",
+			"pitfalls":  "docs/pitfalls.md",
+			"roadmap":   "docs/roadmap.md",
+		}
+	}
+	if _, ok := l["workflowRef"]; !ok {
+		l["workflowRef"] = "docs/workflow.md"
+	}
+	if _, ok := l["domainsDir"]; !ok {
+		l["domainsDir"] = "docs/domains"
+	}
 }
 
 func assertNoLeaks(t *testing.T, out string) {

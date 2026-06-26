@@ -43,7 +43,7 @@ Load-bearing triggers include:
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
    - Delete the authoring checklist before committing.
 
-1. **Update or create the relevant state doc** under `` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
+1. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
 
 1. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 

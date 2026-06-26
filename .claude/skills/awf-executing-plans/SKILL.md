@@ -33,21 +33,19 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 
 
-
-
 1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 
-1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `AGENTS.md` "Planning files / Lifecycle").
+1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `AGENTS.md`).
 
 1. **Terminal step: invoke `awf-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 
 ## Notes
 
-
+- **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; fix the cause or the test's premise.
 
 - Gates are mandatory; if red, fix the root cause. Do not bypass with `--no-verify` except in genuine emergencies, and follow up with a fix commit.
 
-- Auto-commit when green: tests pass + lint clean → commit without asking (per `AGENTS.md` "Auto-commit when green").
+- Auto-commit when green: tests pass + lint clean → commit without asking (per `AGENTS.md`).
 
 - One concern per commit; if a task accumulates unrelated tweaks, split it.
 

@@ -52,7 +52,7 @@ Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity
 
 **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`. **Task skills** (as needed): `{{ .prefix }}-tdd`, `{{ .prefix }}-bugfix`, `{{ .prefix }}-debugging`, `{{ .prefix }}-adr-lifecycle`.
 
-{{ with .vars.gateCmd }}Run `{{ . }}` before every commit{{ with $.vars.gateCmdFull }}; `{{ . }}` is the full tier{{ end }}. {{ end }}Conventional Commits; one concern per commit.{{ with .vars.workflowDoc }} Full rules: [{{ . }}]({{ . }}).{{ end }}
+{{ with .vars.gateCmd }}Run `{{ . }}` before every commit{{ with $.vars.gateCmdFull }}; `{{ . }}` is the full tier{{ end }}. {{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section commands -->

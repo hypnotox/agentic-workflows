@@ -63,7 +63,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 
 <!-- awf:section notes -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
-- See `{{ .vars.workflowDoc }}` for full plan lifecycle rules and the canonical workflow chain.
+- See `{{ .layout.workflowRef }}` for full plan lifecycle rules and the canonical workflow chain.
 - The `plan-reviewer` agent is lens-diverse internally; this skill does not orchestrate a panel and does not specify per-lens model routing.
 - The plan-resync pass (post-ADR-review drift check) is a separate skill: `{{ .prefix }}-reviewing-plan-resync`.
 <!-- awf:end -->

@@ -1,11 +1,11 @@
 ---
 name: {{ .prefix }}-roadmap-graduation
-description: Use when a {{ .vars.roadmapDoc }} entry is becoming an ADR or PR. Removes the entry in the same commit; re-verifies any cited measurements before migrating them.
+description: Use when a {{ .layout.docs.roadmap }} entry is becoming an ADR or PR. Removes the entry in the same commit; re-verifies any cited measurements before migrating them.
 ---
 
 # {{ .prefix }}-roadmap-graduation
 
-A task skill for moving an item out of `{{ .vars.roadmapDoc }}` into an ADR or PR. The substance of the protocol lives in `{{ .vars.roadmapDoc }}`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
+A task skill for moving an item out of `{{ .layout.docs.roadmap }}` into an ADR or PR. The substance of the protocol lives in `{{ .layout.docs.roadmap }}`'s opening paragraphs. This skill encodes the small procedural sequence that prevents two recurring failure modes: stale roadmap entries that point at already-shipped work, and stale benchmark numbers that migrate into an ADR Context without re-verification.
 
 ## When this skill fires
 
@@ -18,7 +18,7 @@ This is a **task skill**: it sits off the workflow chain.
 ## The two failure modes this skill prevents
 
 <!-- awf:section failure-modes -->
-1. **Stale roadmap entries.** Per `{{ .vars.roadmapDoc }}` opening protocol: "Items disappear from this file when they are either (a) done (a follow-up PR or ADR removes them in the same commit as the implementation) or (b) explicitly dropped (a commit removes them with a one-line note in the message)." An ADR or PR that lands the work but leaves the roadmap entry in place creates contradictory documentation.
+1. **Stale roadmap entries.** Per `{{ .layout.docs.roadmap }}` opening protocol: "Items disappear from this file when they are either (a) done (a follow-up PR or ADR removes them in the same commit as the implementation) or (b) explicitly dropped (a commit removes them with a one-line note in the message)." An ADR or PR that lands the work but leaves the roadmap entry in place creates contradictory documentation.
 2. **Stale benchmark numbers.** Roadmap entries often cite inline measurements (e.g. "primes ratio improved from 1.27× slower to 1.10× faster"). Those numbers were measured at a point in time; the codebase has changed since. Migrating the old number into a new ADR Context unchanged misrepresents reality.
 
 <!-- awf:end -->
@@ -27,7 +27,7 @@ This is a **task skill**: it sits off the workflow chain.
 
 <!-- awf:section identify-entry -->
 ### 1. Identify the roadmap entry
-Find its block under the right section of `{{ .vars.roadmapDoc }}`. Read it: does it cite measured numbers (benchmarks, query timings, payload sizes)?
+Find its block under the right section of `{{ .layout.docs.roadmap }}`. Read it: does it cite measured numbers (benchmarks, query timings, payload sizes)?
 <!-- awf:end -->
 
 <!-- awf:section reverify-measurements -->
@@ -60,7 +60,7 @@ If the graduated entry mentions a state doc or ADR that needs updating, fold tha
 
 <!-- awf:section notes -->
 - Does not commit on your behalf.
-- Authoritative source for roadmap conventions: `{{ .vars.roadmapDoc }}` opening paragraph. This skill is a procedural pointer, not a contract restatement.
+- Authoritative source for roadmap conventions: `{{ .layout.docs.roadmap }}` opening paragraph. This skill is a procedural pointer, not a contract restatement.
 - When a roadmap entry's removal lands in the same commit as an ADR, the commit's Conventional Commits scope follows the ADR's domain (e.g. `docs(adr)`), not `(roadmap)`. The roadmap delta is a doc-currency obligation of the ADR, not a separate concern.
 
 <!-- awf:end -->

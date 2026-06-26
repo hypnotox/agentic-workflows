@@ -56,7 +56,7 @@ Pick the status transition, then:
 
 1. **Update the README index.** Find the ADR's row in `docs/decisions/README.md` under the right area table and update its Status column. If the new state warrants a Notes change (supersession target, deferral reason), update Notes in the same edit.
 
-1. **Update any state doc** under `` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
+1. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
 
 1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 

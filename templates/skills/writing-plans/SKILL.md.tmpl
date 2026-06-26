@@ -12,7 +12,7 @@ Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .pref
 <!-- awf:section when-to-invoke -->
 ## When to invoke
 
-Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementation) and complex non-ADR work where the implementation steps benefit from upfront enumeration — multi-commit work, interdependent steps, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch. Skip for one-line bugfixes and changes that follow established patterns. When in doubt, write the plan.
+Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implementation) and complex non-ADR work where the implementation steps benefit from upfront enumeration — multi-commit work, interdependent steps, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch. Skip for one-line bugfixes and changes that follow established patterns. When in doubt, write the plan.
 <!-- awf:end -->
 
 ## Conventions enforced
@@ -34,7 +34,7 @@ Per `{{ .vars.workflowDoc }}`: complex ADR-driven work (multi-commit implementat
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-note -->
-- **Gate cost:** `{{ .vars.gateCmd }}` (~{{ .vars.gateDuration }}) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `{{ .vars.workflowDoc }}` "Commit granularity vs gate cost".
+- **Gate cost:** `{{ .vars.gateCmd }}` (~{{ .vars.gateDuration }}) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `{{ .layout.workflowRef }}`.
 <!-- awf:end -->
 
 <!-- awf:section conventions-test-first -->

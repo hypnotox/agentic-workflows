@@ -6,7 +6,7 @@ description: Use to execute a written {{ .prefix }} plan by dispatching one suba
 # {{ .prefix }}-subagent-driven-development
 
 <!-- awf:section positioning -->
-The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .vars.workflowDoc }}` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `{{ .prefix }}-executing-plans`.
+The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.workflowRef }}` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `{{ .prefix }}-executing-plans`.
 <!-- awf:end -->
 
 <!-- awf:section per-task-review-note -->
@@ -47,15 +47,11 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section dispatch-conventions -->
 1. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **`{{ .vars.gateCmd }}` per commit.** Fast tier by default; `{{ .vars.gateCmdFull }}` for the pre-push tier when a pre-push-only surface is involved. See `{{ .vars.workflowDoc }}`.
+   - **`{{ .vars.gateCmd }}` per commit.** Fast tier by default; `{{ .vars.gateCmdFull }}` for the pre-push tier when a pre-push-only surface is involved. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 <!-- awf:end -->
-
-<!-- awf:section host-git-constraint -->
-{{ if .vars.hostGitAdrRef }}   **Git runs on the host, never in the container.** `git add` / `git commit` / `git push` run on the host shell only. The container git shim blocks write-mode git inside. (See `{{ .vars.hostGitAdrRef }}`.)
-{{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-status-handling -->
 1. **Handle the implementer's status:**
@@ -66,7 +62,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section per-task-review -->
-1. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces.{{ if .vars.perTaskReviewAdrRef }} (Convention: `{{ .vars.perTaskReviewAdrRef }}`){{ end }} Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+1. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
@@ -82,7 +78,6 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section notes -->
 - **Sequential dispatch only — never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
 - The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
-- One concern per commit; auto-commit when green.{{ if .vars.keyInvariantAdrRef }}
-- **Project invariants are non-negotiable.** See `{{ .vars.keyInvariantAdrRef }}` for the key invariants that must travel into every dispatched subagent prompt.{{ end }}{{ if .vars.oracleStateDoc }}
-- **The oracle state doc (`{{ .vars.oracleStateDoc }}`) is non-negotiable.** Never adjust expected output to make a test pass. This rule travels into the dispatched prompt verbatim.{{ end }}
+- One concern per commit; auto-commit when green.
+- **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.
 <!-- awf:end -->

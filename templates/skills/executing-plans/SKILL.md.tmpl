@@ -6,7 +6,7 @@ description: Use to execute a written {{ .prefix }} plan inline (one task at a t
 # {{ .prefix }}-executing-plans
 
 <!-- awf:section positioning -->
-The `implementation` chain node, inline shape. Wraps `{{ .vars.workflowDoc }}` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `{{ .prefix }}-subagent-driven-development`.
+The `implementation` chain node, inline shape. Wraps `{{ .layout.workflowRef }}` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `{{ .prefix }}-subagent-driven-development`.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -35,7 +35,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:section procedure-per-task -->
 1. **Per task — execute, verify, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
-   - **Verify** with `{{ .vars.gateCmd }}` (fast tier). See `{{ .vars.workflowDoc }}` for the tier split and when to run the full tier.
+   - **Verify** with `{{ .vars.gateCmd }}` (fast tier). See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
    - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
 <!-- awf:end -->
 
@@ -43,11 +43,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-detail -->
-{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmd }} full` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .vars.workflowDoc }}` "Regression-test discipline under the tier split".
-{{ end }}<!-- awf:end -->
-
-<!-- awf:section host-git-constraint -->
-{{ if .vars.hostGitAdrRef }}   **Git runs on the host, never in the container.** `git add` / `git commit` / `git push` run on the host shell only. The container git shim blocks write-mode git inside. (See `{{ .vars.hostGitAdrRef }}`.)
+{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmd }} full` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .layout.workflowRef }}`.
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->
@@ -55,7 +51,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section procedure-non-adr-final-commit -->
-1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .vars.workflowDoc }}` "Planning files / Lifecycle").
+1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .layout.workflowRef }}`).
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
@@ -65,16 +61,15 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 ## Notes
 
 <!-- awf:section project-invariants -->
-{{ if .vars.keyInvariantAdrRef }}- **Project invariants are non-negotiable.** See `{{ .vars.keyInvariantAdrRef }}` for the key invariants that must be preserved across all commits.
-{{ end }}{{ if .vars.oracleStateDoc }}- **The oracle state doc (`{{ .vars.oracleStateDoc }}`) is non-negotiable.** Never adjust expected output to make a test pass.
-{{ end }}<!-- awf:end -->
+- **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; fix the cause or the test's premise.
+<!-- awf:end -->
 
 <!-- awf:section notes-gate -->
 - Gates are mandatory; if red, fix the root cause. Do not bypass with `--no-verify` except in genuine emergencies, and follow up with a fix commit.
 <!-- awf:end -->
 
 <!-- awf:section notes-auto-commit -->
-- Auto-commit when green: tests pass + lint clean → commit without asking (per `{{ .vars.workflowDoc }}` "Auto-commit when green").
+- Auto-commit when green: tests pass + lint clean → commit without asking (per `{{ .layout.workflowRef }}`).
 <!-- awf:end -->
 
 <!-- awf:section notes-one-concern -->

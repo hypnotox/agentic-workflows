@@ -56,5 +56,5 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 
 ## Notes
 
-- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `{{ .vars.workflowDoc }}`.
-- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.{{ if .vars.debuggingDoc }} Full debugging recipes and surface-specific commands are in `{{ .vars.debuggingDoc }}`.{{ end }}
+- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `{{ .layout.workflowRef }}`.
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.{{ if .layout.docs.debugging }} Full debugging recipes and surface-specific commands are in `{{ .layout.docs.debugging }}`.{{ end }}

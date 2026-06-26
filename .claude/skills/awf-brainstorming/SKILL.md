@@ -13,7 +13,7 @@ Per `AGENTS.md`: hard prerequisite for any non-trivial change. Narrow exceptions
 
 ## Procedure
 
-1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check state docs at ``. Identify which packages and which existing ADRs the work touches.
+1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Identify which packages and which existing ADRs the work touches.
 
 2. **Ask clarifying questions, one at a time.** Prefer multiple choice (`AskUserQuestion` tool when available). Each question narrows scope. Avoid asking for everything in one mega-question.
 
@@ -49,7 +49,7 @@ Per `AGENTS.md`: hard prerequisite for any non-trivial change. Narrow exceptions
 ## Definitions
 
 - **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project: see `docs/decisions/README.md` "When to write an ADR".
-- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `AGENTS.md` "Planning files".
+- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `AGENTS.md`.
 
 ## Anti-patterns to avoid
 

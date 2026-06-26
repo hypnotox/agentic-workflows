@@ -21,7 +21,7 @@ Per `AGENTS.md`: complex ADR-driven work (multi-commit implementation) and compl
 
 - **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.
 
-- **Gate cost:** `./x gate` (~~15s) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `AGENTS.md` "Commit granularity vs gate cost".
+- **Gate cost:** `./x gate` (~~15s) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `AGENTS.md`.
 
 - **Test-first for bugs:** add a failing test as its own task before the fix task.
 

@@ -39,8 +39,6 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 
-
-
 1. **Handle the implementer's status:**
    - **`DONE`** → run the per-task review if present, then advance to the next task.
    - **`DONE_WITH_CONCERNS`** → read the concerns before proceeding. If they are about correctness or scope, address them before review. If they are observations, note them and proceed.
@@ -58,3 +56,4 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 - **Sequential dispatch only — never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
 - The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
 - One concern per commit; auto-commit when green.
+- **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.

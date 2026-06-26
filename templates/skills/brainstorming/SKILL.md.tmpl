@@ -12,14 +12,14 @@ The project's brainstorming skill. The design lands in the ADR (if load-bearing)
 <!-- awf:section when-to-invoke -->
 ## When to invoke
 
-Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Narrow exceptions: typo/formatting fix, one-line bugfix with an already-failing test, mechanical follow-up to a just-merged plan.
+Per `{{ .layout.workflowRef }}`: hard prerequisite for any non-trivial change. Narrow exceptions: typo/formatting fix, one-line bugfix with an already-failing test, mechanical follow-up to a just-merged plan.
 <!-- awf:end -->
 
 <!-- awf:section procedure -->
 ## Procedure
 <!-- awf:end -->
 
-1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check state docs at `{{ .vars.stateDocsPath }}`. Identify which packages and which existing ADRs the work touches.
+1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `{{ .layout.domainsDir }}`. Identify which packages and which existing ADRs the work touches.
 
 <!-- awf:section example-clarifying-questions -->
 2. **Ask clarifying questions, one at a time.** Prefer multiple choice (`AskUserQuestion` tool when available). Each question narrows scope. Avoid asking for everything in one mega-question.
@@ -58,7 +58,7 @@ Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Nar
 <!-- awf:section terminal-handoff -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
    - **Load-bearing + complex** → invoke `{{ .prefix }}-proposing-adr` first (which chains through `{{ .prefix }}-reviewing-adr`); once the ADR is settled, invoke `{{ .prefix }}-writing-plans`.
-   - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed.{{ if .vars.autonomousAdrRef }} (See `{{ .vars.autonomousAdrRef }}`.){{ end }}
+   - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed.
    - **Complex but not load-bearing** → invoke `{{ .prefix }}-writing-plans` only.
    - **Neither** → implement directly without a plan or ADR.
 <!-- awf:end -->
@@ -67,13 +67,13 @@ Per `{{ .vars.workflowDoc }}`: hard prerequisite for any non-trivial change. Nar
 ## Definitions
 
 - **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project:{{ range .data.loadBearingExamples }} {{ .item }};{{ end }} see `{{ .layout.adrReadme }}` "When to write an ADR".
-- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `{{ .vars.workflowDoc }}` "Planning files".
+- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `{{ .layout.workflowRef }}`.
 <!-- awf:end -->
 
 <!-- awf:section anti-patterns -->
 ## Anti-patterns to avoid
 
-- Diving into code before the brainstorm completes.{{ if .vars.noDivingAdrRef }} (See `{{ .vars.noDivingAdrRef }}`.){{ end }}
+- Diving into code before the brainstorm completes.
 - Presenting only one approach (forces accept/reject without alternatives).
 - Asking compound questions — split into one at a time.
 - Writing a separate spec document for the design.

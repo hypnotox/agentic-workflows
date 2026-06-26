@@ -42,7 +42,8 @@ func TestDocsSectionParity(t *testing.T) {
 		}
 		out, err := render.Render(string(src), nil,
 			func(string) (string, error) { return "", nil },
-			map[string]any{"prefix": "awf", "vars": map[string]any{}, "data": map[string]any{}})
+			map[string]any{"prefix": "awf", "vars": map[string]any{},
+				"layout": map[string]any{"adrReadme": "docs/decisions/README.md"}, "data": map[string]any{}})
 		if err != nil {
 			t.Fatalf("render %s: %v", tid, err)
 		}

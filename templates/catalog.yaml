@@ -41,7 +41,6 @@ skills:
       - procedure-per-task
       - tdd-opt-in
       - gate-tier-detail
-      - host-git-constraint
       - procedure-adr-final-commit
       - procedure-non-adr-final-commit
       - terminal-step
@@ -59,7 +58,6 @@ skills:
       - procedure-raise-concerns
       - procedure-extract-context
       - dispatch-conventions
-      - host-git-constraint
       - procedure-status-handling
       - per-task-review
       - final-task-adr-flip
@@ -167,6 +165,7 @@ skills:
       - scope-shrink-rule
       - notes
   roadmap-graduation:
+    requiresDoc: roadmap
     sections:
       - when-fires
       - failure-modes

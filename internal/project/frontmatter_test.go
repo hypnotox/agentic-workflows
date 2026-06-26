@@ -22,16 +22,29 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load catalog: %v", err)
 	}
-	layout := map[string]any{
-		"docsDir": "docs", "adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
-		"adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md",
-		"plansDir": "docs/plans",
-	}
-	check := func(tid string) {
+	// check renders one template with a docs map seeded only for the skill's own
+	// required doc — mirroring the suppression guarantee (a doc-gated skill renders
+	// only when its doc is enabled, so its unguarded .layout.docs.<doc> resolves;
+	// non-gated skills must render cleanly with no docs enabled, guards omitting).
+	check := func(tid, requiresDoc string) {
 		t.Helper()
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
+		}
+		docs := map[string]any{}
+		if requiresDoc != "" {
+			docs[requiresDoc] = "docs/" + requiresDoc + ".md"
+		}
+		workflowRef := "AGENTS.md"
+		if wp, ok := docs["workflow"]; ok {
+			workflowRef = wp.(string)
+		}
+		layout := map[string]any{
+			"docsDir": "docs", "adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
+			"adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md",
+			"plansDir": "docs/plans", "domainsDir": "docs/domains",
+			"docs": docs, "workflowRef": workflowRef,
 		}
 		vars := map[string]any{}
 		for _, v := range render.ReferencedVars(string(src)) {
@@ -61,10 +74,10 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 			t.Errorf("%s: <no value> leaked into frontmatter", tid)
 		}
 	}
-	for name := range cat.Skills {
-		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
+	for name, spec := range cat.Skills {
+		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
 	}
 	for name := range cat.Agents {
-		check(fmt.Sprintf("agents/%s.md.tmpl", name))
+		check(fmt.Sprintf("agents/%s.md.tmpl", name), "")
 	}
 }

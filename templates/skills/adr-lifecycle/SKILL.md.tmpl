@@ -8,7 +8,7 @@ description: >
 
 # {{ .prefix }}-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `{{ .vars.workflowDoc }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -68,7 +68,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
-1. **Update any state doc** under `{{ .vars.stateDocsPath }}` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
+1. **Update any domain doc** under `{{ .layout.domainsDir }}` whose domain this ADR materially shifts. Add to the Load-bearing ADRs table; refresh the Current-position prose. Include this file in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
@@ -105,7 +105,7 @@ Once `Accepted` or `Implemented`, the body is frozen — only the `status` field
 ## Notes
 
 <!-- awf:section notes -->
-- **Authoritative source:** `{{ .vars.workflowDoc }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
+- **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
 - **`{{ .layout.activeMd }}` is auto-generated** by `{{ .vars.activeMdRegenCmd }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
