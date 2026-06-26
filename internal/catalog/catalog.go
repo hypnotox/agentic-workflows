@@ -9,7 +9,8 @@ import (
 )
 
 type SkillSpec struct {
-	Sections []string `yaml:"sections"`
+	Sections    []string `yaml:"sections"`
+	RequiresDoc string   `yaml:"requiresDoc"`
 }
 
 type DocSpec struct {

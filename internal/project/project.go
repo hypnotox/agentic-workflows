@@ -149,6 +149,19 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 func (p *Project) layout() map[string]any {
 	d := strings.TrimRight(p.Cfg.DocsDir, "/")
 	dec := d + "/decisions"
+	// docs maps every enabled doc name to its output path. Local docs are
+	// included: the file still exists at that path and is citable. A key is
+	// present iff the doc is enabled (inv: layout-docs-enabled-only).
+	docs := map[string]any{}
+	for _, name := range p.Cfg.Docs {
+		docs[name] = p.docOutPath(name)
+	}
+	// workflowRef is the workflow doc's path when enabled, else AGENTS.md, so
+	// the ~always-cited workflow reference always resolves (inv: workflow-ref-fallback).
+	workflowRef := "AGENTS.md"
+	if wp, ok := docs["workflow"]; ok {
+		workflowRef = wp.(string)
+	}
 	return map[string]any{
 		"docsDir":     d,
 		"adrDir":      dec,
@@ -156,6 +169,9 @@ func (p *Project) layout() map[string]any {
 		"adrReadme":   dec + "/README.md",
 		"adrTemplate": dec + "/template.md",
 		"plansDir":    d + "/plans",
+		"docs":        docs,
+		"workflowRef": workflowRef,
+		"domainsDir":  d + "/domains", // inv: domains-dir-given
 	}
 }
 
@@ -297,12 +313,18 @@ func (p *Project) localOutPath(kind, name string) string {
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Skills.
+	enabledDocs := sliceSet(p.Cfg.Docs)
 	for _, name := range sortedStrings(p.Cfg.Skills) {
 		sc, err := p.Cfg.Sidecar("skills", name)
 		if err != nil {
 			return nil, err
 		}
 		if sc.Local {
+			continue
+		}
+		// Doc-gated skill: omit from the render set when its required doc is not
+		// enabled (inv: doc-gated-skill-suppressed).
+		if req := p.Cat.Skills[name].RequiresDoc; req != "" && !enabledDocs[req] {
 			continue
 		}
 		rf, err := p.renderTarget("skills", name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name),

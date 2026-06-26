@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -505,7 +506,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 
 // invariant: layout-derivation
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
-	p := &Project{Cfg: &config.Config{DocsDir: "documentation"}}
+	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture", "workflow"}}}
 	l := p.layout()
 	want := map[string]string{
 		"docsDir":     "documentation",
@@ -514,14 +515,71 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		"adrReadme":   "documentation/decisions/README.md",
 		"adrTemplate": "documentation/decisions/template.md",
 		"plansDir":    "documentation/plans",
+		"domainsDir":  "documentation/domains",     // invariant: domains-dir-given
+		"workflowRef": "documentation/workflow.md", // invariant: workflow-ref-fallback (enabled arm)
 	}
 	for k, v := range want {
 		if got := l[k]; got != v {
 			t.Errorf("layout[%q] = %v, want %q", k, got, v)
 		}
 	}
+	// invariant: layout-docs-enabled-only
+	wantDocs := map[string]any{
+		"architecture": "documentation/architecture.md",
+		"workflow":     "documentation/workflow.md",
+	}
+	if !reflect.DeepEqual(l["docs"], wantDocs) {
+		t.Errorf("layout[docs] = %v, want %v", l["docs"], wantDocs)
+	}
+	// invariant: workflow-ref-fallback (fallback arm) — without the workflow doc enabled,
+	// workflowRef resolves to the always-present AGENTS.md.
+	noWf := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
+	if got := noWf.layout()["workflowRef"]; got != "AGENTS.md" {
+		t.Errorf("workflowRef fallback = %v, want AGENTS.md", got)
+	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q, want documentation/architecture.md", got)
+	}
+}
+
+// invariant: doc-gated-skill-suppressed
+func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
+	// roadmap-graduation references only .vars.roadmapDoc; agents-doc is suppressed
+	// via a local sidecar so RenderAll renders only the gated skill (and, when its
+	// doc is enabled, the roadmap doc itself).
+	cfg := "prefix: example\nvars:\n  roadmapDoc: \"docs/roadmap.md\"\nskills: [roadmap-graduation]\nagents: []\nhooks: []\n"
+	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	// Gate roadmap-graduation on the roadmap doc (the catalog sets requiresDoc in a
+	// later phase; assert the mechanism independently here).
+	sk := p.Cat.Skills["roadmap-graduation"]
+	sk.RequiresDoc = "roadmap"
+	p.Cat.Skills["roadmap-graduation"] = sk
+
+	const rel = ".claude/skills/example-roadmap-graduation/SKILL.md"
+	rendered := func() bool {
+		files, err := p.RenderAll()
+		if err != nil {
+			t.Fatalf("RenderAll: %v", err)
+		}
+		for _, f := range files {
+			if f.Path == rel {
+				return true
+			}
+		}
+		return false
+	}
+	// Doc not enabled → suppressed.
+	if rendered() {
+		t.Error("roadmap-graduation should be suppressed when the roadmap doc is not enabled")
+	}
+	// Doc enabled → rendered.
+	p.Cfg.Docs = []string{"roadmap"}
+	if !rendered() {
+		t.Error("roadmap-graduation should render when the roadmap doc is enabled")
 	}
 }
 
