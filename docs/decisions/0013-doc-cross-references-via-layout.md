@@ -86,7 +86,9 @@ docs will live in.
    skill while docs are opt-in (ADR-0004), so a hard validation error would fail a fresh
    `awf sync`; suppression instead renders the coherent subset. Because a doc-gated skill
    renders only when its doc is enabled, its body may reference `.layout.docs.<doc>` unguarded
-   yet safe — `roadmap-graduation` cites `.layout.docs.roadmap` directly without a guard.
+   yet safe — `roadmap-graduation` cites `.layout.docs.roadmap` directly (in both its body and
+   its frontmatter `description`, replacing the current `.vars.roadmapDoc` interpolation) without
+   a guard.
 
 5. **Remove six non-generic vars from the standard's templates entirely:** `oracleStateDoc`
    and the five `*AdrRef` vars. Where `oracleStateDoc` was cited, keep a generic
@@ -128,7 +130,10 @@ Constraints that must hold while this decision stands; a violation should trigge
   workflow doc is enabled and the literal `AGENTS.md` when it is not.
 - `inv: domains-dir-given` — `.layout.domainsDir` equals `<docsDir>/domains`.
 - `inv: doc-gated-skill-suppressed` — a skill whose catalog entry declares `requiresDoc: D`
-  is present in the render set if and only if `D` is in the project's enabled docs.
+  is present in the render set if and only if `D` is in the project's enabled docs. Checkable by
+  rendering twice — with and without `D` enabled — and asserting the skill's output path
+  (e.g. `.claude/skills/<prefix>-roadmap-graduation/SKILL.md`) appears in the render set only when
+  `D` is enabled.
 - **Publication-safe under all toggles** (textual) — every catalog skill/agent renders without
   a `<no value>` token and with valid frontmatter regardless of which docs are enabled,
   including the empty-docs case. (The render-all frontmatter test
@@ -155,9 +160,11 @@ Constraints that must hold while this decision stands; a violation should trigge
   rendered file.
 - The standard sheds project-specific cruft (`oracleStateDoc`, `*AdrRef`), making a fresh
   adopter's seeded var set smaller and more honestly generic.
-- `layout()` gains a conditional branch (`workflowRef`) and a small loop (`docs`); the 100%
-  coverage gate (ADR-0012) requires both `workflowRef` arms and the docs-map construction to
-  be explicitly exercised.
+- `layout()` gains a conditional branch (`workflowRef`) and a small loop (`docs`), and
+  `RenderAll`'s skill loop gains a `requiresDoc`-not-enabled skip; the 100% coverage gate
+  (ADR-0012) requires both `workflowRef` arms, the docs-map construction, and both arms of the
+  suppression skip (doc enabled → skill rendered; doc disabled → skill skipped) to be explicitly
+  exercised.
 - `<docsDir>/domains` is now a reserved, awf-given location. This unblocks — but does not
   implement — the domain-docs-with-generated-ADR-index feature, which gets its own ADR.
 - Removing well-known vars is not a config-schema change (vars are free-form), so no
