@@ -43,6 +43,7 @@ type Config struct {
 	Docs       []string         `yaml:"docs"`
 	Domains    []string         `yaml:"domains"`
 	Invariants *InvariantConfig `yaml:"invariants"`
+	Audit      *AuditConfig     `yaml:"audit"`
 	root       string           // <project>/.awf, for sidecar/part resolution
 }
 
@@ -59,6 +60,61 @@ type InvariantConfig struct {
 type InvariantSource struct {
 	Globs  []string `yaml:"globs"`
 	Marker string   `yaml:"marker"`
+}
+
+// AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
+// defaults; within it, a nil slice means "use the default", an explicit empty
+// slice means "accept any / disabled" per field (see AuditSettings).
+type AuditConfig struct {
+	BaseBranch          string   `yaml:"baseBranch"`
+	AllowedTypes        []string `yaml:"allowedTypes"`
+	AllowedScopes       []string `yaml:"allowedScopes"`
+	SubjectMaxLength    *int     `yaml:"subjectMaxLength"`
+	DependencyManifests []string `yaml:"dependencyManifests"`
+	DiffThreshold       *int     `yaml:"diffThreshold"`
+}
+
+// AuditSettings resolves the effective audit settings, applying defaults.
+// Returned slices/ints are ready for internal/audit to consume directly.
+func (c *Config) AuditSettings() (baseBranch string, allowedTypes, allowedScopes, dependencyManifests []string, subjectMax, diffThreshold int) {
+	a := c.Audit
+	baseBranch = "main"
+	allowedTypes = defaultAllowedTypes()
+	dependencyManifests = defaultDependencyManifests()
+	subjectMax, diffThreshold = 72, 400
+	if a == nil {
+		return
+	}
+	if a.BaseBranch != "" {
+		baseBranch = a.BaseBranch
+	}
+	if a.AllowedTypes != nil { // explicit (incl. empty = accept any)
+		allowedTypes = a.AllowedTypes
+	}
+	allowedScopes = a.AllowedScopes // nil default = accept any
+	if a.DependencyManifests != nil {
+		dependencyManifests = a.DependencyManifests
+	}
+	if a.SubjectMaxLength != nil {
+		subjectMax = *a.SubjectMaxLength
+	}
+	if a.DiffThreshold != nil {
+		diffThreshold = *a.DiffThreshold
+	}
+	return
+}
+
+func defaultAllowedTypes() []string {
+	return []string{"build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"}
+}
+
+func defaultDependencyManifests() []string {
+	return []string{
+		"go.mod", "package.json", "pyproject.toml", "setup.py", "requirements*.txt",
+		"Cargo.toml", "Gemfile", "*.gemspec", "composer.json", "pom.xml", "build.gradle",
+		"build.gradle.kts", "*.csproj", "Directory.Packages.props", "mix.exs",
+		"Package.swift", "pubspec.yaml", "*.cabal", "package.yaml",
+	}
 }
 
 // Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the
@@ -138,14 +194,30 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("invariants source %v has an empty marker; set a literal comment marker (e.g. \"//\", \"#\")", src.Globs)
 			}
 			for _, g := range src.Globs {
-				if strings.Contains(g, "/") {
-					return fmt.Errorf("invariants glob %q must be a filename pattern, not a path", g)
-				}
-				if _, err := filepath.Match(g, "x"); err != nil {
-					return fmt.Errorf("invariants glob %q is malformed: %w", g, err)
+				if err := validateBasenameGlob(g); err != nil {
+					return fmt.Errorf("invariants glob: %w", err)
 				}
 			}
 		}
+	}
+	if c.Audit != nil {
+		for _, g := range c.Audit.DependencyManifests {
+			if err := validateBasenameGlob(g); err != nil {
+				return fmt.Errorf("audit.dependencyManifests: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// validateBasenameGlob rejects a glob that contains a path separator (it must be
+// a filename pattern matched against a basename) or is a malformed pattern.
+func validateBasenameGlob(g string) error {
+	if strings.Contains(g, "/") {
+		return fmt.Errorf("glob %q must be a filename pattern, not a path", g)
+	}
+	if _, err := filepath.Match(g, "x"); err != nil {
+		return fmt.Errorf("glob %q is malformed: %w", g, err)
 	}
 	return nil
 }

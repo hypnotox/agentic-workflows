@@ -409,3 +409,86 @@ func TestInvariantGlobValidation(t *testing.T) {
 		t.Error("expected empty marker to be rejected (a bare marker would match prose)")
 	}
 }
+
+func containsStr(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}
+
+func intPtr(i int) *int { return &i }
+
+func TestAuditSettingsDefaultsWhenNil(t *testing.T) {
+	c := &Config{Prefix: "x", DocsDir: "docs"} // Audit nil
+	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	if base != "main" {
+		t.Errorf("baseBranch = %q, want main", base)
+	}
+	if !containsStr(types, "feat") {
+		t.Errorf("allowedTypes default missing feat: %v", types)
+	}
+	if scopes != nil {
+		t.Errorf("allowedScopes default = %v, want nil (accept any)", scopes)
+	}
+	if !containsStr(manifests, "go.mod") {
+		t.Errorf("dependencyManifests default missing go.mod: %v", manifests)
+	}
+	if max != 72 || thr != 400 {
+		t.Errorf("max=%d thr=%d, want 72/400", max, thr)
+	}
+}
+
+func TestAuditSettingsZeroAuditFallsBackToDefaults(t *testing.T) {
+	c := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{}}
+	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	if base != "main" || !containsStr(types, "feat") || scopes != nil ||
+		!containsStr(manifests, "go.mod") || max != 72 || thr != 400 {
+		t.Errorf("empty AuditConfig did not fall back to defaults: base=%q types=%v scopes=%v max=%d thr=%d",
+			base, types, scopes, max, thr)
+	}
+}
+
+func TestAuditSettingsExplicitOverrides(t *testing.T) {
+	c := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
+		BaseBranch:          "develop",
+		AllowedTypes:        []string{}, // explicit empty = accept any
+		AllowedScopes:       []string{"awf"},
+		SubjectMaxLength:    intPtr(0),
+		DependencyManifests: []string{}, // explicit empty = disabled
+		DiffThreshold:       intPtr(0),
+	}}
+	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	if base != "develop" {
+		t.Errorf("baseBranch = %q, want develop", base)
+	}
+	if len(types) != 0 {
+		t.Errorf("allowedTypes = %v, want empty (accept any)", types)
+	}
+	if len(scopes) != 1 || scopes[0] != "awf" {
+		t.Errorf("allowedScopes = %v, want [awf]", scopes)
+	}
+	if len(manifests) != 0 {
+		t.Errorf("dependencyManifests = %v, want empty (disabled)", manifests)
+	}
+	if max != 0 || thr != 0 {
+		t.Errorf("max=%d thr=%d, want 0/0", max, thr)
+	}
+}
+
+func TestAuditDependencyManifestValidation(t *testing.T) {
+	ok := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
+		DependencyManifests: []string{"go.mod", "*.csproj"},
+	}}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("valid manifest globs rejected: %v", err)
+	}
+	bad := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
+		DependencyManifests: []string{"src/go.mod"},
+	}}
+	if err := bad.Validate(); err == nil {
+		t.Error("expected path-separator manifest glob to be rejected")
+	}
+}
