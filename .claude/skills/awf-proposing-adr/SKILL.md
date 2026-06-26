@@ -55,9 +55,6 @@ Load-bearing triggers include:
 <!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/proposing-adr/procedure-predecessor-flip.md to override -->
 1. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
-<!-- awf:edit readme-index-update — default; create .awf/skills/parts/proposing-adr/readme-index-update.md to override -->
-1. **Update the README index.** Add a row in the appropriate area table of `docs/decisions/README.md`. Columns: ADR link, title, Status, Notes.
-
 <!-- awf:edit invariants-rule — default; create .awf/skills/parts/proposing-adr/invariants-rule.md to override -->
 1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.awf/config.yaml` `invariants.sources`, shipping in the same commit. `awf-check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
 

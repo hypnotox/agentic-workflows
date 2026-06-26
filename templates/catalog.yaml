@@ -81,7 +81,6 @@ skills:
       - procedure-write
       - state-doc-update
       - procedure-predecessor-flip
-      - readme-index-update
       - invariants-rule
       - procedure-regen
       - procedure-commit
@@ -96,7 +95,6 @@ skills:
       - supersedence-partial
       - procedure-status-edit
       - procedure-predecessor-flip
-      - readme-index-update
       - state-doc-update
       - procedure-regen
       - procedure-gate

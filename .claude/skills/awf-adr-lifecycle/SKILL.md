@@ -61,9 +61,6 @@ Pick the status transition, then:
 <!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
 1. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
 
-<!-- awf:edit readme-index-update — default; create .awf/skills/parts/adr-lifecycle/readme-index-update.md to override -->
-1. **Update the README index.** Find the ADR's row in `docs/decisions/README.md` under the right area table and update its Status column. If the new state warrants a Notes change (supersession target, deferral reason), update Notes in the same edit.
-
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/adr-lifecycle/state-doc-update.md to override -->
 1. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
 
