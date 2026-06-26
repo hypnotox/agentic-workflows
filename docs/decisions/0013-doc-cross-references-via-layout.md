@@ -87,7 +87,11 @@ docs will live in.
    gains a short "when to write an ADR" note in its chain section — the one-line
    load-bearing heuristic plus a deferral to `<adrReadme>` (`.layout.adrReadme`) for the
    format and detailed criteria. `docs/decisions/README.md` remains the authoritative ADR
-   format manual; the workflow doc points to it rather than restating it.
+   format manual; the workflow doc points to it rather than restating it. Because
+   `.layout.adrReadme` is awf-given and always populated (unlike `.vars`/`.data`), this
+   interpolation stays publication-safe under `missingkey=zero`; it is a deliberate, narrow
+   extension of ADR-0011's static-content rule, which barred only `.vars`/`.data`
+   interpolation in doc bodies.
 
 7. **First-adopter dogfood:** this repo enables docs `architecture` (already), `workflow`,
    `testing`, `development`, `pitfalls`, and `glossary`, and removes the deleted/migrated
@@ -108,7 +112,11 @@ Constraints that must hold while this decision stands; a violation should trigge
 - `inv: domains-dir-given` — `.layout.domainsDir` equals `<docsDir>/domains`.
 - **Publication-safe under all toggles** (textual) — every catalog skill/agent renders without
   a `<no value>` token and with valid frontmatter regardless of which docs are enabled,
-  including the empty-docs case. (Covered by the existing render-all frontmatter test.)
+  including the empty-docs case. (The render-all frontmatter test
+  `TestAllTemplatesProduceValidFrontmatter` must be **extended** to seed the new `.layout`
+  members — `docs`, `workflowRef`, `domainsDir` — and to parametrise over both the
+  docs-enabled and empty-docs layouts; as written its static layout fixture omits these keys
+  and never varies docs enablement, so it does not yet exercise this invariant.)
 
 ## Consequences
 
