@@ -56,7 +56,8 @@ applied uniformly, but not as a one-off exception here.
 1. **New `domains: [<name>...]` config array** in `.claude/awf/config.yaml` — a
    *project-defined* enable list. Unlike `skills`/`agents`/`docs`, domain names are **not**
    validated against the catalog (they are arbitrary project concepts). `config.Validate`
-   instead applies name-sanity: a domain name containing a path separator or `..` is rejected.
+   instead applies name-sanity: a domain name containing a path separator (`/` or `\`, matching
+   the existing `prefix` check in `config.Validate`) or `..` is rejected.
 
 2. **New domain-doc artifact kind.** A single template `templates/domains/domain.md.tmpl` is
    instantiated once per declared domain, rendered to `<docsDir>/domains/<name>.md`. Its section
@@ -83,10 +84,16 @@ applied uniformly, but not as a one-off exception here.
    ranges over injected `.data`), not the static catalog-doc rule. Domain docs are a distinct
    artifact kind, outside ADR-0011's static-content scope.
 
-6. **Workflow change.** `docs/decisions/template.md` gains `domains: []`; `proposing-adr` and
-   `adr-lifecycle` require setting it and **drop** their manual "Load-bearing ADRs table"
-   mandate — the per-domain index now maintains that table automatically. Setting `domains:`
-   on a new ADR is the single action that keeps every affected domain doc current.
+6. **Workflow change.** `docs/decisions/template.md` gains `domains: []` and the `## Frontmatter`
+   reference block in `docs/decisions/README.md` documents the new field; `proposing-adr` and
+   `adr-lifecycle` require setting it. `adr-lifecycle`'s domain-doc step today reads "Add to the
+   Load-bearing ADRs table; refresh the Current-position prose" (the explicit table mandate lives
+   there; `proposing-adr` carries only a generic "update the domain doc" instruction). The
+   table-maintenance half is **dropped** — the per-domain index now maintains that table
+   automatically — while the current-position prose-refresh obligation is **retained**. Setting
+   `domains:` on a new ADR is thus the single action that keeps every affected domain doc's
+   generated `decisions` index current; the hand-authored `current-position` narrative is still
+   refreshed by hand when a domain's position materially shifts.
 
 7. **First-adopter dogfood.** This repo declares domains `[rendering, config, invariants,
    tooling, adr-system]`, retro-tags all existing ADRs with `domains:`, and ships a brief
@@ -102,7 +109,7 @@ Constraints that must hold while this decision stands; a violation should trigge
   state and reports it `stale` when on-disk content diverges; retagging or superseding an ADR
   without `sync` is detected (the domain doc is not validated by the lock hash alone).
 - `inv: domain-name-validated` — `config.Validate` rejects a domain name containing a path
-  separator or `..`.
+  separator (`/` or `\`, as the `prefix` check already does) or `..`.
 - **Publication-safe** (textual) — a domain doc with zero matching ADRs renders a placeholder,
   never a `<no value>` token or an empty `decisions` section.
 
