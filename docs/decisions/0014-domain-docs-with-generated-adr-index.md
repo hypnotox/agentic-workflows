@@ -60,10 +60,17 @@ applied uniformly, but not as a one-off exception here.
    the existing `prefix` check in `config.Validate`) or `..` is rejected.
 
 2. **New domain-doc artifact kind.** A single template `templates/domains/domain.md.tmpl` is
-   instantiated once per declared domain, rendered to `<docsDir>/domains/<name>.md`. Its section
-   taxonomy: `current-position` (hand-authored narrative — convention-part-overridable at
-   `.claude/awf/domains/parts/<name>/current-position.md`, template default = skeleton prompt)
-   and `decisions` (generated; content injected as render data).
+   instantiated once per declared domain, rendered to `<docsDir>/domains/<name>.md`. It has
+   exactly **one overlay section**, `current-position` (hand-authored narrative —
+   convention-part-overridable at `.claude/awf/domains/parts/<name>/current-position.md`,
+   template default = skeleton prompt). The generated `## Decisions` index is **forced body**,
+   not an overlay section: it is plain template (outside any `awf:section` marker) with the
+   index injected as render data, rendered last, beneath the narrative — always present and
+   structurally un-overridable (no marker → no overlay → a convention part cannot replace it).
+   It is treated like frontmatter: awf-owned and forced, not author-controlled. Because
+   `decisions` is not a declared section, `orphans()` flags any domain part other than
+   `current-position` (e.g. a stray `decisions.md`) rather than letting it silently shadow the
+   index.
 
 3. **`internal/adr` extension.** `adrFrontmatter` gains `domains []string` and starts parsing
    the already-present `superseded_by`; `ADR` carries both. A new
@@ -111,7 +118,7 @@ Constraints that must hold while this decision stands; a violation should trigge
 - `inv: domain-name-validated` — `config.Validate` rejects a domain name containing a path
   separator (`/` or `\`, as the `prefix` check already does) or `..`.
 - **Publication-safe** (textual) — a domain doc with zero matching ADRs renders a placeholder,
-  never a `<no value>` token or an empty `decisions` section.
+  never a `<no value>` token or an empty `## Decisions` index.
 
 ## Consequences
 
