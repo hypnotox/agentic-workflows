@@ -17,18 +17,20 @@ This project's `.claude/` skills, agents, and git hooks — and this guide — a
 <!-- awf:section you-and-this-project -->
 ## You and this project
 
+<!-- Authoring: see agents-md-standard.md — the agent's ownership stance in 2-3 sentences. -->
 You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.
 <!-- awf:end -->
 
 <!-- awf:section identity -->
 ## Identity
 
-`{{ .prefix }}` is a software project. Override this paragraph with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph stating what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves.
+`{{ .prefix }}` is a software project. Replace this with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph — what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. See `agents-md-standard.md`.
 <!-- awf:end -->
 
 <!-- awf:section invariants -->
 ## Invariants
 
+<!-- Authoring: see agents-md-standard.md — hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated — never hand-edited.

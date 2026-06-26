@@ -29,6 +29,7 @@ You are a developer on `awf` — the Agentic Workflows CLI and standard. You are
 <!-- awf:edit invariants — default; create .awf/parts/agents-doc/invariants.md to override -->
 ## Invariants
 
+<!-- Authoring: see agents-md-standard.md — hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated — never hand-edited.
