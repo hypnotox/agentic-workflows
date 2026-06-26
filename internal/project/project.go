@@ -497,6 +497,32 @@ func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
 	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, true, nil
 }
 
+// generateDomainDocs renders one content-only doc per declared domain
+// (<docsDir>/domains/<name>.md): the domain template + its convention parts, with
+// the per-domain ADR index injected as .data.decisions. Like ACTIVE.md, the result
+// carries no TemplateID/Hash — drift is checked by regeneration, since the index
+// depends on external ADR frontmatter state.
+func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
+	decisionsDir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
+	var out []RenderedFile
+	for _, name := range sortedStrings(p.Cfg.Domains) {
+		index, err := adr.RenderDomainIndex(decisionsDir, name)
+		if err != nil { // coverage-ignore: RenderDomainIndex fails only on a ParseDir error, but generateActiveMD parses the same decisions dir earlier in Sync/Check and fails first
+			return nil, err
+		}
+		data := p.data(config.Sidecar{})
+		data["data"] = map[string]any{"domain": name, "decisions": index}
+		rf, err := p.renderTarget("domains", name, "domains/domain.md.tmpl",
+			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
+			strings.TrimRight(p.Cfg.DocsDir, "/")+"/domains/"+name+".md")
+		if err != nil { // coverage-ignore: .data.domain/.data.decisions are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
+			return nil, err
+		}
+		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content})
+	}
+	return out, nil
+}
+
 // checkLocalFrontmatter validates the on-disk frontmatter of every declared local
 // skill/agent at its conventional output path. fail wraps a path+error into the
 // caller's accumulator (a hard error for Sync, a drift entry for Check).
@@ -555,6 +581,11 @@ func (p *Project) Sync() error {
 	} else if ok {
 		files = append(files, amd)
 	}
+	dds, err := p.generateDomainDocs()
+	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+		return err
+	}
+	files = append(files, dds...)
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	want := map[string]bool{}
 	for _, f := range files {
@@ -605,12 +636,13 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 // section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) orphans() []manifest.Drift {
 	enabled := map[string]map[string]bool{
-		"skills": sliceSet(p.Cfg.Skills),
-		"agents": sliceSet(p.Cfg.Agents),
-		"docs":   sliceSet(p.Cfg.Docs),
+		"skills":  sliceSet(p.Cfg.Skills),
+		"agents":  sliceSet(p.Cfg.Agents),
+		"docs":    sliceSet(p.Cfg.Docs),
+		"domains": sliceSet(p.Cfg.Domains),
 	}
 	var drift []manifest.Drift
-	for _, kind := range []string{"skills", "agents", "docs"} {
+	for _, kind := range []string{"skills", "agents", "docs", "domains"} {
 		base := filepath.Join(p.Root, ".claude", "awf", kind)
 		// Sidecars: <kind>/<name>.yaml.
 		entries, err := os.ReadDir(base)
@@ -678,6 +710,8 @@ func (p *Project) declaredSections(kind, name string) []string {
 		return p.Cat.Agents[name].Sections
 	case "docs":
 		return p.Cat.Docs[name].Sections
+	case "domains":
+		return p.Cat.DomainDoc.Sections
 	}
 	return nil
 }
@@ -704,10 +738,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		rendered[f.Path] = f
 	}
 	activeMdRel := strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md"
+	domainsPrefix := strings.TrimRight(p.Cfg.DocsDir, "/") + "/domains/"
 	var drift []manifest.Drift
 	for _, path := range sortedKeys(lock.Files) {
-		if path == activeMdRel {
-			continue // generated artifact — checked separately below
+		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {
+			continue // generated artifacts — checked separately below
 		}
 		e := lock.Files[path]
 		rf, ok := rendered[path]
@@ -763,6 +798,28 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		}
 	} else if _, locked := lock.Files[activeMdRel]; locked {
 		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "orphaned", Detail: "no ADRs remain; run awf sync"})
+	}
+	// Domain docs are generated from ADR frontmatter + convention parts, so like
+	// ACTIVE.md their staleness cannot be detected by the lock hash. Regenerate and
+	// compare each; flag a lock entry no longer produced (domain removed).
+	dds, err := p.generateDomainDocs()
+	if err != nil { // coverage-ignore: unreachable — the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
+		return nil, err
+	}
+	produced := map[string]bool{}
+	for _, dd := range dds {
+		produced[dd.Path] = true
+		onDisk, err := os.ReadFile(filepath.Join(p.Root, dd.Path))
+		if err != nil {
+			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "missing", Detail: "domain doc absent; run awf sync"})
+		} else if manifest.Hash(onDisk) != manifest.Hash([]byte(dd.Content)) {
+			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "stale", Detail: "domain doc out of date; run awf sync"})
+		}
+	}
+	for path := range lock.Files {
+		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
+			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
+		}
 	}
 	return drift, nil
 }

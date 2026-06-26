@@ -24,6 +24,7 @@ type Catalog struct {
 	Agents    map[string]SkillSpec `yaml:"agents"`
 	Hooks     []string             `yaml:"hooks"`
 	AgentsDoc SkillSpec            `yaml:"agentsDoc"`
+	DomainDoc SkillSpec            `yaml:"domainDoc"`
 	Docs      map[string]DocSpec   `yaml:"docs"`
 }
 

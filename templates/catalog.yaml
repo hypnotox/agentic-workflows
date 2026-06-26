@@ -238,3 +238,7 @@ agentsDoc:
     - workflow
     - commands
     - document-map
+
+domainDoc:
+  sections:
+    - current-state

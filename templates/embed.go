@@ -3,5 +3,5 @@ package templates
 
 import "embed"
 
-//go:embed catalog.yaml skills hooks agents agents-doc docs
+//go:embed catalog.yaml skills hooks agents agents-doc docs domains
 var FS embed.FS
