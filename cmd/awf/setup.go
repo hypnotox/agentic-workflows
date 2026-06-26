@@ -15,7 +15,7 @@ import (
 func runSetup(root string, stdout, stderr io.Writer) error {
 	if _, err := os.Stat(filepath.Join(root, ".githooks")); os.IsNotExist(err) {
 		return fmt.Errorf("no .githooks/ in %s — run `awf sync` first", root)
-	} else if err != nil {
+	} else if err != nil { // coverage-ignore: Stat returns a non-NotExist error only on a permission fault that root bypasses
 		return err
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); os.IsNotExist(err) {

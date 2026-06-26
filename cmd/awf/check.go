@@ -20,7 +20,7 @@ func runCheck(root string, stdout io.Writer) error {
 		return err
 	}
 	findings, err := p.CheckInvariants()
-	if err != nil {
+	if err != nil { // coverage-ignore: p.Check above rejects the same malformed ADR first, so this never errors here
 		return err
 	}
 	for _, d := range drift {
