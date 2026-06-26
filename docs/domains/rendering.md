@@ -18,3 +18,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](../decisions/0013-doc-cross-references-via-layout.md)
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
 
+### Proposed
+
+- [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
+

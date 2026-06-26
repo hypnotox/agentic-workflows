@@ -13,3 +13,7 @@ Per-project configuration lives in a `.claude/awf/` tree: a skeleton `config.yam
 - [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](../decisions/0009-tree-based-config-layout.md)
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](../decisions/0010-versioned-lock-and-awf-upgrade.md)
 
+### Proposed
+
+- [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
+

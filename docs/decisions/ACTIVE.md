@@ -19,3 +19,7 @@
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](0012-full-coverage-gate-and-conventions.md) — Implemented
 - [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](0013-doc-cross-references-via-layout.md) — Implemented
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](0014-domain-docs-with-generated-adr-index.md) — Implemented
+
+## Proposed
+
+- [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](0015-in-file-provenance-and-convention-only-overrides.md) — Proposed
