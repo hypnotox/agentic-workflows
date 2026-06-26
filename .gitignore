@@ -5,3 +5,7 @@
 !.claude/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# awf renders a CLAUDE.md @AGENTS.md bridge at the repo root (ADR-0016);
+# negate the user's global CLAUDE.md ignore so the rendered artifact commits.
+!CLAUDE.md

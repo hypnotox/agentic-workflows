@@ -1,6 +1,9 @@
 package project
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // invariant: target-output-paths
 func TestClaudeTargetPaths(t *testing.T) {
@@ -12,5 +15,33 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 	if claudeTarget.BridgeFile != "CLAUDE.md" {
 		t.Fatalf("BridgeFile = %q", claudeTarget.BridgeFile)
+	}
+}
+
+// invariant: claude-md-bridge
+func TestClaudeMdBridgeRendered(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *RenderedFile
+	for i := range files {
+		if files[i].Path == "CLAUDE.md" {
+			got = &files[i]
+		}
+	}
+	if got == nil {
+		t.Fatal("CLAUDE.md not rendered")
+	}
+	if !strings.Contains(got.Content, "@AGENTS.md") {
+		t.Fatalf("CLAUDE.md missing @AGENTS.md import:\n%s", got.Content)
+	}
+	if !strings.HasPrefix(got.Content, "<!-- ") {
+		t.Fatalf("CLAUDE.md missing provenance banner:\n%s", got.Content)
 	}
 }

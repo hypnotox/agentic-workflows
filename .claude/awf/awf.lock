@@ -122,6 +122,12 @@
       "configHash": "sha256:76a3246e36d86bd24701ee7a8c2c23b65214fde22252293f6ba2d956e295077a",
       "outputHash": "sha256:951bee3a9f92f54ba800cdc5402d488233a202bc523eadd2dda9dfedccb3fdda"
     },
+    "CLAUDE.md": {
+      "templateId": "claude/CLAUDE.md.tmpl",
+      "templateHash": "sha256:336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "configHash": "sha256:df508dca9f536bae873488f5c517858f4d25aef5c3a819e99f52ae3f7b1bade2",
+      "outputHash": "sha256:46b8e868f7625323349cb665b960f05652746987a6fccc885c5e3b4ab7a515ba"
+    },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",

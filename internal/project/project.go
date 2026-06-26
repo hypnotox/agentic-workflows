@@ -417,6 +417,17 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			return nil, err
 		}
 		out = append(out, rf)
+		// CLAUDE.md bridge: the Claude adapter imports AGENTS.md verbatim so Claude
+		// Code ingests it regardless of its auto-fallback (ADR-0016). Tied to AGENTS.md
+		// existing (the agents-doc render above).
+		if p.Target.BridgeFile != "" {
+			brf, err := p.renderTarget("claude", "", "claude/CLAUDE.md.tmpl",
+				nil, config.Sidecar{}, p.data(config.Sidecar{}), p.Target.BridgeFile)
+			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
+				return nil, err
+			}
+			out = append(out, brf)
+		}
 	}
 	return out, nil
 }
