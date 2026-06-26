@@ -5,7 +5,7 @@ description: Use to execute a written awf plan by dispatching one subagent per t
 
 # awf-subagent-driven-development
 
-The `implementation` chain node, subagent-dispatch shape. Wraps `AGENTS.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `awf-executing-plans`.
+The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `awf-executing-plans`.
 
 **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `awf-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `awf-reviewing-impl` as the only quality gate — there is no panel backstop in this model, so the whole-branch review absorbs everything per-task review would have caught.
 
@@ -34,7 +34,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 
 1. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **`./x gate` per commit.** Fast tier by default; `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `AGENTS.md`.
+   - **`./x gate` per commit.** Fast tier by default; `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `docs/workflow.md`.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.

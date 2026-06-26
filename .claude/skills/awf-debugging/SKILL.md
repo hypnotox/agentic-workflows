@@ -57,5 +57,5 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 
 ## Notes
 
-- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `AGENTS.md`.
+- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `docs/workflow.md`.
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.

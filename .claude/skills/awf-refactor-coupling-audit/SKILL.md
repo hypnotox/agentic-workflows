@@ -9,7 +9,7 @@ description: >
 
 # awf-refactor-coupling-audit
 
-A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit that `AGENTS.md` mandates before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
+A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit that `docs/workflow.md` mandates before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
 
 ## When to invoke
 
@@ -27,7 +27,7 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 
 ### Audit shape
 
-1. **Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` / Read calls in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single `Explore` subagent via the Agent tool to absorb the grep transcript noise per `AGENTS.md`.
+1. **Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` / Read calls in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single `Explore` subagent via the Agent tool to absorb the grep transcript noise per `docs/workflow.md`.
 
 ### 1. Top-level package files
 
@@ -107,6 +107,6 @@ If the audit reveals the refactor is larger than the ADR's originally proposed s
 
 ## Notes
 
-1. Authoritative source for the audit categories: `AGENTS.md`. This skill is a procedural pointer, not a contract restatement — when the playbook prose evolves, follow the prose.
+1. Authoritative source for the audit categories: `docs/workflow.md`. This skill is a procedural pointer, not a contract restatement — when the playbook prose evolves, follow the prose.
 1. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
 1. For recurring coupling surprises specific to this project, see the `replaceWith` sections above; fill those in when patterns repeat.

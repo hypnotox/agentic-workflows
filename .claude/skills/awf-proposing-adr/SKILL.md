@@ -8,11 +8,11 @@ description: >
 
 # awf-proposing-adr
 
-Writes a new ADR to `docs/decisions/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `AGENTS.md` for the full lifecycle rules and `awf-adr-lifecycle` for state transitions.
+Writes a new ADR to `docs/decisions/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `docs/workflow.md` for the full lifecycle rules and `awf-adr-lifecycle` for state transitions.
 
 ## When to invoke
 
-Per `AGENTS.md`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `docs/workflow.md`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
 
 Load-bearing triggers include:
 - Introducing a new internal package or changing package boundaries
@@ -64,4 +64,4 @@ Load-bearing triggers include:
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `awf-adr-lifecycle`, not this skill.
 - `docs/decisions/ACTIVE.md` is never hand-edited; it is always regenerated via `./x sync`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
-- For the full ADR lifecycle, see `AGENTS.md`.
+- For the full ADR lifecycle, see `docs/workflow.md`.

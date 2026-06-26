@@ -48,7 +48,7 @@ Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity
 
 **Chain skills** (invoke in order): `awf-brainstorming`, `awf-writing-plans`, `awf-proposing-adr`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
 
-Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [AGENTS.md](AGENTS.md).
+Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 ## Commands
 
@@ -65,3 +65,8 @@ awf upgrade — migrate the config tree to the current schema after upgrading aw
 - **Active ADRs:** [docs/decisions/ACTIVE.md](docs/decisions/ACTIVE.md) — generated status index; do not hand-edit.
 - **Plans:** [docs/plans](docs/plans) — implementation plans for complex work.
 - **Architecture:** [docs/architecture.md](docs/architecture.md) — system shape, packages, key components, dependencies
+- **Development:** [docs/development.md](docs/development.md) — local setup, the command runner, dependency reference
+- **Glossary:** [docs/glossary.md](docs/glossary.md) — project jargon and term ownership
+- **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md) — recurring bugs and tricky areas
+- **Testing:** [docs/testing.md](docs/testing.md) — gate tiers, test layout, what each tier covers
+- **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/plan/ADR chain, commit discipline

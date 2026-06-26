@@ -1,0 +1,7 @@
+# Glossary
+
+Project jargon and what each term means; start here when a term is unfamiliar. _Fill in the table and keep it sorted._
+
+| Term | Meaning |
+|---|---|
+| _term_ | _what it means in this project, and who owns it_ |

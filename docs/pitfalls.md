@@ -1,0 +1,3 @@
+# Pitfalls
+
+Recurring bugs and tricky areas worth a warning before you touch them. _One subsection per pitfall: the symptom, the underlying cause, and how to avoid or fix it._

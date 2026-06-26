@@ -9,7 +9,7 @@ Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention.
 
 ## When to invoke
 
-Per `AGENTS.md`: complex ADR-driven work (multi-commit implementation) and complex non-ADR work where the implementation steps benefit from upfront enumeration — multi-commit work, interdependent steps, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch. Skip for one-line bugfixes and changes that follow established patterns. When in doubt, write the plan.
+Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) and complex non-ADR work where the implementation steps benefit from upfront enumeration — multi-commit work, interdependent steps, refactors applying an already-decided pattern across many sites, or work destined for subagent dispatch. Skip for one-line bugfixes and changes that follow established patterns. When in doubt, write the plan.
 
 ## Conventions enforced
 
@@ -21,7 +21,7 @@ Per `AGENTS.md`: complex ADR-driven work (multi-commit implementation) and compl
 
 - **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.
 
-- **Gate cost:** `./x gate` (~~15s) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `AGENTS.md`.
+- **Gate cost:** `./x gate` (~~15s) runs on every code-touching commit. Batch closely-related same-shape changes that share one rationale into a single commit; keep genuinely independent concerns separate. Docs-only commits outside the decisions directory skip the gate automatically. See `docs/workflow.md`.
 
 - **Test-first for bugs:** add a failing test as its own task before the fix task.
 

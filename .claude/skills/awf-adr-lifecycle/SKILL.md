@@ -8,7 +8,7 @@ description: >
 
 # awf-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `AGENTS.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -83,7 +83,7 @@ Once `Accepted` or `Implemented`, the body is frozen — only the `status` field
 
 ## Notes
 
-- **Authoritative source:** `AGENTS.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
+- **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
 - **`docs/decisions/ACTIVE.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

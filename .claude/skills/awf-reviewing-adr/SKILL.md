@@ -42,5 +42,5 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 ## Notes
 
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
-- See `AGENTS.md` for full ADR lifecycle rules and the canonical workflow chain.
+- See `docs/workflow.md` for full ADR lifecycle rules and the canonical workflow chain.
 - The `adr-reviewer` agent is lens-diverse internally; this skill does not orchestrate a panel and does not specify per-lens model routing.

@@ -9,7 +9,7 @@ The project's brainstorming skill. The design lands in the ADR (if load-bearing)
 
 ## When to invoke
 
-Per `AGENTS.md`: hard prerequisite for any non-trivial change. Narrow exceptions: typo/formatting fix, one-line bugfix with an already-failing test, mechanical follow-up to a just-merged plan.
+Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exceptions: typo/formatting fix, one-line bugfix with an already-failing test, mechanical follow-up to a just-merged plan.
 
 ## Procedure
 
@@ -49,7 +49,7 @@ Per `AGENTS.md`: hard prerequisite for any non-trivial change. Narrow exceptions
 ## Definitions
 
 - **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project: see `docs/decisions/README.md` "When to write an ADR".
-- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `AGENTS.md`.
+- **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `docs/workflow.md`.
 
 ## Anti-patterns to avoid
 

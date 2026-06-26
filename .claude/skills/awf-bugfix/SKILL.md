@@ -11,7 +11,7 @@ The fix-and-verify task skill. Companion to `awf-debugging`: where debugging own
 
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
-- **Trivial bugfix that validly skips the chain** — the narrow exception in `AGENTS.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
+- **Trivial bugfix that validly skips the chain** — the narrow exception in `docs/workflow.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
 - **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `awf-reviewing-impl` pair.
 
 If the root cause is not yet known, invoke `awf-debugging` first.
@@ -27,11 +27,12 @@ The specific test tiers (unit, integration, e2e, etc.) and their locations are p
 
 1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
 
+1. **Check `docs/pitfalls.md` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
 1. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
-1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `AGENTS.md`, fixes ship with a regression test.
+1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
 1. **Invoke `awf-reviewing-impl` as the terminal step.**
 
