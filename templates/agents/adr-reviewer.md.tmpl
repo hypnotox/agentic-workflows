@@ -1,13 +1,13 @@
 ---
 name: adr-reviewer
 description: >
-  Lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.
+  Independent, lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.
   Returns structured findings per the shared review-discipline spine.
 ---
 
 # adr-reviewer
 
-Lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`, dispatched in fresh context. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
 
 ## Finding schema
 

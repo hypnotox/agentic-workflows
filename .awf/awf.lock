@@ -4,21 +4,21 @@
   "files": {
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
-      "templateHash": "sha256:6f8a3eaaaf40f90d87b6a338724f986a345dd4a9871f7115502db13a7c0ba2fc",
+      "templateHash": "sha256:460b1c8d8eabe35b3bdbde3366bccfc8478e0ddbf0834e857fae93eb228f8788",
       "configHash": "sha256:c58775772cc30c39fd7ab208854fed48be5a3ca45d14f75eef1e20af31fb7b9d",
-      "outputHash": "sha256:2935a7c2a6405e389fbe34da07abe11c81dc2007c94b670b051ecf467b982b5b"
+      "outputHash": "sha256:2cf10244095e3fe2b037a8a00e0b26f5139f1bd1367fa0b54b9c85599f9d85db"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
-      "templateHash": "sha256:4a71d377427c74b52d21d9cadd3b9546e2c7bf4d524f815022fc8690f64aae6e",
+      "templateHash": "sha256:25897ffb27a02d5043fb22295ff4cb8a23b024a0c6f07b291b803b80a1bb3e6d",
       "configHash": "sha256:f760ab503df030c4b7e4dc32d363a2e7a962c8aa216f36c20ca83d2291128b9b",
-      "outputHash": "sha256:ed1a9d9c1e5f0a450b1f5f85f88d6a1730fe4473055556ce01afbae2c8779f19"
+      "outputHash": "sha256:13bfb92f43794faaa54861f0458dc08690a2e658c4ce059fd2165d18accc5720"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:9c6b2db98a556df00a706fc1505c8c7d3a4b7e85a90a57819d80cfc6f3be939f",
+      "templateHash": "sha256:a5068602a3cd0aef8c7549b32da97ff8a4e53fea8c49774a087da60846d8044a",
       "configHash": "sha256:a4f828e82c17500d96a51480a23634002782d2945539f498fa21fec57052d334",
-      "outputHash": "sha256:d2e7946268d89fdcd324a65d345a984ba792c3007687aea80b7f0d30b6e351a2"
+      "outputHash": "sha256:a4684a6d729837d81dc01273e0ed389846d968014dcdfd40c48faedf9608b2dc"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",

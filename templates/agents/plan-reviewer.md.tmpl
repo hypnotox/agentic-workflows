@@ -1,13 +1,13 @@
 ---
 name: plan-reviewer
 description: >
-  Lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.
+  Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.
   Returns structured findings per the shared review-discipline spine.
 ---
 
 # plan-reviewer
 
-Lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`, dispatched in fresh context. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
 
 ## Finding schema
 

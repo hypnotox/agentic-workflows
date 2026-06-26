@@ -21,7 +21,7 @@ func TestEndToEndGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(agent), "Specialised reviewer for example") {
+	if !strings.Contains(string(agent), "Independent fresh-context reviewer for example") {
 		t.Errorf("agent not interpolated:\n%s", agent)
 	}
 

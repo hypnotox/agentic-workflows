@@ -193,9 +193,9 @@ func TestCodeReviewerAgent(t *testing.T) {
 		t.Errorf("expected 'name: code-reviewer' in output:\n%s", out)
 	}
 
-	// Assert description contains Specialised reviewer for example (kept green by TestEndToEndGolden too)
-	if !strings.Contains(out, "Specialised reviewer for example") {
-		t.Errorf("expected 'Specialised reviewer for example' in description:\n%s", out)
+	// Assert description contains Independent fresh-context reviewer for example (kept green by TestEndToEndGolden too)
+	if !strings.Contains(out, "Independent fresh-context reviewer for example") {
+		t.Errorf("expected 'Independent fresh-context reviewer for example' in description:\n%s", out)
 	}
 
 	// Assert shared review-discipline spine phrases (verbatim from siblings)
