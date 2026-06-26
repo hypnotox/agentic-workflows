@@ -19,6 +19,7 @@ type SectionPlan struct {
 }
 
 // editPointer is the awf:edit provenance comment emitted before a section body.
+// invariant: section-edit-pointer
 func editPointer(name string, p SectionPlan) string {
 	if p.HasPart {
 		return fmt.Sprintf("<!-- awf:edit %s — from %s -->\n", name, p.EditPath)
@@ -29,6 +30,8 @@ func editPointer(name string, p SectionPlan) string {
 // Assemble applies the per-section plan to the parsed segments and returns the
 // final template source: literal segments verbatim; each non-dropped section
 // prefixed with its awf:edit pointer, then its part body or the template default.
+// Section markers are consumed here and never written, so they cannot leak.
+// invariant: no-section-marker-leak
 func Assemble(segs []Segment, plan map[string]SectionPlan) string {
 	var b strings.Builder
 	for _, s := range segs {

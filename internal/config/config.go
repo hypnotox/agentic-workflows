@@ -13,6 +13,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// SectionOverride is a sidecar's per-section override. Body replacement is by
+// convention part only; the field set is deliberately just Drop.
+// invariant: no-replacewith
 type SectionOverride struct {
 	Drop bool `yaml:"drop"`
 }
