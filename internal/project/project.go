@@ -442,7 +442,7 @@ func (p *Project) renderTarget(kind, target, tid string, declared []string, sc c
 	}
 	content = injectBanner(content, tid)
 	cfgHash, err := p.targetConfigHash(assembled, sc, p.consumedParts(kind, target, plan))
-	if err != nil { // coverage-ignore: targetConfigHash only fails on an unreadable consumed part, but any such part fails render.Assemble above first
+	if err != nil { // coverage-ignore: targetConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}
 	return RenderedFile{

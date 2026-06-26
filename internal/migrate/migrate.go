@@ -57,7 +57,7 @@ func stampLockSchema(root string) error {
 		return nil // no lock yet; the terminal sync stamps it
 	}
 	l, err := manifest.Load(lockPath)
-	if err != nil { // coverage-ignore: Stat above confirmed the lock exists and is readable
+	if err != nil { // coverage-ignore: reached only via Upgrade, which calls this after a migration applied, i.e. Generation < Current; Generation returns Current() on an unloadable lock, so when this runs the lock just loaded cleanly
 		return err
 	}
 	l.SchemaVersion = Current()
