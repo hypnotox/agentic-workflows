@@ -48,5 +48,5 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->
 - This skill never edits the user's repository other than the plan file itself.
 - The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The other three ran during `awf-reviewing-plan` and need not re-run.
-- The re-review loop (3-round soft cap) is owned by the `plan-reviewer` agent. This skill does not orchestrate a panel and does not specify per-lens model routing.
+- The re-review loop (3-round soft cap) is owned by the `plan-reviewer` agent, one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

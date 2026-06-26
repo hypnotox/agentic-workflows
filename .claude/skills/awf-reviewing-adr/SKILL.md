@@ -54,4 +54,4 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-adr/notes.md to override -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `docs/workflow.md` for full ADR lifecycle rules and the canonical workflow chain.
-- The `adr-reviewer` agent is lens-diverse internally; this skill does not orchestrate a panel and does not specify per-lens model routing.
+- The `adr-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.

@@ -10,7 +10,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.work
 <!-- awf:end -->
 
 <!-- awf:section per-task-review-note -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — there is no panel backstop in this model, so the whole-branch review absorbs everything per-task review would have caught.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -19,7 +19,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.work
 Invoke when:
 - A plan exists under `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are mostly independent — each task can be implemented without seeing prior tasks' context, AND
-- Fresh context per task is valuable (each task touches a distinct subsystem; main-session context is preserved for coordination).
+- Fresh context per task is valuable (each task touches a distinct subsystem; the main session stays the orchestrator, holding coordination context across tasks).
 
 The agent picks between this skill and `{{ .prefix }}-executing-plans` by inspecting the plan's phase structure and task coupling. For tightly-coupled sequential plans where state flows between tasks, use `{{ .prefix }}-executing-plans` instead.
 

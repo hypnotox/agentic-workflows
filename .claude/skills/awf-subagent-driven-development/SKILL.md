@@ -10,7 +10,7 @@ description: Use to execute a written awf plan by dispatching one subagent per t
 The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `awf-executing-plans`.
 
 <!-- awf:edit per-task-review-note — default; create .awf/skills/parts/subagent-driven-development/per-task-review-note.md to override -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `awf-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `awf-reviewing-impl` as the only quality gate — there is no panel backstop in this model, so the whole-branch review absorbs everything per-task review would have caught.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `awf-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `awf-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/subagent-driven-development/when-to-invoke.md to override -->
 ## When to invoke
@@ -18,7 +18,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.m
 Invoke when:
 - A plan exists under `docs/plans/YYYY-MM-DD-<topic>.md`, AND
 - Plan tasks are mostly independent — each task can be implemented without seeing prior tasks' context, AND
-- Fresh context per task is valuable (each task touches a distinct subsystem; main-session context is preserved for coordination).
+- Fresh context per task is valuable (each task touches a distinct subsystem; the main session stays the orchestrator, holding coordination context across tasks).
 
 The agent picks between this skill and `awf-executing-plans` by inspecting the plan's phase structure and task coupling. For tightly-coupled sequential plans where state flows between tasks, use `awf-executing-plans` instead.
 

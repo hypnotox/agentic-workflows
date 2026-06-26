@@ -30,7 +30,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-1. **Dispatch the `code-reviewer` subagent.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+1. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -64,7 +64,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 ## Notes
 
 <!-- awf:section notes -->
-- This is the terminal step of the implementation phase: a single `code-reviewer` subagent dispatch, not a panel.
+- This is the terminal step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - The ADR status flip (Accepted → Implemented) is made by `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->

@@ -55,7 +55,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/writing-plans/terminal-step.md to override -->
-1. **Terminal step: invoke `awf-reviewing-plan`** via the `Skill` tool, passing the plan path. The reviewer runs the lens panel and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
+1. **Terminal step: invoke `awf-reviewing-plan`** via the `Skill` tool, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
 
 ## Notes
 

@@ -28,7 +28,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. Apply the same skip logic as `.githooks/pre-commit` (cite the hook; do not restate patterns). Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-1. **Dispatch the `code-reviewer` subagent.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+1. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -57,6 +57,6 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 ## Notes
 
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
-- This is the terminal step of the implementation phase: a single `code-reviewer` subagent dispatch, not a panel.
+- This is the terminal step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - The ADR status flip (Accepted → Implemented) is made by `awf-executing-plans` / `awf-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

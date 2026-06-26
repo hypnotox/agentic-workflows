@@ -68,7 +68,7 @@ Load-bearing triggers include:
 1. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
-1. **Terminal step: invoke `awf-reviewing-adr`** via the `Skill` tool, passing the ADR path. The reviewer runs the lens panel and reports findings; route them per the reviewing skill's procedure.
+1. **Terminal step: invoke `awf-reviewing-adr`** via the `Skill` tool, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
 ## Notes
 
