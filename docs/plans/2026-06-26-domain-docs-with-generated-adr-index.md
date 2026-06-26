@@ -4,14 +4,14 @@ Design & rationale: [docs/decisions/0014-domain-docs-with-generated-adr-index.md
 
 ## Goal
 
-Add a new awf-managed artifact kind: per-domain docs at `docs/domains/<name>.md` combining a hand-authored `current-position` narrative with a generated `decisions` index of every ADR whose new `domains:` frontmatter includes that domain. End state: `awf check` clean, gate green at 100%, ADR-0014 Implemented, all three tagged invariants backed, and this repo dogfooding five domains.
+Add a new awf-managed artifact kind: per-domain docs at `docs/domains/<name>.md` combining a hand-authored `current-state` narrative with a generated `decisions` index of every ADR whose new `domains:` frontmatter includes that domain. End state: `awf check` clean, gate green at 100%, ADR-0014 Implemented, all three tagged invariants backed, and this repo dogfooding five domains.
 
 ## Architecture summary
 
 - `internal/adr`: parse `domains` + `superseded_by`; `RenderDomainIndex(dir, domain)` returns a markdown index (grouped by status, `../decisions/<file>` links, superseded entries annotated, placeholder when empty) — reusing `RenderActiveMD`'s grouping.
 - `internal/config`: optional `Domains []string`; `Validate` name-sanity.
 - `internal/project`: `generateDomainDocs()` renders each declared domain via the domain template + convention parts + injected `.data.domain`/`.data.decisions`, returning **content-only** `RenderedFile`s (like `generateActiveMD`). Sync appends them to `files`; Check excludes `docs/domains/*` from the generic hash loop and regenerate-compares each (stale/missing/orphaned); `orphans()`/`declaredSections()` gain a `domains` kind.
-- `templates/domains/domain.md.tmpl` (one overlay section `current-position`; the `## Decisions` index is forced body, un-overridable) + a `domainDoc` catalog entry declaring `[current-position]`.
+- `templates/domains/domain.md.tmpl` (one overlay section `current-state`; the `## Decisions` index is forced body, un-overridable) + a `domainDoc` catalog entry declaring `[current-state]`.
 - Workflow: ADR template + README gain `domains:`; `proposing-adr`/`adr-lifecycle` require it and drop the manual table-maintenance step.
 - Dogfood: declare 5 domains, retro-tag 13 ADRs, ship per-domain narrative parts.
 
@@ -21,7 +21,7 @@ Go 1.26. Packages: `internal/adr`, `internal/config`, `internal/catalog`, `inter
 
 ## File structure
 
-**New:** `templates/domains/domain.md.tmpl`; `internal/adr/domain.go` (+ `domain_test.go`); `internal/project/domains_test.go`; `.claude/awf/domains/parts/<domain>/current-position.md` (×5).
+**New:** `templates/domains/domain.md.tmpl`; `internal/adr/domain.go` (+ `domain_test.go`); `internal/project/domains_test.go`; `.claude/awf/domains/parts/<domain>/current-state.md` (×5).
 **Modified (Go):** `internal/adr/adr.go`, `internal/config/config.go` (+ `config_test.go`), `internal/catalog/catalog.go`, `internal/project/project.go`.
 **Modified (templates/docs):** `templates/embed.go` (add `domains` to the `//go:embed` directive), `templates/catalog.yaml`, `docs/decisions/template.md`, `docs/decisions/README.md`, `templates/skills/proposing-adr/SKILL.md.tmpl`, `templates/skills/adr-lifecycle/SKILL.md.tmpl`.
 **Modified (config/ADRs):** `.claude/awf/config.yaml`, all 13 `docs/decisions/000N-*.md` (retro-tag), `docs/decisions/0014-*.md` (status flip).
@@ -253,8 +253,8 @@ with:
 ```
 # {{ .data.domain }}
 
-<!-- awf:section current-position -->
-## Current position
+<!-- awf:section current-state -->
+## Current state
 
 _Describe where this domain stands today: the shape it has settled into, the load-bearing constraints, and anything a newcomer must know before changing it. Refreshed by hand when the position materially shifts._
 <!-- awf:end -->
@@ -264,7 +264,7 @@ _Describe where this domain stands today: the shape it has settled into, the loa
 {{ .data.decisions }}
 ```
 
-The `current-position` narrative is the only overlay section (drop/replaceWith/convention-part). The `## Decisions` block is **forced body** — plain template, outside any `awf:section` marker — so it is always injected and is structurally un-overridable (no marker → no overlay → a convention part cannot replace it). It renders last, beneath the narrative.
+The `current-state` narrative is the only overlay section (drop/replaceWith/convention-part). The `## Decisions` block is **forced body** — plain template, outside any `awf:section` marker — so it is always injected and is structurally un-overridable (no marker → no overlay → a convention part cannot replace it). It renders last, beneath the narrative.
 
 ### Task 3.2 — Catalog `domainDoc` section taxonomy
 
@@ -281,10 +281,10 @@ The `current-position` narrative is the only overlay section (drop/replaceWith/c
 ```yaml
 domainDoc:
   sections:
-    - current-position
+    - current-state
 ```
 
-Only `current-position` is a declared (overlay) section. `decisions` is forced body, not a section, so it is **not** listed — which makes `declaredSections("domains")` return `[current-position]`, and `orphans()` flags any other domain part (e.g. a stray `decisions.md`) as orphaned instead of letting it silently shadow the generated index.
+Only `current-state` is a declared (overlay) section. `decisions` is forced body, not a section, so it is **not** listed — which makes `declaredSections("domains")` return `[current-state]`, and `orphans()` flags any other domain part (e.g. a stray `decisions.md`) as orphaned instead of letting it silently shadow the generated index.
 
 ### Task 3.3 — `generateDomainDocs` + Sync/Check/orphans wiring
 
@@ -402,10 +402,10 @@ with:
 ### Task 3.4 — Tests + back `domain-doc-regenerated`
 
 - [ ] Create `internal/project/domains_test.go`:
-  - `TestDomainDocRendersIndexAndNarrative`: scaffold a project with `domains: [rendering]`, an `agents-doc.yaml` `local: true`, a `docs/decisions/` holding two ADRs tagged `domains: [rendering]`, and a `current-position.md` part; `Sync`; assert `docs/domains/rendering.md` exists, contains the part's narrative and both ADR links under `## Decisions`, and no `<no value>`.
+  - `TestDomainDocRendersIndexAndNarrative`: scaffold a project with `domains: [rendering]`, an `agents-doc.yaml` `local: true`, a `docs/decisions/` holding two ADRs tagged `domains: [rendering]`, and a `current-state.md` part; `Sync`; assert `docs/domains/rendering.md` exists, contains the part's narrative and both ADR links under `## Decisions`, and no `<no value>`.
   - `TestDomainDocStaleOnAdrRetag` (tag `// invariant: domain-doc-regenerated`): after the sync above, append `domains: [rendering]` to a third ADR on disk (without re-sync); `Check` reports `docs/domains/rendering.md` as `stale`.
   - `TestDomainDocOrphanedWhenDomainRemoved`: sync with `[rendering]`, then `Open` a config without it; `Check` reports the orphaned domain doc.
-  - `TestDomainDocSectionParity`: assert the `awf:section` marker names in `templates/domains/domain.md.tmpl` equal `catalog.DomainDoc.Sections` — i.e. exactly `[current-position]`; the `## Decisions` block is forced body and carries no marker (mirror `TestDocsSectionParity`).
+  - `TestDomainDocSectionParity`: assert the `awf:section` marker names in `templates/domains/domain.md.tmpl` equal `catalog.DomainDoc.Sections` — i.e. exactly `[current-state]`; the `## Decisions` block is forced body and carries no marker (mirror `TestDocsSectionParity`).
   - `TestDomainPartOrphan`: a part at `domains/parts/rendering/decisions.md` (named for the forced-body index, which is deliberately not a declared section) → orphan drift — proving the generated index cannot be silently shadowed; likewise `domains/parts/rendering/bogus.md` (undeclared section) → orphan; and a part dir for a non-declared domain → orphan.
   - `TestDomainDocMissingWhenDeleted`: after the sync in `TestDomainDocRendersIndexAndNarrative`, delete `docs/domains/rendering.md` on disk; `Check` reports it `missing` (exercises the `os.ReadFile` error arm of the Check domain block — not hit by the stale/orphan tests).
   - `TestDomainDocRenderError` (or fold into an existing case): scaffold `domains: [rendering]` with a malformed-frontmatter ADR under `docs/decisions/`, call `Sync`; assert it returns an error (exercises `generateDomainDocs`'s `RenderDomainIndex` error return and its propagation through the `Sync` call site).
@@ -438,7 +438,7 @@ removal), and orphans()/declaredSections(). Backs inv domain-doc-regenerated. AD
 ### Task 4.2 — Skill templates
 
 - [ ] In `templates/skills/proposing-adr/SKILL.md.tmpl`, in the required-frontmatter list, add `domains` (≥1 coarse domain key) alongside the existing fields.
-- [ ] In `templates/skills/adr-lifecycle/SKILL.md.tmpl`, change the domain-doc step (currently "Add to the Load-bearing ADRs table; refresh the Current-position prose") to drop the table-maintenance half and keep the prose refresh, e.g.: "Refresh the Current-position prose if the domain's position materially shifts. The `## Decisions` index is generated from each ADR's `domains:` — set that field; do not hand-maintain a decisions table."
+- [ ] In `templates/skills/adr-lifecycle/SKILL.md.tmpl`, change the domain-doc step (currently "Add to the Load-bearing ADRs table; refresh the Current-state prose") to drop the table-maintenance half and keep the prose refresh, e.g.: "Refresh the Current-state prose if the domain's position materially shifts. The `## Decisions` index is generated from each ADR's `domains:` — set that field; do not hand-maintain a decisions table."
 
 ### Task 4.3 — Re-sync, verify, commit
 
@@ -451,7 +451,7 @@ git commit -m "feat(awf): require ADR domains: and drop the manual decisions tab
 
 ADR template + README document the new domains: field; proposing-adr requires it;
 adr-lifecycle drops table-maintenance (now auto-generated) and keeps the
-current-position prose refresh. ADR-0014."
+current-state prose refresh. ADR-0014."
 ```
 
 ---
@@ -493,7 +493,7 @@ domains:
 
 ### Task 5.3 — Per-domain narrative parts
 
-- [ ] Create `.claude/awf/domains/parts/<domain>/current-position.md` for each of the five domains, each a `## Current position` heading + 2-4 sentences of real current-state prose (e.g. `rendering`: the marker-section overlay engine, `missingkey=zero`, `.layout` vs `.vars`, publication-safety). Keep them honest and brief.
+- [ ] Create `.claude/awf/domains/parts/<domain>/current-state.md` for each of the five domains, each a `## Current state` heading + 2-4 sentences of real current-state prose (e.g. `rendering`: the marker-section overlay engine, `missingkey=zero`, `.layout` vs `.vars`, publication-safety). Keep them honest and brief.
 
 ### Task 5.4 — Sync, verify, commit
 
@@ -507,7 +507,7 @@ git add .claude/ docs/domains/ docs/decisions/
 git commit -m "feat(awf): dogfood five domain docs and retro-tag all ADRs
 
 Declares adr-system/config/invariants/rendering/tooling; tags every ADR with
-domains:; ships per-domain current-position narratives. Generated indexes
+domains:; ships per-domain current-state narratives. Generated indexes
 populate from the retro-tagged frontmatter. ADR-0014."
 ```
 
