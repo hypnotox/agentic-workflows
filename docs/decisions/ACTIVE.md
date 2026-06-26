@@ -3,6 +3,7 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
+- [ADR-0017: Process-conformance audit (`awf audit`)](0017-process-conformance-audit.md) — Accepted
 
 ## Implemented
 
@@ -21,7 +22,3 @@
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](0014-domain-docs-with-generated-adr-index.md) — Implemented
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](0015-in-file-provenance-and-convention-only-overrides.md) — Implemented
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](0016-tool-agnostic-target-seam-and-awf-relocation.md) — Implemented
-
-## Proposed
-
-- [ADR-0017: Process-conformance audit (`awf audit`)](0017-process-conformance-audit.md) — Proposed
