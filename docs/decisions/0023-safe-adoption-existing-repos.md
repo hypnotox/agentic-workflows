@@ -1,0 +1,106 @@
+---
+status: Proposed
+date: 2026-06-27
+supersedes: []
+superseded_by: ""
+tags: [tooling, adoption, init, setup, uninstall]
+related: [0003, 0016]
+domains: [tooling]
+---
+# ADR-0023: Safe Adoption Into Existing Repositories
+
+## Context
+
+The first real adoption target is a repository that already has its own agentic workflow — a
+hand-authored `AGENTS.md`, a `.claude/` tree, possibly a hooks manager. awf's first-run behaviour is
+safe at the edges but has three gaps that bite exactly that adopter, surfaced by the pre-adoption
+audit:
+
+- `awf init` correctly refuses to overwrite a pre-existing non-managed file and names the
+  collisions, but the only way forward is `--force`, which skips the collision check entirely and
+  has `Sync` overwrite every colliding path with no backup, diff, or merge (cmd/awf/main.go
+  `runInit`, internal/project Sync `os.WriteFile`). An adopter's hand-authored `AGENTS.md` is
+  destroyed irrecoverably.
+- `awf setup` runs `git config core.hooksPath .githooks` unconditionally (cmd/awf/setup.go), silently
+  repointing an existing husky / lefthook / `core.hooksPath` setup and disabling the adopter's hook
+  suite — and `awf init` chains `setup` automatically.
+- There is no `awf uninstall`; backing awf out means manually deleting rendered files, pruning dirs,
+  and unsetting `core.hooksPath`. "How do I cleanly remove this if it doesn't work out" is a top
+  question for any evaluation, and the answer is undocumented.
+
+A fourth, smaller defect: `awf setup` checks for `.git` at the working directory, so running it from
+a subdirectory silently skips hook activation rather than resolving the repository root.
+
+ADR-0003 governs binary delivery and `setup`'s `core.hooksPath` activation; ADR-0016 governs the
+`awf init` collision pre-flight. This ADR refines both: it keeps their decisions and closes the
+destructive-overwrite, hook-hijack, and no-backout gaps.
+
+## Decision
+
+1. **Back up before a forced overwrite.** `awf init` always computes collisions (it no longer skips
+   the check under `--force`). With `--force`, before `Sync` runs, each colliding **non-managed**
+   file is copied to `<path>.awf-bak` (replacing any prior `.awf-bak`) and the backup is reported on
+   stdout; then the overwrite proceeds. Without `--force`, the refusal is unchanged. A path already
+   recorded in the lock (awf-managed) is not a collision and is not backed up — re-sync of awf's own
+   output stays clean.
+
+2. **Guard `core.hooksPath`.** `awf setup` reads the repository's current `core.hooksPath` before
+   setting it. If it is unset or already `.githooks`, setup proceeds (idempotent, as today). If it
+   points anywhere else, setup refuses with a message naming the existing value and the
+   `--force-hooks` escape hatch; with `--force-hooks` it proceeds, reporting the value it replaced.
+   `awf init` chains `setup` without `--force-hooks`, so an adopter's existing hooks manager halts
+   init's hook step with an actionable message rather than being silently overwritten.
+
+3. **Resolve the repository root.** `awf setup` resolves the git top level via
+   `git rev-parse --show-toplevel` rather than checking for `.git` at the working directory, so it
+   activates hooks correctly when run from a subdirectory. A directory not inside a git repository
+   keeps the existing warn-and-skip behaviour so `awf init` chaining never breaks.
+
+4. **Add `awf uninstall`.** A new subcommand removes every rendered file recorded in `.awf/awf.lock`,
+   prunes parent directories left empty, and unsets `core.hooksPath` when it points to `.githooks`
+   (leaving a foreign value untouched). It does **not** delete `.awf/` — that tree is the adopter's
+   authored config (sidecars, convention parts), not generated output — and reports what it removed
+   plus a note that `.awf/` was left in place. Backing out is then a single command.
+
+## Invariants
+
+- `inv: init-force-backs-up` — under `--force`, `awf init` copies every colliding non-managed file to
+  `<path>.awf-bak` before any managed output overwrites it.
+- `inv: setup-guards-hookspath` — `awf setup` does not overwrite a `core.hooksPath` set to a value
+  other than `.githooks` unless `--force-hooks` is passed.
+- `inv: uninstall-removes-lock-tracked` — `awf uninstall` removes exactly the files recorded in the
+  lock and unsets `core.hooksPath` only when it points to `.githooks`, leaving `.awf/` intact.
+
+## Consequences
+
+- An adopter can `awf init --force` over an existing `AGENTS.md`/`CLAUDE.md` and recover the original
+  from `<path>.awf-bak`; the destructive-overwrite footgun is closed without losing the
+  force-the-overwrite affordance.
+- An existing hooks manager is preserved by default; the adopter makes a deliberate `--force-hooks`
+  choice to hand hooks to awf. This refines ADR-0003's unconditional activation.
+- Evaluation risk drops: `awf uninstall` makes adoption reversible in one command, and the flow is
+  documentable.
+- The CLI surface grows: a new `uninstall` subcommand and two flags (`--force` backup behaviour,
+  `--force-hooks`). The accompanying `--help` work (tracked separately) documents them; this ADR
+  does not depend on it.
+- `.awf-bak` files are a new artifact in an adopter's tree. They are not awf-managed (absent from the
+  lock), so `awf check` ignores them and the adopter removes or commits them at will.
+- New behaviour needs coverage to clear the 100% gate: forced-overwrite backup, the `core.hooksPath`
+  guard and `--force-hooks`, subdir resolution, and `uninstall`. `git rev-parse`/`git config --get`
+  are invoked through the same `exec.Command` seam `setup` already uses.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The `tooling` domain narrative gains the backup, hooks-guard, and uninstall behaviours.
+- README/adoption docs describe the existing-repo flow and backout (tracked as adoption-doc work).
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Interactive prompts on collision / hooks | Breaks non-interactive, scriptable `init`; a backup + an explicit flag are deterministic. |
+| `--force` overwrites with no backup (status quo) | Destroys a hand-authored `AGENTS.md` irrecoverably — the exact first-adopter footgun. |
+| Refuse a foreign `core.hooksPath` with no escape hatch | An adopter who genuinely wants awf to own hooks needs a way through; `--force-hooks` is that. |
+| `awf uninstall` also deletes `.awf/` | `.awf/` is the adopter's authored config, not generated output; deleting it loses customisations. Leave it and say so. |
+| Per-file selective `--force` | More surface than the first adoption needs; a blanket backup-then-overwrite is recoverable and simpler. |
