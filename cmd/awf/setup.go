@@ -14,9 +14,11 @@ import (
 // .githooks is absent (run `awf sync` first); if not inside a git repository it
 // warns and is a no-op so `awf init` chaining never breaks. The hooks path is
 // resolved relative to the repository top level (via git rev-parse), so setup
-// works when run from a subdirectory. If core.hooksPath is already set to a
-// different value (e.g. a husky/lefthook setup), it refuses unless forceHooks is
-// set, rather than silently hijacking it.
+// works when run from a subdirectory. If the repository's local core.hooksPath
+// is already set to a different value (e.g. a husky/lefthook setup in this repo),
+// it refuses unless forceHooks is set, rather than silently hijacking it. Only the
+// repo-local value is consulted — a user's global core.hooksPath default is not a
+// per-repo setup to guard, and awf's local value overrides it for this repo anyway.
 // invariant: setup-guards-hookspath
 func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 	if _, err := os.Stat(filepath.Join(root, ".githooks")); os.IsNotExist(err) {
@@ -35,7 +37,7 @@ func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 		return fmt.Errorf("core.hooksPath is already set to %q — awf would override it; "+
 			"re-run with --force-hooks to let awf manage hooks, or leave it and skip `awf setup`", existing)
 	}
-	cmd := exec.Command("git", "config", "core.hooksPath", hooksPath)
+	cmd := exec.Command("git", "config", "--local", "core.hooksPath", hooksPath)
 	cmd.Dir = top
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -73,10 +75,12 @@ func gitToplevel(dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// gitConfigGet returns the trimmed value of a git config key resolved from dir,
-// or "" if it is unset (git exits non-zero with empty output for an absent key).
+// gitConfigGet returns the trimmed value of the repository-local git config key
+// resolved from dir, or "" if it is unset locally (git exits non-zero for an
+// absent key). It reads only the local scope, so a user's global/system value
+// does not leak into awf's per-repo hooksPath decisions.
 func gitConfigGet(dir, key string) string {
-	cmd := exec.Command("git", "config", "--get", key)
+	cmd := exec.Command("git", "config", "--local", "--get", key)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

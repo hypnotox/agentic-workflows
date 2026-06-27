@@ -53,8 +53,9 @@ func runUninstall(root string, stdout io.Writer) error {
 	return nil
 }
 
-// unsetAwfHooks unsets core.hooksPath when it points at awf's rendered .githooks,
-// leaving a foreign value (a non-awf hooks manager) untouched.
+// unsetAwfHooks unsets the repo-local core.hooksPath when it points at awf's
+// rendered .githooks, leaving a foreign value (a non-awf hooks manager) — or a
+// user's global default — untouched.
 func unsetAwfHooks(root string, stdout io.Writer) {
 	top := gitToplevel(root)
 	if top == "" {
@@ -63,7 +64,7 @@ func unsetAwfHooks(root string, stdout io.Writer) {
 	if gitConfigGet(top, "core.hooksPath") != awfHooksRel(top, root) {
 		return
 	}
-	cmd := exec.Command("git", "config", "--unset", "core.hooksPath")
+	cmd := exec.Command("git", "config", "--local", "--unset", "core.hooksPath")
 	cmd.Dir = top
 	if err := cmd.Run(); err != nil { // coverage-ignore: --unset of a key we just read back fails only on a permission fault root bypasses
 		return
