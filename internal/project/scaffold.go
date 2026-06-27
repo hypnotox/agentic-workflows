@@ -56,7 +56,8 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 	varNames := slices.Sorted(maps.Keys(varSet))
 
 	// Enable the core skills and core docs; agents and hooks are all enabled (every
-	// one is workflow-essential). invariant: scaffold-core-only
+	// one is workflow-essential).
+	// invariant: scaffold-core-only
 	var skillNames, docNames []string
 	for name, spec := range cat.Skills {
 		if spec.Core {
