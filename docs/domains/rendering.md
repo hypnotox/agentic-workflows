@@ -24,3 +24,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 
+### Proposed
+
+- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
+
