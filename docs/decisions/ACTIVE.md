@@ -27,7 +27,4 @@
 - [ADR-0020: Dead-Reference Check in `awf check`](0020-dead-reference-check.md) — Implemented
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](0021-adr-system-managed-singletons.md) — Implemented
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](0022-curated-init-default.md) — Implemented
-
-## Proposed
-
-- [ADR-0023: Safe Adoption Into Existing Repositories](0023-safe-adoption-existing-repos.md) — Proposed
+- [ADR-0023: Safe Adoption Into Existing Repositories](0023-safe-adoption-existing-repos.md) — Implemented
