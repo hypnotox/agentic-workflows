@@ -31,7 +31,9 @@ skipped. The low-false-positive way to catch it is **co-change**, exactly the me
 `adr-status-cochange` rule uses — and the advisory, git-history `awf audit` engine (ADR-0017) is its
 natural home. The grounding-check confirmed the engine's rule list, `Inputs`/`AuditConfig` shape,
 frontmatter parsing, generated-paths set, and hermetic test infra all support this as a localized
-fifth rule with no engine, schema, or lock change.
+fifth rule with no engine-architecture, schema-version, or lock-format change — the added
+`Inputs`/`AuditConfig` fields (Decisions 4–5) are additive and backward-compatible, needing no
+`awf upgrade` (consistent with the additive-optional-field precedent of ADR-0014/0017).
 
 ## Decision
 
@@ -86,7 +88,7 @@ fifth rule with no engine, schema, or lock change.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
-- The `Proposed → Implemented` flip regenerates `docs/decisions/ACTIVE.md` via `./x sync` in the
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync` in the
   same commit; no `docs/decisions/README.md` row is owed (ADR-0005).
 - Adding the rule materially shifts the `tooling` domain's current state, so the `tooling`
   current-state narrative (`.awf/domains/parts/tooling/current-state.md`) is refreshed in the
