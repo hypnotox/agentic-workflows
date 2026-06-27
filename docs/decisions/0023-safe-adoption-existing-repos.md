@@ -58,11 +58,26 @@ destructive-overwrite, hook-hijack, and no-backout gaps.
 
 4. **Add `awf uninstall`.** A new subcommand removes every rendered file recorded in `.awf/awf.lock`,
    prunes parent directories left empty, and unsets `core.hooksPath` when it points to `.githooks`
-   (leaving a foreign value untouched). It does **not** delete `.awf/` — that tree is the adopter's
-   authored config (sidecars, convention parts), not generated output — and reports what it removed
-   plus a note that `.awf/` was left in place. Backing out is then a single command.
+   (leaving a foreign value untouched). When not inside a git repository, or when `core.hooksPath`
+   is unset, the hook step is a no-op; like `setup` (item 3) `uninstall` resolves the repository root
+   via `git rev-parse --show-toplevel` so it works from a subdirectory. It does **not** delete
+   `.awf/` — that tree is the adopter's authored config (sidecars, convention parts), not generated
+   output — and reports what it removed plus a note that `.awf/` was left in place. Backing out is
+   then a single command.
+
+5. **Supersedence scope.** This ADR refines two Implemented ADRs by partial-item supersedence
+   recorded through `related` (no full replacement); both predecessors keep their `Implemented`
+   status. It narrows **ADR-0003**'s setup behaviour — the textual "unconditional `core.hooksPath`
+   activation" and "idempotent" contracts now hold only when the existing value is unset or
+   `.githooks`. It refines **ADR-0016 `inv: init-collision-guard`**: under `--force`, `init` now
+   computes collisions and backs up rather than skipping the check, so that slug's backing test
+   (`TestInitGuardBlocksAndForceOverrides`) is augmented to assert the `.awf-bak` backup alongside
+   the overwrite, in the commit that flips this ADR to `Implemented`.
 
 ## Invariants
+
+Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
+is `Implemented`); the bullets below are the mechanically verifiable contracts those tests assert.
 
 - `inv: init-force-backs-up` — under `--force`, `awf init` copies every colliding non-managed file to
   `<path>.awf-bak` before any managed output overwrites it.
@@ -84,15 +99,28 @@ destructive-overwrite, hook-hijack, and no-backout gaps.
   `--force-hooks`). The accompanying `--help` work (tracked separately) documents them; this ADR
   does not depend on it.
 - `.awf-bak` files are a new artifact in an adopter's tree. They are not awf-managed (absent from the
-  lock), so `awf check` ignores them and the adopter removes or commits them at will.
+  lock), so `awf check` ignores them and the adopter removes or commits them at will. Only a
+  *colliding non-managed* file is backed up: a path already in the lock (awf's own prior output) is
+  overwritten without a `.awf-bak`, so re-running `--force` never snapshots awf-managed output. A
+  pre-existing `<path>.awf-bak` (a prior backup, or an adopter file that happens to bear that name)
+  is replaced; no awf planned output ends in `.awf-bak`, so a backup never collides with a write
+  `Sync` performs.
 - New behaviour needs coverage to clear the 100% gate: forced-overwrite backup, the `core.hooksPath`
   guard and `--force-hooks`, subdir resolution, and `uninstall`. `git rev-parse`/`git config --get`
-  are invoked through the same `exec.Command` seam `setup` already uses.
+  are invoked through the same `exec.Command` seam `setup` already uses. `git config --get
+  core.hooksPath` exits non-zero with empty output when the key is unset — the guard treats that as
+  *unset* (proceed), distinct from a real git failure — and any genuinely-unreachable git-exec error
+  branch is excluded with `// coverage-ignore: <reason>` rather than contrived in a test.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
 - The `tooling` domain narrative gains the backup, hooks-guard, and uninstall behaviours.
 - README/adoption docs describe the existing-repo flow and backout (tracked as adoption-doc work).
+- The CLI dispatch usage string in `cmd/awf/main.go` (`usage: awf <…>`) gains `uninstall`, and the
+  `add`/dispatch surface learns the new subcommand plus the `--force-hooks` flag, in the implementing
+  commit; that usage line is hand-maintained, not rendered.
+- No `docs/decisions/README.md` index row is owed (the README is a how-to guide; `ACTIVE.md` is the
+  generated index — ADR-0005), matching ADR-0003/0016.
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
 
 ## Alternatives Considered
