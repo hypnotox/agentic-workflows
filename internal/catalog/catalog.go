@@ -8,6 +8,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TargetSpec declares the render sections of a target that has no further
+// per-target configuration (agents and the always-on singletons).
+type TargetSpec struct {
+	Sections []string `yaml:"sections"`
+}
+
+// SkillSpec declares a skill's render sections plus its optional doc dependency:
+// a non-empty RequiresDoc gates the skill on that doc being enabled.
 type SkillSpec struct {
 	Sections    []string `yaml:"sections"`
 	RequiresDoc string   `yaml:"requiresDoc"`
@@ -20,15 +28,15 @@ type DocSpec struct {
 }
 
 type Catalog struct {
-	Skills      map[string]SkillSpec `yaml:"skills"`
-	Agents      map[string]SkillSpec `yaml:"agents"`
-	Hooks       []string             `yaml:"hooks"`
-	AgentsDoc   SkillSpec            `yaml:"agentsDoc"`
-	DomainDoc   SkillSpec            `yaml:"domainDoc"`
-	AdrReadme   SkillSpec            `yaml:"adrReadme"`
-	AdrTemplate SkillSpec            `yaml:"adrTemplate"`
-	PlansReadme SkillSpec            `yaml:"plansReadme"`
-	Docs        map[string]DocSpec   `yaml:"docs"`
+	Skills      map[string]SkillSpec  `yaml:"skills"`
+	Agents      map[string]TargetSpec `yaml:"agents"`
+	Hooks       []string              `yaml:"hooks"`
+	AgentsDoc   TargetSpec            `yaml:"agentsDoc"`
+	DomainDoc   TargetSpec            `yaml:"domainDoc"`
+	AdrReadme   TargetSpec            `yaml:"adrReadme"`
+	AdrTemplate TargetSpec            `yaml:"adrTemplate"`
+	PlansReadme TargetSpec            `yaml:"plansReadme"`
+	Docs        map[string]DocSpec    `yaml:"docs"`
 }
 
 func Load(fsys fs.FS) (*Catalog, error) {
