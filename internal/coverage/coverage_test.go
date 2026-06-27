@@ -187,9 +187,12 @@ func TestCheckProfileGetwdError(t *testing.T) {
 }
 
 func TestCheckProfileNoModule(t *testing.T) {
-	// A working directory with no go.mod ancestor -> moduleRoot fails.
-	dir := t.TempDir()
-	swapGetwd(t, func() (string, error) { return dir, nil })
+	// No go.mod anywhere up the walk -> moduleRoot reaches the filesystem root and
+	// errors. Stub hasGoMod (rather than rely on t.TempDir() having no go.mod
+	// ancestor) so the root-reached branch is exercised hermetically — a stray
+	// go.mod under /tmp must not short-circuit the walk.
+	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	swapHasGoMod(t, func(string) bool { return false })
 	if _, err := CheckProfile("x"); err == nil {
 		t.Fatal("expected go.mod-not-found error")
 	}
@@ -236,4 +239,11 @@ func swapGetwd(t *testing.T, fn func() (string, error)) {
 	orig := getwd
 	getwd = fn
 	t.Cleanup(func() { getwd = orig })
+}
+
+func swapHasGoMod(t *testing.T, fn func(string) bool) {
+	t.Helper()
+	orig := hasGoMod
+	hasGoMod = fn
+	t.Cleanup(func() { hasGoMod = orig })
 }

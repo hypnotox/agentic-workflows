@@ -40,6 +40,17 @@ func (r Report) OK() bool { return r.Covered == r.Total }
 
 var getwd = os.Getwd
 
+// hasGoMod reports whether dir contains a go.mod. It is a package var so the
+// module-root walk's "reached the filesystem root without finding a go.mod"
+// branch is testable hermetically: the directory walk itself is pure string
+// manipulation (filepath.Dir), so stubbing this is the only thing needed to
+// drive the walk to the root regardless of what actually sits above the test's
+// working directory (e.g. a stray go.mod under /tmp).
+var hasGoMod = func(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "go.mod"))
+	return err == nil
+}
+
 // CheckProfile resolves the module root from the working directory (nearest
 // ancestor with a go.mod) and checks profilePath against the module sources.
 func CheckProfile(profilePath string) (Report, error) {
@@ -227,7 +238,7 @@ func moduleRoot() (string, error) {
 		return "", err
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+		if hasGoMod(dir) {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
