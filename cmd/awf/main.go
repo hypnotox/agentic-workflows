@@ -40,11 +40,12 @@ Commands:
   invariants   Report Implemented-ADR invariant slugs lacking a backing comment
   upgrade      Migrate the .awf/ config tree to the current schema
   uninstall    Remove awf's generated files and unset core.hooksPath (keeps .awf/)
+  version      Print the awf version
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade|uninstall> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade|uninstall|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -83,6 +84,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		cmdErr = runUpgrade(cwd, stdout)
 	case "uninstall":
 		cmdErr = runUninstall(cwd, stdout)
+	case "version":
+		runVersion(stdout)
 	default:
 		fmt.Fprintln(stderr, "awf:", fmt.Errorf("unknown command %q", args[1]))
 		return 1
