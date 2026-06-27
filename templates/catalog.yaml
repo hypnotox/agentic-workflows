@@ -1,5 +1,6 @@
 skills:
   brainstorming:
+    core: true
     sections:
       - preamble
       - when-to-invoke
@@ -13,6 +14,7 @@ skills:
       - definitions
       - anti-patterns
   writing-plans:
+    core: true
     sections:
       - positioning
       - when-to-invoke
@@ -33,6 +35,7 @@ skills:
       - plan-resync
       - notes
   executing-plans:
+    core: true
     sections:
       - positioning
       - when-to-invoke
@@ -50,6 +53,7 @@ skills:
       - notes-one-concern
       - notes-docs-travel
   subagent-driven-development:
+    core: true
     sections:
       - positioning
       - per-task-review-note
@@ -73,6 +77,7 @@ skills:
       - oracle-invariant
       - devdb-note
   proposing-adr:
+    core: true
     sections:
       - positioning
       - when-to-invoke
@@ -88,6 +93,7 @@ skills:
       - terminal-step
       - notes
   adr-lifecycle:
+    core: true
     sections:
       - states
       - transitions
@@ -107,6 +113,7 @@ skills:
       - pitfalls-check
       - oracle-note
   reviewing-plan:
+    core: true
     sections:
       - when-fires
       - procedure
@@ -118,6 +125,7 @@ skills:
       - hand-off
       - notes
   reviewing-plan-resync:
+    core: true
     sections:
       - when-fires
       - dispatch-subagent-narrowed
@@ -127,6 +135,7 @@ skills:
       - hand-off-to-impl
       - notes
   reviewing-adr:
+    core: true
     sections:
       - when-fires
       - procedure
@@ -139,6 +148,7 @@ skills:
       - hand-off-to-resync
       - notes
   reviewing-impl:
+    core: true
     sections:
       - when-fires
       - sha-range-detection
@@ -201,6 +211,7 @@ docs:
     desc: system shape, packages, key components, dependencies
     sections: [overview, components, data-flow, dependencies]
   workflow:
+    core: true
     title: Workflow
     desc: principles, the brainstorm/plan/ADR chain, commit discipline
     sections: [principles, chain, commit-discipline, doc-currency]
@@ -229,10 +240,12 @@ docs:
     desc: uncommitted ideas and future phases
     sections: [ideas, deferred]
   doc-standard:
+    core: true
     title: Documentation Standard
     desc: how-to-write rules for all awf-managed prose
     sections: [principles, rules, structure]
   agents-md-standard:
+    core: true
     title: Authoring AGENTS.md
     desc: layout, content, and rules for the agent guide
     sections: [layout, content, rules]

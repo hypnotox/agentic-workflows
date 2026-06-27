@@ -2,6 +2,7 @@ package project
 
 import (
 	"bytes"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -45,9 +46,10 @@ func writeScaffold(t *testing.T, b []byte) string {
 	return dir
 }
 
-// TestScaffoldEnablesAllCatalogSkills asserts that the scaffolded config enables
-// exactly the set of skills declared in the catalog (no more, no less).
-func TestScaffoldEnablesAllCatalogSkills(t *testing.T) {
+// TestScaffoldEnablesCoreTargets asserts that the scaffolded config enables
+// exactly the catalog's core skills and core docs (ADR-0022), with a concrete
+// negative check that a known opt-in skill is omitted.
+func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	b, err := ScaffoldConfig("myproj")
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
@@ -62,15 +64,31 @@ func TestScaffoldEnablesAllCatalogSkills(t *testing.T) {
 		t.Fatalf("catalog.Load: %v", err)
 	}
 
-	for name := range cat.Skills {
-		if !slices.Contains(cfg.Skills, name) {
-			t.Errorf("scaffold missing catalog skill %q", name)
+	wantSkills := map[string]bool{}
+	for name, spec := range cat.Skills {
+		if spec.Core {
+			wantSkills[name] = true
 		}
 	}
-	for _, name := range cfg.Skills {
-		if _, ok := cat.Skills[name]; !ok {
-			t.Errorf("scaffold contains unknown skill %q (not in catalog)", name)
+	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
+		t.Errorf("scaffold skills = %v, want core set %v",
+			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
+	}
+
+	wantDocs := map[string]bool{}
+	for name, spec := range cat.Docs {
+		if spec.Core {
+			wantDocs[name] = true
 		}
+	}
+	if got := sliceSet(cfg.Docs); !maps.Equal(got, wantDocs) {
+		t.Errorf("scaffold docs = %v, want core set %v",
+			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantDocs)))
+	}
+
+	// Concrete negative: a known opt-in skill must not be scaffolded.
+	if slices.Contains(cfg.Skills, "tdd") {
+		t.Errorf("scaffold should not enable the opt-in skill tdd")
 	}
 }
 
@@ -136,9 +154,12 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 	}
 }
 
-// TestScaffoldVarsCoverReferenced asserts that the scaffolded vars block is a
-// superset of the ReferencedVars for representative skill templates.
-func TestScaffoldVarsCoverReferenced(t *testing.T) {
+// TestScaffoldVarsCoverAllReferenced asserts the scaffolded vars block seeds every
+// var referenced by any catalog template family — skills, agents, hooks, and docs —
+// backing inv: scaffold-seeds-all-vars. The expected set is re-derived from the
+// templates here, independently of ScaffoldConfig's own collection, so an unseeded
+// future var (e.g. a new doc var) fails this test.
+func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	b, err := ScaffoldConfig("example")
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
@@ -147,11 +168,25 @@ func TestScaffoldVarsCoverReferenced(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
+	cat, err := catalog.Load(templates.FS)
+	if err != nil {
+		t.Fatalf("catalog.Load: %v", err)
+	}
 
-	for _, tmplPath := range []string{
-		"skills/tdd/SKILL.md.tmpl",
-		"skills/executing-plans/SKILL.md.tmpl",
-	} {
+	var paths []string
+	for name := range cat.Skills {
+		paths = append(paths, "skills/"+name+"/SKILL.md.tmpl")
+	}
+	for name := range cat.Agents {
+		paths = append(paths, "agents/"+name+".md.tmpl")
+	}
+	for _, h := range cat.Hooks {
+		paths = append(paths, "hooks/"+h+".tmpl")
+	}
+	for name := range cat.Docs {
+		paths = append(paths, "docs/"+name+".md.tmpl")
+	}
+	for _, tmplPath := range paths {
 		src, err := templates.FS.ReadFile(tmplPath)
 		if err != nil {
 			t.Fatalf("read %s: %v", tmplPath, err)

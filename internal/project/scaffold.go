@@ -12,49 +12,64 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// ScaffoldConfig generates the bytes of a .awf/config.yaml that enables
-// every skill, agent, and hook in the embedded catalog (as flat name arrays) and
-// pre-populates the vars block with the union of all {{ .vars.X }} names
-// referenced by those templates. Each var is seeded with an empty string so that
-// strict render (missingkey=zero + <no value> check) does not fail on sync.
+// ScaffoldConfig generates the bytes of a .awf/config.yaml that enables the
+// workflow-core skills and docs (ADR-0022), every agent, and every hook in the
+// embedded catalog (as flat name arrays), and pre-populates the vars block with
+// the union of all {{ .vars.X }} names referenced by every catalog template. Each
+// var is seeded with an empty string so that strict render (missingkey=zero +
+// <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
+// skill renders cleanly.
 func ScaffoldConfig(prefix string) ([]byte, error) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
 		return nil, fmt.Errorf("scaffold: load catalog: %w", err)
 	}
 
-	// Collect all referenced var names from every template.
+	// Collect referenced var names from every catalog template family — not only
+	// the core ones — so an opt-in target added later renders without <no value>.
+	// invariant: scaffold-seeds-all-vars
 	varSet := map[string]bool{}
-
-	// Skill templates.
 	for name := range cat.Skills {
 		path := fmt.Sprintf("skills/%s/SKILL.md.tmpl", name)
 		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog skill name has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, err
 		}
 	}
-	// Agent templates.
 	for name := range cat.Agents {
 		path := fmt.Sprintf("agents/%s.md.tmpl", name)
 		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog agent name has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, err
 		}
 	}
-	// Hook templates.
 	for _, hook := range cat.Hooks {
 		path := fmt.Sprintf("hooks/%s.tmpl", hook)
 		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog hook name has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, err
 		}
 	}
-
-	// Build sorted var names.
+	for name := range cat.Docs {
+		path := fmt.Sprintf("docs/%s.md.tmpl", name)
+		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog doc name has a backing template in the embedded FS, so collectVars cannot fail
+			return nil, err
+		}
+	}
 	varNames := slices.Sorted(maps.Keys(varSet))
 
-	// Build sorted skill names.
-	skillNames := slices.Sorted(maps.Keys(cat.Skills))
-
-	// Build sorted agent names.
+	// Enable the core skills and core docs; agents and hooks are all enabled (every
+	// one is workflow-essential). invariant: scaffold-core-only
+	var skillNames, docNames []string
+	for name, spec := range cat.Skills {
+		if spec.Core {
+			skillNames = append(skillNames, name)
+		}
+	}
+	for name, spec := range cat.Docs {
+		if spec.Core {
+			docNames = append(docNames, name)
+		}
+	}
+	slices.Sort(skillNames)
+	slices.Sort(docNames)
 	agentNames := slices.Sorted(maps.Keys(cat.Agents))
 
 	// Preserve catalog hook order (already deterministic).
@@ -76,28 +91,23 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 		b.WriteString(": \"\"\n")
 	}
 
-	b.WriteString("skills:\n")
-	for _, name := range skillNames {
-		b.WriteString("  - ")
-		b.WriteString(name)
-		b.WriteString("\n")
-	}
-
-	b.WriteString("agents:\n")
-	for _, name := range agentNames {
-		b.WriteString("  - ")
-		b.WriteString(name)
-		b.WriteString("\n")
-	}
-
-	b.WriteString("hooks:\n")
-	for _, hook := range hookList {
-		b.WriteString("  - ")
-		b.WriteString(hook)
-		b.WriteString("\n")
-	}
+	writeArray(&b, "skills", skillNames)
+	writeArray(&b, "agents", agentNames)
+	writeArray(&b, "hooks", hookList)
+	writeArray(&b, "docs", docNames)
 
 	return []byte(b.String()), nil
+}
+
+// writeArray emits a `key:` block with each value as a `- ` list item.
+func writeArray(b *strings.Builder, key string, values []string) {
+	b.WriteString(key)
+	b.WriteString(":\n")
+	for _, v := range values {
+		b.WriteString("  - ")
+		b.WriteString(v)
+		b.WriteString("\n")
+	}
 }
 
 // collectVars reads the template at path and adds all .vars.X names to varSet.

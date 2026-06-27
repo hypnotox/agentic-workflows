@@ -15,16 +15,21 @@ type TargetSpec struct {
 }
 
 // SkillSpec declares a skill's render sections plus its optional doc dependency:
-// a non-empty RequiresDoc gates the skill on that doc being enabled.
+// a non-empty RequiresDoc gates the skill on that doc being enabled. Core marks a
+// skill as part of the workflow-core set awf init scaffolds by default (ADR-0022).
 type SkillSpec struct {
 	Sections    []string `yaml:"sections"`
 	RequiresDoc string   `yaml:"requiresDoc"`
+	Core        bool     `yaml:"core"`
 }
 
+// DocSpec declares a doc's catalog metadata. Core marks a doc as part of the
+// workflow-core set awf init scaffolds by default (ADR-0022).
 type DocSpec struct {
 	Title    string   `yaml:"title"`
 	Desc     string   `yaml:"desc"`
 	Sections []string `yaml:"sections"`
+	Core     bool     `yaml:"core"`
 }
 
 type Catalog struct {
