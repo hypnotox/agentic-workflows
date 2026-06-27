@@ -186,7 +186,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			continue
 		}
 		if manifest.Hash(onDisk) != e.OutputHash {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock"})
+			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf sync to discard the edit, or move it into a .awf convention part to keep it"})
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate
