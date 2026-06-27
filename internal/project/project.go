@@ -144,8 +144,8 @@ func (p *Project) validateAgainstCatalog() error {
 	return nil
 }
 
-// parts resolves an absolute part path verbatim (convention parts pass an
-// absolute path); a relative name resolves under <root>/.awf.
+// data assembles the template data namespace for a target: the prefix, the
+// project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
 		"prefix": p.Cfg.Prefix,
@@ -694,8 +694,7 @@ func (p *Project) Sync() error {
 			if !want[path] {
 				file := filepath.Join(p.Root, path)
 				_ = os.Remove(file)
-				parentDir := filepath.Dir(file)
-				os.Remove(parentDir) // ignore error - only removes if empty
+				_ = os.Remove(filepath.Dir(file)) // only succeeds if now empty
 			}
 		}
 	}
