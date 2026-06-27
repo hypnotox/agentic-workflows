@@ -31,8 +31,9 @@ Commands:
                  --force-hooks  take over an existing core.hooksPath (husky/lefthook)
   sync         Re-render after a template or config change
   check        Fail on stale or hand-edited rendered output
-  list         Show catalog skills and their per-project state
-  add <skill>  Enable a catalog skill in the config
+  list [<kind>]        Show targets and their per-project state (all kinds, or one)
+  add <kind> <name>    Enable a target — kind ∈ {skill, agent, doc, hook, domain}
+  remove <kind> <name> Disable a target (a freeform domain, or a catalog target)
   setup        Activate git hooks (core.hooksPath=.githooks)
                  --force-hooks  take over an existing core.hooksPath
   audit        Report workflow-conformance findings over the branch (advisory)
@@ -45,7 +46,7 @@ Commands:
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade|uninstall|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|remove|setup|upgrade|uninstall|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -71,13 +72,28 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "audit":
 		cmdErr = runAudit(cwd, baseFlag(args), stdout)
 	case "list":
-		cmdErr = runList(cwd, stdout)
+		kindFilter := ""
+		if len(args) >= 3 {
+			kindFilter = args[2]
+		}
+		cmdErr = runList(cwd, kindFilter, stdout)
 	case "add":
-		if len(args) < 3 {
-			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf add <skill>"))
+		switch len(args) {
+		case 4:
+			cmdErr = runAdd(cwd, args[2], args[3], stdout)
+		case 3:
+			fmt.Fprintln(stderr, "awf:", fmt.Errorf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2]))
+			return 1
+		default:
+			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf add <kind> <name>"))
 			return 1
 		}
-		cmdErr = runAdd(cwd, args[2], stdout)
+	case "remove":
+		if len(args) < 4 {
+			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf remove <kind> <name>"))
+			return 1
+		}
+		cmdErr = runRemove(cwd, args[2], args[3], stdout)
 	case "setup":
 		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "upgrade":

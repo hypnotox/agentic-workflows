@@ -134,7 +134,7 @@ func TestRunDispatchArms(t *testing.T) {
 		}
 		swapGetwd(t, func() (string, error) { return root, nil })
 		var out, errb bytes.Buffer
-		if code := run([]string{"awf", "add", "tdd"}, &out, &errb); code != 0 {
+		if code := run([]string{"awf", "add", "skill", "tdd"}, &out, &errb); code != 0 {
 			t.Fatalf("add: expected exit 0, got %d (%s)", code, errb.String())
 		}
 	})
@@ -174,12 +174,17 @@ func TestHandlersOnBareDirError(t *testing.T) {
 		}
 	})
 	t.Run("list", func(t *testing.T) {
-		if err := runList(bare(t), io.Discard); err == nil {
+		if err := runList(bare(t), "", io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("add", func(t *testing.T) {
-		if err := runAdd(bare(t), "tdd", io.Discard); err == nil {
+		if err := runAdd(bare(t), "skill", "tdd", io.Discard); err == nil {
+			t.Error("expected Open error")
+		}
+	})
+	t.Run("remove", func(t *testing.T) {
+		if err := runRemove(bare(t), "skill", "tdd", io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
@@ -263,7 +268,7 @@ func TestRunListSidecarError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(skillsDir, "tdd.yaml"), []byte("data: [not, a, map]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runList(root, io.Discard); err == nil {
+	if err := runList(root, "", io.Discard); err == nil {
 		t.Error("expected Sidecar parse error")
 	}
 }
@@ -404,7 +409,7 @@ func TestRunInvariantsClean(t *testing.T) {
 func TestRunListPrintsSkills(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runList(root, &out); err != nil {
+	if err := runList(root, "", &out); err != nil {
 		t.Fatalf("runList: %v", err)
 	}
 	if !strings.Contains(out.String(), "tdd") {
@@ -420,54 +425,6 @@ func TestRunUpgradeAlreadyCurrent(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "already current") {
 		t.Errorf("expected already-current, got %q", out.String())
-	}
-}
-
-func TestAppendSkill(t *testing.T) {
-	cases := map[string]struct {
-		src     string
-		wantErr bool
-		wantSub string
-	}{
-		"empty-array": {src: "prefix: x\nskills: []\n", wantSub: "  - tdd"},
-		"bare-key":    {src: "prefix: x\nskills:\n", wantSub: "  - tdd"},
-		"no-key":      {src: "prefix: x\nagents: []\n", wantErr: true},
-	}
-	for name, tc := range cases {
-		t.Run(name, func(t *testing.T) {
-			got, err := appendSkill(tc.src, "tdd")
-			if tc.wantErr {
-				if err == nil {
-					t.Fatal("expected error")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !strings.Contains(got, tc.wantSub) {
-				t.Errorf("missing %q in:\n%s", tc.wantSub, got)
-			}
-		})
-	}
-}
-
-func TestRunAddAppendSkillError(t *testing.T) {
-	// A config that parses but has no skills: key -> appendSkill error path.
-	root := t.TempDir()
-	awf := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(awf, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := "prefix: example\nagents: []\nhooks: []\n"
-	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(cfg), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runSync(root, io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	if err := runAdd(root, "tdd", io.Discard); err == nil {
-		t.Error("expected appendSkill error for a config with no skills: key")
 	}
 }
 

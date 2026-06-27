@@ -216,11 +216,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("docsDir %q must be a relative path without \"..\"", c.DocsDir)
 	}
 	for _, d := range c.Domains {
-		if d == "" {
-			return errors.New("domain name must not be empty")
-		}
-		if strings.ContainsAny(d, "/\\") || strings.Contains(d, "..") {
-			return fmt.Errorf("domain %q must not contain path separators or \"..\"", d)
+		if err := ValidateDomainName(d); err != nil {
+			return err
 		}
 	}
 	if c.Invariants != nil {
@@ -241,6 +238,19 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("audit.dependencyManifests: %w", err)
 			}
 		}
+	}
+	return nil
+}
+
+// ValidateDomainName reports whether name is a usable domain key: non-empty and
+// free of path separators or "..". Shared by Validate and the `awf add domain`
+// path so a freeform domain name is rejected the same way in both.
+func ValidateDomainName(name string) error {
+	if name == "" {
+		return errors.New("domain name must not be empty")
+	}
+	if strings.ContainsAny(name, "/\\") || strings.Contains(name, "..") {
+		return fmt.Errorf("domain %q must not contain path separators or \"..\"", name)
 	}
 	return nil
 }
