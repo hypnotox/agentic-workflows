@@ -23,7 +23,7 @@ var getwd = os.Getwd
 // output goes to the injected writers so the dispatch is unit-testable.
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade|uninstall> [args]")
 		return 2
 	}
 	cwd, err := getwd()
@@ -55,6 +55,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "upgrade":
 		cmdErr = runUpgrade(cwd, stdout)
+	case "uninstall":
+		cmdErr = runUninstall(cwd, stdout)
 	default:
 		fmt.Fprintln(stderr, "awf:", fmt.Errorf("unknown command %q", args[1]))
 		return 1
