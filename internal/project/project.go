@@ -120,6 +120,23 @@ func (p *Project) validateAgainstCatalog() error {
 			return err
 		}
 	}
+	for _, sg := range []struct {
+		kind     string
+		sections []string
+	}{
+		{"adr-readme", p.Cat.AdrReadme.Sections},
+		{"adr-template", p.Cat.AdrTemplate.Sections},
+	} {
+		sc, err := p.Cfg.Sidecar(sg.kind, "")
+		if err != nil {
+			return err
+		}
+		if !sc.Local {
+			if err := checkSectionsAllowed(sg.kind, "", sg.sections, sc.Sections); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -199,8 +216,8 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 
 // partRel is the project-relative convention part path the awf:edit pointer names.
 func partRel(kind, target, section string) string {
-	if kind == "agents-doc" {
-		return ".awf/parts/agents-doc/" + section + ".md"
+	if config.IsSingletonKind(kind) {
+		return ".awf/parts/" + kind + "/" + section + ".md"
 	}
 	return ".awf/" + kind + "/parts/" + target + "/" + section + ".md"
 }
@@ -429,6 +446,28 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			}
 			out = append(out, brf)
 		}
+	}
+	// adr-readme + adr-template (always-on singletons unless local; ADR-0021).
+	lay := p.layout()
+	for _, sg := range []struct {
+		kind, tid, out string
+		sections       []string
+	}{
+		{"adr-readme", "adr-readme/README.md.tmpl", lay["adrReadme"].(string), p.Cat.AdrReadme.Sections},
+		{"adr-template", "adr-template/template.md.tmpl", lay["adrTemplate"].(string), p.Cat.AdrTemplate.Sections},
+	} {
+		sc, err := p.Cfg.Sidecar(sg.kind, "")
+		if err != nil {
+			return nil, err
+		}
+		if sc.Local {
+			continue
+		}
+		rf, err := p.renderTarget(sg.kind, "", sg.tid, sg.sections, sc, p.data(sc), sg.out)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rf)
 	}
 	return out, nil
 }

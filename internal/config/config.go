@@ -150,8 +150,8 @@ func Load(awfDir string) (*Config, error) {
 // A missing file yields a zero Sidecar (publication-safe: empty data/sections).
 func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	var rel string
-	if kind == "agents-doc" {
-		rel = "agents-doc.yaml"
+	if IsSingletonKind(kind) {
+		rel = kind + ".yaml"
 	} else {
 		rel = filepath.Join(kind, name+".yaml")
 	}
@@ -171,10 +171,20 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	return s, nil
 }
 
+// IsSingletonKind reports whether kind is an always-on singleton whose sidecar lives at
+// <root>/<kind>.yaml and whose parts live under <root>/parts/<kind>/ (ADR-0021).
+func IsSingletonKind(kind string) bool {
+	switch kind {
+	case "agents-doc", "adr-readme", "adr-template":
+		return true
+	}
+	return false
+}
+
 // PartPath returns the convention part path for a section of a target.
 func (c *Config) PartPath(kind, target, section string) string {
-	if kind == "agents-doc" {
-		return filepath.Join(c.root, "parts", "agents-doc", section+".md")
+	if IsSingletonKind(kind) {
+		return filepath.Join(c.root, "parts", kind, section+".md")
 	}
 	return filepath.Join(c.root, kind, "parts", target, section+".md")
 }

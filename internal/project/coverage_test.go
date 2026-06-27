@@ -71,6 +71,28 @@ func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n", map[string]string{
+		"adr-readme.yaml": "bogusUnknownField: true\n",
+	})
+	if _, err := Open(root); err == nil {
+		t.Fatal("expected Open to fail on a malformed adr-readme sidecar")
+	}
+}
+
+func TestOpenRejectsUnknownAdrReadmeSection(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n", map[string]string{
+		"adr-readme.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
+	})
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected Open to reject an undeclared adr-readme section")
+	}
+	if !strings.Contains(err.Error(), "not-a-real-section") {
+		t.Errorf("error should mention the offending section, got: %v", err)
+	}
+}
+
 // --- validateFrontmatter direct cases ---
 
 func TestValidateFrontmatter(t *testing.T) {
@@ -172,6 +194,7 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 		{"agents", "prefix: example\nskills: []\nagents: [code-reviewer]\nhooks: []\n", "agents/code-reviewer.yaml"},
 		{"docs", "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [architecture]\n", "docs/architecture.yaml"},
 		{"agents-doc", "prefix: example\nskills: []\nagents: []\nhooks: []\n", "agents-doc.yaml"},
+		{"adr-readme", "prefix: example\nskills: []\nagents: []\nhooks: []\n", "adr-readme.yaml"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -212,6 +235,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 		{"agent", "prefix: example\nskills: []\nagents: [code-reviewer]\nhooks: []\n", ".awf/agents/parts/code-reviewer/doc-currency.md"},
 		{"doc", "prefix: example\nskills: []\nagents: []\nhooks: []\ndocs: [architecture]\n", ".awf/docs/parts/architecture/overview.md"},
 		{"agents-doc", "prefix: example\nskills: []\nagents: []\nhooks: []\n", ".awf/parts/agents-doc/identity.md"},
+		{"adr-readme", "prefix: example\nskills: []\nagents: []\nhooks: []\n", ".awf/parts/adr-readme/intro.md"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

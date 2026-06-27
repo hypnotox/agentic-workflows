@@ -246,6 +246,19 @@ agentsDoc:
     - commands
     - document-map
 
+adrReadme:
+  sections:
+    - intro
+    - when
+    - naming
+    - frontmatter
+    - invariants
+    - active-md
+adrTemplate:
+  sections:
+    - frontmatter
+    - body
+
 domainDoc:
   sections:
     - current-state

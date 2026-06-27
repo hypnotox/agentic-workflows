@@ -692,3 +692,43 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 		t.Errorf("expected invalid-frontmatter drift for %s, got %#v", skillPath, drift)
 	}
 }
+
+func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"docs/decisions/README.md": false, "docs/decisions/template.md": false}
+	for _, f := range files {
+		if _, ok := want[f.Path]; ok {
+			want[f.Path] = true
+		}
+	}
+	for path, seen := range want {
+		if !seen {
+			t.Errorf("%s not rendered", path)
+		}
+	}
+	// local: true suppresses the README singleton.
+	if err := os.WriteFile(filepath.Join(root, ".awf", "adr-readme.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files2, err := p2.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files2 {
+		if f.Path == "docs/decisions/README.md" {
+			t.Error("README should be suppressed by local: true")
+		}
+	}
+}

@@ -100,3 +100,40 @@ func TestSectionOrphanDetection(t *testing.T) {
 		t.Errorf("declared section part %q must not be flagged as orphan, got %#v", valid, drift)
 	}
 }
+
+func TestAdrSingletonSectionParity(t *testing.T) {
+	cat, err := catalog.Load(templates.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lay := map[string]any{"adrDir": "docs/decisions", "domainsDir": "docs/domains"}
+	for _, c := range []struct {
+		tid      string
+		sections []string
+	}{
+		{"adr-readme/README.md.tmpl", cat.AdrReadme.Sections},
+		{"adr-template/template.md.tmpl", cat.AdrTemplate.Sections},
+	} {
+		src, err := fs.ReadFile(templates.FS, c.tid)
+		if err != nil {
+			t.Fatalf("read %s: %v", c.tid, err)
+		}
+		var markers []string
+		for _, s := range render.ParseSections(string(src)) {
+			if s.IsSection {
+				markers = append(markers, s.Name)
+			}
+		}
+		if strings.Join(markers, ",") != strings.Join(c.sections, ",") {
+			t.Errorf("%s markers %v != catalog sections %v", c.tid, markers, c.sections)
+		}
+		out, err := render.Render(string(src), nil, map[string]any{
+			"prefix": "awf", "vars": map[string]any{}, "layout": lay, "data": map[string]any{}})
+		if err != nil {
+			t.Fatalf("render %s: %v", c.tid, err)
+		}
+		if strings.Contains(out, "<no value>") {
+			t.Errorf("%s: <no value> leaked", c.tid)
+		}
+	}
+}
