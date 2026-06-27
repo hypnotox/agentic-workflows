@@ -28,8 +28,10 @@ invariant: the working tree is clean.
 The grounding-check confirmed `internal/audit` runs git through go-git (not a shell), exposing a typed
 `Worktree().Status()`; that `Run(repoRoot, in)` is the clean insertion point (it holds the repo root,
 where the pure `evaluate(commits, in)` does not); that the toggle pattern of ADR-0019's domain rules
-threads through five known locations; and that go-git's status honours `.gitignore`, so build
-artifacts (the gitignored `awf` binary) and other ignored files never trip it.
+threads through five known locations; and that go-git's `Worktree().Status()` honours the
+repository's `.gitignore` and `.git/info/exclude`, so build artifacts (the gitignored `awf` binary)
+and other repo-ignored files never trip it (the global-`core.excludesFile` gap is recorded under
+Consequences).
 
 ## Decision
 
@@ -51,14 +53,23 @@ artifacts (the gitignored `awf` binary) and other ignored files never trip it.
    means the default (true); an adopter who runs `awf audit` ad hoc against a deliberately-dirty tree
    can disable it.
 
-4. **Record the live-state broadening.** The audit package doc and ADR-0017's "over a branch's git
-   history" framing are extended to note that one rule (`uncommitted-changes`) additionally inspects
-   the live working tree; the other rules remain pure over the commit range.
+4. **Record the live-state broadening.** The audit package doc comment (`internal/audit/audit.go`)
+   is updated to note that one rule (`uncommitted-changes`) additionally inspects the live working
+   tree; the other rules remain pure over the commit range. ADR-0017's body is frozen (append-only
+   once Implemented), so it is **not** edited — this ADR is the record of the broadening, linked via
+   `related: [0017]`. Because the live-state rule is range-independent it also qualifies ADR-0017's
+   `audit-empty-range-clean` invariant: an empty range still yields zero *history-derived* findings,
+   but a dirty tree on that same empty range now produces this rule's `Error` (intended). The
+   existing empty-range test stays green because its worktree is clean.
 
 ## Invariants
 
 - `inv: audit-uncommitted-changes` — when enabled, `awf audit` reports an `Error` finding if the
-  working tree has any uncommitted change (tracked modification or untracked, non-ignored file).
+  working tree has any uncommitted change: a tracked modification, or an untracked file not matched
+  by the repository's `.gitignore` or `.git/info/exclude`. "Not matched" here is exactly what go-git's
+  `Worktree().Status()` reports (see the Consequences note on the global-`core.excludesFile` gap), so
+  the contract is mechanically checkable against `Status()` output, not against full `git status`
+  semantics.
 
 ## Consequences
 
@@ -69,6 +80,17 @@ artifacts (the gitignored `awf` binary) and other ignored files never trip it.
   (no new dependency, no shell-out).
 - `awf audit` run ad hoc on a deliberately-dirty tree now exits non-zero on this rule; the toggle and
   the advisory-only nature (it gates nothing directly) keep that from being disruptive.
+- **go-git ignore-scope gap.** `Worktree().Status()` consults the repository's `.gitignore` and
+  `.git/info/exclude`, but **not** the user's global `core.excludesFile` (e.g. `~/.gitignore`) or
+  `/etc/gitconfig`. A file ignored only globally shows as untracked and would trip the rule even
+  though `git status` stays silent — a live case in this repo, whose `.gitignore` carries `!CLAUDE.md`
+  precisely because the user globally ignores `CLAUDE.md`. The toggle and the advisory nature mitigate
+  it; loading the global/system exclude patterns into the worktree matcher to fully mirror `git
+  status` is possible future hardening if the false positives prove disruptive.
+- **Edge cases.** The rule runs only after `Collect` succeeds, so not-a-git-repo stays a hard command
+  error, never a finding. A bare or worktree-less repo (no `Worktree()`) is outside `awf audit`'s
+  intended use and yields no live-state finding; the `Worktree()`-error branch is covered or
+  `coverage-ignore`d to satisfy the 100% gate (ADR-0012).
 - Coverage: the rule and its toggle need direct tests (clean tree → no finding, dirty tree → finding,
   disabled → no finding), reusing the existing `initRepo`/`commit` git-repo test helpers.
 
@@ -76,6 +98,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 
 - The `tooling` domain narrative gains the new audit rule.
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md` (ADR-0005).
 
 ## Alternatives Considered
 
