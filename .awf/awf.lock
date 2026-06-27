@@ -144,7 +144,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:3fefb05a7ed4a461b1223c54357f400912a4c0267691d492ee9de0447ed27630"
+      "outputHash": "sha256:0006a70f26c9204815874de749a1e575011ec2faf150908020601f15bce97351"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
@@ -186,7 +186,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:c8dc6e23d2233fbd23acff574948c8e69ad17f6a35756e178efbd75a1d007cd3"
+      "outputHash": "sha256:db81ad83f1b5ad58a7c34ad0ec69a3df65b983cc5ab6c18fc25d19fbb9c93a45"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

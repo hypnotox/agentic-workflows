@@ -11,6 +11,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
+
 ### Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
@@ -18,8 +22,4 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
-
-### Proposed
-
-- [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 

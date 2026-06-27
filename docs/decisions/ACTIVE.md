@@ -3,6 +3,7 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
+- [ADR-0019: Domain-Doc Currency Audit Rules](0019-domain-doc-staleness-audit-rule.md) — Accepted
 
 ## Implemented
 
@@ -23,7 +24,3 @@
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](0016-tool-agnostic-target-seam-and-awf-relocation.md) — Implemented
 - [ADR-0017: Process-conformance audit (`awf audit`)](0017-process-conformance-audit.md) — Implemented
 - [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](0018-documentation-authoring-standard.md) — Implemented
-
-## Proposed
-
-- [ADR-0019: Domain-Doc Currency Audit Rules](0019-domain-doc-staleness-audit-rule.md) — Proposed
