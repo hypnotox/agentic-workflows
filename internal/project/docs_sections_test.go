@@ -107,13 +107,14 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lay := map[string]any{"adrDir": "docs/decisions", "domainsDir": "docs/domains"}
+	lay := map[string]any{"adrDir": "docs/decisions", "domainsDir": "docs/domains", "plansDir": "docs/plans"}
 	for _, c := range []struct {
 		tid      string
 		sections []string
 	}{
 		{"adr-readme/README.md.tmpl", cat.AdrReadme.Sections},
 		{"adr-template/template.md.tmpl", cat.AdrTemplate.Sections},
+		{"plans-readme/README.md.tmpl", cat.PlansReadme.Sections},
 	} {
 		src, err := fs.ReadFile(templates.FS, c.tid)
 		if err != nil {

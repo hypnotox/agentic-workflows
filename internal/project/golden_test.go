@@ -25,6 +25,14 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("agent not interpolated:\n%s", agent)
 	}
 
+	plansReadme, err := os.ReadFile(filepath.Join(root, "docs/plans/README.md"))
+	if err != nil {
+		t.Fatalf("plans-readme not rendered: %v", err)
+	}
+	if !strings.Contains(string(plansReadme), "Implementation Plans") {
+		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
+	}
+
 	pre, err := os.ReadFile(filepath.Join(root, ".githooks/pre-commit"))
 	if err != nil {
 		t.Fatal(err)

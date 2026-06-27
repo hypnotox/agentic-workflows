@@ -259,6 +259,12 @@ adrTemplate:
     - frontmatter
     - body
 
+plansReadme:
+  sections:
+    - intro
+    - naming
+    - structure
+
 domainDoc:
   sections:
     - current-state

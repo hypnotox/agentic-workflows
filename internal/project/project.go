@@ -126,6 +126,7 @@ func (p *Project) validateAgainstCatalog() error {
 	}{
 		{"adr-readme", p.Cat.AdrReadme.Sections},
 		{"adr-template", p.Cat.AdrTemplate.Sections},
+		{"plans-readme", p.Cat.PlansReadme.Sections},
 	} {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
@@ -177,6 +178,7 @@ func (p *Project) layout() map[string]any {
 		"adrReadme":   dec + "/README.md",
 		"adrTemplate": dec + "/template.md",
 		"plansDir":    d + "/plans",
+		"plansReadme": d + "/plans/README.md",
 		"docs":        docs,
 		"workflowRef": workflowRef,
 		"domainsDir":  d + "/domains", // inv: domains-dir-given
@@ -455,6 +457,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	}{
 		{"adr-readme", "adr-readme/README.md.tmpl", lay["adrReadme"].(string), p.Cat.AdrReadme.Sections},
 		{"adr-template", "adr-template/template.md.tmpl", lay["adrTemplate"].(string), p.Cat.AdrTemplate.Sections},
+		{"plans-readme", "plans-readme/README.md.tmpl", lay["plansReadme"].(string), p.Cat.PlansReadme.Sections},
 	} {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {

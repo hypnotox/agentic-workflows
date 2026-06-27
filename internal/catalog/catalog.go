@@ -27,6 +27,7 @@ type Catalog struct {
 	DomainDoc   SkillSpec            `yaml:"domainDoc"`
 	AdrReadme   SkillSpec            `yaml:"adrReadme"`
 	AdrTemplate SkillSpec            `yaml:"adrTemplate"`
+	PlansReadme SkillSpec            `yaml:"plansReadme"`
 	Docs        map[string]DocSpec   `yaml:"docs"`
 }
 

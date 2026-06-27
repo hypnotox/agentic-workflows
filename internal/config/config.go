@@ -175,7 +175,7 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 // <root>/<kind>.yaml and whose parts live under <root>/parts/<kind>/ (ADR-0021).
 func IsSingletonKind(kind string) bool {
 	switch kind {
-	case "agents-doc", "adr-readme", "adr-template":
+	case "agents-doc", "adr-readme", "adr-template", "plans-readme":
 		return true
 	}
 	return false
