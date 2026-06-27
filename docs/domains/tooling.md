@@ -21,5 +21,5 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 ### Proposed
 
-- [ADR-0019: Domain-Doc Staleness Audit Rule](../decisions/0019-domain-doc-staleness-audit-rule.md)
+- [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 

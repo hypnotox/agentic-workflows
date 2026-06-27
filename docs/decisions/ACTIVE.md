@@ -26,4 +26,4 @@
 
 ## Proposed
 
-- [ADR-0019: Domain-Doc Staleness Audit Rule](0019-domain-doc-staleness-audit-rule.md) — Proposed
+- [ADR-0019: Domain-Doc Currency Audit Rules](0019-domain-doc-staleness-audit-rule.md) — Proposed
