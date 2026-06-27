@@ -34,7 +34,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var cmdErr error
 	switch args[1] {
 	case "init":
-		cmdErr = runInit(cwd, hasFlag(args, "--force"), stdout, stderr)
+		cmdErr = runInit(cwd, hasFlag(args, "--force"), hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "sync":
 		cmdErr = runSync(cwd, stdout)
 	case "check":
@@ -52,7 +52,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		cmdErr = runAdd(cwd, args[2], stdout)
 	case "setup":
-		cmdErr = runSetup(cwd, stdout, stderr)
+		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "upgrade":
 		cmdErr = runUpgrade(cwd, stdout)
 	default:
@@ -88,7 +88,7 @@ func baseFlag(args []string) string {
 	return ""
 }
 
-func runInit(root string, force bool, stdout, stderr io.Writer) error {
+func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) error {
 	cfgPath := filepath.Join(root, ".awf", "config.yaml")
 	scaffolded := false
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
@@ -119,7 +119,7 @@ func runInit(root string, force bool, stdout, stderr io.Writer) error {
 	if err := runSync(root, stdout); err != nil {
 		return err
 	}
-	if err := runSetup(root, stdout, stderr); err != nil {
+	if err := runSetup(root, forceHooks, stdout, stderr); err != nil {
 		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil

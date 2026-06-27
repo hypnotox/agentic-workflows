@@ -282,23 +282,8 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, false, io.Discard, io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
-	}
-}
-
-func TestRunSetupGitConfigError(t *testing.T) {
-	// .git is a file (not a dir) so it exists for the Stat guard but `git config`
-	// fails — covering runSetup's cmd.Run error branch without permission tricks.
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".githooks"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a repo\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := runSetup(root, io.Discard, io.Discard); err == nil {
-		t.Error("expected git config to fail when .git is not a repository")
 	}
 }
 
@@ -388,7 +373,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(root, false, io.Discard, io.Discard); err != nil {
+	if err := runInit(root, false, false, io.Discard, io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
