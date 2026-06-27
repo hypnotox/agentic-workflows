@@ -101,6 +101,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 	}
 }
 
+// invariant: adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil {

@@ -693,6 +693,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
+// invariant: adr-system-singletons-rendered
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)

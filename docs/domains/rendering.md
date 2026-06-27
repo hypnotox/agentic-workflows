@@ -4,7 +4,7 @@
 <!-- awf:edit current-state — from .awf/domains/parts/rendering/current-state.md -->
 ## Current state
 
-The render engine is a marker-section overlay (`<!-- awf:section -->`) layered onto Go `text/template` with `missingkey=zero`, guarded by a hard publication-safety check that rejects any unresolved-variable placeholder. Doc paths are awf-given via the `.layout` namespace (never `.vars`); skills cite docs through `.layout.docs.*`/`.layout.workflowRef`, and a doc-gated skill is suppressed when its doc is disabled. Catalog docs ship static default content with a per-doc section taxonomy; domain docs are the one data-driven exception, injecting a generated index as forced body.
+The render engine is a marker-section overlay (`<!-- awf:section -->`) layered onto Go `text/template` with `missingkey=zero`, guarded by a hard publication-safety check that rejects any unresolved-variable placeholder. Doc paths are awf-given via the `.layout` namespace (never `.vars`); skills cite docs through `.layout.docs.*`/`.layout.workflowRef`, and a doc-gated skill is suppressed when its doc is disabled. Catalog docs ship static default content with a per-doc section taxonomy; domain docs are the one data-driven exception, injecting a generated index as forced body. Always-on neutral singletons render the agent guide plus the two ADR-system files (`README.md`, `template.md`) via shared `renderTarget` machinery, each suppressible with a `local: true` sidecar (ADR-0021).
 
 
 ## Decisions
@@ -13,7 +13,6 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 
 - [ADR-0001: Template Overlay Rendering Engine](../decisions/0001-template-overlay-rendering-engine.md)
 - [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
-- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 
 ### Implemented
 
@@ -24,4 +23,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
+- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 
