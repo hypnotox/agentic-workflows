@@ -24,3 +24,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
 
+### Proposed
+
+- [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
+
