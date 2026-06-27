@@ -2,7 +2,6 @@ package adr
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -16,37 +15,17 @@ func RenderDomainIndex(dir, domain string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	groups := make(map[string][]ADR)
-	for _, a := range adrs {
+	groups, ordered := groupByStatus(adrs, func(a ADR) bool {
 		for _, d := range a.Domains {
 			if d == domain {
-				groups[a.Status] = append(groups[a.Status], a)
-				break
+				return true
 			}
 		}
-	}
+		return false
+	})
 	if len(groups) == 0 {
 		return "_No decisions recorded for this domain yet._\n", nil
 	}
-	for k := range groups {
-		sort.Slice(groups[k], func(i, j int) bool { return groups[k][i].Number < groups[k][j].Number })
-	}
-	var ordered []string
-	seen := map[string]bool{}
-	for _, s := range statusOrder {
-		if len(groups[s]) > 0 {
-			ordered = append(ordered, s)
-			seen[s] = true
-		}
-	}
-	var extra []string
-	for k := range groups {
-		if !seen[k] {
-			extra = append(extra, k)
-		}
-	}
-	sort.Strings(extra)
-	ordered = append(ordered, extra...)
 
 	var sb strings.Builder
 	for i, status := range ordered {
