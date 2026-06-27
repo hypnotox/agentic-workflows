@@ -52,9 +52,9 @@
     },
     ".claude/skills/awf-proposing-adr/SKILL.md": {
       "templateId": "skills/proposing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:119874853f6593456dadd6e61a16abe90c5c74adc47451e5c6e14d6d7e6bfd5f",
+      "templateHash": "sha256:628631fa0edc508ff07768a4b7bba21d55dd2d7afa893ec82f6bf2b98af8454e",
       "configHash": "sha256:75f3d3a62cc7fc291594a93722f92900217eda5056afb18349a4f805d9da7850",
-      "outputHash": "sha256:88dc1a30c911ecea6f81c29a9a30a63350f0655b9b5578598fe3f374cf91754f"
+      "outputHash": "sha256:e31febf9be36a0f1a9d49faec2b4c52bce7bb99aa219562fc5fd233908699d48"
     },
     ".claude/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
