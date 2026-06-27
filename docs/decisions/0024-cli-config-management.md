@@ -30,7 +30,9 @@ freeform — the adopter invents domain names and authors each domain's current-
 1. **Generalise to `awf add <kind> <name>` and `awf remove <kind> <name>`,** with `<kind>` a required
    singular token mapping to its config array: `skill`→`skills`, `agent`→`agents`, `doc`→`docs`,
    `hook`→`hooks`, `domain`→`domains`. The bare `awf add <name>` form is removed (a breaking change;
-   pre-1.0, and the kind is needed to resolve cross-kind name collisions).
+   pre-1.0, and the kind is needed to resolve cross-kind name collisions). To ease the migration, an
+   `add` invocation with a single argument fails with a targeted message — kind is now required, use
+   `awf add <kind> <name>` — rather than the generic usage error.
 
 2. **Validate by kind.** For the catalog-backed kinds the name must be a catalog entry (the
    `catalog.Skills`/`Agents`/`Docs` maps, the `Hooks` slice). For `domain` the name is validated for
@@ -72,6 +74,8 @@ freeform — the adopter invents domain names and authors each domain's current-
 - `inv: cli-config-kinds` — `awf add`/`remove` operate on exactly the five config enable arrays via a
   required `<kind>` token, validating catalog-backed kinds against the catalog and `domain` names
   through the `config` path-safety rule.
+- `inv: remove-block-scoped` — `awf remove <kind> <name>` deletes `<name>` only from the named kind's
+  array block, leaving a same-named entry under any other kind untouched.
 
 ## Consequences
 
