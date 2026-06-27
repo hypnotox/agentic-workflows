@@ -60,8 +60,7 @@ func unsetAwfHooks(root string, stdout io.Writer) {
 	if top == "" {
 		return
 	}
-	hooksPath, _ := filepath.Rel(top, filepath.Join(root, ".githooks"))
-	if gitConfigGet(top, "core.hooksPath") != hooksPath {
+	if gitConfigGet(top, "core.hooksPath") != awfHooksRel(top, root) {
 		return
 	}
 	cmd := exec.Command("git", "config", "--unset", "core.hooksPath")

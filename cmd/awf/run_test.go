@@ -512,6 +512,28 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	}
 }
 
+func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
+	root := t.TempDir()
+	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md.awf-bak"), []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+		t.Fatalf("init --force: %s", errb.String())
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "v1\n" {
+		t.Errorf("prior .awf-bak clobbered: %q", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak.1")); string(b) != "v2\n" {
+		t.Errorf("CLAUDE.md.awf-bak.1 = %q, want v2", b)
+	}
+}
+
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
 	root := scaffoldProject(t)
 	swapGetwd(t, func() (string, error) { return root, nil })

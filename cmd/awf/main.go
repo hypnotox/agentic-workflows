@@ -148,11 +148,13 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		// --force: back up each colliding non-managed file before sync overwrites it.
 		// invariant: init-force-backs-up
 		for _, rel := range collisions {
-			bak := rel + ".awf-bak"
-			if err := copyFile(filepath.Join(root, rel), filepath.Join(root, bak)); err != nil { // coverage-ignore: rel is a known-existing collision and bak is a sibling path; copyFile fails only on a permission fault root bypasses
+			src := filepath.Join(root, rel)
+			bak := freeBackupPath(src)
+			if err := copyFile(src, bak); err != nil { // coverage-ignore: rel is a known-existing collision and bak is a free sibling path; copyFile fails only on a permission fault root bypasses
 				return fmt.Errorf("awf init: back up %s: %w", rel, err)
 			}
-			fmt.Fprintf(stdout, "backed up %s → %s\n", rel, bak)
+			bakRel, _ := filepath.Rel(root, bak)
+			fmt.Fprintf(stdout, "backed up %s → %s\n", rel, bakRel)
 		}
 	}
 	if err := runSync(root, stdout); err != nil {
@@ -162,6 +164,21 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
+}
+
+// freeBackupPath returns base+".awf-bak", or "...awf-bak.N" with the lowest N
+// that does not yet exist, so a forced backup never overwrites a prior one.
+func freeBackupPath(base string) string {
+	p := base + ".awf-bak"
+	for i := 1; fileExists(p); i++ {
+		p = fmt.Sprintf("%s.awf-bak.%d", base, i)
+	}
+	return p
+}
+
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 // copyFile copies src to dst, preserving the source file's permission bits.

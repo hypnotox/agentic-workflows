@@ -29,10 +29,7 @@ func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 		fmt.Fprintln(stderr, "awf setup: not a git repository — skipping hook activation")
 		return nil
 	}
-	hooksPath, err := filepath.Rel(top, filepath.Join(root, ".githooks"))
-	if err != nil { // coverage-ignore: root is inside top (rev-parse succeeded), so Rel cannot fail
-		return err
-	}
+	hooksPath := awfHooksRel(top, root)
 	existing := gitConfigGet(top, "core.hooksPath")
 	if existing != "" && existing != hooksPath && !forceHooks {
 		return fmt.Errorf("core.hooksPath is already set to %q — awf would override it; "+
@@ -50,6 +47,18 @@ func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 	}
 	fmt.Fprintf(stdout, "awf setup: git hooks activated (core.hooksPath=%s)\n", hooksPath)
 	return nil
+}
+
+// awfHooksRel returns awf's .githooks directory expressed relative to the git top
+// level. root's symlinks are resolved first so the path matches git's real-path
+// toplevel (e.g. a /tmp→/private/tmp checkout on macOS); otherwise it is the same
+// .githooks the normal repo-root case yields.
+func awfHooksRel(top, root string) string {
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
+	rel, _ := filepath.Rel(top, filepath.Join(root, ".githooks"))
+	return rel
 }
 
 // gitToplevel returns the absolute path of the git work-tree root containing dir,
