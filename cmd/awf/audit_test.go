@@ -36,7 +36,26 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := auditCommit(t, repo, root, "feat(awf): base", map[string]string{"go.mod": "module x\n", "main.go": "package x\n"})
+	// Stage everything (synced scaffold + source) so the baseline working tree is
+	// clean — otherwise the uncommitted-changes rule (ADR-0025) fires on the
+	// untracked synced files.
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
+		t.Fatal(err)
+	}
+	base, err := wt.Commit("feat(awf): base", &git.CommitOptions{Author: auditSig, Committer: auditSig})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return root, base
 }
 

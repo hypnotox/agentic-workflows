@@ -229,3 +229,53 @@ func TestToCommitRootAndFileText(t *testing.T) {
 		t.Error("fileText(missing) should be empty")
 	}
 }
+
+func TestRuleUncommittedChanges(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+
+	// Clean tree: no finding.
+	if f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: true}); len(f) != 0 {
+		t.Fatalf("clean tree should yield no finding, got %#v", f)
+	}
+
+	// Dirty tree — a modified tracked file (tracked count) plus an untracked file
+	// (untracked count): one Error finding.
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: true})
+	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
+		t.Fatalf("dirty tree finding = %#v", f)
+	}
+
+	// Disabled: no finding even when dirty.
+	if f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: false}); len(f) != 0 {
+		t.Fatalf("disabled rule should yield no finding, got %#v", f)
+	}
+}
+
+func TestRunIncludesUncommittedChanges(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Empty range (base == HEAD) so only the live-state rule can fire.
+	findings, err := Run(dir, Inputs{BaseBranch: "HEAD", UncommittedChanges: true})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	var got bool
+	for _, f := range findings {
+		if f.Rule == "uncommitted-changes" {
+			got = true
+		}
+	}
+	if !got {
+		t.Errorf("Run did not surface uncommitted-changes: %#v", findings)
+	}
+}

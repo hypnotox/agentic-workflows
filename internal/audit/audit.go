@@ -1,5 +1,7 @@
 // Package audit reports workflow-conformance findings over a branch's git
 // history. It is advisory (ADR-0017): standalone, never wired into the gate.
+// Most rules are pure over the commit range; the uncommitted-changes rule
+// (ADR-0025) additionally inspects the live working tree.
 package audit
 
 import (
@@ -81,6 +83,7 @@ type Inputs struct {
 	DomainsPartsDir     string   // e.g. ".awf/domains/parts"
 	DomainDocStaleness  bool     // run the domain-doc-staleness rule
 	UndocumentedDomain  bool     // run the undocumented-domain rule
+	UncommittedChanges  bool     // run the uncommitted-changes (clean working tree) rule
 }
 
 // Run collects the branch range and evaluates the rules.
@@ -89,7 +92,11 @@ func Run(repoRoot string, in Inputs) ([]Finding, error) {
 	if err != nil {
 		return nil, err
 	}
-	return evaluate(commits, in), nil
+	findings := evaluate(commits, in)
+	// The clean-working-tree rule reads live state, so it runs here (with the repo
+	// root) rather than in the commit-only evaluate.
+	findings = append(findings, ruleUncommittedChanges(repoRoot, in)...)
+	return findings, nil
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)

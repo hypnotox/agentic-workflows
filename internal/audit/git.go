@@ -2,12 +2,62 @@ package audit
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
+
+// ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
+// (ADR-0025). It reads live working-tree state via go-git's Worktree().Status(),
+// injecting the user's global and system gitignore patterns — which Status() does
+// not consult on its own (it honours only the repo's .gitignore and
+// .git/info/exclude) — so the rule mirrors `git status` and does not false-positive
+// on globally-ignored files. Run evaluates it (it holds the repo root); it is
+// range-independent, unlike the commit-history rules in evaluate.
+// invariant: audit-uncommitted-changes
+func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
+	if !in.UncommittedChanges {
+		return nil
+	}
+	repo, err := git.PlainOpen(repoRoot)
+	if err != nil { // coverage-ignore: Run calls Collect first, which opens the same repo and errors earlier on a non-repo
+		return nil
+	}
+	wt, err := repo.Worktree()
+	if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf audit's intended use
+		return nil
+	}
+	root := osfs.New("/")
+	global, _ := gitignore.LoadGlobalPatterns(root)
+	system, _ := gitignore.LoadSystemPatterns(root)
+	wt.Excludes = slices.Concat(global, system)
+	status, err := wt.Status()
+	if err != nil { // coverage-ignore: Status on the healthy worktree we just opened does not fail
+		return nil
+	}
+	if status.IsClean() {
+		return nil
+	}
+	tracked, untracked := 0, 0
+	for _, st := range status {
+		if st.Staging == git.Untracked && st.Worktree == git.Untracked {
+			untracked++
+		} else {
+			tracked++
+		}
+	}
+	return []Finding{{
+		Severity: Error,
+		Rule:     "uncommitted-changes",
+		Detail: fmt.Sprintf("working tree not clean: %d tracked change(s), %d untracked file(s); commit or discard before concluding the implementation",
+			tracked, untracked),
+	}}
+}
 
 // Collect returns the commits reachable from HEAD but not from baseBranch,
 // as neutral Commit values. Empty range -> nil. Not-a-repo, an unresolvable

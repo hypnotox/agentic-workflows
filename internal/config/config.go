@@ -74,6 +74,7 @@ type AuditConfig struct {
 	DiffThreshold       *int     `yaml:"diffThreshold"`
 	DomainDocStaleness  *bool    `yaml:"domainDocStaleness"`
 	UndocumentedDomain  *bool    `yaml:"undocumentedDomain"`
+	UncommittedChanges  *bool    `yaml:"uncommittedChanges"`
 }
 
 // AuditSettings is the resolved, default-applied audit configuration, ready for
@@ -87,6 +88,7 @@ type AuditSettings struct {
 	DiffThreshold       int
 	DomainDocStaleness  bool
 	UndocumentedDomain  bool
+	UncommittedChanges  bool
 }
 
 // ResolveAudit resolves the effective audit settings, applying defaults.
@@ -99,6 +101,7 @@ func (c *Config) ResolveAudit() AuditSettings {
 		DiffThreshold:       400,
 		DomainDocStaleness:  true,
 		UndocumentedDomain:  true,
+		UncommittedChanges:  true,
 	}
 	a := c.Audit
 	if a == nil {
@@ -125,6 +128,9 @@ func (c *Config) ResolveAudit() AuditSettings {
 	}
 	if a.UndocumentedDomain != nil {
 		s.UndocumentedDomain = *a.UndocumentedDomain
+	}
+	if a.UncommittedChanges != nil {
+		s.UncommittedChanges = *a.UncommittedChanges
 	}
 	return s
 }

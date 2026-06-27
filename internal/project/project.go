@@ -157,5 +157,6 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		DomainsPartsDir:     ".awf/domains/parts",
 		DomainDocStaleness:  s.DomainDocStaleness,
 		UndocumentedDomain:  s.UndocumentedDomain,
+		UncommittedChanges:  s.UncommittedChanges,
 	})
 }

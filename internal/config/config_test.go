@@ -426,8 +426,8 @@ func boolPtr(b bool) *bool { return &b }
 func TestAuditSettingsDefaultsWhenNil(t *testing.T) {
 	c := &Config{Prefix: "x", DocsDir: "docs"} // Audit nil
 	s := c.ResolveAudit()
-	if !s.DomainDocStaleness || !s.UndocumentedDomain {
-		t.Errorf("toggles default to off: domStale=%v undoc=%v", s.DomainDocStaleness, s.UndocumentedDomain)
+	if !s.DomainDocStaleness || !s.UndocumentedDomain || !s.UncommittedChanges {
+		t.Errorf("toggles default to on: domStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.UndocumentedDomain, s.UncommittedChanges)
 	}
 	if s.BaseBranch != "main" {
 		t.Errorf("baseBranch = %q, want main", s.BaseBranch)
@@ -469,10 +469,11 @@ func TestAuditSettingsExplicitOverrides(t *testing.T) {
 		DiffThreshold:       intPtr(0),
 		DomainDocStaleness:  boolPtr(false),
 		UndocumentedDomain:  boolPtr(false),
+		UncommittedChanges:  boolPtr(false),
 	}}
 	s := c.ResolveAudit()
-	if s.DomainDocStaleness || s.UndocumentedDomain {
-		t.Errorf("explicit false toggles not honored: domStale=%v undoc=%v", s.DomainDocStaleness, s.UndocumentedDomain)
+	if s.DomainDocStaleness || s.UndocumentedDomain || s.UncommittedChanges {
+		t.Errorf("explicit false toggles not honored: domStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.UndocumentedDomain, s.UncommittedChanges)
 	}
 	if s.BaseBranch != "develop" {
 		t.Errorf("baseBranch = %q, want develop", s.BaseBranch)
