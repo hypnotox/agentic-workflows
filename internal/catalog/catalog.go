@@ -20,12 +20,14 @@ type DocSpec struct {
 }
 
 type Catalog struct {
-	Skills    map[string]SkillSpec `yaml:"skills"`
-	Agents    map[string]SkillSpec `yaml:"agents"`
-	Hooks     []string             `yaml:"hooks"`
-	AgentsDoc SkillSpec            `yaml:"agentsDoc"`
-	DomainDoc SkillSpec            `yaml:"domainDoc"`
-	Docs      map[string]DocSpec   `yaml:"docs"`
+	Skills      map[string]SkillSpec `yaml:"skills"`
+	Agents      map[string]SkillSpec `yaml:"agents"`
+	Hooks       []string             `yaml:"hooks"`
+	AgentsDoc   SkillSpec            `yaml:"agentsDoc"`
+	DomainDoc   SkillSpec            `yaml:"domainDoc"`
+	AdrReadme   SkillSpec            `yaml:"adrReadme"`
+	AdrTemplate SkillSpec            `yaml:"adrTemplate"`
+	Docs        map[string]DocSpec   `yaml:"docs"`
 }
 
 func Load(fsys fs.FS) (*Catalog, error) {
