@@ -202,15 +202,15 @@
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
-      "templateHash": "sha256:403a5c3bf5d5a0df7bc7c765c893c25ade4696a56351b2a751255fa544f3ab49",
+      "templateHash": "sha256:f0537f89664422b541c9c0bc3b1daf959161641385fc75bb3cde8faaafdb7a1a",
       "configHash": "sha256:44c5edbb6365a9af459e10457c74444e65a699367108a1f7581c37af2dd3e62e",
-      "outputHash": "sha256:8e750bb01dd70b56c62cc41c9cabeff5655459075a491adc9dc9873799577483"
+      "outputHash": "sha256:ee5d427db606c4bf16a852a27d4090ab917407c606769d307001b2fa56001f65"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:f351fce58e99a45c6679a456a68880c10c8c625225c1e7281900aefb73eaf335",
+      "templateHash": "sha256:3e02eaeb5e168c2ac8283450af2b40c59e2c8c34727f7dc21efb2fd8c56b1abd",
       "configHash": "sha256:44c5edbb6365a9af459e10457c74444e65a699367108a1f7581c37af2dd3e62e",
-      "outputHash": "sha256:f4a29e4694ea5afd3e4e28f7ddc74c93d6d5693bcf7489e8dc7a0917f51a2c40"
+      "outputHash": "sha256:cea429ff4e445474587adb99c4acf0948e98876d56244e670c467b9c980af387"
     }
   }
 }

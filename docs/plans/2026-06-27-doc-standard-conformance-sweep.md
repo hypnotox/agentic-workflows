@@ -1,3 +1,5 @@
+# Implementation complete (2026-06-27)
+
 # Plan: doc-standard conformance sweep
 
 Brings awf's pre-existing managed docs into conformance with `docs/doc-standard.md` (ADR-0018) —

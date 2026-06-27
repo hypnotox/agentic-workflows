@@ -4,7 +4,7 @@
 <!-- awf:edit gate — default; create .awf/docs/parts/testing/gate.md to override -->
 ## The gate
 
-A single gate command runs the project's checks — tests, vet/lint, and any drift verification — and must be green before every commit. Treat a red gate as a blocker, never a warning: fix the cause or revert, do not commit around it.
+A single gate command runs the project's checks — tests, vet/lint, and any drift verification — and must be green before every commit. A red gate blocks the commit: fix the cause or revert.
 
 <!-- awf:edit tiers — default; create .awf/docs/parts/testing/tiers.md to override -->
 ## Tiers
