@@ -34,9 +34,9 @@
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:a435dc6daea80ef8992f810218a0959a0d48f070ee769f77dc681df6e498bb92",
+      "templateHash": "sha256:8ac4889dd9082856719fd7ab268ed7aef2a0c36f06e9f65a982085a7e9b8bcec",
       "configHash": "sha256:0198684a39eda0e574061ff6c4070b3746709b7481ed9a3c1a4094a75e48d7b4",
-      "outputHash": "sha256:a4c8e092007beabe291a56211c04d0eb3006901cb005e3ec591e6703855cfd00"
+      "outputHash": "sha256:1e12d40679d9dc039d9fe0d870df012a0312d1f2aa43a2808ffdcfefe6533468"
     },
     ".claude/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
@@ -58,9 +58,9 @@
     },
     ".claude/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
-      "templateHash": "sha256:78dbeb2761a0c4fdcc34d5a0cc6ed9202711ae73e01bdb50d1c19f0740940211",
+      "templateHash": "sha256:dafd34d95c2de5d41d5733832fbb4748d41ffe3961e90675fe65460a920486d6",
       "configHash": "sha256:6a50f21afc0aa3d1e27ea73ad1263001edeb0aabf2a1acea44229801caf53bfc",
-      "outputHash": "sha256:ced192ca1f6230a73f51c52c1769c95fc52b0275558b2a81790603a9f5d9a18c"
+      "outputHash": "sha256:2e65253d229f6f14b6c81d6990227aa0e52c3c9c813faf7104311fd1c924f597"
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",

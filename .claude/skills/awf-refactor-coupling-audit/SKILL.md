@@ -30,12 +30,12 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 <!-- awf:edit audit-shape-selection — default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
 ### Audit shape
 
-1. **Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` / Read calls in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single `Explore` subagent via the Agent tool to absorb the grep transcript noise per `docs/workflow.md`.
+**Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` / Read calls in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single `Explore` subagent via the Agent tool to absorb the grep transcript noise per `docs/workflow.md`.
 
 <!-- awf:edit category-1-top-level-files — default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
 ### 1. Top-level package files
 
-1. Grep the **original** package for concrete type references, function calls, and method invocations against each symbol being moved.
+Grep the **original** package for concrete type references, function calls, and method invocations against each symbol being moved.
 
 For each hit, decide: does this caller need to update its import path after the move? Can it stay where it is, or does it move with the symbol?
 
@@ -48,19 +48,19 @@ grep -rn "<MovedSymbol>" <original-package-path>/
 <!-- awf:edit category-2-sibling-tests — default; create .awf/skills/parts/refactor-coupling-audit/category-2-sibling-tests.md to override -->
 ### 2. Sibling test files
 
-1. Grep `*_test.go` separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
+Grep `*_test.go` separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
 
 Capture **N** (production call sites) and **M** (test call sites) separately — M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
 
 ```bash
-# Search the package's test files (your language's test-file convention).
-grep -rn "<MovedSymbol>" <original-package-path>/
+# Search the package's test files only (your language's test-file glob, e.g. *_test.go, *.spec.ts).
+grep -rn "<MovedSymbol>" <original-package-path>/ --include="<test-file-glob>"
 ```
 
 <!-- awf:edit category-3-subpackages — default; create .awf/skills/parts/refactor-coupling-audit/category-3-subpackages.md to override -->
 ### 3. Subpackages
 
-1. Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
+Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
 
 ```bash
 # For languages with import paths, find importers of the original package.
@@ -76,7 +76,7 @@ For each subpackage hit, decide: does the subpackage's import path remain valid 
 <!-- awf:edit category-6-init-visibility — default; create .awf/skills/parts/refactor-coupling-audit/category-6-init-visibility.md to override -->
 ### 6. `init()` ordering and cross-package method visibility
 
-1. Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
+Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
 
 ```bash
 # Find functions/methods defined on the moved type (Go method-receiver example shown; adapt).
