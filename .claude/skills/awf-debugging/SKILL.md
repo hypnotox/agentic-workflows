@@ -27,7 +27,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
 <!-- awf:edit debugging-surfaces — from .awf/skills/parts/debugging/debugging-surfaces.md -->
-1. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
+3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
 
    - **`go test -run TestX -v ./pkg/...`** — run a single test verbosely; the output shows which assertion failed and what was expected vs. actual.
    - **`go test -v ./... 2>&1 | grep -A5 FAIL`** — skim all failures with context lines.

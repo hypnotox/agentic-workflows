@@ -1,4 +1,4 @@
-1. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
+3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
 
    - **`go test -run TestX -v ./pkg/...`** — run a single test verbosely; the output shows which assertion failed and what was expected vs. actual.
    - **`go test -v ./... 2>&1 | grep -A5 FAIL`** — skim all failures with context lines.

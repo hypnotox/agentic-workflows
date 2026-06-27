@@ -41,8 +41,8 @@
     ".claude/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
       "templateHash": "sha256:d163718437c2dfc963a7fbddf85b3557e94f3bfa5d94f6dd8f72fd33b02c5141",
-      "configHash": "sha256:9f30f66c1ed264ac6dd2698e0852a912435954a74b2fa0c1522a91a53e280d11",
-      "outputHash": "sha256:b94a1d8f7e3c5623250c68741468374f935485d7957ff179b24a77b48de52f53"
+      "configHash": "sha256:a4756d9a22665373fb80a27e8dd231cd122e6f4ef34df52eb5dcf6a731b8c929",
+      "outputHash": "sha256:93f897d31017f7a91a0eaf83356263cc591058c26aeb2e993f42d4730979ce3c"
     },
     ".claude/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
