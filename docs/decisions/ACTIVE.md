@@ -26,3 +26,7 @@
 - [ADR-0019: Domain-Doc Currency Audit Rules](0019-domain-doc-staleness-audit-rule.md) — Implemented
 - [ADR-0020: Dead-Reference Check in `awf check`](0020-dead-reference-check.md) — Implemented
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](0021-adr-system-managed-singletons.md) — Implemented
+
+## Proposed
+
+- [ADR-0022: Curated Init Default — Workflow-Core Targets](0022-curated-init-default.md) — Proposed

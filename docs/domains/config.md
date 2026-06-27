@@ -18,3 +18,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 
+### Proposed
+
+- [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
+

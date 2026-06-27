@@ -22,3 +22,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 
+### Proposed
+
+- [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
+
