@@ -6,11 +6,13 @@ package refs
 import "strings"
 
 // Links returns the relative-path targets of inline markdown links — [text](target)
-// — in content, in order of appearance. It skips: external targets (http://,
-// https://, mailto:, tel:) and bare #fragment anchors; and any link inside a fenced
-// code block (opened by ``` or ~~~). A trailing #anchor and a (target "title") title
-// are stripped, leaving the bare relative path. Reference-style links ([text][id])
-// are out of scope.
+// — in content, in order of appearance. Image-link destinations (![alt](target)) are
+// extracted too, so a dead image counts as a dead reference. It skips: external
+// targets (http://, https://, mailto:, tel:) and bare #fragment anchors; links inside
+// a fenced code block (opened by ``` or ~~~); and links inside an inline code span
+// (text between paired `-backtick delimiters). A trailing #anchor and a (target
+// "title") title are stripped, leaving the bare relative path. Reference-style links
+// ([text][id]) and 4-space-indented code blocks are out of scope.
 func Links(content string) []string {
 	var out []string
 	inFence := false
@@ -29,10 +31,28 @@ func Links(content string) []string {
 		case strings.HasPrefix(trimmed, "~~~"):
 			inFence, fence = true, "~~~"
 		default:
-			out = append(out, lineLinks(line)...)
+			out = append(out, lineLinks(stripCodeSpans(line))...)
 		}
 	}
 	return out
+}
+
+// stripCodeSpans removes the content of inline code spans — text between paired
+// `-backtick delimiters — so link syntax inside a code span is not parsed as a link.
+// An unpaired trailing backtick is not a span: its segment is kept intact.
+func stripCodeSpans(line string) string {
+	parts := strings.Split(line, "`")
+	var b strings.Builder
+	for i, p := range parts {
+		switch {
+		case i%2 == 0:
+			b.WriteString(p) // outside any span
+		case i == len(parts)-1:
+			b.WriteString("`" + p) // unpaired trailing backtick — keep literally
+		}
+		// odd index that is not the last: inside a paired span — dropped
+	}
+	return b.String()
 }
 
 // lineLinks extracts the target of every [text](target) on a single line.

@@ -450,7 +450,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			out = append(out, brf)
 		}
 	}
-	// adr-readme + adr-template (always-on singletons unless local; ADR-0021).
+	// adr-readme + adr-template + plans-readme (always-on singletons unless local; ADR-0021, ADR-0020).
 	lay := p.layout()
 	for _, sg := range []struct {
 		kind, tid, out string

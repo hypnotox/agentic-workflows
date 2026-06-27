@@ -29,6 +29,10 @@ func TestLinks(t *testing.T) {
 		{"fenced backtick", "```\n[a](b.md)\n```", nil},
 		{"fenced tilde", "~~~\n[a](b.md)\n~~~", nil},
 		{"link after fence", "```\n[a](skip.md)\n```\n[b](keep.md)", []string{"keep.md"}},
+		{"image extracted", "![alt](img.png)", []string{"img.png"}},
+		{"code span dropped", "`[x](y.md)`", nil},
+		{"code span kept real link", "`[x](skip.md)` and [r](keep.md)", []string{"keep.md"}},
+		{"unpaired backtick keeps link", "a `b [r](keep.md)", []string{"keep.md"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
