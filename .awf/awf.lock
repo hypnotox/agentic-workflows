@@ -28,9 +28,9 @@
     },
     ".claude/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
-      "templateHash": "sha256:cb60e9e6aa443d5815fe701a0df5533f2de49a3e88de672b853be7722798cd07",
+      "templateHash": "sha256:eb83c180a4d9b756fbbc356370571e2817f71543f86749093a67794d6c6f6fad",
       "configHash": "sha256:8695aa7cc1ec86bcf5afb1516c1ffb6c0f363e84eaee9ceef7acb7d6cbde049c",
-      "outputHash": "sha256:ce965b48cc3ffdd4948bc199d494bb0c227ff2599c77457b5f5127fdc85cc4ac"
+      "outputHash": "sha256:a416efdb3b9287303c0fd8e8281d299ea8cd2c4cca5815f0bde3e34e65b97e9d"
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",

@@ -28,7 +28,7 @@ Per `{{ .layout.workflowRef }}`: hard prerequisite for any non-trivial change. N
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
 <!-- awf:section design-sections -->
-4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries:{{ range .data.errorBoundaries }} {{ .name }},{{ end }} and any others relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
+4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling ({{ with .data.errorBoundaries }}boundaries:{{ range . }} {{ .name }},{{ end }} and others as relevant{{ else }}boundaries as relevant{{ end }}), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
 <!-- awf:end -->
 
 <!-- awf:section no-spec-rule -->
@@ -66,7 +66,7 @@ Per `{{ .layout.workflowRef }}`: hard prerequisite for any non-trivial change. N
 <!-- awf:section definitions -->
 ## Definitions
 
-- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project:{{ range .data.loadBearingExamples }} {{ .item }};{{ end }} see `{{ .layout.adrReadme }}` "When to write an ADR".
+- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory.{{ with .data.loadBearingExamples }} Examples specific to this project:{{ range . }} {{ .item }};{{ end }}{{ end }} See `{{ .layout.adrReadme }}` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `{{ .layout.workflowRef }}`.
 <!-- awf:end -->
 

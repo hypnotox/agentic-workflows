@@ -25,7 +25,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
 <!-- awf:edit design-sections — default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
-4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries: and any others relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
+4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries as relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
 
 <!-- awf:edit no-spec-rule — default; create .awf/skills/parts/brainstorming/no-spec-rule.md to override -->
 5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `docs/decisions/README.md` for when an ADR is warranted.
@@ -59,7 +59,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 <!-- awf:edit definitions — default; create .awf/skills/parts/brainstorming/definitions.md to override -->
 ## Definitions
 
-- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. Examples specific to this project: see `docs/decisions/README.md` "When to write an ADR".
+- **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. See `docs/decisions/README.md` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `docs/workflow.md`.
 
 <!-- awf:edit anti-patterns — default; create .awf/skills/parts/brainstorming/anti-patterns.md to override -->
