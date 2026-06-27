@@ -8,12 +8,10 @@ All repo interactions go through the `./x` command runner (`gate`, `lint`, `fmt`
 
 awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (skills, agents, the `CLAUDE.md` bridge) come from a named `Target` rather than `.claude/` literals, with `claudeTarget` the sole built-in. `awf init` pre-flights every path it would write and aborts on a collision with a pre-existing, non-managed file unless `--force` is passed.
 
+`awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, dependency-without-ADR, large-change-without-plan, and — for domain-doc currency (ADR-0019) — `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). Each rule is independently disable-able via `audit` config.
+
 
 ## Decisions
-
-### Accepted
-
-- [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 
 ### Implemented
 
@@ -22,4 +20,5 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
+- [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 
