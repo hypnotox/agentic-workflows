@@ -603,3 +603,30 @@ func TestCollectVarsReadError(t *testing.T) {
 		t.Fatal("expected collectVars to fail reading a nonexistent template")
 	}
 }
+
+// invariant: dead-reference-gated
+func TestCheckDetectsDeadReference(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n", map[string]string{
+		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range drift {
+		if d.Kind == "dead-reference" && d.Detail == "no/such/file.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected dead-reference drift, got %#v", drift)
+	}
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 
@@ -851,6 +852,13 @@ func sliceSet(s []string) map[string]bool {
 	return m
 }
 
+// isManagedMarkdown reports whether a RenderAll template id is awf-managed rendered
+// markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
+// RenderAll produces except the CLAUDE.md bridge and the .githooks scripts.
+func isManagedMarkdown(tid string) bool {
+	return tid != "claude/CLAUDE.md.tmpl" && !strings.HasPrefix(tid, "hooks/")
+}
+
 func (p *Project) Check() ([]manifest.Drift, error) {
 	lock, err := manifest.Load(p.lockPath())
 	if err != nil {
@@ -941,6 +949,26 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	for _, path := range sortedKeys(lock.Files) {
 		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
+		}
+	}
+	// Dead-reference scan (inv: dead-reference-gated). Every awf-managed rendered
+	// markdown file's inline links must resolve file-relative on disk; the generated
+	// ACTIVE.md and domain docs are in scope, the CLAUDE.md bridge and hooks are not.
+	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
+	for _, f := range files {
+		if isManagedMarkdown(f.TemplateID) {
+			scan = append(scan, f)
+		}
+	}
+	scan = append(scan, amd)
+	scan = append(scan, dds...)
+	for _, f := range scan {
+		base := filepath.Dir(f.Path)
+		for _, target := range refs.Links(f.Content) {
+			resolved := filepath.Join(p.Root, base, target)
+			if _, err := os.Stat(resolved); err != nil {
+				drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-reference", Detail: target})
+			}
 		}
 	}
 	return drift, nil

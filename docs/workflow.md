@@ -17,7 +17,7 @@ brainstorming → planning (if warranted) → ADR (if warranted) → review → 
 
 Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember. Many tasks need neither. Reviews are lightweight: the grounding-check inside brainstorming subsumes plan/ADR review, and implementation review is the single terminal gate.
 
-For the detailed criteria of when a decision is load-bearing enough to warrant an ADR — and the ADR format itself — see [`docs/decisions/README.md`](docs/decisions/README.md).
+For the detailed criteria of when a decision is load-bearing enough to warrant an ADR — and the ADR format itself — see [`docs/decisions/README.md`](decisions/README.md).
 
 <!-- awf:edit commit-discipline — default; create .awf/docs/parts/workflow/commit-discipline.md to override -->
 ## Commit discipline
