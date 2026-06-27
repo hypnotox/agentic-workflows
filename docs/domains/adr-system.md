@@ -9,14 +9,14 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
+
 ### Implemented
 
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](../decisions/0004-agents-md-template-and-docs-module.md)
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md)
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md)
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
-
-### Proposed
-
-- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 
