@@ -4,21 +4,19 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // runSetup activates the project's git hooks by pointing core.hooksPath at the
 // rendered .githooks directory. It is idempotent and safe to re-run. It errors if
 // .githooks is absent (run `awf sync` first); if not inside a git repository it
 // warns and is a no-op so `awf init` chaining never breaks. The hooks path is
-// resolved relative to the repository top level (via git rev-parse), so setup
-// works when run from a subdirectory. If the repository's local core.hooksPath
-// is already set to a different value (e.g. a husky/lefthook setup in this repo),
-// it refuses unless forceHooks is set, rather than silently hijacking it. Only the
-// repo-local value is consulted — a user's global core.hooksPath default is not a
-// per-repo setup to guard, and awf's local value overrides it for this repo anyway.
+// resolved relative to the repository top level (via go-git), so setup works when
+// run from a subdirectory. If the repository's local core.hooksPath is already set
+// to a different value (e.g. a husky/lefthook setup in this repo), it refuses
+// unless forceHooks is set, rather than silently hijacking it. Only the repo-local
+// value is consulted — a user's global core.hooksPath default is not a per-repo
+// setup to guard, and awf's local value overrides it for this repo anyway.
 // invariant: setup-guards-hookspath
 func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 	if _, err := os.Stat(filepath.Join(root, ".githooks")); os.IsNotExist(err) {
@@ -26,23 +24,19 @@ func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 	} else if err != nil { // coverage-ignore: Stat returns a non-NotExist error only on a permission fault that root bypasses
 		return err
 	}
-	top := gitToplevel(root)
-	if top == "" {
+	repo, top, ok := openWorktree(root)
+	if !ok {
 		fmt.Fprintln(stderr, "awf setup: not a git repository — skipping hook activation")
 		return nil
 	}
 	hooksPath := awfHooksRel(top, root)
-	existing := gitConfigGet(top, "core.hooksPath")
+	existing := localHooksPath(repo)
 	if existing != "" && existing != hooksPath && !forceHooks {
 		return fmt.Errorf("core.hooksPath is already set to %q — awf would override it; "+
 			"re-run with --force-hooks to let awf manage hooks, or leave it and skip `awf setup`", existing)
 	}
-	cmd := exec.Command("git", "config", "--local", "core.hooksPath", hooksPath)
-	cmd.Dir = top
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil { // coverage-ignore: git config write fails only on a permission fault that root bypasses
-		return fmt.Errorf("git config core.hooksPath: %w", err)
+	if err := writeLocalHooksPath(repo, hooksPath); err != nil { // coverage-ignore: SetConfig writes .git/config; fails only on a permission fault that root bypasses
+		return fmt.Errorf("set core.hooksPath: %w", err)
 	}
 	if existing != "" && existing != hooksPath {
 		fmt.Fprintf(stdout, "awf setup: replaced existing core.hooksPath %q\n", existing)
@@ -52,39 +46,13 @@ func runSetup(root string, forceHooks bool, stdout, stderr io.Writer) error {
 }
 
 // awfHooksRel returns awf's .githooks directory expressed relative to the git top
-// level. root's symlinks are resolved first so the path matches git's real-path
-// toplevel (e.g. a /tmp→/private/tmp checkout on macOS); otherwise it is the same
-// .githooks the normal repo-root case yields.
+// level. root's symlinks are resolved first so the path matches go-git's
+// real-path toplevel (e.g. a /tmp→/private/tmp checkout on macOS); otherwise it is
+// the same .githooks the normal repo-root case yields.
 func awfHooksRel(top, root string) string {
 	if r, err := filepath.EvalSymlinks(root); err == nil {
 		root = r
 	}
 	rel, _ := filepath.Rel(top, filepath.Join(root, ".githooks"))
 	return rel
-}
-
-// gitToplevel returns the absolute path of the git work-tree root containing dir,
-// or "" if dir is not inside a git repository.
-func gitToplevel(dir string) string {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
-// gitConfigGet returns the trimmed value of the repository-local git config key
-// resolved from dir, or "" if it is unset locally (git exits non-zero for an
-// absent key). It reads only the local scope, so a user's global/system value
-// does not leak into awf's per-repo hooksPath decisions.
-func gitConfigGet(dir, key string) string {
-	cmd := exec.Command("git", "config", "--local", "--get", key)
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }

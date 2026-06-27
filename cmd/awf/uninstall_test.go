@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -50,34 +48,24 @@ func TestUninstallNoLockErrors(t *testing.T) {
 
 func TestUninstallUnsetsAwfHooks(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := exec.Command("git", "-C", root, "init").Run(); err != nil {
-		t.Fatalf("git init: %v", err)
-	}
-	if err := exec.Command("git", "-C", root, "config", "core.hooksPath", ".githooks").Run(); err != nil {
-		t.Fatal(err)
-	}
+	gitInit(t, root)
+	seedHooksPath(t, root, ".githooks")
 	if err := runUninstall(root, io.Discard); err != nil {
 		t.Fatalf("runUninstall: %v", err)
 	}
-	out, _ := exec.Command("git", "-C", root, "config", "--get", "core.hooksPath").Output()
-	if got := strings.TrimSpace(string(out)); got != "" {
+	if got := readHooksPath(t, root); got != "" {
 		t.Errorf("core.hooksPath should be unset, got %q", got)
 	}
 }
 
 func TestUninstallLeavesForeignHooks(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := exec.Command("git", "-C", root, "init").Run(); err != nil {
-		t.Fatalf("git init: %v", err)
-	}
-	if err := exec.Command("git", "-C", root, "config", "core.hooksPath", ".husky").Run(); err != nil {
-		t.Fatal(err)
-	}
+	gitInit(t, root)
+	seedHooksPath(t, root, ".husky")
 	if err := runUninstall(root, io.Discard); err != nil {
 		t.Fatalf("runUninstall: %v", err)
 	}
-	out, _ := exec.Command("git", "-C", root, "config", "--get", "core.hooksPath").Output()
-	if got := strings.TrimSpace(string(out)); got != ".husky" {
+	if got := readHooksPath(t, root); got != ".husky" {
 		t.Errorf("foreign core.hooksPath = %q, want .husky (untouched)", got)
 	}
 }
