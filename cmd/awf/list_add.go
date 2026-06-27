@@ -83,7 +83,7 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 	if slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q already enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, true); err != nil { // coverage-ignore: rewriteConfig only fails on faults its own ignored branches cover; unreachable after the validations above
+	if err := rewriteConfig(root, key, name, true); err != nil {
 		return err
 	}
 	// Doc-gated skill: warn when its required doc is not enabled, since it would
@@ -108,7 +108,7 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q is not enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, false); err != nil { // coverage-ignore: rewriteConfig only fails on faults its own ignored branches cover; unreachable after the validations above
+	if err := rewriteConfig(root, key, name, false); err != nil {
 		return err
 	}
 	if hasSidecarOrParts(root, key, name) {
@@ -126,7 +126,7 @@ func rewriteConfig(root, key, name string, add bool) error {
 		return err
 	}
 	updated, err := editArray(string(b), key, name, add)
-	if err != nil { // coverage-ignore: add/remove validate membership against the live config before editing, so the array branch they hit always exists
+	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(cfgPath, []byte(updated), 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
@@ -152,19 +152,21 @@ func hasSidecarOrParts(root, key, name string) bool {
 
 // editArray adds or removes "  - name" under the "key:" block of a config.yaml
 // source, scoped to that key's block so a name shared across kinds is touched in
-// the right array only. It handles the key with items, the "key: []" and bare
-// "key:" forms, and — for add — the key being absent entirely.
+// the right array only. It handles the canonical block style ScaffoldConfig emits
+// — the key with "  - item" lines, the "key: []" and bare "key:" forms, and (for
+// add) the key absent entirely — and refuses a flow-style ("key: [a, b]") array
+// rather than risk corrupting it. Items are assumed two-space-indented.
 func editArray(src, key, name string, add bool) (string, error) {
 	lines := strings.Split(src, "\n")
 	for i, l := range lines {
-		switch l {
-		case key + ": []":
+		switch {
+		case l == key+": []":
 			if !add {
 				return "", fmt.Errorf("%s has no %q entry", key, name)
 			}
 			lines[i] = key + ":"
 			return strings.Join(slices.Insert(lines, i+1, "  - "+name), "\n"), nil
-		case key + ":":
+		case l == key+":":
 			if add {
 				return strings.Join(slices.Insert(lines, i+1, "  - "+name), "\n"), nil
 			}
@@ -177,6 +179,10 @@ func editArray(src, key, name string, add bool) (string, error) {
 				}
 			}
 			return "", fmt.Errorf("%s has no %q entry", key, name)
+		case strings.HasPrefix(l, key+":"):
+			// An inline/flow form like "key: [a, b]"; the line editor cannot safely
+			// edit it without risking a duplicate key, so refuse rather than corrupt.
+			return "", fmt.Errorf("%s is not in block style — rewrite it as `%s:` with `  - item` lines, or edit it by hand", key, key)
 		}
 	}
 	if !add {
@@ -226,6 +232,7 @@ func targetState(p *project.Project, kind, name string) string {
 		return "available"
 	}
 	if kind != "hook" {
+		// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
 		sc, _ := p.Cfg.Sidecar(kindKey[kind], name)
 		switch {
 		case sc.Local:

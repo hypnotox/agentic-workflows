@@ -59,6 +59,8 @@ func TestEditArray(t *testing.T) {
 		{"remove not found", "skills:\n  - a\n", "skills", "z", false, "", true},
 		{"remove from empty array", "skills: []\n", "skills", "a", false, "", true},
 		{"remove absent key", "prefix: x\n", "skills", "a", false, "", true},
+		{"add refuses flow style", "skills: [a]\n", "skills", "b", true, "", true},
+		{"remove refuses flow style", "skills: [a]\n", "skills", "a", false, "", true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -113,6 +115,19 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
 		t.Error("expected already-enabled error")
+	}
+}
+
+// TestRunAddRemoveRefuseFlowStyle covers the refusal path (and its error
+// propagation through rewriteConfig) for a hand-edited flow-style array.
+// scaffoldProject's minimalYAML uses flow-style `skills: [tdd]`.
+func TestRunAddRemoveRefuseFlowStyle(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runAdd(root, "skill", "bugfix", io.Discard); err == nil {
+		t.Error("expected refusal adding to a flow-style array")
+	}
+	if err := runRemove(root, "skill", "tdd", io.Discard); err == nil {
+		t.Error("expected refusal removing from a flow-style array")
 	}
 }
 
