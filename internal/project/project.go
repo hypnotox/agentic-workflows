@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -249,16 +251,6 @@ func (p *Project) planSections(kind, target string, declared []string, sec map[s
 	return plan, nil
 }
 
-// sortedKeys returns the keys of m in ascending sorted order.
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 // checkSectionsAllowed verifies that every key in used appears in declared.
 // kind and name are used only for error formatting; name may be empty for a
 // singleton (e.g. agents-doc).
@@ -357,7 +349,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
 	// Skills.
 	enabledDocs := sliceSet(p.Cfg.Docs)
-	for _, name := range sortedStrings(p.Cfg.Skills) {
+	for _, name := range slices.Sorted(slices.Values(p.Cfg.Skills)) {
 		sc, err := p.Cfg.Sidecar("skills", name)
 		if err != nil {
 			return nil, err
@@ -379,7 +371,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		out = append(out, rf)
 	}
 	// Agents.
-	for _, name := range sortedStrings(p.Cfg.Agents) {
+	for _, name := range slices.Sorted(slices.Values(p.Cfg.Agents)) {
 		sc, err := p.Cfg.Sidecar("agents", name)
 		if err != nil {
 			return nil, err
@@ -405,7 +397,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		out = append(out, rf)
 	}
 	// Docs.
-	for _, name := range sortedStrings(p.Cfg.Docs) {
+	for _, name := range slices.Sorted(slices.Values(p.Cfg.Docs)) {
 		sc, err := p.Cfg.Sidecar("docs", name)
 		if err != nil {
 			return nil, err
@@ -575,12 +567,6 @@ func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPath
 	return manifest.Hash(enc), nil
 }
 
-func sortedStrings(s []string) []string {
-	out := append([]string(nil), s...)
-	sort.Strings(out)
-	return out
-}
-
 // generateActiveMD renders the ADR index for the project's decisions directory.
 // It always produces a file: a populated index when ADRs exist, else a placeholder
 // (ADR-0020 Decision 6 — partial-item supersedence of ADR-0005/ADR-0006).
@@ -601,7 +587,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 	decisionsDir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
 	var out []RenderedFile
-	for _, name := range sortedStrings(p.Cfg.Domains) {
+	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
 		index, err := adr.RenderDomainIndex(decisionsDir, name)
 		if err != nil {
 			return nil, err
@@ -875,7 +861,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	activeMdRel := strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md"
 	domainsPrefix := strings.TrimRight(p.Cfg.DocsDir, "/") + "/domains/"
 	var drift []manifest.Drift
-	for _, path := range sortedKeys(lock.Files) {
+	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {
 			continue // generated artifacts — checked separately below
 		}
@@ -946,7 +932,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "stale", Detail: "domain doc out of date; run awf sync"})
 		}
 	}
-	for _, path := range sortedKeys(lock.Files) {
+	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
 		}

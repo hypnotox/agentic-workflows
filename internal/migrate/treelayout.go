@@ -3,9 +3,10 @@ package migrate
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,9 +39,9 @@ func applyTreeLayout(root string) error {
 	if lc.Invariants != nil {
 		skeleton["invariants"] = lc.Invariants
 	}
-	skeleton["skills"] = sortedSidecarNames(lc.Skills)
-	skeleton["agents"] = sortedSidecarNames(lc.Agents)
-	skeleton["docs"] = sortedSidecarNames(lc.Docs)
+	skeleton["skills"] = slices.Sorted(maps.Keys(lc.Skills))
+	skeleton["agents"] = slices.Sorted(maps.Keys(lc.Agents))
+	skeleton["docs"] = slices.Sorted(maps.Keys(lc.Docs))
 	if len(lc.Hooks) > 0 {
 		skeleton["hooks"] = lc.Hooks
 	}
@@ -55,7 +56,7 @@ func applyTreeLayout(root string) error {
 	}{
 		{"skills", lc.Skills}, {"agents", lc.Agents}, {"docs", lc.Docs},
 	} {
-		for _, name := range sortedSidecarNames(kv.set) {
+		for _, name := range slices.Sorted(maps.Keys(kv.set)) {
 			if err := portSidecar(awfDir, kv.kind, name, kv.set[name]); err != nil {
 				return err
 			}
@@ -85,7 +86,7 @@ func applyTreeLayout(root string) error {
 // overrides and data/local stay in the sidecar.
 func portSidecar(awfDir, kind, name string, sc legacySidecar) error {
 	keptSections := map[string]any{}
-	for _, sec := range sortedOverrideNames(sc.Sections) {
+	for _, sec := range slices.Sorted(maps.Keys(sc.Sections)) {
 		ov := sc.Sections[sec]
 		if ov.ReplaceWith != "" {
 			dst := filepath.Join(awfDir, kind, "parts", name, sec+".md")
@@ -143,7 +144,7 @@ func portAgentsDoc(awfDir string, ad legacySidecar) error {
 		}
 	}
 	keptSections := map[string]any{}
-	for _, sec := range sortedOverrideNames(ad.Sections) {
+	for _, sec := range slices.Sorted(maps.Keys(ad.Sections)) {
 		ov := ad.Sections[sec]
 		if ov.ReplaceWith != "" {
 			dst := filepath.Join(awfDir, "parts", "agents-doc", sec+".md")
@@ -186,24 +187,6 @@ func copyPart(src, dst string) error {
 		return err
 	}
 	return nil
-}
-
-func sortedSidecarNames(m map[string]legacySidecar) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func sortedOverrideNames(m map[string]legacySectionOverride) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func writeYAML(path string, v any) error {

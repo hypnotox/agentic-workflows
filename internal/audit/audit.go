@@ -4,9 +4,10 @@ package audit
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
@@ -229,14 +230,14 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 				continue // already Implemented before this change; not a new transition
 			}
 			for _, d := range domainsOf(ch.NewText) {
-				if contains(in.ConfiguredDomains, d) {
+				if slices.Contains(in.ConfiguredDomains, d) {
 					flagged[d] = true
 				}
 			}
 		}
 	}
 	var out []Finding
-	for _, d := range sortedSet(flagged) {
+	for _, d := range slices.Sorted(maps.Keys(flagged)) {
 		if !refreshed[d] {
 			out = append(out, Finding{Severity: Warning, Rule: "domain-doc-staleness",
 				Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, in.DomainsPartsDir, d)})
@@ -257,14 +258,14 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 				continue
 			}
 			for _, d := range domainsOf(ch.NewText) {
-				if !contains(in.ConfiguredDomains, d) {
+				if !slices.Contains(in.ConfiguredDomains, d) {
 					flagged[d] = true
 				}
 			}
 		}
 	}
 	var out []Finding
-	for _, d := range sortedSet(flagged) {
+	for _, d := range slices.Sorted(maps.Keys(flagged)) {
 		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
 			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc — add it to config.Domains and author its current-state narrative, or drop the tag", d)})
 	}
@@ -292,24 +293,6 @@ func domainOfPart(path, partsDir string) (string, bool) {
 		return "", false
 	}
 	return domain, true
-}
-
-func contains(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
-}
-
-func sortedSet(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func finding(s Severity, rule string, c Commit, detail string) Finding {

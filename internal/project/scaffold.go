@@ -3,6 +3,8 @@ package project
 import (
 	"fmt"
 	"io/fs"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -47,13 +49,13 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 	}
 
 	// Build sorted var names.
-	varNames := sortedKeys(varSet)
+	varNames := slices.Sorted(maps.Keys(varSet))
 
 	// Build sorted skill names.
-	skillNames := sortedKeys(cat.Skills)
+	skillNames := slices.Sorted(maps.Keys(cat.Skills))
 
 	// Build sorted agent names.
-	agentNames := sortedKeys(cat.Agents)
+	agentNames := slices.Sorted(maps.Keys(cat.Agents))
 
 	// Preserve catalog hook order (already deterministic).
 	hookList := make([]string, len(cat.Hooks))
