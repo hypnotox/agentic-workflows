@@ -64,7 +64,7 @@ type InvariantSource struct {
 
 // AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
 // defaults; within it, a nil slice means "use the default", an explicit empty
-// slice means "accept any / disabled" per field (see AuditSettings).
+// slice means "accept any / disabled" per field (see ResolveAudit).
 type AuditConfig struct {
 	BaseBranch          string   `yaml:"baseBranch"`
 	AllowedTypes        []string `yaml:"allowedTypes"`
@@ -76,41 +76,57 @@ type AuditConfig struct {
 	UndocumentedDomain  *bool    `yaml:"undocumentedDomain"`
 }
 
-// AuditSettings resolves the effective audit settings, applying defaults.
-// Returned slices/ints are ready for internal/audit to consume directly.
-func (c *Config) AuditSettings() (baseBranch string, allowedTypes, allowedScopes, dependencyManifests []string, subjectMax, diffThreshold int, domainDocStaleness, undocumentedDomain bool) {
+// AuditSettings is the resolved, default-applied audit configuration, ready for
+// internal/audit to consume directly.
+type AuditSettings struct {
+	BaseBranch          string
+	AllowedTypes        []string
+	AllowedScopes       []string
+	DependencyManifests []string
+	SubjectMaxLength    int
+	DiffThreshold       int
+	DomainDocStaleness  bool
+	UndocumentedDomain  bool
+}
+
+// ResolveAudit resolves the effective audit settings, applying defaults.
+func (c *Config) ResolveAudit() AuditSettings {
+	s := AuditSettings{
+		BaseBranch:          "main",
+		AllowedTypes:        defaultAllowedTypes(),
+		DependencyManifests: defaultDependencyManifests(),
+		SubjectMaxLength:    72,
+		DiffThreshold:       400,
+		DomainDocStaleness:  true,
+		UndocumentedDomain:  true,
+	}
 	a := c.Audit
-	baseBranch = "main"
-	allowedTypes = defaultAllowedTypes()
-	dependencyManifests = defaultDependencyManifests()
-	subjectMax, diffThreshold = 72, 400
-	domainDocStaleness, undocumentedDomain = true, true
 	if a == nil {
-		return
+		return s
 	}
 	if a.BaseBranch != "" {
-		baseBranch = a.BaseBranch
+		s.BaseBranch = a.BaseBranch
 	}
 	if a.AllowedTypes != nil { // explicit (incl. empty = accept any)
-		allowedTypes = a.AllowedTypes
+		s.AllowedTypes = a.AllowedTypes
 	}
-	allowedScopes = a.AllowedScopes // nil default = accept any
+	s.AllowedScopes = a.AllowedScopes // nil default = accept any
 	if a.DependencyManifests != nil {
-		dependencyManifests = a.DependencyManifests
+		s.DependencyManifests = a.DependencyManifests
 	}
 	if a.SubjectMaxLength != nil {
-		subjectMax = *a.SubjectMaxLength
+		s.SubjectMaxLength = *a.SubjectMaxLength
 	}
 	if a.DiffThreshold != nil {
-		diffThreshold = *a.DiffThreshold
+		s.DiffThreshold = *a.DiffThreshold
 	}
 	if a.DomainDocStaleness != nil {
-		domainDocStaleness = *a.DomainDocStaleness
+		s.DomainDocStaleness = *a.DomainDocStaleness
 	}
 	if a.UndocumentedDomain != nil {
-		undocumentedDomain = *a.UndocumentedDomain
+		s.UndocumentedDomain = *a.UndocumentedDomain
 	}
-	return
+	return s
 }
 
 func defaultAllowedTypes() []string {

@@ -716,9 +716,9 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 // Audit runs the process-conformance audit (ADR-0017) over the branch range.
 // baseOverride wins over the configured base branch when non-empty.
 func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
-	base, types, scopes, manifests, subjectMax, threshold, domStale, undoc := p.Cfg.AuditSettings()
+	s := p.Cfg.ResolveAudit()
 	if baseOverride != "" {
-		base = baseOverride
+		s.BaseBranch = baseOverride
 	}
 	lay := p.layout()
 	generated := map[string]bool{}
@@ -728,20 +728,20 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		}
 	}
 	return audit.Run(p.Root, audit.Inputs{
-		BaseBranch:          base,
-		AllowedTypes:        types,
-		AllowedScopes:       scopes,
-		SubjectMaxLength:    subjectMax,
-		DependencyManifests: manifests,
-		DiffThreshold:       threshold,
+		BaseBranch:          s.BaseBranch,
+		AllowedTypes:        s.AllowedTypes,
+		AllowedScopes:       s.AllowedScopes,
+		SubjectMaxLength:    s.SubjectMaxLength,
+		DependencyManifests: s.DependencyManifests,
+		DiffThreshold:       s.DiffThreshold,
 		GeneratedPaths:      generated,
 		ADRDir:              lay["adrDir"].(string),
 		ActiveMd:            lay["activeMd"].(string),
 		PlansDir:            lay["plansDir"].(string),
 		ConfiguredDomains:   p.Cfg.Domains,
 		DomainsPartsDir:     ".awf/domains/parts",
-		DomainDocStaleness:  domStale,
-		UndocumentedDomain:  undoc,
+		DomainDocStaleness:  s.DomainDocStaleness,
+		UndocumentedDomain:  s.UndocumentedDomain,
 	})
 }
 
