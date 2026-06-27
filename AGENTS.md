@@ -11,7 +11,7 @@ This project's `.claude/` skills, agents, and git hooks — and this guide — a
 
 - **Toggle a target** — add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.awf/config.yaml`.
 - **Set a variable** — edit `vars` in `.awf/config.yaml`.
-- **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`.
+- **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
 - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
 
 <!-- awf:edit you-and-this-project — from .awf/parts/agents-doc/you-and-this-project.md -->
