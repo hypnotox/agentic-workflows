@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [check, drift, docs]
-related: [0005, 0011, 0013, 0019, 0021]
+related: [0005, 0006, 0011, 0013, 0019, 0021]
 domains: [rendering, adr-system]
 ---
 # ADR-0020: Dead-Reference Check in `awf check`
@@ -60,9 +60,21 @@ dirs), and a dead internal link in awf's own output is a deterministic defect �
    from a file under `docsDir` — this check now enforces that.
 
 6. **`ACTIVE.md` always renders.** `generateActiveMD` returns content even with zero ADRs (a heading
-   plus a placeholder line), so the document map's `ACTIVE.md` link resolves out of the box. This
-   partial-supersedes ADR-0005's "renders nothing for zero ADRs" (`related: [0005]`); the
-   regenerate-and-compare drift path treats `ACTIVE.md` as always-present.
+   plus a placeholder line), so the document map's `ACTIVE.md` link resolves out of the box. This is
+   a **partial-item supersedence** (recorded in this successor's prose with `related:` linkage, per
+   `docs/decisions/README.md`) of two Implemented-ADR invariants:
+   - **ADR-0005 `inv: sync-generates-active-md`** — its "an absent or ADR-less decisions dir … writes
+     **no** `ACTIVE.md` and prunes any previously locked one" clause no longer holds. `sync` now
+     always writes `ACTIVE.md`; the regenerate-and-compare drift path treats it as always-present
+     (it is never `orphaned`-to-absent for a zero-ADR tree). The with-ADRs grouping is unchanged.
+   - **ADR-0006 `inv: render-active-md`** — its "returns `""` when the directory holds no ADRs"
+     clause no longer holds. `internal/adr.RenderActiveMD` returns the zero-ADR placeholder index
+     instead. Its "byte-identical to the pre-rename generator" clause for a populated directory is
+     unchanged, so the rest of that invariant stands.
+
+   The backing tests for both invariants are updated to assert the new behaviour, keeping their
+   `// invariant:` markers; ADR-0005 and ADR-0006 stay live (status not flipped), per the
+   partial-item-supersedence convention.
 
 7. **Scaffold a `plans-readme` singleton** → `<docsDir>/plans/README.md` (a short plan-authoring
    guide), extending the ADR-0021 singleton set. The ADR and plan systems are both the basis of the
