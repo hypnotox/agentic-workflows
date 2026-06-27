@@ -189,3 +189,103 @@ func TestUnderDir(t *testing.T) {
 		t.Error("sibling prefix should not match")
 	}
 }
+
+func adrChange(action Action, status string, domains string) FileChange {
+	txt := "---\nstatus: " + status + "\ndomains: [" + domains + "]\n---\nbody\n"
+	return FileChange{Path: "docs/decisions/0099-x.md", Action: action, NewText: txt}
+}
+
+func TestRuleDomainDocStalenessDisabled(t *testing.T) {
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, DomainsPartsDir: ".awf/domains/parts"}
+	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in); f != nil {
+		t.Errorf("disabled rule returned %v", f)
+	}
+}
+
+func TestRuleDomainDocStaleness(t *testing.T) {
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", DomainDocStaleness: true}
+	partChange := func(p string) FileChange { return FileChange{Path: p, Action: Modified} }
+
+	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
+	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
+	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Commit != "" {
+		t.Fatalf("want 1 branch-level warning, got %v", got)
+	}
+
+	// Narrative refreshed in range -> 0. Also exercises domainOfPart valid + invalid-suffix + nested paths.
+	clean := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{
+		adrChange(Modified, "Implemented", "tooling"),
+		partChange(".awf/domains/parts/tooling/current-state.md"),
+		partChange(".awf/domains/parts/tooling/notes.md"),     // under partsDir, wrong file
+		partChange(".awf/domains/parts/a/b/current-state.md"), // nested -> rejected
+	}}}, in)
+	if len(clean) != 0 {
+		t.Fatalf("refreshed narrative should be clean, got %v", clean)
+	}
+
+	// status only Accepted; unconfigured domain; no domains; already Implemented; deleted; non-ADR -> all 0.
+	for _, ch := range []FileChange{
+		adrChange(Added, "Accepted", "tooling"),
+		adrChange(Added, "Implemented", "ghost"),
+		{Path: "docs/decisions/0099-x.md", Action: Added, NewText: "---\nstatus: Implemented\n---\n"},
+		{Path: "docs/decisions/0099-x.md", Action: Modified, OldText: "---\nstatus: Implemented\ndomains: [tooling]\n---\n", NewText: "---\nstatus: Implemented\ndomains: [tooling]\n---\nedited\n"},
+		{Path: "docs/decisions/0099-x.md", Action: Deleted},
+		{Path: "README.md", Action: Modified},
+	} {
+		if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{ch}}}, in); len(f) != 0 {
+			t.Errorf("change %+v should be clean, got %v", ch, f)
+		}
+	}
+
+	// Multi-domain [tooling, rendering], only tooling refreshed -> 1 warning (rendering).
+	multi := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{
+		adrChange(Added, "Implemented", "tooling, rendering"),
+		partChange(".awf/domains/parts/tooling/current-state.md"),
+	}}}, in)
+	if len(multi) != 1 || multi[0].Detail == "" {
+		t.Fatalf("want 1 warning for rendering, got %v", multi)
+	}
+
+	// Empty ConfiguredDomains -> inert.
+	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}},
+		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", DomainDocStaleness: true}); len(f) != 0 {
+		t.Errorf("no configured domains should be inert, got %v", f)
+	}
+}
+
+func TestRuleUndocumentedDomain(t *testing.T) {
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, UndocumentedDomain: true}
+
+	// Disabled.
+	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
+		Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}}); f != nil {
+		t.Errorf("disabled rule returned %v", f)
+	}
+	// No configured domains -> inert.
+	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
+		Inputs{ADRDir: "docs/decisions", UndocumentedDomain: true}); f != nil {
+		t.Errorf("no configured domains returned %v", f)
+	}
+	// ADR tags an unconfigured domain -> 1 warning.
+	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
+	if len(got) != 1 || got[0].Rule != "undocumented-domain" {
+		t.Fatalf("want 1 warning, got %v", got)
+	}
+	// Configured domain -> clean.
+	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Modified, "Accepted", "tooling")}}}, in); len(f) != 0 {
+		t.Errorf("configured domain should be clean, got %v", f)
+	}
+	// Deleted ADR -> clean.
+	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{{Path: "docs/decisions/0099-x.md", Action: Deleted}}}}, in); len(f) != 0 {
+		t.Errorf("deleted ADR should be clean, got %v", f)
+	}
+	// ADR file with no parseable frontmatter -> domainsOf hits its not-found branch -> 0.
+	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{{Path: "docs/decisions/0099-x.md", Action: Added, NewText: "# no frontmatter"}}}}, in); len(f) != 0 {
+		t.Errorf("frontmatter-less ADR should be clean, got %v", f)
+	}
+	// Multi-domain [tooling, ghost] -> 1 warning (ghost).
+	multi := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, ghost")}}}, in)
+	if len(multi) != 1 {
+		t.Fatalf("want 1 warning for ghost, got %v", multi)
+	}
+}

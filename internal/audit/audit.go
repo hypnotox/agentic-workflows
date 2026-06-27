@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
@@ -72,9 +73,13 @@ type Inputs struct {
 	DependencyManifests []string // empty = dependency-adr off
 	DiffThreshold       int      // 0 = plan-for-large-change off
 	GeneratedPaths      map[string]bool
-	ADRDir              string // e.g. "docs/decisions"
-	ActiveMd            string // e.g. "docs/decisions/ACTIVE.md"
-	PlansDir            string // e.g. "docs/plans"
+	ADRDir              string   // e.g. "docs/decisions"
+	ActiveMd            string   // e.g. "docs/decisions/ACTIVE.md"
+	PlansDir            string   // e.g. "docs/plans"
+	ConfiguredDomains   []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
+	DomainsPartsDir     string   // e.g. ".awf/domains/parts"
+	DomainDocStaleness  bool     // run the domain-doc-staleness rule
+	UndocumentedDomain  bool     // run the undocumented-domain rule
 }
 
 // Run collects the branch range and evaluates the rules.
@@ -96,6 +101,8 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 	out = append(out, ruleADRStatusCochange(commits, in)...)
 	out = append(out, ruleDependencyADR(commits, in)...)
 	out = append(out, rulePlanForLargeChange(commits, in)...)
+	out = append(out, ruleDomainDocStaleness(commits, in)...)
+	out = append(out, ruleUndocumentedDomain(commits, in)...)
 	return out
 }
 
@@ -198,6 +205,111 @@ func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 			Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", total, in.DiffThreshold, in.PlansDir)}}
 	}
 	return nil
+}
+
+// invariant: audit-domain-doc-staleness
+func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
+	if !in.DomainDocStaleness {
+		return nil
+	}
+	refreshed := map[string]bool{} // domains whose source narrative changed in range
+	flagged := map[string]bool{}   // configured domains brought to Implemented in range
+	for _, c := range commits {
+		for _, ch := range c.Changes {
+			if d, ok := domainOfPart(ch.Path, in.DomainsPartsDir); ok {
+				refreshed[d] = true
+			}
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+				continue
+			}
+			if statusOf(ch.NewText) != "Implemented" {
+				continue
+			}
+			if ch.Action != Added && statusOf(ch.OldText) == "Implemented" {
+				continue // already Implemented before this change; not a new transition
+			}
+			for _, d := range domainsOf(ch.NewText) {
+				if contains(in.ConfiguredDomains, d) {
+					flagged[d] = true
+				}
+			}
+		}
+	}
+	var out []Finding
+	for _, d := range sortedSet(flagged) {
+		if !refreshed[d] {
+			out = append(out, Finding{Severity: Warning, Rule: "domain-doc-staleness",
+				Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, in.DomainsPartsDir, d)})
+		}
+	}
+	return out
+}
+
+// invariant: audit-undocumented-domain
+func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
+	if !in.UndocumentedDomain || len(in.ConfiguredDomains) == 0 {
+		return nil
+	}
+	flagged := map[string]bool{}
+	for _, c := range commits {
+		for _, ch := range c.Changes {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+				continue
+			}
+			for _, d := range domainsOf(ch.NewText) {
+				if !contains(in.ConfiguredDomains, d) {
+					flagged[d] = true
+				}
+			}
+		}
+	}
+	var out []Finding
+	for _, d := range sortedSet(flagged) {
+		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
+			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc — add it to config.Domains and author its current-state narrative, or drop the tag", d)})
+	}
+	return out
+}
+
+func domainsOf(text string) []string {
+	var meta struct {
+		Domains []string `yaml:"domains"`
+	}
+	if _, found, err := frontmatter.Parse([]byte(text), &meta); err != nil || !found {
+		return nil
+	}
+	return meta.Domains
+}
+
+func domainOfPart(path, partsDir string) (string, bool) {
+	const suffix = "/current-state.md"
+	rest, ok := strings.CutPrefix(path, partsDir+"/")
+	if !ok || !strings.HasSuffix(rest, suffix) {
+		return "", false
+	}
+	domain := strings.TrimSuffix(rest, suffix)
+	if domain == "" || strings.Contains(domain, "/") {
+		return "", false
+	}
+	return domain, true
+}
+
+func contains(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}
+
+func sortedSet(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func finding(s Severity, rule string, c Commit, detail string) Finding {
