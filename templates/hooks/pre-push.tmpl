@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-{{ if .vars.gateCmd }}{{ .vars.gateCmd }} full{{ end }}
+{{ if .vars.gateCmdFull }}{{ .vars.gateCmdFull }}{{ else if .vars.gateCmd }}{{ .vars.gateCmd }}{{ end }}

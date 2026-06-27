@@ -46,8 +46,8 @@
     },
     ".claude/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:3634a8cda45775bf640e74338b6f9a14ce6e86f6ac17842818b028f3eac8c52c",
-      "configHash": "sha256:dd36ce09d809bc680a32afec5758e353f2b01fe77065156774a962110192f507",
+      "templateHash": "sha256:d1b2d0aa5db0817668fd2d71be1678ff600578e2cd1dcc6b697cb2f425ed2bdb",
+      "configHash": "sha256:a4c28a0d8f1de54bcd12ed20065a2b35c4e7545c7d060d98d5586e919e1221b0",
       "outputHash": "sha256:48daf1f845e775e69800d1b49e2681024f36ff683ca09afa9ceb4c873a01caa4"
     },
     ".claude/skills/awf-proposing-adr/SKILL.md": {
@@ -112,8 +112,8 @@
     },
     ".githooks/pre-push": {
       "templateId": "hooks/pre-push.tmpl",
-      "templateHash": "sha256:4b76f2ce00b7ff4d2e4b9b859c524477b95660cfb7c2b4297f91a4ed6f2d22af",
-      "configHash": "sha256:9c9de71328e58a7fc12417dfe00dde937488954746b5dc51faa20e4153145b24",
+      "templateHash": "sha256:2367215cd94d2e57839af3883a5d25e4120d83b307ecdbf3a528a46a96d1fbba",
+      "configHash": "sha256:4ce07e5985fc02e045a52a4c7423ebdb31a81a132e24e39b9dbd940cd1cd9433",
       "outputHash": "sha256:b91c85d54b78f9ec15466c088b06cd62fb042f9246c0120cf9229e0dcfd90437"
     },
     "AGENTS.md": {

@@ -43,7 +43,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-detail -->
-{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmd }} full` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .layout.workflowRef }}`.
+{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmdFull }}` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .layout.workflowRef }}`.
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->

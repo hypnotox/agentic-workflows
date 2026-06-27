@@ -267,6 +267,7 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"prefix": "example",
 		"vars": map[string]any{
 			"gateCmd":          "./x gate",
+			"gateCmdFull":      "./x gate full",
 			"gateDuration":     "~2 min",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
