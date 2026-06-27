@@ -9,6 +9,10 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
+
 ### Implemented
 
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](../decisions/0004-agents-md-template-and-docs-module.md)
