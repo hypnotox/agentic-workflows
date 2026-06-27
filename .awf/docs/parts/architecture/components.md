@@ -1,11 +1,11 @@
 ## Components
 
 - **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup`, `upgrade`
-  subcommands. `sync`/`check` gate on the schema generation before opening the project.
+  subcommands. `sync`/`check` enforce the schema-generation gate (ADR-0010) before opening the project.
 - **`internal/config/`** — loads `.awf/config.yaml` plus keyed sidecars; owns the config schema.
 - **`internal/catalog/`** — reads `templates/catalog.yaml`; declares the available skills, agents,
   hooks, docs, and their sections.
-- **`internal/render/`** — Go `text/template` rendering with `missingkey=zero`; assembles section
+- **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section
   overlays (sidecar overrides + convention parts) then executes the template.
 - **`internal/manifest/`** — reads and writes `.awf/awf.lock` (schema-versioned); drives
   drift detection for `awf check`.
