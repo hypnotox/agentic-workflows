@@ -32,8 +32,9 @@ A fourth, smaller defect: `awf setup` checks for `.git` at the working directory
 a subdirectory silently skips hook activation rather than resolving the repository root.
 
 ADR-0003 governs binary delivery and `setup`'s `core.hooksPath` activation; ADR-0016 governs the
-`awf init` collision pre-flight. This ADR refines both: it keeps their decisions and closes the
-destructive-overwrite, hook-hijack, and no-backout gaps.
+`awf init` collision pre-flight. This ADR refines both to harden `init`/`setup` for real-world
+adoption — closing the destructive-overwrite, hook-hijack, and no-backout gaps, and the related
+subdir-invocation defect that makes `setup` skip hook activation when run below the repository root.
 
 ## Decision
 
@@ -48,8 +49,10 @@ destructive-overwrite, hook-hijack, and no-backout gaps.
    setting it. If it is unset or already `.githooks`, setup proceeds (idempotent, as today). If it
    points anywhere else, setup refuses with a message naming the existing value and the
    `--force-hooks` escape hatch; with `--force-hooks` it proceeds, reporting the value it replaced.
-   `awf init` chains `setup` without `--force-hooks`, so an adopter's existing hooks manager halts
-   init's hook step with an actionable message rather than being silently overwritten.
+   `awf init` accepts `--force-hooks` and forwards it to the chained `setup`, so a one-command
+   forced adoption (`awf init --force --force-hooks`) is possible; without the flag, an adopter's
+   existing hooks manager halts init's hook step with an actionable message rather than being
+   silently overwritten.
 
 3. **Resolve the repository root.** `awf setup` resolves the git top level via
    `git rev-parse --show-toplevel` rather than checking for `.git` at the working directory, so it
@@ -57,13 +60,16 @@ destructive-overwrite, hook-hijack, and no-backout gaps.
    keeps the existing warn-and-skip behaviour so `awf init` chaining never breaks.
 
 4. **Add `awf uninstall`.** A new subcommand removes every rendered file recorded in `.awf/awf.lock`,
-   prunes parent directories left empty, and unsets `core.hooksPath` when it points to `.githooks`
-   (leaving a foreign value untouched). When not inside a git repository, or when `core.hooksPath`
-   is unset, the hook step is a no-op; like `setup` (item 3) `uninstall` resolves the repository root
-   via `git rev-parse --show-toplevel` so it works from a subdirectory. It does **not** delete
-   `.awf/` — that tree is the adopter's authored config (sidecars, convention parts), not generated
-   output — and reports what it removed plus a note that `.awf/` was left in place. Backing out is
-   then a single command.
+   prunes parent directories left empty, removes the now-stale lock file itself, and unsets
+   `core.hooksPath` when it points to `.githooks` (leaving a foreign value untouched). When not
+   inside a git repository, or when `core.hooksPath` is unset, the hook step is a no-op; like
+   `setup` (item 3) `uninstall` resolves the repository root via `git rev-parse --show-toplevel` so
+   it works from a subdirectory. It does **not** delete the adopter's *authored* config — `config.yaml`,
+   sidecars, and convention parts under `.awf/` — only the generated lock; so a subsequent `awf sync`
+   re-renders cleanly, and a subsequent `awf init --force` correctly treats any new hand-authored
+   file as a collision (backing it up) rather than mistaking a stale lock entry for managed output.
+   It reports what it removed and that the authored config was left in place. Backing out is a single
+   command.
 
 5. **Supersedence scope.** This ADR refines two Implemented ADRs by partial-item supersedence
    recorded through `related` (no full replacement); both predecessors keep their `Implemented`
@@ -84,7 +90,8 @@ is `Implemented`); the bullets below are the mechanically verifiable contracts t
 - `inv: setup-guards-hookspath` — `awf setup` does not overwrite a `core.hooksPath` set to a value
   other than `.githooks` unless `--force-hooks` is passed.
 - `inv: uninstall-removes-lock-tracked` — `awf uninstall` removes exactly the files recorded in the
-  lock and unsets `core.hooksPath` only when it points to `.githooks`, leaving `.awf/` intact.
+  lock plus the lock file itself, and unsets `core.hooksPath` only when it points to `.githooks`,
+  leaving the authored `.awf/` config (config.yaml, sidecars, parts) intact.
 
 ## Consequences
 
