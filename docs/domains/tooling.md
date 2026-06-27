@@ -19,3 +19,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 
+### Proposed
+
+- [ADR-0019: Domain-Doc Staleness Audit Rule](../decisions/0019-domain-doc-staleness-audit-rule.md)
+
