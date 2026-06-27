@@ -481,11 +481,22 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md clobbered: %q", b)
 	}
-	// --force overwrites and completes.
+	// --force backs up the colliding file, then overwrites and completes.
 	out.Reset()
 	errb.Reset()
 	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
 		t.Fatalf("init --force failed: %s", errb.String())
+	}
+	// The original is preserved at <path>.awf-bak.
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
+		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
+	}
+	// And the live file was overwritten with managed content.
+	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
+		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
+	}
+	if !strings.Contains(out.String(), "backed up CLAUDE.md") {
+		t.Errorf("expected backup report on stdout, got %q", out.String())
 	}
 }
 

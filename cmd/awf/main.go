@@ -105,15 +105,26 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		scaffolded = true
 		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
 	}
-	if !force {
-		if collisions, err := initCollisions(root); err != nil {
-			return err
-		} else if len(collisions) > 0 {
+	collisions, err := initCollisions(root)
+	if err != nil {
+		return err
+	}
+	if len(collisions) > 0 {
+		if !force {
 			if scaffolded {
 				os.RemoveAll(filepath.Dir(cfgPath)) // writes nothing on abort
 			}
 			return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
 				strings.Join(collisions, "\n  "))
+		}
+		// --force: back up each colliding non-managed file before sync overwrites it.
+		// invariant: init-force-backs-up
+		for _, rel := range collisions {
+			bak := rel + ".awf-bak"
+			if err := copyFile(filepath.Join(root, rel), filepath.Join(root, bak)); err != nil { // coverage-ignore: rel is a known-existing collision and bak is a sibling path; copyFile fails only on a permission fault root bypasses
+				return fmt.Errorf("awf init: back up %s: %w", rel, err)
+			}
+			fmt.Fprintf(stdout, "backed up %s → %s\n", rel, bak)
 		}
 	}
 	if err := runSync(root, stdout); err != nil {
@@ -123,6 +134,19 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
+}
+
+// copyFile copies src to dst, preserving the source file's permission bits.
+func copyFile(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil { // coverage-ignore: src is a known-existing collision path
+		return err
+	}
+	data, err := os.ReadFile(src)
+	if err != nil { // coverage-ignore: src was just stat'd and is readable
+		return err
+	}
+	return os.WriteFile(dst, data, info.Mode().Perm())
 }
 
 // initCollisions returns planned output paths that already exist on disk and are
