@@ -35,13 +35,19 @@ freeform — the adopter invents domain names and authors each domain's current-
 2. **Validate by kind.** For the catalog-backed kinds the name must be a catalog entry (the
    `catalog.Skills`/`Agents`/`Docs` maps, the `Hooks` slice). For `domain` the name is validated for
    path-safety through the same `config` rule that backs ADR-0014's `inv: domain-name-validated`, with
-   no catalog check — `add domain` creates a new freeform domain. `add` errors if the target is
-   already enabled; `remove` errors if it is not.
+   no catalog check — `add domain` creates a new freeform domain. That rule is inline in
+   `config.Validate` today; this ADR extracts it into an exported `config` helper (e.g.
+   `ValidateDomainName`) that both `config.Validate` and the CLI `add domain` path call **before any
+   write**, so an invalid name is rejected up front rather than after a partial config write. Because
+   `config.Validate` still applies the check (now via the helper), ADR-0014's `inv:
+   domain-name-validated` backing — asserted through `config.Validate` — stays intact. `add` errors if
+   the target is already enabled; `remove` errors if it is not.
 
-3. **Edit one array generically, re-sync.** A single config-array editor handles every kind and the
-   array states the scaffold can produce: the key present with items, the empty `key: []` form, a bare
-   `key:`, and — for `domains`, which `ScaffoldConfig` does not emit — the key absent entirely (it is
-   appended). Removal is scoped to the named key's block so a name shared across kinds (`debugging`)
+3. **Edit one array generically, re-sync.** A single config-array editor handles every kind and every
+   array form it may encounter: the key present with items (the only shape `ScaffoldConfig` emits via
+   `writeArray`), the empty `key: []` form and a bare `key:` (which a hand-edit — or removing the last
+   item — can leave), and — for `domains`, which `ScaffoldConfig` does not emit — the key absent
+   entirely (it is appended). Removal is scoped to the named key's block so a name shared across kinds (`debugging`)
    is removed from the right array only; removing the last item leaves a bare `key:` (a valid empty
    array). Both commands re-render via the normal sync, so `remove` drops the now-unproduced rendered
    file through the existing Sync prune.
