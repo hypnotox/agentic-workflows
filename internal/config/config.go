@@ -72,16 +72,19 @@ type AuditConfig struct {
 	SubjectMaxLength    *int     `yaml:"subjectMaxLength"`
 	DependencyManifests []string `yaml:"dependencyManifests"`
 	DiffThreshold       *int     `yaml:"diffThreshold"`
+	DomainDocStaleness  *bool    `yaml:"domainDocStaleness"`
+	UndocumentedDomain  *bool    `yaml:"undocumentedDomain"`
 }
 
 // AuditSettings resolves the effective audit settings, applying defaults.
 // Returned slices/ints are ready for internal/audit to consume directly.
-func (c *Config) AuditSettings() (baseBranch string, allowedTypes, allowedScopes, dependencyManifests []string, subjectMax, diffThreshold int) {
+func (c *Config) AuditSettings() (baseBranch string, allowedTypes, allowedScopes, dependencyManifests []string, subjectMax, diffThreshold int, domainDocStaleness, undocumentedDomain bool) {
 	a := c.Audit
 	baseBranch = "main"
 	allowedTypes = defaultAllowedTypes()
 	dependencyManifests = defaultDependencyManifests()
 	subjectMax, diffThreshold = 72, 400
+	domainDocStaleness, undocumentedDomain = true, true
 	if a == nil {
 		return
 	}
@@ -100,6 +103,12 @@ func (c *Config) AuditSettings() (baseBranch string, allowedTypes, allowedScopes
 	}
 	if a.DiffThreshold != nil {
 		diffThreshold = *a.DiffThreshold
+	}
+	if a.DomainDocStaleness != nil {
+		domainDocStaleness = *a.DomainDocStaleness
+	}
+	if a.UndocumentedDomain != nil {
+		undocumentedDomain = *a.UndocumentedDomain
 	}
 	return
 }

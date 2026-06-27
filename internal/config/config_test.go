@@ -421,9 +421,14 @@ func containsStr(list []string, v string) bool {
 
 func intPtr(i int) *int { return &i }
 
+func boolPtr(b bool) *bool { return &b }
+
 func TestAuditSettingsDefaultsWhenNil(t *testing.T) {
 	c := &Config{Prefix: "x", DocsDir: "docs"} // Audit nil
-	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	base, types, scopes, manifests, max, thr, domStale, undoc := c.AuditSettings()
+	if !domStale || !undoc {
+		t.Errorf("toggles default to off: domStale=%v undoc=%v", domStale, undoc)
+	}
 	if base != "main" {
 		t.Errorf("baseBranch = %q, want main", base)
 	}
@@ -443,7 +448,10 @@ func TestAuditSettingsDefaultsWhenNil(t *testing.T) {
 
 func TestAuditSettingsZeroAuditFallsBackToDefaults(t *testing.T) {
 	c := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{}}
-	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	base, types, scopes, manifests, max, thr, domStale, undoc := c.AuditSettings()
+	if !domStale || !undoc {
+		t.Errorf("empty AuditConfig should keep toggles on: %v %v", domStale, undoc)
+	}
 	if base != "main" || !containsStr(types, "feat") || scopes != nil ||
 		!containsStr(manifests, "go.mod") || max != 72 || thr != 400 {
 		t.Errorf("empty AuditConfig did not fall back to defaults: base=%q types=%v scopes=%v max=%d thr=%d",
@@ -459,8 +467,13 @@ func TestAuditSettingsExplicitOverrides(t *testing.T) {
 		SubjectMaxLength:    intPtr(0),
 		DependencyManifests: []string{}, // explicit empty = disabled
 		DiffThreshold:       intPtr(0),
+		DomainDocStaleness:  boolPtr(false),
+		UndocumentedDomain:  boolPtr(false),
 	}}
-	base, types, scopes, manifests, max, thr := c.AuditSettings()
+	base, types, scopes, manifests, max, thr, domStale, undoc := c.AuditSettings()
+	if domStale || undoc {
+		t.Errorf("explicit false toggles not honored: domStale=%v undoc=%v", domStale, undoc)
+	}
 	if base != "develop" {
 		t.Errorf("baseBranch = %q, want develop", base)
 	}
