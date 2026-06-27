@@ -54,6 +54,18 @@ func TestRunNoArgs(t *testing.T) {
 	}
 }
 
+func TestRunHelp(t *testing.T) {
+	for _, arg := range []string{"help", "--help", "-h"} {
+		var out, errb bytes.Buffer
+		if code := run([]string{"awf", arg}, &out, &errb); code != 0 {
+			t.Fatalf("%s: expected exit 0, got %d", arg, code)
+		}
+		if !strings.Contains(out.String(), "Commands:") || !strings.Contains(out.String(), "uninstall") {
+			t.Errorf("%s: help text missing content:\n%s", arg, out.String())
+		}
+	}
+}
+
 func TestRunGetwdError(t *testing.T) {
 	swapGetwd(t, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer

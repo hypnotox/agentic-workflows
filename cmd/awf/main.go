@@ -21,10 +21,36 @@ var getwd = os.Getwd
 
 // run dispatches a subcommand and returns a process exit code. All user-facing
 // output goes to the injected writers so the dispatch is unit-testable.
+const helpText = `awf — render agentic-workflow tooling into a project from a committed .awf/ config tree
+
+Usage: awf <command> [flags]
+
+Commands:
+  init         Scaffold .awf/, render the workflow-core set, and activate git hooks
+                 --force        overwrite colliding files, backing each up to <path>.awf-bak
+                 --force-hooks  take over an existing core.hooksPath (husky/lefthook)
+  sync         Re-render after a template or config change
+  check        Fail on stale or hand-edited rendered output
+  list         Show catalog skills and their per-project state
+  add <skill>  Enable a catalog skill in the config
+  setup        Activate git hooks (core.hooksPath=.githooks)
+                 --force-hooks  take over an existing core.hooksPath
+  audit        Report workflow-conformance findings over the branch (advisory)
+                 --base <ref>   compare against <ref> instead of the configured base branch
+  invariants   Report Implemented-ADR invariant slugs lacking a backing comment
+  upgrade      Migrate the .awf/ config tree to the current schema
+  uninstall    Remove awf's generated files and unset core.hooksPath (keeps .awf/)
+`
+
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|setup|upgrade|uninstall> [args]")
+		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
+	}
+	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
+		fmt.Fprint(stdout, helpText)
+		return 0
 	}
 	cwd, err := getwd()
 	if err != nil {
