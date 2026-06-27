@@ -112,7 +112,7 @@ Done.
 }
 
 // invariant: render-active-md
-func TestRenderActiveMDEmptyWhenNoADRs(t *testing.T) {
+func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()
 	// A non-ADR markdown file must not count.
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
@@ -122,8 +122,8 @@ func TestRenderActiveMDEmptyWhenNoADRs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderActiveMD: %v", err)
 	}
-	if got != "" {
-		t.Errorf("expected empty output for an ADR-less dir, got:\n%s", got)
+	if !strings.Contains(got, "No decisions recorded yet") {
+		t.Errorf("expected placeholder index for an ADR-less dir, got:\n%s", got)
 	}
 }
 

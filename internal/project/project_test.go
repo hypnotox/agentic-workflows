@@ -637,7 +637,8 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	}
 }
 
-func TestSyncProducesNoActiveMDWithoutADRs(t *testing.T) {
+// invariant: sync-generates-active-md
+func TestSyncRendersPlaceholderActiveMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n")
 	p, err := Open(root)
 	if err != nil {
@@ -646,8 +647,12 @@ func TestSyncProducesNoActiveMDWithoutADRs(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "docs", "decisions", "ACTIVE.md")); !os.IsNotExist(err) {
-		t.Errorf("expected no ACTIVE.md when no ADRs exist, stat err=%v", err)
+	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "ACTIVE.md"))
+	if err != nil {
+		t.Fatalf("expected a placeholder ACTIVE.md when no ADRs exist: %v", err)
+	}
+	if !strings.Contains(string(got), "No decisions recorded yet") {
+		t.Errorf("expected placeholder index, got:\n%s", got)
 	}
 	if drift, err := p.Check(); err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)

@@ -596,37 +596,6 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	}
 }
 
-func TestCheckReportsOrphanedActiveMDWhenADRsRemoved(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n")
-	adrPath := filepath.Join("docs", "decisions", "0001-first.md")
-	adrBody := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
-	writeFileAt(t, root, adrPath, adrBody)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	// Remove the only ADR: ACTIVE.md remains in the lock but is no longer produced.
-	if err := os.Remove(filepath.Join(root, adrPath)); err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.Check()
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if strings.HasSuffix(d.Path, "decisions/ACTIVE.md") && d.Kind == "orphaned" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected orphaned drift for ACTIVE.md after the ADRs were removed, got %#v", drift)
-	}
-}
-
 // --- scaffold: collectVars read error (direct) ---
 
 func TestCollectVarsReadError(t *testing.T) {

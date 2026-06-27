@@ -484,11 +484,11 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 	for _, f := range files {
 		paths = append(paths, f.Path)
 	}
-	if amd, ok, err := p.generateActiveMD(); err != nil {
+	amd, err := p.generateActiveMD()
+	if err != nil {
 		return nil, err
-	} else if ok {
-		paths = append(paths, amd.Path)
 	}
+	paths = append(paths, amd.Path)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
 		return nil, err
@@ -577,18 +577,16 @@ func sortedStrings(s []string) []string {
 	return out
 }
 
-// generateActiveMD renders the ADR index for the project's decisions directory,
-// or returns nil when that directory holds no ADRs (so no index file is produced).
-func (p *Project) generateActiveMD() (RenderedFile, bool, error) {
+// generateActiveMD renders the ADR index for the project's decisions directory.
+// It always produces a file: a populated index when ADRs exist, else a placeholder
+// (ADR-0020 Decision 6 — partial-item supersedence of ADR-0005/ADR-0006).
+func (p *Project) generateActiveMD() (RenderedFile, error) {
 	dir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
 	content, err := adr.RenderActiveMD(dir)
 	if err != nil {
-		return RenderedFile{}, false, err
+		return RenderedFile{}, err
 	}
-	if content == "" {
-		return RenderedFile{}, false, nil
-	}
-	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, true, nil
+	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -670,11 +668,11 @@ func (p *Project) Sync() error {
 	if localErr != nil {
 		return localErr
 	}
-	if amd, ok, err := p.generateActiveMD(); err != nil {
+	amd, err := p.generateActiveMD()
+	if err != nil {
 		return err
-	} else if ok {
-		files = append(files, amd)
 	}
+	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
 		return err
@@ -911,19 +909,14 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness
 	// cannot be detected by the template/config hash comparison above. Regenerate and
 	// compare directly.
-	amd, ok, err := p.generateActiveMD()
+	amd, err := p.generateActiveMD()
 	if err != nil {
 		return nil, err
 	}
-	if ok {
-		onDisk, err := os.ReadFile(filepath.Join(p.Root, activeMdRel))
-		if err != nil {
-			drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"})
-		} else if manifest.Hash(onDisk) != manifest.Hash([]byte(amd.Content)) {
-			drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"})
-		}
-	} else if _, locked := lock.Files[activeMdRel]; locked {
-		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "orphaned", Detail: "no ADRs remain; run awf sync"})
+	if onDisk, rerr := os.ReadFile(filepath.Join(p.Root, activeMdRel)); rerr != nil {
+		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"})
+	} else if manifest.Hash(onDisk) != manifest.Hash([]byte(amd.Content)) {
+		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"})
 	}
 	// Domain docs are generated from ADR frontmatter + convention parts, so like
 	// ACTIVE.md their staleness cannot be detected by the lock hash. Regenerate and
