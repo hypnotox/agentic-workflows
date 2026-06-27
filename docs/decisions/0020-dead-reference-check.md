@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [check, drift, docs]
-related: [0011, 0013]
+related: [0011, 0013, 0019]
 domains: [rendering]
 ---
 # ADR-0020: Dead-Reference Check in `awf check`
@@ -70,8 +70,9 @@ dirs), and a dead internal link in awf's own output is a deterministic defect �
 
 ## Consequences
 
-- `awf check` now guarantees awf's managed rendered docs carry no dead internal markdown link — a
-  deterministic doc-integrity property enforced on every commit, for awf and every adopter.
+- `awf check` now guarantees awf's managed rendered docs carry no internal markdown link whose
+  target file is missing — a deterministic doc-integrity property enforced on every commit, for awf
+  and every adopter. (Anchor fragments and reference-style links are out of scope; see Decision 1.)
 - It catches an existing defect (the `workflow.md` README link), fixed on introduction (Decision 5).
 - It surfaces the ADR-0013 layout-relativity gotcha and enforces against re-introducing it; a fuller
   fix (a `docsDir`-relative link helper in `.layout`) is left as deferred follow-up.
