@@ -60,19 +60,19 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section procedure-predecessor-flip -->
-1. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
+2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
-1. **Update any domain doc** under `{{ .layout.domainsDir }}` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
+3. **Update any domain doc** under `{{ .layout.domainsDir }}` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-1. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+4. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
-1. **Run `{{ .vars.gateCmd }}`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
+5. **Run `{{ .vars.gateCmd }}`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section commit-templates -->

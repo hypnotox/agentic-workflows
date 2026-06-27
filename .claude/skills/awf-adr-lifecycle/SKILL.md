@@ -59,16 +59,16 @@ Pick the status transition, then:
 1. **Edit the ADR's frontmatter `status` field** in place. This is the only allowed in-place edit on a live ADR — body remains append-only once the ADR leaves `Proposed`.
 
 <!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
-1. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
+2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/adr-lifecycle/state-doc-update.md to override -->
-1. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
+3. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
 
 <!-- awf:edit procedure-regen — default; create .awf/skills/parts/adr-lifecycle/procedure-regen.md to override -->
-1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+4. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate — default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
-1. **Run `./x gate`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
+5. **Run `./x gate`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 <!-- awf:edit commit-templates — default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
 ## Commit subject templates

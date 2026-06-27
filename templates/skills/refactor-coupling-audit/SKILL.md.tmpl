@@ -17,8 +17,8 @@ A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling aud
 Before finalising the Context section of a refactor ADR that:
 
 1. Moves a file (or set of files) between packages.
-1. Inverts a dependency (introduces an interface in the original package so a subpackage can hold the implementation).
-1. Renames or relocates a type with cross-package callers.
+2. Inverts a dependency (introduces an interface in the original package so a subpackage can hold the implementation).
+3. Renames or relocates a type with cross-package callers.
 
 Skip when the refactor is contained within one package (no cross-package coupling to audit) or when the refactor is a pure rename without coupling shifts.
 
@@ -154,6 +154,6 @@ If the audit reveals the refactor is larger than the ADR's originally proposed s
 ## Notes
 
 1. Authoritative source for the audit categories: `{{ .layout.workflowRef }}`. This skill is a procedural pointer, not a contract restatement — when the playbook prose evolves, follow the prose.
-1. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
-1. For recurring coupling surprises specific to this project, see the `customise:` hints above; capture them via a convention part when patterns repeat.
+2. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
+3. For recurring coupling surprises specific to this project, see the `customise:` hints above; capture them via a convention part when patterns repeat.
 <!-- awf:end -->

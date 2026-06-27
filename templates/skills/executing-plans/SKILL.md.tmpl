@@ -29,11 +29,11 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
-1. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
+2. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
 <!-- awf:end -->
 
 <!-- awf:section procedure-per-task -->
-1. **Per task — execute, verify, commit (one commit per task):**
+3. **Per task — execute, verify, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
    - **Verify** with `{{ .vars.gateCmd }}` (fast tier). See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
    - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
@@ -47,15 +47,15 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->
-1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+4. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section procedure-non-adr-final-commit -->
-1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .layout.workflowRef }}`).
+5. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .layout.workflowRef }}`).
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-1. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+6. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 <!-- awf:end -->
 
 ## Notes

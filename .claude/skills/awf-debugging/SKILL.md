@@ -24,7 +24,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 1. **State the bug concretely.** What is the observed behaviour? What was expected? Cite the failing test output, the error message, or the user report verbatim. Do not restate the bug abstractly until you have evidence.
 
-1. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
+2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
 <!-- awf:edit debugging-surfaces — from .awf/skills/parts/debugging/debugging-surfaces.md -->
 1. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
@@ -42,12 +42,12 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 
 <!-- awf:edit test-isolation — default; create .awf/skills/parts/debugging/test-isolation.md to override -->
-1. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
+4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
 
 
-1. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `./x gate` (fast tier). Run `./x gate full` when the regression test lives in a slower surface that the fast tier does not exercise.
+5. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `./x gate` (fast tier). Run `./x gate full` when the regression test lives in a slower surface that the fast tier does not exercise.
 
-1. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
+6. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
 
 <!-- awf:edit oracle-invariant — default; create .awf/skills/parts/debugging/oracle-invariant.md to override -->
 ## Oracle invariant

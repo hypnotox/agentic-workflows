@@ -24,21 +24,21 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 1. **State the bug concretely.** What is the observed behaviour? What was expected? Cite the failing test output, the error message, or the user report verbatim. Do not restate the bug abstractly until you have evidence.
 
-1. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
+2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
 <!-- awf:section debugging-surfaces -->
-1. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
 <!-- awf:end -->
 
 <!-- awf:section test-isolation -->
-1. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.
+4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.
 
 <!-- awf:end -->
 
-1. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `{{ .vars.gateCmd }}` (fast tier).{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the fast tier does not exercise.{{ end }}
+5. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify: `{{ .vars.gateCmd }}` (fast tier).{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the fast tier does not exercise.{{ end }}
 
-1. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `{{ .prefix }}-brainstorming` instead.
+6. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `{{ .prefix }}-brainstorming` instead.
 
 <!-- awf:section oracle-invariant -->
 ## Oracle invariant

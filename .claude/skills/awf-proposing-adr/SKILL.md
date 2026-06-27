@@ -41,7 +41,7 @@ Load-bearing triggers include:
 1. **Pick the next ADR number.** List `docs/decisions/NNNN-*.md` and take the maximum number plus one.
 
 <!-- awf:edit procedure-write — default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
-1. **Write the ADR file** using `Write`. Copy section structure from `docs/decisions/template.md` and fill all sections:
+2. **Write the ADR file** using `Write`. Copy section structure from `docs/decisions/template.md` and fill all sections:
    - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
    - **Decision:** numbered items, each a discrete commitment. Numbers matter for partial-item supersedence.
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
@@ -50,25 +50,25 @@ Load-bearing triggers include:
    - Delete the authoring checklist before committing.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
-1. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
+3. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
 
 <!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/proposing-adr/procedure-predecessor-flip.md to override -->
-1. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+4. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
 <!-- awf:edit invariants-rule — default; create .awf/skills/parts/proposing-adr/invariants-rule.md to override -->
-1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.awf/config.yaml` `invariants.sources`, shipping in the same commit. `./x check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
+5. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.awf/config.yaml` `invariants.sources`, shipping in the same commit. `./x check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
 
 <!-- awf:edit procedure-regen — default; create .awf/skills/parts/proposing-adr/procedure-regen.md to override -->
-1. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+6. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 
 <!-- awf:edit procedure-commit — default; create .awf/skills/parts/proposing-adr/procedure-commit.md to override -->
-1. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 <!-- awf:edit autonomous-rule — default; create .awf/skills/parts/proposing-adr/autonomous-rule.md to override -->
-1. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
+8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
-1. **Terminal step: invoke `awf-reviewing-adr`** via the `Skill` tool, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
+9. **Terminal step: invoke `awf-reviewing-adr`** via the `Skill` tool, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
 ## Notes
 

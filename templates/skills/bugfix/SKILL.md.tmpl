@@ -20,24 +20,24 @@ If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.
 
 1. **Ensure a regression test exists that fails for the right reason.** Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
 
+2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+
+<!-- awf:section pitfalls-check -->
+{{ if .layout.docs.pitfalls }}3. **Check `{{ .layout.docs.pitfalls }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+{{ end }}<!-- awf:end -->
+
+4. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+
+5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
+
+6. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
+
 <!-- awf:section test-tiers -->
 ## Test tiers
 
 The specific test tiers (unit, integration, e2e, etc.) and their locations are project-specific. Refer to your project's testing guide.
 
 <!-- awf:end -->
-
-1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
-
-<!-- awf:section pitfalls-check -->
-{{ if .layout.docs.pitfalls }}1. **Check `{{ .layout.docs.pitfalls }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
-{{ end }}<!-- awf:end -->
-
-1. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
-
-1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
-
-1. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
 
 <!-- awf:section oracle-note -->
 ## Oracle invariant

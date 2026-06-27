@@ -24,10 +24,10 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `docs/plans/` matching the `YYYY-MM-DD-*.md` pattern.
 
 <!-- awf:edit artifact-path-detection — default; create .awf/skills/parts/reviewing-plan/artifact-path-detection.md to override -->
-1. **Path detection detail.** When no explicit path is given: list `docs/plans/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+2. **Path detection detail.** When no explicit path is given: list `docs/plans/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-plan/dispatch-subagent.md to override -->
-1. **Dispatch the `plan-reviewer` subagent.** Invoke the agent tool with subagent type `plan-reviewer` and a brief that includes:
+3. **Dispatch the `plan-reviewer` subagent.** Invoke the agent tool with subagent type `plan-reviewer` and a brief that includes:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -36,19 +36,19 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-plan/classify-route-findings.md to override -->
-1. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical** — agent applies directly.
    - **reasoned** — agent applies with one-line rationale.
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan/apply-fixes-commit.md to override -->
-1. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan/re-review-loop.md to override -->
-1. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+6. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 
 <!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
-1. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
+7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
    - If a linked ADR exists (named in the plan header or the session context), invoke `awf-reviewing-plan-resync` to catch plan-vs-finalised-ADR drift.
    - If no ADR exists, the chain proceeds directly to implementation.
 

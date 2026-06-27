@@ -29,19 +29,19 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-plan-resync/classify-route-findings.md to override -->
-1. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical** — agent applies directly.
    - **reasoned** — agent applies with one-line rationale.
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
-1. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
-1. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+4. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 
 <!-- awf:edit hand-off-to-impl — default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
-1. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `awf-executing-plans` (for inline execution) or `awf-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
+5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `awf-executing-plans` (for inline execution) or `awf-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
 
 ## Notes
 

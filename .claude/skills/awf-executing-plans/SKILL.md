@@ -27,10 +27,10 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
 
 <!-- awf:edit procedure-raise-concerns — default; create .awf/skills/parts/executing-plans/procedure-raise-concerns.md to override -->
-1. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
+2. **Read the plan, raise concerns before starting.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before touching code. Do not guess.
 
 <!-- awf:edit procedure-per-task — default; create .awf/skills/parts/executing-plans/procedure-per-task.md to override -->
-1. **Per task — execute, verify, commit (one commit per task):**
+3. **Per task — execute, verify, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
    - **Verify** with `./x gate` (fast tier). See `docs/workflow.md` for the tier split and when to run the full tier.
    - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
@@ -42,13 +42,13 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 
 <!-- awf:edit procedure-adr-final-commit — default; create .awf/skills/parts/executing-plans/procedure-adr-final-commit.md to override -->
-1. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+4. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 
 <!-- awf:edit procedure-non-adr-final-commit — default; create .awf/skills/parts/executing-plans/procedure-non-adr-final-commit.md to override -->
-1. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `docs/workflow.md`).
+5. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `docs/workflow.md`).
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
-1. **Terminal step: invoke `awf-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+6. **Terminal step: invoke `awf-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 
 ## Notes
 

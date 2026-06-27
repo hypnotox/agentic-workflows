@@ -26,11 +26,11 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section docs-only-check -->
-1. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
+2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-1. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+3. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -40,25 +40,25 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->
-1. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
+4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
    - **mechanical** — agent applies directly.
    - **reasoned** — agent applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-1. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope; `{{ .vars.gateCmd }}` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope; `{{ .vars.gateCmd }}` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
 <!-- awf:end -->
 
 <!-- awf:section run-audit -->
-1. **Run the process-conformance audit.** After the code-review findings are routed, run
+6. **Run the process-conformance audit.** After the code-review findings are routed, run
    `awf audit` (or this project's runner alias for it) over the branch. Treat `Error` findings as
    blocking and `Warning` findings as advisory — surface both in the digest. The audit is advisory
    and never gates; it does not replace the gate or the drift check.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-1. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+7. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 <!-- awf:end -->
 
 ## Notes

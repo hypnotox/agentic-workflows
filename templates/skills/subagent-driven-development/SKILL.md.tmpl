@@ -33,11 +33,11 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
-1. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
+2. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
 <!-- awf:end -->
 
 <!-- awf:section procedure-extract-context -->
-1. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the `Agent` prompt:
+3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the `Agent` prompt:
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
@@ -45,7 +45,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section dispatch-conventions -->
-1. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
+4. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **`{{ .vars.gateCmd }}` per commit.** Fast tier by default; `{{ .vars.gateCmdFull }}` for the pre-push tier when a pre-push-only surface is involved. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
@@ -54,7 +54,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section procedure-status-handling -->
-1. **Handle the implementer's status:**
+5. **Handle the implementer's status:**
    - **`DONE`** → run the per-task review if present, then advance to the next task.
    - **`DONE_WITH_CONCERNS`** → read the concerns before proceeding. If they are about correctness or scope, address them before review. If they are observations, note them and proceed.
    - **`NEEDS_CONTEXT`** → provide the missing context and re-dispatch the implementer.
@@ -62,15 +62,15 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section per-task-review -->
-1. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+6. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-1. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
+7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-1. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+8. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 <!-- awf:end -->
 
 ## Notes

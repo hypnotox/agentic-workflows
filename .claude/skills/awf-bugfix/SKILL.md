@@ -21,23 +21,23 @@ If the root cause is not yet known, invoke `awf-debugging` first.
 
 1. **Ensure a regression test exists that fails for the right reason.** Invoke `awf-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
 
+2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+
+<!-- awf:edit pitfalls-check — default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
+3. **Check `docs/pitfalls.md` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+
+
+4. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
+
+5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
+
+6. **Invoke `awf-reviewing-impl` as the terminal step.**
+
 <!-- awf:edit test-tiers — default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers
 
 The specific test tiers (unit, integration, e2e, etc.) and their locations are project-specific. Refer to your project's testing guide.
 
-
-1. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
-
-<!-- awf:edit pitfalls-check — default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
-1. **Check `docs/pitfalls.md` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
-
-
-1. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
-
-1. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
-
-1. **Invoke `awf-reviewing-impl` as the terminal step.**
 
 <!-- awf:edit oracle-note — default; create .awf/skills/parts/bugfix/oracle-note.md to override -->
 ## Oracle invariant

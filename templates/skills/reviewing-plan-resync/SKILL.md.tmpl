@@ -30,22 +30,22 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->
-1. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
+2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical** — agent applies directly.
    - **reasoned** — agent applies with one-line rationale.
    - **user-decision** — present to the user and wait.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-1. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `{{ .vars.commitScope }}` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `{{ .vars.commitScope }}` scope. The agent handles the Edit calls; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-1. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+4. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-impl -->
-1. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `{{ .prefix }}-executing-plans` (for inline execution) or `{{ .prefix }}-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
+5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `{{ .prefix }}-executing-plans` (for inline execution) or `{{ .prefix }}-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
 <!-- awf:end -->
 
 ## Notes
