@@ -39,14 +39,15 @@ Requires Go 1.26+.
 ## Quickstart
 
     cd your-project
-    awf init      # scaffold .awf/, render the workflow-core set, activate git hooks
-    awf check     # verify rendered output is in sync
-    awf list      # see which skills are enabled vs available
-    awf add tdd   # opt into an additional skill
+    awf init             # scaffold .awf/, render the workflow-core set, activate git hooks
+    awf check            # verify rendered output is in sync
+    awf list             # see which targets are enabled vs available
+    awf add skill tdd    # opt a skill in
+    awf add doc pitfalls # opt a doc in
 
 `awf init` enables a curated **workflow core** by default — the brainstorm → plan → ADR → implement →
 review chain skills, the review agents, the workflow docs, and the gate hooks. Everything else in the
-catalog is opt-in via `awf add` (skills) or the config arrays (docs).
+catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` to opt back out).
 
 ## Commands
 
@@ -55,8 +56,9 @@ catalog is opt-in via `awf add` (skills) or the config arrays (docs).
 | `awf init` | Scaffold `.awf/`, render, and activate git hooks. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`); `--force-hooks` takes over an existing `core.hooksPath`. |
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
-| `awf list` | Show catalog skills and their per-project state. |
-| `awf add <skill>` | Enable a catalog skill. |
+| `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one). |
+| `awf add <kind> <name>` | Enable a target — `<kind>` ∈ `skill`, `agent`, `doc`, `hook`, `domain`. |
+| `awf remove <kind> <name>` | Disable a target (a catalog target, or a freeform domain). |
 | `awf setup` | Activate git hooks (`core.hooksPath`); `--force-hooks` to override an existing value. |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
@@ -74,7 +76,7 @@ Run `awf help` for the full synopsis.
 - **`awf init --force`** overwrites them, backing each original up to `<path>.awf-bak` first.
 - **`awf setup`** refuses to repoint a `core.hooksPath` that already belongs to another hooks manager
   (husky, lefthook) unless you pass `--force-hooks`.
-- **Trim to taste** — the curated default is small; add or remove targets in `.awf/config.yaml`.
+- **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
 - **Back out anytime** — `awf uninstall` removes everything awf generated and unsets its hook path,
   leaving your `.awf/` config in place.
 

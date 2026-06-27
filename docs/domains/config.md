@@ -4,7 +4,7 @@
 <!-- awf:edit current-state — from .awf/domains/parts/config/current-state.md -->
 ## Current state
 
-Per-project configuration lives in a `.awf/` tree (relocated out of the runtime's `.claude/` directory by ADR-0016, schema migration `{To:3}`): a skeleton `config.yaml` (prefix, vars, flat enable arrays for skills/agents/docs/domains/hooks, invariants) plus per-target sidecars and convention parts. The config is strict-parsed (`KnownFields`), and drift is tracked in a schema-versioned `awf.lock`. Schema migrations are an ordered registry applied by `awf upgrade`; `awf sync`/`check` gate a stale layout (a pre-relocation `.claude/awf/` tree is detected and gated until upgraded). Additive optional fields (like `domains`) are backward-safe and need no version bump. The `config.yaml` that `awf init` scaffolds enables a curated workflow-core set (ADR-0022) — only the catalog's `core`-flagged skills and docs, plus all agents and hooks — while seeding every template-referenced var (across all template families) so a later opt-in `awf add` renders cleanly.
+Per-project configuration lives in a `.awf/` tree (relocated out of the runtime's `.claude/` directory by ADR-0016, schema migration `{To:3}`): a skeleton `config.yaml` (prefix, vars, flat enable arrays for skills/agents/docs/domains/hooks, invariants) plus per-target sidecars and convention parts. The config is strict-parsed (`KnownFields`), and drift is tracked in a schema-versioned `awf.lock`. Schema migrations are an ordered registry applied by `awf upgrade`; `awf sync`/`check` gate a stale layout (a pre-relocation `.claude/awf/` tree is detected and gated until upgraded). Additive optional fields (like `domains`) are backward-safe and need no version bump. The `config.yaml` that `awf init` scaffolds enables a curated workflow-core set (ADR-0022) — only the catalog's `core`-flagged skills and docs, plus all agents and hooks — while seeding every template-referenced var (across all template families) so a later opt-in `awf add` renders cleanly. The five enable arrays are managed through `awf add`/`remove <kind> <name>` and surfaced by `awf list` (ADR-0024); the editor is block-scoped, so a name shared across kinds (e.g. a `debugging` skill and doc) is toggled in the right array only.
 
 
 ## Decisions
@@ -18,8 +18,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
-
-### Proposed
-
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 

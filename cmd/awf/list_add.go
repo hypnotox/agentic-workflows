@@ -169,7 +169,8 @@ func editArray(src, key, name string, add bool) (string, error) {
 				return strings.Join(slices.Insert(lines, i+1, "  - "+name), "\n"), nil
 			}
 			// Scan only this key's block (indented items) so a same-named entry under
-			// another kind is left untouched. invariant: remove-block-scoped
+			// another kind is left untouched.
+			// invariant: remove-block-scoped
 			for j := i + 1; j < len(lines) && strings.HasPrefix(lines[j], "  "); j++ {
 				if lines[j] == "  - "+name {
 					return strings.Join(slices.Delete(lines, j, j+1), "\n"), nil
