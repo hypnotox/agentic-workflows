@@ -25,3 +25,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 
+### Proposed
+
+- [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)
+
