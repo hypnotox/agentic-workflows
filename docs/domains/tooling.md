@@ -8,7 +8,7 @@ All repo interactions go through the `./x` command runner (`gate`, `lint`, `fmt`
 
 awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (skills, agents, the `CLAUDE.md` bridge) come from a named `Target` rather than `.claude/` literals, with `claudeTarget` the sole built-in. `awf init` pre-flights every path it would write and aborts on a collision with a pre-existing, non-managed file unless `--force` is passed. It scaffolds a curated workflow-core default (ADR-0022): only the ten workflow-chain skills and three workflow docs are enabled, alongside all agents and hooks; the remaining catalog skills and docs are opt-in via the config arrays or `awf add`. For safe adoption into a repo that already has its own workflow (ADR-0023), `--force` backs each colliding non-managed file up to `<path>.awf-bak` before overwriting it; `awf setup` refuses to repoint a foreign `core.hooksPath` (husky/lefthook) without `--force-hooks` and resolves the git top level so it works from a subdirectory; and `awf uninstall` removes the generated footprint (lock-tracked files, empty dirs, the lock, and an awf-owned `core.hooksPath`) while leaving the authored `.awf/` config in place. `awf add`/`remove`/`list` (ADR-0024) manage all five config enable arrays via a required `<kind>` token — `skill`/`agent`/`doc`/`hook` against the catalog, `domain` as a freeform create validated by `config.ValidateDomainName`.
 
-`awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, dependency-without-ADR, large-change-without-plan, and — for domain-doc currency (ADR-0019) — `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). Each rule is independently disable-able via `audit` config.
+`awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, dependency-without-ADR, large-change-without-plan, and — for domain-doc currency (ADR-0019) — `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). One rule, `uncommitted-changes` (ADR-0025), is range-independent: it inspects the live working tree via go-git's `Worktree().Status()` (with global/system gitignore patterns injected so it mirrors `git status`) and reports a branch-level Error if the tree is not clean — caught at the reviewing-impl terminal step that treats audit Errors as blocking. Each rule is independently disable-able via `audit` config.
 
 
 ## Decisions
@@ -24,8 +24,5 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
-
-### Proposed
-
 - [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)
 

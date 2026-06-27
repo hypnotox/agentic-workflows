@@ -29,7 +29,4 @@
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](0022-curated-init-default.md) — Implemented
 - [ADR-0023: Safe Adoption Into Existing Repositories](0023-safe-adoption-existing-repos.md) — Implemented
 - [ADR-0024: CLI Config Management Across Kinds](0024-cli-config-management.md) — Implemented
-
-## Proposed
-
-- [ADR-0025: Uncommitted-Changes Audit Rule](0025-uncommitted-changes-audit-rule.md) — Proposed
+- [ADR-0025: Uncommitted-Changes Audit Rule](0025-uncommitted-changes-audit-rule.md) — Implemented
