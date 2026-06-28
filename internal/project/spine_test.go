@@ -736,8 +736,13 @@ func TestAgentsDocTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	if strings.Contains(out, "reviewing-plan-resync") {
-		t.Errorf("Workflow must not present reviewing-plan-resync as a primary step:\n%s", out)
+	// invariant: workflow-chain-adr-before-plan
+	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
+		t.Errorf("Workflow chain must present ADR before plan:\n%s", out)
+	}
+	// invariant: workflow-chain-surfaces-resync
+	if !strings.Contains(out, "resync") {
+		t.Errorf("Workflow chain must surface the resync step:\n%s", out)
 	}
 }
 

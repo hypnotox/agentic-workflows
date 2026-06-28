@@ -49,12 +49,12 @@ Hard rules every change must respect:
 Canonical chain for non-trivial work:
 
 ```
-brainstorming → planning (if warranted) → ADR (if warranted) → review → implementation → review
+brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review
 ```
 
-Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* (multi-commit, interdependent steps); an **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember). Many tasks need neither. Reviews are lightweight: the grounding-check inside `awf-brainstorming` subsumes plan/ADR review, and `awf-reviewing-impl` is the single terminal review.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one — one plan links zero or more ADRs. Each written artifact gets a fresh-context review (`awf-reviewing-adr`, `awf-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `awf-reviewing-impl` is the terminal review.
 
-**Chain skills** (invoke in order): `awf-brainstorming`, `awf-writing-plans`, `awf-proposing-adr`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
+**Chain skills** (invoke in order): `awf-brainstorming`, `awf-proposing-adr`, `awf-reviewing-adr`, `awf-writing-plans`, `awf-reviewing-plan`, `awf-reviewing-plan-resync`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
 
 Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
@@ -82,4 +82,4 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **Glossary:** [docs/glossary.md](docs/glossary.md) — project jargon and term ownership
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md) — recurring bugs and tricky areas
 - **Testing:** [docs/testing.md](docs/testing.md) — gate tiers, test layout, what each tier covers
-- **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/plan/ADR chain, commit discipline
+- **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/ADR/plan chain, commit discipline

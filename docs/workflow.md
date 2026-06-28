@@ -12,10 +12,10 @@ You own the project's long-term health, not just the task in front of you: bugs 
 Non-trivial work follows one canonical chain:
 
 ```
-brainstorming → planning (if warranted) → ADR (if warranted) → review → implementation → review
+brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review
 ```
 
-Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember. Many tasks need neither. Reviews are lightweight: the grounding-check inside brainstorming subsumes plan/ADR review, and implementation review is the single terminal gate.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs, and planning that surfaces a new load-bearing decision loops back to propose or amend one. Each written artifact gets a fresh-context review; when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. Implementation review is the terminal gate.
 
 For the detailed criteria of when a decision is load-bearing enough to warrant an ADR — and the ADR format itself — see [`docs/decisions/README.md`](decisions/README.md).
 

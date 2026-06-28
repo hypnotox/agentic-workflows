@@ -213,7 +213,7 @@ docs:
   workflow:
     core: true
     title: Workflow
-    desc: principles, the brainstorm/plan/ADR chain, commit discipline
+    desc: principles, the brainstorm/ADR/plan chain, commit discipline
     sections: [principles, chain, commit-discipline, doc-currency]
   testing:
     title: Testing
