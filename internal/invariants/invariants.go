@@ -40,6 +40,12 @@ func (f Finding) Detail() string {
 	return "unbacked — add a `<marker> invariant: " + f.Slug + "` comment in a configured source file"
 }
 
+// Line renders the finding as a single human-readable line (no leading
+// indent/column), shared by `awf check` and `awf invariants`.
+func (f Finding) Line() string {
+	return fmt.Sprintf("%s — invariant %q %s", f.ADR, f.Slug, f.Detail())
+}
+
 var (
 	// declRe matches an invariant DECLARATION: an `inv: <slug>` tag that leads a
 	// markdown list item (optionally indented). Only backticks and spaces may sit

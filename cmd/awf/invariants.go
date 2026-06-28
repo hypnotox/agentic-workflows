@@ -21,7 +21,7 @@ func runInvariants(root string, stdout io.Writer) error {
 		return nil
 	}
 	for _, f := range findings {
-		fmt.Fprintf(stdout, "  %s — invariant %q %s\n", f.ADR, f.Slug, f.Detail())
+		fmt.Fprintf(stdout, "  %s\n", f.Line())
 	}
 	return fmt.Errorf("awf invariants: %d invariant issue(s)", len(findings))
 }

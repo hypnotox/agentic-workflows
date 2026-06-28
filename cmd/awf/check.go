@@ -27,7 +27,7 @@ func runCheck(root string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
 	}
 	for _, f := range findings {
-		fmt.Fprintf(stdout, "  %-14s %s — invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
+		fmt.Fprintf(stdout, "  %-14s %s\n", "invariant", f.Line())
 	}
 	if len(drift) == 0 && len(findings) == 0 {
 		fmt.Fprintln(stdout, "awf check: clean")
