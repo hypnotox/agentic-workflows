@@ -550,7 +550,7 @@ func TestInitIdempotentReinitNoCollision(t *testing.T) {
 		t.Fatalf("first init failed: %s", errb.String())
 	}
 	// Re-init over the now-managed tree: every planned path is in the prior lock,
-	// so initCollisions skips them all and init proceeds without --force.
+	// so p.InitCollisions skips them all and init proceeds without --force.
 	out.Reset()
 	errb.Reset()
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
@@ -589,6 +589,6 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	swapGetwd(t, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
-		t.Fatal("expected init to fail when initCollisions errors")
+		t.Fatal("expected init to fail when p.InitCollisions errors")
 	}
 }
