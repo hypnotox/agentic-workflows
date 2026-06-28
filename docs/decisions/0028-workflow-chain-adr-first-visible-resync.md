@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Proposed
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
@@ -54,6 +54,17 @@ abbreviates the chain as `brainstorm → plan/ADR → review → impl → review
 a live awf-managed part (not append-only), and this ADR declares `domains: [adr-system]`, so it is
 reconciled to the ADR-first order in the implementing range (see Downstream work).
 
+**Lifecycle states (surfaced while planning this ADR).** ADR-first also exposes a latent
+contradiction in the ADR/plan *lifecycle* rules. `awf-reviewing-adr` step 7 flips an ADR
+`Proposed → Accepted` immediately after review, whereas `awf-proposing-adr` (note: "stays
+`Proposed` through the implementation sequence"), `awf-executing-plans` (flip in the final
+implementation commit; plan "mutable until `Implemented`"), and `awf-writing-plans` all treat the
+ADR as `Proposed` through implementation. Under plan-first this was latent; under ADR-first — where
+the ADR is reviewed *before* the plan is written — the early flip, combined with `awf-writing-plans`'
+"freeze when the ADR flips to `Accepted`" rule, would leave every plan **born frozen**. The states
+must be reconciled for ADR-first to be coherent. (`awf-proposing-adr` and `awf-executing-plans`
+already describe the correct model; only `awf-reviewing-adr` and `awf-writing-plans` are out of line.)
+
 ## Decision
 
 1. **The workflow chain is ADR-first.** Both guide templates present:
@@ -85,6 +96,18 @@ reconciled to the ADR-first order in the implementing range (see Downstream work
    before plan and surfaces the resync step. The prior assertion (resync must not appear as a
    primary step) is removed.
 
+6. **ADR/plan lifecycle states are reconciled for ADR-first.** "Reviewed to a settled state before
+   planning" (Decision 1) means the design is *review-converged*, not that the status is `Accepted`.
+   The ADR stays `Proposed` through the implementation sequence and flips to `Accepted` (or directly
+   `Implemented`) only in the final implementation commit, owned by `awf-executing-plans` /
+   `awf-subagent-driven-development` (per `awf-adr-lifecycle`). `awf-reviewing-adr` no longer flips
+   the status after review — it hands off to plan resync (when a plan exists) or to implementation
+   with the ADR still `Proposed`; its step-8 "status is flipped" wording is corrected to match. The
+   plan-freeze trigger in `awf-writing-plans` becomes `Implemented` (matching `awf-executing-plans`'
+   "mutable until `Implemented`"); its "Accepted/Implemented" freeze wording is corrected to
+   "Implemented". `awf-proposing-adr` and `awf-executing-plans` already encode this model and are
+   left unchanged.
+
 ## Invariants
 
 - `inv: workflow-chain-adr-before-plan` — the rendered AGENTS.md / workflow.md chain string presents
@@ -94,6 +117,9 @@ reconciled to the ADR-first order in the implementing range (see Downstream work
 - The "single terminal review" / "grounding-check subsumes plan/ADR review" framing appears in no
   rendered awf-managed doc. (textual)
 - Skill templates referring to a plan's ADR do so in a form that admits zero or more ADRs. (textual)
+- The ADR/plan lifecycle rules across all chain skills name one freeze trigger (`Implemented`) and
+  one flip-owner (the implementation step's final commit); no skill flips the status at review time.
+  (textual)
 
 ## Consequences
 
@@ -110,8 +136,10 @@ Downstream work created: the two guide templates re-rendered to `AGENTS.md` and 
 (`./x sync`); a `resync` entry in `docs/glossary.md`; the flipped assertion in
 `internal/project/spine_test.go` (with `// invariant:` markers backing the two tagged invariants);
 the `README.md` order correction; the `adr-system` domain part reconciled to ADR-first (re-rendering
-`docs/domains/adr-system.md`). When this ADR's status lands as Accepted or Implemented, the same
-commit regenerates `docs/decisions/ACTIVE.md` via `./x sync`. ADR-0004 stays `Implemented`; only its
+`docs/domains/adr-system.md`). The lifecycle reconciliation (Decision 6) edits two skill templates:
+`awf-reviewing-adr` (drop the post-review status flip; fix the step-8 wording) and `awf-writing-plans`
+(plan-freeze trigger `Accepted/Implemented → Implemented`). When this ADR's status lands as Accepted
+or Implemented, the same commit regenerates `docs/decisions/ACTIVE.md` via `./x sync`. ADR-0004 stays `Implemented`; only its
 Decision item 1 "presents reviews as lightweight" clause is overridden, recorded here as
 partial-item supersedence (`related: [0004]`, predecessor status unchanged). ADR-0022's historical
 prose is left under the append-only rule.
@@ -124,3 +152,4 @@ prose is left under the append-only rule.
 | Fully supersede ADR-0004 | Most of ADR-0004 (section shape, docs module, config-driven prose) is unaffected; a full supersede would wrongly retire live decisions. Partial-item supersedence fits. |
 | Branching chain diagram (all three warrant-cases shown explicitly) | More precise but over-heavy for a one-line orientation string; the `(if warranted)` qualifiers already carry the cases. |
 | Rewrite ADR-0022's prose to the new order | ADR-0022 is Implemented; ADRs are append-only historical records. Editing its prose would violate the append-only invariant. |
+| Record the lifecycle reconciliation (Decision 6) as a separate follow-up ADR, or defer it | The lifecycle states are an inseparable consequence of ADR-first (Decision 1) — splitting them off would fragment one decision, and deferring would ship an internally contradictory chain (plans born frozen). Folded in via amendment while still `Proposed`. |
