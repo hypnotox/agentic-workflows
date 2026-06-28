@@ -26,3 +26,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)
 
+### Proposed
+
+- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
+

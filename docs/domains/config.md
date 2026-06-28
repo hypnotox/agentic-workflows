@@ -20,3 +20,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 
+### Proposed
+
+- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
+
