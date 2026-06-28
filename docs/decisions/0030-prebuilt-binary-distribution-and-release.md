@@ -38,7 +38,11 @@ Grounding discoveries that shape the design:
   that live outside the render/lock set (ADR-0002). The root `README.md` is hand-authored (not in the
   lock) and outside the ADR-0020 dead-reference scope.
 - `audit.allowedScopes` in `.awf/config.yaml` is `[adr, awf, plans]` — no scope fits release/CI files.
-  `awf audit` is advisory (wired into no gate), so a mis-scoped commit is flagged, not blocked.
+  But `ci` is already a valid Conventional-Commits *type* (`internal/audit/settings.go` default
+  `allowedTypes`), and the audit's conventional-commits rule treats a missing scope as allowed
+  (`internal/audit/audit.go:128` only flags a non-empty scope outside `allowedScopes`). So release/CI
+  commits use a `ci:`-typed, scopeless subject and validate with no config change. `awf audit` is
+  advisory (wired into no gate) regardless.
 - Repo visibility (public vs private) is intentionally deferred and is **out of scope** for this ADR;
   the release pipeline produces a GitHub Release either way.
 
@@ -76,9 +80,10 @@ Grounding discoveries that shape the design:
    `goreleaser check` + `goreleaser release --snapshot --clean` (no publish), so a broken release
    config fails before a tag is ever pushed.
 
-6. **Audit scope for release commits.** `audit.allowedScopes` in `.awf/config.yaml` gains `ci`, so
-   release/CI commits (`.github/`, `.goreleaser.yaml`, `.gitignore`) carry a fitting
-   Conventional-Commits scope instead of overloading `awf`.
+6. **Release/CI commits use the `ci` type, not a new scope.** Commits touching `.github/`,
+   `.goreleaser.yaml`, and `.gitignore` use a `ci:`-typed, scopeless Conventional-Commits subject —
+   which already validates against `awf audit` (`ci` is in the default `allowedTypes`; a missing scope
+   is allowed). No `allowedScopes` change is made.
 
 ## Invariants
 
@@ -116,7 +121,7 @@ Harder / accepted trade-offs:
 
 Downstream work unblocked: an implementation plan covering the `cmd/awf` version var + test,
 `.goreleaser.yaml`, the release workflow, the CI snapshot guard, the `.gitignore` `/dist` entry, the
-README install rewrite, the `allowedScopes` bump + re-sync, and finally tagging `v0.1.0`.
+README install rewrite, and finally tagging `v0.1.0`.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 - `README.md` install section rewritten (binary primary, `go install` demoted to source).
@@ -136,4 +141,4 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Keep `go install` as the only path, no binaries | Fails the language-agnostic goal — every adopter would still need a Go toolchain. |
 | GoReleaser as a pinned `go.mod` `tool` dep | Drags a very large dependency tree into `go.sum` for a release-only tool; the action + pinned `go run` keeps the module lean. |
 | Bump `project.Version` const only, no ldflags var | Couples the lock version and CLI display, relies on a tag==const guard, and gives no `git describe` detail for snapshot builds. |
-| Overload the `awf` audit scope for release/CI commits | Hides genuinely different concerns under one scope; a dedicated `ci` scope keeps Conventional-Commits meaningful. |
+| Add a `ci` value to `audit.allowedScopes` for release commits | Unnecessary: `ci` is already a valid commit *type* and scopeless subjects validate, so a `ci:`-typed commit needs no config change; adding a `ci` *scope* would conflate the two. |
