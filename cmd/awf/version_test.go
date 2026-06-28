@@ -17,3 +17,11 @@ func TestRunVersion(t *testing.T) {
 		t.Errorf("version output = %q, want it to contain %q", out.String(), project.Version)
 	}
 }
+
+func TestAwfVersionLdflagsPrecedence(t *testing.T) {
+	t.Cleanup(func() { version = "" })
+	version = "v9.9.9-test"
+	if got := awfVersion(); got != "v9.9.9-test" {
+		t.Errorf("awfVersion() = %q, want the ldflags-injected %q", got, "v9.9.9-test")
+	}
+}
