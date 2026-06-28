@@ -48,7 +48,11 @@ no `.awf/` override part shadows the targeted sections; editing template *conten
 bump (`./x sync` regenerates). `README.md` (lines 48, 87) and `docs/decisions/0022-curated-init-default.md`
 (line 78) also state the old `brainstorm → plan → ADR` order in prose — the README is
 hand-maintained and is corrected here; ADR-0022 is Implemented and append-only, so its historical
-prose is left as-is.
+prose is left as-is. One further order-bearing site exists: the `adr-system` domain narrative
+(`.awf/domains/parts/adr-system/current-state.md`, rendered to `docs/domains/adr-system.md`)
+abbreviates the chain as `brainstorm → plan/ADR → review → impl → review` (plan ahead of ADR). It is
+a live awf-managed part (not append-only), and this ADR declares `domains: [adr-system]`, so it is
+reconciled to the ADR-first order in the implementing range (see Downstream work).
 
 ## Decision
 
@@ -102,12 +106,15 @@ Harder / accepted: the high-level chain is marginally heavier to read than ADR-0
 lightweight presentation was a deliberate readability choice, now traded for accuracy. "resync"
 enters the high-level prose and therefore earns a glossary entry.
 
-Downstream work created: a `resync` entry in `docs/glossary.md`; the flipped assertion in
+Downstream work created: the two guide templates re-rendered to `AGENTS.md` and `docs/workflow.md`
+(`./x sync`); a `resync` entry in `docs/glossary.md`; the flipped assertion in
 `internal/project/spine_test.go` (with `// invariant:` markers backing the two tagged invariants);
-the `README.md` order correction. ADR-0004 stays `Implemented`; only its Decision item 1 "presents
-reviews as lightweight" clause is overridden, recorded here as partial-item supersedence
-(`related: [0004]`, predecessor status unchanged). ADR-0022's historical prose is left under the
-append-only rule.
+the `README.md` order correction; the `adr-system` domain part reconciled to ADR-first (re-rendering
+`docs/domains/adr-system.md`). When this ADR's status lands as Accepted or Implemented, the same
+commit regenerates `docs/decisions/ACTIVE.md` via `./x sync`. ADR-0004 stays `Implemented`; only its
+Decision item 1 "presents reviews as lightweight" clause is overridden, recorded here as
+partial-item supersedence (`related: [0004]`, predecessor status unchanged). ADR-0022's historical
+prose is left under the append-only rule.
 
 ## Alternatives Considered
 
