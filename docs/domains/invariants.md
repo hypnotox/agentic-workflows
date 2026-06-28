@@ -4,7 +4,7 @@
 <!-- awf:edit current-state — from .awf/domains/parts/invariants/current-state.md -->
 ## Current state
 
-Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching the project's configured `invariants.sources`. The checker is language-agnostic (filename globs + a literal marker) and enforce-by-default: an Implemented ADR with an unbacked — or unconfigured — slug fails `awf check`. Backing is opt-in per bullet; untagged bullets remain textual contracts.
+Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching the project's configured `invariants.sources`. The checker is language-agnostic (filename globs + a literal marker) and enforce-by-default: an Implemented ADR with an unbacked — or unconfigured — slug fails `awf check`. Backing is opt-in per bullet; untagged bullets remain textual contracts. Enforcement has a retirement escape (ADR-0031): a successor Implemented ADR can declare `retires_invariants: [<slug>]` in its frontmatter to drop a slug from enforcement when the change removes its backing code, leaving the declaring ADR's record intact; a retirement naming a slug no Implemented ADR declares is a dangling retirement and fails `awf check`.
 
 
 ## Decisions
@@ -13,8 +13,5 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 
 - [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](../decisions/0007-invariant-backing-tooling.md)
 - [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](../decisions/0008-language-agnostic-invariant-backing.md)
-
-### Proposed
-
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 

@@ -39,7 +39,7 @@ Hard rules every change must respect:
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage explicitly, no `git add -A`.
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`. (ADR-0006)
-- **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source. (ADR-0008)
+- **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source, unless retired by an Implemented successor ADR (ADR-0031). (ADR-0008)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk. (ADR-0020)
 
