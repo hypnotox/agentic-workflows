@@ -512,37 +512,44 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture", "workflow"}}}
 	l := p.layout()
-	want := map[string]string{
-		"docsDir":     "documentation",
-		"adrDir":      "documentation/decisions",
-		"activeMd":    "documentation/decisions/ACTIVE.md",
-		"adrReadme":   "documentation/decisions/README.md",
-		"adrTemplate": "documentation/decisions/template.md",
-		"plansDir":    "documentation/plans",
-		"domainsDir":  "documentation/domains",     // invariant: domains-dir-given
-		"workflowRef": "documentation/workflow.md", // invariant: workflow-ref-fallback (enabled arm)
+	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
+		l.ActiveMd != "documentation/decisions/ACTIVE.md" || l.AdrReadme != "documentation/decisions/README.md" ||
+		l.AdrTemplate != "documentation/decisions/template.md" || l.PlansDir != "documentation/plans" ||
+		l.PlansReadme != "documentation/plans/README.md" {
+		t.Errorf("layout = %+v", l)
 	}
-	for k, v := range want {
-		if got := l[k]; got != v {
-			t.Errorf("layout[%q] = %v, want %q", k, got, v)
-		}
+	// invariant: domains-dir-given
+	if l.DomainsDir != "documentation/domains" {
+		t.Errorf("domainsDir = %q", l.DomainsDir)
+	}
+	// invariant: workflow-ref-fallback (enabled arm)
+	if l.WorkflowRef != "documentation/workflow.md" {
+		t.Errorf("workflowRef = %q", l.WorkflowRef)
 	}
 	// invariant: layout-docs-enabled-only
-	wantDocs := map[string]any{
+	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
 		"workflow":     "documentation/workflow.md",
 	}
-	if !reflect.DeepEqual(l["docs"], wantDocs) {
-		t.Errorf("layout[docs] = %v, want %v", l["docs"], wantDocs)
+	if !reflect.DeepEqual(l.Docs, wantDocs) {
+		t.Errorf("Docs = %v, want %v", l.Docs, wantDocs)
+	}
+	// templateMap reproduces the historical .layout map (ConfigHash stability).
+	tm := l.templateMap()
+	for _, k := range []string{"docsDir", "adrDir", "activeMd", "adrReadme", "adrTemplate",
+		"plansDir", "plansReadme", "docs", "workflowRef", "domainsDir"} {
+		if _, ok := tm[k]; !ok {
+			t.Errorf("templateMap missing key %q", k)
+		}
 	}
 	// invariant: workflow-ref-fallback (fallback arm) — without the workflow doc enabled,
 	// workflowRef resolves to the always-present AGENTS.md.
 	noWf := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
-	if got := noWf.layout()["workflowRef"]; got != "AGENTS.md" {
+	if got := noWf.layout().WorkflowRef; got != "AGENTS.md" {
 		t.Errorf("workflowRef fallback = %v, want AGENTS.md", got)
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
-		t.Errorf("docOutPath = %q, want documentation/architecture.md", got)
+		t.Errorf("docOutPath = %q", got)
 	}
 }
 

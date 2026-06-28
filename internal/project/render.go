@@ -35,40 +35,75 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"prefix": p.Cfg.Prefix,
 		"vars":   nonNil(p.Cfg.Vars),
 		"data":   nonNil(sc.Data),
-		"layout": p.layout(),
+		"layout": p.layout().templateMap(),
 	}
 }
 
-// layout returns the fixed, awf-given docs layout derived from cfg.DocsDir.
-// These paths are exposed to templates under the .layout namespace; they are
-// not configurable through vars.
-func (p *Project) layout() map[string]any {
+// Layout is the fixed, awf-given docs layout derived from cfg.DocsDir, in typed
+// form for Go consumers. These paths are not configurable through vars.
+// templateMap projects it into the .layout template namespace (templates read a
+// map, not unexported struct fields) and into the per-file ConfigHash.
+type Layout struct {
+	DocsDir     string
+	ADRDir      string
+	ActiveMd    string
+	AdrReadme   string
+	AdrTemplate string
+	PlansDir    string
+	PlansReadme string
+	Docs        map[string]string // name -> output path; present iff enabled (inv: layout-docs-enabled-only)
+	WorkflowRef string
+	DomainsDir  string
+}
+
+func (p *Project) layout() Layout {
 	d := strings.TrimRight(p.Cfg.DocsDir, "/")
 	dec := d + "/decisions"
-	// docs maps every enabled doc name to its output path. Local docs are
-	// included: the file still exists at that path and is citable. A key is
-	// present iff the doc is enabled (inv: layout-docs-enabled-only).
-	docs := map[string]any{}
+	// Docs maps every enabled doc name to its output path. Local docs are included:
+	// the file still exists at that path and is citable.
+	docs := map[string]string{}
 	for _, name := range p.Cfg.Docs {
 		docs[name] = p.docOutPath(name)
 	}
-	// workflowRef is the workflow doc's path when enabled, else AGENTS.md, so
-	// the ~always-cited workflow reference always resolves (inv: workflow-ref-fallback).
+	// WorkflowRef is the workflow doc's path when enabled, else AGENTS.md, so the
+	// ~always-cited workflow reference always resolves (inv: workflow-ref-fallback).
 	workflowRef := "AGENTS.md"
 	if wp, ok := docs["workflow"]; ok {
-		workflowRef = wp.(string)
+		workflowRef = wp
+	}
+	return Layout{
+		DocsDir:     d,
+		ADRDir:      dec,
+		ActiveMd:    dec + "/ACTIVE.md",
+		AdrReadme:   dec + "/README.md",
+		AdrTemplate: dec + "/template.md",
+		PlansDir:    d + "/plans",
+		PlansReadme: d + "/plans/README.md",
+		Docs:        docs,
+		WorkflowRef: workflowRef,
+		DomainsDir:  d + "/domains", // inv: domains-dir-given
+	}
+}
+
+// templateMap projects the layout into the map the .layout template namespace and
+// the per-file ConfigHash consume, reproducing the historical layout() map exactly
+// so the ConfigHash stays byte-identical (no drift).
+func (l Layout) templateMap() map[string]any {
+	docs := map[string]any{}
+	for k, v := range l.Docs {
+		docs[k] = v
 	}
 	return map[string]any{
-		"docsDir":     d,
-		"adrDir":      dec,
-		"activeMd":    dec + "/ACTIVE.md",
-		"adrReadme":   dec + "/README.md",
-		"adrTemplate": dec + "/template.md",
-		"plansDir":    d + "/plans",
-		"plansReadme": d + "/plans/README.md",
+		"docsDir":     l.DocsDir,
+		"adrDir":      l.ADRDir,
+		"activeMd":    l.ActiveMd,
+		"adrReadme":   l.AdrReadme,
+		"adrTemplate": l.AdrTemplate,
+		"plansDir":    l.PlansDir,
+		"plansReadme": l.PlansReadme,
 		"docs":        docs,
-		"workflowRef": workflowRef,
-		"domainsDir":  d + "/domains", // inv: domains-dir-given
+		"workflowRef": l.WorkflowRef,
+		"domainsDir":  l.DomainsDir,
 	}
 }
 
@@ -266,9 +301,9 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		kind, tid, out string
 		sections       []string
 	}{
-		{"adr-readme", "adr-readme/README.md.tmpl", lay["adrReadme"].(string), p.Cat.AdrReadme.Sections},
-		{"adr-template", "adr-template/template.md.tmpl", lay["adrTemplate"].(string), p.Cat.AdrTemplate.Sections},
-		{"plans-readme", "plans-readme/README.md.tmpl", lay["plansReadme"].(string), p.Cat.PlansReadme.Sections},
+		{"adr-readme", "adr-readme/README.md.tmpl", lay.AdrReadme, p.Cat.AdrReadme.Sections},
+		{"adr-template", "adr-template/template.md.tmpl", lay.AdrTemplate, p.Cat.AdrTemplate.Sections},
+		{"plans-readme", "plans-readme/README.md.tmpl", lay.PlansReadme, p.Cat.PlansReadme.Sections},
 	} {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
@@ -361,7 +396,7 @@ func (p *Project) consumedParts(kind, target string, plan map[string]render.Sect
 // and the bytes of every convention part it consumed — in deterministic order.
 func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
 	refs := render.ReferencedVars(assembled)
-	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout()}
+	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
 	vs := map[string]any{}
 	for _, r := range refs {
 		vs[r] = p.Cfg.Vars[r]
