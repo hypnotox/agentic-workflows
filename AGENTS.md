@@ -83,3 +83,4 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md) — recurring bugs and tricky areas
 - **Testing:** [docs/testing.md](docs/testing.md) — gate tiers, test layout, what each tier covers
 - **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/ADR/plan chain, commit discipline
+- **docs/releasing.md:** [docs/releasing.md](docs/releasing.md) — how to cut a release (tag, GoReleaser binaries, versioning)
