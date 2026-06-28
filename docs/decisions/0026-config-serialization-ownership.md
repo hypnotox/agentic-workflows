@@ -105,6 +105,7 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
 - The `config` and `tooling` domain narratives gain the single-owner, structure-preserving serializer.
+- `docs/architecture.md`'s `internal/config` package entry gains its construction/mutation role; today it records only the load path and schema ownership (via `.awf/docs/parts/architecture/components.md`).
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
 
 ## Alternatives Considered
