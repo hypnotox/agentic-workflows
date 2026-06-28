@@ -56,9 +56,19 @@ inherits the rest of the template.
 
 ## Install
 
+Download a prebuilt binary for your platform from the
+[latest release](https://github.com/hypnotox/agentic-workflows/releases/latest),
+extract it, and put `awf` on your `PATH`. awf is a single static binary with no
+runtime dependencies — no Go toolchain required.
+
+<details>
+<summary>Install from source (Go users)</summary>
+
 Requires Go 1.26+.
 
     go install github.com/hypnotox/agentic-workflows/cmd/awf@latest
+
+</details>
 
 ## Quickstart
 
