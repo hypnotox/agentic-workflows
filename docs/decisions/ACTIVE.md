@@ -33,7 +33,4 @@
 - [ADR-0026: Config Serialization Owned by internal/config](0026-config-serialization-ownership.md) — Implemented
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](0027-unified-kind-descriptor.md) — Implemented
 - [ADR-0028: ADR-first ordering and a visible plan–ADR resync loop in the workflow chain](0028-workflow-chain-adr-first-visible-resync.md) — Implemented
-
-## Proposed
-
-- [ADR-0029: Interactive and Agent-Prefillable `awf init`](0029-interactive-agent-prefillable-init.md) — Proposed
+- [ADR-0029: Interactive and Agent-Prefillable `awf init`](0029-interactive-agent-prefillable-init.md) — Implemented

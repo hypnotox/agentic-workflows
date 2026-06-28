@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
@@ -79,14 +79,17 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
    (`scaffold-seeds-all-vars`) is preserved: every referenced var still appears, now carrying a value
    rather than `""`. ADR-0022's `scaffold-core-only` guarantee is likewise preserved on the default
    path: with no catalog-trim selection, `ScaffoldConfig` still enables exactly the curated core — its
-   backing test calls `ScaffoldConfig` with no trim and is unaffected. A trim selection is an explicit
-   opt-in that may add non-core targets beyond that default-case guarantee.
+   backing test calls `ScaffoldConfig` with no trim and is unaffected. A trim selection is
+   **full-deselectable**: it replaces the enable array verbatim and may drop curated-core targets,
+   mirroring `awf remove` (ADR-0024), which already disables core/chain skills post-init with no
+   guardrail. The default (no-selection) path is unchanged, so `scaffold-core-only` holds.
 
 5. **Descriptor↔var parity is gated.** A test asserts that every var returned by
-   `render.ReferencedVars` over the catalog templates has a matching descriptor — or an explicit
-   `prompt: false` descriptor that means "seed empty, never prompt" — and that no descriptor names a
-   var absent from every template. This is backed by a tagged invariant so the descriptor set cannot
-   silently drift from the templates.
+   `render.ReferencedVars` over the catalog templates has a matching descriptor in
+   `templates/catalog.yaml`, and that no descriptor names a var absent from every template. This is
+   backed by a tagged invariant so the descriptor set cannot silently drift from the templates.
+   (`prompt: false` is reserved as a future seed-empty-never-prompt affordance; every current var has a
+   descriptor, so it is unimplemented.)
 
 6. **Scope boundary: values, not prose.** This ADR covers fillable *values* — vars, the invariants
    marker/globs, and catalog trim. It does **not** cover free-text authoring (the `identity`,
@@ -97,8 +100,10 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
 ## Invariants
 
 - `inv: var-descriptor-parity` — every var referenced by any catalog template has a matching
-  descriptor (or an explicit `prompt: false` descriptor) in `templates/catalog.yaml`, and no
-  descriptor names a var that appears in no template.
+  descriptor in `templates/catalog.yaml`, and no descriptor names a var that appears in no template.
+- `inv: catalog-trim-applied` — a non-nil catalog-trim dimension passed to `ScaffoldConfig` replaces
+  the curated-core skills/docs enable array verbatim (the full-deselectable trim); a nil dimension
+  keeps exactly the core.
 - `inv: init-noninteractive-default` — `awf init` with a non-TTY stdin and no `--set`/`--answers`
   seeds every var empty (no descriptor default applied), byte-identical to the pre-feature seed-empty
   output, preserving scriptable init.
