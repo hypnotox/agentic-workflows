@@ -47,6 +47,17 @@ func TestInitDescribeReadOnly(t *testing.T) {
 	if len(parsed.Descriptors) == 0 {
 		t.Error("describe emitted no descriptors")
 	}
+	var hasTrimOptions bool
+	for _, d := range parsed.Descriptors {
+		if d["target"] == "catalog-skills" {
+			if opts, ok := d["options"].([]any); ok && len(opts) > 0 {
+				hasTrimOptions = true
+			}
+		}
+	}
+	if !hasTrimOptions {
+		t.Errorf("describe missing computed catalog-skills options:\n%s", out.String())
+	}
 	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
 		t.Errorf(".awf/ should not exist after --describe (err=%v)", err)
 	}
@@ -165,6 +176,29 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	}
 	if strings.Contains(cfg, "invariants:") {
 		t.Errorf("empty marker/globs prompts should write no invariants config:\n%s", cfg)
+	}
+}
+
+// TestInitCatalogTrim asserts --set skills=/docs= drive the scaffolded enable
+// arrays verbatim (full-deselectable catalog trim, ADR-0029).
+func TestInitCatalogTrim(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	code := run([]string{"awf", "init", "--set", "skills=tdd,brainstorming", "--set", "docs=testing"}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
+	}
+	cfg := readInitConfig(t, root)
+	for _, want := range []string{"skills:", "- brainstorming", "- tdd", "docs:", "- testing"} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("config missing %q:\n%s", want, cfg)
+		}
+	}
+	// A core skill not in the selection must be absent (full-deselectable).
+	if strings.Contains(cfg, "- reviewing-impl") {
+		t.Errorf("trim should have deselected reviewing-impl:\n%s", cfg)
 	}
 }
 

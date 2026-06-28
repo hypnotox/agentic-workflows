@@ -1,7 +1,8 @@
 // Package initspec resolves awf init answers against the catalog's value
 // descriptors and emits the descriptor schema (ADR-0029). It bridges the
-// catalog's VarDescriptor set to a resolved (vars, invariants-config) pair via
-// explicit answers, an optional line-based prompter, or the silent default.
+// catalog's VarDescriptor set to a resolved (vars, invariants-config, catalog-trim)
+// triple via explicit answers, an optional line-based prompter, or the silent
+// default.
 package initspec
 
 import (
@@ -10,6 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -28,6 +32,47 @@ func Describe(descs []catalog.VarDescriptor) ([]byte, error) {
 		out[i] = d
 	}
 	return json.MarshalIndent(map[string]any{"descriptors": out}, "", "  ")
+}
+
+// CatalogVars returns the catalog's value descriptors with the catalog-trim
+// multiselect descriptors' Options and Default computed from the catalog itself:
+// Options lists every skill (or doc) name sorted, and Default comma-joins the
+// curated-core names (the pre-selected set). Other descriptors pass through
+// unchanged. Describe and Resolve operate on the returned slice so the trim option
+// list stays derived from the catalog (ADR-0029).
+func CatalogVars(cat *catalog.Catalog) []catalog.VarDescriptor {
+	skills := map[string]bool{}
+	for name, spec := range cat.Skills {
+		skills[name] = spec.Core
+	}
+	docs := map[string]bool{}
+	for name, spec := range cat.Docs {
+		docs[name] = spec.Core
+	}
+	out := make([]catalog.VarDescriptor, len(cat.Vars))
+	for i, d := range cat.Vars {
+		switch d.Target {
+		case "catalog-skills":
+			d.Options, d.Default = namesAndCore(skills)
+		case "catalog-docs":
+			d.Options, d.Default = namesAndCore(docs)
+		}
+		out[i] = d
+	}
+	return out
+}
+
+// namesAndCore returns every name (sorted) and the comma-joined subset whose value
+// is true (the core, pre-selected set).
+func namesAndCore(core map[string]bool) ([]string, string) {
+	all := slices.Sorted(maps.Keys(core))
+	var coreNames []string
+	for _, n := range all {
+		if core[n] {
+			coreNames = append(coreNames, n)
+		}
+	}
+	return all, strings.Join(coreNames, ",")
 }
 
 // ParseAnswersFile parses a flat key→value answer map from JSON or YAML bytes.
@@ -51,22 +96,42 @@ func MergeSetFlags(base map[string]string, sets []string) error {
 	return nil
 }
 
-// Resolve maps descriptors + answers to a vars map and an optional invariants
-// config. For each descriptor the value is: the explicit answer if present;
-// otherwise an interactive prompt (when interactive); otherwise empty. The
+// Resolve maps descriptors + answers to a vars map, an optional invariants config,
+// and an optional catalog trim. For a string/enum descriptor the value is: the
+// explicit answer if present; otherwise an interactive prompt (when interactive);
+// otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
+// resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension. The
 // invariants-marker/globs targets are collected into a *config.InvariantConfig:
 // both non-empty → enabled config; exactly one → error; neither → nil.
-func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.InvariantConfig, error) {
+func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.InvariantConfig, *config.CatalogTrim, error) {
 	vars := map[string]string{}
 	var marker, globs string
+	var skillsSel, docsSel *[]string
 	r := bufio.NewReader(in)
 	for _, d := range descs {
+		if d.Kind == "multiselect" {
+			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if selected {
+				switch d.Target {
+				case "catalog-skills":
+					chosen := sel
+					skillsSel = &chosen
+				case "catalog-docs":
+					chosen := sel
+					docsSel = &chosen
+				}
+			}
+			continue
+		}
 		val, ok := answers[d.Key]
 		if !ok {
 			if interactive {
 				p, err := prompt(r, out, d)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 				val = p
 			} else {
@@ -95,11 +160,88 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		// inv stays nil: no invariants config supplied (decide on parsed globs, so
 		// a whitespace-only globs value counts as unset).
 	case marker == "" || len(gs) == 0:
-		return nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
+		return nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
 	default:
 		inv = &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: gs, Marker: marker}}}
 	}
-	return vars, inv, nil
+
+	var trim *config.CatalogTrim
+	if skillsSel != nil || docsSel != nil {
+		trim = &config.CatalogTrim{Skills: skillsSel, Docs: docsSel}
+	}
+	return vars, inv, trim, nil
+}
+
+// resolveMultiselect resolves one multiselect descriptor to a selection plus a
+// "selected" flag: the explicit answer (comma-separated names, each validated
+// against the descriptor's options) if present; an interactive prompt (1-based
+// option numbers for the complete desired set) when interactive; otherwise not
+// selected. selected=false means "no selection: keep the scaffold's curated-core
+// default"; selected=true carries the verbatim set (possibly empty = deselect all).
+func resolveMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor, answers map[string]string, interactive bool) ([]string, bool, error) {
+	if raw, ok := answers[d.Key]; ok {
+		sel := splitNames(raw)
+		for _, n := range sel {
+			if !slices.Contains(d.Options, n) {
+				return nil, false, fmt.Errorf("initspec: %s: unknown option %q", d.Key, n)
+			}
+		}
+		return sel, true, nil
+	}
+	if !interactive {
+		return nil, false, nil
+	}
+	return promptMultiselect(r, out, d)
+}
+
+// promptMultiselect renders the numbered option list (core marked [x]) and reads a
+// complete selection as comma-separated 1-based numbers. Empty input keeps the core
+// default (selected=false); an out-of-range or non-numeric token errors.
+func promptMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) ([]string, bool, error) {
+	core := map[string]bool{}
+	for _, n := range splitNames(d.Default) {
+		core[n] = true
+	}
+	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
+	for i, o := range d.Options {
+		mark := " "
+		if core[o] {
+			mark = "x"
+		}
+		fmt.Fprintf(out, "  %d) [%s] %s\n", i+1, mark, o)
+	}
+	fmt.Fprint(out, "  enter full selection (comma-sep numbers), empty=keep: ")
+	line, err := r.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return nil, false, fmt.Errorf("initspec: read input: %w", err)
+	}
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return nil, false, nil
+	}
+	var sel []string
+	for _, tok := range strings.Split(line, ",") {
+		if tok = strings.TrimSpace(tok); tok == "" {
+			continue
+		}
+		n, e := strconv.Atoi(tok)
+		if e != nil || n < 1 || n > len(d.Options) {
+			return nil, false, fmt.Errorf("initspec: %s: invalid option %q", d.Key, tok)
+		}
+		sel = append(sel, d.Options[n-1])
+	}
+	return sel, true, nil
+}
+
+// splitNames trims and drops empties from a comma-separated string.
+func splitNames(s string) []string {
+	var out []string
+	for _, n := range strings.Split(s, ",") {
+		if n = strings.TrimSpace(n); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // prompt reads one line for descriptor d, returning d.Default on empty input.

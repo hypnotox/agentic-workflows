@@ -12,7 +12,7 @@ import (
 // validKinds and validTargets bound the descriptor schema the embedded catalog
 // may use.
 var validKinds = []string{"string", "enum", "multiselect"}
-var validTargets = []string{"", "var", "invariants-marker", "invariants-globs"}
+var validTargets = []string{"", "var", "invariants-marker", "invariants-globs", "catalog-skills", "catalog-docs"}
 
 // TestVarDescriptorParity asserts that every var referenced by any catalog
 // template has a matching var-target descriptor, and no var-target descriptor

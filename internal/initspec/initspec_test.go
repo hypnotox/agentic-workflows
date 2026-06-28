@@ -2,6 +2,7 @@ package initspec
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ type errReader struct{}
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
 
 func TestResolveSilentSeedsEmpty(t *testing.T) {
-	vars, inv, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false)
+	vars, inv, _, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestResolveSilentSeedsEmpty(t *testing.T) {
 
 func TestResolveExplicitAnswersWin(t *testing.T) {
 	a := map[string]string{"gateCmd": "make test", "invariantsMarker": "//", "invariantsGlobs": "*.go,*.s"}
-	vars, inv, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false)
+	vars, inv, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestResolveExplicitAnswersWin(t *testing.T) {
 func TestResolveInteractiveDefaultAndEnumIndex(t *testing.T) {
 	// gateCmd: empty line → default; marker: "2" → second option; globs: literal.
 	in := strings.NewReader("\n2\n*.go\n")
-	vars, inv, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+	vars, inv, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func TestResolveInteractiveDefaultAndEnumIndex(t *testing.T) {
 func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
 	// gateCmd: literal; marker: non-numeric literal; globs: literal.
 	in := strings.NewReader("custom\n//\n*.go\n")
-	vars, inv, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+	vars, inv, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,14 +81,14 @@ func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
 }
 
 func TestResolvePromptReadError(t *testing.T) {
-	if _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
+	if _, _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
 		t.Fatal("expected error from a failing reader")
 	}
 }
 
 func TestResolveInvariantsHalfSetErrors(t *testing.T) {
 	a := map[string]string{"invariantsMarker": "//"}
-	if _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
 		t.Fatal("expected error for marker without globs")
 	}
 }
@@ -96,7 +97,7 @@ func TestResolveInvariantsWhitespaceGlobsIsHalfSet(t *testing.T) {
 	// A marker plus an all-whitespace/comma globs value parses to zero globs, so it
 	// is treated as half-set (error), not a marker-only source that scans nothing.
 	a := map[string]string{"invariantsMarker": "//", "invariantsGlobs": ", ,"}
-	if _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
 		t.Fatal("expected error for marker with whitespace-only globs")
 	}
 }
@@ -132,5 +133,99 @@ func TestMergeSetFlags(t *testing.T) {
 	}
 	if err := MergeSetFlags(base, []string{"bad"}); err == nil {
 		t.Fatal("expected error for missing =")
+	}
+}
+
+func trimDescs() []catalog.VarDescriptor {
+	return []catalog.VarDescriptor{
+		{Key: "skills", Kind: "multiselect", Target: "catalog-skills",
+			Options: []string{"brainstorming", "bugfix", "tdd"}, Default: "brainstorming"},
+		{Key: "docs", Kind: "multiselect", Target: "catalog-docs",
+			Options: []string{"testing", "workflow"}, Default: "workflow"},
+	}
+}
+
+func TestCatalogVarsComputesTrimOptions(t *testing.T) {
+	cat := &catalog.Catalog{
+		Skills: map[string]catalog.SkillSpec{"brainstorming": {Core: true}, "tdd": {}},
+		Docs:   map[string]catalog.DocSpec{"workflow": {Core: true}, "testing": {}},
+		Vars: []catalog.VarDescriptor{
+			{Key: "gateCmd", Kind: "string"},
+			{Key: "skills", Kind: "multiselect", Target: "catalog-skills"},
+			{Key: "docs", Kind: "multiselect", Target: "catalog-docs"},
+		},
+	}
+	got := CatalogVars(cat)
+	if !slices.Equal(got[1].Options, []string{"brainstorming", "tdd"}) || got[1].Default != "brainstorming" {
+		t.Errorf("skills descriptor = %+v", got[1])
+	}
+	if !slices.Equal(got[2].Options, []string{"testing", "workflow"}) || got[2].Default != "workflow" {
+		t.Errorf("docs descriptor = %+v", got[2])
+	}
+	if got[0].Options != nil { // non-trim descriptor untouched
+		t.Errorf("gateCmd descriptor mutated: %+v", got[0])
+	}
+}
+
+func TestResolveMultiselectSilentKeepsCore(t *testing.T) {
+	_, _, trim, err := Resolve(trimDescs(), nil, strings.NewReader(""), &strings.Builder{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trim != nil {
+		t.Errorf("silent trim = %+v, want nil", trim)
+	}
+}
+
+func TestResolveMultiselectExplicit(t *testing.T) {
+	// Trailing comma on skills exercises splitNames' empty-segment skip; docs is
+	// answered too so the catalog-docs trim dimension is populated.
+	a := map[string]string{"skills": "tdd,brainstorming,", "docs": "testing"}
+	_, _, trim, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trim == nil || trim.Skills == nil || !slices.Equal(*trim.Skills, []string{"tdd", "brainstorming"}) {
+		t.Errorf("trim.Skills = %+v", trim)
+	}
+	if trim.Docs == nil || !slices.Equal(*trim.Docs, []string{"testing"}) {
+		t.Errorf("trim.Docs = %+v", trim)
+	}
+}
+
+func TestResolveMultiselectExplicitUnknownName(t *testing.T) {
+	a := map[string]string{"skills": "nope"}
+	if _, _, _, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+		t.Fatal("expected error for unknown option name")
+	}
+}
+
+func TestResolveMultiselectInteractive(t *testing.T) {
+	// skills: "1,3," -> brainstorming,tdd (trailing comma exercises the empty-token
+	// skip); docs: empty -> keep core (nil dimension).
+	in := strings.NewReader("1,3,\n\n")
+	_, _, trim, err := Resolve(trimDescs(), nil, in, &strings.Builder{}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trim == nil || trim.Skills == nil || !slices.Equal(*trim.Skills, []string{"brainstorming", "tdd"}) {
+		t.Errorf("trim.Skills = %+v", trim)
+	}
+	if trim.Docs != nil {
+		t.Errorf("empty docs prompt should keep core (nil), got %+v", trim.Docs)
+	}
+}
+
+func TestResolveMultiselectInteractiveInvalidToken(t *testing.T) {
+	for _, line := range []string{"9\n", "x\n"} { // out-of-range, non-numeric
+		if _, _, _, err := Resolve(trimDescs(), nil, strings.NewReader(line), &strings.Builder{}, true); err == nil {
+			t.Errorf("expected error for input %q", line)
+		}
+	}
+}
+
+func TestResolveMultiselectPromptReadError(t *testing.T) {
+	if _, _, _, err := Resolve(trimDescs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
+		t.Fatal("expected read error from multiselect prompt")
 	}
 }

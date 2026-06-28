@@ -350,3 +350,11 @@ vars:
     description: Comma-separated filename globs scanned for invariant backing comments (basename match).
     default: ""
     options: ["*.go", "*.py", "*.ts", "*.rb"]
+  - key: skills
+    kind: multiselect
+    target: catalog-skills
+    description: Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog.
+  - key: docs
+    kind: multiselect
+    target: catalog-docs
+    description: Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog.

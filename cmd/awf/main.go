@@ -236,8 +236,9 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
 	if err != nil { // coverage-ignore: catalog.Load over the embedded FS cannot fail at runtime
 		return err
 	}
+	descs := initspec.CatalogVars(cat)
 	if describe {
-		out, err := initspec.Describe(cat.Vars)
+		out, err := initspec.Describe(descs)
 		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
 			return err
 		}
@@ -257,7 +258,7 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
 	if err := initspec.MergeSetFlags(answers, sets); err != nil {
 		return err
 	}
-	vars, inv, err := initspec.Resolve(cat.Vars, answers, stdin, stdout, isInteractive())
+	vars, inv, trim, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
 	if err != nil {
 		return err
 	}
@@ -268,7 +269,7 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, nil)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
