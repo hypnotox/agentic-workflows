@@ -18,3 +18,7 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 
+### Proposed
+
+- [ADR-0028: ADR-first ordering and a visible plan–ADR resync loop in the workflow chain](../decisions/0028-workflow-chain-adr-first-visible-resync.md)
+
