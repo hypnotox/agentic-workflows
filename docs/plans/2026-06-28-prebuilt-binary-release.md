@@ -107,8 +107,9 @@ func TestAwfVersionLdflagsPrecedence(t *testing.T) {
 ./x gate
 ```
 
-Expected: tests pass; the new branch keeps coverage at `coverage: 100.0%` (the total statement
-count rises by one from the added `return version`) and lint reports `0 issues.` Then:
+Expected: tests pass; coverage stays at `coverage: 100.0%` — the new `if version != ""` true path
+(`return version`) is covered by `TestAwfVersionLdflagsPrecedence`, and the false path by the
+existing `TestRunVersion` (which runs with `version == ""`) — and lint reports `0 issues.` Then:
 
 ```
 git add cmd/awf/version.go cmd/awf/version_test.go
