@@ -138,6 +138,36 @@ func TestInitErrorPaths(t *testing.T) {
 	}
 }
 
+// TestInitInteractivePromptWiring exercises the interactive path end to end: with
+// isInteractive forced true and the stdin seam stubbed, awf init reads a prompted
+// value and writes it to the scaffolded config. This is the only test that drives
+// the run -> runInit -> initspec.Resolve prompt wiring through the stdin package
+// var; every other writing test forces non-interactive.
+func TestInitInteractivePromptWiring(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	origInteractive := isInteractive
+	isInteractive = func() bool { return true }
+	t.Cleanup(func() { isInteractive = origInteractive })
+	origStdin := stdin
+	// gateCmd (the first descriptor) gets a value; every later prompt hits EOF and
+	// takes its empty default, so the invariants marker/globs stay unset (nil).
+	stdin = strings.NewReader("make gate\n")
+	t.Cleanup(func() { stdin = origStdin })
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("interactive init: exit %d (%s)", code, errb.String())
+	}
+	cfg := readInitConfig(t, root)
+	if !strings.Contains(cfg, "gateCmd: make gate") {
+		t.Errorf("config missing prompted gateCmd:\n%s", cfg)
+	}
+	if strings.Contains(cfg, "invariants:") {
+		t.Errorf("empty marker/globs prompts should write no invariants config:\n%s", cfg)
+	}
+}
+
 // TestIsInteractive exercises the real isInteractive seam (the result depends on
 // whether the test's stdin is a terminal; we only assert it runs without panic).
 func TestIsInteractive(t *testing.T) {
