@@ -35,3 +35,7 @@
 - [ADR-0028: ADR-first ordering and a visible plan–ADR resync loop in the workflow chain](0028-workflow-chain-adr-first-visible-resync.md) — Implemented
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](0029-interactive-agent-prefillable-init.md) — Implemented
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](0030-prebuilt-binary-distribution-and-release.md) — Implemented
+
+## Proposed
+
+- [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) — Proposed
