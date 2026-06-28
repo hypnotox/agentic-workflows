@@ -564,43 +564,21 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// Unknown field → strict config.Load fails → project.Open errors.
+	// Unknown field → strict config.Load fails → project.Open errors inside runInit.
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := initCollisions(root); err == nil {
-		t.Fatal("expected initCollisions to surface the Open error")
-	}
-}
-
-func TestInitCollisionsPlannedOutputsError(t *testing.T) {
-	root := t.TempDir()
-	dir := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "config.yaml"),
-		[]byte("prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// Open succeeds (ADRs are not parsed at Open); the malformed ADR fails
-	// generateActiveMD inside PlannedOutputs.
-	dd := filepath.Join(root, "docs", "decisions")
-	if err := os.MkdirAll(dd, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := initCollisions(root); err == nil {
-		t.Fatal("expected initCollisions to surface the PlannedOutputs error")
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to fail when project.Open errors")
 	}
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	root := t.TempDir()
-	// A malformed ADR makes PlannedOutputs (inside initCollisions) fail after the
-	// config is scaffolded, exercising runInit's initCollisions error forward.
+	// A malformed ADR makes PlannedOutputs (inside p.InitCollisions) fail after the
+	// config is scaffolded, exercising runInit's collision-scan error forward.
 	dd := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(dd, 0o755); err != nil {
 		t.Fatal(err)

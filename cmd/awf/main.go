@@ -8,10 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -216,7 +214,11 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		scaffolded = true
 		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
 	}
-	collisions, err := initCollisions(root)
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	collisions, err := p.InitCollisions()
 	if err != nil {
 		return err
 	}
@@ -230,14 +232,11 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 				strings.Join(collisions, "\n  "))
 		}
 		// --force: back up each colliding non-managed file before sync overwrites it.
-		// invariant: init-force-backs-up
 		for _, rel := range collisions {
-			src := filepath.Join(root, rel)
-			bak := freeBackupPath(src)
-			if err := copyFile(src, bak); err != nil { // coverage-ignore: rel is a known-existing collision and bak is a free sibling path; copyFile fails only on a permission fault root bypasses
+			bakRel, err := p.BackupFile(rel)
+			if err != nil { // coverage-ignore: p.BackupFile only fails on a copyFile permission fault that root bypasses
 				return fmt.Errorf("awf init: back up %s: %w", rel, err)
 			}
-			bakRel, _ := filepath.Rel(root, bak)
 			fmt.Fprintf(stdout, "backed up %s → %s\n", rel, bakRel)
 		}
 	}
@@ -248,65 +247,6 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
-}
-
-// freeBackupPath returns base+".awf-bak", or "...awf-bak.N" with the lowest N
-// that does not yet exist, so a forced backup never overwrites a prior one.
-func freeBackupPath(base string) string {
-	p := base + ".awf-bak"
-	for i := 1; fileExists(p); i++ {
-		p = fmt.Sprintf("%s.awf-bak.%d", base, i)
-	}
-	return p
-}
-
-func fileExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
-}
-
-// copyFile copies src to dst, preserving the source file's permission bits.
-func copyFile(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil { // coverage-ignore: src is a known-existing collision path
-		return err
-	}
-	data, err := os.ReadFile(src)
-	if err != nil { // coverage-ignore: src was just stat'd and is readable
-		return err
-	}
-	return os.WriteFile(dst, data, info.Mode().Perm())
-}
-
-// initCollisions returns planned output paths that already exist on disk and are
-// not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
-// already exists is not a collision — re-init is idempotent.
-func initCollisions(root string) ([]string, error) {
-	p, err := project.Open(root)
-	if err != nil {
-		return nil, err
-	}
-	planned, err := p.PlannedOutputs()
-	if err != nil {
-		return nil, err
-	}
-	managed := map[string]bool{}
-	if lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock")); err == nil {
-		for path := range lock.Files {
-			managed[path] = true
-		}
-	}
-	var collisions []string
-	for _, rel := range planned {
-		if managed[rel] {
-			continue
-		}
-		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
-			collisions = append(collisions, rel)
-		}
-	}
-	sort.Strings(collisions)
-	return collisions, nil
 }
 
 // gate refuses to operate against a stale config layout. It runs before
