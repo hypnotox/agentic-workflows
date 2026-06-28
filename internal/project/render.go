@@ -73,69 +73,83 @@ func nonNil(m map[string]any) map[string]any {
 	return m
 }
 
-func (p *Project) RenderAll() ([]RenderedFile, error) {
+// renderKindSpec drives one catalog-backed render loop (skills/agents/docs): the
+// kinds that share the sort → sidecar → skip-local → render → append shape. tid,
+// sections, and outPath derive from the target name; gate (optional, nil = always
+// render) suppresses a target — used for the skills doc-gate.
+type renderKindSpec struct {
+	kind     string
+	names    []string
+	tid      func(name string) string
+	sections func(name string) []string
+	outPath  func(name string) string
+	gate     func(name string) bool
+}
+
+func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 	var out []RenderedFile
-	// Skills.
-	enabledDocs := sliceSet(p.Cfg.Docs)
-	for _, name := range slices.Sorted(slices.Values(p.Cfg.Skills)) {
-		sc, err := p.Cfg.Sidecar("skills", name)
+	for _, name := range slices.Sorted(slices.Values(spec.names)) {
+		sc, err := p.Cfg.Sidecar(spec.kind, name)
 		if err != nil {
 			return nil, err
 		}
 		if sc.Local {
 			continue
 		}
-		// Doc-gated skill: omit from the render set when its required doc is not
-		// enabled (inv: doc-gated-skill-suppressed).
-		if req := p.Cat.Skills[name].RequiresDoc; req != "" && !enabledDocs[req] {
+		if spec.gate != nil && !spec.gate(name) {
 			continue
 		}
-		rf, err := p.renderTarget("skills", name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name),
-			p.Cat.Skills[name].Sections, sc, p.data(sc),
-			p.Target.SkillPath(p.Cfg.Prefix, name))
+		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(name))
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
 	}
-	// Agents.
-	for _, name := range slices.Sorted(slices.Values(p.Cfg.Agents)) {
-		sc, err := p.Cfg.Sidecar("agents", name)
+	return out, nil
+}
+
+func (p *Project) RenderAll() ([]RenderedFile, error) {
+	var out []RenderedFile
+	// Skills / agents / docs share one driver (order-independent: consumers are map-keyed by path).
+	enabledDocs := sliceSet(p.Cfg.Docs)
+	for _, spec := range []renderKindSpec{
+		{
+			kind: "skills", names: p.Cfg.Skills,
+			tid:      func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
+			sections: func(n string) []string { return p.Cat.Skills[n].Sections },
+			outPath:  func(n string) string { return p.Target.SkillPath(p.Cfg.Prefix, n) },
+			// Doc-gated skill: omit from the render set when its required doc is not
+			// enabled (inv: doc-gated-skill-suppressed).
+			// invariant: doc-gated-skill-suppressed
+			gate: func(n string) bool {
+				req := p.Cat.Skills[n].RequiresDoc
+				return req == "" || enabledDocs[req]
+			},
+		},
+		{
+			kind: "agents", names: p.Cfg.Agents,
+			tid:      func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
+			sections: func(n string) []string { return p.Cat.Agents[n].Sections },
+			outPath:  func(n string) string { return p.Target.AgentPath(n) },
+		},
+		{
+			kind: "docs", names: p.Cfg.Docs,
+			tid:      func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
+			sections: func(n string) []string { return p.Cat.Docs[n].Sections },
+			outPath:  func(n string) string { return p.docOutPath(n) },
+		},
+	} {
+		rfs, err := p.renderKind(spec)
 		if err != nil {
 			return nil, err
 		}
-		if sc.Local {
-			continue
-		}
-		rf, err := p.renderTarget("agents", name, fmt.Sprintf("agents/%s.md.tmpl", name),
-			p.Cat.Agents[name].Sections, sc, p.data(sc),
-			p.Target.AgentPath(name))
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, rf)
+		out = append(out, rfs...)
 	}
 	// Hooks.
 	for _, h := range p.Cfg.Hooks {
 		rf, err := p.renderTarget("hooks", h, fmt.Sprintf("hooks/%s.tmpl", h),
 			nil, config.Sidecar{}, p.data(config.Sidecar{}), ".githooks/"+h)
 		if err != nil { // coverage-ignore: catalog hook templates are static, part-free, and reference only guarded vars; renderTarget cannot fail for a hook
-			return nil, err
-		}
-		out = append(out, rf)
-	}
-	// Docs.
-	for _, name := range slices.Sorted(slices.Values(p.Cfg.Docs)) {
-		sc, err := p.Cfg.Sidecar("docs", name)
-		if err != nil {
-			return nil, err
-		}
-		if sc.Local {
-			continue
-		}
-		rf, err := p.renderTarget("docs", name, fmt.Sprintf("docs/%s.md.tmpl", name),
-			p.Cat.Docs[name].Sections, sc, p.data(sc), p.docOutPath(name))
-		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
