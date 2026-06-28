@@ -45,7 +45,7 @@ Requires Go 1.26+.
     awf add skill tdd    # opt a skill in
     awf add doc pitfalls # opt a doc in
 
-`awf init` enables a curated **workflow core** by default — the brainstorm → plan → ADR → implement →
+`awf init` enables a curated **workflow core** by default — the brainstorm → ADR → plan → implement →
 review chain skills, the review agents, the workflow docs, and the gate hooks. Everything else in the
 catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` to opt back out).
 
@@ -84,7 +84,7 @@ Run `awf help` for the full synopsis.
 
 - [`AGENTS.md`](AGENTS.md) — the agent guide (rendered) that orients an AI agent in this repo
 - [`docs/architecture.md`](docs/architecture.md) — system shape, packages, key components
-- [`docs/workflow.md`](docs/workflow.md) — the brainstorm/plan/ADR chain and commit discipline
+- [`docs/workflow.md`](docs/workflow.md) — the brainstorm/ADR/plan chain and commit discipline
 - [`docs/decisions/README.md`](docs/decisions/README.md) — architecture decision records
 - [`docs/development.md`](docs/development.md) — local setup and the `./x` command runner
 
