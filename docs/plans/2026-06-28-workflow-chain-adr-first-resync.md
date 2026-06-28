@@ -30,6 +30,7 @@ never hand-edited. No Go production code changes; the only `*.go` edit is the go
 **Modified (templates / sources):**
 - `templates/agents-doc/AGENTS.md.tmpl` — Workflow chain string + prose + chain-skills order
 - `templates/docs/workflow.md.tmpl` — chain string + prose
+- `templates/catalog.yaml` — `docs.workflow` desc (AGENTS.md document-map line: `brainstorm/plan/ADR` → `brainstorm/ADR/plan`)
 - `templates/skills/writing-plans/SKILL.md.tmpl` — plural ADR(s), back-edge note, freeze trigger
 - `templates/skills/reviewing-plan/SKILL.md.tmpl` — plural ADR(s)
 - `templates/skills/reviewing-plan-resync/SKILL.md.tmpl` — plural ADR(s), "at least one", drop "status is flipped"
@@ -84,6 +85,14 @@ never hand-edited. No Go production code changes; the only `*.go` edit is the go
   ```
   **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`. **Task skills** (as needed): `{{ .prefix }}-tdd`, `{{ .prefix }}-bugfix`, `{{ .prefix }}-debugging`, `{{ .prefix }}-adr-lifecycle`.
   ```
+
+- [ ] Edit `templates/catalog.yaml`, the `docs.workflow` entry (the source of the AGENTS.md document-map description). Replace:
+
+  OLD: `    desc: principles, the brainstorm/plan/ADR chain, commit discipline`
+
+  NEW: `    desc: principles, the brainstorm/ADR/plan chain, commit discipline`
+
+  (This is the same slash-form phrase corrected in README at Task 4.2; without it the rendered `AGENTS.md` document map would still state the old plan-before-ADR order, contradicting the ADR-first chain string set above.)
 
 ### Task 1.2 — workflow.md.tmpl chain section
 
@@ -142,10 +151,10 @@ ADR-0028's tagged invariants — lands here, with the template change.
 - [ ] Run `./x sync`. Expected: re-renders `AGENTS.md` and `docs/workflow.md` (plus `.awf/awf.lock`).
 - [ ] Run `./x check`. Expected: `awf check: clean` (drift oracle, per the AGENTS.md invariant — confirms every rendered file the sync touched matches its source).
 - [ ] Run `./x gate`. Expected tail: `coverage: 100.0%` and `0 issues.` (The flipped `TestAgentsDocTemplate` now asserts the new chain string positively; coverage is unchanged because the only Go edit is test code — no production statements added.)
-- [ ] Verify: `grep -c "ADR (if warranted) → plan (if warranted)" AGENTS.md docs/workflow.md` → `1` each; `grep -c "single terminal" AGENTS.md docs/workflow.md` → `0` each.
+- [ ] Verify: `grep -c "ADR (if warranted) → plan (if warranted)" AGENTS.md docs/workflow.md` → `1` each; `grep -c "single terminal" AGENTS.md docs/workflow.md` → `0` each; `grep -c "brainstorm/plan/ADR" AGENTS.md` → `0` (the document-map line now reads `brainstorm/ADR/plan`).
 - [ ] Stage and commit (the golden assertion moves with the rendered output it pins):
   ```
-  git add templates/agents-doc/AGENTS.md.tmpl templates/docs/workflow.md.tmpl internal/project/spine_test.go AGENTS.md docs/workflow.md .awf/awf.lock
+  git add templates/agents-doc/AGENTS.md.tmpl templates/docs/workflow.md.tmpl templates/catalog.yaml internal/project/spine_test.go AGENTS.md docs/workflow.md .awf/awf.lock
   git commit -m "docs(awf): make rendered workflow chain ADR-first with visible resync
 
   Implements ADR-0028 Decisions 1-2 and 5: reorder the chain to
