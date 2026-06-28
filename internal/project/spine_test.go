@@ -741,7 +741,7 @@ func TestAgentsDocTemplate(t *testing.T) {
 		t.Errorf("Workflow chain must present ADR before plan:\n%s", out)
 	}
 	// invariant: workflow-chain-surfaces-resync
-	if !strings.Contains(out, "resync") {
+	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("Workflow chain must surface the resync step:\n%s", out)
 	}
 }
