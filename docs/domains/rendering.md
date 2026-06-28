@@ -12,6 +12,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ### Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](../decisions/0001-template-overlay-rendering-engine.md)
+- [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 
 ### Implemented
 
@@ -24,8 +25,4 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 - [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
-
-### Proposed
-
-- [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 
