@@ -3,7 +3,6 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0026: Config Serialization Owned by internal/config](0026-config-serialization-ownership.md) — Accepted
 
 ## Implemented
 
@@ -31,3 +30,4 @@
 - [ADR-0023: Safe Adoption Into Existing Repositories](0023-safe-adoption-existing-repos.md) — Implemented
 - [ADR-0024: CLI Config Management Across Kinds](0024-cli-config-management.md) — Implemented
 - [ADR-0025: Uncommitted-Changes Audit Rule](0025-uncommitted-changes-audit-rule.md) — Implemented
+- [ADR-0026: Config Serialization Owned by internal/config](0026-config-serialization-ownership.md) — Implemented

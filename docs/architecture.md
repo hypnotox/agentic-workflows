@@ -38,7 +38,9 @@ decoupled from any one runtime's directory.
 
 - **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup`, `upgrade`
   subcommands. `sync`/`check` enforce the schema-generation gate (ADR-0010) before opening the project.
-- **`internal/config/`** — loads `.awf/config.yaml` plus keyed sidecars; owns the config schema.
+- **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
+  (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
+  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
 - **`internal/catalog/`** — reads `templates/catalog.yaml`; declares the available skills, agents,
   hooks, docs, and their sections.
 - **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section

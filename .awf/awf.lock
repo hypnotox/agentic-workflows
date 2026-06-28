@@ -137,14 +137,14 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",
-      "configHash": "sha256:05a1a94f0f908e7decaf986d1973fcb01413ba5c8485462ee55382066c673df2",
-      "outputHash": "sha256:92c27b3a08c996d9b6a2454ac4281ba66172d0c3835d93b962b62cbec01aef09"
+      "configHash": "sha256:63dff6b841cd41a9f94597786011c18b3bab361c3c585bf9cbf04520f20fa526",
+      "outputHash": "sha256:25ea4f176eb8291ae85e94d67ccdf83e29723dc5c464ea077e83e0ece235eb91"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:7251c046b04886f628dccfd0ced5222a31c52e00cfb24823f727db32c39c9c7c"
+      "outputHash": "sha256:3191c8cb7fa544df6b9bac0d2a228636204cc27c7eeb1783731d430ab1b973fb"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:81571bddafed9ccd72cf69cb8a100351b7477854524197a81b48b4c851a63fdc"
+      "outputHash": "sha256:d7b20ce750bdfd0e73de685d9494da3216a2b31b8ab5f9395a6892545cd4daaf"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -198,7 +198,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f61d461932ec28f19a55db3de5d74df0b0ee716ed313ad10227950654fdc7849"
+      "outputHash": "sha256:36071b152448fd29991e4d2e6b721cd26598394e220a26a289c1fa7d4d7831b3"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
