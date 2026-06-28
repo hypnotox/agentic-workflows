@@ -16,7 +16,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 ### Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
-- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md)
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
@@ -29,4 +28,12 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](../decisions/0030-prebuilt-binary-distribution-and-release.md)
+
+### Proposed
+
+- [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
+
+### Superseded by ADR-0032
+
+- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
 
