@@ -60,7 +60,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 ## Notes
 
 <!-- awf:edit plan-lifecycle — default; create .awf/skills/parts/writing-plans/plan-lifecycle.md to override -->
-- Plans are mutable while the corresponding ADR is `Proposed` (or while non-ADR implementation is in flight); they freeze when the ADR flips to `Accepted`/`Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
+- Plans are mutable while the corresponding ADR is `Proposed` (the ADR stays `Proposed` through implementation) or while non-ADR implementation is in flight; they freeze when the ADR flips to `Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
 
 <!-- awf:edit plan-resync — default; create .awf/skills/parts/writing-plans/plan-resync.md to override -->
 - If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `awf-proposing-adr` (or amend a still-`Proposed` ADR via `awf-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`awf-reviewing-plan-resync`) reconciles any resulting drift before implementation.

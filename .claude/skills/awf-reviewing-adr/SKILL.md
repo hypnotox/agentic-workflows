@@ -44,10 +44,10 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 6. **Re-review loop.** The `adr-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 
 <!-- awf:edit status-flip — default; create .awf/skills/parts/reviewing-adr/status-flip.md to override -->
-7. **Flip ADR status when finalised.** After the review settles (no structural findings, or user decisions resolved), flip the ADR `status:` frontmatter from `Proposed` to `Accepted`. Flip to `Implemented` instead if this ADR ships its own code in the same commit series. Commit the flip.
+7. **Do not flip the ADR status here.** The ADR stays `Proposed` through the implementation sequence; the flip to `Accepted`/`Implemented` is owned by the implementation step's final commit (`awf-executing-plans` / `awf-subagent-driven-development`, or `awf-adr-lifecycle` for the no-plan direct-implementation case). "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 
 <!-- awf:edit hand-off-to-resync — default; create .awf/skills/parts/reviewing-adr/hand-off-to-resync.md to override -->
-8. **Hand off to plan resync.** After the ADR review converges and the status is flipped, check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
+8. **Hand off to plan resync.** After the ADR review converges (the ADR remains `Proposed`), check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists, the chain proceeds directly to implementation.
 
 ## Notes
 

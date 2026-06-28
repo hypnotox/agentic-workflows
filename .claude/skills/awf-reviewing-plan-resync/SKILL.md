@@ -1,7 +1,7 @@
 ---
 name: awf-reviewing-plan-resync
 description: >
-  Invoked by awf-reviewing-adr after ADR review settles.
+  Invoked by awf-reviewing-adr after ADR review settles (the ADR stays Proposed).
   Dispatches the plan-reviewer subagent in resync mode (scope-completeness +
   doc-currency lenses only) to catch plan-vs-finalised-ADR(s) drift and route
   findings (mechanical / reasoned / user-decision).
@@ -13,7 +13,7 @@ description: >
 <!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-plan-resync/when-fires.md to override -->
 ## When this skill fires
 
-Only when BOTH an ADR and a plan exist. Invoked by `awf-reviewing-adr` as its terminal follow-on after the ADR review converges and the ADR status is flipped. Do NOT invoke when no plan was written.
+Only when at least one ADR and a plan exist. Invoked by `awf-reviewing-adr` as its terminal follow-on after the ADR review converges (the ADR remains `Proposed`; the status flip is owned by the implementation step). Do NOT invoke when no plan was written.
 
 This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness + doc-currency lenses). The post-write full plan review is owned by the separate `awf-reviewing-plan` skill.
 

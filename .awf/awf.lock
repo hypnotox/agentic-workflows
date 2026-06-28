@@ -64,21 +64,21 @@
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:a03b0f3342ae20de973f779879789803dfe29dd137b1990c073a4575bfe58acf",
+      "templateHash": "sha256:d710aaa5fcb2f3109cf7dbe235fdbd95d607d536002da01b25ab25c76868f51f",
       "configHash": "sha256:7061a5961a4bd3882c408771c117318d7517fc3dbfcdb65d90f117b72ab5dacd",
-      "outputHash": "sha256:27a86d35c80e72f0b15eade332f87f97f054cd4756979e92ba4bb01e39826409"
+      "outputHash": "sha256:5a0ac05dbc765684166f62ebab495ea14bcaf86d27aeadd41bf6ff32a74fe69f"
     },
     ".claude/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:6073fe1b0ba83e5b9927439b4789b2d04ba934ec2de8d6c1d1fb231220a918dc",
+      "templateHash": "sha256:064125f6a7b9c25fe02baeecb3f27a58a54fa17f976695e602f4fc8a5c38494b",
       "configHash": "sha256:f90e004e798ece5d9931a419bbb094351da2467aa9c48b3f65c119307184a844",
-      "outputHash": "sha256:7644ba4263b4a1b79592fce879f8b3578c3bc55061f30a52efe48aeb6ceac86b"
+      "outputHash": "sha256:abcc28d355f15e9ce9ec3d7e16dd95f5d608f15d86912e75131ec68abaafa68b"
     },
     ".claude/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
-      "templateHash": "sha256:923079639cbc9dea3eb4d3ee105682250244980f80ebe39cf1ed45b655b1665d",
+      "templateHash": "sha256:785d3f614eb59420744baa11f5b9f6109b3f7645bc31356fc00cd655cff55e02",
       "configHash": "sha256:7061a5961a4bd3882c408771c117318d7517fc3dbfcdb65d90f117b72ab5dacd",
-      "outputHash": "sha256:9125e675ed4022826397068934f0350211a25d190b0fedc8a2a60627012a9513"
+      "outputHash": "sha256:1bde25cbc216fd54d0210500ea2de066d3c08dbf1328545758cfefcb5e1e682c"
     },
     ".claude/skills/awf-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
@@ -100,9 +100,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:e55dddb601525f5d0c998aef4db91108a3d3f2515fcb8de23be75806d8b6bcbf",
+      "templateHash": "sha256:b9a2543eb50e344ab1a2fd86eeda509ba588edf8f9736e0d6914bb2a1434d1e5",
       "configHash": "sha256:a96e5f87965ccfe9f236fe09e531a78a48c468054b756fe73c36ddd5c497cd18",
-      "outputHash": "sha256:cd8c3ca1b1bcf6d2376836cf4a11925eb6f7a8664a34e34701d25e1539260fdd"
+      "outputHash": "sha256:b79a2931f893a1092b1b89e692ab4ab0c55f7332602c769617363b71d52760d2"
     },
     ".githooks/pre-commit": {
       "templateId": "hooks/pre-commit.tmpl",

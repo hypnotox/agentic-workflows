@@ -58,5 +58,5 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the terminal step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- The ADR status flip (Accepted → Implemented) is made by `awf-executing-plans` / `awf-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
+- The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `awf-executing-plans` / `awf-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
