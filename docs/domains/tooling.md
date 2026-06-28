@@ -29,3 +29,7 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)
 
+### Proposed
+
+- [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](../decisions/0030-prebuilt-binary-distribution-and-release.md)
+
