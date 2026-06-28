@@ -41,9 +41,6 @@ case "$cmd" in
   audit)
     go run ./cmd/awf audit "$@"
     ;;
-  setup)
-    go run ./cmd/awf setup "$@"
-    ;;
   build)
     go build -o awf ./cmd/awf
     ;;
@@ -51,7 +48,7 @@ case "$cmd" in
     go install ./cmd/awf
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|invariants|audit|setup|build|install>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|invariants|audit|build|install>" >&2
     exit 2
     ;;
 esac

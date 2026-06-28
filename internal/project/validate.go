@@ -54,7 +54,7 @@ func (p *Project) validateAgainstCatalog() error {
 
 // checkKindAgainstCatalog verifies every enabled non-local target of a
 // catalog-backed kind is in the catalog and that its sidecar section overrides
-// name declared sections. Hooks carry no sections, so only membership is checked.
+// name declared sections.
 func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 	pool := d.poolNames(p.Cat)
 	for _, name := range d.enable(p.Cfg) {
