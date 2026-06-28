@@ -9,6 +9,8 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 var testSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
@@ -148,7 +150,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 		t.Fatalf("empty range should be nil, got %d commits", len(commits))
 	}
 	// Drive Run for the empty range: clean, no error.
-	findings, err := Run(dir, Inputs{BaseBranch: head.String()})
+	findings, err := Run(dir, Inputs{AuditSettings: config.AuditSettings{BaseBranch: head.String()}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -160,7 +162,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 func TestRunPropagatesCollectError(t *testing.T) {
 	repo, dir := initRepo(t)
 	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	if _, err := Run(dir, Inputs{BaseBranch: "no-such-ref"}); err == nil {
+	if _, err := Run(dir, Inputs{AuditSettings: config.AuditSettings{BaseBranch: "no-such-ref"}}); err == nil {
 		t.Fatal("expected Run to propagate an unresolvable-base error")
 	}
 }
@@ -235,7 +237,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 
 	// Clean tree: no finding.
-	if f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: true}); len(f) != 0 {
+	if f := ruleUncommittedChanges(dir, Inputs{AuditSettings: config.AuditSettings{UncommittedChanges: true}}); len(f) != 0 {
 		t.Fatalf("clean tree should yield no finding, got %#v", f)
 	}
 
@@ -247,13 +249,13 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: true})
+	f := ruleUncommittedChanges(dir, Inputs{AuditSettings: config.AuditSettings{UncommittedChanges: true}})
 	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}
 
 	// Disabled: no finding even when dirty.
-	if f := ruleUncommittedChanges(dir, Inputs{UncommittedChanges: false}); len(f) != 0 {
+	if f := ruleUncommittedChanges(dir, Inputs{AuditSettings: config.AuditSettings{UncommittedChanges: false}}); len(f) != 0 {
 		t.Fatalf("disabled rule should yield no finding, got %#v", f)
 	}
 }
@@ -265,7 +267,7 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty range (base == HEAD) so only the live-state rule can fire.
-	findings, err := Run(dir, Inputs{BaseBranch: "HEAD", UncommittedChanges: true})
+	findings, err := Run(dir, Inputs{AuditSettings: config.AuditSettings{BaseBranch: "HEAD", UncommittedChanges: true}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

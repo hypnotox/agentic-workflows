@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -67,23 +68,19 @@ type Finding struct {
 	Detail   string
 }
 
-// Inputs are the resolved settings + layout the rules need.
+// Inputs are the resolved audit settings plus the project-derived layout the rules
+// need. The embedded config.AuditSettings carries the resolved knobs (BaseBranch,
+// AllowedTypes, AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
+// DomainDocStaleness, UndocumentedDomain, UncommittedChanges), promoted so the rules
+// read in.AllowedTypes etc. directly.
 type Inputs struct {
-	BaseBranch          string
-	AllowedTypes        []string // empty = accept any
-	AllowedScopes       []string // empty = accept any
-	SubjectMaxLength    int      // 0 = skip the length sub-check
-	DependencyManifests []string // empty = dependency-adr off
-	DiffThreshold       int      // 0 = plan-for-large-change off
-	GeneratedPaths      map[string]bool
-	ADRDir              string   // e.g. "docs/decisions"
-	ActiveMd            string   // e.g. "docs/decisions/ACTIVE.md"
-	PlansDir            string   // e.g. "docs/plans"
-	ConfiguredDomains   []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
-	DomainsPartsDir     string   // e.g. ".awf/domains/parts"
-	DomainDocStaleness  bool     // run the domain-doc-staleness rule
-	UndocumentedDomain  bool     // run the undocumented-domain rule
-	UncommittedChanges  bool     // run the uncommitted-changes (clean working tree) rule
+	config.AuditSettings
+	GeneratedPaths    map[string]bool
+	ADRDir            string   // e.g. "docs/decisions"
+	ActiveMd          string   // e.g. "docs/decisions/ACTIVE.md"
+	PlansDir          string   // e.g. "docs/plans"
+	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
+	DomainsPartsDir   string   // e.g. ".awf/domains/parts"
 }
 
 // Run collects the branch range and evaluates the rules.

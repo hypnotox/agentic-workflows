@@ -1,6 +1,10 @@
 package audit
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
+)
 
 func TestSeverityString(t *testing.T) {
 	if Error.String() != "error" {
@@ -24,7 +28,7 @@ func countRule(findings []Finding, rule string, sev Severity) int {
 
 // invariant: audit-conventional-commits
 func TestRuleConventionalCommits(t *testing.T) {
-	in := Inputs{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []string{"awf"}, SubjectMaxLength: 20}
+	in := Inputs{AuditSettings: config.AuditSettings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []string{"awf"}, SubjectMaxLength: 20}}
 	cases := []struct {
 		name    string
 		commit  Commit
@@ -93,7 +97,7 @@ func TestRuleADRStatusCochange(t *testing.T) {
 
 // invariant: audit-dependency-warn
 func TestRuleDependencyADR(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", DependencyManifests: []string{"go.mod", "*.csproj"}}
+	in := Inputs{ADRDir: "docs/decisions", AuditSettings: config.AuditSettings{DependencyManifests: []string{"go.mod", "*.csproj"}}}
 	adr := FileChange{Path: "docs/decisions/0001-x.md", Action: Added, NewText: proposedADR}
 	gomod := FileChange{Path: "go.mod", Action: Modified}
 	cases := []struct {
@@ -126,7 +130,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 	big := FileChange{Path: "src/a.go", Action: Modified, Added: 300, Deleted: 200}
 	genBig := FileChange{Path: "gen/out.txt", Action: Modified, Added: 9000, Deleted: 0}
 	plan := FileChange{Path: "docs/plans/2026-01-01-x.md", Action: Added, Added: 10}
-	base := Inputs{DiffThreshold: 400, PlansDir: "docs/plans", GeneratedPaths: gen}
+	base := Inputs{AuditSettings: config.AuditSettings{DiffThreshold: 400}, PlansDir: "docs/plans", GeneratedPaths: gen}
 	cases := []struct {
 		name     string
 		commits  []Commit
@@ -150,7 +154,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 }
 
 func TestEvaluateAggregates(t *testing.T) {
-	in := Inputs{AllowedTypes: []string{"feat"}, ADRDir: "docs/decisions", DependencyManifests: []string{"go.mod"}}
+	in := Inputs{AuditSettings: config.AuditSettings{AllowedTypes: []string{"feat"}, DependencyManifests: []string{"go.mod"}}, ADRDir: "docs/decisions"}
 	commits := []Commit{
 		{Subject: "bad subject", Changes: []FileChange{{Path: "go.mod", Action: Modified}}},
 	}
@@ -203,7 +207,7 @@ func TestRuleDomainDocStalenessDisabled(t *testing.T) {
 }
 
 func TestRuleDomainDocStaleness(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", DomainDocStaleness: true}
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling", "rendering"}, DomainsPartsDir: ".awf/domains/parts", AuditSettings: config.AuditSettings{DomainDocStaleness: true}}
 	partChange := func(p string) FileChange { return FileChange{Path: p, Action: Modified} }
 
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
@@ -248,13 +252,13 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 
 	// Empty ConfiguredDomains -> inert.
 	if f := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}},
-		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", DomainDocStaleness: true}); len(f) != 0 {
+		Inputs{ADRDir: "docs/decisions", DomainsPartsDir: ".awf/domains/parts", AuditSettings: config.AuditSettings{DomainDocStaleness: true}}); len(f) != 0 {
 		t.Errorf("no configured domains should be inert, got %v", f)
 	}
 }
 
 func TestRuleUndocumentedDomain(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, UndocumentedDomain: true}
+	in := Inputs{ADRDir: "docs/decisions", ConfiguredDomains: []string{"tooling"}, AuditSettings: config.AuditSettings{UndocumentedDomain: true}}
 
 	// Disabled.
 	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
@@ -263,7 +267,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 	// No configured domains -> inert.
 	if f := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}},
-		Inputs{ADRDir: "docs/decisions", UndocumentedDomain: true}); f != nil {
+		Inputs{ADRDir: "docs/decisions", AuditSettings: config.AuditSettings{UndocumentedDomain: true}}); f != nil {
 		t.Errorf("no configured domains returned %v", f)
 	}
 	// ADR tags an unconfigured domain -> 1 warning.

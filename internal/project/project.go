@@ -143,20 +143,12 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		}
 	}
 	return audit.Run(p.Root, audit.Inputs{
-		BaseBranch:          s.BaseBranch,
-		AllowedTypes:        s.AllowedTypes,
-		AllowedScopes:       s.AllowedScopes,
-		SubjectMaxLength:    s.SubjectMaxLength,
-		DependencyManifests: s.DependencyManifests,
-		DiffThreshold:       s.DiffThreshold,
-		GeneratedPaths:      generated,
-		ADRDir:              lay.ADRDir,
-		ActiveMd:            lay.ActiveMd,
-		PlansDir:            lay.PlansDir,
-		ConfiguredDomains:   p.Cfg.Domains,
-		DomainsPartsDir:     ".awf/domains/parts",
-		DomainDocStaleness:  s.DomainDocStaleness,
-		UndocumentedDomain:  s.UndocumentedDomain,
-		UncommittedChanges:  s.UncommittedChanges,
+		AuditSettings:     s,
+		GeneratedPaths:    generated,
+		ADRDir:            lay.ADRDir,
+		ActiveMd:          lay.ActiveMd,
+		PlansDir:          lay.PlansDir,
+		ConfiguredDomains: p.Cfg.Domains,
+		DomainsPartsDir:   ".awf/domains/parts",
 	})
 }
