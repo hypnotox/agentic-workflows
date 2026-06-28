@@ -20,7 +20,7 @@ func scaffoldedProject(t *testing.T) string {
 	if err := os.MkdirAll(awf, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	b, err := project.ScaffoldConfig("example", nil, nil)
+	b, err := project.ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

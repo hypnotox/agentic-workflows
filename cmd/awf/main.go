@@ -268,7 +268,7 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, nil)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}

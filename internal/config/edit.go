@@ -24,6 +24,15 @@ type Skeleton struct {
 	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
 }
 
+// CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
+// enables (ADR-0029 catalog trim). A nil *CatalogTrim — or a nil dimension within
+// it — means "no selection: keep the curated-core default"; a non-nil dimension is
+// the verbatim, fully-deselectable enable set (an empty slice deselects all).
+type CatalogTrim struct {
+	Skills *[]string
+	Docs   *[]string
+}
+
 // MarshalSkeleton renders a fresh config.yaml from s in the canonical awf format
 // (two-space block style). It is the construction half of internal/config's
 // ownership of config.yaml serialization (ADR-0026).

@@ -17,10 +17,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TestScaffoldParsesCleanly verifies that ScaffoldConfig("example", nil, nil) produces YAML
+// TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
 // that parses cleanly under the strict config.Load decoder.
 func TestScaffoldParsesCleanly(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -50,7 +50,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil)
+	b, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -92,10 +92,66 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	}
 }
 
+// TestScaffoldCatalogTrim asserts a non-nil trim dimension replaces the curated
+// core verbatim while a nil dimension keeps the core (full-deselectable trim).
+// invariant: catalog-trim-applied
+func TestScaffoldCatalogTrim(t *testing.T) {
+	cat, err := catalog.Load(templates.FS)
+	if err != nil {
+		t.Fatalf("catalog.Load: %v", err)
+	}
+	coreDocs := map[string]bool{}
+	for name, spec := range cat.Docs {
+		if spec.Core {
+			coreDocs[name] = true
+		}
+	}
+
+	// Skills selected verbatim (incl. deselecting core); Docs nil -> keep core.
+	pickSkills := []string{"tdd", "brainstorming"}
+	b, err := ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Skills: &pickSkills})
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	cfg, err := config.Load(writeScaffold(t, b))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if got := sliceSet(cfg.Skills); !maps.Equal(got, map[string]bool{"tdd": true, "brainstorming": true}) {
+		t.Errorf("trim skills = %v, want [brainstorming tdd]", slices.Sorted(maps.Keys(got)))
+	}
+	if got := sliceSet(cfg.Docs); !maps.Equal(got, coreDocs) {
+		t.Errorf("nil docs trim should keep core docs, got %v", slices.Sorted(maps.Keys(got)))
+	}
+
+	// Docs deselected to empty; Skills nil -> keep core skills.
+	emptyDocs := []string{}
+	coreSkills := map[string]bool{}
+	for name, spec := range cat.Skills {
+		if spec.Core {
+			coreSkills[name] = true
+		}
+	}
+	b2, err := ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Docs: &emptyDocs})
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	cfg2, err := config.Load(writeScaffold(t, b2))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if len(cfg2.Docs) != 0 {
+		t.Errorf("empty docs trim should enable no docs, got %v", cfg2.Docs)
+	}
+	if got := sliceSet(cfg2.Skills); !maps.Equal(got, coreSkills) {
+		t.Errorf("nil skills trim should keep core skills, got %v", slices.Sorted(maps.Keys(got)))
+	}
+}
+
 // TestScaffoldEnablesAllCatalogAgents asserts that the scaffolded config enables
 // exactly the set of agents declared in the catalog.
 func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil)
+	b, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -124,7 +180,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 // TestScaffoldEnablesAllCatalogHooks asserts that the scaffolded config enables
 // every hook in the catalog.
 func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil)
+	b, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -160,7 +216,7 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.
 func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -202,7 +258,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
 // temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
-	b, err := ScaffoldConfig("testproject", nil, nil)
+	b, err := ScaffoldConfig("testproject", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -235,7 +291,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 // TestScaffoldYAMLContainsNoPlaceholders verifies that scaffold output contains
 // no "<no value>" tokens or unrendered template actions.
 func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}

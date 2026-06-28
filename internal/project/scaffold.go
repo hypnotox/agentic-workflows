@@ -19,7 +19,7 @@ import (
 // var is seeded with an empty string so that strict render (missingkey=zero +
 // <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
 // skill renders cleanly.
-func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig) ([]byte, error) {
+func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig, trim *config.CatalogTrim) ([]byte, error) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
 		return nil, fmt.Errorf("scaffold: load catalog: %w", err)
@@ -68,6 +68,15 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		if spec.Core {
 			docNames = append(docNames, name)
 		}
+	}
+	// A non-nil trim dimension (ADR-0029 full-deselectable catalog trim) replaces the
+	// curated-core default verbatim; nil keeps exactly the core (scaffold-core-only).
+	// invariant: catalog-trim-applied
+	if trim != nil && trim.Skills != nil {
+		skillNames = slices.Clone(*trim.Skills)
+	}
+	if trim != nil && trim.Docs != nil {
+		docNames = slices.Clone(*trim.Docs)
 	}
 	slices.Sort(skillNames)
 	slices.Sort(docNames)
