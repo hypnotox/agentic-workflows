@@ -64,7 +64,8 @@ type InvariantSource struct {
 
 // AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
 // defaults; within it, a nil slice means "use the default", an explicit empty
-// slice means "accept any / disabled" per field (see ResolveAudit).
+// slice means "accept any / disabled" per field. Resolution and defaults live in
+// internal/audit (audit.Resolve), which owns the audit domain semantics.
 type AuditConfig struct {
 	BaseBranch          string   `yaml:"baseBranch"`
 	AllowedTypes        []string `yaml:"allowedTypes"`
@@ -75,77 +76,6 @@ type AuditConfig struct {
 	DomainDocStaleness  *bool    `yaml:"domainDocStaleness"`
 	UndocumentedDomain  *bool    `yaml:"undocumentedDomain"`
 	UncommittedChanges  *bool    `yaml:"uncommittedChanges"`
-}
-
-// AuditSettings is the resolved, default-applied audit configuration, ready for
-// internal/audit to consume directly.
-type AuditSettings struct {
-	BaseBranch          string
-	AllowedTypes        []string
-	AllowedScopes       []string
-	DependencyManifests []string
-	SubjectMaxLength    int
-	DiffThreshold       int
-	DomainDocStaleness  bool
-	UndocumentedDomain  bool
-	UncommittedChanges  bool
-}
-
-// ResolveAudit resolves the effective audit settings, applying defaults.
-func (c *Config) ResolveAudit() AuditSettings {
-	s := AuditSettings{
-		BaseBranch:          "main",
-		AllowedTypes:        defaultAllowedTypes(),
-		DependencyManifests: defaultDependencyManifests(),
-		SubjectMaxLength:    72,
-		DiffThreshold:       400,
-		DomainDocStaleness:  true,
-		UndocumentedDomain:  true,
-		UncommittedChanges:  true,
-	}
-	a := c.Audit
-	if a == nil {
-		return s
-	}
-	if a.BaseBranch != "" {
-		s.BaseBranch = a.BaseBranch
-	}
-	if a.AllowedTypes != nil { // explicit (incl. empty = accept any)
-		s.AllowedTypes = a.AllowedTypes
-	}
-	s.AllowedScopes = a.AllowedScopes // nil default = accept any
-	if a.DependencyManifests != nil {
-		s.DependencyManifests = a.DependencyManifests
-	}
-	if a.SubjectMaxLength != nil {
-		s.SubjectMaxLength = *a.SubjectMaxLength
-	}
-	if a.DiffThreshold != nil {
-		s.DiffThreshold = *a.DiffThreshold
-	}
-	if a.DomainDocStaleness != nil {
-		s.DomainDocStaleness = *a.DomainDocStaleness
-	}
-	if a.UndocumentedDomain != nil {
-		s.UndocumentedDomain = *a.UndocumentedDomain
-	}
-	if a.UncommittedChanges != nil {
-		s.UncommittedChanges = *a.UncommittedChanges
-	}
-	return s
-}
-
-func defaultAllowedTypes() []string {
-	return []string{"build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"}
-}
-
-func defaultDependencyManifests() []string {
-	return []string{
-		"go.mod", "package.json", "pyproject.toml", "setup.py", "requirements*.txt",
-		"Cargo.toml", "Gemfile", "*.gemspec", "composer.json", "pom.xml", "build.gradle",
-		"build.gradle.kts", "*.csproj", "Directory.Packages.props", "mix.exs",
-		"Package.swift", "pubspec.yaml", "*.cabal", "package.yaml",
-	}
 }
 
 // Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the

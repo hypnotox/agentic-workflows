@@ -131,7 +131,7 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 // Audit runs the process-conformance audit (ADR-0017) over the branch range.
 // baseOverride wins over the configured base branch when non-empty.
 func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
-	s := p.Cfg.ResolveAudit()
+	s := audit.Resolve(p.Cfg.Audit)
 	if baseOverride != "" {
 		s.BaseBranch = baseOverride
 	}
@@ -143,7 +143,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		}
 	}
 	return audit.Run(p.Root, audit.Inputs{
-		AuditSettings:     s,
+		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
 		ActiveMd:          lay.ActiveMd,

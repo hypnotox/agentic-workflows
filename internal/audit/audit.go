@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -69,12 +68,12 @@ type Finding struct {
 }
 
 // Inputs are the resolved audit settings plus the project-derived layout the rules
-// need. The embedded config.AuditSettings carries the resolved knobs (BaseBranch,
-// AllowedTypes, AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
+// need. The embedded Settings carries the resolved knobs (BaseBranch, AllowedTypes,
+// AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
 // DomainDocStaleness, UndocumentedDomain, UncommittedChanges), promoted so the rules
 // read in.AllowedTypes etc. directly.
 type Inputs struct {
-	config.AuditSettings
+	Settings
 	GeneratedPaths    map[string]bool
 	ADRDir            string   // e.g. "docs/decisions"
 	ActiveMd          string   // e.g. "docs/decisions/ACTIVE.md"
