@@ -19,7 +19,7 @@ import (
 // concatenation so this source line does not itself contain the literal
 // directive — otherwise the scanner, when reading this very file out of a
 // coverprofile, would treat this line as a reasonless directive and error.
-var marker = "//" + " coverage-ignore"
+const marker = "//" + " coverage-ignore"
 
 // Report is the result of checking a coverprofile.
 type Report struct {
