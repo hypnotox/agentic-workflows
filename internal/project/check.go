@@ -166,8 +166,9 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	for _, f := range files {
 		rendered[f.Path] = f
 	}
-	activeMdRel := strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md"
-	domainsPrefix := strings.TrimRight(p.Cfg.DocsDir, "/") + "/domains/"
+	lay := p.layout()
+	activeMdRel := lay.ActiveMd
+	domainsPrefix := lay.DomainsDir + "/"
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {

@@ -112,6 +112,11 @@ func (p *Project) docOutPath(name string) string {
 	return strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + name + ".md"
 }
 
+// decisionsDir is the absolute ADR decisions directory.
+func (p *Project) decisionsDir() string {
+	return filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
+}
+
 // resolvedDocs builds the Document-map entries for the agents-doc template from
 // the docs declared in config, annotated with the catalog's title/desc. Local
 // docs are excluded.
@@ -424,12 +429,11 @@ func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPath
 // It always produces a file: a populated index when ADRs exist, else a placeholder
 // (ADR-0020 Decision 6 — partial-item supersedence of ADR-0005/ADR-0006).
 func (p *Project) generateActiveMD() (RenderedFile, error) {
-	dir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
-	content, err := adr.RenderActiveMD(dir)
+	content, err := adr.RenderActiveMD(p.decisionsDir())
 	if err != nil {
 		return RenderedFile{}, err
 	}
-	return RenderedFile{Path: strings.TrimRight(p.Cfg.DocsDir, "/") + "/decisions/ACTIVE.md", Content: content}, nil
+	return RenderedFile{Path: p.layout().ActiveMd, Content: content}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -438,7 +442,8 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 // carries no TemplateID/Hash — drift is checked by regeneration, since the index
 // depends on external ADR frontmatter state.
 func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
-	decisionsDir := filepath.Join(p.Root, p.Cfg.DocsDir, "decisions")
+	decisionsDir := p.decisionsDir()
+	lay := p.layout()
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
 		index, err := adr.RenderDomainIndex(decisionsDir, name)
@@ -449,7 +454,7 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		data["data"] = map[string]any{"domain": name, "decisions": index}
 		rf, err := p.renderTarget("domains", name, "domains/domain.md.tmpl",
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
-			strings.TrimRight(p.Cfg.DocsDir, "/")+"/domains/"+name+".md")
+			lay.DomainsDir+"/"+name+".md")
 		if err != nil { // coverage-ignore: .data.domain/.data.decisions are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}

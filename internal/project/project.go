@@ -125,7 +125,7 @@ func (p *Project) lockPath() string {
 // `<marker> invariant: <slug>` comment (per the project's configured invariant
 // sources) under the project root.
 func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
-	return invariants.Check(filepath.Join(p.Root, p.Cfg.DocsDir, "decisions"), p.Root, p.Cfg.Invariants)
+	return invariants.Check(p.decisionsDir(), p.Root, p.Cfg.Invariants)
 }
 
 // Audit runs the process-conformance audit (ADR-0017) over the branch range.
