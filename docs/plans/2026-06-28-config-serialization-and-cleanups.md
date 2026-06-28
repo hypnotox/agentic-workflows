@@ -382,18 +382,24 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
 - [ ] **4.4 Delete `TestEditArray`** from `cmd/awf/list_add_test.go` (lines 45-82) — replaced by
   `TestSetArrayMember` in `internal/config`.
 - [ ] **4.5 Rewrite the flow-style test.** Replace `TestRunAddRemoveRefuseFlowStyle` (lines 121-132) with a
-  test asserting flow-style now *works* end-to-end:
+  test asserting flow-style now *works* end-to-end. **Add `brainstorming`, not `bugfix`:** unlike the old
+  refuse-test (which errored in `rewriteConfig` *before* `runSync`), `runAdd` now succeeds and proceeds to
+  `runSync`, which renders the added skill. `scaffoldProject`'s `minimalYAML` seeds only `{testCmd, gateCmd}`,
+  so adding a skill whose template references any other var (e.g. `bugfix` → `{{ .vars.docCurrencyTargets }}`)
+  makes `runSync` emit `<no value>` and fail the publication gate (render.go:333) → the test's `t.Fatalf` fires.
+  `brainstorming` references no vars and is not doc-gated, so it renders cleanly under `minimalYAML`.
   ```go
   // TestRunAddRemoveFlowStyle confirms a hand-edited flow-style array is now edited
   // (not refused): SetArrayMember normalizes it to block style. minimalYAML uses
-  // flow-style `skills: [tdd]`.
+  // flow-style `skills: [tdd]`. brainstorming references no vars, so the post-add
+  // runSync renders cleanly under minimalYAML's two-var seed.
   func TestRunAddRemoveFlowStyle(t *testing.T) {
   	root := scaffoldProject(t)
-  	if err := runAdd(root, "skill", "bugfix", io.Discard); err != nil {
+  	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {
   		t.Fatalf("add to flow-style array: %v", err)
   	}
   	cfg := readConfig(t, root)
-  	if !strings.Contains(cfg, "- bugfix") || !strings.Contains(cfg, "- tdd") {
+  	if !strings.Contains(cfg, "- brainstorming") || !strings.Contains(cfg, "- tdd") {
   		t.Errorf("expected block-style skills with both members:\n%s", cfg)
   	}
   	if err := runRemove(root, "skill", "tdd", io.Discard); err != nil {
