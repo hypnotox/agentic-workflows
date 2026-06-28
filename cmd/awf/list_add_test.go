@@ -42,45 +42,6 @@ func readConfig(t *testing.T, root string) string {
 	return string(b)
 }
 
-func TestEditArray(t *testing.T) {
-	tests := []struct {
-		name, src, key, item string
-		add                  bool
-		want                 string
-		wantErr              bool
-	}{
-		{"add to items", "skills:\n  - a\n", "skills", "b", true, "skills:\n  - b\n  - a\n", false},
-		{"add to empty array", "agents: []\n", "agents", "x", true, "agents:\n  - x\n", false},
-		{"add to bare key", "docs:\n", "docs", "d", true, "docs:\n  - d\n", false},
-		{"add absent key", "prefix: x\n", "domains", "p", true, "prefix: x\ndomains:\n  - p\n", false},
-		{"remove from items", "skills:\n  - a\n  - b\n", "skills", "a", false, "skills:\n  - b\n", false},
-		{"remove last leaves bare", "docs:\n  - d\n", "docs", "d", false, "docs:\n", false},
-		{"remove block-scoped", "skills:\n  - debugging\ndocs:\n  - debugging\n", "docs", "debugging", false, "skills:\n  - debugging\ndocs:\n", false},
-		{"remove not found", "skills:\n  - a\n", "skills", "z", false, "", true},
-		{"remove from empty array", "skills: []\n", "skills", "a", false, "", true},
-		{"remove absent key", "prefix: x\n", "skills", "a", false, "", true},
-		{"add refuses flow style", "skills: [a]\n", "skills", "b", true, "", true},
-		{"remove refuses flow style", "skills: [a]\n", "skills", "a", false, "", true},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := editArray(tc.src, tc.key, tc.item, tc.add)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatalf("expected error, got %q", got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tc.want {
-				t.Errorf("editArray = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestRunAddAcrossKinds(t *testing.T) {
 	root := scaffoldedProject(t)
 
@@ -118,16 +79,24 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 }
 
-// TestRunAddRemoveRefuseFlowStyle covers the refusal path (and its error
-// propagation through rewriteConfig) for a hand-edited flow-style array.
-// scaffoldProject's minimalYAML uses flow-style `skills: [tdd]`.
-func TestRunAddRemoveRefuseFlowStyle(t *testing.T) {
+// TestRunAddRemoveFlowStyle confirms a hand-edited flow-style array is now edited
+// (not refused): SetArrayMember normalizes it to block style. minimalYAML uses
+// flow-style `skills: [tdd]`. brainstorming references no vars and is not
+// doc-gated, so the post-add sync renders cleanly under minimalYAML's seed.
+func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runAdd(root, "skill", "bugfix", io.Discard); err == nil {
-		t.Error("expected refusal adding to a flow-style array")
+	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {
+		t.Fatalf("add to flow-style array: %v", err)
 	}
-	if err := runRemove(root, "skill", "tdd", io.Discard); err == nil {
-		t.Error("expected refusal removing from a flow-style array")
+	cfg := readConfig(t, root)
+	if !strings.Contains(cfg, "- brainstorming") || !strings.Contains(cfg, "- tdd") {
+		t.Errorf("expected block-style skills with both members:\n%s", cfg)
+	}
+	if err := runRemove(root, "skill", "tdd", io.Discard); err != nil {
+		t.Fatalf("remove from (now block) array: %v", err)
+	}
+	if strings.Contains(readConfig(t, root), "- tdd") {
+		t.Error("tdd not removed")
 	}
 }
 

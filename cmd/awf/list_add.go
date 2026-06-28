@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -83,7 +82,7 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 	if slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q already enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, true); err != nil {
+	if err := rewriteConfig(root, key, name, true); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
 		return err
 	}
 	// Doc-gated skill: warn when its required doc is not enabled, since it would
@@ -108,7 +107,7 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q is not enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, false); err != nil {
+	if err := rewriteConfig(root, key, name, false); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
 		return err
 	}
 	if hasSidecarOrParts(root, key, name) {
@@ -125,11 +124,11 @@ func rewriteConfig(root, key, name string, add bool) error {
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
 	}
-	updated, err := editArray(string(b), key, name, add)
-	if err != nil {
+	updated, err := config.SetArrayMember(b, key, name, add)
+	if err != nil { // coverage-ignore: callers guard add-present / remove-absent before this, and config.Load already rejected a malformed config, so SetArrayMember cannot error here
 		return err
 	}
-	if err := os.WriteFile(cfgPath, []byte(updated), 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
+	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
 		return err
 	}
 	return nil
@@ -148,52 +147,6 @@ func hasSidecarOrParts(root, key, name string) bool {
 		}
 	}
 	return false
-}
-
-// editArray adds or removes "  - name" under the "key:" block of a config.yaml
-// source, scoped to that key's block so a name shared across kinds is touched in
-// the right array only. It handles the canonical block style ScaffoldConfig emits
-// — the key with "  - item" lines, the "key: []" and bare "key:" forms, and (for
-// add) the key absent entirely — and refuses a flow-style ("key: [a, b]") array
-// rather than risk corrupting it. Items are assumed two-space-indented.
-func editArray(src, key, name string, add bool) (string, error) {
-	lines := strings.Split(src, "\n")
-	for i, l := range lines {
-		switch {
-		case l == key+": []":
-			if !add {
-				return "", fmt.Errorf("%s has no %q entry", key, name)
-			}
-			lines[i] = key + ":"
-			return strings.Join(slices.Insert(lines, i+1, "  - "+name), "\n"), nil
-		case l == key+":":
-			if add {
-				return strings.Join(slices.Insert(lines, i+1, "  - "+name), "\n"), nil
-			}
-			// Scan only this key's block (indented items) so a same-named entry under
-			// another kind is left untouched.
-			// invariant: remove-block-scoped
-			for j := i + 1; j < len(lines) && strings.HasPrefix(lines[j], "  "); j++ {
-				if lines[j] == "  - "+name {
-					return strings.Join(slices.Delete(lines, j, j+1), "\n"), nil
-				}
-			}
-			return "", fmt.Errorf("%s has no %q entry", key, name)
-		case strings.HasPrefix(l, key+":"):
-			// An inline/flow form like "key: [a, b]"; the line editor cannot safely
-			// edit it without risking a duplicate key, so refuse rather than corrupt.
-			return "", fmt.Errorf("%s is not in block style — rewrite it as `%s:` with `  - item` lines, or edit it by hand", key, key)
-		}
-	}
-	if !add {
-		return "", fmt.Errorf("no %s: key in config.yaml", key)
-	}
-	// Key absent: append a new block before any trailing empty line.
-	block := []string{key + ":", "  - " + name}
-	if n := len(lines); n > 0 && lines[n-1] == "" {
-		return strings.Join(slices.Insert(lines, n-1, block...), "\n"), nil
-	}
-	return strings.Join(append(lines, block...), "\n"), nil // coverage-ignore: a config.yaml read from disk always ends in a newline, so Split leaves a trailing "" and the branch above is taken
 }
 
 func runList(root, kindFilter string, stdout io.Writer) error {
