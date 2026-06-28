@@ -113,4 +113,5 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 |---|---|
 | Struct round-trip (`Load` → mutate slice → `Marshal`) | Lossy: strips user comments and reorders fields/indent. The node round-trip preserves them; the struct form is exactly what ADR-0024 rightly feared. |
 | Keep ADR-0024's string editor | Corrupts any config it did not itself emit (this repo's four-space config today) and refuses flow style; brittle hand-parsing with no single format owner. |
+| Patch `editArray` to detect the file's existing indentation | Fixes only the four-space *symptom* while keeping hand-rolled YAML surgery: still three serialization sites with no single format owner, still cannot preserve comments through a structural edit, and still refuses (or risks corrupting) flow style. The node round-trip removes the fragility class, not one instance of it. |
 | Widen ownership to `migrate`'s emitters too | Couples the ADR-0010-quarantined `migrate` package to `config`; its untyped forward-compat marshalling is a separate concern from the live path. |
