@@ -9,6 +9,10 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
+
 ### Implemented
 
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md)
@@ -19,8 +23,4 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
-
-### Proposed
-
-- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
 

@@ -13,6 +13,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
+
 ### Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
@@ -25,8 +29,4 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)
-
-### Proposed
-
-- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
 
