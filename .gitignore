@@ -1,4 +1,5 @@
 /awf
+/dist
 *.test
 *.out
 
