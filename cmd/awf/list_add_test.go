@@ -12,7 +12,7 @@ import (
 )
 
 // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-// 2 hooks, 3 docs, no domains) and syncs it.
+// 3 docs, no domains) and syncs it.
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -169,7 +169,7 @@ func TestRunListStatesAndKinds(t *testing.T) {
 	if err := runList(root, "", &all); err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	for _, want := range []string{"skills:", "agents:", "docs:", "hooks:", "domains:", "available", "enabled", "local", "tuned", "payments", "configured"} {
+	for _, want := range []string{"skills:", "agents:", "docs:", "domains:", "available", "enabled", "local", "tuned", "payments", "configured"} {
 		if !strings.Contains(all.String(), want) {
 			t.Errorf("list output missing %q:\n%s", want, all.String())
 		}

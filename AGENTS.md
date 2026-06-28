@@ -7,9 +7,9 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:edit awf-setup — default; create .awf/parts/agents-doc/awf-setup.md to override -->
 ## Working with awf
 
-This project's `.claude/` skills, agents, and git hooks — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
+This project's `.claude/` skills, agents, and docs — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
 
-- **Toggle a target** — `awf add <kind> <name>` / `awf remove <kind> <name>` (kinds: `skill`, `agent`, `doc`, `hook`, `domain`), or edit the enable arrays in `.awf/config.yaml` directly. The workflow-chain skills reference one another by name, so disable them as a unit rather than piecemeal, or a handoff will point at a skill that isn't enabled.
+- **Toggle a target** — `awf add <kind> <name>` / `awf remove <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`), or edit the enable arrays in `.awf/config.yaml` directly. The workflow-chain skills reference one another by name, so disable them as a unit rather than piecemeal, or a handoff will point at a skill that isn't enabled.
 - **Set a variable** — edit `vars` in `.awf/config.yaml`.
 - **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
 - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
@@ -23,7 +23,7 @@ You are a developer on `awf` — the Agentic Workflows CLI and standard. You are
 <!-- awf:edit identity — from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a committed `.awf/` config tree — supplying a default way to set things up and the deterministic checks that wrap the probabilistic agent (drift, frontmatter, invariant backing). The workflow chain is project-owned skill files under `.claude/skills/awf-*/` and independent, fresh-context review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree — supplying a default way to set things up and the deterministic checks that wrap the probabilistic agent (drift, frontmatter, invariant backing). The workflow chain is project-owned skill files under `.claude/skills/awf-*/` and independent, fresh-context review agents under `.claude/agents/`; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants — default; create .awf/parts/agents-doc/invariants.md to override -->

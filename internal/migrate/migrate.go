@@ -24,6 +24,7 @@ var registry = []Migration{
 	{To: 1, Name: "tree-layout", Apply: applyTreeLayout},
 	{To: 2, Name: "drop-replacewith", Apply: applyDropReplaceWith},
 	{To: 3, Name: "awf-dir-relocation", Apply: applyAwfRelocation},
+	{To: 4, Name: "drop-hooks", Apply: applyDropHooks},
 }
 
 // Current is the current schema generation (the highest registered To).

@@ -91,7 +91,7 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one). |
-| `awf add <kind> <name>` | Enable a target — `<kind>` ∈ `skill`, `agent`, `doc`, `hook`, `domain`. |
+| `awf add <kind> <name>` | Enable a target — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`. |
 | `awf remove <kind> <name>` | Disable a target (a catalog target, or a freeform domain). |
 | `awf setup` | Activate git hooks (`core.hooksPath`); `--force-hooks` to override an existing value. |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |

@@ -145,15 +145,6 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rfs...)
 	}
-	// Hooks.
-	for _, h := range p.Cfg.Hooks {
-		rf, err := p.renderTarget("hooks", h, fmt.Sprintf("hooks/%s.tmpl", h),
-			nil, config.Sidecar{}, p.data(config.Sidecar{}), ".githooks/"+h)
-		if err != nil { // coverage-ignore: catalog hook templates are static, part-free, and reference only guarded vars; renderTarget cannot fail for a hook
-			return nil, err
-		}
-		out = append(out, rf)
-	}
 	// agents-doc (always-on singleton unless its sidecar is local).
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
 	if err != nil {
@@ -257,7 +248,7 @@ func (p *Project) renderTarget(kind, target, tid string, declared []string, sc c
 	if strings.Contains(content, "<no value>") {
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset", outPath)
 	}
-	content = injectBanner(content, tid)
+	content = injectBanner(content)
 	cfgHash, err := p.targetConfigHash(assembled, sc, p.consumedParts(kind, target, plan))
 	if err != nil { // coverage-ignore: targetConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err

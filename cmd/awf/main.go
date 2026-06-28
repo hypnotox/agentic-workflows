@@ -1,4 +1,4 @@
-// Command awf renders standardised .claude skills, review agents, and git hooks into a project from embedded templates plus a per-project .awf/ config tree.
+// Command awf renders standardised .claude skills, review agents, and docs into a project from embedded templates plus a per-project .awf/ config tree.
 package main
 
 import (
@@ -45,7 +45,7 @@ Commands:
   sync         Re-render after a template or config change
   check        Fail on stale or hand-edited rendered output
   list [<kind>]        Show targets and their per-project state (all kinds, or one)
-  add <kind> <name>    Enable a target — kind ∈ {skill, agent, doc, hook, domain}
+  add <kind> <name>    Enable a target — kind ∈ {skill, agent, doc, domain}
   remove <kind> <name> Disable a target (a freeform domain, or a catalog target)
   setup        Activate git hooks (core.hooksPath=.githooks)
                  --force-hooks  take over an existing core.hooksPath

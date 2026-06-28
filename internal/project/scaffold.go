@@ -13,8 +13,8 @@ import (
 )
 
 // ScaffoldConfig generates the bytes of a .awf/config.yaml that enables the
-// workflow-core skills and docs (ADR-0022), every agent, and every hook in the
-// embedded catalog (as flat name arrays), and pre-populates the vars block with
+// workflow-core skills and docs (ADR-0022) and every agent in the embedded
+// catalog (as flat name arrays), and pre-populates the vars block with
 // the union of all {{ .vars.X }} names referenced by every catalog template. Each
 // var is seeded with an empty string so that strict render (missingkey=zero +
 // <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
@@ -41,12 +41,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 			return nil, err
 		}
 	}
-	for _, hook := range cat.Hooks {
-		path := fmt.Sprintf("hooks/%s.tmpl", hook)
-		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog hook name has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, err
-		}
-	}
 	for name := range cat.Docs {
 		path := fmt.Sprintf("docs/%s.md.tmpl", name)
 		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog doc name has a backing template in the embedded FS, so collectVars cannot fail
@@ -55,7 +49,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 	}
 	varNames := slices.Sorted(maps.Keys(varSet))
 
-	// Enable the core skills and core docs; agents and hooks are all enabled (every
+	// Enable the core skills and core docs; agents are all enabled (every
 	// one is workflow-essential).
 	// invariant: scaffold-core-only
 	var skillNames, docNames []string
@@ -82,10 +76,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 	slices.Sort(docNames)
 	agentNames := slices.Sorted(maps.Keys(cat.Agents))
 
-	// Preserve catalog hook order (already deterministic).
-	hookList := make([]string, len(cat.Hooks))
-	copy(hookList, cat.Hooks)
-
 	seeded := make(map[string]string, len(varNames))
 	for _, v := range varNames {
 		seeded[v] = vars[v] // resolved value, or "" for an absent/unresolved var
@@ -95,7 +85,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		Vars:       seeded,
 		Skills:     skillNames,
 		Agents:     agentNames,
-		Hooks:      hookList,
 		Docs:       docNames,
 		Invariants: inv,
 	})

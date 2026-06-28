@@ -24,7 +24,7 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := "prefix: example\nskills: []\nagents: []\nhooks: []\n"
+	cfg := "prefix: example\nskills: []\nagents: []\n"
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}

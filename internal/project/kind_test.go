@@ -14,7 +14,7 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 	for i, d := range kindDescriptors {
 		got[i] = d.Plural
 	}
-	want := []string{"skills", "agents", "docs", "hooks", "domains"}
+	want := []string{"skills", "agents", "docs", "domains"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("kind set drift: got %v want %v", got, want)
 	}
@@ -28,7 +28,7 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 }
 
 func TestKindLookups(t *testing.T) {
-	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "hook", "domain"}) {
+	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}
 	if pl, ok := PluralKind("skill"); !ok || pl != "skills" {
@@ -55,19 +55,18 @@ func TestKindAccessors(t *testing.T) {
 	cfg := &config.Config{
 		Prefix: "awf",
 		Skills: []string{"tdd"}, Agents: []string{"rev"}, Docs: []string{"arch"},
-		Hooks: []string{"pre-commit"}, Domains: []string{"tooling"},
+		Domains: []string{"tooling"},
 	}
 	cat := &catalog.Catalog{
 		Skills:    map[string]catalog.SkillSpec{"tdd": {Sections: []string{"a"}}},
 		Agents:    map[string]catalog.TargetSpec{"rev": {Sections: []string{"b"}}},
 		Docs:      map[string]catalog.DocSpec{"arch": {Sections: []string{"c"}}},
-		Hooks:     []string{"pre-commit"},
 		DomainDoc: catalog.TargetSpec{Sections: []string{"d"}},
 	}
 
 	// enable facet (via EnabledNames) for every kind, plus the unknown branch.
 	for _, c := range []struct{ kind, want string }{
-		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"}, {"hook", "pre-commit"}, {"domain", "tooling"},
+		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"}, {"domain", "tooling"},
 	} {
 		names, ok := EnabledNames(cfg, c.kind)
 		if !ok || !slices.Equal(names, []string{c.want}) {
@@ -81,7 +80,7 @@ func TestKindAccessors(t *testing.T) {
 	// poolNames facet (via CatalogNames) for every catalog-backed kind, plus the
 	// no-pool (domain) and unknown branches.
 	for _, c := range []struct{ kind, want string }{
-		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"}, {"hook", "pre-commit"},
+		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"},
 	} {
 		pool, ok := CatalogNames(cat, c.kind)
 		if !ok || !slices.Contains(pool, c.want) {
@@ -95,8 +94,8 @@ func TestKindAccessors(t *testing.T) {
 		t.Error("CatalogNames(bogus) should be false")
 	}
 
-	// sections facet: catalog-backed kinds report presence; hooks have none; domains
-	// keep the singleton's sections but report no per-name presence.
+	// sections facet: catalog-backed kinds report presence; domains keep the
+	// singleton's sections but report no per-name presence.
 	if s, ok := descriptorMust(t, "skills").sections(cat, "tdd"); !ok || !slices.Equal(s, []string{"a"}) {
 		t.Errorf("skills sections = %v,%v", s, ok)
 	}
@@ -106,14 +105,11 @@ func TestKindAccessors(t *testing.T) {
 	if s, ok := descriptorMust(t, "docs").sections(cat, "arch"); !ok || !slices.Equal(s, []string{"c"}) {
 		t.Errorf("docs sections = %v,%v", s, ok)
 	}
-	if s, ok := descriptorMust(t, "hooks").sections(cat, "pre-commit"); ok || s != nil {
-		t.Errorf("hooks sections = %v,%v want nil,false", s, ok)
-	}
 	if s, ok := descriptorMust(t, "domains").sections(cat, "tooling"); ok || !slices.Equal(s, []string{"d"}) {
 		t.Errorf("domains sections = %v,%v", s, ok)
 	}
 
-	// outPath facet: skills/agents place adapter artifacts; docs/hooks/domains are neutral (nil).
+	// outPath facet: skills/agents place adapter artifacts; docs/domains are neutral (nil).
 	tgt := Target{SkillDir: ".claude/skills", AgentDir: ".claude/agents"}
 	if got := descriptorMust(t, "skills").outPath(tgt, "awf", "tdd"); got != ".claude/skills/awf-tdd/SKILL.md" {
 		t.Errorf("skills outPath = %q", got)
@@ -121,7 +117,7 @@ func TestKindAccessors(t *testing.T) {
 	if got := descriptorMust(t, "agents").outPath(tgt, "awf", "rev"); got != ".claude/agents/rev.md" {
 		t.Errorf("agents outPath = %q", got)
 	}
-	for _, pl := range []string{"docs", "hooks", "domains"} {
+	for _, pl := range []string{"docs", "domains"} {
 		if descriptorMust(t, pl).outPath != nil {
 			t.Errorf("%s outPath should be nil", pl)
 		}

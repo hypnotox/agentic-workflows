@@ -12,7 +12,6 @@ const checkYAML = `prefix: example
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
-hooks: []
 `
 
 func TestRunCheckCleanThenDirty(t *testing.T) {

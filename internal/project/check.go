@@ -139,9 +139,9 @@ func (p *Project) declaredSections(kind, name string) []string {
 
 // isManagedMarkdown reports whether a RenderAll template id is awf-managed rendered
 // markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
-// RenderAll produces except the CLAUDE.md bridge and the .githooks scripts.
+// RenderAll produces except the CLAUDE.md bridge.
 func isManagedMarkdown(tid string) bool {
-	return tid != "claude/CLAUDE.md.tmpl" && !strings.HasPrefix(tid, "hooks/")
+	return tid != "claude/CLAUDE.md.tmpl"
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
@@ -273,7 +273,7 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 // checkDeadRefs runs the dead-reference scan (inv: dead-reference-gated): every
 // awf-managed rendered markdown file's inline links must resolve file-relative on
 // disk. The generated ACTIVE.md and domain docs are in scope; the CLAUDE.md bridge
-// and hooks are not.
+// is not.
 func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {

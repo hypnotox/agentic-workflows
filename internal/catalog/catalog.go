@@ -1,4 +1,4 @@
-// Package catalog loads the embedded catalog.yaml that declares the standard's skills, agents, and hooks.
+// Package catalog loads the embedded catalog.yaml that declares the standard's skills, agents, and docs.
 package catalog
 
 import (
@@ -50,7 +50,6 @@ type VarDescriptor struct {
 type Catalog struct {
 	Skills      map[string]SkillSpec  `yaml:"skills"`
 	Agents      map[string]TargetSpec `yaml:"agents"`
-	Hooks       []string              `yaml:"hooks"`
 	AgentsDoc   TargetSpec            `yaml:"agentsDoc"`
 	DomainDoc   TargetSpec            `yaml:"domainDoc"`
 	AdrReadme   TargetSpec            `yaml:"adrReadme"`

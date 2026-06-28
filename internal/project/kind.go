@@ -48,13 +48,6 @@ var kindDescriptors = []kindDescriptor{
 		outPath:   nil,
 	},
 	{
-		Plural: "hooks", Singular: "hook",
-		enable:    func(c *config.Config) []string { return c.Hooks },
-		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(slices.Values(c.Hooks)) },
-		sections:  func(*catalog.Catalog, string) ([]string, bool) { return nil, false },
-		outPath:   nil,
-	},
-	{
 		Plural: "domains", Singular: "domain",
 		enable:    func(c *config.Config) []string { return c.Domains },
 		poolNames: nil, // freeform — no catalog pool

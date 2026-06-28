@@ -65,7 +65,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 	valid := cat.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
 	cfg := "prefix: example\n" + sprintfVars("") +
-		"skills: []\nagents: []\nhooks: []\ndocs:\n  - architecture\n"
+		"skills: []\nagents: []\ndocs:\n  - architecture\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",

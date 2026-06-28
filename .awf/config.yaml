@@ -1,62 +1,59 @@
 agents:
-    - adr-reviewer
-    - code-reviewer
-    - plan-reviewer
+  - adr-reviewer
+  - code-reviewer
+  - plan-reviewer
 audit:
-    allowedScopes:
-        - adr
-        - awf
-        - plans
+  allowedScopes:
+    - adr
+    - awf
+    - plans
 docs:
-    - agents-md-standard
-    - architecture
-    - development
-    - doc-standard
-    - glossary
-    - pitfalls
-    - testing
-    - workflow
+  - agents-md-standard
+  - architecture
+  - development
+  - doc-standard
+  - glossary
+  - pitfalls
+  - testing
+  - workflow
 domains:
-    - adr-system
-    - config
-    - invariants
-    - rendering
-    - tooling
-hooks:
-    - pre-commit
-    - pre-push
+  - adr-system
+  - config
+  - invariants
+  - rendering
+  - tooling
 invariants:
-    disabled: false
-    sources:
-        - globs:
-            - '*.go'
-          marker: //
+  disabled: false
+  sources:
+    - globs:
+        - '*.go'
+      marker: //
 prefix: awf
 skills:
-    - adr-lifecycle
-    - brainstorming
-    - bugfix
-    - debugging
-    - executing-plans
-    - proposing-adr
-    - refactor-coupling-audit
-    - reviewing-adr
-    - reviewing-impl
-    - reviewing-plan
-    - reviewing-plan-resync
-    - roadmap-graduation
-    - subagent-driven-development
-    - tdd
-    - writing-plans
+  - adr-lifecycle
+  - brainstorming
+  - bugfix
+  - debugging
+  - executing-plans
+  - proposing-adr
+  - refactor-coupling-audit
+  - reviewing-adr
+  - reviewing-impl
+  - reviewing-plan
+  - reviewing-plan-resync
+  - roadmap-graduation
+  - subagent-driven-development
+  - tdd
+  - writing-plans
 vars:
-    activeMdRegenCmd: ./x sync
-    adrProposeCommitFmt: 'docs(adr): propose NNNN <short title>'
-    checkCmd: ./x check
-    commitScope: awf
-    docCurrencyTargets: AGENTS.md, docs/decisions/README.md
-    gateCmd: ./x gate
-    gateCmdFull: ./x gate full
-    gateDuration: ~15s
-    invariantTestPath: ""
-    modulePrefix: github.com/hypnotox/agentic-workflows
-    testCmd: go test ./...
+  activeMdRegenCmd: ./x sync
+  adrProposeCommitFmt: 'docs(adr): propose NNNN <short title>'
+  checkCmd: ./x check
+  commitScope: awf
+  docCurrencyTargets: AGENTS.md, docs/decisions/README.md
+  gateCmd: ./x gate
+  gateCmdFull: ./x gate full
+  gateDuration: ~15s
+  invariantTestPath: ""
+  modulePrefix: github.com/hypnotox/agentic-workflows
+  testCmd: go test ./...

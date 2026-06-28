@@ -14,7 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-const domainCfg = "prefix: example\nskills: []\nagents: []\nhooks: []\ndomains: [rendering]\n"
+const domainCfg = "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n"
 
 func writeADR(t *testing.T, root, name, body string) {
 	t.Helper()
@@ -114,7 +114,7 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 		t.Fatalf("Sync: %v", err)
 	}
 	// Drop the domain from config; the lock still carries the rendered doc.
-	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\nhooks: []\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	p2, err := Open(root)

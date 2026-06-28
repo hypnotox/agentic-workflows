@@ -20,7 +20,7 @@ func TestClaudeTargetPaths(t *testing.T) {
 
 // invariant: claude-md-bridge
 func TestClaudeMdBridgeRendered(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\n")
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 }
 
 func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\nhooks: []\ndocs: []\ndomains: [rendering]\n", nil)
+	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n", nil)
 	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
 	p, err := Open(root)
 	if err != nil {

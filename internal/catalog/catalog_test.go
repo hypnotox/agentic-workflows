@@ -22,9 +22,6 @@ func TestLoadFromEmbed(t *testing.T) {
 	if _, ok := cat.Agents["code-reviewer"]; !ok {
 		t.Errorf("code-reviewer not in agents map, got: %v", cat.Agents)
 	}
-	if len(cat.Hooks) != 2 {
-		t.Errorf("hooks = %v", cat.Hooks)
-	}
 	arch, ok := cat.Docs["architecture"]
 	if !ok {
 		t.Fatalf("architecture not in docs map, got: %v", cat.Docs)

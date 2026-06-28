@@ -6,7 +6,7 @@
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
 - **`internal/catalog/`** — reads `templates/catalog.yaml`; declares the available skills, agents,
-  hooks, docs, and their sections.
+  docs, and their sections.
 - **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section
   overlays (sidecar overrides + convention parts) then executes the template.
 - **`internal/manifest/`** — reads and writes `.awf/awf.lock` (schema-versioned); drives
@@ -21,5 +21,5 @@
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`** — parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their
   frontmatter; invoked by `awf sync` (`./x sync`).
-- **`templates/`** — embedded skill, agent, hook, doc, and agent-guide templates; the catalog
+- **`templates/`** — embedded skill, agent, doc, and agent-guide templates; the catalog
   lives at `templates/catalog.yaml`.

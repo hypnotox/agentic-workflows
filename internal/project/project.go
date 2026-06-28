@@ -92,9 +92,6 @@ func (p *Project) Sync() error {
 			return err
 		}
 		mode := os.FileMode(0o644)
-		if filepath.Dir(f.Path) == ".githooks" {
-			mode = 0o755
-		}
 		if err := os.WriteFile(abs, []byte(f.Content), mode); err != nil {
 			return err
 		}

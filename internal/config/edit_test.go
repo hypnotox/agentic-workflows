@@ -11,7 +11,6 @@ func TestMarshalSkeleton(t *testing.T) {
 		Vars:   map[string]string{"b": "", "a": ""},
 		Skills: []string{"tdd"},
 		Agents: []string{},
-		Hooks:  []string{"pre-commit"},
 		Docs:   []string{"workflow"},
 	})
 	if err != nil {
@@ -21,7 +20,6 @@ func TestMarshalSkeleton(t *testing.T) {
 		"vars:\n  a: \"\"\n  b: \"\"\n" +
 		"skills:\n  - tdd\n" +
 		"agents: []\n" +
-		"hooks:\n  - pre-commit\n" +
 		"docs:\n  - workflow\n"
 	if string(out) != want {
 		t.Errorf("MarshalSkeleton:\n got: %q\nwant: %q", out, want)
@@ -68,6 +66,50 @@ func TestSetArrayMember(t *testing.T) {
 				t.Errorf("SetArrayMember:\n got: %q\nwant: %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestRemoveKey(t *testing.T) {
+	cases := []struct {
+		name, src, key, want string
+		wantErr              bool
+	}{
+		{"present removes", "prefix: x\nhooks:\n  - a\nskills:\n  - b\n", "hooks", "prefix: x\nskills:\n  - b\n", false},
+		{"absent no-op", "prefix: x\n", "hooks", "prefix: x\n", false},
+		{"non-mapping", "- a\n- b\n", "hooks", "", true},
+		{"parse error", "skills: [a, b\n", "hooks", "", true},
+		{"empty doc", "", "hooks", "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := RemoveKey([]byte(tc.src), tc.key)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if string(got) != tc.want {
+				t.Errorf("RemoveKey:\n got: %q\nwant: %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRemoveKeyPreservesComments(t *testing.T) {
+	src := "# top comment\nprefix: x # inline\nhooks:\n  - a\n"
+	got, err := RemoveKey([]byte(src), "hooks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "# top comment") || !strings.Contains(string(got), "# inline") {
+		t.Errorf("comments lost:\n%s", got)
+	}
+	if strings.Contains(string(got), "hooks") {
+		t.Errorf("hooks key not removed:\n%s", got)
 	}
 }
 

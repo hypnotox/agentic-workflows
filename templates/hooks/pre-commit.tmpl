@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-{{ if .vars.checkCmd }}{{ .vars.checkCmd }}{{ else }}awf check{{ end }}
-{{ if .vars.gateCmd }}{{ .vars.gateCmd }}{{ end }}

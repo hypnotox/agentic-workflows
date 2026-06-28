@@ -202,9 +202,6 @@ agents:
       - universal-lenses
       - project-focus
       - doc-currency
-hooks:
-  - pre-commit
-  - pre-push
 docs:
   architecture:
     title: Architecture

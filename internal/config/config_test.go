@@ -28,7 +28,6 @@ agents:
   - code-reviewer
 docs:
   - architecture
-hooks: [pre-commit]
 `)
 	c, err := Load(dir)
 	if err != nil {

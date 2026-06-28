@@ -35,9 +35,6 @@ func TestVarDescriptorParity(t *testing.T) {
 	for name := range cat.Agents {
 		paths = append(paths, "agents/"+name+".md.tmpl")
 	}
-	for _, h := range cat.Hooks {
-		paths = append(paths, "hooks/"+h+".tmpl")
-	}
 	for name := range cat.Docs {
 		paths = append(paths, "docs/"+name+".md.tmpl")
 	}

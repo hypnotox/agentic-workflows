@@ -54,7 +54,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 
 // invariant: agentsdoc-parts
 func TestAgentsDocPartsOverride(t *testing.T) {
-	cfg := "prefix: example\nskills: []\nagents: []\nhooks: []\n"
+	cfg := "prefix: example\nskills: []\nagents: []\n"
 
 	// Absent → the generic, adopter-neutral default renders publication-safe with
 	// empty invariants/docMap.
@@ -91,7 +91,7 @@ func writeFileAt(t *testing.T, root, rel, body string) {
 
 // invariant: parts-convention
 func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\nhooks: []\n"
+	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\n"
 	const part = "skills/parts/debugging/debugging-surfaces.md"
 
 	// (1) A convention part present replaces the section body.
@@ -117,7 +117,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 
 // invariant: sidecar-optional
 func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\nhooks: []\n"
+	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\n"
 	root := scaffold(t, cfg) // no sidecar, no parts
 	out := syncAndReadDebugging(t, root)
 	if strings.Contains(out, "<no value>") {
@@ -130,7 +130,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 
 // invariant: local-frontmatter
 func TestLocalFrontmatterChecked(t *testing.T) {
-	cfg := "prefix: example\nskills: [my-local]\nagents: []\nhooks: []\n"
+	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	out := ".claude/skills/example-my-local/SKILL.md"
 

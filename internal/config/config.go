@@ -31,7 +31,7 @@ type Sidecar struct {
 }
 
 // Config is the skeleton config.yaml: global fields plus flat enable arrays.
-// Presence of a name in Skills/Agents/Docs/Hooks enables that target; per-target
+// Presence of a name in Skills/Agents/Docs enables that target; per-target
 // data/sections/local live in sidecars, not here.
 type Config struct {
 	Prefix     string           `yaml:"prefix"`
@@ -39,7 +39,6 @@ type Config struct {
 	Vars       map[string]any   `yaml:"vars"`
 	Skills     []string         `yaml:"skills"`
 	Agents     []string         `yaml:"agents"`
-	Hooks      []string         `yaml:"hooks"`
 	Docs       []string         `yaml:"docs"`
 	Domains    []string         `yaml:"domains"`
 	Invariants *InvariantConfig `yaml:"invariants"`

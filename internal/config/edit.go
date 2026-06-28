@@ -19,7 +19,6 @@ type Skeleton struct {
 	Vars       map[string]string `yaml:"vars"`
 	Skills     []string          `yaml:"skills"`
 	Agents     []string          `yaml:"agents"`
-	Hooks      []string          `yaml:"hooks"`
 	Docs       []string          `yaml:"docs"`
 	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
 }
@@ -83,6 +82,28 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		root.Content[vi] = blockSeq(name)
 	}
 	return encode(&doc)
+}
+
+// RemoveKey deletes the top-level mapping entry under key from a config.yaml
+// source via a yaml.Node round-trip that preserves comments and every untouched
+// key (ADR-0026). Removing an absent key is a no-op (returns src unchanged), so a
+// schema migration can re-run safely.
+func RemoveKey(src []byte, key string) ([]byte, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(src, &doc); err != nil {
+		return nil, fmt.Errorf("config: parse: %w", err)
+	}
+	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("config: not a YAML mapping")
+	}
+	root := doc.Content[0]
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value == key {
+			root.Content = append(root.Content[:i], root.Content[i+2:]...)
+			return encode(&doc)
+		}
+	}
+	return src, nil
 }
 
 // encode is the single funnel for awf-owned config.yaml serialization: a yaml.v3

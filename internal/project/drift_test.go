@@ -35,7 +35,7 @@ func TestPerTargetDriftProjection(t *testing.T) {
 		B = ".claude/skills/example-bugfix/SKILL.md"
 	)
 	cfg := func(pitfalls string) string {
-		return "prefix: example\n" + sprintfVars(pitfalls) + "skills:\n  - tdd\n  - bugfix\nagents: []\nhooks: []\n"
+		return "prefix: example\n" + sprintfVars(pitfalls) + "skills:\n  - tdd\n  - bugfix\nagents: []\n"
 	}
 	root := scaffoldFiles(t, cfg(""), map[string]string{
 		"skills/tdd.yaml":           "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n",
@@ -113,7 +113,7 @@ func sprintfVars(pitfalls string) string {
 
 // invariant: schema-version-lock
 func TestSyncStampsSchemaVersion(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\nhooks: []\n")
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)

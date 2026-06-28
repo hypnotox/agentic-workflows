@@ -15,7 +15,6 @@ const minimalYAML = `prefix: example
 vars: {testCmd: go test ./..., gateCmd: make gate}
 skills: [tdd]
 agents: []
-hooks: []
 `
 
 // scaffoldProject writes a minimal tree config under root and syncs it, leaving a
@@ -336,7 +335,7 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: {}\nagents: {}\nhooks: []\n"
+	legacy := "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: {}\nagents: {}\n"
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte(legacy), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -177,41 +177,8 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 	}
 }
 
-// TestScaffoldEnablesAllCatalogHooks asserts that the scaffolded config enables
-// every hook in the catalog.
-func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil, nil)
-	if err != nil {
-		t.Fatalf("ScaffoldConfig: %v", err)
-	}
-	cfg, err := config.Load(writeScaffold(t, b))
-	if err != nil {
-		t.Fatalf("config.Load: %v", err)
-	}
-
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
-
-	for _, h := range cat.Hooks {
-		if !slices.Contains(cfg.Hooks, h) {
-			t.Errorf("scaffold missing catalog hook %q", h)
-		}
-	}
-	catHookSet := map[string]bool{}
-	for _, h := range cat.Hooks {
-		catHookSet[h] = true
-	}
-	for _, h := range cfg.Hooks {
-		if !catHookSet[h] {
-			t.Errorf("scaffold contains unknown hook %q (not in catalog)", h)
-		}
-	}
-}
-
 // TestScaffoldVarsCoverAllReferenced asserts the scaffolded vars block seeds every
-// var referenced by any catalog template family — skills, agents, hooks, and docs —
+// var referenced by any catalog template family — skills, agents, and docs —
 // backing inv: scaffold-seeds-all-vars. The expected set is re-derived from the
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.
@@ -235,9 +202,6 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	}
 	for name := range cat.Agents {
 		paths = append(paths, "agents/"+name+".md.tmpl")
-	}
-	for _, h := range cat.Hooks {
-		paths = append(paths, "hooks/"+h+".tmpl")
 	}
 	for name := range cat.Docs {
 		paths = append(paths, "docs/"+name+".md.tmpl")

@@ -143,8 +143,8 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
 	// (a no-op here — tree-layout already ports replaceWith parts), then
 	// awf-dir-relocation, which moves the finished tree to .awf/.
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation" {
-		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation]", applied)
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks" {
+		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation drop-hooks]", applied)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Errorf("tree not produced at .awf: %v", err)
@@ -584,9 +584,9 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-func TestCurrentIsThree(t *testing.T) {
-	if Current() != 3 {
-		t.Errorf("Current() = %d, want 3", Current())
+func TestCurrentIsFour(t *testing.T) {
+	if Current() != 4 {
+		t.Errorf("Current() = %d, want 4", Current())
 	}
 }
 
@@ -647,6 +647,54 @@ func TestAwfRelocationRefusesExistingTarget(t *testing.T) {
 func awfFile(t *testing.T, root, rel, body string) {
 	t.Helper()
 	mustWrite(t, filepath.Join(root, ".claude", "awf", rel), body)
+}
+
+// invariant: hooks-config-dropped
+func TestDropHooksStrips(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	mustWrite(t, cfg, "prefix: ex\nhooks:\n  - pre-commit\n  - pre-push\nskills:\n  - tdd\n")
+	if err := applyDropHooks(root); err != nil {
+		t.Fatalf("applyDropHooks: %v", err)
+	}
+	out, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), "hooks") {
+		t.Errorf("hooks key not stripped:\n%s", out)
+	}
+	if !strings.Contains(string(out), "prefix: ex") || !strings.Contains(string(out), "- tdd") {
+		t.Errorf("untouched keys lost:\n%s", out)
+	}
+}
+
+func TestDropHooksIdempotent(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	src := "prefix: ex\nskills:\n  - tdd\n"
+	mustWrite(t, cfg, src)
+	if err := applyDropHooks(root); err != nil {
+		t.Fatalf("applyDropHooks: %v", err)
+	}
+	out, _ := os.ReadFile(cfg)
+	if string(out) != src {
+		t.Errorf("idempotent run changed a hooks-less config:\n got %q\nwant %q", out, src)
+	}
+}
+
+func TestDropHooksAbsentConfig(t *testing.T) {
+	if err := applyDropHooks(t.TempDir()); err != nil {
+		t.Errorf("applyDropHooks with no .awf/config.yaml should be a no-op, got %v", err)
+	}
+}
+
+func TestDropHooksMalformedConfig(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
+	if err := applyDropHooks(root); err == nil {
+		t.Error("expected error surfaced from RemoveKey for malformed config.yaml")
+	}
 }
 
 func TestDropReplaceWithNoop(t *testing.T) {
@@ -750,8 +798,8 @@ func TestUpgradeStampsTreeLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation" {
-		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation]", applied)
+	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks" {
+		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation drop-hooks]", applied)
 	}
 	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 )
 
 func unknownKind(kind string) error {
-	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, hook, domain)", kind)}
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain)", kind)}
 }
 
 // enabledNames returns the config enable array for a singular CLI kind; the
@@ -145,22 +145,19 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 }
 
 // targetState returns the display state of a catalog-backed target: "available"
-// when not enabled, else "local"/"tuned"/"enabled" from its sidecar (hooks carry
-// no sidecar, so they are only "enabled"/"available").
+// when not enabled, else "local"/"tuned"/"enabled" from its sidecar.
 func targetState(p *project.Project, kind, name string) string {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return "available"
 	}
-	if kind != "hook" {
-		// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
-		pl, _ := project.PluralKind(kind)
-		sc, _ := p.Cfg.Sidecar(pl, name)
-		switch {
-		case sc.Local:
-			return "local"
-		case sc.Data != nil || sc.Sections != nil:
-			return "tuned"
-		}
+	// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
+	pl, _ := project.PluralKind(kind)
+	sc, _ := p.Cfg.Sidecar(pl, name)
+	switch {
+	case sc.Local:
+		return "local"
+	case sc.Data != nil || sc.Sections != nil:
+		return "tuned"
 	}
 	return "enabled"
 }

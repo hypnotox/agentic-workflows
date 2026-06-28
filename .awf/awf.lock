@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.1.0",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "files": {
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -104,23 +104,11 @@
       "configHash": "sha256:a96e5f87965ccfe9f236fe09e531a78a48c468054b756fe73c36ddd5c497cd18",
       "outputHash": "sha256:b79a2931f893a1092b1b89e692ab4ab0c55f7332602c769617363b71d52760d2"
     },
-    ".githooks/pre-commit": {
-      "templateId": "hooks/pre-commit.tmpl",
-      "templateHash": "sha256:d92c75eabd2f3c5bf259a862647b69e393c40c7e0e5ff9adc96863abbea68be1",
-      "configHash": "sha256:f077569a0057826676e999dceb29e2c8d3a85c6ccd2c0edf42e95b905bb72458",
-      "outputHash": "sha256:0ac2c51234c486a3e7a59dee86962c57a99b129d1ba44aa2cc259156a7eb733f"
-    },
-    ".githooks/pre-push": {
-      "templateId": "hooks/pre-push.tmpl",
-      "templateHash": "sha256:2367215cd94d2e57839af3883a5d25e4120d83b307ecdbf3a528a46a96d1fbba",
-      "configHash": "sha256:4ce07e5985fc02e045a52a4c7423ebdb31a81a132e24e39b9dbd940cd1cd9433",
-      "outputHash": "sha256:b91c85d54b78f9ec15466c088b06cd62fb042f9246c0120cf9229e0dcfd90437"
-    },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:63d9198d6c2e6f3a063a7a0f3f0b8d2125d562efad820ee6aeddd64f45df0b0d",
-      "configHash": "sha256:d7beede723c53f39719f465e6753ade866499ffa0ff0827195d492f8db3c7a3e",
-      "outputHash": "sha256:13cc5a0e470b5e43a5e6561cbf9810c3a75c27efe7752640b4e0860efa645088"
+      "templateHash": "sha256:46187a82f6176f3af852dcbf4bc76117e4e5067f5527e304499becb6e0d348b8",
+      "configHash": "sha256:b74ea922e67f36a6c0d1b6c08ee9a1e67a0ee799054a18d90d736cbbc0429b0f",
+      "outputHash": "sha256:12096cc4b148de443c3930cfd09118f875e3c5997918aa47f6486e608789072e"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -137,8 +125,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",
-      "configHash": "sha256:66e889169d24ad1f35ef605afcb0295796054ad75a7c0e499934a41fc17dc9ec",
-      "outputHash": "sha256:3c1658067588b24d26d473e72baa03e6fe634af5df64c1289add23e075ef5de6"
+      "configHash": "sha256:7d6a2450b185e938a25eddda361e882b2fa4acff1271d26103452ce24ded597e",
+      "outputHash": "sha256:443a264aed30ae0eefaed280496368e7e3c3855fa4b4b26fee06fbe47b724d35"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
@@ -180,7 +168,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:3395ca21669422c8871a05495c1050add002cc9aca86e0fd04684b7e64f9caa1"
+      "outputHash": "sha256:17480d8e17d93b844832d1885b8ff4de34fb14f7c8ac4fadb8f4f0225ab1c040"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
