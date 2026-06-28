@@ -199,12 +199,12 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	}
 	// add with a single arg → targeted migration message.
 	errb.Reset()
-	if code := run([]string{"awf", "add", "tdd"}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "requires a kind") {
+	if code := run([]string{"awf", "add", "tdd"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a kind") {
 		t.Fatalf("expected migration hint, code=%d err=%q", code, errb.String())
 	}
 	// add with no args → usage.
 	errb.Reset()
-	if code := run([]string{"awf", "add"}, &out, &errb); code != 1 {
+	if code := run([]string{"awf", "add"}, &out, &errb); code != 2 {
 		t.Fatalf("expected usage error, code=%d", code)
 	}
 	// remove with kind.
@@ -214,7 +214,7 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	}
 	// remove missing args → usage.
 	errb.Reset()
-	if code := run([]string{"awf", "remove", "skill"}, &out, &errb); code != 1 {
+	if code := run([]string{"awf", "remove", "skill"}, &out, &errb); code != 2 {
 		t.Fatalf("expected remove usage error, code=%d", code)
 	}
 	// list with kind.

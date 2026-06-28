@@ -27,7 +27,7 @@ var kindKey = map[string]string{
 var kindsOrdered = []string{"skill", "agent", "doc", "hook", "domain"}
 
 func unknownKind(kind string) error {
-	return fmt.Errorf("unknown kind %q (want: skill, agent, doc, hook, domain)", kind)
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, hook, domain)", kind)}
 }
 
 // enabledNames returns the config enable array for a kind.

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -59,6 +60,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
+	if spec, ok := argSpecs[args[1]]; ok {
+		if err := checkArgs(args[1], args[2:], spec.boolFlags, spec.valueFlags, spec.minPos, spec.maxPos); err != nil {
+			fmt.Fprintln(stderr, "awf:", err)
+			return 2
+		}
+	}
 	var cmdErr error
 	switch args[1] {
 	case "init":
@@ -82,18 +89,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		case 4:
 			cmdErr = runAdd(cwd, args[2], args[3], stdout)
 		case 3:
-			fmt.Fprintln(stderr, "awf:", fmt.Errorf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2]))
-			return 1
+			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2])}
 		default:
-			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf add <kind> <name>"))
-			return 1
+			cmdErr = &usageErr{"usage: awf add <kind> <name>"}
 		}
 	case "remove":
 		if len(args) < 4 {
-			fmt.Fprintln(stderr, "awf:", errors.New("usage: awf remove <kind> <name>"))
-			return 1
+			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
+		} else {
+			cmdErr = runRemove(cwd, args[2], args[3], stdout)
 		}
-		cmdErr = runRemove(cwd, args[2], args[3], stdout)
 	case "setup":
 		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "upgrade":
@@ -103,14 +108,72 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "version":
 		runVersion(stdout)
 	default:
-		fmt.Fprintln(stderr, "awf:", fmt.Errorf("unknown command %q", args[1]))
-		return 1
+		cmdErr = &usageErr{fmt.Sprintf("unknown command %q", args[1])}
 	}
 	if cmdErr != nil {
 		fmt.Fprintln(stderr, "awf:", cmdErr)
+		var ue *usageErr
+		if errors.As(cmdErr, &ue) {
+			return 2
+		}
 		return 1
 	}
 	return 0
+}
+
+// usageErr marks a CLI-misuse error (unknown flag, bad arity, unknown command),
+// which the central handler maps to exit code 2 rather than the failure code 1.
+type usageErr struct{ msg string }
+
+func (e *usageErr) Error() string { return e.msg }
+
+// argSpec declares a subcommand's accepted flags and positional bounds. boolFlags
+// take no value; valueFlags consume the following token; maxPos < 0 is unbounded
+// (add/remove refine their arity in the switch to keep their specific messages).
+type argSpec struct {
+	boolFlags, valueFlags []string
+	minPos, maxPos        int
+}
+
+var argSpecs = map[string]argSpec{
+	"init":       {boolFlags: []string{"--force", "--force-hooks"}, maxPos: 0},
+	"sync":       {maxPos: 0},
+	"check":      {maxPos: 0},
+	"invariants": {maxPos: 0},
+	"audit":      {valueFlags: []string{"--base"}, maxPos: 0},
+	"list":       {maxPos: 1},
+	"add":        {maxPos: -1},
+	"remove":     {maxPos: -1},
+	"setup":      {boolFlags: []string{"--force-hooks"}, maxPos: 0},
+	"upgrade":    {maxPos: 0},
+	"uninstall":  {maxPos: 0},
+	"version":    {maxPos: 0},
+}
+
+// checkArgs rejects unrecognized --flags and enforces the positional count for a
+// subcommand. rest is args[2:]; a valueFlag consumes its following token.
+func checkArgs(cmd string, rest []string, boolFlags, valueFlags []string, minPos, maxPos int) error {
+	pos := 0
+	for i := 0; i < len(rest); i++ {
+		a := rest[i]
+		switch {
+		case slices.Contains(valueFlags, a):
+			if i+1 >= len(rest) {
+				return &usageErr{fmt.Sprintf("awf %s: flag %s needs a value", cmd, a)}
+			}
+			i++ // consume the flag's value
+		case slices.Contains(boolFlags, a):
+			// recognized boolean flag
+		case strings.HasPrefix(a, "-"):
+			return &usageErr{fmt.Sprintf("awf %s: unknown flag %q", cmd, a)}
+		default:
+			pos++
+		}
+	}
+	if pos < minPos || (maxPos >= 0 && pos > maxPos) {
+		return &usageErr{fmt.Sprintf("awf %s: unexpected arguments", cmd)}
+	}
+	return nil
 }
 
 // hasFlag reports whether flag appears anywhere in args[2:].

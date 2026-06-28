@@ -77,8 +77,8 @@ func TestRunGetwdError(t *testing.T) {
 func TestRunUnknownCommand(t *testing.T) {
 	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "bogus"}, &out, &errb); code != 1 {
-		t.Fatalf("expected exit 1 for unknown command, got %d", code)
+	if code := run([]string{"awf", "bogus"}, &out, &errb); code != 2 {
+		t.Fatalf("expected exit 2 for unknown command, got %d", code)
 	}
 	if !strings.Contains(errb.String(), "unknown command") {
 		t.Errorf("missing unknown-command text: %q", errb.String())
@@ -88,8 +88,32 @@ func TestRunUnknownCommand(t *testing.T) {
 func TestRunAddMissingSkillArg(t *testing.T) {
 	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "add"}, &out, &errb); code != 1 {
-		t.Fatalf("expected exit 1 for add without skill, got %d", code)
+	if code := run([]string{"awf", "add"}, &out, &errb); code != 2 {
+		t.Fatalf("expected exit 2 for add without skill, got %d", code)
+	}
+}
+
+func TestRunArgValidation(t *testing.T) {
+	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"unknown flag", []string{"awf", "check", "--bogus"}, "unknown flag"},
+		{"unexpected positional", []string{"awf", "sync", "extra"}, "unexpected arguments"},
+		{"value flag without value", []string{"awf", "audit", "--base"}, "needs a value"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var out, errb bytes.Buffer
+			if code := run(c.args, &out, &errb); code != 2 {
+				t.Fatalf("expected exit 2, got %d", code)
+			}
+			if !strings.Contains(errb.String(), c.want) {
+				t.Errorf("missing %q in stderr: %q", c.want, errb.String())
+			}
+		})
 	}
 }
 
