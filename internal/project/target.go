@@ -3,7 +3,7 @@ package project
 import "fmt"
 
 // Target places adapter (tool-specific) artifacts for one runtime. Neutral
-// artifacts (AGENTS.md, docs, domains, hooks) are not target-scoped (ADR-0016).
+// artifacts (AGENTS.md, docs, domains) are not target-scoped (ADR-0016).
 type Target struct {
 	Name       string
 	SkillDir   string // dir holding rendered skills, e.g. ".claude/skills"
