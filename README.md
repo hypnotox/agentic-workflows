@@ -77,7 +77,7 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 
 | Command | Purpose |
 |---|---|
-| `awf init` | Scaffold `.awf/`, render, and activate git hooks. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`); `--force-hooks` takes over an existing `core.hooksPath`. |
+| `awf init` | Scaffold `.awf/`, render, and activate git hooks. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`); `--force-hooks` takes over an existing `core.hooksPath`. Prompts for config values on a TTY; `--describe` prints the fillable values as JSON (for agents), and `--set k=v` / `--answers FILE` supply them non-interactively. |
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one). |

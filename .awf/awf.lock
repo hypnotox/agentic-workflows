@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:6df229f1b9d4b55e18d920526cad4f04318fb338444880743fd23652a63639c3"
+      "outputHash": "sha256:4da5b5bed3d33c5396185e32c415190ab6ee06ca20b740ff8b43232c10bc7a16"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -198,7 +198,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:df0bdfe1e47458801a08d2aad42cc5db07c80e11515b0cd8065506b90821a727"
+      "outputHash": "sha256:12780586fec23217844ae134e1b166817a5e3f586b3288ae6b9546a33d837db0"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
