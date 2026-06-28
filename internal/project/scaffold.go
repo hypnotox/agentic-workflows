@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"maps"
 	"slices"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -77,38 +77,18 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 	hookList := make([]string, len(cat.Hooks))
 	copy(hookList, cat.Hooks)
 
-	// Emit YAML manually so we control the output format and avoid any
-	// round-trip issues with the strict config.Load decoder.
-	var b strings.Builder
-
-	b.WriteString("prefix: ")
-	b.WriteString(prefix)
-	b.WriteString("\n")
-
-	b.WriteString("vars:\n")
+	vars := make(map[string]string, len(varNames))
 	for _, v := range varNames {
-		b.WriteString("  ")
-		b.WriteString(v)
-		b.WriteString(": \"\"\n")
+		vars[v] = ""
 	}
-
-	writeArray(&b, "skills", skillNames)
-	writeArray(&b, "agents", agentNames)
-	writeArray(&b, "hooks", hookList)
-	writeArray(&b, "docs", docNames)
-
-	return []byte(b.String()), nil
-}
-
-// writeArray emits a `key:` block with each value as a `- ` list item.
-func writeArray(b *strings.Builder, key string, values []string) {
-	b.WriteString(key)
-	b.WriteString(":\n")
-	for _, v := range values {
-		b.WriteString("  - ")
-		b.WriteString(v)
-		b.WriteString("\n")
-	}
+	return config.MarshalSkeleton(config.Skeleton{
+		Prefix: prefix,
+		Vars:   vars,
+		Skills: skillNames,
+		Agents: agentNames,
+		Hooks:  hookList,
+		Docs:   docNames,
+	})
 }
 
 // collectVars reads the template at path and adds all .vars.X names to varSet.
