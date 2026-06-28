@@ -80,6 +80,9 @@ func TestSetArrayMemberPreservesComments(t *testing.T) {
 	if !strings.Contains(string(got), "# top comment") {
 		t.Errorf("head comment lost:\n%s", got)
 	}
+	if !strings.Contains(string(got), "# inline") {
+		t.Errorf("inline comment lost:\n%s", got)
+	}
 	if !strings.Contains(string(got), "- b") {
 		t.Errorf("member not added:\n%s", got)
 	}
