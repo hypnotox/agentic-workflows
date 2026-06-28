@@ -65,13 +65,19 @@ Grounding discoveries that shape the design:
    render loop (with its moot `coverage-ignore`) from `render.go`; this removes `awf
    add/remove/list hook`. Delete the `Hooks` field from the config struct and the catalog, the
    `templates/hooks/` directory and its `hooks:` catalog block, the `templates/hooks` entry in
-   `embed.go`, and the `.githooks` → `0o755` special-case in `Sync`.
+   `embed.go`, and the `.githooks` → `0o755` special-case in `Sync`. With the `hook` kind gone,
+   the now-always-true `if kind != "hook"` guard in `targetState` (`cmd/awf/list_add.go`) is
+   simplified away so the unreachable hook branch does not strand a statement under the 100%
+   coverage gate.
 
 2. **Remove hook activation.** Delete `cmd/awf/setup.go` (the `setup` subcommand and `runSetup`),
    the `--force-hooks` flag from the `init`/`setup` dispatch, the `runSetup()` call in
-   `runInit()`, and the `localHooksPath`/`writeLocalHooksPath` helpers in `cmd/awf/git.go`.
-   `awf uninstall` continues to remove lock-tracked files and the lock, but no longer touches
-   `core.hooksPath` (the `unsetAwfHooks` step is removed).
+   `runInit()`, and all of `cmd/awf/git.go` — `openWorktree`, `localHooksPath`, and
+   `writeLocalHooksPath` — since removing `setup.go` (which also carries `awfHooksRel`) and
+   `unsetAwfHooks` leaves every function in that file, and its `go-git` import, unreferenced. The
+   `go-git` module itself stays in `go.mod`: `internal/audit` still uses it. `awf uninstall`
+   continues to remove lock-tracked files and the lock, but no longer touches `core.hooksPath`
+   (the `unsetAwfHooks` step is removed).
 
 3. **Migrate the config schema.** Add a schema migration (To:4, "drop-hooks") in
    `internal/migrate` that strips the `hooks:` key from `.awf/config.yaml`; absent key is a
@@ -143,8 +149,14 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - `docs/architecture.md` drops hooks from the overview, the config-arrays list, the CLI entry
   points (`setup`), and component descriptions.
 - The `tooling` domain narrative drops the setup/uninstall-hooks/hook-rendering behaviour; the
-  `rendering` domain narrative drops the `hook` kind.
-- The hand-maintained CLI usage string in `cmd/awf/main.go` drops `setup` and `--force-hooks`.
+  `rendering` domain narrative drops the `hook` kind; the `config` domain narrative drops `hooks`
+  from the enable-array enumeration (four arrays, not five) and reflects the schema-4 migration.
+- The user-facing kind enumerations drop `hook`: the `awf --help` text (`kind ∈ {…}`) and the
+  `unknown kind` error message in `cmd/awf` (`main.go`, `list_add.go`), and the `(kinds: …)` list
+  in the agent-guide template.
+- The hand-maintained CLI strings in `cmd/awf/main.go` drop `setup`, `--force-hooks`, the `setup`
+  entry in `argSpecs`, the `init` help line's "activate git hooks" phrasing, and the `uninstall`
+  help line's "unset core.hooksPath" phrasing.
 - ADR-0003's status flip and this ADR's eventual `Implemented` flip each regenerate
   `docs/decisions/ACTIVE.md` via `./x sync`.
 
