@@ -20,7 +20,7 @@ func sampleData() map[string]any {
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
 func TestRenderDefault(t *testing.T) {
-	out, err := Render(tmpl, nil, sampleData())
+	out, err := Execute(Assemble(ParseSections(tmpl), nil), sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestRenderDefault(t *testing.T) {
 
 func TestRenderDropsSection(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {Drop: true}}
-	out, err := Render(tmpl, plan, sampleData())
+	out, err := Execute(Assemble(ParseSections(tmpl), plan), sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestRenderDropsSection(t *testing.T) {
 
 func TestRenderConventionPart(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".awf/x.md"}}
-	out, err := Render(tmpl, plan, sampleData())
+	out, err := Execute(Assemble(ParseSections(tmpl), plan), sampleData())
 	if err != nil {
 		t.Fatal(err)
 	}

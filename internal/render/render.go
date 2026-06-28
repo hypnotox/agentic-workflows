@@ -66,9 +66,3 @@ func Execute(assembled string, data map[string]any) (string, error) {
 	}
 	return out.String(), nil
 }
-
-// Render parses src, applies the plan, then executes text/template over the
-// assembled source with the given data.
-func Render(src string, plan map[string]SectionPlan, data map[string]any) (string, error) {
-	return Execute(Assemble(ParseSections(src), plan), data)
-}

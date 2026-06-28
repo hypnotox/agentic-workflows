@@ -40,7 +40,7 @@ func TestDocsSectionParity(t *testing.T) {
 		if strings.Join(want, ",") != strings.Join(got, ",") {
 			t.Errorf("%s: section mismatch: catalog %v vs template markers %v", name, want, got)
 		}
-		out, err := render.Render(string(src), nil,
+		out, err := render.Execute(render.Assemble(render.ParseSections(string(src)), nil),
 			map[string]any{"prefix": "awf", "vars": map[string]any{},
 				"layout": map[string]any{"adrReadme": "docs/decisions/README.md"}, "data": map[string]any{}})
 		if err != nil {
@@ -129,7 +129,7 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 		if strings.Join(markers, ",") != strings.Join(c.sections, ",") {
 			t.Errorf("%s markers %v != catalog sections %v", c.tid, markers, c.sections)
 		}
-		out, err := render.Render(string(src), nil, map[string]any{
+		out, err := render.Execute(render.Assemble(render.ParseSections(string(src)), nil), map[string]any{
 			"prefix": "awf", "vars": map[string]any{}, "layout": lay, "data": map[string]any{}})
 		if err != nil {
 			t.Fatalf("render %s: %v", c.tid, err)
