@@ -1,17 +1,41 @@
 # agentic-workflows
 
+> **An opinionated agentic-development workflow, wrapped in deterministic checks so it actually holds.**
+
+[![CI](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml/badge.svg)](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-skills_%26_agents-D97757)](https://www.anthropic.com/claude-code)
+
 `awf` renders a standardised, opinionated agentic-development workflow into any project — a suite of
 [Claude Code](https://www.anthropic.com/claude-code) skills, independent review agents, git hooks,
 and documentation — from a small committed config tree, and wraps the probabilistic agent in
 deterministic checks (drift, frontmatter, invariant backing, dead links).
 
-The idea: the workflow your AI agents follow should be **version-controlled, reviewable, and
-enforced** — not retyped into a prompt each session. You keep a `.awf/` config tree in your repo;
-`awf` renders it into the files your agent reads (`.claude/`, `AGENTS.md`, `docs/`, `.githooks/`) and
-tells you when the rendered output drifts from the config.
+You keep a `.awf/` config tree in your repo; `awf` renders it into the files your agent reads
+(`.claude/`, `AGENTS.md`, `docs/`, `.githooks/`), and tells you the moment the rendered output drifts
+from the config that produced it.
 
 > **Status:** pre-1.0 and evolving; the rendered standard is language-agnostic, the `awf` tool is a
 > Go binary. Interfaces may change before a tagged release.
+
+## Why
+
+The instructions your AI agent follows — how to brainstorm, when to write an ADR, what a review must
+check, which gate blocks a commit — are usually scattered across prompts, retyped per session, and
+impossible to review. They drift from how the project actually works, and nothing tells you when.
+
+`awf` makes that workflow a **version-controlled artifact**:
+
+- **Reviewable** — the workflow lives in a committed `.awf/` config tree, so changes to *how your
+  agents work* go through the same diff-and-review as changes to your code.
+- **Consistent** — every contributor (and every agent session) reads the same rendered skills,
+  agents, and docs; there is no per-developer prompt folklore.
+- **Enforced** — a deterministic gate wraps the probabilistic agent: drift detection, frontmatter
+  validation, invariant backing, and dead-link checks fail loudly instead of rotting silently.
+- **Portable** — one small config tree renders a whole standard into any repo, in any language, and
+  `awf check` keeps the rendered output honest forever after.
 
 ## How it works
 
