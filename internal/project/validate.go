@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -12,51 +13,12 @@ import (
 // validateAgainstCatalog checks that every enabled non-local target is in the
 // catalog and that its sidecar's section overrides name declared sections.
 func (p *Project) validateAgainstCatalog() error {
-	checkKind := func(kind string, names []string, specs func(string) ([]string, bool)) error {
-		for _, name := range names {
-			sc, err := p.Cfg.Sidecar(kind, name)
-			if err != nil {
-				return err
-			}
-			if sc.Local {
-				continue
-			}
-			declared, ok := specs(name)
-			if !ok {
-				return fmt.Errorf("%s %q is not in the catalog", strings.TrimSuffix(kind, "s"), name)
-			}
-			if err := checkSectionsAllowed(kind, name, declared, sc.Sections); err != nil {
-				return err
-			}
+	for _, d := range kindDescriptors {
+		if d.poolNames == nil { // domains: freeform, not catalog-validated
+			continue
 		}
-		return nil
-	}
-	if err := checkKind("skills", p.Cfg.Skills, func(n string) ([]string, bool) {
-		s, ok := p.Cat.Skills[n]
-		return s.Sections, ok
-	}); err != nil {
-		return err
-	}
-	if err := checkKind("agents", p.Cfg.Agents, func(n string) ([]string, bool) {
-		a, ok := p.Cat.Agents[n]
-		return a.Sections, ok
-	}); err != nil {
-		return err
-	}
-	if err := checkKind("docs", p.Cfg.Docs, func(n string) ([]string, bool) {
-		d, ok := p.Cat.Docs[n]
-		return d.Sections, ok
-	}); err != nil {
-		return err
-	}
-	// Hooks against catalog.
-	catHooks := make(map[string]bool, len(p.Cat.Hooks))
-	for _, h := range p.Cat.Hooks {
-		catHooks[h] = true
-	}
-	for _, h := range p.Cfg.Hooks {
-		if !catHooks[h] {
-			return fmt.Errorf("hook %q is not in the catalog", h)
+		if err := p.checkKindAgainstCatalog(d); err != nil {
+			return err
 		}
 	}
 	// agents-doc section overrides against catalog (always-on singleton).
@@ -83,6 +45,31 @@ func (p *Project) validateAgainstCatalog() error {
 		}
 		if !sc.Local {
 			if err := checkSectionsAllowed(sg.kind, "", sg.sections, sc.Sections); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// checkKindAgainstCatalog verifies every enabled non-local target of a
+// catalog-backed kind is in the catalog and that its sidecar section overrides
+// name declared sections. Hooks carry no sections, so only membership is checked.
+func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
+	pool := d.poolNames(p.Cat)
+	for _, name := range d.enable(p.Cfg) {
+		sc, err := p.Cfg.Sidecar(d.Plural, name)
+		if err != nil {
+			return err
+		}
+		if sc.Local {
+			continue
+		}
+		if !slices.Contains(pool, name) {
+			return fmt.Errorf("%s %q is not in the catalog", d.Singular, name)
+		}
+		if declared, ok := d.sections(p.Cat, name); ok {
+			if err := checkSectionsAllowed(d.Plural, name, declared, sc.Sections); err != nil {
 				return err
 			}
 		}

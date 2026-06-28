@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,58 +12,25 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// kindKey maps a singular CLI kind token to its plural config enable-array key.
-// invariant: cli-config-kinds
-var kindKey = map[string]string{
-	"skill":  "skills",
-	"agent":  "agents",
-	"doc":    "docs",
-	"hook":   "hooks",
-	"domain": "domains",
-}
-
-// kindsOrdered is the display order for `awf list`.
-var kindsOrdered = []string{"skill", "agent", "doc", "hook", "domain"}
-
 func unknownKind(kind string) error {
 	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, hook, domain)", kind)}
 }
 
-// enabledNames returns the config enable array for a kind.
+// enabledNames returns the config enable array for a singular CLI kind; the
+// descriptor table in internal/project is the single source (ADR-0027).
 func enabledNames(cfg *config.Config, kind string) []string {
-	switch kind {
-	case "skill":
-		return cfg.Skills
-	case "agent":
-		return cfg.Agents
-	case "doc":
-		return cfg.Docs
-	case "hook":
-		return cfg.Hooks
-	default: // domain
-		return cfg.Domains
-	}
+	names, _ := project.EnabledNames(cfg, kind)
+	return names
 }
 
 // catalogNames returns the catalog pool for a catalog-backed kind; the second
 // result is false for `domain`, which is freeform (no catalog pool).
 func catalogNames(cat *catalog.Catalog, kind string) ([]string, bool) {
-	switch kind {
-	case "skill":
-		return slices.Sorted(maps.Keys(cat.Skills)), true
-	case "agent":
-		return slices.Sorted(maps.Keys(cat.Agents)), true
-	case "doc":
-		return slices.Sorted(maps.Keys(cat.Docs)), true
-	case "hook":
-		return slices.Sorted(slices.Values(cat.Hooks)), true
-	default: // domain
-		return nil, false
-	}
+	return project.CatalogNames(cat, kind)
 }
 
 func runAdd(root, kind, name string, stdout io.Writer) error {
-	key, ok := kindKey[kind]
+	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
 	}
@@ -96,7 +62,7 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 }
 
 func runRemove(root, kind, name string, stdout io.Writer) error {
-	key, ok := kindKey[kind]
+	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
 	}
@@ -154,15 +120,16 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	kinds := kindsOrdered
+	kinds := project.Kinds()
 	if kindFilter != "" {
-		if _, ok := kindKey[kindFilter]; !ok {
+		if _, ok := project.PluralKind(kindFilter); !ok {
 			return unknownKind(kindFilter)
 		}
 		kinds = []string{kindFilter}
 	}
 	for _, kind := range kinds {
-		fmt.Fprintf(stdout, "%s:\n", kindKey[kind])
+		pl, _ := project.PluralKind(kind)
+		fmt.Fprintf(stdout, "%s:\n", pl)
 		pool, catalogBacked := catalogNames(p.Cat, kind)
 		if !catalogBacked { // domains: configured set only
 			for _, n := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
@@ -186,7 +153,8 @@ func targetState(p *project.Project, kind, name string) string {
 	}
 	if kind != "hook" {
 		// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
-		sc, _ := p.Cfg.Sidecar(kindKey[kind], name)
+		pl, _ := project.PluralKind(kind)
+		sc, _ := p.Cfg.Sidecar(pl, name)
 		switch {
 		case sc.Local:
 			return "local"

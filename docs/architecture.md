@@ -50,7 +50,9 @@ decoupled from any one runtime's directory.
 - **`internal/migrate/`** — ordered schema-migration registry (ADR-0010); the `tree-layout`
   migration and the frozen legacy reader; powers `awf upgrade` and the sync/check version gate.
 - **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and
-  `Check()`; golden tests live here.
+  `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
+  per-kind dispatch source — enable array, catalog pool, declared sections, output path, and labels
+  resolve through it across `list`/`add`/`check`/`validate` (ADR-0027).
 - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`** — parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their

@@ -3,7 +3,6 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](0027-unified-kind-descriptor.md) — Accepted
 
 ## Implemented
 
@@ -32,3 +31,4 @@
 - [ADR-0024: CLI Config Management Across Kinds](0024-cli-config-management.md) — Implemented
 - [ADR-0025: Uncommitted-Changes Audit Rule](0025-uncommitted-changes-audit-rule.md) — Implemented
 - [ADR-0026: Config Serialization Owned by internal/config](0026-config-serialization-ownership.md) — Implemented
+- [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](0027-unified-kind-descriptor.md) — Implemented

@@ -15,16 +15,12 @@ import (
 )
 
 // localOutPath returns the conventional output path awf would render a local
-// skill/agent to (the same formulas RenderAll uses).
+// skill/agent to (the same formulas RenderAll uses); "" for neutral kinds.
 func (p *Project) localOutPath(kind, name string) string {
-	switch kind {
-	case "skills":
-		return p.Target.SkillPath(p.Cfg.Prefix, name)
-	case "agents":
-		return p.Target.AgentPath(name)
-	default:
-		return ""
+	if d, ok := descriptorByPlural(kind); ok && d.outPath != nil {
+		return d.outPath(p.Target, p.Cfg.Prefix, name)
 	}
+	return ""
 }
 
 // checkLocalFrontmatter validates the on-disk frontmatter of every declared local
@@ -35,6 +31,7 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 		kind  string
 		names []string
 	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
+		d, _ := descriptorByPlural(kv.kind)
 		for _, name := range kv.names {
 			sc, err := p.Cfg.Sidecar(kv.kind, name)
 			if err != nil {
@@ -46,7 +43,7 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 			rel := p.localOutPath(kv.kind, name)
 			b, err := os.ReadFile(filepath.Join(p.Root, rel))
 			if err != nil {
-				fail(rel, fmt.Errorf("local %s file absent", strings.TrimSuffix(kv.kind, "s")))
+				fail(rel, fmt.Errorf("local %s file absent", d.Singular))
 				continue
 			}
 			if err := validateFrontmatter(b); err != nil {
@@ -133,15 +130,9 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 
 // declaredSections returns the catalog-declared section names for a target.
 func (p *Project) declaredSections(kind, name string) []string {
-	switch kind {
-	case "skills":
-		return p.Cat.Skills[name].Sections
-	case "agents":
-		return p.Cat.Agents[name].Sections
-	case "docs":
-		return p.Cat.Docs[name].Sections
-	case "domains":
-		return p.Cat.DomainDoc.Sections
+	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
+		s, _ := d.sections(p.Cat, name)
+		return s
 	}
 	return nil
 }
