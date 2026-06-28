@@ -32,6 +32,21 @@ type DocSpec struct {
 	Core     bool     `yaml:"core"`
 }
 
+// VarDescriptor describes one fillable init value: a config var, or (via Target)
+// the invariants backing config. Kind ∈ {string, enum, multiselect}; multiselect
+// is reserved for the deferred catalog-trim work (ADR-0029). Target ∈ {"" or
+// "var", "invariants-marker", "invariants-globs"}; "" means a plain config var.
+// Default pre-fills interactive prompts and appears in `awf init --describe`; it
+// is never applied on the silent non-interactive path (ADR-0029).
+type VarDescriptor struct {
+	Key         string   `yaml:"key" json:"key"`
+	Kind        string   `yaml:"kind" json:"kind"`
+	Description string   `yaml:"description" json:"description"`
+	Default     string   `yaml:"default" json:"default"`
+	Options     []string `yaml:"options" json:"options"`
+	Target      string   `yaml:"target" json:"target"`
+}
+
 type Catalog struct {
 	Skills      map[string]SkillSpec  `yaml:"skills"`
 	Agents      map[string]TargetSpec `yaml:"agents"`
@@ -42,6 +57,7 @@ type Catalog struct {
 	AdrTemplate TargetSpec            `yaml:"adrTemplate"`
 	PlansReadme TargetSpec            `yaml:"plansReadme"`
 	Docs        map[string]DocSpec    `yaml:"docs"`
+	Vars        []VarDescriptor       `yaml:"vars"`
 }
 
 func Load(fsys fs.FS) (*Catalog, error) {
