@@ -2,8 +2,10 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -76,4 +78,40 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, info.Mode().Perm())
+}
+
+// Uninstall removes awf's generated footprint from root: every file recorded in
+// the lock, the directories left empty by their removal, and the now-stale lock
+// itself. It leaves the authored .awf/ config in place and returns the count of
+// files removed. It is a free function (not a *Project method) so a broken
+// config.yaml does not block uninstall — only the lock and root are needed.
+// invariant: uninstall-removes-lock-tracked
+func Uninstall(root string) (int, error) {
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	lock, err := manifest.Load(lockPath)
+	if err != nil {
+		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(".awf", "awf.lock"))
+	}
+	removed := 0
+	dirs := map[string]bool{}
+	for path := range lock.Files {
+		abs := filepath.Join(root, path)
+		if err := os.Remove(abs); err == nil {
+			removed++
+		}
+		for d := filepath.Dir(abs); d != root; d = filepath.Dir(d) {
+			dirs[d] = true
+		}
+	}
+	// Remove now-empty directories deepest-first (a child path is always longer
+	// than its parent, so descending-length order attempts children first).
+	dirList := slices.Collect(maps.Keys(dirs))
+	slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
+	for _, d := range dirList {
+		_ = os.Remove(d) // removes only if now empty
+	}
+	if err := os.Remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
+		return removed, fmt.Errorf("remove lock: %w", err)
+	}
+	return removed, nil
 }
