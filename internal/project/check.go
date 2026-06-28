@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -59,7 +60,7 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 // orphans reports sidecar and convention-part files whose target is not in the
 // matching enable list, plus convention-part files of an enabled target whose
 // section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func (p *Project) orphans() []manifest.Drift {
+func (p *Project) orphans() ([]manifest.Drift, error) {
 	enabled := map[string]map[string]bool{
 		"skills":  sliceSet(p.Cfg.Skills),
 		"agents":  sliceSet(p.Cfg.Agents),
@@ -71,8 +72,10 @@ func (p *Project) orphans() []manifest.Drift {
 		base := filepath.Join(p.Root, ".awf", kind)
 		// Sidecars: <kind>/<name>.yaml.
 		entries, err := os.ReadDir(base)
-		if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
 			continue // kind branch absent → nothing to orphan
+		} else if err != nil {
+			return nil, err
 		}
 		for _, e := range entries {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
@@ -89,8 +92,10 @@ func (p *Project) orphans() []manifest.Drift {
 		// Parts: <kind>/parts/<target>/<section>.md.
 		partsDir := filepath.Join(base, "parts")
 		targets, err := os.ReadDir(partsDir)
-		if err != nil {
-			continue
+		if errors.Is(err, os.ErrNotExist) {
+			continue // no parts dir for this kind → nothing to orphan
+		} else if err != nil {
+			return nil, err
 		}
 		for _, t := range targets {
 			if !t.IsDir() {
@@ -123,7 +128,7 @@ func (p *Project) orphans() []manifest.Drift {
 		}
 	}
 	sort.Slice(drift, func(i, j int) bool { return drift[i].Path < drift[j].Path })
-	return drift
+	return drift, nil
 }
 
 // declaredSections returns the catalog-declared section names for a target.
@@ -205,7 +210,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	// Orphan sidecars/parts (second clause of inv: drift-source-set).
-	drift = append(drift, p.orphans()...)
+	od, err := p.orphans()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, od...)
 	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness
 	// cannot be detected by the template/config hash comparison above. Regenerate and
 	// compare directly.

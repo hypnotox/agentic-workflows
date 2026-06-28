@@ -420,11 +420,51 @@ func TestOrphansSkipsNonDirAndNonMarkdown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift := p.orphans()
+	drift, err := p.orphans()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, d := range drift {
 		if strings.Contains(d.Path, "stray-file.txt") || strings.Contains(d.Path, "notes.txt") || strings.Contains(d.Path, "/sub") {
 			t.Errorf("non-target/non-markdown entries must not be flagged as orphans: %#v", d)
 		}
+	}
+}
+
+// TestOrphansSurfacesReadDirFault asserts orphans() returns a non-absent
+// ReadDir fault rather than silently treating it as "kind branch absent".
+func TestOrphansSurfacesReadDirFault(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Put a regular file where the .awf/skills directory would be, after Open, so
+	// orphans()' os.ReadDir returns a non-ErrNotExist error (ENOTDIR).
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills"), []byte("not a dir\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.orphans(); err == nil {
+		t.Fatal("expected a ReadDir fault to surface, got nil")
+	}
+}
+
+// TestOrphansSurfacesPartsReadDirFault covers the parts-dir arm: the kind dir is
+// readable but its parts/ path is a regular file, so the second os.ReadDir faults.
+func TestOrphansSurfacesPartsReadDirFault(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "parts"), []byte("not a dir\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.orphans(); err == nil {
+		t.Fatal("expected a parts-dir ReadDir fault to surface, got nil")
 	}
 }
 
@@ -454,6 +494,25 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 	corruptSidecar(t, root, "skills/tdd.yaml")
 	if _, err := p.Check(); err == nil {
 		t.Fatal("expected Check to surface the RenderAll error")
+	}
+}
+
+func TestCheckSurfacesOrphanScanError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	// Place a regular file where the .awf/domains sidecar dir would be. No domains
+	// are enabled, so RenderAll skips it and the fault first surfaces in orphans().
+	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Check(); err == nil {
+		t.Fatal("expected Check to surface the orphan-scan error")
 	}
 }
 
