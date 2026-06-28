@@ -169,10 +169,47 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	lay := p.layout()
 	activeMdRel := lay.ActiveMd
 	domainsPrefix := lay.DomainsDir + "/"
+
+	var drift []manifest.Drift
+	drift = append(drift, p.checkLockedFiles(lock, rendered, activeMdRel, domainsPrefix)...)
+	// Local skills/agents are not rendered, so their hand-authored frontmatter is
+	// validated directly on disk.
+	if err := p.checkLocalFrontmatter(func(path string, e error) {
+		drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: e.Error()})
+	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Check
+		return nil, err
+	}
+	// Orphan sidecars/parts (second clause of inv: drift-source-set).
+	od, err := p.orphans()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, od...)
+
+	amd, err := p.generateActiveMD()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, p.checkActiveMD(activeMdRel, amd)...)
+
+	dds, err := p.generateDomainDocs()
+	if err != nil { // coverage-ignore: unreachable — the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
+		return nil, err
+	}
+	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
+
+	drift = append(drift, p.checkDeadRefs(files, amd, dds)...)
+	return drift, nil
+}
+
+// checkLockedFiles compares each lock entry (except the separately-checked
+// generated ACTIVE.md / domain docs) against the freshly-rendered output and the
+// on-disk file: orphaned, stale, missing, hand-edited, or invalid-frontmatter.
+func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, activeMdRel, domainsPrefix string) []manifest.Drift {
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {
-			continue // generated artifacts — checked separately below
+			continue // generated artifacts — checked separately
 		}
 		e := lock.Files[path]
 		rf, ok := rendered[path]
@@ -203,38 +240,27 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			}
 		}
 	}
-	// Local skills/agents are not rendered, so their hand-authored frontmatter is
-	// validated directly on disk.
-	if err := p.checkLocalFrontmatter(func(path string, e error) {
-		drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: e.Error()})
-	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Check
-		return nil, err
-	}
-	// Orphan sidecars/parts (second clause of inv: drift-source-set).
-	od, err := p.orphans()
-	if err != nil {
-		return nil, err
-	}
-	drift = append(drift, od...)
-	// ACTIVE.md is generated from ADR frontmatter, not a template, so its staleness
-	// cannot be detected by the template/config hash comparison above. Regenerate and
-	// compare directly.
-	amd, err := p.generateActiveMD()
-	if err != nil {
-		return nil, err
-	}
-	if onDisk, rerr := os.ReadFile(filepath.Join(p.Root, activeMdRel)); rerr != nil {
-		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"})
+	return drift
+}
+
+// checkActiveMD regenerates the ADR index and compares it on disk. ACTIVE.md is
+// generated from ADR frontmatter, not a template, so its staleness cannot be
+// detected by the template/config hash comparison in checkLockedFiles.
+func (p *Project) checkActiveMD(activeMdRel string, amd RenderedFile) []manifest.Drift {
+	if onDisk, err := os.ReadFile(filepath.Join(p.Root, activeMdRel)); err != nil {
+		return []manifest.Drift{{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"}}
 	} else if manifest.Hash(onDisk) != manifest.Hash([]byte(amd.Content)) {
-		drift = append(drift, manifest.Drift{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"})
+		return []manifest.Drift{{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"}}
 	}
-	// Domain docs are generated from ADR frontmatter + convention parts, so like
-	// ACTIVE.md their staleness cannot be detected by the lock hash. Regenerate and
-	// compare each; flag a lock entry no longer produced (domain removed).
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable — the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
-		return nil, err
-	}
+	return nil
+}
+
+// checkDomainDocs compares each regenerated domain doc on disk and flags a lock
+// entry no longer produced (domain removed). Like ACTIVE.md, domain docs are
+// generated from ADR frontmatter + convention parts, so the lock hash cannot
+// detect their staleness.
+func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds []RenderedFile) []manifest.Drift {
+	var drift []manifest.Drift
 	produced := map[string]bool{}
 	for _, dd := range dds {
 		produced[dd.Path] = true
@@ -250,9 +276,14 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
 		}
 	}
-	// Dead-reference scan (inv: dead-reference-gated). Every awf-managed rendered
-	// markdown file's inline links must resolve file-relative on disk; the generated
-	// ACTIVE.md and domain docs are in scope, the CLAUDE.md bridge and hooks are not.
+	return drift
+}
+
+// checkDeadRefs runs the dead-reference scan (inv: dead-reference-gated): every
+// awf-managed rendered markdown file's inline links must resolve file-relative on
+// disk. The generated ACTIVE.md and domain docs are in scope; the CLAUDE.md bridge
+// and hooks are not.
+func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {
 		if isManagedMarkdown(f.TemplateID) {
@@ -261,6 +292,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 	scan = append(scan, amd)
 	scan = append(scan, dds...)
+	var drift []manifest.Drift
 	for _, f := range scan {
 		base := filepath.Dir(f.Path)
 		for _, target := range refs.Links(f.Content) {
@@ -270,5 +302,5 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 			}
 		}
 	}
-	return drift, nil
+	return drift
 }
