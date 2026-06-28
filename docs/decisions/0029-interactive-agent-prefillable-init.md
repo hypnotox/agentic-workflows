@@ -31,8 +31,9 @@ no mechanism to receive values. ADR-0022 weighed "interactive per-skill prompts 
 aside to keep init **non-interactive and scriptable**. This ADR revisits that narrowly: it keeps the
 non-interactive path deterministic and prompt-free, adds interactivity only when stdin is a terminal,
 plus a fully non-interactive path for agents and scripts — so the scriptability the rejection
-protected is preserved (the non-interactive output stays byte-identical to today wherever a
-descriptor's default is empty; see Invariants). ADR-0022's curated-core Decision is unaffected; only its rejection of *any*
+protected is preserved (the silent non-interactive output stays byte-identical to today; descriptor
+defaults pre-fill prompts and appear in `--describe`, but are never auto-applied on the silent path —
+see Invariants). ADR-0022's curated-core Decision is unaffected; only its rejection of *any*
 interactivity is superseded in reasoning (`related`, not `supersedes`).
 
 Grounding-check confirmations against the codebase: `ScaffoldConfig` seeds via
@@ -54,12 +55,13 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
 
 2. **Three resolution modes share one descriptor set.**
    - **Interactive** — when stdin is a TTY and no answers are supplied, `awf init` walks the
-     descriptors as prompts, each pre-filled with its default.
-   - **Non-interactive default** — when stdin is not a TTY and no answers are supplied, each value is
-     seeded to its descriptor default (empty string where none), with no prompting. Where every
-     consulted descriptor's default is empty this is byte-identical to today's seed-empty output;
-     where a descriptor carries a non-empty default the generated config differs from today by that
-     value. This is the path CI and scripts hit, and it stays deterministic and prompt-free.
+     descriptors as prompts, each pre-filled with its `default`. A `default` is therefore a prompt
+     suggestion, not an auto-applied value.
+   - **Silent (non-interactive)** — when stdin is not a TTY and no answers are supplied, each var is
+     seeded empty, with no prompting and no default applied — byte-identical to today's seed-empty
+     output. This is the path CI and scripts hit, and it stays deterministic and prompt-free.
+     Descriptor defaults do not affect it; an agent or script that wants those values passes them via
+     `--describe` + `--answers`.
    - **Explicit answers** — `--set key=value` (repeatable) and `--answers <file.json|yaml>` supply
      values in any TTY state. Provided keys are used verbatim and skip prompting; unprovided keys
      fall back to interactive-or-default per the two modes above. Explicit answers always win.
@@ -98,8 +100,8 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
   descriptor (or an explicit `prompt: false` descriptor) in `templates/catalog.yaml`, and no
   descriptor names a var that appears in no template.
 - `inv: init-noninteractive-default` — `awf init` with a non-TTY stdin and no `--set`/`--answers`
-  seeds every var to its descriptor default, byte-identical to the pre-feature seed-empty output for
-  empty defaults, preserving scriptable init.
+  seeds every var empty (no descriptor default applied), byte-identical to the pre-feature seed-empty
+  output, preserving scriptable init.
 - `inv: describe-read-only` — `awf init --describe` writes no file under the target root and emits
   the descriptor set as valid JSON on stdout.
 - `inv: explicit-answers-win` — a value supplied via `--set` or `--answers` is used verbatim and
@@ -110,8 +112,8 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
 - **Out-of-the-box agentic onboarding.** An agent installs awf, runs `awf init --describe`, decides
   values, and runs `awf init --answers` — no clone of the awf repo, no hand-editing generated
   config. Humans on a terminal get guided prompts; CI and scripts stay non-interactive and
-  deterministic — the non-TTY path never prompts, its output matches today wherever a descriptor
-  default is empty, and differs only by any non-empty defaults.
+  deterministic — the silent path never prompts and its output is byte-identical to today's
+  seed-empty output, since descriptor defaults pre-fill prompts only and are never applied silently.
 - **No config-tree schema bump.** `vars` descriptors live in the embedded `templates/catalog.yaml`
   (non-strict decode), and the generated `config.yaml` keeps its shape. `migrate.Current()` is
   unchanged; existing adopters need no `awf upgrade`, and the schema-version gate in `awf check` is
