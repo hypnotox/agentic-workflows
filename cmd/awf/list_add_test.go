@@ -217,6 +217,11 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	if code := run([]string{"awf", "remove", "skill"}, &out, &errb); code != 2 {
 		t.Fatalf("expected remove usage error, code=%d", code)
 	}
+	// remove with extra positionals → usage (Phase 3: not silently ignored).
+	errb.Reset()
+	if code := run([]string{"awf", "remove", "skill", "tdd", "extra"}, &out, &errb); code != 2 {
+		t.Fatalf("expected remove extra-positional usage error, code=%d", code)
+	}
 	// list with kind.
 	errb.Reset()
 	if code := run([]string{"awf", "list", "skill"}, &out, &errb); code != 0 {

@@ -94,10 +94,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 			cmdErr = &usageErr{"usage: awf add <kind> <name>"}
 		}
 	case "remove":
-		if len(args) < 4 {
-			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
-		} else {
+		switch len(args) {
+		case 4:
 			cmdErr = runRemove(cwd, args[2], args[3], stdout)
+		default:
+			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
 		}
 	case "setup":
 		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
