@@ -1,3 +1,5 @@
+# Implementation complete (2026-06-28)
+
 # Plan: config-serialization ownership + four cleanups
 
 **Design:** [ADR-0026](../decisions/0026-config-serialization-ownership.md) (config serialization). The
