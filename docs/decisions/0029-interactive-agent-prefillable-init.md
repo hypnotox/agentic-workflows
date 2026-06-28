@@ -28,10 +28,11 @@ values it can fill; guidance that lives only in the awf repo's docs or skills fa
 Two facts block both a human prompt and an agent option-set today: vars carry **no metadata** (they
 are bare names scraped from templates — no description, default, or option list), and `awf init` has
 no mechanism to receive values. ADR-0022 weighed "interactive per-skill prompts at init" and set it
-aside to keep init **non-interactive and scriptable**. This ADR revisits that narrowly: it preserves
-the non-interactive default byte-for-byte and adds interactivity only when stdin is a terminal, plus
-a fully non-interactive path for agents and scripts — so the scriptability the rejection protected
-is untouched. ADR-0022's curated-core Decision is unaffected; only its rejection of *any*
+aside to keep init **non-interactive and scriptable**. This ADR revisits that narrowly: it keeps the
+non-interactive path deterministic and prompt-free, adds interactivity only when stdin is a terminal,
+plus a fully non-interactive path for agents and scripts — so the scriptability the rejection
+protected is preserved (the non-interactive output stays byte-identical to today wherever a
+descriptor's default is empty; see Invariants). ADR-0022's curated-core Decision is unaffected; only its rejection of *any*
 interactivity is superseded in reasoning (`related`, not `supersedes`).
 
 Grounding-check confirmations against the codebase: `ScaffoldConfig` seeds via
@@ -55,8 +56,10 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
    - **Interactive** — when stdin is a TTY and no answers are supplied, `awf init` walks the
      descriptors as prompts, each pre-filled with its default.
    - **Non-interactive default** — when stdin is not a TTY and no answers are supplied, each value is
-     seeded to its descriptor default (empty string where none), producing output byte-identical to
-     today's seed-empty behaviour. This is the path CI and scripts hit.
+     seeded to its descriptor default (empty string where none), with no prompting. Where every
+     consulted descriptor's default is empty this is byte-identical to today's seed-empty output;
+     where a descriptor carries a non-empty default the generated config differs from today by that
+     value. This is the path CI and scripts hit, and it stays deterministic and prompt-free.
    - **Explicit answers** — `--set key=value` (repeatable) and `--answers <file.json|yaml>` supply
      values in any TTY state. Provided keys are used verbatim and skip prompting; unprovided keys
      fall back to interactive-or-default per the two modes above. Explicit answers always win.
@@ -72,7 +75,10 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
    the map (empty when absent), applies any catalog trim over the ADR-0022 curated-core default, and
    writes the chosen invariants marker/globs. The completeness guarantee of ADR-0022
    (`scaffold-seeds-all-vars`) is preserved: every referenced var still appears, now carrying a value
-   rather than `""`.
+   rather than `""`. ADR-0022's `scaffold-core-only` guarantee is likewise preserved on the default
+   path: with no catalog-trim selection, `ScaffoldConfig` still enables exactly the curated core — its
+   backing test calls `ScaffoldConfig` with no trim and is unaffected. A trim selection is an explicit
+   opt-in that may add non-core targets beyond that default-case guarantee.
 
 5. **Descriptor↔var parity is gated.** A test asserts that every var returned by
    `render.ReferencedVars` over the catalog templates has a matching descriptor — or an explicit
@@ -103,16 +109,21 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
 
 - **Out-of-the-box agentic onboarding.** An agent installs awf, runs `awf init --describe`, decides
   values, and runs `awf init --answers` — no clone of the awf repo, no hand-editing generated
-  config. Humans on a terminal get guided prompts; CI and scripts are unaffected because the default
-  path is unchanged.
+  config. Humans on a terminal get guided prompts; CI and scripts stay non-interactive and
+  deterministic — the non-TTY path never prompts, its output matches today wherever a descriptor
+  default is empty, and differs only by any non-empty defaults.
 - **No config-tree schema bump.** `vars` descriptors live in the embedded `templates/catalog.yaml`
   (non-strict decode), and the generated `config.yaml` keeps its shape. `migrate.Current()` is
   unchanged; existing adopters need no `awf upgrade`, and the schema-version gate in `awf check` is
-  unaffected.
+  unaffected. The `vars` block is catalog metadata that renders to no file, so the lock/manifest
+  hashes are unaffected as well — the config, render, manifest, and migrate consumers all see
+  unchanged shapes.
 - **New surfaces to maintain.** The catalog gains a `vars` block (kept honest by
   `var-descriptor-parity`); the CLI gains `--describe`, `--set`, and `--answers`, which requires the
   flag parser to support a repeatable value flag (an implementation detail for the plan). TTY
-  detection uses the standard library, so no dependency is added.
+  detection uses the standard library; whether the interactive prompter — notably the `multiselect`
+  widget — can stay pure-stdlib or needs a small TUI dependency is left to the plan. The
+  non-interactive, `--describe`, and `--set`/`--answers` paths add no dependency regardless.
 - **ADR-0022 reasoning revisited, not its decision.** The curated-core default stands; interactivity
   is additive and TTY-gated, so the "breaks scriptable init" objection no longer applies. Recorded
   as `related`, not a supersede.
