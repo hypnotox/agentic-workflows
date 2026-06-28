@@ -6,7 +6,7 @@ description: Use to write an implementation plan for a complex {{ .prefix }} tas
 # {{ .prefix }}-writing-plans
 
 <!-- awf:section positioning -->
-Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
+Writes a plan to `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md` per the {{ .prefix }} plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist) — a plan may link zero or more. Do not duplicate rationale — link.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -74,9 +74,10 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 <!-- awf:end -->
 
 <!-- awf:section plan-resync -->
+- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `{{ .prefix }}-proposing-adr` (or amend a still-`Proposed` ADR via `{{ .prefix }}-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`{{ .prefix }}-reviewing-plan-resync`) reconciles any resulting drift before implementation.
 <!-- awf:end -->
 
 <!-- awf:section notes -->
-- The plan is the execution record. The design lives in the linked ADR. Do not duplicate design rationale in the plan — link to the ADR instead.
+- The plan is the execution record. The design lives in the linked ADR(s). Do not duplicate design rationale in the plan — link to the ADR(s) instead.
 - Plans stay in the repo permanently after freezing. They are the historical record of how a complex change rolled out.
 <!-- awf:end -->

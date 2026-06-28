@@ -7,7 +7,7 @@ description: Use to write an implementation plan for a complex awf task under do
 # awf-writing-plans
 
 <!-- awf:edit positioning — default; create .awf/skills/parts/writing-plans/positioning.md to override -->
-Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR (when one exists). Do not duplicate rationale — link.
+Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist) — a plan may link zero or more. Do not duplicate rationale — link.
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 ## When to invoke
@@ -63,8 +63,8 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 - Plans are mutable while the corresponding ADR is `Proposed` (or while non-ADR implementation is in flight); they freeze when the ADR flips to `Accepted`/`Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
 
 <!-- awf:edit plan-resync — default; create .awf/skills/parts/writing-plans/plan-resync.md to override -->
-
+- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `awf-proposing-adr` (or amend a still-`Proposed` ADR via `awf-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`awf-reviewing-plan-resync`) reconciles any resulting drift before implementation.
 
 <!-- awf:edit notes — default; create .awf/skills/parts/writing-plans/notes.md to override -->
-- The plan is the execution record. The design lives in the linked ADR. Do not duplicate design rationale in the plan — link to the ADR instead.
+- The plan is the execution record. The design lives in the linked ADR(s). Do not duplicate design rationale in the plan — link to the ADR(s) instead.
 - Plans stay in the repo permanently after freezing. They are the historical record of how a complex change rolled out.

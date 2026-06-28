@@ -51,7 +51,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 
 <!-- awf:edit terminal-handoff — default; create .awf/skills/parts/brainstorming/terminal-handoff.md to override -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
-   - **Load-bearing + complex** → invoke `awf-proposing-adr` first (which chains through `awf-reviewing-adr`); once the ADR is settled, invoke `awf-writing-plans`.
+   - **Load-bearing + complex** → invoke `awf-proposing-adr` first (which chains through `awf-reviewing-adr`); once the ADR(s) are settled, invoke `awf-writing-plans`.
    - **Load-bearing + simple** → invoke `awf-proposing-adr` only; implement directly after the ADR is committed.
    - **Complex but not load-bearing** → invoke `awf-writing-plans` only.
    - **Neither** → implement directly without a plan or ADR.

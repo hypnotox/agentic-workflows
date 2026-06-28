@@ -49,7 +49,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 
 <!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
-   - If a linked ADR exists (named in the plan header or the session context), invoke `awf-reviewing-plan-resync` to catch plan-vs-finalised-ADR drift.
+   - If at least one linked ADR exists (named in the plan header or the session context), invoke `awf-reviewing-plan-resync` to catch plan-vs-finalised-ADR(s) drift.
    - If no ADR exists, the chain proceeds directly to implementation.
 
 ## Notes
