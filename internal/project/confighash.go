@@ -1,0 +1,54 @@
+package project
+
+import (
+	"os"
+	"path/filepath"
+	"sort"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+
+	"gopkg.in/yaml.v3"
+)
+
+// consumedParts returns the absolute paths of the convention parts a target
+// consumed; editing any reflags the target's drift.
+func (p *Project) consumedParts(kind, target string, plan map[string]render.SectionPlan) []string {
+	var paths []string
+	for sec, sp := range plan {
+		if sp.HasPart {
+			paths = append(paths, p.Cfg.PartPath(kind, target, sec))
+		}
+	}
+	return paths
+}
+
+// targetConfigHash projects the drift signal onto one rendered file: the prefix, the
+// subset of vars the assembled template references, the target's sidecar (marshalled),
+// and the bytes of every convention part it consumed — in deterministic order.
+func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
+	refs := render.ReferencedVars(assembled)
+	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
+	vs := map[string]any{}
+	for _, r := range refs {
+		vs[r] = p.Cfg.Vars[r]
+	}
+	proj["vars"] = vs
+	proj["sidecar"] = sc
+	sort.Strings(partPaths)
+	parts := map[string]string{}
+	for _, pp := range partPaths {
+		b, err := os.ReadFile(pp)
+		if err != nil {
+			return "", err
+		}
+		parts[filepath.Base(filepath.Dir(pp))+"/"+filepath.Base(pp)] = manifest.Hash(b)
+	}
+	proj["parts"] = parts
+	enc, err := yaml.Marshal(proj)
+	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here
+		return "", err
+	}
+	return manifest.Hash(enc), nil
+}
