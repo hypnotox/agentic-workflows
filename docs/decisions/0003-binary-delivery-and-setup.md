@@ -1,8 +1,8 @@
 ---
-status: Implemented
+status: Superseded by ADR-0032
 date: 2026-06-24
 supersedes: []
-superseded_by: ""
+superseded_by: "0032"
 tags: [tooling]
 related: [0002]
 domains: [tooling]

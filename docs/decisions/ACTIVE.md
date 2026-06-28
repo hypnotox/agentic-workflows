@@ -7,7 +7,6 @@
 ## Implemented
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](0002-static-linting-and-x-command-runner.md) — Implemented
-- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Implemented
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](0004-agents-md-template-and-docs-module.md) — Implemented
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](0005-docsdir-layout-and-builtin-active-md.md) — Implemented
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](0006-frontmatter-parser-and-skill-validation.md) — Implemented
@@ -39,3 +38,8 @@
 ## Proposed
 
 - [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) — Proposed
+- [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Proposed
+
+## Superseded by ADR-0032
+
+- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
