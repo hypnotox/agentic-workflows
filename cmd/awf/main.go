@@ -10,13 +10,24 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
 
 var getwd = os.Getwd
+
+var stdin io.Reader = os.Stdin
+
+// isInteractive reports whether stdin is a terminal (so init should prompt).
+var isInteractive = func() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
 
 // run dispatches a subcommand and returns a process exit code. All user-facing
 // output goes to the injected writers so the dispatch is unit-testable.
@@ -28,6 +39,9 @@ Commands:
   init         Scaffold .awf/, render the workflow-core set, and activate git hooks
                  --force        overwrite colliding files, backing each up to <path>.awf-bak
                  --force-hooks  take over an existing core.hooksPath (husky/lefthook)
+                 --describe     print the fillable value descriptors as JSON and exit
+                 --set k=v      set a value non-interactively (repeatable)
+                 --answers FILE read values from a JSON/YAML answers file
   sync         Re-render after a template or config change
   check        Fail on stale or hand-edited rendered output
   list [<kind>]        Show targets and their per-project state (all kinds, or one)
@@ -67,7 +81,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var cmdErr error
 	switch args[1] {
 	case "init":
-		cmdErr = runInit(cwd, hasFlag(args, "--force"), hasFlag(args, "--force-hooks"), stdout, stderr)
+		cmdErr = runInit(cwd, hasFlag(args, "--force"), hasFlag(args, "--force-hooks"),
+			hasFlag(args, "--describe"), setFlags(args), valueFlag(args, "--answers"),
+			stdout, stderr)
 	case "sync":
 		cmdErr = runSync(cwd, stdout)
 	case "check":
@@ -135,7 +151,7 @@ type argSpec struct {
 }
 
 var argSpecs = map[string]argSpec{
-	"init":       {boolFlags: []string{"--force", "--force-hooks"}, maxPos: 0},
+	"init":       {boolFlags: []string{"--force", "--force-hooks", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
 	"sync":       {maxPos: 0},
 	"check":      {maxPos: 0},
 	"invariants": {maxPos: 0},
@@ -188,23 +204,71 @@ func hasFlag(args []string, flag string) bool {
 // baseFlag returns the value after --base in args[2:], or "" if it is absent or
 // has no following value.
 func baseFlag(args []string) string {
+	return valueFlag(args, "--base")
+}
+
+// valueFlag returns the value after the first occurrence of flag in args[2:], or
+// "" if it is absent or has no following value.
+func valueFlag(args []string, flag string) string {
 	rest := args[2:]
 	for i, a := range rest {
-		if a == "--base" && i+1 < len(rest) {
+		if a == flag && i+1 < len(rest) {
 			return rest[i+1]
 		}
 	}
 	return ""
 }
 
-func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) error {
+// setFlags returns every value following a --set occurrence in args[2:].
+func setFlags(args []string) []string {
+	var out []string
+	rest := args[2:]
+	for i, a := range rest {
+		if a == "--set" && i+1 < len(rest) {
+			out = append(out, rest[i+1])
+		}
+	}
+	return out
+}
+
+func runInit(root string, force, forceHooks, describe bool, sets []string, answersFile string, stdout, stderr io.Writer) error {
+	cat, err := catalog.Load(templates.FS)
+	if err != nil { // coverage-ignore: catalog.Load over the embedded FS cannot fail at runtime
+		return err
+	}
+	if describe {
+		out, err := initspec.Describe(cat.Vars)
+		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
+			return err
+		}
+		fmt.Fprintln(stdout, string(out))
+		return nil
+	}
+	answers := map[string]string{}
+	if answersFile != "" {
+		b, err := os.ReadFile(answersFile)
+		if err != nil {
+			return fmt.Errorf("awf init: read --answers: %w", err)
+		}
+		if answers, err = initspec.ParseAnswersFile(b); err != nil {
+			return err
+		}
+	}
+	if err := initspec.MergeSetFlags(answers, sets); err != nil {
+		return err
+	}
+	vars, inv, err := initspec.Resolve(cat.Vars, answers, stdin, stdout, isInteractive())
+	if err != nil {
+		return err
+	}
+
 	cfgPath := filepath.Join(root, ".awf", "config.yaml")
 	scaffolded := false
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}

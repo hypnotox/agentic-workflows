@@ -323,7 +323,7 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
 	}
 }
@@ -414,7 +414,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(root, false, false, io.Discard, io.Discard); err != nil {
+	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
@@ -507,7 +507,7 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err == nil {
 		t.Fatal("expected init to refuse on collision")
 	}
 	// The scaffolded config.yaml is rolled back...

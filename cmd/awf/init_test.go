@@ -1,0 +1,145 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// forceNonInteractive pins the isInteractive seam to false for the test, so the
+// silent resolution path runs deterministically regardless of the real stdin.
+func forceNonInteractive(t *testing.T) {
+	t.Helper()
+	orig := isInteractive
+	isInteractive = func() bool { return false }
+	t.Cleanup(func() { isInteractive = orig })
+}
+
+// readConfig returns the scaffolded .awf/config.yaml under root.
+func readInitConfig(t *testing.T, root string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	return string(b)
+}
+
+// TestInitDescribeReadOnly asserts `awf init --describe` prints the descriptor
+// schema as JSON and writes nothing (no .awf/ created).
+// invariant: describe-read-only
+func TestInitDescribeReadOnly(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
+		t.Fatalf("init --describe: exit %d (%s)", code, errb.String())
+	}
+	var parsed struct {
+		Descriptors []map[string]any `json:"descriptors"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
+		t.Fatalf("describe output is not valid JSON: %v\n%s", err, out.String())
+	}
+	if len(parsed.Descriptors) == 0 {
+		t.Error("describe emitted no descriptors")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
+		t.Errorf(".awf/ should not exist after --describe (err=%v)", err)
+	}
+}
+
+// TestInitExplicitAnswersWin asserts a --set value lands in the scaffolded config.
+// invariant: explicit-answers-win
+func TestInitExplicitAnswersWin(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out, &errb); code != 0 {
+		t.Fatalf("init --set: exit %d (%s)", code, errb.String())
+	}
+	if cfg := readInitConfig(t, root); !strings.Contains(cfg, "gateCmd: make gate") {
+		t.Errorf("config missing gateCmd override:\n%s", cfg)
+	}
+}
+
+// TestInitNonInteractiveDefault asserts the silent (non-TTY, no-answers) path
+// seeds every var empty and writes no invariants config — byte-identical to the
+// pre-feature seed-empty output.
+// invariant: init-noninteractive-default
+func TestInitNonInteractiveDefault(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("init: exit %d (%s)", code, errb.String())
+	}
+	cfg := readInitConfig(t, root)
+	if !strings.Contains(cfg, `gateCmd: ""`) {
+		t.Errorf("expected gateCmd seeded empty:\n%s", cfg)
+	}
+	if strings.Contains(cfg, "invariants:") {
+		t.Errorf("silent init should not write an invariants config:\n%s", cfg)
+	}
+}
+
+// TestInitAnswersFile asserts values come from a JSON answers file.
+func TestInitAnswersFile(t *testing.T) {
+	root := t.TempDir()
+	swapGetwd(t, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	ans := filepath.Join(t.TempDir(), "answers.json")
+	if err := os.WriteFile(ans, []byte(`{"testCmd":"go test ./..."}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--answers", ans}, &out, &errb); code != 0 {
+		t.Fatalf("init --answers: exit %d (%s)", code, errb.String())
+	}
+	if cfg := readInitConfig(t, root); !strings.Contains(cfg, "testCmd: go test ./...") {
+		t.Errorf("config missing testCmd from answers file:\n%s", cfg)
+	}
+}
+
+func TestInitErrorPaths(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		pre  func(root string) []string // optional: returns extra args after creating files
+	}{
+		{name: "bad --set", args: []string{"awf", "init", "--set", "noequals"}},
+		{name: "missing --answers file", args: []string{"awf", "init", "--answers", "/nonexistent/answers.json"}},
+		{name: "half-set invariants", args: []string{"awf", "init", "--set", "invariantsMarker=//"}},
+		{name: "non-map answers", pre: func(root string) []string {
+			f := filepath.Join(root, "bad.yaml")
+			_ = os.WriteFile(f, []byte("- a\n- b\n"), 0o644)
+			return []string{"awf", "init", "--answers", f}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			swapGetwd(t, func() (string, error) { return root, nil })
+			forceNonInteractive(t)
+			args := tc.args
+			if tc.pre != nil {
+				args = tc.pre(root)
+			}
+			var out, errb bytes.Buffer
+			if code := run(args, &out, &errb); code == 0 {
+				t.Fatalf("expected non-zero exit for %s, got 0", tc.name)
+			}
+		})
+	}
+}
+
+// TestIsInteractive exercises the real isInteractive seam (the result depends on
+// whether the test's stdin is a terminal; we only assert it runs without panic).
+func TestIsInteractive(t *testing.T) {
+	t.Logf("isInteractive() = %v", isInteractive())
+}
