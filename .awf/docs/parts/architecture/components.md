@@ -1,6 +1,6 @@
 ## Components
 
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup`, `upgrade`
+- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `upgrade`
   subcommands. `sync`/`check` enforce the schema-generation gate (ADR-0010) before opening the project.
 - **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)

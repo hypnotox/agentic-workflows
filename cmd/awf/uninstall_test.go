@@ -45,27 +45,3 @@ func TestUninstallNoLockErrors(t *testing.T) {
 		t.Error("expected error when no lock is present")
 	}
 }
-
-func TestUninstallUnsetsAwfHooks(t *testing.T) {
-	root := scaffoldProject(t)
-	gitInit(t, root)
-	seedHooksPath(t, root, ".githooks")
-	if err := runUninstall(root, io.Discard); err != nil {
-		t.Fatalf("runUninstall: %v", err)
-	}
-	if got := readHooksPath(t, root); got != "" {
-		t.Errorf("core.hooksPath should be unset, got %q", got)
-	}
-}
-
-func TestUninstallLeavesForeignHooks(t *testing.T) {
-	root := scaffoldProject(t)
-	gitInit(t, root)
-	seedHooksPath(t, root, ".husky")
-	if err := runUninstall(root, io.Discard); err != nil {
-		t.Fatalf("runUninstall: %v", err)
-	}
-	if got := readHooksPath(t, root); got != ".husky" {
-		t.Errorf("foreign core.hooksPath = %q, want .husky (untouched)", got)
-	}
-}

@@ -9,12 +9,12 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-skills_%26_agents-D97757)](https://www.anthropic.com/claude-code)
 
 `awf` renders a standardised, opinionated agentic-development workflow into any project — a suite of
-[Claude Code](https://www.anthropic.com/claude-code) skills, independent review agents, git hooks,
+[Claude Code](https://www.anthropic.com/claude-code) skills, independent review agents,
 and documentation — from a small committed config tree, and wraps the probabilistic agent in
 deterministic checks (drift, frontmatter, invariant backing, dead links).
 
 You keep a `.awf/` config tree in your repo; `awf` renders it into the files your agent reads
-(`.claude/`, `AGENTS.md`, `docs/`, `.githooks/`), and tells you the moment the rendered output drifts
+(`.claude/`, `AGENTS.md`, `docs/`), and tells you the moment the rendered output drifts
 from the config that produced it.
 
 > **Status:** pre-1.0 and evolving; the rendered standard is language-agnostic, the `awf` tool is a
@@ -45,8 +45,7 @@ impossible to review. They drift from how the project actually works, and nothin
 │                 + vars          ├── CLAUDE.md            imports AGENTS.md
 ├── <kind>/<name>.yaml  sidecars  ├── .claude/skills/…     workflow skills
 └── <kind>/parts/…/…    overrides ├── .claude/agents/…     review agents
-                                  ├── docs/…               project docs
-                                  └── .githooks/…          gate hooks
+                                  └── docs/…               project docs
 ```
 
 You change the config and re-render; you never hand-edit a rendered file. `awf check` fails if a
@@ -73,31 +72,30 @@ Requires Go 1.26+.
 ## Quickstart
 
     cd your-project
-    awf init             # scaffold .awf/, render the workflow-core set, activate git hooks
+    awf init             # scaffold .awf/, render the workflow-core set
     awf check            # verify rendered output is in sync
     awf list             # see which targets are enabled vs available
     awf add skill tdd    # opt a skill in
     awf add doc pitfalls # opt a doc in
 
 `awf init` enables a curated **workflow core** by default — the brainstorm → ADR → plan → implement →
-review chain skills, the review agents, the workflow docs, and the gate hooks. Everything else in the
+review chain skills, the review agents, and the workflow docs. Everything else in the
 catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` to opt back out).
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `awf init` | Scaffold `.awf/`, render, and activate git hooks. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`); `--force-hooks` takes over an existing `core.hooksPath`. Prompts for config values on a TTY; `--describe` prints the fillable values as JSON (for agents), and `--set k=v` / `--answers FILE` supply them non-interactively. `--set skills=`/`--set docs=` trim which catalog skills/docs are enabled (core pre-selected). |
+| `awf init` | Scaffold `.awf/` and render. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`). Prompts for config values on a TTY; `--describe` prints the fillable values as JSON (for agents), and `--set k=v` / `--answers FILE` supply them non-interactively. `--set skills=`/`--set docs=` trim which catalog skills/docs are enabled (core pre-selected). |
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one). |
 | `awf add <kind> <name>` | Enable a target — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`. |
 | `awf remove <kind> <name>` | Disable a target (a catalog target, or a freeform domain). |
-| `awf setup` | Activate git hooks (`core.hooksPath`); `--force-hooks` to override an existing value. |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
 | `awf upgrade` | Migrate the `.awf/` config tree to the current schema. |
-| `awf uninstall` | Remove awf's generated files and unset `core.hooksPath` (keeps your `.awf/` config). |
+| `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
 | `awf version` | Print the awf version. |
 
 Run `awf help` for the full synopsis.
@@ -108,11 +106,14 @@ Run `awf help` for the full synopsis.
 `AGENTS.md`) is already present and not awf-managed, init refuses and lists the collisions. Then:
 
 - **`awf init --force`** overwrites them, backing each original up to `<path>.awf-bak` first.
-- **`awf setup`** refuses to repoint a `core.hooksPath` that already belongs to another hooks manager
-  (husky, lefthook) unless you pass `--force-hooks`.
 - **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
-- **Back out anytime** — `awf uninstall` removes everything awf generated and unsets its hook path,
-  leaving your `.awf/` config in place.
+- **Back out anytime** — `awf uninstall` removes everything awf generated, leaving your `.awf/` config in place.
+
+awf does **not** install or manage git hooks. To run the gate automatically, install one yourself
+— point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or add
+a script under `.git/hooks/`. If you adopted an earlier awf that ran `awf setup`, your repo's
+`core.hooksPath` still points at the no-longer-rendered `.githooks/`; run `git config --unset
+core.hooksPath` (or keep the now hand-owned hook files) after upgrading.
 
 ## Documentation
 

@@ -36,9 +36,8 @@ const helpText = `awf — render agentic-workflow tooling into a project from a 
 Usage: awf <command> [flags]
 
 Commands:
-  init         Scaffold .awf/, render the workflow-core set, and activate git hooks
+  init         Scaffold .awf/ and render the workflow-core set
                  --force        overwrite colliding files, backing each up to <path>.awf-bak
-                 --force-hooks  take over an existing core.hooksPath (husky/lefthook)
                  --describe     print the fillable value descriptors as JSON and exit
                  --set k=v      set a value non-interactively (repeatable)
                  --answers FILE read values from a JSON/YAML answers file
@@ -47,19 +46,17 @@ Commands:
   list [<kind>]        Show targets and their per-project state (all kinds, or one)
   add <kind> <name>    Enable a target — kind ∈ {skill, agent, doc, domain}
   remove <kind> <name> Disable a target (a freeform domain, or a catalog target)
-  setup        Activate git hooks (core.hooksPath=.githooks)
-                 --force-hooks  take over an existing core.hooksPath
   audit        Report workflow-conformance findings over the branch (advisory)
                  --base <ref>   compare against <ref> instead of the configured base branch
   invariants   Report Implemented-ADR invariant slugs lacking a backing comment
   upgrade      Migrate the .awf/ config tree to the current schema
-  uninstall    Remove awf's generated files and unset core.hooksPath (keeps .awf/)
+  uninstall    Remove awf's generated files (keeps .awf/)
   version      Print the awf version
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|remove|setup|upgrade|uninstall|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|remove|upgrade|uninstall|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -81,9 +78,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var cmdErr error
 	switch args[1] {
 	case "init":
-		cmdErr = runInit(cwd, hasFlag(args, "--force"), hasFlag(args, "--force-hooks"),
+		cmdErr = runInit(cwd, hasFlag(args, "--force"),
 			hasFlag(args, "--describe"), setFlags(args), valueFlag(args, "--answers"),
-			stdout, stderr)
+			stdout)
 	case "sync":
 		cmdErr = runSync(cwd, stdout)
 	case "check":
@@ -114,8 +111,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		default:
 			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
 		}
-	case "setup":
-		cmdErr = runSetup(cwd, hasFlag(args, "--force-hooks"), stdout, stderr)
 	case "upgrade":
 		cmdErr = runUpgrade(cwd, stdout)
 	case "uninstall":
@@ -151,7 +146,7 @@ type argSpec struct {
 }
 
 var argSpecs = map[string]argSpec{
-	"init":       {boolFlags: []string{"--force", "--force-hooks", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
+	"init":       {boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
 	"sync":       {maxPos: 0},
 	"check":      {maxPos: 0},
 	"invariants": {maxPos: 0},
@@ -159,7 +154,6 @@ var argSpecs = map[string]argSpec{
 	"list":       {maxPos: 1},
 	"add":        {maxPos: -1},
 	"remove":     {maxPos: -1},
-	"setup":      {boolFlags: []string{"--force-hooks"}, maxPos: 0},
 	"upgrade":    {maxPos: 0},
 	"uninstall":  {maxPos: 0},
 	"version":    {maxPos: 0},
@@ -231,7 +225,7 @@ func setFlags(args []string) []string {
 	return out
 }
 
-func runInit(root string, force, forceHooks, describe bool, sets []string, answersFile string, stdout, stderr io.Writer) error {
+func runInit(root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil { // coverage-ignore: catalog.Load over the embedded FS cannot fail at runtime
 		return err
@@ -307,9 +301,6 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
 	}
 	if err := runSync(root, stdout); err != nil {
 		return err
-	}
-	if err := runSetup(root, forceHooks, stdout, stderr); err != nil {
-		fmt.Fprintln(stderr, "awf init: hook setup skipped:", err)
 	}
 	return nil
 }

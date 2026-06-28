@@ -169,18 +169,6 @@ func TestRunDispatchArms(t *testing.T) {
 			t.Fatalf("init: expected exit 0, got %d (%s)", code, errb.String())
 		}
 	})
-	t.Run("setup", func(t *testing.T) {
-		root := scaffoldProject(t)
-		if err := os.MkdirAll(filepath.Join(root, ".githooks"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		swapGetwd(t, func() (string, error) { return root, nil })
-		var out, errb bytes.Buffer
-		// Not a git repo -> setup warns and is a no-op -> exit 0.
-		if code := run([]string{"awf", "setup"}, &out, &errb); code != 0 {
-			t.Fatalf("setup: expected exit 0, got %d (%s)", code, errb.String())
-		}
-	})
 }
 
 // TestHandlersOnBareDirError covers each handler's project.Open error return.
@@ -322,7 +310,7 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
 	}
 }
@@ -413,7 +401,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err != nil {
+	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
@@ -506,7 +494,7 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, false, nil, "", io.Discard, io.Discard); err == nil {
+	if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init to refuse on collision")
 	}
 	// The scaffolded config.yaml is rolled back...

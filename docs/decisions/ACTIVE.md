@@ -35,10 +35,7 @@
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](0029-interactive-agent-prefillable-init.md) — Implemented
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](0030-prebuilt-binary-distribution-and-release.md) — Implemented
 - [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) — Implemented
-
-## Proposed
-
-- [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Proposed
+- [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Implemented
 
 ## Superseded by ADR-0032
 
