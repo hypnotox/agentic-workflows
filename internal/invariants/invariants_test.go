@@ -301,6 +301,55 @@ func TestCheckScanReadError(t *testing.T) {
 	}
 }
 
+func writeRetiringADR(t *testing.T, dir, name, status, retires, invBody string) {
+	t.Helper()
+	content := "---\nstatus: " + status + "\ndate: 2026-06-25\ntags: [x]\nretires_invariants: [" + retires + "]\n---\n# ADR-X: T\n## Invariants\n" + invBody + "\n## Consequences\nc\n"
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// invariant: inv-retirement-drops-slug
+func TestCheckRetirementDropsSlug(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-retired` — x.")
+	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-retired", "- a textual invariant with no slug.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 0 {
+		t.Errorf("a slug retired by an Implemented ADR must be dropped from enforcement (unbacked is fine), got %#v", f)
+	}
+}
+
+// invariant: inv-retirement-implemented-only
+func TestCheckRetirementImplementedOnly(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-live` — x.")
+	writeRetiringADR(t, dir, "0002-b.md", "Proposed", "fixture-live", "- a textual invariant with no slug.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-live" || f[0].Status != invariants.Unbacked {
+		t.Errorf("a Proposed ADR's retirement must not drop the slug, got %#v", f)
+	}
+}
+
+// invariant: inv-retirement-dangling-errors
+func TestCheckRetirementDangling(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-real` — x.")
+	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost", "- a textual invariant with no slug.")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	if _, err := invariants.Check(dir, root, cfg); err == nil || !strings.Contains(err.Error(), "fixture-ghost") {
+		t.Errorf("a dangling retirement must error mentioning the slug, got %v", err)
+	}
+}
+
 // invariant: invariants-zero-slugs-clean
 func TestCheckZeroSlugsClean(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()

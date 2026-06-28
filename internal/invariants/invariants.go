@@ -79,6 +79,20 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 			required[slug] = a.Filename
 		}
 	}
+	// Retirements: an Implemented ADR may retire an inv slug it removed the
+	// backing for (ADR-0031). A retired slug is dropped from required; a slug
+	// retired but declared by no Implemented ADR is a dangling retirement.
+	for _, a := range adrs {
+		if a.Status != "Implemented" {
+			continue
+		}
+		for _, slug := range a.RetiresInvariants {
+			if _, ok := required[slug]; !ok {
+				return nil, fmt.Errorf("dangling retirement: ADR %s retires %q, which no Implemented ADR declares as an inv slug", a.Filename, slug)
+			}
+			delete(required, slug)
+		}
+	}
 	if len(required) == 0 {
 		return nil, nil
 	}

@@ -18,14 +18,15 @@ var statusOrder = []string{"Accepted", "Implemented", "Proposed", "Superseded"}
 
 // ADR is a parsed ADR record.
 type ADR struct {
-	Number       string            // e.g. "0001"
-	Title        string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
-	Status       string            // e.g. "Accepted"
-	Filename     string            // e.g. "0001-template-overlay-rendering-engine.md"
-	Path         string            // path as globbed
-	Domains      []string          // `domains:` frontmatter (ADR-0014)
-	SupersededBy string            // `superseded_by:` frontmatter (e.g. "0008", or "")
-	Sections     map[string]string // `## ` heading -> section body
+	Number            string            // e.g. "0001"
+	Title             string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
+	Status            string            // e.g. "Accepted"
+	Filename          string            // e.g. "0001-template-overlay-rendering-engine.md"
+	Path              string            // path as globbed
+	Domains           []string          // `domains:` frontmatter (ADR-0014)
+	SupersededBy      string            // `superseded_by:` frontmatter (e.g. "0008", or "")
+	RetiresInvariants []string          // `retires_invariants:` frontmatter (ADR-0031)
+	Sections          map[string]string // `## ` heading -> section body
 }
 
 var fileRe = regexp.MustCompile(`^(\d{4})-.*\.md$`)
@@ -59,9 +60,10 @@ func ParseDir(dir string) ([]ADR, error) {
 
 // adrFrontmatter holds the YAML fields we care about.
 type adrFrontmatter struct {
-	Status       string   `yaml:"status"`
-	Domains      []string `yaml:"domains"`
-	SupersededBy string   `yaml:"superseded_by"`
+	Status            string   `yaml:"status"`
+	Domains           []string `yaml:"domains"`
+	SupersededBy      string   `yaml:"superseded_by"`
+	RetiresInvariants []string `yaml:"retires_invariants"`
 }
 
 // parse extracts status (frontmatter) and title (first `# ` heading) from one ADR.
@@ -71,7 +73,7 @@ func parse(data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	a := ADR{Status: fm.Status, Domains: fm.Domains, SupersededBy: fm.SupersededBy, Sections: sections(string(body))}
+	a := ADR{Status: fm.Status, Domains: fm.Domains, SupersededBy: fm.SupersededBy, RetiresInvariants: fm.RetiresInvariants, Sections: sections(string(body))}
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")
