@@ -28,3 +28,9 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 ## Documentation currency
 
 Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
+
+<!-- awf:edit local-hooks — from .awf/docs/parts/workflow/local-hooks.md -->
+## Local git hooks
+
+This repository keeps hand-maintained hooks under `.githooks/` (not awf-rendered): `pre-commit` runs `./x check` then `./x gate`, and `pre-push` runs `./x gate full`. Wire them once per clone with `git config core.hooksPath .githooks`. They are plain checked-in scripts — edit them directly.
+

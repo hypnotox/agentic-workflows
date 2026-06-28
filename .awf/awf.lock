@@ -226,9 +226,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:10cc25b29a177b8e17f973ed65bb11ab441fedd774f18559b8de61c1f9b79a66",
-      "configHash": "sha256:8695aa7cc1ec86bcf5afb1516c1ffb6c0f363e84eaee9ceef7acb7d6cbde049c",
-      "outputHash": "sha256:f4d81a976bc795b13b1da4dc6c08d062097d809ed5941fec7b6059ef5274aefb"
+      "templateHash": "sha256:b17ecbac9a37dd30e89cb692a49e9f04595f82ec758ad861cbe9462faae98fa8",
+      "configHash": "sha256:7144f0dfaf5ce8ce1336cc477680d1d1e8c63f8aa7caade971195b27d833c6fa",
+      "outputHash": "sha256:ee6a36183ee50c72c47d2a7c8697b25b3cda7db12d920f99511b4f765288afcc"
     }
   }
 }

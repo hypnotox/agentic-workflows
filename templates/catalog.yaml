@@ -214,7 +214,7 @@ docs:
     core: true
     title: Workflow
     desc: principles, the brainstorm/ADR/plan chain, commit discipline
-    sections: [principles, chain, commit-discipline, doc-currency]
+    sections: [principles, chain, commit-discipline, doc-currency, local-hooks]
   testing:
     title: Testing
     desc: gate tiers, test layout, what each tier covers

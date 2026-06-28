@@ -31,3 +31,9 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 
 Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
 <!-- awf:end -->
+
+<!-- awf:section local-hooks -->
+## Local git hooks
+
+awf does not install or manage git hooks. To run the gate automatically before a commit or push, install a hook yourself — point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or drop a script under `.git/hooks/`. A pre-commit hook that runs your check and gate commands keeps the green-gate rule enforced locally; `core.hooksPath` is local, uncommitted config, so each clone wires it once.
+<!-- awf:end -->
