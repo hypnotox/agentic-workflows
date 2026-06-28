@@ -92,6 +92,15 @@ func TestResolveInvariantsHalfSetErrors(t *testing.T) {
 	}
 }
 
+func TestResolveInvariantsWhitespaceGlobsIsHalfSet(t *testing.T) {
+	// A marker plus an all-whitespace/comma globs value parses to zero globs, so it
+	// is treated as half-set (error), not a marker-only source that scans nothing.
+	a := map[string]string{"invariantsMarker": "//", "invariantsGlobs": ", ,"}
+	if _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+		t.Fatal("expected error for marker with whitespace-only globs")
+	}
+}
+
 func TestDescribeNormalizesTargetAndIsValidJSON(t *testing.T) {
 	b, err := Describe(descs())
 	if err != nil {

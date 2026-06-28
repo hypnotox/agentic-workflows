@@ -83,19 +83,20 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		}
 	}
 
+	var gs []string
+	for _, g := range strings.Split(globs, ",") {
+		if g = strings.TrimSpace(g); g != "" {
+			gs = append(gs, g)
+		}
+	}
 	var inv *config.InvariantConfig
 	switch {
-	case marker == "" && globs == "":
-		// inv stays nil: no invariants config supplied.
-	case marker == "" || globs == "":
+	case marker == "" && len(gs) == 0:
+		// inv stays nil: no invariants config supplied (decide on parsed globs, so
+		// a whitespace-only globs value counts as unset).
+	case marker == "" || len(gs) == 0:
 		return nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
 	default:
-		var gs []string
-		for _, g := range strings.Split(globs, ",") {
-			if g = strings.TrimSpace(g); g != "" {
-				gs = append(gs, g)
-			}
-		}
 		inv = &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: gs, Marker: marker}}}
 	}
 	return vars, inv, nil
