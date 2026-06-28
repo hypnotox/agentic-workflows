@@ -36,9 +36,13 @@ uniform, which is why the duplication has resisted consolidation so far:
 2. **Output path differs.** Only skills and agents are *adapter* artifacts with a
    `Target`-supplied path (ADR-0016); `localOutPath` returns `""` for docs/hooks, which are
    neutral.
-3. **`domains` has no catalog.** It is freeform: `catalogNames` returns `(nil, false)` and it has
-   no declared sections, so it participates in the CLI-facing facets (key, order, enable array)
-   but not the catalog-backed ones.
+3. **`domains` has no catalog *pool*.** It is freeform: `catalogNames` returns `(nil, false)` and no
+   per-name catalog presence applies. Its *declared sections* are **not** absent, though — they come
+   from the shared `DomainDoc` singleton: `declaredSections("domains", …)` returns
+   `p.Cat.DomainDoc.Sections` (`check.go:138-139`), which `orphans()` uses to flag domain
+   convention-part sections that are not catalog-declared. So `domains` participates in the
+   CLI-facing facets (key, order, enable array) **and** in the section facet (via the singleton), but
+   not the catalog-pool facets (pool listing, per-name presence).
 
 A naive struct-of-values table cannot express these asymmetries. The existing
 `// invariant: cli-config-kinds` marker (ADR-0024, Implemented) currently backs `kindKey` as the
@@ -57,7 +61,9 @@ single enumeration of CLI kinds; any consolidation must keep that invariant back
      `map` vs `[]string` difference; `nil` for `domains` (no pool).
    - `sections func(*catalog.Catalog, name string) ([]string, bool)` — declared sections and a
      presence bool; the `bool` is `false` for a name absent from a catalog-backed pool and for
-     every `domains` name (freeform).
+     every `domains` name (freeform). For `domains` the `[]string` is **not** `nil` — it stays
+     `p.Cat.DomainDoc.Sections`, so `orphans()`'s section-orphan check is unchanged; only the
+     presence `bool` is `false` (no per-name catalog membership).
    - `outPath func(t Target, prefix, name string) string` — the rendered path; returns `""` for
      neutral kinds (docs/hooks/domains handled by their own neutral-layer formulas, unchanged).
    - `singular string` — the singular label (replacing `strings.TrimSuffix(kind, "s")` at
@@ -90,9 +96,14 @@ single enumeration of CLI kinds; any consolidation must keep that invariant back
   descriptor table; no other site hand-rolls a parallel per-kind `switch` over the kind set. A
   test enumerates the table and asserts its kind set equals the catalog's kind set plus
   `domains`, so adding a catalog kind without a descriptor entry fails.
-- `inv: cli-config-kinds` — (re-homed from ADR-0024) the descriptor table is the single
-  enumeration of CLI-addressable kinds; the `awf add`/`remove`/`list` surface resolves kinds only
-  through it.
+- **`cli-config-kinds` stays owned by ADR-0024 — only its source marker moves.** ADR-0024 remains the
+  sole declaring ADR for that slug; re-declaring it here (as a leading `inv:` bullet) would trip the
+  duplicate-slug guard in `internal/invariants` (`invariants.go:70-72` errors on a slug declared by two
+  Implemented ADRs) the moment this ADR flips to `Implemented`, and ADR-0024 is append-only so its
+  declaration cannot be removed. The implementing commit therefore adds **no** second declaration; it
+  only relocates the existing `// invariant: cli-config-kinds` comment from `kindKey` onto the
+  descriptor table's kind enumeration (Decision 5), which keeps the slug backed (the backing scan is
+  marker-location-agnostic).
 
 ## Consequences
 
