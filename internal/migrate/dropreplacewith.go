@@ -102,24 +102,7 @@ func convertSidecar(awfDir, kind, target, path string) error {
 	if !changed {
 		return nil
 	}
-	doc := map[string]any{}
-	if len(sc.Data) > 0 {
-		doc["data"] = sc.Data
-	}
-	if len(kept) > 0 {
-		doc["sections"] = kept
-	}
-	if sc.Local {
-		doc["local"] = true
-	}
-	if len(doc) == 0 {
-		return os.Remove(path)
-	}
-	out, err := yaml.Marshal(doc)
-	if err != nil { // coverage-ignore: doc holds only yaml-marshalable scalars/maps
-		return err
-	}
-	return os.WriteFile(path, out, 0o644)
+	return writeSidecarDoc(path, sc.Data, kept, sc.Local, true)
 }
 
 func conventionPartPath(awfDir, kind, target, section string) string {

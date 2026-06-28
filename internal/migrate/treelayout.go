@@ -99,20 +99,7 @@ func portSidecar(awfDir, kind, name string, sc legacySidecar) error {
 			keptSections[sec] = map[string]any{"drop": true}
 		}
 	}
-	sidecar := map[string]any{}
-	if len(sc.Data) > 0 {
-		sidecar["data"] = sc.Data
-	}
-	if len(keptSections) > 0 {
-		sidecar["sections"] = keptSections
-	}
-	if sc.Local {
-		sidecar["local"] = true
-	}
-	if len(sidecar) == 0 {
-		return nil // nothing to override → no sidecar (enabled by config.yaml array)
-	}
-	return writeYAML(filepath.Join(awfDir, kind, name+".yaml"), sidecar)
+	return writeSidecarDoc(filepath.Join(awfDir, kind, name+".yaml"), sc.Data, keptSections, sc.Local, false)
 }
 
 // portAgentsDoc re-models the agents-doc singleton: the ownership/identity
@@ -157,20 +144,7 @@ func portAgentsDoc(awfDir string, ad legacySidecar) error {
 			keptSections[sec] = map[string]any{"drop": true}
 		}
 	}
-	sidecar := map[string]any{}
-	if len(data) > 0 {
-		sidecar["data"] = data
-	}
-	if len(keptSections) > 0 {
-		sidecar["sections"] = keptSections
-	}
-	if ad.Local {
-		sidecar["local"] = true
-	}
-	if len(sidecar) == 0 {
-		return nil
-	}
-	return writeYAML(filepath.Join(awfDir, "agents-doc.yaml"), sidecar)
+	return writeSidecarDoc(filepath.Join(awfDir, "agents-doc.yaml"), data, keptSections, ad.Local, false)
 }
 
 // copyPart reads a legacy part body and writes it verbatim to its convention
@@ -187,6 +161,29 @@ func copyPart(src, dst string) error {
 		return err
 	}
 	return nil
+}
+
+// writeSidecarDoc assembles a sidecar doc {data, sections, local} and writes it to
+// path. When the doc is empty it removes path (removeIfEmpty: in-place schema
+// conversion) or is a no-op (a fresh port to a new tree, where path does not exist).
+func writeSidecarDoc(path string, data, sections map[string]any, local, removeIfEmpty bool) error {
+	doc := map[string]any{}
+	if len(data) > 0 {
+		doc["data"] = data
+	}
+	if len(sections) > 0 {
+		doc["sections"] = sections
+	}
+	if local {
+		doc["local"] = true
+	}
+	if len(doc) == 0 {
+		if removeIfEmpty {
+			return os.Remove(path)
+		}
+		return nil
+	}
+	return writeYAML(path, doc)
 }
 
 func writeYAML(path string, v any) error {
