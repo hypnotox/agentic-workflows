@@ -17,10 +17,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TestScaffoldParsesCleanly verifies that ScaffoldConfig("example") produces YAML
+// TestScaffoldParsesCleanly verifies that ScaffoldConfig("example", nil, nil) produces YAML
 // that parses cleanly under the strict config.Load decoder.
 func TestScaffoldParsesCleanly(t *testing.T) {
-	b, err := ScaffoldConfig("example")
+	b, err := ScaffoldConfig("example", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -50,7 +50,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
-	b, err := ScaffoldConfig("myproj")
+	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 // TestScaffoldEnablesAllCatalogAgents asserts that the scaffolded config enables
 // exactly the set of agents declared in the catalog.
 func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
-	b, err := ScaffoldConfig("myproj")
+	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 // TestScaffoldEnablesAllCatalogHooks asserts that the scaffolded config enables
 // every hook in the catalog.
 func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
-	b, err := ScaffoldConfig("myproj")
+	b, err := ScaffoldConfig("myproj", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestScaffoldEnablesAllCatalogHooks(t *testing.T) {
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.
 func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
-	b, err := ScaffoldConfig("example")
+	b, err := ScaffoldConfig("example", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
 // temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
-	b, err := ScaffoldConfig("testproject")
+	b, err := ScaffoldConfig("testproject", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 // TestScaffoldYAMLContainsNoPlaceholders verifies that scaffold output contains
 // no "<no value>" tokens or unrendered template actions.
 func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
-	b, err := ScaffoldConfig("example")
+	b, err := ScaffoldConfig("example", nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}

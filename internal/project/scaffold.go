@@ -19,7 +19,7 @@ import (
 // var is seeded with an empty string so that strict render (missingkey=zero +
 // <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
 // skill renders cleanly.
-func ScaffoldConfig(prefix string) ([]byte, error) {
+func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig) ([]byte, error) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
 		return nil, fmt.Errorf("scaffold: load catalog: %w", err)
@@ -77,17 +77,18 @@ func ScaffoldConfig(prefix string) ([]byte, error) {
 	hookList := make([]string, len(cat.Hooks))
 	copy(hookList, cat.Hooks)
 
-	vars := make(map[string]string, len(varNames))
+	seeded := make(map[string]string, len(varNames))
 	for _, v := range varNames {
-		vars[v] = ""
+		seeded[v] = vars[v] // resolved value, or "" for an absent/unresolved var
 	}
 	return config.MarshalSkeleton(config.Skeleton{
-		Prefix: prefix,
-		Vars:   vars,
-		Skills: skillNames,
-		Agents: agentNames,
-		Hooks:  hookList,
-		Docs:   docNames,
+		Prefix:     prefix,
+		Vars:       seeded,
+		Skills:     skillNames,
+		Agents:     agentNames,
+		Hooks:      hookList,
+		Docs:       docNames,
+		Invariants: inv,
 	})
 }
 

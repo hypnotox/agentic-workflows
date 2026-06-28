@@ -15,12 +15,13 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix string            `yaml:"prefix"`
-	Vars   map[string]string `yaml:"vars"`
-	Skills []string          `yaml:"skills"`
-	Agents []string          `yaml:"agents"`
-	Hooks  []string          `yaml:"hooks"`
-	Docs   []string          `yaml:"docs"`
+	Prefix     string            `yaml:"prefix"`
+	Vars       map[string]string `yaml:"vars"`
+	Skills     []string          `yaml:"skills"`
+	Agents     []string          `yaml:"agents"`
+	Hooks      []string          `yaml:"hooks"`
+	Docs       []string          `yaml:"docs"`
+	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
 }
 
 // MarshalSkeleton renders a fresh config.yaml from s in the canonical awf format
