@@ -159,7 +159,8 @@ func runInit(root string, force, forceHooks bool, stdout, stderr io.Writer) erro
 	if len(collisions) > 0 {
 		if !force {
 			if scaffolded {
-				os.RemoveAll(filepath.Dir(cfgPath)) // writes nothing on abort
+				_ = os.Remove(cfgPath)               // remove the config we scaffolded
+				_ = os.Remove(filepath.Dir(cfgPath)) // remove .awf only if now empty
 			}
 			return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
 				strings.Join(collisions, "\n  "))

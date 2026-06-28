@@ -469,6 +469,33 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	}
 }
 
+func TestInitRollbackPreservesExistingAwf(t *testing.T) {
+	root := t.TempDir()
+	// Pre-existing authored .awf/ content but no config.yaml -> init scaffolds config,
+	// then a collision (non-managed CLAUDE.md) forces a refusal + rollback.
+	part := filepath.Join(root, ".awf", "skills", "parts", "foo", "extra.md")
+	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, []byte("hand-authored\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runInit(root, false, false, io.Discard, io.Discard); err == nil {
+		t.Fatal("expected init to refuse on collision")
+	}
+	// The scaffolded config.yaml is rolled back...
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Error("config.yaml should have been removed on rollback")
+	}
+	// ...but the pre-existing authored content survives.
+	if _, err := os.Stat(part); err != nil {
+		t.Errorf("pre-existing .awf content must be preserved, got: %v", err)
+	}
+}
+
 func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 	root := t.TempDir()
 	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
