@@ -1,3 +1,5 @@
+# Implementation complete (2026-06-28)
+
 # Plan: Unify render loops + move init/uninstall logic out of cmd
 
 **Date:** 2026-06-28
