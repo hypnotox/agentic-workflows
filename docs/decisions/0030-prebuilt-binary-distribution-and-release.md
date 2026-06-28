@@ -49,7 +49,10 @@ Grounding discoveries that shape the design:
    "install from source (Go users)" route. The `README.md` install section is rewritten to lead with
    the binary download and move the "Requires Go 1.26+" caveat to the source path. This partially
    supersedes ADR-0003's stated delivery convention: the on-PATH assumption the hook default relies on
-   still holds; only the *acquisition method* changes. ADR-0003 stays `Implemented`.
+   still holds; only the *acquisition method* changes. That convention lived in ADR-0003's Context as a
+   **stated assumption** it explicitly disclaimed introducing ("does not introduce or alter it") — not a
+   numbered Decision item or Invariant — so none of ADR-0003's Decision items or Invariants change here.
+   ADR-0003 therefore stays `Implemented` and the linkage is `related: [0003]`, not `supersedes:`.
 
 2. **GoReleaser (v2) is the release tool.** It runs in CI via the pinned `goreleaser-action` on
    `v*` tag pushes, and `go run github.com/goreleaser/goreleaser/v2@<pinned>` is used for local
