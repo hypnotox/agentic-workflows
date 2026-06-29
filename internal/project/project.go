@@ -20,10 +20,10 @@ import (
 const Version = "0.3.1"
 
 type Project struct {
-	Root   string
-	Cfg    *config.Config
-	Cat    *catalog.Catalog
-	Target Target
+	Root    string
+	Cfg     *config.Config
+	Cat     *catalog.Catalog
+	Targets []Target
 }
 
 func Open(root string) (*Project, error) {
@@ -38,7 +38,11 @@ func Open(root string) (*Project, error) {
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
 		return nil, err
 	}
-	p := &Project{Root: root, Cfg: cfg, Cat: cat, Target: claudeTarget}
+	targets, err := resolveTargets(cfg.Targets)
+	if err != nil {
+		return nil, err
+	}
+	p := &Project{Root: root, Cfg: cfg, Cat: cat, Targets: targets}
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}

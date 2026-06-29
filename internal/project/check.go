@@ -16,9 +16,11 @@ import (
 
 // localOutPath returns the conventional output path awf would render a local
 // skill/agent to (the same formulas RenderAll uses); "" for neutral kinds.
+// Phase-5 (ADR-0037) generalizes this to every enabled target; for now it uses
+// the first target so the slice migration compiles.
 func (p *Project) localOutPath(kind, name string) string {
 	if d, ok := descriptorByPlural(kind); ok && d.outPath != nil {
-		return d.outPath(p.Target, p.Cfg.Prefix, name)
+		return d.outPath(p.Targets[0], p.Cfg.Prefix, name)
 	}
 	return ""
 }

@@ -129,7 +129,7 @@ func TestValidateFrontmatter(t *testing.T) {
 // --- localOutPath direct cases ---
 
 func TestLocalOutPath(t *testing.T) {
-	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Target: claudeTarget}
+	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget}}
 	if got := p.localOutPath("skills", "foo"); got != ".claude/skills/ex-foo/SKILL.md" {
 		t.Errorf("skills localOutPath = %q", got)
 	}

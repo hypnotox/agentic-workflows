@@ -74,15 +74,18 @@ func nonNil(m map[string]any) map[string]any {
 }
 
 // renderKindSpec drives one catalog-backed render loop (skills/agents/docs): the
-// kinds that share the sort → sidecar → skip-local → render → append shape. tid,
-// sections, and outPath derive from the target name; gate (optional, nil = always
-// render) suppresses a target — used for the skills doc-gate.
+// kinds that share the sort → sidecar → skip-local → render → append shape. tid
+// and sections derive from the artifact name; outPath also takes the adapter
+// target (ignored by neutral kinds like docs); target is the adapter this pass
+// renders for (zero for neutral kinds). gate (optional, nil = always render)
+// suppresses an artifact — used for the skills doc-gate.
 type renderKindSpec struct {
 	kind     string
 	names    []string
+	target   Target
 	tid      func(name string) string
 	sections func(name string) []string
-	outPath  func(name string) string
+	outPath  func(t Target, name string) string
 	gate     func(name string) bool
 }
 
@@ -99,7 +102,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		if spec.gate != nil && !spec.gate(name) {
 			continue
 		}
-		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(name))
+		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(spec.target, name))
 		if err != nil {
 			return nil, err
 		}
@@ -110,42 +113,50 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
-	// Skills / agents / docs share one driver (order-independent: consumers are map-keyed by path).
 	enabledDocs := sliceSet(p.Cfg.Docs)
-	for _, spec := range []renderKindSpec{
-		{
-			kind: "skills", names: p.Cfg.Skills,
-			tid:      func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
-			sections: func(n string) []string { return p.Cat.Skills[n].Sections },
-			outPath:  func(n string) string { return p.Target.SkillPath(p.Cfg.Prefix, n) },
-			// Doc-gated skill: omit from the render set when its required doc is not
-			// enabled (inv: doc-gated-skill-suppressed).
-			// invariant: doc-gated-skill-suppressed
-			gate: func(n string) bool {
-				req := p.Cat.Skills[n].RequiresDoc
-				return req == "" || enabledDocs[req]
-			},
-		},
-		{
-			kind: "agents", names: p.Cfg.Agents,
-			tid:      func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
-			sections: func(n string) []string { return p.Cat.Agents[n].Sections },
-			outPath:  func(n string) string { return p.Target.AgentPath(n) },
-		},
-		{
-			kind: "docs", names: p.Cfg.Docs,
-			tid:      func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
-			sections: func(n string) []string { return p.Cat.Docs[n].Sections },
-			outPath:  func(n string) string { return p.docOutPath(n) },
-		},
-	} {
-		rfs, err := p.renderKind(spec)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, rfs...)
+	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
+	docsRfs, err := p.renderKind(renderKindSpec{
+		kind: "docs", names: p.Cfg.Docs,
+		tid:      func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
+		sections: func(n string) []string { return p.Cat.Docs[n].Sections },
+		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
+	})
+	if err != nil {
+		return nil, err
 	}
-	// agents-doc (always-on singleton unless its sidecar is local).
+	out = append(out, docsRfs...)
+	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
+	// invariant: multi-target-render
+	for _, t := range p.Targets {
+		for _, spec := range []renderKindSpec{
+			{
+				kind: "skills", names: p.Cfg.Skills, target: t,
+				tid:      func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
+				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
+				outPath:  func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) },
+				// Doc-gated skill: omit from the render set when its required doc is not
+				// enabled (inv: doc-gated-skill-suppressed).
+				// invariant: doc-gated-skill-suppressed
+				gate: func(n string) bool {
+					req := p.Cat.Skills[n].RequiresDoc
+					return req == "" || enabledDocs[req]
+				},
+			},
+			{
+				kind: "agents", names: p.Cfg.Agents, target: t,
+				tid:      func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
+				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
+				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
+			},
+		} {
+			rfs, err := p.renderKind(spec)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, rfs...)
+		}
+	}
+	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral — once.
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
 	if err != nil {
 		return nil, err
@@ -163,12 +174,17 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			return nil, err
 		}
 		out = append(out, rf)
-		// CLAUDE.md bridge: the Claude adapter imports AGENTS.md verbatim so Claude
-		// Code ingests it regardless of its auto-fallback (ADR-0016). Tied to AGENTS.md
-		// existing (the agents-doc render above).
-		if p.Target.BridgeFile != "" {
+		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
+		// Gated on the agents-doc render above — a local (hand-maintained) AGENTS.md
+		// must not get a bridge pointing at an un-rendered file. cursor has an empty
+		// BridgeFile and emits nothing (inv: cursor-no-bridge).
+		// invariant: cursor-no-bridge
+		for _, t := range p.Targets {
+			if t.BridgeFile == "" {
+				continue
+			}
 			brf, err := p.renderTarget("claude", "", "claude/CLAUDE.md.tmpl",
-				nil, config.Sidecar{}, p.data(config.Sidecar{}), p.Target.BridgeFile)
+				nil, config.Sidecar{}, p.data(config.Sidecar{}), t.BridgeFile)
 			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
 				return nil, err
 			}
