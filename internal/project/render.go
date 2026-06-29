@@ -35,31 +35,31 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 }
 
 // partRel is the project-relative convention part path the awf:edit pointer names.
-func partRel(kind, target, section string) string {
+func partRel(kind, artifact, section string) string {
 	if config.IsSingletonKind(kind) {
 		return ".awf/parts/" + kind + "/" + section + ".md"
 	}
-	return ".awf/" + kind + "/parts/" + target + "/" + section + ".md"
+	return ".awf/" + kind + "/parts/" + artifact + "/" + section + ".md"
 }
 
 // planSections resolves each catalog-declared section into a render.SectionPlan:
 // a sidecar drop wins; otherwise an existing convention part substitutes its body;
 // otherwise the template default renders. Precedence: drop > convention part > default.
-func (p *Project) planSections(kind, target string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
+func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
 	plan := map[string]render.SectionPlan{}
 	for _, s := range declared {
-		sp := render.SectionPlan{EditPath: partRel(kind, target, s)}
+		sp := render.SectionPlan{EditPath: partRel(kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {
 			sp.Drop = true
 			plan[s] = sp
 			continue
 		}
-		b, err := os.ReadFile(p.Cfg.PartPath(kind, target, s))
+		b, err := os.ReadFile(p.Cfg.PartPath(kind, artifact, s))
 		if err == nil {
 			sp.HasPart = true
 			sp.PartBody = string(b)
 		} else if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, target, s, err)
+			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
 		plan[s] = sp
 	}
@@ -228,15 +228,15 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 	return paths, nil
 }
 
-// renderTarget assembles a target (sidecar sections + convention parts), executes
+// renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
-// per-target ConfigHash over the target's effective inputs.
-func (p *Project) renderTarget(kind, target, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string) (RenderedFile, error) {
+// per-artifact ConfigHash over the artifact's effective inputs.
+func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string) (RenderedFile, error) {
 	src, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
-	plan, err := p.planSections(kind, target, declared, sc.Sections)
+	plan, err := p.planSections(kind, artifact, declared, sc.Sections)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
@@ -249,7 +249,7 @@ func (p *Project) renderTarget(kind, target, tid string, declared []string, sc c
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset", outPath)
 	}
 	content = injectBanner(content)
-	cfgHash, err := p.targetConfigHash(assembled, sc, p.consumedParts(kind, target, plan))
+	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan))
 	if err != nil { // coverage-ignore: targetConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}

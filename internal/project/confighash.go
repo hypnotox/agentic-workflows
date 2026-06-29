@@ -12,22 +12,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// consumedParts returns the absolute paths of the convention parts a target
-// consumed; editing any reflags the target's drift.
-func (p *Project) consumedParts(kind, target string, plan map[string]render.SectionPlan) []string {
+// consumedParts returns the absolute paths of the convention parts an artifact
+// consumed; editing any reflags the artifact's drift.
+func (p *Project) consumedParts(kind, artifact string, plan map[string]render.SectionPlan) []string {
 	var paths []string
 	for sec, sp := range plan {
 		if sp.HasPart {
-			paths = append(paths, p.Cfg.PartPath(kind, target, sec))
+			paths = append(paths, p.Cfg.PartPath(kind, artifact, sec))
 		}
 	}
 	return paths
 }
 
-// targetConfigHash projects the drift signal onto one rendered file: the prefix, the
-// subset of vars the assembled template references, the target's sidecar (marshalled),
+// artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
+// subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed — in deterministic order.
-func (p *Project) targetConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
+func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
 	vs := map[string]any{}

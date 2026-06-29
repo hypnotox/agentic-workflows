@@ -263,16 +263,16 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 	}
 }
 
-// --- targetConfigHash: unreadable part (direct) ---
+// --- artifactConfigHash: unreadable part (direct) ---
 
-func TestTargetConfigHashUnreadablePart(t *testing.T) {
+func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.targetConfigHash("body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}); err == nil {
-		t.Fatal("expected targetConfigHash to fail reading a missing part file")
+	if _, err := p.artifactConfigHash("body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}); err == nil {
+		t.Fatal("expected artifactConfigHash to fail reading a missing part file")
 	}
 }
 

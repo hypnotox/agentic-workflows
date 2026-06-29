@@ -132,12 +132,12 @@ func IsSingletonKind(kind string) bool {
 	return false
 }
 
-// PartPath returns the convention part path for a section of a target.
-func (c *Config) PartPath(kind, target, section string) string {
+// PartPath returns the convention part path for a section of an artifact.
+func (c *Config) PartPath(kind, artifact, section string) string {
 	if IsSingletonKind(kind) {
 		return filepath.Join(c.root, "parts", kind, section+".md")
 	}
-	return filepath.Join(c.root, kind, "parts", target, section+".md")
+	return filepath.Join(c.root, kind, "parts", artifact, section+".md")
 }
 
 func (c *Config) Validate() error {

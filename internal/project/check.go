@@ -54,8 +54,8 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 	return nil
 }
 
-// orphans reports sidecar and convention-part files whose target is not in the
-// matching enable list, plus convention-part files of an enabled target whose
+// orphans reports sidecar and convention-part files whose artifact is not in the
+// matching enable list, plus convention-part files of an enabled artifact whose
 // section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) orphans() ([]manifest.Drift, error) {
 	enabled := map[string]map[string]bool{
@@ -82,7 +82,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 			if !enabled[kind][name] {
 				drift = append(drift, manifest.Drift{
 					Path: filepath.Join(".awf", kind, e.Name()),
-					Kind: "orphaned", Detail: "sidecar for a target not in the enable list",
+					Kind: "orphaned", Detail: "sidecar for an artifact not in the enable list",
 				})
 			}
 		}
@@ -101,7 +101,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 			if !enabled[kind][t.Name()] {
 				drift = append(drift, manifest.Drift{
 					Path: filepath.Join(".awf", kind, "parts", t.Name()),
-					Kind: "orphaned", Detail: "convention parts for a target not in the enable list",
+					Kind: "orphaned", Detail: "convention parts for an artifact not in the enable list",
 				})
 				continue
 			}
