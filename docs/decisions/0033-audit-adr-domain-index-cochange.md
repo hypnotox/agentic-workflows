@@ -80,7 +80,7 @@ Grounding discoveries that shape the design:
 
 - `inv: audit-adr-domain-cochange` — a commit that adds an ADR, or changes its `status:`,
   without also changing each `docs/domains/<d>.md` index for the ADR's configured
-  domains, yields an `adr-domain-cochange` `Error`; the same change with those indexes
+  domains, yields one `adr-domain-cochange` `Error` per missing index; the same change with those indexes
   co-changed yields none. When `DomainsIndexDir` is empty or no domains are configured,
   no `adr-domain-cochange` finding is emitted.
 
@@ -113,6 +113,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   the domain-index co-change rule in its enumeration of audit rules.
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` and
   `docs/domains/tooling.md`.
+- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md`; the
+  README is a how-to (ADR-0005).
 
 ## Alternatives Considered
 
