@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [target-output-paths]
 superseded_by: ""
 tags: [rendering, adapter, cursor, config]
-related: [0014, 0016, 0018, 0024]
+related: [0014, 0016, 0024]
 domains: [rendering, config, tooling]
 ---
 # ADR-0037: Multi-Target Rendering and the Cursor Adapter
@@ -56,13 +56,10 @@ Three frictions surfaced that this ADR must address head-on:
    artifact's name*. With `Targets` now plural this is actively confusing; a third, unrelated sense
    (`catalog.VarDescriptor.Target` in `internal/initspec`) must be left untouched.
 
-This ADR also carries a second, separable commitment (Decision 6): the shipped skill prose names
-Claude-specific tools ("the `Agent` tool", "`subagent_type: Explore`", "the `Skill` tool",
-"`AskUserQuestion`") in ~10 templates. Shipping the same body to Cursor surfaces these verbatim, so
-the rendered standard should name **actions, not a runtime's tools** — an extension of the ADR-0018
-documentation authoring standard. It is recorded here because it is motivated by and lands with the
-Cursor adapter, but the reviewer may split it into its own ADR; nothing downstream depends on the
-two staying joined.
+A separable concern that surfaced alongside this work — the shipped skill prose names
+Claude-specific tools, which leak verbatim into Cursor's `.cursor/skills/` — is split out as its
+own decision in ADR-0038 (tool-agnostic skill/agent prose, extending ADR-0018). The two land in one
+plan; nothing in this ADR depends on it.
 
 ## Decision
 
@@ -93,14 +90,7 @@ two staying joined.
    `kindDescriptor` and does not enter the catalog/sidecar/parts/orphan machinery; `orphans()` stays
    scoped to skills/agents/docs/domains. Hand-editing `targets:` in `config.yaml` remains supported.
 
-6. **Tool-agnostic skill/agent prose** (extends ADR-0018). Rendered skill and agent prose names
-   actions, not a specific runtime's tools. Neutralise the Claude-tool vocabulary in the affected
-   skill templates (`brainstorming`, the four `reviewing-*`, `refactor-coupling-audit`,
-   `executing-plans`, `proposing-adr`, `writing-plans`, `subagent-driven-development`):
-   "dispatch a fresh-context `<name>` subagent" / "ask a multiple-choice question" rather than naming
-   the `Agent`/`Skill`/`AskUserQuestion` tools. Record the rule in `doc-standard.md`.
-
-7. **Rename the artifact-sense "target" to "artifact"** across `renderTarget`, `targetConfigHash`,
+6. **Rename the artifact-sense "target" to "artifact"** across `renderTarget`, `targetConfigHash`,
    `planSections`, `consumedParts`, `partRel`, `config.PartPath`, and the orphan-loop vocabulary —
    a mechanical, behaviour-preserving rename that leaves `catalog.VarDescriptor.Target` untouched.
 
@@ -134,12 +124,6 @@ ADR-0016.
   contradicted** — `targets` is the bespoke path Decision 5 keeps outside that machinery, and
   ADR-0024's `cli-config-kinds` backing test is updated for the added token in the same commit that
   flips this ADR to `Implemented`.
-- `inv: skill-prose-tool-agnostic` — rendered skill and agent bodies contain no Claude-specific tool
-  token. The backing check matches the vocabulary Decision 6 neutralises **case-insensitively**,
-  covering at least `subagent_type` / "subagent type", "Agent tool" / "the agent tool", "Skill tool",
-  and "AskUserQuestion", plus runtime-specific subagent-type names where they appear as a tool
-  argument — so the three `reviewing-*` skills that say "the agent tool with subagent type" are
-  caught, not only the templates carrying the capitalised tokens.
 - Neutral artifacts keep their existing single paths; only adapter artifacts multiply across
   targets. (Textual.)
 - The known-adapter set is `{claude, cursor}`; adding a third adapter is a new `Target` value plus
@@ -164,8 +148,8 @@ ADR-0016.
   resolve their multi-target behaviour (e.g. validate each target's path, or scope local artifacts
   to the first/`claude` target and document the limitation) — this ADR commits to resolving it in the
   plan rather than leaving it open.
-- Decision 6 makes the standard genuinely portable but is separable; if the reviewer splits it, the
-  rename (Decision 7) and the mechanism (Decisions 1–5) still stand alone.
+- The artifact-sense rename (Decision 6) is mechanical and behaviour-preserving; it lands with the
+  same change because Decision 2's pluralization is what makes the term clash acute.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
@@ -174,8 +158,6 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   current-state narratives are refreshed.
 - The agent guide's "Working with awf" section and the README command table gain the
   `awf add/remove/list target` grammar, extending the ADR-0024 CLI surface.
-- `doc-standard.md` records the tool-agnostic-prose rule (Decision 6) — if Decision 6 lands in this
-  ADR rather than a split successor.
 - The dogfood commit adds the committed, drift-checked `.cursor/` tree and the `!.cursor/`
   `.gitignore` negation.
 - In the commit that flips this ADR to `Implemented`: ADR-0016's `target-output-paths` backing
@@ -193,4 +175,3 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Emit a thin always-apply Cursor rule pointing at AGENTS.md | Redundant — Cursor reads AGENTS.md natively; extra rendered output to maintain for no gain. |
 | Build a frontmatter-transform / container-rename capability now | Speculative: Claude and Cursor both use identity under the shared standard; the capability earns its place only when a genuinely divergent adapter (e.g. single-file Copilot) arrives. |
 | Make `targets` a fifth `kindDescriptor` | `targets` has no catalog pool, sidecars, parts, or orphan semantics; forcing it into the kind machinery drags it into `orphans()` and render dispatch for no benefit. A bespoke CLI path is cleaner. |
-| `awf check` lint forbidding Claude-tool tokens | Heavier than warranted; a golden test backing `skill-prose-tool-agnostic` already guards regressions without a new drift kind. |

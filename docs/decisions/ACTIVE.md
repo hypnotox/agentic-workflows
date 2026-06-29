@@ -44,6 +44,7 @@
 ## Proposed
 
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](0037-multi-target-rendering-and-cursor-adapter.md) — Proposed
+- [ADR-0038: Tool-Agnostic Skill and Agent Prose](0038-tool-agnostic-skill-agent-prose.md) — Proposed
 
 ## Superseded by ADR-0032
 
