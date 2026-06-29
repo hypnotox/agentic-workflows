@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, parts, adoption]
-related: [1, 15]
+related: [0001, 0015]
 domains: [rendering]
 ---
 # ADR-0034: Convention Parts Are Raw Input
@@ -22,9 +22,9 @@ sharpest adoption trap reported, because template-shaped examples are common in 
 The breakage is structural, not cosmetic. ADR-0015 Decision item 4 established that a convention
 part replaces a section body through a dedicated channel into `render.Assemble` (not the removed
 `replaceWith` field), but it left *unstated* whether the part body is subsequently subject to the
-template engine. In the current pipeline it is: `Assemble` (`internal/render/render.go:35-56`)
+template engine. In the current pipeline it is: `Assemble` (`internal/render/render.go:35-54`)
 interleaves template-default text and part bodies into one string, and `Execute`
-(`render.go:58-66`) runs `text/template` over the *whole* assembled string under
+(`render.go:58-68`) runs `text/template` over the *whole* assembled string under
 `missingkey=zero`. So a part body is templated today purely as an accident of the single-pass
 design — never as a deliberate, documented capability.
 
@@ -88,10 +88,33 @@ ADR-0001 (the rendering engine and its publication-safety contract). ADR-0015 st
   not be offered as a part override. No current part needs this.
 - The render pipeline gains a protect/restore step and a sentinel contract. Risk: a sentinel
   colliding with real content, or perturbing drift detection. Mitigated by a brace-free,
-  comment-shaped, deterministic token and by the existing `confighash` design, which hashes parts
-  separately and derives referenced-vars only from the default skeleton — to be verified during
-  implementation.
+  comment-shaped, deterministic token. The drift risk is concrete and must be neutralised in
+  implementation: `targetConfigHash` (`internal/project/confighash.go:30`) hashes each consumed
+  part's bytes separately, but it also derives the referenced-var set via
+  `render.ReferencedVars(assembled)` over the *full* assembled string — part bodies included, not
+  the default skeleton alone (invisible today only because no part contains `{{ }}`). The
+  implementation must keep the inputs to `targetConfigHash` byte-identical so every `ConfigHash`
+  is unchanged and the tree shows zero drift — in particular, deciding whether the hash sees the
+  sentinel skeleton or the raw bodies, and ensuring a literal `{{ .vars.x }}` in a raw part is not
+  spuriously folded into the referenced-var set now that the part is never interpolated. The
+  zero-drift `awf check` over awf's own tree is the proof.
 - Render error messages stop misattributing failures to `skill`.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+- The `parts-raw` invariant's backing test (`// invariant: parts-raw`) lands in the same change
+  that flips this ADR to `Implemented`; no existing Implemented invariant is retired
+  (`retires_invariants: []`).
+- `docs/architecture.md` updates its render-flow note (currently "assembles section overlays …
+  then executes the template", layout/render-flow sections) to record that convention-part bodies
+  are protected from `text/template` and substituted after execution.
+- The `rendering` domain narrative (`.awf/domains/parts/rendering/current-state.md`) notes that
+  parts are raw, never templated (ADR-0019 staleness fires for a rendering-domain ADR reaching
+  `Implemented`).
+- The status flip to `Accepted`/`Implemented` regenerates `docs/decisions/ACTIVE.md` and
+  `docs/domains/rendering.md` (this ADR carries `domains: [rendering]`, so ADR-0033's
+  ADR→domain-index co-change applies) via `./x sync`, staged in the same commit.
+- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md`; the README
+  is a how-to (ADR-0005).
 
 ## Alternatives Considered
 
