@@ -47,7 +47,7 @@ Close two awf-adoption traps reported by the first external adopter:
 - `internal/project/project.go` — `Backup` type, `SyncReport`, `isGeneratedIndex` (`inv: sync-backs-up-foreign`); `Sync` becomes a wrapper
 - `internal/project/project_test.go` — new sync-backup + ownership-note + init-no-double-backup tests
 - `cmd/awf/main.go` — `runSync` prints backups + note; init `--force` backup loop removed
-- `cmd/awf/run_test.go` — adjust `TestInitGuardBlocksAndForceOverrides` assertions if needed
+- `cmd/awf/run_test.go` — adjust `TestInitGuardBlocksAndForceOverrides` (single-backup regression) + new `TestSyncReportsIndexOwnershipTakeover` (cmd-layer `if b.Index` note coverage)
 - `.awf/docs/parts/architecture/data-flow.md` — render-flow note (parts protected from `text/template`)
 - `.awf/domains/parts/rendering/current-state.md` — parts-are-raw note
 - `.awf/domains/parts/tooling/current-state.md` — sync-backup + ownership note
@@ -167,6 +167,12 @@ At lines 69 and 80, the direct calls `Execute("{{ .prefix", sampleData())` and
 ```go
 	_, err := Execute("{{ range .prefix }}{{ end }}", sampleData(), nil, "test")
 ```
+
+Then fix `TestRenderConventionPart` (line 54), whose assertion encodes the *old* templated-part
+behaviour: it sets `PartBody: "CUSTOM {{ .prefix }}"` and asserts `strings.Contains(out, "CUSTOM
+example")`. Under the raw-part contract the body is no longer interpolated, so it renders verbatim —
+change the assertion to expect the literal `CUSTOM {{ .prefix }}` (keep the `NOTE`-absent and
+edit-pointer checks). Leaving the old assertion makes the test fail after Task 1.1.
 
 Then append a new test proving the raw-part contract (`inv: parts-raw`):
 
@@ -436,46 +442,123 @@ becomes (refuse-without-force kept; backup delegated to the chained sync):
 
 ### Task 2.3 — Tests: sync backup, ownership note, init no-double-backup
 
-In `internal/project/project_test.go`, add tests (use the package's existing temp-project helper —
-mirror the setup of a nearby test such as the one at `project_test.go:70`):
+In `internal/project/project_test.go`, add two concrete tests (the test is in `package project`,
+so the unexported `layout`, `isGeneratedIndex`, `SyncReport`, and `Backup` are all in scope; reuse
+the `scaffold` helper and `sampleYAML` at the top of the file):
 
 ```go
-func TestSyncBacksUpForeignFileButNotManaged(t *testing.T) {
-	// Set up a synced project (creates the lock), then plant a foreign file at a
-	// path awf does NOT yet manage and confirm a re-sync backs it up; a managed
-	// file is overwritten with no backup.
-	// ... arrange project p, first Sync ...
-	// foreign: write docs/decisions/ACTIVE.md? No — use a path awf will write only
-	// after enabling a target, or assert on the generated index on first sync.
-	// Implementer: pick a concrete foreign output path for this project fixture,
-	// write hand content there, set its path OUT of the lock, run SyncReport, and
-	// assert: <path>.awf-bak exists with the hand content; a path present in the
-	// prior lock produced no .awf-bak.
+func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lay := p.layout()
+	// Plant a foreign ADR index with hand content before the first sync (no lock yet),
+	// so its path is absent from the prior lock and therefore foreign.
+	foreign := filepath.Join(root, lay.ActiveMd)
+	if err := os.MkdirAll(filepath.Dir(foreign), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	backups, err := p.SyncReport()
+	if err != nil {
+		t.Fatalf("SyncReport: %v", err)
+	}
+	var got *Backup
+	for i := range backups {
+		if backups[i].Path == lay.ActiveMd {
+			got = &backups[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("foreign ACTIVE.md not backed up; backups=%#v", backups)
+	}
+	if !got.Index {
+		t.Errorf("ACTIVE.md backup must be flagged Index=true")
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, got.Bak)); string(b) != "hand index\n" {
+		t.Errorf("backup = %q, want original hand content", b)
+	}
+	// A path recorded in the prior lock is awf-managed: a second sync backs up nothing.
+	again, err := p.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again) != 0 {
+		t.Errorf("re-sync of awf-managed output must not back up, got %#v", again)
+	}
+}
+
+func TestIsGeneratedIndex(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lay := p.layout()
+	if !p.isGeneratedIndex(lay.ActiveMd) {
+		t.Errorf("ActiveMd must be a generated index (true via ==)")
+	}
+	if !p.isGeneratedIndex(lay.DomainsDir + "/rendering.md") {
+		t.Errorf("a per-domain index must be a generated index (true via prefix)")
+	}
+	if p.isGeneratedIndex(lay.DocsDir + "/architecture.md") {
+		t.Errorf("an ordinary doc must not be a generated index (false)")
+	}
 }
 ```
 
-Then a focused, deterministic test using the first-sync-into-existing-files property (no lock yet):
+The first test exercises the `SyncReport` backup branch and the `Index==true` flag; the second pins
+both `||` arms of `isGeneratedIndex` and its false arm — together satisfying the 100% coverage gate
+for the new project-layer branches.
+
+In `cmd/awf/main.go`, `runSync` gains an `if b.Index` note-print branch (Task 2.2) that neither the
+project tests above nor `TestInitGuardBlocksAndForceOverrides` (which backs up a non-index
+`CLAUDE.md`, `Index==false`) reach. The 100% coverage gate (ADR-0012) therefore requires a
+cmd-layer test that drives it. Add to `cmd/awf/run_test.go` (default `docsDir` is `docs`, so the ADR
+index lands at `docs/decisions/ACTIVE.md`):
 
 ```go
-func TestSyncReportBacksUpAndFlagsIndexTakeover(t *testing.T) {
-	// Arrange a project whose .awf config is valid but with NO awf.lock yet, and
-	// pre-create a foreign docs/decisions/ACTIVE.md with hand content.
-	// Act: backups, err := p.SyncReport()
-	// Assert: err == nil; exactly one backup has Path == lay.ActiveMd and Index == true;
-	//   <ActiveMd>.awf-bak holds the original hand content; a non-index foreign file
-	//   backed up in the same run has Index == false.
+func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
+	root := t.TempDir()
+	awf := filepath.Join(root, ".awf")
+	if err := os.MkdirAll(awf, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(minimalYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Foreign ADR index present before any sync (no lock yet).
+	adrDir := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(adrDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adrDir, "ACTIVE.md"), []byte("hand index\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "sync"}, &out, &errb); code != 0 {
+		t.Fatalf("sync: %s", errb.String())
+	}
+	if !strings.Contains(out.String(), "backed up docs/decisions/ACTIVE.md") {
+		t.Errorf("missing backup line: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "note: awf now generates") {
+		t.Errorf("missing ownership-takeover note: %q", out.String())
+	}
 }
 ```
 
-(Implementer: derive the ActiveMd path via the project's layout; assert `Index` true for it and for a
-domain-index path, false for an ordinary doc. Cover both `isGeneratedIndex` branches.)
-
-In `cmd/awf/run_test.go`, verify `TestInitGuardBlocksAndForceOverrides` still passes: under `--force`
-the foreign file must still end up at `<path>.awf-bak` (now created by the chained sync) and the
-"backed up …" line still prints (now from `runSync`). Adjust only the assertion's *source* of the
-message if it checked ordering relative to init-specific output; do not weaken the `.awf-bak`
-assertion. Add a regression assertion that exactly one `.awf-bak` (not `.awf-bak.1`) exists for the
-colliding file — proving init no longer double-backs-up.
+Finally, in `cmd/awf/run_test.go`, keep `TestInitGuardBlocksAndForceOverrides` green: under
+`--force` the colliding `CLAUDE.md` must still end up at `CLAUDE.md.awf-bak` (now created by the
+chained sync) and the "backed up CLAUDE.md" line must still print (now from `runSync`, before
+"awf sync: done" — same observable order, so an order-sensitive assertion still holds). Add a
+regression assertion that exactly one `.awf-bak` (no `.awf-bak.1`) exists for the colliding file,
+proving init no longer double-backs-up. Do not weaken the `.awf-bak` content assertion.
 
 ### Task 2.4 — Update the tooling doc-currency part
 
@@ -524,6 +607,12 @@ After both phases:
   var set (it must not, since no part contains `.vars.`).
 - **`<no value>` check (`render.go:248`)** now sees restored part bodies. A part containing the
   literal text `<no value>` would falsely trip it — accepted as an absurd, pre-existing edge.
+- **ADR-0034's second (untagged) invariant** — "template control-flow never spans a section-marker
+  boundary" — defers to the plan whether to add a guard test. Decision: no guard test is added. The
+  sentinel single-pass is robust to a spanning action regardless (the sentinel passes through the
+  parser inertly, so it can never land inside an open control-flow block in a way that changes
+  parsing), and the contract carries no `inv:` slug requiring backing. Revisit only if a future
+  default introduces control flow across a section boundary.
 - **init→sync unification (Task 2.2)** is the plan's reading of ADR-0035's "one mechanism"
   consequence. The plan↔ADR resync step must confirm ADR-0035 covers removing init's standalone
   loop; if it only implies it, amend ADR-0035 (still Proposed at resync time) to state it.
