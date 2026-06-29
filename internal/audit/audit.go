@@ -80,6 +80,7 @@ type Inputs struct {
 	PlansDir          string   // e.g. "docs/plans"
 	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
 	DomainsPartsDir   string   // e.g. ".awf/domains/parts"
+	DomainsIndexDir   string   // e.g. "docs/domains"; rendered per-domain index dir (adr-domain-cochange)
 }
 
 // Run collects the branch range and evaluates the rules.
@@ -140,10 +141,12 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
 		activeTouched := false
+		touched := make(map[string]bool, len(c.Changes))
 		for _, ch := range c.Changes {
 			if ch.Path == in.ActiveMd {
 				activeTouched = true
 			}
+			touched[ch.Path] = true
 		}
 		for _, ch := range c.Changes {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
@@ -156,6 +159,20 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 				if !activeTouched {
 					out = append(out, finding(Error, "adr-status-cochange", c,
 						filepath.Base(ch.Path)+" status set/changed without ACTIVE.md in the same commit"))
+				}
+				// The same ADR frontmatter regenerates each configured domain's index;
+				// require it co-changed in the same commit (ADR-0033).
+				if in.DomainsIndexDir != "" {
+					for _, d := range domainsOf(ch.NewText) {
+						if !slices.Contains(in.ConfiguredDomains, d) {
+							continue
+						}
+						idx := in.DomainsIndexDir + "/" + d + ".md"
+						if !touched[idx] {
+							out = append(out, finding(Error, "adr-domain-cochange", c,
+								filepath.Base(ch.Path)+" status set/changed without "+idx+" in the same commit"))
+						}
+					}
 				}
 			}
 		}

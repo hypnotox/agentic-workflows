@@ -93,6 +93,37 @@ func TestRuleADRStatusCochange(t *testing.T) {
 	}
 }
 
+// invariant: audit-adr-domain-cochange
+func TestRuleADRDomainCochange(t *testing.T) {
+	active := FileChange{Path: "docs/decisions/ACTIVE.md", Action: Modified}
+	toolingIdx := FileChange{Path: "docs/domains/tooling.md", Action: Modified}
+	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md",
+		DomainsIndexDir: "docs/domains", ConfiguredDomains: []string{"tooling", "rendering"}}
+	noIdxDir := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md",
+		ConfiguredDomains: []string{"tooling"}}
+	cases := []struct {
+		name    string
+		in      Inputs
+		commit  Commit
+		wantErr int
+	}{
+		{"added, index missing", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active}}, 1},
+		{"added, index present", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active, toolingIdx}}, 0},
+		{"two domains, one missing", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, rendering"), active, toolingIdx}}, 1},
+		{"status flip, index missing", in, Commit{Changes: []FileChange{adrChange(Modified, "Implemented", "tooling"), active}}, 1},
+		{"unconfigured domain not required", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "payments"), active}}, 0},
+		{"no DomainsIndexDir inert", noIdxDir, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active}}, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := countRule(ruleADRStatusCochange([]Commit{tc.commit}, tc.in), "adr-domain-cochange", Error)
+			if got != tc.wantErr {
+				t.Errorf("got %d adr-domain-cochange errors, want %d", got, tc.wantErr)
+			}
+		})
+	}
+}
+
 // invariant: audit-dependency-warn
 func TestRuleDependencyADR(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"go.mod", "*.csproj"}}}

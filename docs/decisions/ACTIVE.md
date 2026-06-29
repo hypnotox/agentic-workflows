@@ -36,10 +36,7 @@
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](0030-prebuilt-binary-distribution-and-release.md) — Implemented
 - [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) — Implemented
 - [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Implemented
-
-## Proposed
-
-- [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) — Proposed
+- [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) — Implemented
 
 ## Superseded by ADR-0032
 
