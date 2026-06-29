@@ -38,10 +38,7 @@
 - [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Implemented
 - [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) — Implemented
 - [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) — Implemented
-
-## Proposed
-
-- [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Proposed
+- [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Implemented
 
 ## Superseded by ADR-0032
 

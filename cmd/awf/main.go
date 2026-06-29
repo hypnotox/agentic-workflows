@@ -281,24 +281,16 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err != nil {
 		return err
 	}
-	if len(collisions) > 0 {
-		if !force {
-			if scaffolded {
-				_ = os.Remove(cfgPath)               // remove the config we scaffolded
-				_ = os.Remove(filepath.Dir(cfgPath)) // remove .awf only if now empty
-			}
-			return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
-				strings.Join(collisions, "\n  "))
+	if len(collisions) > 0 && !force {
+		if scaffolded {
+			_ = os.Remove(cfgPath)               // remove the config we scaffolded
+			_ = os.Remove(filepath.Dir(cfgPath)) // remove .awf only if now empty
 		}
-		// --force: back up each colliding non-managed file before sync overwrites it.
-		for _, rel := range collisions {
-			bakRel, err := p.BackupFile(rel)
-			if err != nil { // coverage-ignore: p.BackupFile only fails on a copyFile permission fault that root bypasses
-				return fmt.Errorf("awf init: back up %s: %w", rel, err)
-			}
-			fmt.Fprintf(stdout, "backed up %s → %s\n", rel, bakRel)
-		}
+		return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
+			strings.Join(collisions, "\n  "))
 	}
+	// Under --force, the chained runSync backs up every foreign file via the shared
+	// BackupFile mechanism (ADR-0035) — one backup path for init and sync alike.
 	if err := runSync(root, stdout); err != nil {
 		return err
 	}
@@ -325,8 +317,15 @@ func runSync(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if err := p.Sync(); err != nil {
+	backups, err := p.SyncReport()
+	if err != nil {
 		return err
+	}
+	for _, b := range backups {
+		fmt.Fprintf(stdout, "backed up %s → %s\n", b.Path, b.Bak)
+		if b.Index {
+			fmt.Fprintf(stdout, "  note: awf now generates %s; retire any external generator for it\n", b.Path)
+		}
 	}
 	fmt.Fprintln(stdout, "awf sync: done")
 	return nil

@@ -732,3 +732,66 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 		}
 	}
 }
+
+func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lay := p.layout()
+	// Plant a foreign ADR index with hand content before the first sync (no lock yet),
+	// so its path is absent from the prior lock and therefore foreign.
+	foreign := filepath.Join(root, lay.ActiveMd)
+	if err := os.MkdirAll(filepath.Dir(foreign), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	backups, err := p.SyncReport()
+	if err != nil {
+		t.Fatalf("SyncReport: %v", err)
+	}
+	var got *Backup
+	for i := range backups {
+		if backups[i].Path == lay.ActiveMd {
+			got = &backups[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("foreign ACTIVE.md not backed up; backups=%#v", backups)
+	}
+	if !got.Index {
+		t.Errorf("ACTIVE.md backup must be flagged Index=true")
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, got.Bak)); string(b) != "hand index\n" {
+		t.Errorf("backup = %q, want original hand content", b)
+	}
+	// A path recorded in the prior lock is awf-managed: a second sync backs up nothing.
+	again, err := p.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again) != 0 {
+		t.Errorf("re-sync of awf-managed output must not back up, got %#v", again)
+	}
+}
+
+func TestIsGeneratedIndex(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lay := p.layout()
+	if !p.isGeneratedIndex(lay.ActiveMd) {
+		t.Errorf("ActiveMd must be a generated index (true via ==)")
+	}
+	if !p.isGeneratedIndex(lay.DomainsDir + "/rendering.md") {
+		t.Errorf("a per-domain index must be a generated index (true via prefix)")
+	}
+	if p.isGeneratedIndex(lay.DocsDir + "/architecture.md") {
+		t.Errorf("an ordinary doc must not be a generated index (false)")
+	}
+}

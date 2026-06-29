@@ -478,6 +478,11 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if !strings.Contains(out.String(), "backed up CLAUDE.md") {
 		t.Errorf("expected backup report on stdout, got %q", out.String())
 	}
+	// Regression: init delegates its backup to the chained sync (one BackupFile path,
+	// ADR-0035), so the colliding file is backed up exactly once — no double-backup.
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md.awf-bak.1")); !os.IsNotExist(err) {
+		t.Error("expected exactly one backup; CLAUDE.md.awf-bak.1 should not exist")
+	}
 }
 
 func TestInitRollbackPreservesExistingAwf(t *testing.T) {
@@ -577,5 +582,35 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when p.InitCollisions errors")
+	}
+}
+
+func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
+	root := t.TempDir()
+	awf := filepath.Join(root, ".awf")
+	if err := os.MkdirAll(awf, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(minimalYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Foreign ADR index present before any sync (no lock yet).
+	adrDir := filepath.Join(root, "docs", "decisions")
+	if err := os.MkdirAll(adrDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adrDir, "ACTIVE.md"), []byte("hand index\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapGetwd(t, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "sync"}, &out, &errb); code != 0 {
+		t.Fatalf("sync: %s", errb.String())
+	}
+	if !strings.Contains(out.String(), "backed up docs/decisions/ACTIVE.md") {
+		t.Errorf("missing backup line: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "note: awf now generates") {
+		t.Errorf("missing ownership-takeover note: %q", out.String())
 	}
 }

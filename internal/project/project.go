@@ -2,9 +2,11 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -51,15 +53,30 @@ func sliceSet(s []string) map[string]bool {
 	return m
 }
 
+// Backup records a foreign file preserved before sync overwrote its path.
+type Backup struct {
+	Path  string // project-relative file that was overwritten
+	Bak   string // project-relative backup copy (.awf-bak[.N])
+	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
+}
+
 func (p *Project) Sync() error {
+	_, err := p.SyncReport()
+	return err
+}
+
+// SyncReport renders and writes the project like Sync, additionally backing up any
+// foreign file (on disk but absent from the start-of-sync lock) before overwriting
+// it, and returning those backups (ADR-0035).
+func (p *Project) SyncReport() ([]Backup, error) {
 	files, err := p.RenderAll()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, f := range files {
 		if isSkillOrAgent(f.TemplateID) {
 			if err := validateFrontmatter([]byte(f.Content)); err != nil { // coverage-ignore: rendered catalog skill/agent frontmatter is template-fixed (non-empty name/description guaranteed by inv templates-valid-frontmatter); it cannot be invalid at sync time
-				return fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
+				return nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
 			}
 		}
 	}
@@ -69,31 +86,54 @@ func (p *Project) Sync() error {
 			localErr = fmt.Errorf("local target %s: %w", path, e)
 		}
 	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Sync
-		return err
+		return nil, err
 	}
 	if localErr != nil {
-		return localErr
+		return nil, localErr
 	}
 	amd, err := p.generateActiveMD()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
-		return err
+		return nil, err
 	}
 	files = append(files, dds...)
+
+	// Prior lock, read before any write: membership decides foreign (back up) vs
+	// awf-managed (overwrite silently), and drives pruning below.
+	old, _ := manifest.Load(p.lockPath())
+	prior := map[string]bool{}
+	if old != nil {
+		for path := range old.Files {
+			prior[path] = true
+		}
+	}
+
+	var backups []Backup
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	want := map[string]bool{}
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return err
+			return nil, err
 		}
-		mode := os.FileMode(0o644)
-		if err := os.WriteFile(abs, []byte(f.Content), mode); err != nil {
-			return err
+		if !prior[f.Path] {
+			if _, statErr := os.Stat(abs); statErr == nil {
+				// invariant: sync-backs-up-foreign
+				bak, err := p.BackupFile(f.Path)
+				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
+					return nil, fmt.Errorf("back up %s: %w", f.Path, err)
+				}
+				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: p.isGeneratedIndex(f.Path)})
+			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat returns a non-NotExist error only on a permission/IO fault that root bypasses
+				return nil, statErr
+			}
+		}
+		if err := os.WriteFile(abs, []byte(f.Content), 0o644); err != nil {
+			return nil, err
 		}
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,
@@ -102,7 +142,7 @@ func (p *Project) Sync() error {
 		want[f.Path] = true
 	}
 	// Prune files from the previous lock that are no longer produced.
-	if old, err := manifest.Load(p.lockPath()); err == nil {
+	if old != nil {
 		for path := range old.Files {
 			if !want[path] {
 				file := filepath.Join(p.Root, path)
@@ -111,7 +151,14 @@ func (p *Project) Sync() error {
 			}
 		}
 	}
-	return lock.Save(p.lockPath())
+	return backups, lock.Save(p.lockPath())
+}
+
+// isGeneratedIndex reports whether rel is the generated ADR index or a per-domain
+// index — the awf-owned generated docs whose first-time takeover warrants a note.
+func (p *Project) isGeneratedIndex(rel string) bool {
+	lay := p.layout()
+	return rel == lay.ActiveMd || strings.HasPrefix(rel, lay.DomainsDir+"/")
 }
 
 func (p *Project) lockPath() string {
