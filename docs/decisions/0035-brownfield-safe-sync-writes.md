@@ -69,6 +69,14 @@ model unchanged — it narrows no decision item of either, so neither is partial
    always backs up a foreign file and always proceeds. There is no `sync --force` and no way to opt
    out of the backup, because a non-destructive backup has no downside worth a flag.
 
+4. **Init delegates its backup to sync.** Because `init` chains into `sync`, the backup now belongs
+   to one mechanism: `init`'s standalone `--force` backup loop is removed, and the foreign-file
+   backup happens once, in the chained `sync`. `init` keeps only its pre-sync collision *refusal*
+   (without `--force`, it still refuses rather than overwrite); under `--force` it proceeds straight
+   to `sync`, which backs up. This is required, not merely tidy: were `init` to keep its own loop,
+   the first `sync` — running before any lock exists, so seeing every colliding file as foreign —
+   would back the same files up a second time, producing a redundant `.awf-bak.1`.
+
 ## Invariants
 
 - `inv: sync-backs-up-foreign` — during `awf sync`, a target path that exists on disk and is not
@@ -86,7 +94,9 @@ model unchanged — it narrows no decision item of either, so neither is partial
   actionable one-time message. awf cannot itself remove the adopter's external generator; surfacing
   the takeover is the boundary of what it can do deterministically.
 - `init` and `sync` now enforce one consistent rule from one mechanism (`BackupFile`), so "awf never
-  silently overwrites a foreign file" holds across every write path, not just adoption.
+  silently overwrites a foreign file" holds across every write path, not just adoption. Removing
+  `init`'s separate loop (Decision item 4) is what makes this literally one mechanism rather than two
+  that must agree, and it removes the double-backup an init-then-sync sequence would otherwise emit.
 - Cost: a foreign file byte-identical to awf's output is still backed up, producing a `.awf-bak`
   that conveys no new content. Accepted for consistency with ADR-0023 and to keep the rule a simple
   lock-membership test; the volume is negligible because foreign collisions arise only at adoption
