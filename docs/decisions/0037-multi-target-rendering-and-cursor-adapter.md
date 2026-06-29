@@ -108,7 +108,10 @@ two staying joined.
 
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`); untagged bullets are textual contracts. This ADR retires ADR-0016's
-`target-output-paths` (singular `Target`); `multi-target-render` is its generalised successor.
+`target-output-paths` (singular `Target`); `multi-target-render` is its generalised successor. It
+also realises the user-facing `targets:` key ADR-0016 Decision item 2 deliberately deferred ("the
+key lands with the second adapter"), so introducing `targets:` extends rather than contradicts
+ADR-0016.
 
 - `inv: multi-target-render` — with `targets` enabling N adapters, each adapter artifact (skill,
   agent) renders once per enabled target to that target's paths (for `claude`,
@@ -124,10 +127,19 @@ is `Implemented`); untagged bullets are textual contracts. This ADR retires ADR-
 - `inv: target-prune-ancestors` — removing a target from `targets:` and re-syncing deletes that
   target's rendered files and every resulting empty ancestor directory, not only the immediate
   parent.
-- `inv: target-cli` — `awf add/remove/list target` mutates the config `targets` array against the
-  known-adapter set without routing through the `kindDescriptor` machinery.
+- `inv: target-cli` — `awf add target` / `awf remove target` mutate the config `targets` array
+  against the known-adapter set, and `awf list target` reads it, all without routing through the
+  `kindDescriptor` machinery. This adds a sixth CLI kind token alongside ADR-0024's five;
+  `inv: cli-config-kinds` (which covers the five `kindDescriptor`-backed arrays) is **extended, not
+  contradicted** — `targets` is the bespoke path Decision 5 keeps outside that machinery, and
+  ADR-0024's `cli-config-kinds` backing test is updated for the added token in the same commit that
+  flips this ADR to `Implemented`.
 - `inv: skill-prose-tool-agnostic` — rendered skill and agent bodies contain no Claude-specific tool
-  token (`subagent_type`, "Agent tool", "Skill tool", "AskUserQuestion").
+  token. The backing check matches the vocabulary Decision 6 neutralises **case-insensitively**,
+  covering at least `subagent_type` / "subagent type", "Agent tool" / "the agent tool", "Skill tool",
+  and "AskUserQuestion", plus runtime-specific subagent-type names where they appear as a tool
+  argument — so the three `reviewing-*` skills that say "the agent tool with subagent type" are
+  caught, not only the templates carrying the capitalised tokens.
 - Neutral artifacts keep their existing single paths; only adapter artifacts multiply across
   targets. (Textual.)
 - The known-adapter set is `{claude, cursor}`; adding a third adapter is a new `Target` value plus
@@ -148,9 +160,29 @@ is `Implemented`); untagged bullets are textual contracts. This ADR retires ADR-
   and a `!.cursor/` `.gitignore` negation (global ignores commonly hide `.cursor`, which would
   otherwise silently break the CI drift gate).
 - Local skills/agents (none shipped today) would resolve to N output paths under multiple targets;
-  `localOutPath`/`checkLocalFrontmatter` must define per-target behaviour or document the limitation.
+  `localOutPath`/`checkLocalFrontmatter` take a single `Target`, so the implementation plan must
+  resolve their multi-target behaviour (e.g. validate each target's path, or scope local artifacts
+  to the first/`claude` target and document the limitation) — this ADR commits to resolving it in the
+  plan rather than leaving it open.
 - Decision 6 makes the standard genuinely portable but is separable; if the reviewer splits it, the
   rename (Decision 7) and the mechanism (Decisions 1–5) still stand alone.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- `docs/architecture.md` documents the plural-`Targets` seam, the separated neutral/adapter render
+  passes, and the Cursor adapter (no bridge); the `rendering`, `config`, and `tooling` domain docs'
+  current-state narratives are refreshed.
+- The agent guide's "Working with awf" section and the README command table gain the
+  `awf add/remove/list target` grammar, extending the ADR-0024 CLI surface.
+- `doc-standard.md` records the tool-agnostic-prose rule (Decision 6) — if Decision 6 lands in this
+  ADR rather than a split successor.
+- The dogfood commit adds the committed, drift-checked `.cursor/` tree and the `!.cursor/`
+  `.gitignore` negation.
+- In the commit that flips this ADR to `Implemented`: ADR-0016's `target-output-paths` backing
+  test is removed and `multi-target-render`'s backing test (covering both `claude` and `cursor`
+  paths) lands; ADR-0024's `cli-config-kinds` backing test is updated for the `target` token; and
+  `docs/decisions/ACTIVE.md` is regenerated via `./x sync`. No `docs/decisions/README.md` ADR-index
+  row is owed (the README is a how-to guide; `ACTIVE.md` is the generated index — ADR-0005).
 
 ## Alternatives Considered
 
