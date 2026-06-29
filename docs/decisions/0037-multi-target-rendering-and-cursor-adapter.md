@@ -67,7 +67,9 @@ plan; nothing in this ADR depends on it.
    `targets:` key is absent, `Load` injects `["claude"]` (mirroring the `DocsDir` default at
    config.go:94), so a pre-existing config renders byte-identical with no schema-version bump and no
    `internal/migrate` entry — the backward-safe optional-field precedent set by `Domains` (ADR-0014).
-   `Validate` rejects an empty list and any name not in the known-adapter set.
+   `config.Validate` rejects an empty list and path-separator names (sanity only — `internal/config`
+   stays free of the adapter registry to avoid an import cycle); `project.Open`, via `resolveTargets`,
+   rejects any name not in the known-adapter registry, since that is where the registry lives.
 
 2. **Plural targets and the Cursor descriptor.** `Project.Target Target` becomes
    `Project.Targets []Target`, resolved in `Open` from `Cfg.Targets` through a new name→`Target`
@@ -109,8 +111,10 @@ ADR-0016.
   `.cursor/skills/<prefix>-<name>/SKILL.md` and `.cursor/agents/<name>.md`), with paths produced by
   the `Target` descriptor, not render-loop literals; neutral artifacts render exactly once
   regardless of N.
-- `inv: targets-default-claude` — a config with no `targets:` key loads as `["claude"]`; `Validate`
-  rejects an empty `targets` list and any unknown adapter name.
+- `inv: targets-default-claude` — a config with no `targets:` key loads as `["claude"]`;
+  `config.Validate` rejects an empty `targets` list and path-separator names; `project.Open` (via
+  `resolveTargets`) rejects any unknown adapter name — config stays registry-free, so the
+  unknown-name check lives where the adapter registry does.
 - `inv: cursor-no-bridge` — the `cursor` target has an empty `BridgeFile` and emits no bridge file;
   its rendered skill and agent files are byte-identical in body and frontmatter to the `claude`
   target's at their respective paths.
@@ -119,11 +123,11 @@ ADR-0016.
   parent.
 - `inv: target-cli` — `awf add target` / `awf remove target` mutate the config `targets` array
   against the known-adapter set, and `awf list target` reads it, all without routing through the
-  `kindDescriptor` machinery. This adds a sixth CLI kind token alongside ADR-0024's five;
-  `inv: cli-config-kinds` (which covers the five `kindDescriptor`-backed arrays) is **extended, not
-  contradicted** — `targets` is the bespoke path Decision 5 keeps outside that machinery, and
-  ADR-0024's `cli-config-kinds` backing test is updated for the added token in the same commit that
-  flips this ADR to `Implemented`.
+  `kindDescriptor` machinery. This adds a CLI kind token (`target`) alongside the
+  `kindDescriptor`-backed kinds; `inv: cli-config-kinds` (backed by the marker comment on the
+  `kindDescriptors` table plus the `Kinds()` assertion) is **unaffected** — `targets` is the bespoke
+  path Decision 5 keeps outside that machinery, so `target` is **not** a `kindDescriptor`, `Kinds()`
+  does not change, and no `cli-config-kinds` backing change is required.
 - Neutral artifacts keep their existing single paths; only adapter artifacts multiply across
   targets. (Textual.)
 - The known-adapter set is `{claude, cursor}`; adding a third adapter is a new `Target` value plus
@@ -143,11 +147,11 @@ ADR-0016.
 - awf dogfoods `targets: [claude, cursor]`: the repo gains a committed, drift-checked `.cursor/` tree
   and a `!.cursor/` `.gitignore` negation (global ignores commonly hide `.cursor`, which would
   otherwise silently break the CI drift gate).
-- Local skills/agents (none shipped today) would resolve to N output paths under multiple targets;
-  `localOutPath`/`checkLocalFrontmatter` take a single `Target`, so the implementation plan must
-  resolve their multi-target behaviour (e.g. validate each target's path, or scope local artifacts
-  to the first/`claude` target and document the limitation) — this ADR commits to resolving it in the
-  plan rather than leaving it open.
+- Local skills/agents (none shipped today) resolve to N output paths under multiple targets: a
+  declared local skill must exist with valid frontmatter at **every** enabled target's path
+  (`localOutPath` becomes `localOutPaths`, one path per target; `checkLocalFrontmatter` validates
+  each). Chosen over scoping locals to the first/`claude` target so no target carries an unchecked
+  hand-authored file.
 - The artifact-sense rename (Decision 6) is mechanical and behaviour-preserving; it lands with the
   same change because Decision 2's pluralization is what makes the term clash acute.
 
@@ -162,9 +166,10 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   `.gitignore` negation.
 - In the commit that flips this ADR to `Implemented`: ADR-0016's `target-output-paths` backing
   test is removed and `multi-target-render`'s backing test (covering both `claude` and `cursor`
-  paths) lands; ADR-0024's `cli-config-kinds` backing test is updated for the `target` token; and
-  `docs/decisions/ACTIVE.md` is regenerated via `./x sync`. No `docs/decisions/README.md` ADR-index
-  row is owed (the README is a how-to guide; `ACTIVE.md` is the generated index — ADR-0005).
+  paths) lands; `docs/decisions/ACTIVE.md` is regenerated via `./x sync`. ADR-0024's
+  `cli-config-kinds` backing needs no change (`target` stays outside the `kindDescriptor` machinery).
+  No `docs/decisions/README.md` ADR-index row is owed (the README is a how-to guide; `ACTIVE.md` is
+  the generated index — ADR-0005).
 
 ## Alternatives Considered
 
