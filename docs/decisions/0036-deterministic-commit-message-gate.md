@@ -90,7 +90,9 @@ commits.
   for anyone (human or agent) who wires the hook, instead of surfacing late in an advisory audit.
 - `audit` and `commit-gate` cannot drift on what "conformant" means: the limit and the allow-lists
   live once. Extracting the shared function is a behaviour-preserving refactor of the audit; the
-  zero-change to audit output is verified by its existing tests.
+  zero-change to audit output is verified by its existing tests. ADR-0017's
+  `// invariant: audit-conventional-commits` backing travels with the extracted check (it is moved,
+  not duplicated), so that slug stays backed and ADR-0017's contract is untouched.
 - The gate is opt-in by construction: it only runs where an adopter wires it. awf imposes no hook,
   preserving ADR-0032's "adopter owns hooks" boundary, and `awf audit` stays advisory per ADR-0017.
 - New surface to cover under the 100% gate (ADR-0012): the shared function, the `commit-gate`
@@ -101,7 +103,35 @@ commits.
   per-message checks can join it without a new command — but none are added now.
 - A subject git cannot pre-clean (e.g. an adopter using `commit.cleanup=verbatim` with stray `#`
   content) is the adopter's configuration choice; `commit-gate` cleans with the `strip` default and
-  does not attempt to honour arbitrary per-repo cleanup modes.
+  the default `#` comment character, and does not attempt to honour arbitrary per-repo cleanup modes
+  or a custom `core.commentChar`.
+- The merge/autosquash exemption (item 4) is a best-effort subject-prefix heuristic, weaker than the
+  audit's `Commit.IsMerge` parent-count test, because a `commit-msg` hook sees only the message and
+  not the commit's parents. A genuine non-merge subject that begins `Merge `, `fixup!`, `squash!`, or
+  `amend!` is therefore false-exempted and slips past the gate. The exposure is bounded: any such
+  string is already non-Conventional-Commits (no `type(scope)?:` prefix), so the cost is a missed
+  *catch* (a false negative the later advisory audit still reports against the actual parent count),
+  never a wrongly *blocked* commit. The subject-prefix mechanism is accepted as the only signal
+  available message-only; the audit retains the precise parent-count exemption.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The `tooling` domain narrative gains the `commit-gate` command and its commit-time deterministic
+  role alongside the advisory `awf audit` wording (same `related` lineage); the `local-hooks`
+  workflow doc part (`.awf/docs/parts/workflow/local-hooks.md`) gains the checked-in
+  `.githooks/commit-msg` → `./x commit-gate "$1"` wiring as the worked adopter example.
+- The hand-maintained CLI strings in `cmd/awf/main.go` learn the new subcommand: the
+  `usage: awf <…>` dispatch line gains `commit-gate`, and the `argSpecs`/dispatch surface gains its
+  handler entry. These strings are hand-maintained, not rendered.
+- The new `inv: commit-gate-shared-rule` slug is backed by a `// invariant: commit-gate-shared-rule`
+  comment on the single shared check in the commit that flips this ADR to `Implemented` (ADR-0008),
+  and ADR-0017's existing `// invariant: audit-conventional-commits` comment moves with the extracted
+  function rather than being duplicated.
+- No `docs/decisions/README.md` index row is owed (the README is a how-to guide; `ACTIVE.md` is the
+  generated index — ADR-0005), matching ADR-0017/0023/0032/0035.
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` and the `tooling` domain
+  index (`docs/domains/tooling.md`) via `./x sync`, co-changed in the flip commit so the
+  ADR→domain-index co-change rule (ADR-0033) stays satisfied.
 
 ## Alternatives Considered
 
