@@ -35,7 +35,7 @@ Documentation travels with the change that makes it true. When you change behavi
 <!-- awf:section local-hooks -->
 ## Local git hooks
 
-awf does not install or manage git hooks. To run the gate automatically before a commit or push, install a hook yourself — point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or drop a script under `.git/hooks/`. A pre-commit hook that runs your check and gate commands keeps the green-gate rule enforced locally; `core.hooksPath` is local, uncommitted config, so each clone wires it once.
+awf does not install or manage git hooks. To enforce the green-gate rule automatically, install a hook yourself — point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or drop a script under `.git/hooks/`. Have your pre-commit hook run **`awf check`** (so rendered-file drift fails the commit, not just CI) followed by your test gate; `core.hooksPath` is local, uncommitted config, so each clone wires it once.
 
 `awf commit-gate` is the deterministic, blocking commit-message gate: it validates one commit message against the Conventional Commits rules (type, scope, 72-char subject — the same rules `awf audit` reports) and exits non-zero on a violation, so a bad subject is refused at commit time instead of merely flagged later. Wire it into a `commit-msg` hook that runs `awf commit-gate "$1"` (the hook is yours to install — awf renders none). Run `awf commit-gate --help` for details.
 <!-- awf:end -->

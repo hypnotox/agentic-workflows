@@ -111,7 +111,8 @@ Run `awf help` for the full synopsis.
 
 awf does **not** install or manage git hooks. To run the gate automatically, install one yourself
 — point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or add
-a script under `.git/hooks/`. If you adopted an earlier awf that ran `awf setup`, your repo's
+a script under `.git/hooks/`. Have that hook run `awf check` alongside your test gate so rendered-file
+drift is caught at commit time, not just in CI. If you adopted an earlier awf that ran `awf setup`, your repo's
 `core.hooksPath` still points at the no-longer-rendered `.githooks/`; run `git config --unset
 core.hooksPath` (or keep the now hand-owned hook files) after upgrading.
 
