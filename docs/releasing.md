@@ -74,9 +74,9 @@ broken release config fails CI before any tag is pushed.
 
 ## Notes
 
-- **Repo visibility.** The repo is private by default (out of ADR-0030's scope). A private-repo
-  release is created normally, but downloading its binaries requires an authenticated `gh` or a
-  token (`gh release download v0.2.0`). Making the repo public is a separate decision.
+- **Repo visibility.** The repo is public, so release binaries download without authentication —
+  from the Releases page or via `gh release download v0.2.0` — and
+  `go install github.com/hypnotox/agentic-workflows/cmd/awf@latest` resolves without a token.
 - **Undo a bad tag.** If a tag was pushed in error, delete it locally and remotely, then delete the
   GitHub Release it created:
 
