@@ -31,8 +31,9 @@ type Sidecar struct {
 }
 
 // Config is the skeleton config.yaml: global fields plus flat enable arrays.
-// Presence of a name in Skills/Agents/Docs enables that target; per-target
-// data/sections/local live in sidecars, not here.
+// Presence of a name in Skills/Agents/Docs enables that artifact; per-artifact
+// data/sections/local live in sidecars, not here. Targets is the adapter-runtime
+// enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
 	Prefix     string           `yaml:"prefix"`
 	DocsDir    string           `yaml:"docsDir"`
@@ -41,6 +42,7 @@ type Config struct {
 	Agents     []string         `yaml:"agents"`
 	Docs       []string         `yaml:"docs"`
 	Domains    []string         `yaml:"domains"`
+	Targets    []string         `yaml:"targets"`
 	Invariants *InvariantConfig `yaml:"invariants"`
 	Audit      *AuditConfig     `yaml:"audit"`
 	root       string           // <project>/.awf, for sidecar/part resolution
@@ -93,6 +95,9 @@ func Load(awfDir string) (*Config, error) {
 	c.root = awfDir
 	if c.DocsDir == "" {
 		c.DocsDir = "docs"
+	}
+	if len(c.Targets) == 0 {
+		c.Targets = []string{"claude"}
 	}
 	return &c, nil
 }
@@ -172,6 +177,17 @@ func (c *Config) Validate() error {
 			if err := validateBasenameGlob(g); err != nil {
 				return fmt.Errorf("audit.dependencyManifests: %w", err)
 			}
+		}
+	}
+	// Targets: sanity only — the unknown-adapter-name check lives in project.Open
+	// (resolveTargets), where the adapter registry is, to keep config free of a
+	// project import cycle (ADR-0037).
+	if len(c.Targets) == 0 {
+		return errors.New("targets must not be empty")
+	}
+	for _, t := range c.Targets {
+		if t == "" || strings.ContainsAny(t, "/\\") || strings.Contains(t, "..") {
+			return fmt.Errorf("target %q must be a non-empty name without path separators", t)
 		}
 	}
 	return nil

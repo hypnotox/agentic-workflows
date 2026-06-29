@@ -338,7 +338,7 @@ func TestValidateRejectsBadDomainName(t *testing.T) {
 			t.Errorf("expected error for domain name %q", bad)
 		}
 	}
-	ok := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{"rendering", "config"}}
+	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Domains: []string{"rendering", "config"}}
 	if err := ok.Validate(); err != nil {
 		t.Errorf("clean domain names should validate, got: %v", err)
 	}
@@ -348,6 +348,30 @@ func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskils: []\n")
 	if _, err := Load(dir); err == nil {
 		t.Errorf("expected error for unknown top-level key 'skils'")
+	}
+}
+
+// invariant: targets-default-claude
+func TestTargetsDefaultAndValidation(t *testing.T) {
+	// An absent targets: key loads as ["claude"] (the unknown-name check itself
+	// lives in project.Open/resolveTargets — config stays registry-free).
+	dir := writeConfig(t, "prefix: example\nskills: []\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Targets) != 1 || c.Targets[0] != "claude" {
+		t.Errorf("absent targets should default to [claude], got %v", c.Targets)
+	}
+	// An explicitly-empty list is rejected by Validate.
+	empty := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{}}
+	if err := empty.Validate(); err == nil {
+		t.Error("expected empty targets list to be rejected")
+	}
+	// A path-separator name is rejected by Validate.
+	bad := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"a/b"}}
+	if err := bad.Validate(); err == nil {
+		t.Error("expected path-separator target name to be rejected")
 	}
 }
 
@@ -383,7 +407,7 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 
 // invariant: invariants-glob-basename
 func TestInvariantGlobValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
+	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
 		Sources: []InvariantSource{{Globs: []string{"*.go", "*_test.py"}, Marker: "//"}},
 	}}
 	if err := ok.Validate(); err != nil {
@@ -410,7 +434,7 @@ func TestInvariantGlobValidation(t *testing.T) {
 }
 
 func TestAuditDependencyManifestValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
+	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
 		DependencyManifests: []string{"go.mod", "*.csproj"},
 	}}
 	if err := ok.Validate(); err != nil {
