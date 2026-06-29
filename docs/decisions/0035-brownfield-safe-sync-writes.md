@@ -34,9 +34,11 @@ The unifying principle is the one ADR-0023 already chose for `init`, simply not 
 everywhere awf writes: **awf must never silently overwrite a file it did not write.** A file
 recorded in the lock is awf's own output and is overwritten freely; a file on disk that is *not* in
 the lock is foreign and must be preserved before awf claims its path. This ADR extends that rule to
-`sync`. It refines ADR-0023 (which scoped the backup to `init --force`) and ADR-0016 (the
-collision/lock-ownership model) by partial-item supersedence recorded through `related`; both keep
-their `Implemented` status.
+`sync`. It is a pure extension recorded through `related` (no supersedence): it generalises
+ADR-0023's `init --force` backup to a new write path and reuses ADR-0016's collision/lock-ownership
+model unchanged — it narrows no decision item of either, so neither is partially superseded (the
+"extension vs partial-item supersedence" distinction ADR-0031 draws). Both predecessors keep their
+`Implemented` status.
 
 ## Decision
 
@@ -53,11 +55,14 @@ their `Implemented` status.
    content equality, is the test).
 
 2. **Surface ADR-index ownership takeover.** When the foreign file `sync` backs up is the generated
-   ADR index (`docs/decisions/ACTIVE.md`) or a per-domain index under the domains directory, the
-   report additionally states that awf now owns that file's generation and that any external
-   generator for it should be retired. This is a deterministic, path-based signal (no content
-   heuristic): the takeover is reported the one time it happens — the first sync that writes the
-   path — after which the file is lock-recorded and no longer foreign.
+   ADR index (`docs/decisions/ACTIVE.md` under a default layout) or a per-domain index under the
+   domains directory, the report additionally states that awf now owns that file's generation and
+   that any external generator for it should be retired. The match is against the layout-derived
+   paths — the ADR-index path and the domains-directory prefix the layout already exposes (the same
+   `ActiveMd` / `DomainsDir` sources `awf check` keys on), not hardcoded literals — so the signal
+   stays correct when the docs layout is relocated. This is a deterministic, path-based signal (no
+   content heuristic): the takeover is reported the one time it happens — the first sync that writes
+   the path — after which the file is lock-recorded and no longer foreign.
 
 3. **No new flag; backup is unconditional.** Unlike `init`, which gates backup behind `--force`
    (because `init` otherwise refuses on collision), `sync` has no refusal mode to preserve: it
@@ -89,6 +94,17 @@ their `Implemented` status.
 - The backup must be keyed on the *prior* lock, read before any write in the sync; an implementation
   that consulted the freshly-written lock would treat every awf file as already-owned and never back
   anything up. The plan must thread the pre-sync manifest into the write step.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The `tooling` domain narrative gains the sync-backup-and-ownership behaviour, alongside ADR-0023's
+  `init`-backup wording (same `related` lineage).
+- The new `inv: sync-backs-up-foreign` slug is backed by a `// invariant: sync-backs-up-foreign`
+  comment on the guarded write path in the commit that flips this ADR to `Implemented` (ADR-0008).
+- No `docs/decisions/README.md` index row is owed (the README is a how-to guide; `ACTIVE.md` is the
+  generated index — ADR-0005), matching ADR-0023.
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` and the `tooling` domain
+  index via `./x sync`.
 
 ## Alternatives Considered
 
