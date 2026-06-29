@@ -68,6 +68,26 @@ func TestRenderConventionPart(t *testing.T) {
 	}
 }
 
+func TestEmptyPartRendersEmptyNotDropped(t *testing.T) {
+	// ADR-0034 item 4: an empty part yields an empty section body (the section and
+	// its awf:edit pointer remain), distinct from a drop which removes both.
+	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "", EditPath: ".awf/x.md"}}
+	asm, parts := Assemble(ParseSections(tmpl), plan)
+	out, err := Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
+		t.Errorf("empty part must keep the section pointer (not dropped):\n%s", out)
+	}
+	if strings.Contains(out, "NOTE") {
+		t.Errorf("empty part must replace the default body, not keep it:\n%s", out)
+	}
+	if strings.Contains(out, "\x00") {
+		t.Errorf("empty part's sentinel leaked instead of restoring to empty:\n%s", out)
+	}
+}
+
 func TestExecuteParseError(t *testing.T) {
 	_, err := Execute("{{ .prefix", sampleData(), nil, "test")
 	if err == nil {
