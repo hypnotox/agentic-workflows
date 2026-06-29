@@ -31,30 +31,35 @@ var isInteractive = func() bool {
 
 // run dispatches a subcommand and returns a process exit code. All user-facing
 // output goes to the injected writers so the dispatch is unit-testable.
-const helpText = `awf — render agentic-workflow tooling into a project from a committed .awf/ config tree
+// commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
+var commandOrder = []string{
+	"init", "sync", "check", "invariants", "audit", "commit-gate",
+	"list", "add", "remove", "upgrade", "uninstall", "version",
+}
 
-Usage: awf <command> [flags]
+// globalHelp renders the top-level `awf help` overview from each command's summary,
+// so the overview and the per-command `awf <cmd> --help` texts share one source.
+func globalHelp() string {
+	var b strings.Builder
+	b.WriteString("awf — render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
+	b.WriteString("Usage: awf <command> [flags]\n\n")
+	b.WriteString("Commands:\n")
+	for _, name := range commandOrder {
+		fmt.Fprintf(&b, "  %-12s %s\n", name, argSpecs[name].summary)
+	}
+	b.WriteString("\nRun `awf <command> --help` for details on a command.\n")
+	return b.String()
+}
 
-Commands:
-  init         Scaffold .awf/ and render the workflow-core set
-                 --force        overwrite colliding files, backing each up to <path>.awf-bak
-                 --describe     print the fillable value descriptors as JSON and exit
-                 --set k=v      set a value non-interactively (repeatable)
-                 --answers FILE read values from a JSON/YAML answers file
-  sync         Re-render after a template or config change
-  check        Fail on stale or hand-edited rendered output
-  list [<kind>]        Show targets and their per-project state (all kinds, or one)
-  add <kind> <name>    Enable a target — kind ∈ {skill, agent, doc, domain}
-  remove <kind> <name> Disable a target (a freeform domain, or a catalog target)
-  audit        Report workflow-conformance findings over the branch (advisory)
-                 --base <ref>   compare against <ref> instead of the configured base branch
-  commit-gate [FILE]   Validate one commit message (Conventional Commits), blocking on a
-                 violation; reads FILE (a commit-msg hook's $1) or stdin. Wire into your own hook.
-  invariants   Report Implemented-ADR invariant slugs lacking a backing comment
-  upgrade      Migrate the .awf/ config tree to the current schema
-  uninstall    Remove awf's generated files (keeps .awf/)
-  version      Print the awf version
-`
+// hasHelpFlag reports whether a --help or -h token appears among a command's args.
+func hasHelpFlag(rest []string) bool {
+	for _, a := range rest {
+		if a == "--help" || a == "-h" {
+			return true
+		}
+	}
+	return false
+}
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
@@ -63,7 +68,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
-		fmt.Fprint(stdout, helpText)
+		fmt.Fprint(stdout, globalHelp())
 		return 0
 	}
 	cwd, err := getwd()
@@ -72,6 +77,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if spec, ok := argSpecs[args[1]]; ok {
+		if hasHelpFlag(args[2:]) { // `awf <cmd> --help`/`-h` — intercept before checkArgs rejects it
+			fmt.Fprint(stdout, spec.help)
+			return 0
+		}
 		if err := checkArgs(args[1], args[2:], spec.boolFlags, spec.valueFlags, spec.minPos, spec.maxPos); err != nil {
 			fmt.Fprintln(stderr, "awf:", err)
 			return 2
@@ -151,21 +160,110 @@ func (e *usageErr) Error() string { return e.msg }
 type argSpec struct {
 	boolFlags, valueFlags []string
 	minPos, maxPos        int
+	summary               string // one-line description for `awf help`
+	help                  string // full `awf <cmd> --help` text (usage + description + flags)
 }
 
 var argSpecs = map[string]argSpec{
-	"init":        {boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
-	"sync":        {maxPos: 0},
-	"check":       {maxPos: 0},
-	"invariants":  {maxPos: 0},
-	"audit":       {valueFlags: []string{"--base"}, maxPos: 0},
-	"commit-gate": {maxPos: 1},
-	"list":        {maxPos: 1},
-	"add":         {maxPos: -1},
-	"remove":      {maxPos: -1},
-	"upgrade":     {maxPos: 0},
-	"uninstall":   {maxPos: 0},
-	"version":     {maxPos: 0},
+	"init": {
+		boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0,
+		summary: "Scaffold .awf/ and render the workflow-core set",
+		help: `Usage: awf init [flags]
+
+Scaffold a .awf/ config tree and render the workflow-core set into the project.
+
+Flags:
+  --force        overwrite colliding files, backing each up to <path>.awf-bak
+  --describe     print the fillable value descriptors as JSON and exit
+  --set k=v      set a value non-interactively (repeatable)
+  --answers FILE read values from a JSON/YAML answers file
+`,
+	},
+	"sync": {
+		maxPos: 0, summary: "Re-render after a template or config change",
+		help: `Usage: awf sync
+
+Re-render every enabled target after a template or config change and update .awf/awf.lock.
+`,
+	},
+	"check": {
+		maxPos: 0, summary: "Fail on stale or hand-edited rendered output",
+		help: `Usage: awf check
+
+Re-render in memory and fail if any rendered file is stale or hand-edited (drift).
+`,
+	},
+	"invariants": {
+		maxPos: 0, summary: "Report Implemented-ADR invariant slugs lacking a backing comment",
+		help: `Usage: awf invariants
+
+Report each Implemented-ADR ` + "`inv:`" + ` slug lacking a backing ` + "`<marker> invariant:`" + ` comment.
+`,
+	},
+	"audit": {
+		valueFlags: []string{"--base"}, maxPos: 0,
+		summary: "Report workflow-conformance findings over the branch (advisory)",
+		help: `Usage: awf audit [--base <ref>]
+
+Report advisory workflow-conformance findings over the branch's commits; never gates.
+
+Flags:
+  --base <ref>   compare against <ref> instead of the configured base branch
+`,
+	},
+	"commit-gate": {
+		maxPos: 1, summary: "Validate one commit message (Conventional Commits), blocking",
+		help: `Usage: awf commit-gate [FILE]
+
+Validate one commit message against the Conventional Commits rules (type, scope,
+72-char subject) and exit non-zero on a violation — the commit-side analog of the
+gate. Reads FILE (the path a commit-msg hook passes as $1) or stdin; cleans the
+message git-style and exempts merge/autosquash subjects. awf installs no hook —
+wire this into your own commit-msg hook.
+`,
+	},
+	"list": {
+		maxPos: 1, summary: "Show targets and their per-project state (all kinds, or one)",
+		help: `Usage: awf list [<kind>]
+
+Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain).
+`,
+	},
+	"add": {
+		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain}",
+		help: `Usage: awf add <kind> <name>
+
+Enable a target. <kind> is skill, agent, doc, or domain.
+`,
+	},
+	"remove": {
+		maxPos: -1, summary: "Disable a target (a freeform domain, or a catalog target)",
+		help: `Usage: awf remove <kind> <name>
+
+Disable a target — a catalog skill/agent/doc, or a freeform domain.
+`,
+	},
+	"upgrade": {
+		maxPos: 0, summary: "Migrate the .awf/ config tree to the current schema",
+		help: `Usage: awf upgrade
+
+Migrate the .awf/ config tree to the current schema version.
+`,
+	},
+	"uninstall": {
+		maxPos: 0, summary: "Remove awf's generated files (keeps .awf/)",
+		help: `Usage: awf uninstall
+
+Remove every awf-generated file recorded in the lock (keeps your authored .awf/ config).
+`,
+	},
+	"version": {
+		maxPos: 0, summary: "Print the awf version",
+		help: `Usage: awf version
+
+Print the awf version.
+`,
+	},
 }
 
 // checkArgs rejects unrecognized --flags and enforces the positional count for a
