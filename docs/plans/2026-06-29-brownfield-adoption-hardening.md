@@ -607,6 +607,11 @@ After both phases:
   var set (it must not, since no part contains `.vars.`).
 - **`<no value>` check (`render.go:248`)** now sees restored part bodies. A part containing the
   literal text `<no value>` would falsely trip it — accepted as an absurd, pre-existing edge.
+- **ADR-0034 Decision item 4 ("empty is not drop")** is preserved by construction, not by a new
+  task: an empty part file yields `PartBody == ""`, whose sentinel restores to an empty section
+  body, while `drop` is still handled by the separate `if p.Drop { continue }` arm in the reworked
+  `Assemble` (Task 1.1). No code change or dedicated test is owed — the distinction is unchanged
+  by the sentinel rework.
 - **ADR-0034's second (untagged) invariant** — "template control-flow never spans a section-marker
   boundary" — defers to the plan whether to add a guard test. Decision: no guard test is added. The
   sentinel single-pass is robust to a spanning action regardless (the sentinel passes through the
