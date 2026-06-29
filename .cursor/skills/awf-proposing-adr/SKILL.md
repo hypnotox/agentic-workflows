@@ -30,7 +30,7 @@ Load-bearing triggers include:
 <!-- awf:edit conventions — default; create .awf/skills/parts/proposing-adr/conventions.md to override -->
 - **Next number:** list `docs/decisions/NNNN-*.md`, take the highest existing number plus one. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
-- **Template:** copy section structure from `docs/decisions/template.md` (inline the content via `Write`; do not shell-copy the file).
+- **Template:** copy section structure from `docs/decisions/template.md` (write the content directly into the new file; do not shell-copy the file).
 - **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `docs/domains/<domain>.md` index).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
@@ -41,7 +41,7 @@ Load-bearing triggers include:
 1. **Pick the next ADR number.** List `docs/decisions/NNNN-*.md` and take the maximum number plus one.
 
 <!-- awf:edit procedure-write — default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
-2. **Write the ADR file** using `Write`. Copy section structure from `docs/decisions/template.md` and fill all sections:
+2. **Write the ADR file** directly. Copy section structure from `docs/decisions/template.md` and fill all sections:
    - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
    - **Decision:** numbered items, each a discrete commitment. Numbers matter for partial-item supersedence.
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.

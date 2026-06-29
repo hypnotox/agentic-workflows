@@ -47,7 +47,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope; `{{ .vars.gateCmd }}` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope; `{{ .vars.gateCmd }}` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
 <!-- awf:end -->
 
 <!-- awf:section run-audit -->

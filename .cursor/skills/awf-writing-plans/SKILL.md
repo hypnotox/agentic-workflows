@@ -43,7 +43,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 
 <!-- awf:edit procedure-write-plan — default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
-2. **Write the plan file in one go** using `Write`. Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
+2. **Write the plan file in one go.** Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
 
 <!-- awf:edit doc-currency-check — default; create .awf/skills/parts/writing-plans/doc-currency-check.md to override -->
 

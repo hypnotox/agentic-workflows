@@ -43,7 +43,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `./x gate` passes before each commit. The agent makes the Edit calls; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using the `awf` scope; `./x gate` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
 
 <!-- awf:edit run-audit — default; create .awf/skills/parts/reviewing-impl/run-audit.md to override -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
