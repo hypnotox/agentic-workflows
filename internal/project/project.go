@@ -4,8 +4,10 @@ package project
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
@@ -145,14 +147,27 @@ func (p *Project) SyncReport() ([]Backup, error) {
 		}
 		want[f.Path] = true
 	}
-	// Prune files from the previous lock that are no longer produced.
+	// Prune files from the previous lock that are no longer produced, then remove
+	// every directory left empty — walking all ancestors deepest-first, not just the
+	// immediate parent, so dropping a target clears its whole tree (inv:
+	// target-prune-ancestors; reuses Uninstall's idiom).
+	// invariant: target-prune-ancestors
 	if old != nil {
+		dirs := map[string]bool{}
 		for path := range old.Files {
-			if !want[path] {
-				file := filepath.Join(p.Root, path)
-				_ = os.Remove(file)
-				_ = os.Remove(filepath.Dir(file)) // only succeeds if now empty
+			if want[path] {
+				continue
 			}
+			file := filepath.Join(p.Root, path)
+			_ = os.Remove(file)
+			for d := filepath.Dir(file); d != p.Root; d = filepath.Dir(d) {
+				dirs[d] = true
+			}
+		}
+		dirList := slices.Collect(maps.Keys(dirs))
+		slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
+		for _, d := range dirList {
+			_ = os.Remove(d) // removes only if now empty
 		}
 	}
 	return backups, lock.Save(p.lockPath())

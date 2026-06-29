@@ -88,6 +88,38 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	}
 }
 
+// invariant: target-prune-ancestors
+func TestSyncPrunesRemovedTargetTree(t *testing.T) {
+	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".cursor/skills/example-tdd/SKILL.md")); err != nil {
+		t.Fatalf("expected cursor skill rendered on first sync: %v", err)
+	}
+	// Drop the cursor target (sampleYAML has no targets: key → defaults to claude).
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(sampleYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p2.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	// The whole .cursor/ tree is gone — every empty ancestor, not just the leaf parent.
+	for _, dir := range []string{".cursor/skills/example-tdd", ".cursor/skills", ".cursor/agents", ".cursor"} {
+		if _, err := os.Stat(filepath.Join(root, dir)); !os.IsNotExist(err) {
+			t.Errorf("expected %s removed, stat err = %v", dir, err)
+		}
+	}
+}
+
 func TestCheckCleanAfterSync(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)
