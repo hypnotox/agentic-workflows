@@ -69,6 +69,38 @@ func TestSetArrayMember(t *testing.T) {
 	}
 }
 
+func TestSetArray(t *testing.T) {
+	cases := []struct {
+		name, src, key string
+		values         []string
+		want           string
+		wantErr        bool
+	}{
+		{"create absent key", "prefix: x\n", "targets", []string{"claude", "cursor"}, "prefix: x\ntargets:\n  - claude\n  - cursor\n", false},
+		{"replace existing", "targets:\n  - claude\n", "targets", []string{"claude", "cursor"}, "targets:\n  - claude\n  - cursor\n", false},
+		{"replace flow style", "targets: [cursor]\n", "targets", []string{"claude"}, "targets:\n  - claude\n", false},
+		{"parse error", "targets: [a, b\n", "targets", []string{"x"}, "", true},
+		{"non-mapping", "- a\n", "targets", []string{"x"}, "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SetArray([]byte(tc.src), tc.key, tc.values)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if string(got) != tc.want {
+				t.Errorf("SetArray:\n got: %q\nwant: %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRemoveKey(t *testing.T) {
 	cases := []struct {
 		name, src, key, want string

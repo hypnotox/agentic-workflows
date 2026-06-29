@@ -83,6 +83,69 @@ func TestRunAddAcrossKinds(t *testing.T) {
 // (not refused): SetArrayMember normalizes it to block style. minimalYAML uses
 // flow-style `skills: [tdd]`. brainstorming references no vars and is not
 // doc-gated, so the post-add sync renders cleanly under minimalYAML's seed.
+// invariant: target-cli
+func TestRunTargetCLI(t *testing.T) {
+	root := scaffoldedProject(t) // no targets: key → defaults to claude
+
+	// list target before any change: claude enabled, cursor available.
+	var buf bytes.Buffer
+	if err := runList(root, "target", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if out := buf.String(); !strings.Contains(out, "claude") || !strings.Contains(out, "enabled") ||
+		!strings.Contains(out, "cursor") || !strings.Contains(out, "available") {
+		t.Errorf("list target (initial):\n%s", out)
+	}
+
+	// add cursor must materialize the full resolved list, not drop the defaulted claude.
+	if err := runAdd(root, "target", "cursor", io.Discard); err != nil {
+		t.Fatalf("add target cursor: %v", err)
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "- claude") || !strings.Contains(cfg, "- cursor") {
+		t.Errorf("expected targets [claude, cursor]:\n%s", cfg)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".cursor", "skills")); err != nil {
+		t.Errorf("cursor tree not rendered after add: %v", err)
+	}
+
+	// Rejections.
+	if err := runAdd(root, "target", "nope", io.Discard); err == nil {
+		t.Error("expected unknown-target error")
+	}
+	if err := runAdd(root, "target", "cursor", io.Discard); err == nil {
+		t.Error("expected already-enabled error")
+	}
+	if err := runRemove(root, "target", "nope", io.Discard); err == nil {
+		t.Error("expected unknown-target error on remove")
+	}
+
+	// A known target name on a broken config surfaces the project.Open error.
+	broken := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(broken, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runAdd(broken, "target", "cursor", io.Discard); err == nil {
+		t.Error("expected project.Open error to surface from add target")
+	}
+
+	// remove claude → [cursor]; removing the last target is refused.
+	if err := runRemove(root, "target", "claude", io.Discard); err != nil {
+		t.Fatalf("remove target claude: %v", err)
+	}
+	if strings.Contains(readConfig(t, root), "- claude") {
+		t.Error("claude not removed")
+	}
+	if err := runRemove(root, "target", "claude", io.Discard); err == nil {
+		t.Error("expected not-enabled error")
+	}
+	if err := runRemove(root, "target", "cursor", io.Discard); err == nil {
+		t.Error("expected cannot-remove-last-target error")
+	}
+}
+
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {

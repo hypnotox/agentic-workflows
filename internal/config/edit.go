@@ -84,6 +84,33 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	return encode(&doc)
 }
 
+// SetArray sets the sequence under key to exactly values, creating the key if it
+// is absent and replacing it otherwise, via a yaml.Node round-trip that preserves
+// comments and every untouched key (ADR-0026). Used where the whole list is
+// computed rather than edited member-by-member — the targets array carries a Load
+// default, so an absent on-disk key must be materialized as the full resolved list,
+// not appended to (ADR-0037).
+func SetArray(src []byte, key string, values []string) ([]byte, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(src, &doc); err != nil {
+		return nil, fmt.Errorf("config: parse: %w", err)
+	}
+	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("config: not a YAML mapping")
+	}
+	root := doc.Content[0]
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	for _, v := range values {
+		seq.Content = append(seq.Content, strScalar(v))
+	}
+	if _, vi := mapValue(root, key); vi >= 0 {
+		root.Content[vi] = seq
+	} else {
+		root.Content = append(root.Content, strScalar(key), seq)
+	}
+	return encode(&doc)
+}
+
 // RemoveKey deletes the top-level mapping entry under key from a config.yaml
 // source via a yaml.Node round-trip that preserves comments and every untouched
 // key (ADR-0026). Removing an absent key is a no-op (returns src unchanged), so a

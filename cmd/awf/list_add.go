@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -13,7 +14,51 @@ import (
 )
 
 func unknownKind(kind string) error {
-	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain)", kind)}
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target)", kind)}
+}
+
+// addRemoveTarget enables or disables an adapter in the config targets array. It
+// is the bespoke path (targets is not a kindDescriptor — ADR-0037): it validates
+// against the known-adapter set and writes the full resolved list, since the
+// targets array carries a Load default that an absent on-disk key would drop.
+// invariant: target-cli
+func addRemoveTarget(root, name string, add bool, stdout io.Writer) error {
+	if !slices.Contains(project.KnownTargets(), name) {
+		return fmt.Errorf("%q is not a known target (known: %s)", name, strings.Join(project.KnownTargets(), ", "))
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	enabled := slices.Contains(p.Cfg.Targets, name)
+	if add && enabled {
+		return fmt.Errorf("target %q already enabled", name)
+	}
+	if !add && !enabled {
+		return fmt.Errorf("target %q is not enabled", name)
+	}
+	var desired []string
+	if add {
+		desired = append(slices.Clone(p.Cfg.Targets), name)
+	} else {
+		desired = slices.DeleteFunc(slices.Clone(p.Cfg.Targets), func(s string) bool { return s == name })
+	}
+	if len(desired) == 0 {
+		return fmt.Errorf("cannot remove the last target %q (a project must render to at least one)", name)
+	}
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	b, err := os.ReadFile(cfgPath)
+	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
+		return err
+	}
+	updated, err := config.SetArray(b, "targets", desired)
+	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArray's parse/mapping checks cannot fail here
+		return err
+	}
+	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault root bypasses
+		return err
+	}
+	return runSync(root, stdout)
 }
 
 // enabledNames returns the config enable array for a singular CLI kind; the
@@ -30,6 +75,9 @@ func catalogNames(cat *catalog.Catalog, kind string) ([]string, bool) {
 }
 
 func runAdd(root, kind, name string, stdout io.Writer) error {
+	if kind == "target" {
+		return addRemoveTarget(root, name, true, stdout)
+	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
@@ -62,6 +110,9 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 }
 
 func runRemove(root, kind, name string, stdout io.Writer) error {
+	if kind == "target" {
+		return addRemoveTarget(root, name, false, stdout)
+	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
@@ -120,6 +171,17 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if kindFilter == "target" {
+		fmt.Fprintln(stdout, "targets:")
+		for _, n := range project.KnownTargets() {
+			state := "available"
+			if slices.Contains(p.Cfg.Targets, n) {
+				state = "enabled"
+			}
+			fmt.Fprintf(stdout, "  %-28s %s\n", n, state)
+		}
+		return nil
+	}
 	kinds := project.Kinds()
 	if kindFilter != "" {
 		if _, ok := project.PluralKind(kindFilter); !ok {
@@ -138,15 +200,15 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 			continue
 		}
 		for _, n := range pool {
-			fmt.Fprintf(stdout, "  %-28s %s\n", n, targetState(p, kind, n))
+			fmt.Fprintf(stdout, "  %-28s %s\n", n, artifactState(p, kind, n))
 		}
 	}
 	return nil
 }
 
-// targetState returns the display state of a catalog-backed target: "available"
+// artifactState returns the display state of a catalog-backed artifact: "available"
 // when not enabled, else "local"/"tuned"/"enabled" from its sidecar.
-func targetState(p *project.Project, kind, name string) string {
+func artifactState(p *project.Project, kind, name string) string {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return "available"
 	}

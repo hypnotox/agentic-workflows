@@ -1,6 +1,10 @@
 package project
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
 
 // Target places adapter (tool-specific) artifacts for one runtime. Neutral
 // artifacts (AGENTS.md, docs, domains) are not target-scoped (ADR-0016).
@@ -44,6 +48,13 @@ var cursorTarget = Target{
 var targetRegistry = map[string]Target{
 	"claude": claudeTarget,
 	"cursor": cursorTarget,
+}
+
+// KnownTargets returns the known adapter names in sorted order. The bespoke
+// `awf {add,remove,list} target` path validates against this set (inv: target-cli).
+// invariant: target-cli
+func KnownTargets() []string {
+	return slices.Sorted(maps.Keys(targetRegistry))
 }
 
 // resolveTargets maps configured adapter names to their Target values in config
