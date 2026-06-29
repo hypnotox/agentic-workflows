@@ -161,13 +161,19 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 						filepath.Base(ch.Path)+" status set/changed without ACTIVE.md in the same commit"))
 				}
 				// The same ADR frontmatter regenerates each configured domain's index;
-				// require it co-changed in the same commit (ADR-0033).
+				// require it co-changed in the same commit (ADR-0033). seen dedupes a
+				// repeated domain so a missing index yields exactly one finding.
 				if in.DomainsIndexDir != "" {
+					seen := map[string]bool{}
 					for _, d := range domainsOf(ch.NewText) {
 						if !slices.Contains(in.ConfiguredDomains, d) {
 							continue
 						}
 						idx := in.DomainsIndexDir + "/" + d + ".md"
+						if seen[idx] {
+							continue
+						}
+						seen[idx] = true
 						if !touched[idx] {
 							out = append(out, finding(Error, "adr-domain-cochange", c,
 								filepath.Base(ch.Path)+" status set/changed without "+idx+" in the same commit"))

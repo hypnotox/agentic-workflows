@@ -112,6 +112,7 @@ func TestRuleADRDomainCochange(t *testing.T) {
 		{"two domains, one missing", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, rendering"), active, toolingIdx}}, 1},
 		{"status flip, index missing", in, Commit{Changes: []FileChange{adrChange(Modified, "Implemented", "tooling"), active}}, 1},
 		{"unconfigured domain not required", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "payments"), active}}, 0},
+		{"duplicate domain yields one finding", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, tooling"), active}}, 1},
 		{"no DomainsIndexDir inert", noIdxDir, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active}}, 0},
 	}
 	for _, tc := range cases {
