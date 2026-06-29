@@ -162,3 +162,33 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 		}
 	}
 }
+
+// A local skill must exist with valid frontmatter at EVERY enabled target's path
+// (ADR-0037): one present, the other absent, is a fail at the missing target.
+func TestLocalFrontmatterEveryTarget(t *testing.T) {
+	cfg := "prefix: example\nskills: [my-local]\nagents: []\ntargets:\n  - claude\n  - cursor\n"
+	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := "---\nname: my-local\ndescription: a local skill\n---\nbody\n"
+	// Only the claude copy present → the cursor path is flagged absent.
+	writeFileAt(t, root, ".claude/skills/example-my-local/SKILL.md", valid)
+	var fails []string
+	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
+		t.Fatal(err)
+	}
+	if len(fails) != 1 || fails[0] != ".cursor/skills/example-my-local/SKILL.md" {
+		t.Errorf("expected only the cursor path flagged absent, got %v", fails)
+	}
+	// Both copies present → clean.
+	writeFileAt(t, root, ".cursor/skills/example-my-local/SKILL.md", valid)
+	fails = nil
+	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
+		t.Fatal(err)
+	}
+	if len(fails) != 0 {
+		t.Errorf("expected clean with both target copies present, got %v", fails)
+	}
+}

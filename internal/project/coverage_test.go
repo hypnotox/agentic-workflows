@@ -126,18 +126,21 @@ func TestValidateFrontmatter(t *testing.T) {
 	}
 }
 
-// --- localOutPath direct cases ---
+// --- localOutPaths direct cases ---
 
-func TestLocalOutPath(t *testing.T) {
-	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget}}
-	if got := p.localOutPath("skills", "foo"); got != ".claude/skills/ex-foo/SKILL.md" {
-		t.Errorf("skills localOutPath = %q", got)
+func TestLocalOutPaths(t *testing.T) {
+	// One path per enabled target; neutral kinds yield nil.
+	p := &Project{Cfg: &config.Config{Prefix: "ex"}, Targets: []Target{claudeTarget, cursorTarget}}
+	if got := p.localOutPaths("skills", "foo"); len(got) != 2 ||
+		got[0] != ".claude/skills/ex-foo/SKILL.md" || got[1] != ".cursor/skills/ex-foo/SKILL.md" {
+		t.Errorf("skills localOutPaths = %q", got)
 	}
-	if got := p.localOutPath("agents", "bar"); got != ".claude/agents/bar.md" {
-		t.Errorf("agents localOutPath = %q", got)
+	if got := p.localOutPaths("agents", "bar"); len(got) != 2 ||
+		got[0] != ".claude/agents/bar.md" || got[1] != ".cursor/agents/bar.md" {
+		t.Errorf("agents localOutPaths = %q", got)
 	}
-	if got := p.localOutPath("docs", "x"); got != "" {
-		t.Errorf("unknown kind localOutPath should be empty, got %q", got)
+	if got := p.localOutPaths("docs", "x"); got != nil {
+		t.Errorf("neutral kind localOutPaths should be nil, got %q", got)
 	}
 }
 

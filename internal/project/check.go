@@ -14,15 +14,20 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 )
 
-// localOutPath returns the conventional output path awf would render a local
-// skill/agent to (the same formulas RenderAll uses); "" for neutral kinds.
-// Phase-5 (ADR-0037) generalizes this to every enabled target; for now it uses
-// the first target so the slice migration compiles.
-func (p *Project) localOutPath(kind, name string) string {
-	if d, ok := descriptorByPlural(kind); ok && d.outPath != nil {
-		return d.outPath(p.Targets[0], p.Cfg.Prefix, name)
+// localOutPaths returns the conventional output paths awf would render a local
+// skill/agent to — one per enabled target (the same formulas RenderAll uses); nil
+// for neutral kinds. A local artifact must exist at every target's path (ADR-0037),
+// so no target carries an unchecked hand-authored file.
+func (p *Project) localOutPaths(kind, name string) []string {
+	d, ok := descriptorByPlural(kind)
+	if !ok || d.outPath == nil {
+		return nil
 	}
-	return ""
+	paths := make([]string, 0, len(p.Targets))
+	for _, t := range p.Targets {
+		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
+	}
+	return paths
 }
 
 // checkLocalFrontmatter validates the on-disk frontmatter of every declared local
@@ -42,14 +47,16 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 			if !sc.Local {
 				continue
 			}
-			rel := p.localOutPath(kv.kind, name)
-			b, err := os.ReadFile(filepath.Join(p.Root, rel))
-			if err != nil {
-				fail(rel, fmt.Errorf("local %s file absent", d.Singular))
-				continue
-			}
-			if err := validateFrontmatter(b); err != nil {
-				fail(rel, err)
+			// A local artifact must be present and valid at every enabled target's path.
+			for _, rel := range p.localOutPaths(kv.kind, name) {
+				b, err := os.ReadFile(filepath.Join(p.Root, rel))
+				if err != nil {
+					fail(rel, fmt.Errorf("local %s file absent", d.Singular))
+					continue
+				}
+				if err := validateFrontmatter(b); err != nil {
+					fail(rel, err)
+				}
 			}
 		}
 	}
