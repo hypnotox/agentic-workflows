@@ -32,5 +32,7 @@ Documentation travels with the change that makes it true. When you change behavi
 <!-- awf:edit local-hooks — from .awf/docs/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
-This repository keeps hand-maintained hooks under `.githooks/` (not awf-rendered): `pre-commit` runs `./x check` then `./x gate`, and `pre-push` runs `./x gate full`. Wire them once per clone with `git config core.hooksPath .githooks`. They are plain checked-in scripts — edit them directly.
+This repository keeps hand-maintained hooks under `.githooks/` (not awf-rendered): `pre-commit` runs `./x check` then `./x gate`, `commit-msg` runs `./x commit-gate "$1"`, and `pre-push` runs `./x gate full`. Wire them once per clone with `git config core.hooksPath .githooks`. They are plain checked-in scripts — edit them directly.
+
+`awf commit-gate` is the deterministic, blocking commit-message gate — the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders no hook (ADR-0032); an adopter wires the command into their own `commit-msg` hook — the one-line `.githooks/commit-msg` here is the worked example.
 

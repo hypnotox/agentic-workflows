@@ -48,6 +48,8 @@ Commands:
   remove <kind> <name> Disable a target (a freeform domain, or a catalog target)
   audit        Report workflow-conformance findings over the branch (advisory)
                  --base <ref>   compare against <ref> instead of the configured base branch
+  commit-gate [FILE]   Validate one commit message (Conventional Commits), blocking on a
+                 violation; reads FILE (a commit-msg hook's $1) or stdin. Wire into your own hook.
   invariants   Report Implemented-ADR invariant slugs lacking a backing comment
   upgrade      Migrate the .awf/ config tree to the current schema
   uninstall    Remove awf's generated files (keeps .awf/)
@@ -56,7 +58,7 @@ Commands:
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|list|add|remove|upgrade|uninstall|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|add|remove|upgrade|uninstall|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -89,6 +91,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		cmdErr = runInvariants(cwd, stdout)
 	case "audit":
 		cmdErr = runAudit(cwd, baseFlag(args), stdout)
+	case "commit-gate":
+		msgPath := ""
+		if len(args) >= 3 {
+			msgPath = args[2]
+		}
+		cmdErr = runCommitGate(cwd, msgPath, stdin, stdout)
 	case "list":
 		kindFilter := ""
 		if len(args) >= 3 {
@@ -146,17 +154,18 @@ type argSpec struct {
 }
 
 var argSpecs = map[string]argSpec{
-	"init":       {boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
-	"sync":       {maxPos: 0},
-	"check":      {maxPos: 0},
-	"invariants": {maxPos: 0},
-	"audit":      {valueFlags: []string{"--base"}, maxPos: 0},
-	"list":       {maxPos: 1},
-	"add":        {maxPos: -1},
-	"remove":     {maxPos: -1},
-	"upgrade":    {maxPos: 0},
-	"uninstall":  {maxPos: 0},
-	"version":    {maxPos: 0},
+	"init":        {boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0},
+	"sync":        {maxPos: 0},
+	"check":       {maxPos: 0},
+	"invariants":  {maxPos: 0},
+	"audit":       {valueFlags: []string{"--base"}, maxPos: 0},
+	"commit-gate": {maxPos: 1},
+	"list":        {maxPos: 1},
+	"add":         {maxPos: -1},
+	"remove":      {maxPos: -1},
+	"upgrade":     {maxPos: 0},
+	"uninstall":   {maxPos: 0},
+	"version":     {maxPos: 0},
 }
 
 // checkArgs rejects unrecognized --flags and enforces the positional count for a

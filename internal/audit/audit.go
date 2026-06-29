@@ -111,27 +111,40 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-// invariant: audit-conventional-commits
+// ruleConventionalCommits applies the shared Conventional Commits check to every
+// commit in the range.
 func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
-		if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
-			continue
-		}
-		m := ccRe.FindStringSubmatch(c.Subject)
-		if m == nil {
-			out = append(out, finding(Error, "conventional-commits", c, "subject is not Conventional Commits (type(scope)?: subject)"))
-			continue
-		}
-		if len(in.AllowedTypes) > 0 && !containsFold(in.AllowedTypes, m[1]) {
-			out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
-		}
-		if scope := m[3]; scope != "" && len(in.AllowedScopes) > 0 && !containsFold(in.AllowedScopes, scope) {
-			out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
-		}
-		if in.SubjectMaxLength > 0 && len(c.Subject) > in.SubjectMaxLength {
-			out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", len(c.Subject), in.SubjectMaxLength)))
-		}
+		out = append(out, CheckConventionalCommit(c, in.Settings)...)
+	}
+	return out
+}
+
+// CheckConventionalCommit validates one commit's subject against the Conventional
+// Commits settings and returns any violations. It is the single definition of the
+// rule — consumed by the audit range loop above and by the blocking `awf
+// commit-gate` command (ADR-0036), so neither re-implements the regex, the
+// type/scope allow-lists, or the subject-length limit. Merge commits are exempt.
+// invariant: audit-conventional-commits
+// invariant: commit-gate-shared-rule
+func CheckConventionalCommit(c Commit, s Settings) []Finding {
+	if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
+		return nil
+	}
+	m := ccRe.FindStringSubmatch(c.Subject)
+	if m == nil {
+		return []Finding{finding(Error, "conventional-commits", c, "subject is not Conventional Commits (type(scope)?: subject)")}
+	}
+	var out []Finding
+	if len(s.AllowedTypes) > 0 && !containsFold(s.AllowedTypes, m[1]) {
+		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
+	}
+	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.AllowedScopes, scope) {
+		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
+	}
+	if s.SubjectMaxLength > 0 && len(c.Subject) > s.SubjectMaxLength {
+		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", len(c.Subject), s.SubjectMaxLength)))
 	}
 	return out
 }

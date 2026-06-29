@@ -10,6 +10,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 `awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, ADR→domain-index co-change (ADR-0033: an ADR add or status flip must co-change each `docs/domains/<d>.md` for its configured domains, closing the stale-generated-index gap `awf check` is git-blind to), dependency-without-ADR, large-change-without-plan, and — for domain-doc currency (ADR-0019) — `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). One rule, `uncommitted-changes` (ADR-0025), is range-independent: it inspects the live working tree via go-git's `Worktree().Status()` (with global/system gitignore patterns injected so it mirrors `git status`) and reports a branch-level Error if the tree is not clean — caught at the reviewing-impl terminal step that treats audit Errors as blocking. Each rule is independently disable-able via `audit` config.
 
+`awf commit-gate` (ADR-0036) is the deterministic, blocking counterpart to the advisory audit: it validates a single commit message against the Conventional Commits rule at commit time and exits non-zero on a violation, so a bad subject is refused rather than only reported later. The rule has one definition — the per-commit `audit.CheckConventionalCommit` is consumed by both the `awf audit` range loop and `commit-gate`, sourcing the same `audit.Resolve` settings (allowed types/scopes, 72-char subject), so the two can never drift. `commit-gate` reads the message a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style (strips comment lines, stops at a verbose scissors line), and exempts git-generated merge/autosquash subjects. awf renders no hook (ADR-0032); the command is wired into an adopter's own `commit-msg` hook (this repo's checked-in `.githooks/commit-msg` calls `./x commit-gate "$1"`).
+
 
 ## Decisions
 
@@ -31,9 +33,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
 - [ADR-0033: Audit ADR→Domain-Index Co-change](../decisions/0033-audit-adr-domain-index-cochange.md)
 - [ADR-0035: Brownfield-Safe Sync Writes](../decisions/0035-brownfield-safe-sync-writes.md)
-
-### Proposed
-
 - [ADR-0036: Deterministic Commit-Message Gate](../decisions/0036-deterministic-commit-message-gate.md)
 
 ### Superseded by ADR-0032
