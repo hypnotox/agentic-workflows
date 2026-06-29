@@ -48,7 +48,7 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 5. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `docs/workflow.md`).
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
-6. **Terminal step: invoke `awf-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+6. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 
 ## Notes
 

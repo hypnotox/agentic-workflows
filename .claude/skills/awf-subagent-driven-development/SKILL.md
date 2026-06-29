@@ -33,14 +33,14 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 2. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
 
 <!-- awf:edit procedure-extract-context — default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
-3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the `Agent` prompt:
+3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
    - The project conventions the subagent must follow (see next step).
 
 <!-- awf:edit dispatch-conventions — default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
-4. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
+4. **Per task — dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **`./x gate` per commit.** Fast tier by default; `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `docs/workflow.md`.
    - **No amending prior commits.** Fixes land as new commits on top.
@@ -61,7 +61,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
-8. **Terminal step: invoke `awf-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+8. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 
 ## Notes
 

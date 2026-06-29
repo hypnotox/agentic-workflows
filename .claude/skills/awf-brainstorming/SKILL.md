@@ -20,7 +20,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Identify which packages and which existing ADRs the work touches.
 
 <!-- awf:edit example-clarifying-questions — default; create .awf/skills/parts/brainstorming/example-clarifying-questions.md to override -->
-2. **Ask clarifying questions, one at a time.** Prefer multiple choice (`AskUserQuestion` tool when available). Each question narrows scope. Avoid asking for everything in one mega-question.
+2. **Ask clarifying questions, one at a time.** Prefer multiple-choice questions where your runtime supports them. Each question narrows scope. Avoid asking for everything in one mega-question.
 
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
@@ -31,9 +31,9 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `docs/decisions/README.md` for when an ADR is warranted.
 
 <!-- awf:edit grounding-check-output-format — default; create .awf/skills/parts/brainstorming/grounding-check-output-format.md to override -->
-6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE subagent via the `Agent` tool (`subagent_type: Explore` by default; `general-purpose` only when the grounding-check needs to run a command rather than read files). The subagent does NOT see this conversation — it works from a self-contained brief and returns findings. Do NOT write the brief to a file.
+6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE fresh-context subagent for exploration (read-only by default; allow it to run a command only when the grounding-check needs to execute one rather than read files). The subagent does NOT see this conversation — it works from a self-contained brief and returns findings. Do NOT write the brief to a file.
 
-   Synthesise, in the `Agent` prompt: the problem, the agreed approach, the concrete design decisions, the files/packages/ADRs touched, the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
+   Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the files/packages/ADRs touched, the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
 
    Ask the subagent specifically to:
    - Verify the brainstorm's factual premises against the codebase: do the named types/functions/packages exist? does the approach fit the project's architecture as described?

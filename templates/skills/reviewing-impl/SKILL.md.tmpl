@@ -30,7 +30,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Invoke `Agent({subagent_type: "code-reviewer", ...})` with a brief that includes:
+3. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.

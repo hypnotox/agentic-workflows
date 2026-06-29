@@ -29,7 +29,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `plan-reviewer` subagent.** Invoke the agent tool with subagent type `plan-reviewer` and a brief that includes:
+3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.

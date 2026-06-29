@@ -37,7 +37,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section procedure-extract-context -->
-3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the `Agent` prompt:
+3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
@@ -45,7 +45,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section dispatch-conventions -->
-4. **Per task — dispatch one implementer subagent** via the `Agent` tool. Bake these conventions into the prompt verbatim:
+4. **Per task — dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **`{{ .vars.gateCmd }}` per commit.** Fast tier by default; `{{ .vars.gateCmdFull }}` for the pre-push tier when a pre-push-only surface is involved. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
@@ -70,7 +70,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-8. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the `Skill` tool. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+8. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 <!-- awf:end -->
 
 ## Notes

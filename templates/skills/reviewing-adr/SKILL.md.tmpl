@@ -26,7 +26,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `adr-reviewer` subagent.** Invoke the agent tool with subagent type `adr-reviewer` and a brief that includes:
+3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
    - The commit convention: apply fixes as new commits (never `--amend`) using the `{{ .vars.commitScope }}` scope.

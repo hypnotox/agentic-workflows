@@ -24,7 +24,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 2. **Path detection detail.** When no explicit path is given: list `docs/decisions/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
-3. **Dispatch the `adr-reviewer` subagent.** Invoke the agent tool with subagent type `adr-reviewer` and a brief that includes:
+3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
    - The commit convention: apply fixes as new commits (never `--amend`) using the `awf` scope.
