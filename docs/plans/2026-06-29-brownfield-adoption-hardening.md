@@ -618,6 +618,6 @@ After both phases:
   parser inertly, so it can never land inside an open control-flow block in a way that changes
   parsing), and the contract carries no `inv:` slug requiring backing. Revisit only if a future
   default introduces control flow across a section boundary.
-- **init→sync unification (Task 2.2)** is the plan's reading of ADR-0035's "one mechanism"
-  consequence. The plan↔ADR resync step must confirm ADR-0035 covers removing init's standalone
-  loop; if it only implies it, amend ADR-0035 (still Proposed at resync time) to state it.
+- **init→sync unification (Task 2.2)** — resolved at resync: ADR-0035 Decision item 4 now explicitly
+  removes init's standalone `--force` backup loop and delegates the backup to the chained sync, so
+  Task 2.2's loop removal and Task 2.3's single-backup regression are ADR-authorized.
