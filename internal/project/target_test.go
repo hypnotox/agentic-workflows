@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-// invariant: target-output-paths
+// TestClaudeTargetPaths unit-checks the claude adapter's path formulas. ADR-0016's
+// target-output-paths invariant is retired by ADR-0037 (retires_invariants); the
+// per-target rendering property is now backed by inv: multi-target-render.
 func TestClaudeTargetPaths(t *testing.T) {
 	if got := claudeTarget.SkillPath("awf", "tdd"); got != ".claude/skills/awf-tdd/SKILL.md" {
 		t.Fatalf("SkillPath = %q", got)

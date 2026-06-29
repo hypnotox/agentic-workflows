@@ -40,11 +40,8 @@
 - [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) — Implemented
 - [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Implemented
 - [ADR-0036: Deterministic Commit-Message Gate](0036-deterministic-commit-message-gate.md) — Implemented
-
-## Proposed
-
-- [ADR-0037: Multi-Target Rendering and the Cursor Adapter](0037-multi-target-rendering-and-cursor-adapter.md) — Proposed
-- [ADR-0038: Tool-Agnostic Skill and Agent Prose](0038-tool-agnostic-skill-agent-prose.md) — Proposed
+- [ADR-0037: Multi-Target Rendering and the Cursor Adapter](0037-multi-target-rendering-and-cursor-adapter.md) — Implemented
+- [ADR-0038: Tool-Agnostic Skill and Agent Prose](0038-tool-agnostic-skill-agent-prose.md) — Implemented
 
 ## Superseded by ADR-0032
 

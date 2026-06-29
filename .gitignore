@@ -10,3 +10,7 @@
 # awf renders a CLAUDE.md @AGENTS.md bridge at the repo root (ADR-0016);
 # negate the user's global CLAUDE.md ignore so the rendered artifact commits.
 !CLAUDE.md
+
+# awf dogfoods a cursor adapter (ADR-0037); negate any global .cursor ignore so
+# the rendered .cursor/ tree commits and is drift-checked.
+!.cursor/

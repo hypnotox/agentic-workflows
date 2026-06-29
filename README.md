@@ -89,9 +89,9 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf init` | Scaffold `.awf/` and render. `--force` overwrites colliding files (backing each up to `<path>.awf-bak`). Prompts for config values on a TTY; `--describe` prints the fillable values as JSON (for agents), and `--set k=v` / `--answers FILE` supply them non-interactively. `--set skills=`/`--set docs=` trim which catalog skills/docs are enabled (core pre-selected). |
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
-| `awf list [<kind>]` | Show targets and their per-project state (all kinds, or one). |
-| `awf add <kind> <name>` | Enable a target — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`. |
-| `awf remove <kind> <name>` | Disable a target (a catalog target, or a freeform domain). |
+| `awf list [<kind>]` | Show enabled artifacts/adapters and their per-project state (all kinds, or one; `awf list target` shows adapters). |
+| `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target` (e.g. `awf add target cursor`). |
+| `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, or an adapter runtime). |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
 | `awf upgrade` | Migrate the `.awf/` config tree to the current schema. |

@@ -45,6 +45,9 @@ skills:
   - subagent-driven-development
   - tdd
   - writing-plans
+targets:
+  - claude
+  - cursor
 vars:
   activeMdRegenCmd: ./x sync
   adrProposeCommitFmt: 'docs(adr): propose NNNN <short title>'
