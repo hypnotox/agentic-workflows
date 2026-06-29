@@ -30,6 +30,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](../decisions/0030-prebuilt-binary-distribution-and-release.md)
 - [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
 
+### Proposed
+
+- [ADR-0033: Audit ADR→Domain-Index Co-change](../decisions/0033-audit-adr-domain-index-cochange.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

@@ -37,6 +37,10 @@
 - [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) — Implemented
 - [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Implemented
 
+## Proposed
+
+- [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
