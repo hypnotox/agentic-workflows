@@ -19,7 +19,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-const Version = "0.3.1"
+const Version = "0.4.0"
 
 type Project struct {
 	Root    string
