@@ -51,10 +51,12 @@ one implementation plan.
    incidentally applies.
 
 3. **Back the rule with a case-insensitive regression guard.** A golden test asserts no rendered
-   skill or agent body contains a runtime tool-name token, matching the real vocabulary
-   case-insensitively (`subagent_type` / "subagent type", "Agent tool" / "the agent tool", "Skill
-   tool", "AskUserQuestion") so both the capitalised and lowercase forms the `reviewing-*` skills use
-   are caught — not only the templates carrying the capitalised tokens.
+   skill or agent body contains a runtime tool-name token. The denylist is the complete current
+   rendered vocabulary, matched case-insensitively and word-anchored (so it does not fire on the
+   neutral `subagent` replacement language): `subagent_type` / "subagent type", "Agent tool" / "the
+   agent tool", the "`Agent` prompt" phrasing (`brainstorming`, `subagent-driven-development`),
+   "Skill tool", and "AskUserQuestion". This catches both the capitalised and lowercase forms the
+   `reviewing-*` skills use — not only the templates carrying the capitalised tokens.
 
 ## Invariants
 
@@ -62,10 +64,12 @@ Tagged slugs are backed by tests landing with implementation (enforced by `awf c
 is `Implemented`); untagged bullets are textual contracts.
 
 - `inv: skill-prose-tool-agnostic` — every rendered skill and agent body is free of runtime
-  tool-name tokens; the backing check matches the neutralised vocabulary **case-insensitively**
-  (`subagent_type` / "subagent type", "Agent tool" / "the agent tool", "Skill tool", "AskUserQuestion"),
-  so the lowercase "the agent tool with subagent type" forms in the `reviewing-*` skills are caught,
-  not only the capitalised tokens.
+  tool-name tokens; the backing check matches the complete neutralised vocabulary
+  **case-insensitively** and word-anchored (`subagent_type` / "subagent type", "Agent tool" / "the
+  agent tool", the "`Agent` prompt" phrasing, "Skill tool", "AskUserQuestion"), so the lowercase "the
+  agent tool with subagent type" forms in the `reviewing-*` skills and the bare "`Agent` prompt"
+  references in `brainstorming`/`subagent-driven-development` are caught, not only the capitalised
+  tokens.
 - The rule constrains rendered prose only; project-specific identifiers (skill names, `./x`
   commands) are not runtime tool names and are exempt. (Textual.)
 
@@ -78,9 +82,17 @@ is `Implemented`); untagged bullets are textual contracts.
   golden guard prevents regression. No engine, config, or schema change.
 - Because the same body still renders to every target unchanged, this preserves ADR-0037's
   no-per-adapter-transform property — the prose is neutral, so no substitution is needed.
-- `doc-standard.md` itself is a managed doc (ADR-0011/0018); adding the rule is a doc-currency
-  obligation of the implementing commit, alongside the `docs_sections_test` parity that already
-  covers it.
+- `doc-standard.md` is a managed doc (ADR-0011/0018) and the rule lands in its existing `rules`
+  section — no new section, so `docs_sections_test`'s section-parity is unaffected and stays green.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The `doc-standard.md` rule (Decision 1) and the ~10 template neutralisations (Decision 2)
+  re-render via `./x sync`, kept green by `./x check`, in the commit(s) that make them true.
+- In the commit that flips this ADR to `Implemented`, `docs/decisions/ACTIVE.md` is regenerated via
+  `./x sync` (the same `./x sync` covers ADR-0037's flip in the shared plan). No
+  `docs/decisions/README.md` index row is owed — the README is a how-to guide; `ACTIVE.md` is the
+  generated index (ADR-0005).
 
 ## Alternatives Considered
 
