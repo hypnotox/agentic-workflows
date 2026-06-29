@@ -38,6 +38,10 @@
 - [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) — Implemented
 - [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) — Implemented
 
+## Proposed
+
+- [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

@@ -27,3 +27,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 - [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
 
+### Proposed
+
+- [ADR-0034: Convention Parts Are Raw Input](../decisions/0034-convention-parts-are-raw-input.md)
+
