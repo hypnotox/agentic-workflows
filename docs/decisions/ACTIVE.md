@@ -41,6 +41,7 @@
 ## Proposed
 
 - [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) — Proposed
+- [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Proposed
 
 ## Superseded by ADR-0032
 
