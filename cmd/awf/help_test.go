@@ -35,11 +35,34 @@ func TestGlobalHelpListsAllCommands(t *testing.T) {
 		t.Errorf("global help missing Commands header:\n%s", got)
 	}
 	for name, spec := range argSpecs {
-		if !strings.Contains(got, name) {
-			t.Errorf("global help omits command %q", name)
+		// Line-anchored: "  <name> " at a line start, so a command name that is a
+		// substring of another's summary cannot mask a real omission.
+		if !strings.Contains(got, "\n  "+name+" ") {
+			t.Errorf("global help omits command line for %q:\n%s", name, got)
 		}
 		if spec.summary == "" || spec.help == "" {
 			t.Errorf("command %q has empty summary/help", name)
+		}
+	}
+}
+
+// commandOrder and argSpecs must stay in exact set parity: the global overview
+// iterates commandOrder, so a command in one but not the other would silently
+// drop from `awf help` (or print an empty summary line).
+func TestCommandOrderMatchesArgSpecs(t *testing.T) {
+	inOrder := map[string]bool{}
+	for _, name := range commandOrder {
+		if inOrder[name] {
+			t.Errorf("commandOrder lists %q twice", name)
+		}
+		inOrder[name] = true
+		if _, ok := argSpecs[name]; !ok {
+			t.Errorf("commandOrder lists %q, absent from argSpecs", name)
+		}
+	}
+	for name := range argSpecs {
+		if !inOrder[name] {
+			t.Errorf("argSpecs has %q, missing from commandOrder", name)
 		}
 	}
 }
