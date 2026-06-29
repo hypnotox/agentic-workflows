@@ -245,21 +245,9 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 	}
 }
 
-func TestRenderAllSkillExecuteErrorOnBrokenPart(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  testCmd: t\n  gateCmd: g\nskills: [tdd]\nagents: []\n"
-	root := scaffoldFiles(t, cfg, map[string]string{
-		// A convention part injecting an unterminated template action; Assemble
-		// succeeds (text substitution) but Execute's parse fails.
-		"skills/parts/tdd/notes.md": "{{ .broken syntax\n",
-	})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.RenderAll(); err == nil {
-		t.Fatal("expected RenderAll to fail executing a template with a broken convention part")
-	}
-}
+// Note: a convention part containing template-shaped text no longer makes
+// RenderAll fail — parts are raw input (ADR-0034), rendered verbatim. The
+// render.Execute error branches are unit-tested directly in internal/render.
 
 // --- renderTarget: template-read error (direct) ---
 

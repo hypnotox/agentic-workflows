@@ -16,7 +16,8 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 		t.Fatalf("read template: %v", err)
 	}
 	withLayoutDefaults(data)
-	out, err := render.Execute(render.Assemble(render.ParseSections(string(src)), nil), data)
+	asm, parts := render.Assemble(render.ParseSections(string(src)), nil)
+	out, err := render.Execute(asm, data, parts, "test")
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}

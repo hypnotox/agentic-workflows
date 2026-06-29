@@ -20,7 +20,8 @@ func sampleData() map[string]any {
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
 func TestRenderDefault(t *testing.T) {
-	out, err := Execute(Assemble(ParseSections(tmpl), nil), sampleData())
+	asm, parts := Assemble(ParseSections(tmpl), nil)
+	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,8 @@ func TestRenderDefault(t *testing.T) {
 
 func TestRenderDropsSection(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {Drop: true}}
-	out, err := Execute(Assemble(ParseSections(tmpl), plan), sampleData())
+	asm, parts := Assemble(ParseSections(tmpl), plan)
+	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,11 +55,12 @@ func TestRenderDropsSection(t *testing.T) {
 
 func TestRenderConventionPart(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".awf/x.md"}}
-	out, err := Execute(Assemble(ParseSections(tmpl), plan), sampleData())
+	asm, parts := Assemble(ParseSections(tmpl), plan)
+	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "CUSTOM example") || strings.Contains(out, "NOTE") {
+	if !strings.Contains(out, "CUSTOM {{ .prefix }}") || strings.Contains(out, "NOTE") {
 		t.Errorf("convention part substitution failed:\n%s", out)
 	}
 	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
@@ -66,7 +69,7 @@ func TestRenderConventionPart(t *testing.T) {
 }
 
 func TestExecuteParseError(t *testing.T) {
-	_, err := Execute("{{ .prefix", sampleData())
+	_, err := Execute("{{ .prefix", sampleData(), nil, "test")
 	if err == nil {
 		t.Fatal("expected parse error from malformed template, got nil")
 	}
@@ -77,11 +80,32 @@ func TestExecuteParseError(t *testing.T) {
 
 func TestExecuteExecError(t *testing.T) {
 	// .prefix is a string; ranging over it is a parse-valid but execution-time error.
-	_, err := Execute("{{ range .prefix }}{{ end }}", sampleData())
+	_, err := Execute("{{ range .prefix }}{{ end }}", sampleData(), nil, "test")
 	if err == nil {
 		t.Fatal("expected execution error, got nil")
 	}
 	if !strings.Contains(err.Error(), "execute template") {
 		t.Errorf("error missing execute context: %q", err.Error())
+	}
+}
+
+func TestPartBodyIsRawNeverTemplated(t *testing.T) {
+	tmpl := "<!-- awf:section body -->\nDEFAULT {{ .prefix }}\n<!-- awf:end -->\n"
+	plan := map[string]SectionPlan{"body": {
+		HasPart:  true,
+		PartBody: "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}.",
+		EditPath: ".awf/x/parts/y/body.md",
+	}}
+	asm, parts := Assemble(ParseSections(tmpl), plan)
+	out, err := Execute(asm, sampleData(), parts, "raw-test")
+	if err != nil {
+		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
+	}
+	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}."
+	if !strings.Contains(out, want) {
+		t.Fatalf("part body must render verbatim (not interpolated)\n got: %q\nwant substring: %q", out, want)
+	}
+	if strings.Contains(out, "<no value>") || strings.Contains(out, "\x00") {
+		t.Fatalf("part body was interpolated or a sentinel leaked: %q", out)
 	}
 }

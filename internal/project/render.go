@@ -240,9 +240,9 @@ func (p *Project) renderTarget(kind, target, tid string, declared []string, sc c
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled := render.Assemble(render.ParseSections(string(src)), plan)
-	content, err := render.Execute(assembled, data)
-	if err != nil {
+	assembled, parts := render.Assemble(render.ParseSections(string(src)), plan)
+	content, err := render.Execute(assembled, data, parts, tid)
+	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if strings.Contains(content, "<no value>") {

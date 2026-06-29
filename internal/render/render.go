@@ -27,13 +27,23 @@ func editPointer(name string, p SectionPlan) string {
 	return fmt.Sprintf("<!-- awf:edit %s — default; create %s to override -->\n", name, p.EditPath)
 }
 
+// partSentinel is the brace-free, NUL-delimited placeholder emitted in a part's
+// slot. NUL bytes cannot occur in template or markdown text, so the token can
+// never collide with rendered content, and being brace-free it is inert to the
+// template parser.
+func partSentinel(name string) string {
+	return "\x00awf:part:" + name + "\x00"
+}
+
 // Assemble applies the per-section plan to the parsed segments and returns the
-// final template source: literal segments verbatim; each non-dropped section
-// prefixed with its awf:edit pointer, then its part body or the template default.
-// Section markers are consumed here and never written, so they cannot leak.
+// template skeleton plus a sentinel→raw-body map. Literal segments pass through
+// verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
+// either a sentinel standing in for its part body (restored after Execute) or the
+// template default. Section markers are consumed here and never written.
 // invariant: no-section-marker-leak
-func Assemble(segs []Segment, plan map[string]SectionPlan) string {
+func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]string) {
 	var b strings.Builder
+	parts := map[string]string{}
 	for _, s := range segs {
 		if !s.IsSection {
 			b.WriteString(s.Text)
@@ -45,18 +55,23 @@ func Assemble(segs []Segment, plan map[string]SectionPlan) string {
 		}
 		b.WriteString(editPointer(s.Name, p))
 		if p.HasPart {
-			b.WriteString(p.PartBody)
+			sent := partSentinel(s.Name)
+			parts[sent] = p.PartBody
+			b.WriteString(sent)
 		} else {
 			b.WriteString(s.Text)
 		}
 	}
-	return b.String()
+	return b.String(), parts
 }
 
-// Execute runs text/template over an already-assembled source with the given
-// data under missingkey=zero.
-func Execute(assembled string, data map[string]any) (string, error) {
-	t, err := template.New("skill").Option("missingkey=zero").Parse(assembled)
+// Execute runs text/template over the awf-owned skeleton (part bodies stood in by
+// sentinels) under missingkey=zero, then restores each raw part body verbatim — so
+// a convention part is never parsed or executed as a template. name labels parse
+// and execute errors with the target rather than a hardcoded literal.
+// invariant: parts-raw
+func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
+	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
 	}
@@ -64,5 +79,9 @@ func Execute(assembled string, data map[string]any) (string, error) {
 	if err := t.Execute(&out, data); err != nil {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
-	return out.String(), nil
+	rendered := out.String()
+	for sent, body := range parts {
+		rendered = strings.ReplaceAll(rendered, sent, body)
+	}
+	return rendered, nil
 }

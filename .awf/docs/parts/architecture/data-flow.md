@@ -8,3 +8,8 @@ writes the rendered files, and stamps each one's per-target `ConfigHash` into `.
 `check` re-renders in memory and compares against the lock — reporting drift, orphaned
 sidecars/parts, and stale `ACTIVE.md` — while a stale schema generation gates with a "run `awf
 upgrade`" message (ADR-0010).
+
+Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
+through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
+skeleton is executed, then the raw part bodies are restored verbatim — so a literal `{{` in a part
+renders byte-for-byte and a part is never variable-interpolated.
