@@ -41,6 +41,10 @@
 - [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Implemented
 - [ADR-0036: Deterministic Commit-Message Gate](0036-deterministic-commit-message-gate.md) — Implemented
 
+## Proposed
+
+- [ADR-0037: Multi-Target Rendering and the Cursor Adapter](0037-multi-target-rendering-and-cursor-adapter.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
