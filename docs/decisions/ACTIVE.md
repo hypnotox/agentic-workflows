@@ -40,6 +40,10 @@
 - [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) — Implemented
 - [ADR-0035: Brownfield-Safe Sync Writes](0035-brownfield-safe-sync-writes.md) — Implemented
 
+## Proposed
+
+- [ADR-0036: Deterministic Commit-Message Gate](0036-deterministic-commit-message-gate.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

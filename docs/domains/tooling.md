@@ -32,6 +32,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0033: Audit ADR→Domain-Index Co-change](../decisions/0033-audit-adr-domain-index-cochange.md)
 - [ADR-0035: Brownfield-Safe Sync Writes](../decisions/0035-brownfield-safe-sync-writes.md)
 
+### Proposed
+
+- [ADR-0036: Deterministic Commit-Message Gate](../decisions/0036-deterministic-commit-message-gate.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
