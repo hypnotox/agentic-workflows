@@ -57,7 +57,11 @@ resolves without a new dependency but requires a leading `v` (it rejects `0.4.0`
 
 3. **Add a release-version sub-check.** After the schema check, `gate()` loads
    `.awf/awf.lock` and compares the lock's `AWFVersion` against `awfVersion()` using normalized
-   semver ordering (both operands prefixed with `v` for `x/mod/semver`):
+   semver ordering. Each operand is normalized idempotently — any existing leading `v` is stripped
+   and exactly one `v` re-added (`"v" + strings.TrimPrefix(s, "v")`) — because `x/mod/semver`
+   requires a single leading `v` and `awfVersion()` already returns the `v`-prefixed form for
+   `go install` builds (a naive prefix would yield `vv0.4.0`, which fails normalization and would
+   silently skip the check for exactly that build mode):
    - lock version **newer** than the running binary (binary behind) → hard error instructing the
      user to update their pinned awf.
    - running binary **at or ahead of** the lock → permitted; this is the legitimate pre-upgrade /
@@ -75,8 +79,14 @@ resolves without a new dependency but requires a leading `v` (it rejects `0.4.0`
 
 6. **Gate surface.** The gate guards every command that renders or reads the config for output:
    `sync`, `check`, `invariants`, `audit`, and `list` (and therefore `add`/`remove`, which call
-   `sync`). `upgrade`, `version`, `init`, and `uninstall` are exempt — `upgrade` must run against a
-   behind config by design, and the others do not interpret the config.
+   `sync`). `version` and `uninstall` carry no gate call — they do not interpret the config.
+   `upgrade` and `init` carry no *direct* gate call but both chain into `runSync`, so they route
+   through the gate transitively; neither can trip it in practice (`upgrade` restamps `SchemaVersion`
+   to `Current()` before its chained sync, so the schema check reads `"ok"` and the version sub-check
+   sees a binary at-or-ahead of the old lock — the legitimate pre-upgrade state; `init` runs before
+   any lock exists, so `Generation` reports `Current()` and the version sub-check is skipped per
+   item 5). The new `"ahead"` schema error and the lock-version error are therefore reachable only
+   from `sync`/`check`/`invariants`/`audit`/`list`, never from `upgrade` or `init`.
 
 ## Invariants
 
