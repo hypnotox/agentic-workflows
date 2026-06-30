@@ -33,8 +33,11 @@ shell tool, not a Claude/Cursor adapter file. Rendering it lets awf own the pin 
 every `sync`, collapsing the two sources of truth into one.
 
 Verified facts (grounding): neutral singletons are emitted by explicit blocks in `RenderAll`
-(`internal/project/render.go`) and registered via `internal/catalog` `TargetSpec`s; any file that
-flows through `RenderAll` is lock-tracked and drift-checked for free. `project.Version` is *not*
+(`internal/project/render.go:159-216`) — not via the `renderKind`/catalog loop — and a singleton
+carries a `catalog` `TargetSpec` only when it has overridable sections (`AgentsDoc`, `AdrReadme`,
+…). The bootstrap singleton therefore needs its own explicit `RenderAll` block; a `TargetSpec` is
+required only if it exposes convention-part sections. Any file that flows through `RenderAll` is
+lock-tracked and drift-checked for free. `project.Version` is *not*
 currently in the template data namespace (`p.data()` exposes only prefix/vars/data/layout), so
 exposing it is new work. `renderTarget` rejects any output containing `<no value>` (the ADR-0001
 publication-safety mechanism). The dead-reference scan keys on `isManagedMarkdown(tid)`, which today
@@ -63,15 +66,28 @@ is precedent for a token handled bespoke, outside that table.
    is the same value awf stamps into the lock's `awfVersion`, so after `awf upgrade && awf sync` with
    a newer binary the bootstrap re-pins itself. The pin is no longer authored by hand anywhere.
 
-3. **Toggle via a new `bootstrap` kind.** `awf add bootstrap` / `awf remove bootstrap` enable and
-   disable the artifact through a dedicated config representation (a `bootstrap` enable entry).
-   `list` reports it. The artifact renders only when enabled; `init` seeds it enabled by default.
+3. **Toggle via a bespoke `bootstrap` token, following the `target` precedent.** `awf add bootstrap` /
+   `awf remove bootstrap` enable and disable the artifact through a dedicated top-level config key
+   (a `bootstrap` enable entry). Because the artifact is a once-rendered neutral singleton with no
+   catalog pool and no plural enable-array, it does **not** fit the `kindDescriptor` table (`inv:
+   kind-dispatch-single-table`, which every table kind backs with a `poolNames`/`sections`/plural
+   enable facet). It is therefore handled bespoke *outside* that table — exactly as `target`
+   ([ADR-0037](0037-multi-target-rendering-and-cursor-adapter.md)) is special-cased in `runAdd` /
+   `runRemove` / `runList` (`cmd/awf/list_add.go`) rather than added to `kindDescriptors`. The
+   `unknownKind` hint string (`cmd/awf/list_add.go:16-18`, today `"want: skill, agent, doc, domain,
+   target"`) gains `bootstrap`, and `runList` gains a bespoke branch reporting its enabled/available
+   state. The artifact renders only when enabled; `init` seeds it enabled by default.
 
 4. **Bump the config schema to generation 5.** Because the `bootstrap` config surface is a new
-   top-level key that the strict YAML decoder of an older binary would reject, a new
-   `migrate.Migration` (To: 5) ports existing configs and enables `bootstrap` for them (preserving
-   the new default on upgrade). This makes the change visible to the [ADR-0039](0039-binary-version-compatibility-gate.md)
-   schema-ahead gate rather than surfacing as a decoder error in binaries that contain the gate.
+   top-level key (`config.Config`, `internal/config/config.go:38-47`) that the strict YAML decoder
+   (`KnownFields(true)`) of an older binary would reject, a new `migrate.Migration` (To: 5, appended
+   to the `internal/migrate` registry after `{To: 4}`) ports existing configs and enables
+   `bootstrap` for them (preserving the new default on upgrade). This makes the change visible to the
+   [ADR-0039](0039-binary-version-compatibility-gate.md) schema-ahead gate rather than surfacing as a
+   decoder error in binaries that contain the gate. The schema bump touches the config and render
+   consumers; the **manifest/lock format is unchanged** (the bootstrap output is a new lock-tracked
+   *entry*, not a new lock *field*), and `migrate` gains only the additive To:5 migration — no
+   existing migration is rewritten.
 
 5. **Drift-check the rendered script; exclude it from the dead-reference scan.** The artifact flows
    through `RenderAll`, so it is lock-tracked and `awf check` validates it like every other rendered
@@ -82,13 +98,25 @@ is precedent for a token handled bespoke, outside that table.
 6. **Bash, linux/darwin, for now.** The rendered script targets bash on linux/darwin. Windows
    adopters are out of scope for this artifact (a `.ps1` companion is a later, separate decision).
 
+7. **Docs travel with the change.** The commit that lands this work also: regenerates
+   `docs/decisions/ACTIVE.md` via `./x sync` (the ADR status flips to Accepted/Implemented); adds the
+   `docs/decisions/README.md` index row for ADR-0040; and updates `AGENTS.md` plus any affected
+   project docs (e.g. the command/conventions surface) — `AGENTS.md` is itself rendered, so this
+   means a `.awf/` edit re-rendered through `awf sync`. The bootstrap toggle (`awf add/remove
+   bootstrap`) and the schema-5 bump are workflow/convention-visible changes, so the agent guide and
+   `docs/development.md` command reference are updated in the same commit.
+
 ## Invariants
 
-- `inv: bootstrap-pin` — the version the rendered `awf-bootstrap.sh` pins equals the
-  `project.Version` of the awf binary that rendered it (the same value written to the lock's
-  `awfVersion`), so the pin has a single source of truth and cannot drift from the lock.
-- A rendered `awf-bootstrap.sh` contains a SHA-256 verification step against the release
-  `checksums.txt` before installing the downloaded binary. (Textual contract.)
+- `inv: bootstrap-pin` — the rendered `awf-bootstrap.sh` pins exactly the rendering binary's
+  `project.Version`: a golden-render test asserts the script contains the literal assignment
+  `AWF_VERSION="<project.Version>"` (the same value `sync` stamps into the lock's `awfVersion`), so
+  the pin has a single source of truth and cannot drift from the lock.
+- `inv: bootstrap-checksum` — a golden-render test asserts the rendered `awf-bootstrap.sh` contains
+  a `sha256` verification step (the `checksums.txt` comparison) ahead of the install step, so the
+  download is always integrity-checked before use. (Checkable by string presence in the rendered
+  output; unlike [ADR-0039](0039-binary-version-compatibility-gate.md)'s skip-on-unparseable
+  textual contract, this is a golden-render assertion, not a runtime-only contract.)
 
 ## Consequences
 
