@@ -9,6 +9,9 @@ import (
 )
 
 func runAudit(root, base string, stdout io.Writer) error {
+	if err := gate(root); err != nil {
+		return err
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err

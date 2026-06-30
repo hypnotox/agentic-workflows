@@ -84,11 +84,15 @@ func registryTos() []int {
 	return tos
 }
 
-// gateStateFor is the pure classifier (extracted for testability): "ok" when gen is
-// at/above current; "gate" when at least one To lands in the open interval
+// gateStateFor is the pure classifier (extracted for testability): "ahead" when
+// gen is strictly above current (the binary is behind the project — ADR-0039);
+// "ok" when gen == current; "gate" when at least one To lands in the open interval
 // (gen, current]; "autobump" otherwise.
 func gateStateFor(gen, current int, tos []int) string {
-	if gen >= current {
+	if gen > current {
+		return "ahead"
+	}
+	if gen == current {
 		return "ok"
 	}
 	for _, to := range tos {

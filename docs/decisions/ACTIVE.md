@@ -42,10 +42,10 @@
 - [ADR-0036: Deterministic Commit-Message Gate](0036-deterministic-commit-message-gate.md) — Implemented
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](0037-multi-target-rendering-and-cursor-adapter.md) — Implemented
 - [ADR-0038: Tool-Agnostic Skill and Agent Prose](0038-tool-agnostic-skill-agent-prose.md) — Implemented
+- [ADR-0039: Binary-Version Compatibility Gate](0039-binary-version-compatibility-gate.md) — Implemented
 
 ## Proposed
 
-- [ADR-0039: Binary-Version Compatibility Gate](0039-binary-version-compatibility-gate.md) — Proposed
 - [ADR-0040: Self-Pinning Rendered Bootstrap](0040-self-pinning-rendered-bootstrap.md) — Proposed
 
 ## Superseded by ADR-0032

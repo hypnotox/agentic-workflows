@@ -174,6 +174,13 @@ func TestNoopGapAutoBumps(t *testing.T) {
 	if got := gateStateFor(5, 5, []int{1, 5}); got != "ok" {
 		t.Errorf("gateStateFor(5,5,...) = %q, want ok", got)
 	}
+	// gen strictly above current → the binary is behind the project (ADR-0039).
+	if got := gateStateFor(6, 5, []int{1, 5}); got != "ahead" {
+		t.Errorf("gateStateFor(6,5,...) = %q, want ahead", got)
+	}
+	if got := gateStateFor(5, 4, []int{1, 4}); got != "ahead" {
+		t.Errorf("gateStateFor(5,4,...) = %q, want ahead", got)
+	}
 }
 
 func mustMkdir(t *testing.T, dir string) {

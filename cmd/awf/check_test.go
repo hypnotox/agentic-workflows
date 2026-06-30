@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 const checkYAML = `prefix: example
@@ -35,6 +38,63 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 	if err := runCheck(root, io.Discard); err == nil {
 		t.Errorf("expected drift error after hand-edit")
+	}
+}
+
+// repinLockVersion rewrites the synced project's lock awfVersion in place (schema
+// unchanged) so the ahead/equal version comparison can be exercised.
+func repinLockVersion(t *testing.T, root, version string) {
+	t.Helper()
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	l, err := manifest.Load(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.AWFVersion = version
+	if err := l.Save(lockPath); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRunCheckAheadNotice covers the ahead-skew notice in runCheck: a synced
+// project whose lock awfVersion is behind the binary prints a non-failing notice;
+// an equal version prints none.
+func TestRunCheckAheadNotice(t *testing.T) {
+	setup := func(t *testing.T) string {
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := runSync(root, io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		return root
+	}
+
+	root := setup(t)
+	repinLockVersion(t, root, "0.3.0")
+	var out bytes.Buffer
+	if err := runCheck(root, &out); err != nil {
+		t.Fatalf("expected clean check, got %v", err)
+	}
+	if !strings.Contains(out.String(), "awf check: clean") {
+		t.Errorf("expected clean output, got %q", out.String())
+	}
+	if !strings.Contains(out.String(), "is ahead of this project (rendered by 0.3.0)") {
+		t.Errorf("expected ahead notice, got %q", out.String())
+	}
+
+	root2 := setup(t)
+	repinLockVersion(t, root2, "0.4.0")
+	var out2 bytes.Buffer
+	if err := runCheck(root2, &out2); err != nil {
+		t.Fatalf("expected clean check, got %v", err)
+	}
+	if strings.Contains(out2.String(), "is ahead") {
+		t.Errorf("did not expect ahead notice for equal version, got %q", out2.String())
 	}
 }
 

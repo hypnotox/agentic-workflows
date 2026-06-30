@@ -3,13 +3,19 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"golang.org/x/mod/semver"
 )
 
 func runCheck(root string, stdout io.Writer) error {
 	if err := gate(root); err != nil {
 		return err
+	}
+	if lockV, binV, ok := lockVsBinary(root); ok && semver.Compare(binV, lockV) > 0 {
+		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf sync to re-pin\n",
+			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
 	p, err := project.Open(root)
 	if err != nil {
