@@ -46,6 +46,7 @@
 ## Proposed
 
 - [ADR-0039: Binary-Version Compatibility Gate](0039-binary-version-compatibility-gate.md) — Proposed
+- [ADR-0040: Self-Pinning Rendered Bootstrap](0040-self-pinning-rendered-bootstrap.md) — Proposed
 
 ## Superseded by ADR-0032
 
