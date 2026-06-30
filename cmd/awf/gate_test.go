@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 // gateFixture writes a .awf/ tree with a minimal config.yaml and a hand-written
@@ -45,18 +46,21 @@ func TestGateAheadSchemaErrors(t *testing.T) {
 }
 
 func TestGateBehindVersionErrors(t *testing.T) {
-	root := gateFixture(t, "0.5.0", migrate.Current())
+	// A lock far above any real release is unambiguously newer than the test
+	// binary (project.Version), so this stays correct across version bumps.
+	root := gateFixture(t, "99.0.0", migrate.Current())
 	err := gate(root)
 	if err == nil {
 		t.Fatal("expected gate error on behind version")
 	}
-	if !strings.Contains(err.Error(), "is behind this project (rendered by 0.5.0)") {
+	if !strings.Contains(err.Error(), "is behind this project (rendered by 99.0.0)") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
 func TestGateAtOrAheadVersionPermitted(t *testing.T) {
-	for _, v := range []string{"0.4.0", "0.3.0"} {
+	// project.Version is the equal boundary; "0.0.1" is below any real release.
+	for _, v := range []string{project.Version, "0.0.1"} {
 		root := gateFixture(t, v, migrate.Current())
 		if err := gate(root); err != nil {
 			t.Errorf("gate(%s) = %v, want nil", v, err)

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 const checkYAML = `prefix: example
@@ -88,7 +89,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	}
 
 	root2 := setup(t)
-	repinLockVersion(t, root2, "0.4.0")
+	repinLockVersion(t, root2, project.Version) // equal to the binary → no notice
 	var out2 bytes.Buffer
 	if err := runCheck(root2, &out2); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
