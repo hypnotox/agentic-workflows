@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.4.0",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "files": {
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -234,7 +234,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:2172dec4787980f27db4a8ce0a4f7c53a2a4222553b776341c53b5b07231f3ed"
+      "outputHash": "sha256:dd15abb6b865216afbacdfa115bfe3db075c60ec07241293dce8739bc96f8958"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:889d8346501a49e419792aaaa41bb0636acc463aac55a604535505fc46d7dafd"
+      "outputHash": "sha256:c0815b80e6958432d30ba1f4a1476090e743e5bace331302aac1fc0f0d1538bd"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -282,13 +282,13 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:c9933ad4627bcc6c5bf31589073add39b8ea2a9d51c8d5220c1ad53c1a10a18e"
+      "outputHash": "sha256:ce1c33918db5e8aa9fc2e69b2fb8d0979e4ec24fb5ac9f25771f54715c25104d"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:24fb8945d4f281d72cc8960e79bbec3ab625389df2bf192f8b26ffd659368953"
+      "outputHash": "sha256:5386ca352d8dd2026c2407561d1a8f54d16b57c5c19677513ac7d222f5905fb9"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

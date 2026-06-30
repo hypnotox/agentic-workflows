@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,39 @@ import (
 )
 
 func unknownKind(kind string) error {
-	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target)", kind)}
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap)", kind)}
+}
+
+// addRemoveBootstrap enables or disables the self-pinning bootstrap singleton in
+// the config (ADR-0040). It is the bespoke path (bootstrap is not a kindDescriptor —
+// it has no catalog pool / sections / plural enable array, so it stays out of the
+// single dispatch table that inv: kind-dispatch-single-table guards): a nested
+// bootstrap.enabled scalar, written via config.SetMappingScalar.
+func addRemoveBootstrap(root string, add bool, stdout io.Writer) error {
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	enabled := p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled
+	if add && enabled {
+		return errors.New("bootstrap already enabled")
+	}
+	if !add && !enabled {
+		return errors.New("bootstrap is not enabled")
+	}
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	b, err := os.ReadFile(cfgPath)
+	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
+		return err
+	}
+	updated, err := config.SetMappingScalar(b, "bootstrap", "enabled", add)
+	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetMappingScalar's parse/mapping checks cannot fail here
+		return err
+	}
+	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault root bypasses
+		return err
+	}
+	return runSync(root, stdout)
 }
 
 // addRemoveTarget enables or disables an adapter in the config targets array. It
@@ -78,6 +111,9 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 	if kind == "target" {
 		return addRemoveTarget(root, name, true, stdout)
 	}
+	if kind == "bootstrap" {
+		return addRemoveBootstrap(root, true, stdout)
+	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
 		return unknownKind(kind)
@@ -112,6 +148,9 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 func runRemove(root, kind, name string, stdout io.Writer) error {
 	if kind == "target" {
 		return addRemoveTarget(root, name, false, stdout)
+	}
+	if kind == "bootstrap" {
+		return addRemoveBootstrap(root, false, stdout)
 	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
@@ -183,6 +222,15 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 			}
 			fmt.Fprintf(stdout, "  %-28s %s\n", n, state)
 		}
+		return nil
+	}
+	if kindFilter == "bootstrap" {
+		state := "available"
+		if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
+			state = "enabled"
+		}
+		fmt.Fprintln(stdout, "bootstrap:")
+		fmt.Fprintf(stdout, "  %-28s %s\n", "awf-bootstrap.sh", state)
 		return nil
 	}
 	kinds := project.Kinds()

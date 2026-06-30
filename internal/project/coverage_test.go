@@ -671,3 +671,12 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 		t.Errorf("expected dead-reference drift, got %#v", drift)
 	}
 }
+
+func TestIsManagedMarkdownExcludesBootstrap(t *testing.T) {
+	if isManagedMarkdown("bootstrap/awf-bootstrap.sh.tmpl") {
+		t.Error("awf-bootstrap.sh template must not be scanned for dead references")
+	}
+	if !isManagedMarkdown("docs/architecture.md.tmpl") {
+		t.Error("a managed doc template must remain in the dead-reference scan")
+	}
+}

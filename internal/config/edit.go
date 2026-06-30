@@ -21,6 +21,7 @@ type Skeleton struct {
 	Agents     []string          `yaml:"agents"`
 	Docs       []string          `yaml:"docs"`
 	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
+	Bootstrap  *BootstrapConfig  `yaml:"bootstrap,omitempty"`
 }
 
 // CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
@@ -131,6 +132,51 @@ func RemoveKey(src []byte, key string) ([]byte, error) {
 		}
 	}
 	return src, nil
+}
+
+// SetMappingScalar sets child to a bool value under a top-level mapping at key in
+// a config.yaml source, creating the key's mapping (and the child) if absent, via a
+// yaml.Node round-trip that preserves comments and every untouched key (ADR-0026).
+// It is the nested-scalar analog of SetArray (which writes a sequence): the
+// bootstrap enable entry is `bootstrap.enabled: <bool>`, not an enable array, so it
+// needs a mapping-scalar writer rather than SetArrayMember. An existing scalar under
+// key/child is overwritten.
+func SetMappingScalar(src []byte, key, child string, value bool) ([]byte, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(src, &doc); err != nil {
+		return nil, fmt.Errorf("config: parse: %w", err)
+	}
+	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("config: not a YAML mapping")
+	}
+	root := doc.Content[0]
+	boolStr := "false"
+	if value {
+		boolStr = "true"
+	}
+	val, _ := mapValue(root, key)
+	if val == nil || val.Kind != yaml.MappingNode {
+		m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+			strScalar(child), boolScalar(boolStr),
+		}}
+		if val == nil {
+			root.Content = append(root.Content, strScalar(key), m)
+		} else {
+			_, vi := mapValue(root, key)
+			root.Content[vi] = m
+		}
+		return encode(&doc)
+	}
+	if cv, _ := mapValue(val, child); cv != nil {
+		cv.Tag, cv.Value, cv.Style = "!!bool", boolStr, 0
+	} else {
+		val.Content = append(val.Content, strScalar(child), boolScalar(boolStr))
+	}
+	return encode(&doc)
+}
+
+func boolScalar(v string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
 }
 
 // encode is the single funnel for awf-owned config.yaml serialization: a yaml.v3

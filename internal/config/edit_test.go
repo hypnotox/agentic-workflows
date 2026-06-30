@@ -161,3 +161,87 @@ func TestSetArrayMemberPreservesComments(t *testing.T) {
 		t.Errorf("member not added:\n%s", got)
 	}
 }
+
+func TestSetMappingScalar(t *testing.T) {
+	cases := []struct {
+		name    string
+		src     string
+		value   bool
+		want    string // substring that must be present
+		wantErr bool
+	}{
+		{
+			name:  "key absent appends mapping",
+			src:   "# top comment\nprefix: x\n",
+			value: true,
+			want:  "bootstrap:\n  enabled: true",
+		},
+		{
+			name:  "mapping without child appends child",
+			src:   "prefix: x\nbootstrap:\n  other: y\n",
+			value: true,
+			want:  "enabled: true",
+		},
+		{
+			name:  "mapping with child overwrites",
+			src:   "prefix: x\nbootstrap:\n  enabled: false\n",
+			value: true,
+			want:  "enabled: true",
+		},
+		{
+			name:  "key not a mapping is replaced",
+			src:   "prefix: x\nbootstrap: 3\n",
+			value: true,
+			want:  "bootstrap:\n  enabled: true",
+		},
+		{
+			name:  "value false renders false",
+			src:   "prefix: x\n",
+			value: false,
+			want:  "enabled: false",
+		},
+		{
+			name:    "non-mapping root errors",
+			src:     "- a\n",
+			value:   true,
+			wantErr: true,
+		},
+		{
+			name:    "unparseable YAML errors",
+			src:     "a: [b\n",
+			value:   true,
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SetMappingScalar([]byte(tc.src), "bootstrap", "enabled", tc.value)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got: %s", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(got), tc.want) {
+				t.Errorf("missing %q in:\n%s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestSetMappingScalarPreservesComments(t *testing.T) {
+	src := "# top comment\nprefix: x # inline\n"
+	got, err := SetMappingScalar([]byte(src), "bootstrap", "enabled", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "# top comment") {
+		t.Errorf("head comment lost:\n%s", got)
+	}
+	if !strings.Contains(string(got), "# inline") {
+		t.Errorf("inline comment lost:\n%s", got)
+	}
+}

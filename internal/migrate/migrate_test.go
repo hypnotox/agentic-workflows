@@ -143,8 +143,8 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
 	// (a no-op here — tree-layout already ports replaceWith parts), then
 	// awf-dir-relocation, which moves the finished tree to .awf/.
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks" {
-		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation drop-hooks]", applied)
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap" {
+		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation drop-hooks enable-bootstrap]", applied)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Errorf("tree not produced at .awf: %v", err)
@@ -591,9 +591,9 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-func TestCurrentIsFour(t *testing.T) {
-	if Current() != 4 {
-		t.Errorf("Current() = %d, want 4", Current())
+func TestCurrentIsFive(t *testing.T) {
+	if Current() != 5 {
+		t.Errorf("Current() = %d, want 5", Current())
 	}
 }
 
@@ -704,6 +704,52 @@ func TestDropHooksMalformedConfig(t *testing.T) {
 	}
 }
 
+func TestEnableBootstrapAdds(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	mustWrite(t, cfg, "prefix: ex\nskills:\n  - tdd\n")
+	if err := applyEnableBootstrap(root); err != nil {
+		t.Fatalf("applyEnableBootstrap: %v", err)
+	}
+	out, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "bootstrap:") || !strings.Contains(string(out), "enabled: true") {
+		t.Errorf("bootstrap.enabled not added:\n%s", out)
+	}
+	if !strings.Contains(string(out), "prefix: ex") || !strings.Contains(string(out), "- tdd") {
+		t.Errorf("untouched keys lost:\n%s", out)
+	}
+}
+
+func TestEnableBootstrapOverwrites(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	mustWrite(t, cfg, "prefix: ex\nbootstrap:\n  enabled: false\n")
+	if err := applyEnableBootstrap(root); err != nil {
+		t.Fatalf("applyEnableBootstrap: %v", err)
+	}
+	out, _ := os.ReadFile(cfg)
+	if !strings.Contains(string(out), "enabled: true") || strings.Contains(string(out), "enabled: false") {
+		t.Errorf("bootstrap.enabled not overwritten to true:\n%s", out)
+	}
+}
+
+func TestEnableBootstrapAbsentConfig(t *testing.T) {
+	if err := applyEnableBootstrap(t.TempDir()); err != nil {
+		t.Errorf("applyEnableBootstrap with no .awf/config.yaml should be a no-op, got %v", err)
+	}
+}
+
+func TestEnableBootstrapMalformedConfig(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
+	if err := applyEnableBootstrap(root); err == nil {
+		t.Error("expected error surfaced from SetMappingScalar for malformed config.yaml")
+	}
+}
+
 func TestDropReplaceWithNoop(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
@@ -805,8 +851,8 @@ func TestUpgradeStampsTreeLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks" {
-		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation drop-hooks]", applied)
+	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap" {
+		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation drop-hooks enable-bootstrap]", applied)
 	}
 	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {

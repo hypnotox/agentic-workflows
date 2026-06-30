@@ -232,17 +232,17 @@ Show targets and their per-project enabled state, for all kinds or one (skill|ag
 `,
 	},
 	"add": {
-		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain}",
+		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, bootstrap}",
 		help: `Usage: awf add <kind> <name>
 
-Enable a target. <kind> is skill, agent, doc, or domain.
+Enable a target. <kind> is skill, agent, doc, domain, or bootstrap.
 `,
 	},
 	"remove": {
 		maxPos: -1, summary: "Disable a target (a freeform domain, or a catalog target)",
 		help: `Usage: awf remove <kind> <name>
 
-Disable a target — a catalog skill/agent/doc, or a freeform domain.
+Disable a target — a catalog skill/agent/doc, a freeform domain, or the bootstrap.
 `,
 	},
 	"upgrade": {

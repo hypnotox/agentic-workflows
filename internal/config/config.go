@@ -45,6 +45,7 @@ type Config struct {
 	Targets    []string         `yaml:"targets"`
 	Invariants *InvariantConfig `yaml:"invariants"`
 	Audit      *AuditConfig     `yaml:"audit"`
+	Bootstrap  *BootstrapConfig `yaml:"bootstrap"`
 	root       string           // <project>/.awf, for sidecar/part resolution
 }
 
@@ -61,6 +62,14 @@ type InvariantConfig struct {
 type InvariantSource struct {
 	Globs  []string `yaml:"globs"`
 	Marker string   `yaml:"marker"`
+}
+
+// BootstrapConfig configures the rendered awf-bootstrap.sh singleton (ADR-0040). A
+// nil *BootstrapConfig (key absent) and Enabled false both mean "do not render";
+// only Enabled true renders the artifact — a nested enable entry rather than a
+// top-level scalar bool (the Alternatives table rejected the bare bool).
+type BootstrapConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all

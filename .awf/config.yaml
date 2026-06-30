@@ -60,3 +60,5 @@ vars:
   invariantTestPath: ""
   modulePrefix: github.com/hypnotox/agentic-workflows
   testCmd: go test ./...
+bootstrap:
+  enabled: false

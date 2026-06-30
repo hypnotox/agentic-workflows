@@ -27,10 +27,11 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix": p.Cfg.Prefix,
-		"vars":   nonNil(p.Cfg.Vars),
-		"data":   nonNil(sc.Data),
-		"layout": p.layout().templateMap(),
+		"prefix":  p.Cfg.Prefix,
+		"vars":    nonNil(p.Cfg.Vars),
+		"data":    nonNil(sc.Data),
+		"layout":  p.layout().templateMap(),
+		"version": Version,
 	}
 }
 
@@ -213,6 +214,16 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			return nil, err
 		}
 		out = append(out, rf)
+	}
+	// awf-bootstrap.sh (neutral repo-root singleton; rendered only when enabled —
+	// ADR-0040). No catalog spec / no overridable sections, like the CLAUDE.md bridge.
+	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
+		brf, err := p.renderTarget("bootstrap", "", "bootstrap/awf-bootstrap.sh.tmpl",
+			nil, config.Sidecar{}, p.data(config.Sidecar{}), "awf-bootstrap.sh")
+		if err != nil { // coverage-ignore: the bootstrap template references only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
+			return nil, err
+		}
+		out = append(out, brf)
 	}
 	return out, nil
 }

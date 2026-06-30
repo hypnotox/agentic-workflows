@@ -146,6 +146,77 @@ func TestRunTargetCLI(t *testing.T) {
 	}
 }
 
+func TestRunBootstrapCLI(t *testing.T) {
+	// scaffoldProject uses minimalYAML, which carries no bootstrap key (disabled).
+	root := scaffoldProject(t)
+
+	// list bootstrap before any change: available.
+	var buf bytes.Buffer
+	if err := runList(root, "bootstrap", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if out := buf.String(); !strings.Contains(out, "bootstrap:") ||
+		!strings.Contains(out, "awf-bootstrap.sh") || !strings.Contains(out, "available") {
+		t.Errorf("list bootstrap (initial):\n%s", out)
+	}
+
+	// remove when disabled errors.
+	if err := runRemove(root, "bootstrap", "", io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "is not enabled") {
+		t.Errorf("expected is-not-enabled error, got %v", err)
+	}
+
+	// add enables it (config gains enabled: true, sync runs).
+	if err := runAdd(root, "bootstrap", "", io.Discard); err != nil {
+		t.Fatalf("add bootstrap: %v", err)
+	}
+	cfg := readConfig(t, root)
+	if !strings.Contains(cfg, "bootstrap:") || !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("bootstrap not enabled in config:\n%s", cfg)
+	}
+	if _, err := os.Stat(filepath.Join(root, "awf-bootstrap.sh")); err != nil {
+		t.Errorf("awf-bootstrap.sh not rendered after add: %v", err)
+	}
+
+	// list bootstrap now reports enabled.
+	buf.Reset()
+	if err := runList(root, "bootstrap", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "enabled") {
+		t.Errorf("list bootstrap (enabled):\n%s", buf.String())
+	}
+
+	// add when already enabled errors.
+	if err := runAdd(root, "bootstrap", "", io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "already enabled") {
+		t.Errorf("expected already-enabled error, got %v", err)
+	}
+
+	// remove disables it and prunes the rendered file.
+	if err := runRemove(root, "bootstrap", "", io.Discard); err != nil {
+		t.Fatalf("remove bootstrap: %v", err)
+	}
+	if !strings.Contains(readConfig(t, root), "enabled: false") {
+		t.Errorf("bootstrap not disabled in config:\n%s", readConfig(t, root))
+	}
+	if _, err := os.Stat(filepath.Join(root, "awf-bootstrap.sh")); !os.IsNotExist(err) {
+		t.Errorf("awf-bootstrap.sh not pruned after remove: err=%v", err)
+	}
+
+	// A broken config surfaces the project.Open error from addRemoveBootstrap.
+	broken := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(broken, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runAdd(broken, "bootstrap", "", io.Discard); err == nil {
+		t.Error("expected project.Open error to surface from add bootstrap")
+	}
+}
+
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {

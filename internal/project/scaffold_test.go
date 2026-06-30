@@ -33,6 +33,12 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.Prefix != "example" {
 		t.Errorf("expected prefix 'example', got %q", c.Prefix)
 	}
+	if !bytes.Contains(b, []byte("bootstrap:")) || !bytes.Contains(b, []byte("enabled: true")) {
+		t.Errorf("scaffold should seed bootstrap enabled by default:\n%s", b)
+	}
+	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
+		t.Errorf("scaffold bootstrap = %+v, want enabled true", c.Bootstrap)
+	}
 }
 
 // writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and

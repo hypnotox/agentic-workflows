@@ -447,3 +447,23 @@ func TestAuditDependencyManifestValidation(t *testing.T) {
 		t.Error("expected path-separator manifest glob to be rejected")
 	}
 }
+
+func TestBootstrapConfigDecode(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
+		t.Errorf("bootstrap = %+v, want enabled true", c.Bootstrap)
+	}
+
+	absent := writeConfig(t, "prefix: example\n")
+	c2, err := Load(absent)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c2.Bootstrap != nil {
+		t.Errorf("bootstrap = %+v, want nil when key absent", c2.Bootstrap)
+	}
+}

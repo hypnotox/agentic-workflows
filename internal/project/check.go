@@ -148,9 +148,9 @@ func (p *Project) declaredSections(kind, name string) []string {
 
 // isManagedMarkdown reports whether a RenderAll template id is awf-managed rendered
 // markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
-// RenderAll produces except the CLAUDE.md bridge.
+// RenderAll produces except the CLAUDE.md bridge and the awf-bootstrap.sh shell script.
 func isManagedMarkdown(tid string) bool {
-	return tid != "claude/CLAUDE.md.tmpl"
+	return tid != "claude/CLAUDE.md.tmpl" && tid != "bootstrap/awf-bootstrap.sh.tmpl"
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
