@@ -115,18 +115,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		cmdErr = runList(cwd, kindFilter, stdout)
 	case "add":
-		switch len(args) {
-		case 4:
+		switch {
+		case len(args) == 4:
 			cmdErr = runAdd(cwd, args[2], args[3], stdout)
-		case 3:
+		case len(args) == 3 && args[2] == "bootstrap": // nameless bootstrap form (ADR-0040)
+			cmdErr = runAdd(cwd, "bootstrap", "", stdout)
+		case len(args) == 3:
 			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2])}
 		default:
 			cmdErr = &usageErr{"usage: awf add <kind> <name>"}
 		}
 	case "remove":
-		switch len(args) {
-		case 4:
+		switch {
+		case len(args) == 4:
 			cmdErr = runRemove(cwd, args[2], args[3], stdout)
+		case len(args) == 3 && args[2] == "bootstrap": // nameless bootstrap form (ADR-0040)
+			cmdErr = runRemove(cwd, "bootstrap", "", stdout)
 		default:
 			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
 		}

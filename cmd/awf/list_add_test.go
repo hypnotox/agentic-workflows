@@ -217,6 +217,32 @@ func TestRunBootstrapCLI(t *testing.T) {
 	}
 }
 
+// TestDispatchBootstrap covers run()'s nameless-bootstrap dispatch branches
+// (ADR-0040): `awf add bootstrap` / `awf remove bootstrap` carry no <name> arg, so
+// they reach the handler via the bespoke len==3 cases rather than the len==4 path.
+func TestDispatchBootstrap(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: no bootstrap key (disabled)
+	swapGetwd(t, func() (string, error) { return root, nil })
+
+	// add bootstrap (3 args, no name) enables it.
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "add", "bootstrap"}, &out, &errb); code != 0 {
+		t.Fatalf("add bootstrap dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("bootstrap not enabled after add dispatch:\n%s", cfg)
+	}
+
+	// remove bootstrap (3 args, no name) disables it.
+	errb.Reset()
+	if code := run([]string{"awf", "remove", "bootstrap"}, &out, &errb); code != 0 {
+		t.Fatalf("remove bootstrap dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
+		t.Errorf("bootstrap not disabled after remove dispatch:\n%s", cfg)
+	}
+}
+
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {
