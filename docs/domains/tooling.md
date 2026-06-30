@@ -36,6 +36,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0036: Deterministic Commit-Message Gate](../decisions/0036-deterministic-commit-message-gate.md)
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
 
+### Proposed
+
+- [ADR-0039: Binary-Version Compatibility Gate](../decisions/0039-binary-version-compatibility-gate.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
