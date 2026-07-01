@@ -102,7 +102,7 @@ production code imports go-git in a way that could create a cycle back into a te
    - `WriteFile(t *testing.T, path, content string)` — `os.MkdirAll(filepath.Dir(path), 0o755)`
      then `os.WriteFile(path, []byte(content), 0o644)`, `t.Fatal`-ing on either error. The primitive
      every other helper below is built from.
-   - `WriteAwfConfig(t *testing.T, root, yaml string) ` — creates `<root>/.awf/config.yaml` with
+   - `WriteAwfConfig(t *testing.T, root, yaml string)` — creates `<root>/.awf/config.yaml` with
      the given content via `WriteFile`.
    - `ADR(status string, opts ...ADROption) string` — builds a `---`-delimited ADR frontmatter
      fixture as a raw string template (not by constructing and marshaling `internal/adr`'s actual
@@ -121,9 +121,10 @@ production code imports go-git in a way that could create a cycle back into a te
 4. **Migrate existing call sites.** Every duplication site named in Context is updated to call
    the new helpers instead of its local copy, across `cmd/awf`, `internal/project`,
    `internal/audit`, `internal/coverage`, `internal/migrate`, `internal/invariants`,
-   `cmd/covercheck`. This migration is implementation detail (the plan's tasks), not a further
-   Decision commitment — the contract is that new test code reaches for `internal/testsupport`
-   rather than hand-rolling a 6th copy of any of the above.
+   `cmd/covercheck`. The exact task breakdown and sequencing is the plan's to decide; what this
+   item commits to is the end state — no local copy of any Context-named idiom survives — plus the
+   forward-looking contract that new test code reaches for `internal/testsupport` rather than
+   hand-rolling a 6th copy of any of the above.
 
 ## Invariants
 
@@ -136,7 +137,9 @@ production code imports go-git in a way that could create a cycle back into a te
   future helper that happens to need e.g. a `config.Config` cannot be added to this package by
   accident.
 - Every helper that reports a test failure calls `t.Helper()` first, so failures attribute to the
-  calling test's line, not a line inside `internal/testsupport`.
+  calling test's line, not a line inside `internal/testsupport`. (Textual contract — enforced by
+  code review, not an `inv:`-tagged mechanical check, consistent with ADR-0020's and ADR-0039's
+  untagged-bullet convention.)
 
 ## Consequences
 
@@ -159,6 +162,11 @@ Harder / accepted trade-offs:
   correcting.
 - `internal/testsupport` itself gets only light direct unit coverage; its correctness is
   substantively proven by the migrated call sites' existing test suites continuing to pass.
+- Consolidation concentrates blast radius: today a bug in one hand-rolled copy (e.g. the dropped
+  `remove` capability in `auditCommit`) breaks only its own package's tests. Once every package
+  imports `internal/testsupport`, a bug or breaking change in one shared helper can fail tests
+  across every consumer simultaneously, and every consumer's test suite is coupled to this
+  package's release cadence.
 
 Explicitly ruled out:
 - `internal/testsupport` will never depend on `internal/config`, `internal/project`, or any other
