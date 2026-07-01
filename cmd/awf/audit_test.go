@@ -22,13 +22,7 @@ var auditSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.D
 func auditProject(t *testing.T) (string, plumbing.Hash) {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := "prefix: example\nskills: []\nagents: []\n"
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(cfg), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
 	// Sync writes the lock so Project.Audit's generated-path set is populated.
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)
