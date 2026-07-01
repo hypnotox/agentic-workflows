@@ -48,6 +48,7 @@
 ## Proposed
 
 - [ADR-0041: Embedded Changelog and the `awf changelog` Command](0041-embedded-changelog-command.md) — Proposed
+- [ADR-0042: `awf new adr` Scaffolding Command](0042-adr-scaffolding-command.md) — Proposed
 
 ## Superseded by ADR-0032
 
