@@ -44,6 +44,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
 
+### Proposed
+
+- [ADR-0044: Shared Test-Support Package](../decisions/0044-shared-test-support-package.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
