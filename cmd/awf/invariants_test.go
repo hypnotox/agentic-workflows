@@ -5,18 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // invariant: invariants-in-check
 func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	yaml := "prefix: example\ninvariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\nskills: []\nagents: []\n"
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, yaml)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
