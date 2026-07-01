@@ -244,10 +244,19 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 // generated from ADR frontmatter, not a template, so its staleness cannot be
 // detected by the template/config hash comparison in checkLockedFiles.
 func (p *Project) checkActiveMD(activeMdRel string, amd RenderedFile) []manifest.Drift {
-	if onDisk, err := os.ReadFile(filepath.Join(p.Root, activeMdRel)); err != nil {
-		return []manifest.Drift{{Path: activeMdRel, Kind: "missing", Detail: "ADR index absent; run awf sync"}}
-	} else if manifest.Hash(onDisk) != manifest.Hash([]byte(amd.Content)) {
-		return []manifest.Drift{{Path: activeMdRel, Kind: "stale", Detail: "ADR index out of date; run awf sync"}}
+	return p.regenDrift(activeMdRel, amd.Content,
+		"ADR index absent; run awf sync", "ADR index out of date; run awf sync")
+}
+
+// regenDrift compares a freshly-generated file's content against its on-disk copy:
+// a missing file or a hash mismatch yields one drift entry with the given details.
+func (p *Project) regenDrift(rel, content, missingDetail, staleDetail string) []manifest.Drift {
+	onDisk, err := os.ReadFile(filepath.Join(p.Root, rel))
+	if err != nil {
+		return []manifest.Drift{{Path: rel, Kind: "missing", Detail: missingDetail}}
+	}
+	if manifest.Hash(onDisk) != manifest.Hash([]byte(content)) {
+		return []manifest.Drift{{Path: rel, Kind: "stale", Detail: staleDetail}}
 	}
 	return nil
 }
@@ -261,12 +270,8 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 	produced := map[string]bool{}
 	for _, dd := range dds {
 		produced[dd.Path] = true
-		onDisk, err := os.ReadFile(filepath.Join(p.Root, dd.Path))
-		if err != nil {
-			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "missing", Detail: "domain doc absent; run awf sync"})
-		} else if manifest.Hash(onDisk) != manifest.Hash([]byte(dd.Content)) {
-			drift = append(drift, manifest.Drift{Path: dd.Path, Kind: "stale", Detail: "domain doc out of date; run awf sync"})
-		}
+		drift = append(drift, p.regenDrift(dd.Path, dd.Content,
+			"domain doc absent; run awf sync", "domain doc out of date; run awf sync")...)
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
