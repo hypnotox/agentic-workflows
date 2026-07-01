@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // TestRenderActiveMDGroupsByStatus is a hermetic unit test using a temp dir.
@@ -16,33 +17,15 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	dir := t.TempDir()
 
 	files := map[string]string{
-		"0001-first-accepted.md": `---
-status: Accepted
-date: 2026-06-24
-tags: [tooling]
----
-# ADR-0001: First Accepted
-## Context
-Something.
-`,
-		"0002-a-proposal.md": `---
-status: Proposed
-date: 2026-06-24
-tags: []
----
-# ADR-0002: A Proposal
-## Context
-Another thing.
-`,
-		"0003-already-implemented.md": `---
-status: Implemented
-date: 2026-06-24
-tags: []
----
-# ADR-0003: Already Implemented
-## Context
-Done.
-`,
+		"0001-first-accepted.md": testsupport.ADR("Accepted",
+			testsupport.WithDate("2026-06-24"), testsupport.WithTags("tooling"),
+			testsupport.WithTitle("0001: First Accepted"), testsupport.WithBody("## Context\nSomething.\n")),
+		"0002-a-proposal.md": testsupport.ADR("Proposed",
+			testsupport.WithDate("2026-06-24"),
+			testsupport.WithTitle("0002: A Proposal"), testsupport.WithBody("## Context\nAnother thing.\n")),
+		"0003-already-implemented.md": testsupport.ADR("Implemented",
+			testsupport.WithDate("2026-06-24"),
+			testsupport.WithTitle("0003: Already Implemented"), testsupport.WithBody("## Context\nDone.\n")),
 	}
 
 	for name, content := range files {
@@ -132,7 +115,8 @@ func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 
 func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 	dir := t.TempDir()
-	content := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0007: Example Title\n## Context\nx\n"
+	content := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0007: Example Title"), testsupport.WithBody("## Context\nx\n"))
 	if err := os.WriteFile(filepath.Join(dir, "0007-example.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -214,9 +198,9 @@ func TestRenderActiveMDParseError(t *testing.T) {
 func TestRenderActiveMDSortsWithinStatusAndOrdersExtra(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"0002-second-accepted.md": "---\nstatus: Accepted\n---\n# ADR-0002: Second Accepted\n",
-		"0001-first-accepted.md":  "---\nstatus: Accepted\n---\n# ADR-0001: First Accepted\n",
-		"0003-draft-status.md":    "---\nstatus: Draft\n---\n# ADR-0003: Draft Status\n",
+		"0002-second-accepted.md": testsupport.ADR("Accepted", testsupport.WithTitle("0002: Second Accepted")),
+		"0001-first-accepted.md":  testsupport.ADR("Accepted", testsupport.WithTitle("0001: First Accepted")),
+		"0003-draft-status.md":    testsupport.ADR("Draft", testsupport.WithTitle("0003: Draft Status")),
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -254,7 +238,8 @@ func TestRenderActiveMDSortsWithinStatusAndOrdersExtra(t *testing.T) {
 // invariant: adr-sections-parsed
 func TestParseDirExtractsSections(t *testing.T) {
 	dir := t.TempDir()
-	content := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0009: S\n## Context\nctx body\n## Invariants\n- `inv: example-slug` — a thing.\n## Consequences\ncons\n"
+	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0009: S"), testsupport.WithBody("## Context\nctx body\n## Invariants\n- `inv: example-slug` — a thing.\n## Consequences\ncons\n"))
 	if err := os.WriteFile(filepath.Join(dir, "0009-s.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
