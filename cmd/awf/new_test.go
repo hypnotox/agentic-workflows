@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestRunNewScaffoldsADR(t *testing.T) {
@@ -40,7 +42,7 @@ func TestRunNewUnknownKind(t *testing.T) {
 
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
@@ -49,7 +51,7 @@ func TestRunNewDispatch(t *testing.T) {
 
 func TestRunNewMissingArgs(t *testing.T) {
 	root := scaffoldProject(t)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "new", "adr"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for missing title, got %d", code)

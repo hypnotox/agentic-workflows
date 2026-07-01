@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 var auditSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
@@ -187,7 +188,7 @@ func TestRunAuditDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	auditCommit(t, repo, root, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var outb, errb bytes.Buffer
 	if code := run([]string{"awf", "audit", "--base", base.String()}, &outb, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())

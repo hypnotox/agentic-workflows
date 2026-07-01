@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func writeMsg(t *testing.T, content string) string {
@@ -112,7 +114,7 @@ func TestRunCommitGateReadError(t *testing.T) {
 
 func TestDispatchCommitGate(t *testing.T) {
 	root := scaffoldProject(t)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "commit-gate", writeMsg(t, "feat: via dispatch\n")}, &out, &errb); code != 0 {
 		t.Fatalf("dispatch commit-gate should accept a clean subject: code=%d err=%s", code, errb.String())

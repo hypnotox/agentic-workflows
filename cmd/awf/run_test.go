@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
@@ -35,14 +37,6 @@ func scaffoldProject(t *testing.T) string {
 	return root
 }
 
-// swapGetwd overrides the package getwd seam for the duration of a test.
-func swapGetwd(t *testing.T, fn func() (string, error)) {
-	t.Helper()
-	orig := getwd
-	getwd = fn
-	t.Cleanup(func() { getwd = orig })
-}
-
 func TestRunNoArgs(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {
@@ -66,7 +60,7 @@ func TestRunHelp(t *testing.T) {
 }
 
 func TestRunGetwdError(t *testing.T) {
-	swapGetwd(t, func() (string, error) { return "", errors.New("boom") })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "sync"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on getwd error, got %d", code)
@@ -74,7 +68,7 @@ func TestRunGetwdError(t *testing.T) {
 }
 
 func TestRunUnknownCommand(t *testing.T) {
-	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "bogus"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for unknown command, got %d", code)
@@ -85,7 +79,7 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestRunAddMissingSkillArg(t *testing.T) {
-	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "add"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for add without skill, got %d", code)
@@ -93,7 +87,7 @@ func TestRunAddMissingSkillArg(t *testing.T) {
 }
 
 func TestRunArgValidation(t *testing.T) {
-	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	cases := []struct {
 		name string
 		args []string
@@ -118,7 +112,7 @@ func TestRunArgValidation(t *testing.T) {
 
 func TestRunDispatchError(t *testing.T) {
 	// sync in a bare dir: project.Open fails -> handler error -> exit 1.
-	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "sync"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on dispatch error, got %d", code)
@@ -134,7 +128,7 @@ func TestRunDispatchArms(t *testing.T) {
 	for _, cmd := range []string{"sync", "check", "invariants", "list", "upgrade"} {
 		t.Run(cmd, func(t *testing.T) {
 			root := scaffoldProject(t)
-			swapGetwd(t, func() (string, error) { return root, nil })
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			var out, errb bytes.Buffer
 			if code := run([]string{"awf", cmd}, &out, &errb); code != 0 {
 				t.Fatalf("%s: expected exit 0, got %d (%s)", cmd, code, errb.String())
@@ -155,7 +149,7 @@ func TestRunDispatchArms(t *testing.T) {
 		if err := runSync(root, io.Discard); err != nil {
 			t.Fatal(err)
 		}
-		swapGetwd(t, func() (string, error) { return root, nil })
+		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 		var out, errb bytes.Buffer
 		if code := run([]string{"awf", "add", "skill", "tdd"}, &out, &errb); code != 0 {
 			t.Fatalf("add: expected exit 0, got %d (%s)", code, errb.String())
@@ -163,7 +157,7 @@ func TestRunDispatchArms(t *testing.T) {
 	})
 	t.Run("init", func(t *testing.T) {
 		root := t.TempDir()
-		swapGetwd(t, func() (string, error) { return root, nil })
+		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 		var out, errb bytes.Buffer
 		if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
 			t.Fatalf("init: expected exit 0, got %d (%s)", code, errb.String())
@@ -451,7 +445,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail on collision")
@@ -526,7 +520,7 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md.awf-bak"), []byte("v1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
 		t.Fatalf("init --force: %s", errb.String())
@@ -541,7 +535,7 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
 	root := scaffoldProject(t)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("first init failed: %s", errb.String())
@@ -565,7 +559,7 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when project.Open errors")
@@ -583,7 +577,7 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when p.InitCollisions errors")
@@ -607,7 +601,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "ACTIVE.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "sync"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())

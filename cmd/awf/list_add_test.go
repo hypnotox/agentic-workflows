@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
@@ -263,7 +264,7 @@ func TestRunBootstrapCLI(t *testing.T) {
 // they reach the handler via the bespoke len==3 cases rather than the len==4 path.
 func TestDispatchBootstrap(t *testing.T) {
 	root := scaffoldProject(t) // minimalYAML: no bootstrap key (disabled)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	// add bootstrap (3 args, no name) enables it.
 	var out, errb bytes.Buffer
@@ -391,7 +392,7 @@ func TestRunListStatesAndKinds(t *testing.T) {
 
 func TestDispatchAddRemoveList(t *testing.T) {
 	root := scaffoldedProject(t)
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	// add with kind.
 	var out, errb bytes.Buffer

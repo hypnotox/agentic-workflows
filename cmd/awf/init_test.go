@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // forceNonInteractive pins the isInteractive seam to false for the test, so the
@@ -33,7 +35,7 @@ func readInitConfig(t *testing.T, root string) string {
 // invariant: describe-read-only
 func TestInitDescribeReadOnly(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
 		t.Fatalf("init --describe: exit %d (%s)", code, errb.String())
@@ -67,7 +69,7 @@ func TestInitDescribeReadOnly(t *testing.T) {
 // invariant: explicit-answers-win
 func TestInitExplicitAnswersWin(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out, &errb); code != 0 {
@@ -84,7 +86,7 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 // invariant: init-noninteractive-default
 func TestInitNonInteractiveDefault(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
@@ -102,7 +104,7 @@ func TestInitNonInteractiveDefault(t *testing.T) {
 // TestInitAnswersFile asserts values come from a JSON answers file.
 func TestInitAnswersFile(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
 	ans := filepath.Join(t.TempDir(), "answers.json")
 	if err := os.WriteFile(ans, []byte(`{"testCmd":"go test ./..."}`), 0o644); err != nil {
@@ -135,7 +137,7 @@ func TestInitErrorPaths(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			swapGetwd(t, func() (string, error) { return root, nil })
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			forceNonInteractive(t)
 			args := tc.args
 			if tc.pre != nil {
@@ -156,7 +158,7 @@ func TestInitErrorPaths(t *testing.T) {
 // var; every other writing test forces non-interactive.
 func TestInitInteractivePromptWiring(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	origInteractive := isInteractive
 	isInteractive = func() bool { return true }
 	t.Cleanup(func() { isInteractive = origInteractive })
@@ -183,7 +185,7 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 // arrays verbatim (full-deselectable catalog trim, ADR-0029).
 func TestInitCatalogTrim(t *testing.T) {
 	root := t.TempDir()
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
 	var out, errb bytes.Buffer
 	code := run([]string{"awf", "init", "--set", "skills=tdd,brainstorming", "--set", "docs=testing"}, &out, &errb)
