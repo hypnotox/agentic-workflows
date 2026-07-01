@@ -45,6 +45,10 @@
 - [ADR-0039: Binary-Version Compatibility Gate](0039-binary-version-compatibility-gate.md) — Implemented
 - [ADR-0040: Self-Pinning Rendered Bootstrap](0040-self-pinning-rendered-bootstrap.md) — Implemented
 
+## Proposed
+
+- [ADR-0041: Embedded Changelog and the `awf changelog` Command](0041-embedded-changelog-command.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

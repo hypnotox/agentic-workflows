@@ -38,6 +38,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0039: Binary-Version Compatibility Gate](../decisions/0039-binary-version-compatibility-gate.md)
 - [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
 
+### Proposed
+
+- [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
