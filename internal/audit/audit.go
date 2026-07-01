@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
@@ -97,7 +98,6 @@ func Run(repoRoot string, in Inputs) ([]Finding, error) {
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)
-var adrNameRe = regexp.MustCompile(`^\d{4}-.+\.md$`)
 
 // evaluate applies every rule to the range and returns all findings.
 func evaluate(commits []Commit, in Inputs) []Finding {
@@ -339,7 +339,7 @@ func finding(s Severity, rule string, c Commit, detail string) Finding {
 }
 
 func isADRFile(path, adrDir string) bool {
-	return filepath.Dir(path) == adrDir && adrNameRe.MatchString(filepath.Base(path))
+	return filepath.Dir(path) == adrDir && adr.FilenameRe.MatchString(filepath.Base(path))
 }
 
 func statusOf(text string) string {

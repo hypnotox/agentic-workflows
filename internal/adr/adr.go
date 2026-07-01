@@ -32,7 +32,8 @@ type ADR struct {
 	Sections          map[string]string // `## ` heading -> section body
 }
 
-var fileRe = regexp.MustCompile(`^(\d{4})-.*\.md$`)
+// FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
+var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 
 // ParseDir scans dir for ADR files (NNNN-*.md) and parses each into an ADR.
 func ParseDir(dir string) ([]ADR, error) {
@@ -43,7 +44,7 @@ func ParseDir(dir string) ([]ADR, error) {
 	var adrs []ADR
 	for _, path := range matches {
 		base := filepath.Base(path)
-		m := fileRe.FindStringSubmatch(base)
+		m := FilenameRe.FindStringSubmatch(base)
 		if m == nil {
 			continue // skip ACTIVE.md, README.md, template.md
 		}
@@ -211,7 +212,7 @@ func NextNumber(dir string) (string, error) {
 	max := 0
 	for _, a := range adrs {
 		n, err := strconv.Atoi(a.Number)
-		if err != nil { // coverage-ignore: a.Number is always a 4-digit numeral matched by fileRe
+		if err != nil { // coverage-ignore: a.Number is always a 4-digit numeral matched by FilenameRe
 			return "", err
 		}
 		if n > max {
