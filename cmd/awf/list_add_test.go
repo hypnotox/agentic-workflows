@@ -17,17 +17,11 @@ import (
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	awf := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(awf, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	b, err := project.ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), b, 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, string(b))
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
