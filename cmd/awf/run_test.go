@@ -201,10 +201,9 @@ func TestRunInvariantsReportsFindings(t *testing.T) {
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	adr := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: X\n## Invariants\n- `inv: unbacked-here` — x.\n## Consequences\nc\n"
-	if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte(adr), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: unbacked-here` — x.\n## Consequences\nc\n"))
+	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
