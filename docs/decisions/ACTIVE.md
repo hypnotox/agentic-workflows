@@ -51,6 +51,7 @@
 ## Proposed
 
 - [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Proposed
+- [ADR-0046: Skill-reference integrity](0046-skill-reference-integrity.md) — Proposed
 
 ## Superseded by ADR-0032
 
