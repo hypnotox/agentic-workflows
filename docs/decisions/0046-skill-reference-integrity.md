@@ -21,7 +21,7 @@ actually enabled. Two failure modes exist today:
   ([ADR-0022](0022-curated-init-default.md) curated init enables core only) — a default
   install's agent guide points at three skills that do not exist, violating the guide's own
   "disable them as a unit" warning. The non-core skills also cross-reference each other
-  (`bugfix`→`tdd`/`debugging`, `debugging`→`bugfix`), so enabling one without the others
+  (`bugfix`→`tdd`/`debugging`, `debugging`→`bugfix`/`tdd`), so enabling one without the others
   produces the same dead handoffs.
 - **Unchecked by design gap.** The dead-reference check
   ([ADR-0020](0020-dead-reference-check.md), `checkDeadRefs`,
@@ -30,9 +30,10 @@ actually enabled. Two failure modes exist today:
 
 Grounding discoveries that shape the design:
 
-- A sweep counts roughly 116 `{{ .prefix }}-<skill>` references across 17 templates,
-  concentrated in the 10 core chain skills (`reviewing-impl` 15, `subagent-driven-development`
-  11, …). Conditionalizing them all would be large churn and would force handoff prose to be
+- A sweep counts 116 `{{ .prefix }}-<skill>` references across 17 templates, concentrated
+  in the agent guide and the 10 core chain skills (`AGENTS.md.tmpl` 16,
+  `subagent-driven-development` 11, `brainstorming`/`reviewing-adr`/`executing-plans` 9
+  each, …). Conditionalizing them all would be large churn and would force handoff prose to be
   written vaguely ("if a review skill is enabled…"). Non-core references live only in the
   non-core skills themselves plus `AGENTS.md.tmpl`.
 - The render context (`internal/project/render.go:34-42`) exposes exactly
@@ -58,12 +59,20 @@ should fail loudly, not render vague prose around missing steps.
 
 1. **Enabled-skills render context.** The template context gains a `skills` key: the set of
    skill names whose files exist on disk under awf's model — enabled skills minus doc-gate-
-   suppressed ones, plus `local`-declared ones (hand-maintained but present). Templates use
-   it to conditionalize references whose target is legitimately optional.
+   suppressed ones, keeping `local`-declared ones (hand-maintained but present) even where a
+   doc gate would suppress the render. Templates use it to conditionalize references whose
+   target is legitimately optional. The effective set participates in `artifactConfigHash`
+   for every artifact whose assembled template references `.skills` — mirroring the
+   referenced-vars projection — so an enable-array change flags dependent artifacts stale
+   instead of leaving `check` clean over an out-of-date render (the
+   `catalog-data-in-confighash` precedent,
+   [ADR-0045](0045-out-of-box-render-completeness.md)).
 
 2. **Conditionalization is scoped to non-core references only.** The non-core skills'
    cross-references (`bugfix`↔`tdd`↔`debugging`) and the per-name skill lists in
-   `AGENTS.md.tmpl` (task skills; the chain list stays unconditional) render a name only when
+   `AGENTS.md.tmpl` (task skills; the chain list, whose presentation
+   [ADR-0028](0028-workflow-chain-adr-first-visible-resync.md) settled, stays unconditional)
+   render a name only when
    that skill is in `skills`, with correct list punctuation and whole-clause omission when
    none qualify. Core-chain handoffs stay unconditional prose.
 
@@ -71,7 +80,10 @@ should fail loudly, not render vague prose around missing steps.
    scan the same managed rendered markdown set as ADR-0020 for `<prefix>-<name>` tokens
    where `<name>` is a *catalog-known or local-declared* skill name, and fail when that name
    is not in the effective set of item 1. Tokens whose `<name>` matches no known skill are
-   ignored (the `awf-specific` guard). References inside fenced code blocks are treated the
+   ignored (the `awf-specific` guard). Matching is whole-token: a scanned token is the maximal
+   `<prefix>-`-anchored word run, compared for exact membership against the known set — so
+   `<prefix>-reviewing-plan-resync` is one reference to `reviewing-plan-resync`, never a
+   substring hit on `reviewing-plan`. References inside fenced code blocks are treated the
    same as ADR-0020 treats links (skipped).
 
 4. **A partially-trimmed core chain hard-fails by design.** Disabling a core chain skill
@@ -88,10 +100,13 @@ should fail loudly, not render vague prose around missing steps.
 - `inv: skill-ref-unknown-ignored` — a `<prefix>-<word>` token whose word matches no
   catalog or local skill name produces no finding.
 - `inv: skills-context-effective-set` — the render context's `skills` set equals enabled
-  skills minus doc-gate-suppressed plus local-declared.
-- A default curated `awf init` render passes the check with zero `dead-skill-reference`
-  findings (covered by the empty-init regression surface of
-  [ADR-0045](0045-out-of-box-render-completeness.md)).
+  skills minus doc-gate-suppressed, with `local`-declared skills always kept.
+- `inv: skills-set-in-confighash` — a change to the skills enable array changes the lock
+  `configHash` of every artifact whose assembled template references `.skills`, so
+  `awf check` flags those artifacts stale.
+- `inv: curated-init-skill-refs-clean` — a default curated `awf init` render passes the
+  check with zero `dead-skill-reference` findings (backed on the empty-init regression
+  surface of [ADR-0045](0045-out-of-box-render-completeness.md)).
 
 ## Consequences
 
@@ -104,13 +119,21 @@ Easier:
 Harder / accepted trade-offs:
 - An adopter who trims a core chain skill gets a failing check until they re-enable it,
   disable the unit, or override the referencing sections — intended friction, but friction.
-- Raw convention parts naming a disabled skill fail with no template-side fix (same accepted
-  exposure as ADR-0020 dead links).
+- Raw convention parts and domain-doc narratives naming a disabled skill fail with no
+  template-side fix (same accepted exposure as ADR-0020 dead links).
 - The scanner is prefix-anchored: it cannot catch a reference that spells a skill name
   without the prefix ("the tdd skill"), and it goes quiet for names dropped from the catalog
   entirely. Accepted — known-name matching is what makes the check false-positive-free.
 - Templates conditionalizing per-name lists get more intricate (punctuation/empty handling),
   covered by golden tests under the 100% gate.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+- The new failing check gains an AGENTS.md invariants entry (the `data.invariants` list in
+  `.awf/agents-doc.yaml`), citing this ADR, in the implementing range.
+- The check and the `skills` render context materially shift the `rendering` and `config`
+  domain narratives; both are refreshed in the implementing range.
 
 ## Alternatives Considered
 
