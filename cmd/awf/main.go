@@ -36,7 +36,7 @@ var isInteractive = func() bool {
 // commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
 var commandOrder = []string{
 	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "add", "remove", "upgrade", "uninstall", "version",
+	"list", "add", "remove", "upgrade", "uninstall", "changelog", "version",
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -65,7 +65,7 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|add|remove|upgrade|uninstall|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|add|remove|upgrade|uninstall|changelog|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -138,6 +138,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		cmdErr = runUpgrade(cwd, stdout)
 	case "uninstall":
 		cmdErr = runUninstall(cwd, stdout)
+	case "changelog":
+		cmdErr = runChangelog(valueFlag(args, "--version"), valueFlag(args, "--since"), valueFlag(args, "--range"), stdout)
 	case "version":
 		runVersion(stdout)
 	default:
@@ -261,6 +263,20 @@ Migrate the .awf/ config tree to the current schema version.
 		help: `Usage: awf uninstall
 
 Remove every awf-generated file recorded in the lock (keeps your authored .awf/ config).
+`,
+	},
+	"changelog": {
+		valueFlags: []string{"--version", "--since", "--range"}, maxPos: 0,
+		summary: "Print the embedded changelog, or one version/range of it",
+		help: `Usage: awf changelog [--version <v> | --since <v> | --range <from>..<to>]
+
+Print the embedded awf changelog. With no flags, print the whole file. The three
+flags are mutually exclusive.
+
+Flags:
+  --version <v>          print only version v's entry
+  --since <v>            print every version released after v (exclusive)
+  --range <from>..<to>   print every version in [from, to] (inclusive both ends)
 `,
 	},
 	"version": {
