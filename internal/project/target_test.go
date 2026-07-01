@@ -3,6 +3,8 @@ package project
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // TestClaudeTargetPaths unit-checks the claude adapter's path formulas. ADR-0016's
@@ -106,7 +108,7 @@ func TestResolveTargetsRejectsUnknown(t *testing.T) {
 
 func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n", nil)
-	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
