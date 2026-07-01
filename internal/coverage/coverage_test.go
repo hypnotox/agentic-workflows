@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // writeProfile writes a coverprofile and returns its path.
@@ -169,7 +171,7 @@ func TestModulePathReadError(t *testing.T) {
 func TestCheckProfileResolvesModule(t *testing.T) {
 	root, modPath := module(t, "package m\nfunc F() {}\n")
 	prof := writeProfile(t, root, modPath+"/f.go:2.1,2.5 1 1\n")
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	rep, err := CheckProfile(prof)
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +182,7 @@ func TestCheckProfileResolvesModule(t *testing.T) {
 }
 
 func TestCheckProfileGetwdError(t *testing.T) {
-	swapGetwd(t, func() (string, error) { return "", errors.New("boom") })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	if _, err := CheckProfile("x"); err == nil {
 		t.Fatal("expected getwd error to propagate")
 	}
@@ -191,8 +193,8 @@ func TestCheckProfileNoModule(t *testing.T) {
 	// errors. Stub hasGoMod (rather than rely on t.TempDir() having no go.mod
 	// ancestor) so the root-reached branch is exercised hermetically — a stray
 	// go.mod under /tmp must not short-circuit the walk.
-	swapGetwd(t, func() (string, error) { return t.TempDir(), nil })
-	swapHasGoMod(t, func(string) bool { return false })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	testsupport.SwapVar(t, &hasGoMod, func(string) bool { return false })
 	if _, err := CheckProfile("x"); err == nil {
 		t.Fatal("expected go.mod-not-found error")
 	}
@@ -203,7 +205,7 @@ func TestCheckProfileNoModuleLine(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("// no module line\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	swapGetwd(t, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	if _, err := CheckProfile("x"); err == nil {
 		t.Fatal("expected no-module-line error")
 	}
@@ -231,19 +233,4 @@ func TestPercentEmptyIs100(t *testing.T) {
 	if (Report{}).Percent() != 100 {
 		t.Fatal("empty report should be 100%")
 	}
-}
-
-// swapGetwd overrides the package getwd seam for the duration of a test.
-func swapGetwd(t *testing.T, fn func() (string, error)) {
-	t.Helper()
-	orig := getwd
-	getwd = fn
-	t.Cleanup(func() { getwd = orig })
-}
-
-func swapHasGoMod(t *testing.T, fn func(string) bool) {
-	t.Helper()
-	orig := hasGoMod
-	hasGoMod = fn
-	t.Cleanup(func() { hasGoMod = orig })
 }
