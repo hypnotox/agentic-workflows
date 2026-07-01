@@ -98,9 +98,9 @@ func WithRetiresInvariants(slugs ...string) ADROption {
 	return func(o *adrOpts) { o.retiresInvariants = slugs }
 }
 
-// WithSupersededBy sets the frontmatter superseded_by field (a quoted ADR
-// number, e.g. "0002"). Omitted from the frontmatter entirely when never
-// called.
+// WithSupersededBy sets the frontmatter superseded_by field to an ADR number,
+// e.g. "0002" — emitted YAML-quoted by ADR. Omitted from the frontmatter
+// entirely when never called.
 func WithSupersededBy(number string) ADROption {
 	return func(o *adrOpts) { o.supersededBy = number }
 }
@@ -110,8 +110,8 @@ func WithSupersededBy(number string) ADROption {
 func WithBody(body string) ADROption { return func(o *adrOpts) { o.body = body } }
 
 // ADR builds a ---delimited ADR frontmatter fixture as a raw string: a status
-// field plus any of date/tags/domains/retires_invariants supplied via opts, a
-// "# ADR-<title>" heading, and an optional trailing body. It intentionally
+// field plus any of date/tags/domains/retires_invariants/superseded_by
+// supplied via opts, a "# ADR-<title>" heading, and an optional trailing body. It intentionally
 // does not import internal/adr and marshal its real frontmatter struct —
 // doing so would break this package's zero-internal-deps invariant (see
 // ADR-0044's Consequences).
