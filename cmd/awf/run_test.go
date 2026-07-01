@@ -24,13 +24,7 @@ agents: []
 func scaffoldProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	awf := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(awf, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(minimalYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("scaffold sync: %v", err)
 	}
