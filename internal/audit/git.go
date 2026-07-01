@@ -2,6 +2,7 @@ package audit
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -26,8 +27,15 @@ import (
 // even after the worktree is removed) regardless of repositoryformatversion.
 // Neither Collect nor ruleUncommittedChanges reads repo extensions, so hiding
 // the section is safe.
+//
+// Unlike git.PlainOpen, this assumes repoRoot/.git is a directory: it does not
+// resolve a `.git` file (the pointer left by `git worktree add` in a linked
+// worktree) to its real gitdir. That is an existing limitation, not a
+// regression — git.PlainOpen(repoRoot) with default options (as used here
+// previously) already failed to resolve refs for a linked worktree's own root,
+// since it doesn't opt into EnableDotGitCommonDir either.
 func openRepo(repoRoot string) (*git.Repository, error) {
-	st := filesystem.NewStorage(osfs.New(repoRoot+"/.git"), cache.NewObjectLRUDefault())
+	st := filesystem.NewStorage(osfs.New(filepath.Join(repoRoot, ".git")), cache.NewObjectLRUDefault())
 	return git.Open(noExtensionsStorer{st}, osfs.New(repoRoot))
 }
 
@@ -37,7 +45,7 @@ type noExtensionsStorer struct {
 
 func (s noExtensionsStorer) Config() (*gitconfig.Config, error) {
 	cfg, err := s.Storer.Config()
-	if err != nil { // coverage-ignore: the underlying filesystem storer's Config() only fails on a corrupt/unreadable .git/config, which the callers' own PlainOpen-equivalent probing has already ruled out
+	if err != nil {
 		return nil, err
 	}
 	cfg.Raw.RemoveSection("extensions")

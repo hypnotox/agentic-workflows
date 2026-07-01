@@ -326,3 +326,20 @@ func TestRuleUncommittedChangesWorktreeConfigExtension(t *testing.T) {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}
 }
+
+// TestOpenRepoMalformedConfig exercises noExtensionsStorer.Config()'s error
+// branch: a syntactically invalid .git/config (not merely a missing one, which
+// filesystem.Storage.Config() tolerates by returning an empty config) makes
+// the underlying storer's Config() fail, which openRepo must propagate rather
+// than swallow.
+func TestOpenRepoMalformedConfig(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	if err := os.WriteFile(filepath.Join(dir, ".git", "config"), []byte("[core\nbroken = = =\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Collect(dir, "HEAD"); err == nil {
+		t.Fatal("expected Collect to error on a malformed .git/config")
+	}
+}
