@@ -22,9 +22,10 @@ number-pick/copy/strip-markers steps an agent currently does by hand.
   `audit`/`list`.
 - The shipped `awf-proposing-adr` skill template is edited to invoke the new command instead of
   describing the manual steps.
-- Doc-currency updates (`internal/adr` package doc, AGENTS.md's gated-command invariant text, the
-  `tooling` and `adr-system` domain narratives) land alongside, and ADR-0042 flips to `Implemented`
-  in the final commit (design and implementation land together, per the ADR).
+- Doc-currency updates (`internal/adr` package doc, `docs/architecture.md`'s `internal/adr/` bullet,
+  AGENTS.md's gated-command invariant text, the `tooling` and `adr-system` domain narratives) land
+  alongside, and ADR-0042 flips to `Implemented` in the final commit (design and implementation land
+  together, per the ADR).
 
 ## Tech stack
 
@@ -40,10 +41,10 @@ No new dependencies.
 - Modified: `cmd/awf/main.go`, `cmd/awf/gate_test.go`, `cmd/awf/run_test.go`
 - Modified: `templates/skills/proposing-adr/SKILL.md.tmpl`
 - Modified (rendered, via `./x sync`): `.claude/skills/awf-proposing-adr/SKILL.md`
-- Modified: `.awf/agents-doc.yaml`, `.awf/domains/parts/tooling/current-state.md`,
-  `.awf/domains/parts/adr-system/current-state.md`
+- Modified: `.awf/docs/parts/architecture/components.md`, `.awf/agents-doc.yaml`,
+  `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/adr-system/current-state.md`
 - Modified (rendered, via `./x sync`): `AGENTS.md`, `docs/architecture.md`, `docs/domains/tooling.md`,
-  `docs/domains/adr-system.md`, `.awf/awf.lock`
+  `docs/domains/adr-system.md`, `docs/decisions/ACTIVE.md`, `.awf/awf.lock`
 - Modified: `docs/decisions/0042-adr-scaffolding-command.md` (frontmatter `status` only)
 
 ## Phase 1 — `internal/adr`: `NextNumber` and `NewFile`
