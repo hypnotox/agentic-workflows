@@ -30,22 +30,12 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 	// the core ones — so an opt-in target added later renders without <no value>.
 	// invariant: scaffold-seeds-all-vars
 	varSet := map[string]bool{}
-	for name := range cat.Skills {
-		path := fmt.Sprintf("skills/%s/SKILL.md.tmpl", name)
-		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog skill name has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, err
-		}
-	}
-	for name := range cat.Agents {
-		path := fmt.Sprintf("agents/%s.md.tmpl", name)
-		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog agent name has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, err
-		}
-	}
-	for name := range cat.Docs {
-		path := fmt.Sprintf("docs/%s.md.tmpl", name)
-		if err := collectVars(templates.FS, path, varSet); err != nil { // coverage-ignore: every catalog doc name has a backing template in the embedded FS, so collectVars cannot fail
-			return nil, err
+	for _, kind := range []string{"skills", "agents", "docs"} {
+		d, _ := descriptorByPlural(kind)
+		for _, name := range d.poolNames(cat) {
+			if err := collectVars(templates.FS, d.tid(name), varSet); err != nil { // coverage-ignore: every catalog name has a backing template in the embedded FS, so collectVars cannot fail
+				return nil, err
+			}
 		}
 	}
 	// Plain singletons (workflow, doc-standard, agents-md-standard included) always

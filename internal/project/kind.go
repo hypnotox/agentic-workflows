@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 
@@ -18,6 +19,7 @@ type kindDescriptor struct {
 	poolNames func(*catalog.Catalog) []string                 // sorted catalog pool; nil for domains (no pool)
 	sections  func(*catalog.Catalog, string) ([]string, bool) // declared sections + catalog presence
 	outPath   func(t Target, prefix, name string) string      // rendered path; nil for neutral kinds
+	tid       func(name string) string                        // embedded template id
 }
 
 // kindDescriptors is the single ordered source of per-kind dispatch (inv:
@@ -32,6 +34,7 @@ var kindDescriptors = []kindDescriptor{
 		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Skills)) },
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { s, ok := c.Skills[n]; return s.Sections, ok },
 		outPath:   func(t Target, prefix, n string) string { return t.SkillPath(prefix, n) },
+		tid:       func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
 	},
 	{
 		Plural: "agents", Singular: "agent",
@@ -39,6 +42,7 @@ var kindDescriptors = []kindDescriptor{
 		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Agents)) },
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { a, ok := c.Agents[n]; return a.Sections, ok },
 		outPath:   func(t Target, _, n string) string { return t.AgentPath(n) },
+		tid:       func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
 	},
 	{
 		Plural: "docs", Singular: "doc",
@@ -46,6 +50,7 @@ var kindDescriptors = []kindDescriptor{
 		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Docs)) },
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
 		outPath:   nil,
+		tid:       func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
 	},
 	{
 		Plural: "domains", Singular: "domain",
@@ -53,6 +58,7 @@ var kindDescriptors = []kindDescriptor{
 		poolNames: nil, // freeform — no catalog pool
 		sections:  func(c *catalog.Catalog, _ string) ([]string, bool) { return c.DomainDoc.Sections, false },
 		outPath:   nil,
+		tid:       func(string) string { return "domains/domain.md.tmpl" },
 	},
 }
 
@@ -63,6 +69,13 @@ func descriptorByPlural(kind string) (kindDescriptor, bool) {
 		}
 	}
 	return kindDescriptor{}, false
+}
+
+// mustDescriptor returns the descriptor for a plural kind known to exist at the
+// call site (static kind literals in RenderAll).
+func mustDescriptor(kind string) kindDescriptor {
+	d, _ := descriptorByPlural(kind)
+	return d
 }
 
 func descriptorBySingular(kind string) (kindDescriptor, bool) {

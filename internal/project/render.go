@@ -15,6 +15,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
+const (
+	bridgeTID    = "claude/CLAUDE.md.tmpl"
+	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
+)
+
 type RenderedFile struct {
 	Path         string
 	Content      string
@@ -118,7 +123,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
-		tid:      func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
+		tid:      mustDescriptor("docs").tid,
 		sections: func(n string) []string { return p.Cat.Docs[n].Sections },
 		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
 	})
@@ -132,7 +137,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		for _, spec := range []renderKindSpec{
 			{
 				kind: "skills", names: p.Cfg.Skills, target: t,
-				tid:      func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
+				tid:      mustDescriptor("skills").tid,
 				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
 				outPath:  func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) },
 				// Doc-gated skill: omit from the render set when its required doc is not
@@ -145,7 +150,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			},
 			{
 				kind: "agents", names: p.Cfg.Agents, target: t,
-				tid:      func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
+				tid:      mustDescriptor("agents").tid,
 				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
 			},
@@ -184,7 +189,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			if t.BridgeFile == "" {
 				continue
 			}
-			brf, err := p.renderTarget("claude", "", "claude/CLAUDE.md.tmpl",
+			brf, err := p.renderTarget("claude", "", bridgeTID,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}), t.BridgeFile)
 			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
 				return nil, err
@@ -210,7 +215,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	// awf-bootstrap.sh (neutral repo-root singleton; rendered only when enabled —
 	// ADR-0040). No catalog spec / no overridable sections, like the CLAUDE.md bridge.
 	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-		brf, err := p.renderTarget("bootstrap", "", "bootstrap/awf-bootstrap.sh.tmpl",
+		brf, err := p.renderTarget("bootstrap", "", bootstrapTID,
 			nil, config.Sidecar{}, p.data(config.Sidecar{}), "awf-bootstrap.sh")
 		if err != nil { // coverage-ignore: the bootstrap template references only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
 			return nil, err
@@ -306,7 +311,7 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		}
 		data := p.data(config.Sidecar{})
 		data["data"] = map[string]any{"domain": name, "decisions": index}
-		rf, err := p.renderTarget("domains", name, "domains/domain.md.tmpl",
+		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md")
 		if err != nil { // coverage-ignore: .data.domain/.data.decisions are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here

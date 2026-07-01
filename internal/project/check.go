@@ -67,14 +67,10 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 // matching enable list, plus convention-part files of an enabled artifact whose
 // section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) orphans() ([]manifest.Drift, error) {
-	enabled := map[string]map[string]bool{
-		"skills":  sliceSet(p.Cfg.Skills),
-		"agents":  sliceSet(p.Cfg.Agents),
-		"docs":    sliceSet(p.Cfg.Docs),
-		"domains": sliceSet(p.Cfg.Domains),
-	}
 	var drift []manifest.Drift
-	for _, kind := range []string{"skills", "agents", "docs", "domains"} {
+	for _, desc := range kindDescriptors {
+		kind := desc.Plural
+		enabledSet := sliceSet(desc.enable(p.Cfg))
 		base := filepath.Join(p.Root, ".awf", kind)
 		// Sidecars: <kind>/<name>.yaml.
 		entries, err := os.ReadDir(base)
@@ -88,7 +84,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 				continue
 			}
 			name := strings.TrimSuffix(e.Name(), ".yaml")
-			if !enabled[kind][name] {
+			if !enabledSet[name] {
 				drift = append(drift, manifest.Drift{
 					Path: filepath.Join(".awf", kind, e.Name()),
 					Kind: "orphaned", Detail: "sidecar for an artifact not in the enable list",
@@ -107,7 +103,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 			if !t.IsDir() {
 				continue
 			}
-			if !enabled[kind][t.Name()] {
+			if !enabledSet[t.Name()] {
 				drift = append(drift, manifest.Drift{
 					Path: filepath.Join(".awf", kind, "parts", t.Name()),
 					Kind: "orphaned", Detail: "convention parts for an artifact not in the enable list",
@@ -150,7 +146,7 @@ func (p *Project) declaredSections(kind, name string) []string {
 // markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
 // RenderAll produces except the CLAUDE.md bridge and the awf-bootstrap.sh shell script.
 func isManagedMarkdown(tid string) bool {
-	return tid != "claude/CLAUDE.md.tmpl" && tid != "bootstrap/awf-bootstrap.sh.tmpl"
+	return tid != bridgeTID && tid != bootstrapTID
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
