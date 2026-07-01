@@ -105,7 +105,7 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 		for slug, file := range required {
 			out = append(out, Finding{Slug: slug, ADR: file, Status: status})
 		}
-		sort.Slice(out, func(i, j int) bool { return out[i].Slug < out[j].Slug })
+		sortBySlug(out)
 		return out
 	}
 
@@ -123,7 +123,7 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 			findings = append(findings, Finding{Slug: slug, ADR: file, Status: Unbacked})
 		}
 	}
-	sort.Slice(findings, func(i, j int) bool { return findings[i].Slug < findings[j].Slug })
+	sortBySlug(findings)
 	return findings, nil
 }
 
@@ -131,6 +131,11 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 // file whose basename matches one of a source's globs (skipping
 // .git/vendor/node_modules). The marker is matched literally; whitespace between
 // the marker and `invariant:` is tolerated.
+// sortBySlug orders findings by slug, the stable output order of both scans.
+func sortBySlug(f []Finding) {
+	sort.Slice(f, func(i, j int) bool { return f[i].Slug < f[j].Slug })
+}
+
 func scanTags(root string, sources []config.InvariantSource) (map[string]bool, error) {
 	present := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
