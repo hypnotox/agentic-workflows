@@ -75,6 +75,7 @@ type adrOpts struct {
 	tags              []string
 	domains           []string
 	retiresInvariants []string
+	supersededBy      string
 	body              string
 }
 
@@ -95,6 +96,13 @@ func WithDomains(domains ...string) ADROption { return func(o *adrOpts) { o.doma
 // WithRetiresInvariants sets the frontmatter retires_invariants array.
 func WithRetiresInvariants(slugs ...string) ADROption {
 	return func(o *adrOpts) { o.retiresInvariants = slugs }
+}
+
+// WithSupersededBy sets the frontmatter superseded_by field (a quoted ADR
+// number, e.g. "0002"). Omitted from the frontmatter entirely when never
+// called.
+func WithSupersededBy(number string) ADROption {
+	return func(o *adrOpts) { o.supersededBy = number }
 }
 
 // WithBody appends raw markdown (e.g. "## Context\nx\n") after the title
@@ -125,6 +133,9 @@ func ADR(status string, opts ...ADROption) string {
 	}
 	if o.retiresInvariants != nil {
 		b.WriteString("retires_invariants: [" + strings.Join(o.retiresInvariants, ", ") + "]\n")
+	}
+	if o.supersededBy != "" {
+		b.WriteString("superseded_by: \"" + o.supersededBy + "\"\n")
 	}
 	b.WriteString("---\n# ADR-" + o.title + "\n")
 	b.WriteString(o.body)
