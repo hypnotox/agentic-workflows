@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // modWith builds a temp module (go.mod + f.go) and a coverprofile, then chdir's
@@ -13,16 +13,8 @@ import (
 func modWith(t *testing.T, profileBody string) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/m\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "f.go"), []byte("package m\nfunc F() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	prof := filepath.Join(root, "cover.out")
-	if err := os.WriteFile(prof, []byte("mode: set\n"+profileBody), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteGoModule(t, root, "example.com/m", "package m\nfunc F() {}\n")
+	prof := testsupport.WriteProfile(t, root, profileBody)
 	t.Chdir(root)
 	return prof
 }

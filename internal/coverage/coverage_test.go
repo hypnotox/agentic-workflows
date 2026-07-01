@@ -13,11 +13,7 @@ import (
 // writeProfile writes a coverprofile and returns its path.
 func writeProfile(t *testing.T, dir, body string) string {
 	t.Helper()
-	p := filepath.Join(dir, "cover.out")
-	if err := os.WriteFile(p, []byte("mode: set\n"+body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return p
+	return testsupport.WriteProfile(t, dir, body)
 }
 
 // module builds a temp module root: go.mod + one source file, and returns root + modpath.
@@ -25,12 +21,7 @@ func module(t *testing.T, src string) (root, modPath string) {
 	t.Helper()
 	root = t.TempDir()
 	modPath = "example.com/m"
-	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module "+modPath+"\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "f.go"), []byte(src), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteGoModule(t, root, modPath, src)
 	return root, modPath
 }
 
