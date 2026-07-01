@@ -15,6 +15,18 @@ import "strings"
 // ([text][id]) and 4-space-indented code blocks are out of scope.
 func Links(content string) []string {
 	var out []string
+	for _, line := range strings.Split(WithoutFences(content), "\n") {
+		out = append(out, lineLinks(stripCodeSpans(line))...)
+	}
+	return out
+}
+
+// WithoutFences returns content minus fenced-code-block lines (opened by ``` or
+// ~~~; delimiter lines dropped too). Inline code spans are deliberately kept —
+// scanners like the skill-reference check (ADR-0046) match tokens that
+// legitimately render inside single-backtick spans.
+func WithoutFences(content string) string {
+	var kept []string
 	inFence := false
 	fence := ""
 	for _, line := range strings.Split(content, "\n") {
@@ -31,10 +43,10 @@ func Links(content string) []string {
 		case strings.HasPrefix(trimmed, "~~~"):
 			inFence, fence = true, "~~~"
 		default:
-			out = append(out, lineLinks(stripCodeSpans(line))...)
+			kept = append(kept, line)
 		}
 	}
-	return out
+	return strings.Join(kept, "\n")
 }
 
 // stripCodeSpans removes the content of inline code spans — text between paired

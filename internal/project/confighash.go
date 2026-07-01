@@ -1,8 +1,10 @@
 package project
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -35,6 +37,12 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		vs[r] = p.Cfg.Vars[r]
 	}
 	proj["vars"] = vs
+	if render.ReferencesSkills(assembled) {
+		// A template that reads .skills re-renders when the enable array
+		// changes; folding the effective set in flags it stale (ADR-0046).
+		// invariant: skills-set-in-confighash
+		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
+	}
 	proj["sidecar"] = sc
 	sort.Strings(partPaths)
 	parts := map[string]string{}

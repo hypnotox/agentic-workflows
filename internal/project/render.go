@@ -41,7 +41,34 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"data":    nonNil(sc.Data),
 		"layout":  p.layout().templateMap(),
 		"version": Version,
+		"skills":  p.effSkills,
 	}
+}
+
+// effectiveSkills returns the skill names whose files exist on disk under awf's
+// model: enabled minus doc-gate-suppressed, keeping local-declared ones
+// (hand-maintained but present) even where a doc gate would suppress the render.
+// invariant: skills-context-effective-set
+func (p *Project) effectiveSkills() (map[string]bool, error) {
+	enabledDocs := sliceSet(p.Cfg.Docs)
+	eff := map[string]bool{}
+	for _, name := range p.Cfg.Skills {
+		sc, err := p.Cfg.Sidecar("skills", name)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Local || p.skillDocGateOpen(name, enabledDocs) {
+			eff[name] = true
+		}
+	}
+	return eff, nil
+}
+
+// skillDocGateOpen reports whether a doc-gated skill's required doc is enabled
+// (inv: doc-gated-skill-suppressed shares this single source of truth).
+func (p *Project) skillDocGateOpen(name string, enabledDocs map[string]bool) bool {
+	req := p.Cat.Skills[name].RequiresDoc
+	return req == "" || enabledDocs[req]
 }
 
 // partRel is the project-relative convention part path the awf:edit pointer names,
@@ -131,6 +158,11 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
 	enabledDocs := sliceSet(p.Cfg.Docs)
+	eff, err := p.effectiveSkills()
+	if err != nil {
+		return nil, err
+	}
+	p.effSkills = eff
 	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
@@ -154,10 +186,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 				// Doc-gated skill: omit from the render set when its required doc is not
 				// enabled (inv: doc-gated-skill-suppressed).
 				// invariant: doc-gated-skill-suppressed
-				gate: func(n string) bool {
-					req := p.Cat.Skills[n].RequiresDoc
-					return req == "" || enabledDocs[req]
-				},
+				gate:     func(n string) bool { return p.skillDocGateOpen(n, enabledDocs) },
 				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			},
 			{

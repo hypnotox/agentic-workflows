@@ -31,6 +31,11 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 // carries the docs the templates cite so guarded clauses render as before; a test
 // that needs different values sets them explicitly and this leaves them untouched.
 func withLayoutDefaults(data map[string]any) {
+	if _, ok := data["skills"]; !ok {
+		// The real render context always carries the effective-skills set
+		// (ADR-0046); a typed nil map keeps chained .skills.X access safe.
+		data["skills"] = map[string]bool{}
+	}
 	l, _ := data["layout"].(map[string]any)
 	if l == nil {
 		l = map[string]any{}
@@ -348,7 +353,8 @@ func TestBugfixTemplate(t *testing.T) {
 			"gateCmdFull":        "./x gate full",
 			"docCurrencyTargets": "docs/ and docs/decisions/",
 		},
-		"data": map[string]any{},
+		"data":   map[string]any{},
+		"skills": map[string]bool{"tdd": true, "debugging": true},
 	}
 
 	out := renderSkillGolden(t, "bugfix", data)
@@ -379,7 +385,8 @@ func TestDebuggingTemplate(t *testing.T) {
 			"gateCmd":     "./x gate",
 			"gateCmdFull": "./x gate full",
 		},
-		"data": map[string]any{},
+		"data":   map[string]any{},
+		"skills": map[string]bool{"tdd": true, "bugfix": true},
 	}
 
 	out := renderSkillGolden(t, "debugging", data)
@@ -717,6 +724,7 @@ func TestAgentsDocTemplate(t *testing.T) {
 		},
 		"layout": testLayout(),
 		"data":   map[string]any{},
+		"skills": map[string]bool{"brainstorming": true, "adr-lifecycle": true, "tdd": true},
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	for _, phrase := range []string{
@@ -751,6 +759,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 			"gateCmd": "",
 		},
 		"layout": testLayout(),
+		"skills": map[string]bool{"brainstorming": true, "adr-lifecycle": true},
 		"data": map[string]any{
 			"invariants": []map[string]any{
 				{"text": "**Custom rule.**", "ref": "ADR-0009"},

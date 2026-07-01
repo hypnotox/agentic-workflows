@@ -69,12 +69,18 @@ should fail loudly, not render vague prose around missing steps.
    [ADR-0045](0045-out-of-box-render-completeness.md)).
 
 2. **Conditionalization is scoped to non-core references only.** The non-core skills'
-   cross-references (`bugfix`↔`tdd`↔`debugging`) and the per-name skill lists in
-   `AGENTS.md.tmpl` (task skills; the chain list, whose presentation
-   [ADR-0028](0028-workflow-chain-adr-first-visible-resync.md) settled, stays unconditional)
-   render a name only when
-   that skill is in `skills`, with correct list punctuation and whole-clause omission when
-   none qualify. Core-chain handoffs stay unconditional prose.
+   cross-references (`bugfix`↔`tdd`↔`debugging`) and the per-name task-skill list in
+   `AGENTS.md.tmpl` render a name only when that skill is in `skills`. The agent guide's
+   chain prose (the canonical-chain block and the chain-skills sentence, whose presentation
+   [ADR-0028](0028-workflow-chain-adr-first-visible-resync.md) settled) renders as a unit,
+   gated on the chain's entry skill (`brainstorming`); the task-skills clause anchors on the
+   core `adr-lifecycle` and is omitted entirely when it is disabled. A chain-less config
+   (no chain skills at all) is therefore legal and its guide simply omits the chain; a
+   *partially* trimmed chain still renders the prose and hard-fails via item 4 — the
+   individual chain handoffs inside the prose and inside the chain skills stay
+   unconditional. *(Amended while Proposed during implementation: the original "chain list
+   stays unconditional" wording made every chain-less config an illegal state, which was
+   never the intent.)*
 
 3. **Failing skill-reference check.** `awf check` gains a `dead-skill-reference` drift kind:
    scan the same managed rendered markdown set as ADR-0020 for `<prefix>-<name>` tokens

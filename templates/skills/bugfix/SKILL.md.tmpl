@@ -5,7 +5,7 @@ description: Use when applying a {{ .prefix }} bug fix with a known root cause. 
 
 # {{ .prefix }}-bugfix
 
-The fix-and-verify task skill. Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.
+The fix-and-verify task skill.{{ if .skills.debugging }} Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.{{ end }}
 
 ## When to invoke
 
@@ -14,11 +14,11 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 - **Trivial bugfix that validly skips the chain** — the narrow exception in `{{ .layout.workflowRef }}` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
 - **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
 
-If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.
+{{ if .skills.debugging }}If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.{{ else }}If the root cause is not yet known, confirm it with a falsifiable check before touching code.{{ end }}
 
 ## Procedure
 
-1. **Ensure a regression test exists that fails for the right reason.** Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
+1. **Ensure a regression test exists that fails for the right reason.** {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.{{ else }}Write the failing test first and confirm it fails for the right reason before the fix.{{ end }}
 
 2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
 

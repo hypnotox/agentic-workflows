@@ -68,10 +68,15 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The fresh tree must also pass check, with notes only (advisory, exit 0).
+	// The fresh tree must also pass check, with notes only (advisory, exit 0) —
+	// in particular zero dead-skill-reference findings on the curated default.
+	// invariant: curated-init-skill-refs-clean
 	var checkOut bytes.Buffer
 	if err := runCheck(root, &checkOut); err != nil {
 		t.Fatalf("check on fresh init: %v\n%s", err, checkOut.String())
+	}
+	if strings.Contains(checkOut.String(), "dead-skill-reference") {
+		t.Errorf("curated init render has dead skill references:\n%s", checkOut.String())
 	}
 }
 

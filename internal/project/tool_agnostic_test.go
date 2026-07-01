@@ -57,7 +57,7 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 		for _, v := range render.ReferencedVars(string(src)) {
 			vars[v] = ""
 		}
-		data := map[string]any{"prefix": "awf", "vars": vars, "layout": layout, "data": map[string]any{}}
+		data := map[string]any{"prefix": "awf", "vars": vars, "layout": layout, "data": map[string]any{}, "skills": map[string]bool{}}
 		asm, parts := render.Assemble(render.ParseSections(string(src)), nil)
 		out, err := render.Execute(asm, data, parts, "test")
 		if err != nil {

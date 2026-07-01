@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -246,6 +247,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
 
 	drift = append(drift, p.checkDeadRefs(files, amd, dds)...)
+	drift = append(drift, p.checkDeadSkillRefs(files, amd, dds, p.effSkills)...)
 	return drift, nil
 }
 
@@ -326,6 +328,39 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
+		}
+	}
+	return drift
+}
+
+// checkDeadSkillRefs scans managed rendered markdown for <prefix>-<name> tokens
+// whose <name> is a catalog-known skill outside the effective rendered set
+// (inv: skill-ref-dead-fails). Names matching no known skill are ignored
+// (inv: skill-ref-unknown-ignored); fenced code blocks are skipped like the
+// dead-link scan. The regex captures the maximal word run after the prefix, so
+// matching is whole-token (ADR-0046 item 3).
+// invariant: skill-ref-dead-fails
+// invariant: skill-ref-unknown-ignored
+func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile, effective map[string]bool) []manifest.Drift {
+	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
+	for _, f := range files {
+		if isManagedMarkdown(f.TemplateID) {
+			scan = append(scan, f)
+		}
+	}
+	scan = append(scan, amd)
+	scan = append(scan, dds...)
+	re := regexp.MustCompile(regexp.QuoteMeta(p.Cfg.Prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
+	var drift []manifest.Drift
+	for _, f := range scan {
+		seen := map[string]bool{}
+		for _, m := range re.FindAllStringSubmatch(refs.WithoutFences(f.Content), -1) {
+			name := m[1]
+			if _, known := p.Cat.Skills[name]; !known || effective[name] || seen[name] {
+				continue
+			}
+			seen[name] = true
+			drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-skill-reference", Detail: p.Cfg.Prefix + "-" + name})
 		}
 	}
 	return drift

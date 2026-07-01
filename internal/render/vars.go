@@ -7,6 +7,13 @@ import (
 
 var varsRE = regexp.MustCompile(`\.vars\.([A-Za-z_][A-Za-z0-9_]*)`)
 
+var skillsRE = regexp.MustCompile(`\{\{[^{}]*[.$]skills[^{}]*\}\}`)
+
+// ReferencesSkills reports whether src reads the enabled-skills render context
+// (any {{ … .skills… }} action) — such templates fold the effective skills set
+// into their config hash (ADR-0046).
+func ReferencesSkills(src string) bool { return skillsRE.MatchString(src) }
+
 // ReferencedVars returns the sorted, de-duplicated list of variable names
 // referenced via {{ .vars.X }} patterns in src.
 func ReferencedVars(src string) []string {

@@ -27,6 +27,11 @@ type Project struct {
 	Cfg     *config.Config
 	Cat     *catalog.Catalog
 	Targets []Target
+	// effSkills is the effective rendered skill set (enabled minus doc-gate-
+	// suppressed, local kept), populated by RenderAll; templates read it as
+	// .skills and artifactConfigHash folds it in for .skills-referencing
+	// templates (ADR-0046).
+	effSkills map[string]bool
 }
 
 func Open(root string) (*Project, error) {
