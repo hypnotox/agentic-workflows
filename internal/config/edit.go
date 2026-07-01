@@ -47,14 +47,10 @@ func MarshalSkeleton(s Skeleton) ([]byte, error) {
 // removing a member absent from the key (or a key absent on remove) errors.
 // invariant: config-mutation-roundtrip
 func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, fmt.Errorf("config: parse: %w", err)
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
 	}
-	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, errors.New("config: not a YAML mapping")
-	}
-	root := doc.Content[0]
 	val, vi := mapValue(root, key)
 	switch {
 	case val == nil: // key absent
@@ -82,7 +78,7 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		}
 		root.Content[vi] = blockSeq(name)
 	}
-	return encode(&doc)
+	return encode(doc)
 }
 
 // SetArray sets the sequence under key to exactly values, creating the key if it
@@ -92,14 +88,10 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 // default, so an absent on-disk key must be materialized as the full resolved list,
 // not appended to (ADR-0037).
 func SetArray(src []byte, key string, values []string) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, fmt.Errorf("config: parse: %w", err)
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
 	}
-	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, errors.New("config: not a YAML mapping")
-	}
-	root := doc.Content[0]
 	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	for _, v := range values {
 		seq.Content = append(seq.Content, strScalar(v))
@@ -109,7 +101,7 @@ func SetArray(src []byte, key string, values []string) ([]byte, error) {
 	} else {
 		root.Content = append(root.Content, strScalar(key), seq)
 	}
-	return encode(&doc)
+	return encode(doc)
 }
 
 // RemoveKey deletes the top-level mapping entry under key from a config.yaml
@@ -117,18 +109,14 @@ func SetArray(src []byte, key string, values []string) ([]byte, error) {
 // key (ADR-0026). Removing an absent key is a no-op (returns src unchanged), so a
 // schema migration can re-run safely.
 func RemoveKey(src []byte, key string) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, fmt.Errorf("config: parse: %w", err)
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
 	}
-	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, errors.New("config: not a YAML mapping")
-	}
-	root := doc.Content[0]
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		if root.Content[i].Value == key {
 			root.Content = append(root.Content[:i], root.Content[i+2:]...)
-			return encode(&doc)
+			return encode(doc)
 		}
 	}
 	return src, nil
@@ -142,14 +130,10 @@ func RemoveKey(src []byte, key string) ([]byte, error) {
 // needs a mapping-scalar writer rather than SetArrayMember. An existing scalar under
 // key/child is overwritten.
 func SetMappingScalar(src []byte, key, child string, value bool) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, fmt.Errorf("config: parse: %w", err)
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
 	}
-	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, errors.New("config: not a YAML mapping")
-	}
-	root := doc.Content[0]
 	boolStr := "false"
 	if value {
 		boolStr = "true"
@@ -165,18 +149,31 @@ func SetMappingScalar(src []byte, key, child string, value bool) ([]byte, error)
 			_, vi := mapValue(root, key)
 			root.Content[vi] = m
 		}
-		return encode(&doc)
+		return encode(doc)
 	}
 	if cv, _ := mapValue(val, child); cv != nil {
 		cv.Tag, cv.Value, cv.Style = "!!bool", boolStr, 0
 	} else {
 		val.Content = append(val.Content, strScalar(child), boolScalar(boolStr))
 	}
-	return encode(&doc)
+	return encode(doc)
 }
 
 func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
+}
+
+// parseMapping decodes src into a YAML document and returns the document plus its
+// root mapping node — the shared preamble of every awf-owned config.yaml edit.
+func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
+	doc := &yaml.Node{}
+	if err := yaml.Unmarshal(src, doc); err != nil {
+		return nil, nil, fmt.Errorf("config: parse: %w", err)
+	}
+	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, nil, errors.New("config: not a YAML mapping")
+	}
+	return doc, doc.Content[0], nil
 }
 
 // encode is the single funnel for awf-owned config.yaml serialization: a yaml.v3
