@@ -16,6 +16,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 `awf new adr "<title>"` (ADR-0042) scaffolds a new ADR file: `internal/adr.NextNumber` computes the next sequential number and `internal/adr.NewFile` copies the rendered `docs/decisions/template.md`, strips its marker comments, and fills in the date and title heading — replacing the free-hand copy/strip/number steps `awf-proposing-adr` used to spell out by hand. It goes through the ADR-0039 binary-version gate like the other project-reading commands.
 
+`internal/testsupport` (ADR-0044) is awf's shared test-fixture package — `TestMain` HOME isolation, project-config scaffolding, ADR frontmatter fixtures, file-writing primitives, and the seam-swap idiom, plus `internal/testsupport/gitfixture` for git-repo fixtures — consolidating idioms that had drifted into independent, sometimes-inconsistent copies across `cmd/awf`, `internal/project`, `internal/audit`, `internal/coverage`, `internal/migrate`, and `internal/invariants`. It is a leaf package: no file in `internal/testsupport` (including `gitfixture`) may import another `internal/*` awf package, mechanically enforced by a dedicated test that walks the package's own import graph, so it stays safely importable from any package's tests.
+
 
 ## Decisions
 
@@ -43,9 +45,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
 - [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
-
-### Proposed
-
 - [ADR-0044: Shared Test-Support Package](../decisions/0044-shared-test-support-package.md)
 
 ### Superseded by ADR-0032
