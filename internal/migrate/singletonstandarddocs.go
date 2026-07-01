@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -24,10 +25,10 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 func applySingletonStandardDocs(root string) error {
 	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {
-		if err := relocate(filepath.Join(awfDir, "docs", name+".yaml"), filepath.Join(awfDir, name+".yaml")); err != nil { // coverage-ignore: relocate only errors on an unreachable permission fault a test cannot trigger
+		if err := relocate(filepath.Join(awfDir, "docs", name+".yaml"), filepath.Join(awfDir, name+".yaml")); err != nil { // coverage-ignore: relocate errors here only on the existing-destination guard or a permission fault, neither of which occurs over the fresh trees this migration runs on
 			return err
 		}
-		if err := relocate(filepath.Join(awfDir, "docs", "parts", name), filepath.Join(awfDir, "parts", name)); err != nil { // coverage-ignore: relocate only errors on an unreachable permission fault a test cannot trigger
+		if err := relocate(filepath.Join(awfDir, "docs", "parts", name), filepath.Join(awfDir, "parts", name)); err != nil { // coverage-ignore: relocate errors here only on the existing-destination guard or a permission fault, neither of which occurs over the fresh trees this migration runs on
 			return err
 		}
 		if err := removeFromDocsArray(filepath.Join(awfDir, "config.yaml"), name); err != nil {
@@ -38,12 +39,16 @@ func applySingletonStandardDocs(root string) error {
 }
 
 // relocate renames src to dst if src exists (file or directory); a no-op when
-// src is absent.
+// src is absent. It refuses rather than clobber an existing destination (mirroring
+// applyAwfRelocation), so a partial prior migration cannot be silently overwritten.
 func relocate(src, dst string) error {
 	if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
 		return err
+	}
+	if _, err := os.Stat(dst); err == nil {
+		return fmt.Errorf("cannot relocate: %s already exists", dst)
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { // coverage-ignore: dst's parent is under the just-Stat'd .awf dir; fails only on a permission fault a test cannot trigger
 		return err

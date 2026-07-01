@@ -69,3 +69,18 @@ func TestSingletonStandardDocsMalformedConfig(t *testing.T) {
 		t.Error("expected error surfaced from the malformed docs: probe decode")
 	}
 }
+
+func TestRelocateRefusesExistingDestination(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.yaml")
+	dst := filepath.Join(dir, "dst.yaml")
+	testsupport.WriteFile(t, src, "SRC\n")
+	testsupport.WriteFile(t, dst, "DST\n")
+
+	if err := relocate(src, dst); err == nil {
+		t.Fatal("relocate should refuse to overwrite an existing destination")
+	}
+	if b, err := os.ReadFile(dst); err != nil || string(b) != "DST\n" {
+		t.Errorf("destination was clobbered: %v, %s", err, b)
+	}
+}
