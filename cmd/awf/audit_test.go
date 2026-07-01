@@ -7,15 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
-
-var auditSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
 
 // auditProject creates a temp project (minimal .awf config) with a git repo and
 // a base commit, returning the root and the base commit hash.
@@ -47,32 +44,11 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	if err := wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
 		t.Fatal(err)
 	}
-	base, err := wt.Commit("feat(awf): base", &git.CommitOptions{Author: auditSig, Committer: auditSig})
+	base, err := wt.Commit("feat(awf): base", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return root, base
-}
-
-func auditCommit(t *testing.T, repo *git.Repository, root, msg string, write map[string]string) plumbing.Hash {
-	t.Helper()
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for name, content := range write {
-		if werr := os.WriteFile(filepath.Join(root, name), []byte(content), 0o644); werr != nil {
-			t.Fatal(werr)
-		}
-		if _, aerr := wt.Add(name); aerr != nil {
-			t.Fatal(aerr)
-		}
-	}
-	h, err := wt.Commit(msg, &git.CommitOptions{Author: auditSig, Committer: auditSig})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return h
 }
 
 // invariant: audit-warn-exit-zero
@@ -83,7 +59,7 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Valid CC subject, but touches go.mod with no ADR -> dependency-adr warning only.
-	auditCommit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
+	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
 	var out bytes.Buffer
 	if err := runAudit(root, base.String(), &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
@@ -99,7 +75,7 @@ func TestRunAuditErrorExitsNonZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	auditCommit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
+	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
 	if err := runAudit(root, base.String(), out(t)); err == nil {
 		t.Fatal("an Error finding must make runAudit return non-nil")
 	}
@@ -114,7 +90,7 @@ func TestRunAuditBranchLevelFinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	big := strings.Repeat("var n int\n", 500) // > default diffThreshold 400
-	auditCommit(t, repo, root, "feat(awf): big change", map[string]string{"big.go": "package x\n" + big})
+	gitfixture.Commit(t, repo, root, "feat(awf): big change", map[string]string{"big.go": "package x\n" + big})
 	var buf bytes.Buffer
 	if err := runAudit(root, base.String(), &buf); err != nil {
 		t.Fatalf("branch-level warning should exit zero, got: %v", err)
@@ -130,7 +106,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	auditCommit(t, repo, root, "feat(awf): small clean change", map[string]string{"main.go": "package x\nvar z int\n"})
+	gitfixture.Commit(t, repo, root, "feat(awf): small clean change", map[string]string{"main.go": "package x\nvar z int\n"})
 	var buf bytes.Buffer
 	if err := runAudit(root, base.String(), &buf); err != nil {
 		t.Fatalf("clean range should exit zero, got: %v", err)
@@ -181,7 +157,7 @@ func TestRunAuditDispatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	auditCommit(t, repo, root, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
+	gitfixture.Commit(t, repo, root, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var outb, errb bytes.Buffer
 	if code := run([]string{"awf", "audit", "--base", base.String()}, &outb, &errb); code != 0 {

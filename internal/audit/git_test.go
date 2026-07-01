@@ -4,51 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
-
-var testSig = &object.Signature{Name: "T", Email: "t@example.com", When: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-
-func initRepo(t *testing.T) (*git.Repository, string) {
-	t.Helper()
-	dir := t.TempDir()
-	repo, err := git.PlainInit(dir, false)
-	if err != nil {
-		t.Fatalf("init: %v", err)
-	}
-	return repo, dir
-}
-
-// commit writes/removes files in the worktree and commits, returning the hash.
-func commit(t *testing.T, repo *git.Repository, dir, msg string, write map[string]string, remove ...string) plumbing.Hash {
-	t.Helper()
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatalf("worktree: %v", err)
-	}
-	for name, content := range write {
-		if werr := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); werr != nil {
-			t.Fatalf("write %s: %v", name, werr)
-		}
-		if _, aerr := wt.Add(name); aerr != nil {
-			t.Fatalf("add %s: %v", name, aerr)
-		}
-	}
-	for _, name := range remove {
-		if _, rerr := wt.Remove(name); rerr != nil {
-			t.Fatalf("remove %s: %v", name, rerr)
-		}
-	}
-	h, err := wt.Commit(msg, &git.CommitOptions{Author: testSig, Committer: testSig})
-	if err != nil {
-		t.Fatalf("commit: %v", err)
-	}
-	return h
-}
 
 // orphan stores an unrelated root commit (empty tree, no parents).
 func orphan(t *testing.T, repo *git.Repository) plumbing.Hash {
@@ -62,7 +23,7 @@ func orphan(t *testing.T, repo *git.Repository) plumbing.Hash {
 	if err != nil {
 		t.Fatalf("store tree: %v", err)
 	}
-	c := &object.Commit{Author: *testSig, Committer: *testSig, Message: "orphan\n", TreeHash: treeHash}
+	c := &object.Commit{Author: *gitfixture.Sig, Committer: *gitfixture.Sig, Message: "orphan\n", TreeHash: treeHash}
 	co := repo.Storer.NewEncodedObject()
 	if err := c.Encode(co); err != nil {
 		t.Fatalf("encode commit: %v", err)
@@ -101,16 +62,16 @@ func findChange(changes []FileChange, path string) (FileChange, bool) {
 }
 
 func TestCollectNormalRange(t *testing.T) {
-	repo, dir := initRepo(t)
-	base := commit(t, repo, dir, "feat(awf): base", map[string]string{
+	repo, dir := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{
 		"go.mod": "module x\n",
 		"a.md":   "---\nstatus: Proposed\n---\nold body\n",
 	})
-	commit(t, repo, dir, "feat(awf): one", map[string]string{
+	gitfixture.Commit(t, repo, dir, "feat(awf): one", map[string]string{
 		"a.md":  "---\nstatus: Accepted\n---\nnew longer body\nwith more lines\n",
 		"b.txt": "data\n",
 	})
-	commit(t, repo, dir, "fix(awf): two", map[string]string{"c.md": "new\n"}, "b.txt")
+	gitfixture.Commit(t, repo, dir, "fix(awf): two", map[string]string{"c.md": "new\n"}, "b.txt")
 
 	commits, err := Collect(dir, base.String())
 	if err != nil {
@@ -153,9 +114,9 @@ func TestCollectNormalRange(t *testing.T) {
 
 // invariant: audit-empty-range-clean
 func TestCollectEmptyRangeIsClean(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	head := commit(t, repo, dir, "feat(awf): head", map[string]string{"a.txt": "x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	head := gitfixture.Commit(t, repo, dir, "feat(awf): head", map[string]string{"a.txt": "x\n"})
 
 	commits, err := Collect(dir, head.String())
 	if err != nil {
@@ -175,16 +136,16 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 }
 
 func TestRunPropagatesCollectError(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
 	if _, err := Run(dir, Inputs{Settings: Settings{BaseBranch: "no-such-ref"}}); err == nil {
 		t.Fatal("expected Run to propagate an unresolvable-base error")
 	}
 }
 
 func TestCollectUnrelatedHistories(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "feat(awf): head", map[string]string{"go.mod": "module x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "feat(awf): head", map[string]string{"go.mod": "module x\n"})
 	base := orphan(t, repo)
 	_, err := Collect(dir, base.String())
 	if err == nil {
@@ -199,15 +160,15 @@ func TestCollectNotARepo(t *testing.T) {
 }
 
 func TestCollectEmptyRepoHeadError(t *testing.T) {
-	_, dir := initRepo(t)
+	_, dir := gitfixture.InitRepo(t)
 	if _, err := Collect(dir, "main"); err == nil {
 		t.Fatal("expected a HEAD-resolution error on a commit-less repo")
 	}
 }
 
 func TestCollectBadBase(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
 	if _, err := Collect(dir, "no-such-ref"); err == nil {
 		t.Fatal("expected an unresolvable-base error")
 	}
@@ -225,8 +186,8 @@ func TestSplitMessage(t *testing.T) {
 // toCommit on a root commit exercises the no-parent (nil parentTree) path that
 // Collect never reaches (a valid range's base is always a common ancestor).
 func TestToCommitRootAndFileText(t *testing.T) {
-	repo, dir := initRepo(t)
-	root := commit(t, repo, dir, "feat(awf): root", map[string]string{"a.md": "---\nstatus: Proposed\n---\nx\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	root := gitfixture.Commit(t, repo, dir, "feat(awf): root", map[string]string{"a.md": "---\nstatus: Proposed\n---\nx\n"})
 	rc, err := repo.CommitObject(root)
 	if err != nil {
 		t.Fatal(err)
@@ -248,8 +209,8 @@ func TestToCommitRootAndFileText(t *testing.T) {
 }
 
 func TestRuleUncommittedChanges(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 
 	// Clean tree: no finding.
 	if f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}}); len(f) != 0 {
@@ -276,8 +237,8 @@ func TestRuleUncommittedChanges(t *testing.T) {
 }
 
 func TestRunIncludesUncommittedChanges(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -299,9 +260,9 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 
 // invariant: audit-worktree-config-extension
 func TestCollectWorktreeConfigExtension(t *testing.T) {
-	repo, dir := initRepo(t)
-	base := commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	commit(t, repo, dir, "feat(awf): one", map[string]string{"a.txt": "x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	gitfixture.Commit(t, repo, dir, "feat(awf): one", map[string]string{"a.txt": "x\n"})
 	enableWorktreeConfigExtension(t, repo)
 
 	commits, err := Collect(dir, base.String())
@@ -314,8 +275,8 @@ func TestCollectWorktreeConfigExtension(t *testing.T) {
 }
 
 func TestRuleUncommittedChangesWorktreeConfigExtension(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 	enableWorktreeConfigExtension(t, repo)
 
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
@@ -333,8 +294,8 @@ func TestRuleUncommittedChangesWorktreeConfigExtension(t *testing.T) {
 // the underlying storer's Config() fail, which openRepo must propagate rather
 // than swallow.
 func TestOpenRepoMalformedConfig(t *testing.T) {
-	repo, dir := initRepo(t)
-	commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
 	if err := os.WriteFile(filepath.Join(dir, ".git", "config"), []byte("[core\nbroken = = =\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
