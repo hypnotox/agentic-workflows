@@ -45,9 +45,10 @@ func CatalogVars(cat *catalog.Catalog) []catalog.VarDescriptor {
 	for name, spec := range cat.Skills {
 		skills[name] = spec.Core
 	}
+	// No doc carries Core any longer (ADR-0043): every name is a non-core option.
 	docs := map[string]bool{}
-	for name, spec := range cat.Docs {
-		docs[name] = spec.Core
+	for name := range cat.Docs {
+		docs[name] = false
 	}
 	out := make([]catalog.VarDescriptor, len(cat.Vars))
 	for i, d := range cat.Vars {

@@ -48,20 +48,23 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 			return nil, err
 		}
 	}
+	// Plain singletons (workflow, doc-standard, agents-md-standard included) always
+	// render — their vars must be seeded even though they left cat.Docs (ADR-0043).
+	for _, sg := range plainSingletons {
+		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing template in the embedded FS, so collectVars cannot fail
+			return nil, err
+		}
+	}
 	varNames := slices.Sorted(maps.Keys(varSet))
 
-	// Enable the core skills and core docs; agents are all enabled (every
-	// one is workflow-essential).
+	// Enable the core skills; agents are all enabled (every one is
+	// workflow-essential). No core docs remain — workflow/doc-standard/
+	// agents-md-standard are mandatory singletons (ADR-0043), not toggleable.
 	// invariant: scaffold-core-only
 	var skillNames, docNames []string
 	for name, spec := range cat.Skills {
 		if spec.Core {
 			skillNames = append(skillNames, name)
-		}
-	}
-	for name, spec := range cat.Docs {
-		if spec.Core {
-			docNames = append(docNames, name)
 		}
 	}
 	// A non-nil trim dimension (ADR-0029 full-deselectable catalog trim) replaces the

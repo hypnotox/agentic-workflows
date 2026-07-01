@@ -81,15 +81,10 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
 	}
 
-	wantDocs := map[string]bool{}
-	for name, spec := range cat.Docs {
-		if spec.Core {
-			wantDocs[name] = true
-		}
-	}
-	if got := sliceSet(cfg.Docs); !maps.Equal(got, wantDocs) {
-		t.Errorf("scaffold docs = %v, want core set %v",
-			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantDocs)))
+	// No doc remains core (ADR-0043 promoted the only three core docs — workflow,
+	// doc-standard, agents-md-standard — to mandatory singletons outside cat.Docs).
+	if len(cfg.Docs) != 0 {
+		t.Errorf("scaffold docs = %v, want none (no core docs remain)", cfg.Docs)
 	}
 
 	// Concrete negative: a known opt-in skill must not be scaffolded.
@@ -106,14 +101,8 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("catalog.Load: %v", err)
 	}
-	coreDocs := map[string]bool{}
-	for name, spec := range cat.Docs {
-		if spec.Core {
-			coreDocs[name] = true
-		}
-	}
 
-	// Skills selected verbatim (incl. deselecting core); Docs nil -> keep core.
+	// Skills selected verbatim (incl. deselecting core); Docs nil -> no core docs to keep.
 	pickSkills := []string{"tdd", "brainstorming"}
 	b, err := ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Skills: &pickSkills})
 	if err != nil {
@@ -126,8 +115,8 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, map[string]bool{"tdd": true, "brainstorming": true}) {
 		t.Errorf("trim skills = %v, want [brainstorming tdd]", slices.Sorted(maps.Keys(got)))
 	}
-	if got := sliceSet(cfg.Docs); !maps.Equal(got, coreDocs) {
-		t.Errorf("nil docs trim should keep core docs, got %v", slices.Sorted(maps.Keys(got)))
+	if len(cfg.Docs) != 0 {
+		t.Errorf("nil docs trim should yield no docs (no core docs remain), got %v", cfg.Docs)
 	}
 
 	// Docs deselected to empty; Skills nil -> keep core skills.
@@ -211,6 +200,9 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	}
 	for name := range cat.Docs {
 		paths = append(paths, "docs/"+name+".md.tmpl")
+	}
+	for _, sg := range plainSingletons {
+		paths = append(paths, sg.tid)
 	}
 	for _, tmplPath := range paths {
 		src, err := templates.FS.ReadFile(tmplPath)

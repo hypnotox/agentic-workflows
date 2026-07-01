@@ -31,20 +31,13 @@ func (p *Project) validateAgainstCatalog() error {
 			return err
 		}
 	}
-	for _, sg := range []struct {
-		kind     string
-		sections []string
-	}{
-		{"adr-readme", p.Cat.AdrReadme.Sections},
-		{"adr-template", p.Cat.AdrTemplate.Sections},
-		{"plans-readme", p.Cat.PlansReadme.Sections},
-	} {
+	for _, sg := range plainSingletons {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err
 		}
 		if !sc.Local {
-			if err := checkSectionsAllowed(sg.kind, "", sg.sections, sc.Sections); err != nil {
+			if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.Cat), sc.Sections); err != nil {
 				return err
 			}
 		}

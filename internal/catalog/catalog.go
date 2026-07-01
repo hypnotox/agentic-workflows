@@ -23,13 +23,25 @@ type SkillSpec struct {
 	Core        bool     `yaml:"core"`
 }
 
-// DocSpec declares a doc's catalog metadata. Core marks a doc as part of the
-// workflow-core set awf init scaffolds by default (ADR-0022).
+// DocSpec declares a doc's catalog metadata. Docs no longer carry a Core marker
+// (ADR-0043): the three docs that used to set it are always-on singletons now,
+// outside this map entirely.
 type DocSpec struct {
 	Title    string   `yaml:"title"`
 	Desc     string   `yaml:"desc"`
 	Sections []string `yaml:"sections"`
-	Core     bool     `yaml:"core"`
+}
+
+// SingletonKinds lists every kind name that is an always-on singleton — never
+// toggled via an enable array (ADR-0004, ADR-0021, ADR-0043). It is a plain
+// compile-time list, not derived from a loaded Catalog, because
+// internal/config.IsSingletonKind needs this classification without holding a
+// *Catalog instance. internal/project tests its six non-agents-doc members
+// against both this list and Catalog.Singletons' loaded keys, so the compile-time
+// list and the YAML-driven map never drift apart silently.
+var SingletonKinds = []string{
+	"agents-doc", "adr-readme", "adr-template", "plans-readme",
+	"workflow", "doc-standard", "agents-md-standard",
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
@@ -48,15 +60,13 @@ type VarDescriptor struct {
 }
 
 type Catalog struct {
-	Skills      map[string]SkillSpec  `yaml:"skills"`
-	Agents      map[string]TargetSpec `yaml:"agents"`
-	AgentsDoc   TargetSpec            `yaml:"agentsDoc"`
-	DomainDoc   TargetSpec            `yaml:"domainDoc"`
-	AdrReadme   TargetSpec            `yaml:"adrReadme"`
-	AdrTemplate TargetSpec            `yaml:"adrTemplate"`
-	PlansReadme TargetSpec            `yaml:"plansReadme"`
-	Docs        map[string]DocSpec    `yaml:"docs"`
-	Vars        []VarDescriptor       `yaml:"vars"`
+	Skills     map[string]SkillSpec  `yaml:"skills"`
+	Agents     map[string]TargetSpec `yaml:"agents"`
+	AgentsDoc  TargetSpec            `yaml:"agentsDoc"`
+	DomainDoc  TargetSpec            `yaml:"domainDoc"`
+	Singletons map[string]TargetSpec `yaml:"singletons"`
+	Docs       map[string]DocSpec    `yaml:"docs"`
+	Vars       []VarDescriptor       `yaml:"vars"`
 }
 
 func Load(fsys fs.FS) (*Catalog, error) {

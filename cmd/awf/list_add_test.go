@@ -12,7 +12,7 @@ import (
 )
 
 // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-// 3 docs, no domains) and syncs it.
+// 0 docs — no doc is core after ADR-0043 — no domains) and syncs it.
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

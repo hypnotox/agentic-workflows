@@ -207,11 +207,6 @@ docs:
     title: Architecture
     desc: system shape, packages, key components, dependencies
     sections: [overview, components, data-flow, dependencies]
-  workflow:
-    core: true
-    title: Workflow
-    desc: principles, the brainstorm/ADR/plan chain, commit discipline
-    sections: [principles, chain, commit-discipline, doc-currency, local-hooks]
   testing:
     title: Testing
     desc: gate tiers, test layout, what each tier covers
@@ -236,16 +231,6 @@ docs:
     title: Roadmap
     desc: uncommitted ideas and future phases
     sections: [ideas, deferred]
-  doc-standard:
-    core: true
-    title: Documentation Standard
-    desc: how-to-write rules for all awf-managed prose
-    sections: [principles, rules, structure]
-  agents-md-standard:
-    core: true
-    title: Authoring AGENTS.md
-    desc: layout, content, and rules for the agent guide
-    sections: [layout, content, rules]
 agentsDoc:
   sections:
     - awf-setup
@@ -256,24 +241,41 @@ agentsDoc:
     - commands
     - document-map
 
-adrReadme:
-  sections:
-    - intro
-    - when
-    - naming
-    - frontmatter
-    - invariants
-    - active-md
-adrTemplate:
-  sections:
-    - frontmatter
-    - body
-
-plansReadme:
-  sections:
-    - intro
-    - naming
-    - structure
+singletons:
+  adr-readme:
+    sections:
+      - intro
+      - when
+      - naming
+      - frontmatter
+      - invariants
+      - active-md
+  adr-template:
+    sections:
+      - frontmatter
+      - body
+  plans-readme:
+    sections:
+      - intro
+      - naming
+      - structure
+  workflow:
+    sections:
+      - principles
+      - chain
+      - commit-discipline
+      - doc-currency
+      - local-hooks
+  doc-standard:
+    sections:
+      - principles
+      - rules
+      - structure
+  agents-md-standard:
+    sections:
+      - layout
+      - content
+      - rules
 
 domainDoc:
   sections:

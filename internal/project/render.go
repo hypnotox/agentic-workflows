@@ -192,28 +192,20 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			out = append(out, brf)
 		}
 	}
-	// adr-readme + adr-template + plans-readme (always-on singletons unless local; ADR-0021, ADR-0020).
+	// Plain singletons: adr-readme, adr-template, plans-readme, workflow,
+	// doc-standard, agents-md-standard (always-on unless local; ADR-0021, ADR-0043).
 	lay := p.layout()
-	for _, sg := range []struct {
-		kind, tid, out string
-		sections       []string
-	}{
-		{"adr-readme", "adr-readme/README.md.tmpl", lay.AdrReadme, p.Cat.AdrReadme.Sections},
-		{"adr-template", "adr-template/template.md.tmpl", lay.AdrTemplate, p.Cat.AdrTemplate.Sections},
-		{"plans-readme", "plans-readme/README.md.tmpl", lay.PlansReadme, p.Cat.PlansReadme.Sections},
-	} {
-		sc, err := p.Cfg.Sidecar(sg.kind, "")
+	for _, sg := range plainSingletons {
+		rfs, err := p.renderKind(renderKindSpec{
+			kind: sg.kind, names: []string{""},
+			tid:      func(string) string { return sg.tid },
+			sections: func(string) []string { return sg.sections(p.Cat) },
+			outPath:  func(Target, string) string { return sg.outPath(lay) },
+		})
 		if err != nil {
 			return nil, err
 		}
-		if sc.Local {
-			continue
-		}
-		rf, err := p.renderTarget(sg.kind, "", sg.tid, sg.sections, sc, p.data(sc), sg.out)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, rf)
+		out = append(out, rfs...)
 	}
 	// awf-bootstrap.sh (neutral repo-root singleton; rendered only when enabled —
 	// ADR-0040). No catalog spec / no overridable sections, like the CLAUDE.md bridge.

@@ -528,7 +528,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 
 // invariant: layout-derivation
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
-	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture", "workflow"}}}
+	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
 	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
 		l.ActiveMd != "documentation/decisions/ACTIVE.md" || l.AdrReadme != "documentation/decisions/README.md" ||
@@ -540,14 +540,20 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if l.DomainsDir != "documentation/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: workflow-ref-fallback (enabled arm)
+	// workflow/doc-standard/agents-md-standard are mandatory singletons (ADR-0043):
+	// their paths are always fixed, never fall back or depend on Cfg.Docs.
 	if l.WorkflowRef != "documentation/workflow.md" {
 		t.Errorf("workflowRef = %q", l.WorkflowRef)
+	}
+	if l.DocStandard != "documentation/doc-standard.md" {
+		t.Errorf("docStandard = %q", l.DocStandard)
+	}
+	if l.AgentsMdStandard != "documentation/agents-md-standard.md" {
+		t.Errorf("agentsMdStandard = %q", l.AgentsMdStandard)
 	}
 	// invariant: layout-docs-enabled-only
 	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
-		"workflow":     "documentation/workflow.md",
 	}
 	if !reflect.DeepEqual(l.Docs, wantDocs) {
 		t.Errorf("Docs = %v, want %v", l.Docs, wantDocs)
@@ -555,16 +561,10 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	// templateMap reproduces the historical .layout map (ConfigHash stability).
 	tm := l.templateMap()
 	for _, k := range []string{"docsDir", "adrDir", "activeMd", "adrReadme", "adrTemplate",
-		"plansDir", "plansReadme", "docs", "workflowRef", "domainsDir"} {
+		"plansDir", "plansReadme", "docs", "workflowRef", "docStandard", "agentsMdStandard", "domainsDir"} {
 		if _, ok := tm[k]; !ok {
 			t.Errorf("templateMap missing key %q", k)
 		}
-	}
-	// invariant: workflow-ref-fallback (fallback arm) — without the workflow doc enabled,
-	// workflowRef resolves to the always-present AGENTS.md.
-	noWf := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
-	if got := noWf.layout().WorkflowRef; got != "AGENTS.md" {
-		t.Errorf("workflowRef fallback = %v, want AGENTS.md", got)
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -725,6 +725,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 }
 
 // invariant: adr-system-singletons-rendered
+// invariant: plain-singleton-via-renderkind
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
@@ -735,7 +736,14 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"docs/decisions/README.md": false, "docs/decisions/template.md": false}
+	want := map[string]bool{
+		"docs/decisions/README.md":   false,
+		"docs/decisions/template.md": false,
+		"docs/plans/README.md":       false,
+		"docs/workflow.md":           false,
+		"docs/doc-standard.md":       false,
+		"docs/agents-md-standard.md": false,
+	}
 	for _, f := range files {
 		if _, ok := want[f.Path]; ok {
 			want[f.Path] = true
@@ -750,6 +758,11 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "adr-readme.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// local: true also suppresses a newly-mandatory singleton, matching the other four (ADR-0043
+	// Decision item 1: "not togglable" keeps the local: true escape hatch).
+	if err := os.WriteFile(filepath.Join(root, ".awf", "workflow.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	p2, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -761,6 +774,9 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	for _, f := range files2 {
 		if f.Path == "docs/decisions/README.md" {
 			t.Error("README should be suppressed by local: true")
+		}
+		if f.Path == "docs/workflow.md" {
+			t.Error("workflow.md should be suppressed by local: true")
 		}
 	}
 }

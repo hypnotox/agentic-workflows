@@ -148,7 +148,7 @@ func trimDescs() []catalog.VarDescriptor {
 func TestCatalogVarsComputesTrimOptions(t *testing.T) {
 	cat := &catalog.Catalog{
 		Skills: map[string]catalog.SkillSpec{"brainstorming": {Core: true}, "tdd": {}},
-		Docs:   map[string]catalog.DocSpec{"workflow": {Core: true}, "testing": {}},
+		Docs:   map[string]catalog.DocSpec{"workflow": {}, "testing": {}},
 		Vars: []catalog.VarDescriptor{
 			{Key: "gateCmd", Kind: "string"},
 			{Key: "skills", Kind: "multiselect", Target: "catalog-skills"},
@@ -159,7 +159,9 @@ func TestCatalogVarsComputesTrimOptions(t *testing.T) {
 	if !slices.Equal(got[1].Options, []string{"brainstorming", "tdd"}) || got[1].Default != "brainstorming" {
 		t.Errorf("skills descriptor = %+v", got[1])
 	}
-	if !slices.Equal(got[2].Options, []string{"testing", "workflow"}) || got[2].Default != "workflow" {
+	// No doc carries Core any longer (ADR-0043): Options still lists every doc, but
+	// Default is empty (no pre-selected core docs).
+	if !slices.Equal(got[2].Options, []string{"testing", "workflow"}) || got[2].Default != "" {
 		t.Errorf("docs descriptor = %+v", got[2])
 	}
 	if got[0].Options != nil { // non-trim descriptor untouched

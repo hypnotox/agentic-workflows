@@ -108,18 +108,15 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lay := map[string]any{"adrDir": "docs/decisions", "domainsDir": "docs/domains", "plansDir": "docs/plans"}
-	for _, c := range []struct {
-		tid      string
-		sections []string
-	}{
-		{"adr-readme/README.md.tmpl", cat.AdrReadme.Sections},
-		{"adr-template/template.md.tmpl", cat.AdrTemplate.Sections},
-		{"plans-readme/README.md.tmpl", cat.PlansReadme.Sections},
-	} {
-		src, err := fs.ReadFile(templates.FS, c.tid)
+	lay := map[string]any{
+		"docsDir": "docs", "adrDir": "docs/decisions", "domainsDir": "docs/domains",
+		"plansDir": "docs/plans", "adrReadme": "docs/decisions/README.md",
+		"docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md",
+	}
+	for _, sg := range plainSingletons {
+		src, err := fs.ReadFile(templates.FS, sg.tid)
 		if err != nil {
-			t.Fatalf("read %s: %v", c.tid, err)
+			t.Fatalf("read %s: %v", sg.tid, err)
 		}
 		var markers []string
 		for _, s := range render.ParseSections(string(src)) {
@@ -127,17 +124,18 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 				markers = append(markers, s.Name)
 			}
 		}
-		if strings.Join(markers, ",") != strings.Join(c.sections, ",") {
-			t.Errorf("%s markers %v != catalog sections %v", c.tid, markers, c.sections)
+		wantSections := sg.sections(cat)
+		if strings.Join(markers, ",") != strings.Join(wantSections, ",") {
+			t.Errorf("%s markers %v != catalog sections %v", sg.tid, markers, wantSections)
 		}
 		asm, parts := render.Assemble(render.ParseSections(string(src)), nil)
 		out, err := render.Execute(asm, map[string]any{
 			"prefix": "awf", "vars": map[string]any{}, "layout": lay, "data": map[string]any{}}, parts, "test")
 		if err != nil {
-			t.Fatalf("render %s: %v", c.tid, err)
+			t.Fatalf("render %s: %v", sg.tid, err)
 		}
 		if strings.Contains(out, "<no value>") {
-			t.Errorf("%s: <no value> leaked", c.tid)
+			t.Errorf("%s: <no value> leaked", sg.tid)
 		}
 	}
 }
