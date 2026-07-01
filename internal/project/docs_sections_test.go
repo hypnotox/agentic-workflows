@@ -108,11 +108,7 @@ func TestAdrSingletonSectionParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lay := map[string]any{
-		"docsDir": "docs", "adrDir": "docs/decisions", "domainsDir": "docs/domains",
-		"plansDir": "docs/plans", "adrReadme": "docs/decisions/README.md",
-		"docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md",
-	}
+	lay := testLayout()
 	for _, sg := range plainSingletons {
 		src, err := fs.ReadFile(templates.FS, sg.tid)
 		if err != nil {

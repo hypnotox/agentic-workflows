@@ -715,13 +715,8 @@ func TestAgentsDocTemplate(t *testing.T) {
 			"testCmd": "go test ./...",
 			"gateCmd": "make gate",
 		},
-		"layout": map[string]any{
-			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
-			"adrReadme": "docs/decisions/README.md", "plansDir": "docs/plans",
-			"workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md",
-			"agentsMdStandard": "docs/agents-md-standard.md",
-		},
-		"data": map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	for _, phrase := range []string{
@@ -755,12 +750,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 		"vars": map[string]any{
 			"gateCmd": "",
 		},
-		"layout": map[string]any{
-			"adrDir": "docs/decisions", "adrReadme": "docs/decisions/README.md",
-			"activeMd": "docs/decisions/ACTIVE.md", "plansDir": "docs/plans",
-			"workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md",
-			"agentsMdStandard": "docs/agents-md-standard.md",
-		},
+		"layout": testLayout(),
 		"data": map[string]any{
 			"invariants": []map[string]any{
 				{"text": "**Custom rule.**", "ref": "ADR-0009"},

@@ -16,6 +16,28 @@ func scaffold(t *testing.T, configYAML string) string {
 	return scaffoldFiles(t, configYAML, nil)
 }
 
+// testLayout returns a complete .layout template map — every key
+// Layout.templateMap produces, with canonical docs/-rooted values — so a test
+// that renders a template directly doesn't need to hand-pick which keys that
+// template happens to reference today. A future Layout field addition only
+// needs updating here, not at every hand-built fixture across the package.
+func testLayout() map[string]any {
+	return map[string]any{
+		"docsDir":          "docs",
+		"adrDir":           "docs/decisions",
+		"activeMd":         "docs/decisions/ACTIVE.md",
+		"adrReadme":        "docs/decisions/README.md",
+		"adrTemplate":      "docs/decisions/template.md",
+		"plansDir":         "docs/plans",
+		"plansReadme":      "docs/plans/README.md",
+		"docs":             map[string]any{},
+		"workflowRef":      "docs/workflow.md",
+		"docStandard":      "docs/doc-standard.md",
+		"agentsMdStandard": "docs/agents-md-standard.md",
+		"domainsDir":       "docs/domains",
+	}
+}
+
 // scaffoldFiles writes config.yaml plus optional sidecar/part files keyed by path
 // relative to .awf/ (e.g. "skills/tdd.yaml", "skills/parts/x/y.md").
 func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) string {
