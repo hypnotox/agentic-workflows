@@ -82,7 +82,8 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 
 // unpairedDoubleBacktickRun reports whether the line holds an odd number of
 // >=2-backtick runs — an unpaired double run is the residue of an empty-var
-// span, while legitimate paired “…“ spans (and inline ```…``` runs) pair up.
+// span, while a legitimate double-backtick-delimited span (and an inline
+// triple-backtick run) contributes a pair.
 func unpairedDoubleBacktickRun(line string) bool {
 	runs := 0
 	length := 0

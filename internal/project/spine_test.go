@@ -783,6 +783,94 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	}
 }
 
+// TestUnsetFallbackRenders pins the graceful-fallback branches the empty-init
+// oracle never renders (ADR-0045/ADR-0046): the non-core skills are absent from
+// a curated init, and the reviewer agents ship catalog default data there — so
+// without these assertions a reverted guard in any of them passes the suite.
+// Every template renders with empty vars, empty data, and an empty skills set;
+// renderGolden's assertNoLeaks supplies the <no value> net.
+func TestUnsetFallbackRenders(t *testing.T) {
+	cases := []struct {
+		tmpl string
+		want []string // fallback prose that must render
+		ban  []string // residue that must not render
+	}{
+		{
+			tmpl: "skills/tdd/SKILL.md.tmpl",
+			want: []string{
+				"Pick the smallest surface that can prove the behaviour",
+				"confirm it fails for the right reason.",
+				"Run the gate.",
+			},
+			ban: []string{"``"},
+		},
+		{
+			tmpl: "skills/bugfix/SKILL.md.tmpl",
+			want: []string{
+				"confirm it with a falsifiable check before touching code",
+				"Write the failing test first",
+				"The project's gate (fast tier) is the default",
+				"the project's docs",
+			},
+			ban: []string{"example-tdd", "example-debugging", "``"},
+		},
+		{
+			tmpl: "skills/debugging/SKILL.md.tmpl",
+			want: []string{
+				"fix it directly with a regression test in that case",
+				"Write it test-first.",
+				"the project's gate",
+				"apply the fix with its regression test",
+			},
+			ban: []string{"example-bugfix", "example-tdd", "``"},
+		},
+		{
+			tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
+			want: []string{"<module-prefix>/"},
+		},
+		{
+			tmpl: "agents/adr-reviewer.md.tmpl",
+			want: []string{"Regen command: `awf sync`."},
+			ban:  []string{"For each item below"},
+		},
+		{
+			tmpl: "agents/plan-reviewer.md.tmpl",
+			ban:  []string{"For each item below"},
+		},
+		{
+			tmpl: "agents/code-reviewer.md.tmpl",
+			ban:  []string{"For each item below"},
+		},
+		{
+			tmpl: "agents-doc/AGENTS.md.tmpl",
+			want: []string{"Conventional Commits; one concern per commit."},
+			ban:  []string{"Chain skills", "Task skills", "example-brainstorming"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tmpl, func(t *testing.T) {
+			data := map[string]any{
+				"prefix": "example",
+				"vars":   map[string]any{},
+				"data":   map[string]any{},
+				"skills": map[string]bool{},
+				"layout": testLayout(),
+			}
+			out := renderGolden(t, tc.tmpl, data)
+			for _, phrase := range tc.want {
+				if !strings.Contains(out, phrase) {
+					t.Errorf("missing fallback phrase %q:\n%s", phrase, out)
+				}
+			}
+			for _, phrase := range tc.ban {
+				if strings.Contains(out, phrase) {
+					t.Errorf("unset render must not contain %q:\n%s", phrase, out)
+				}
+			}
+		})
+	}
+}
+
 func TestDocArchitectureTemplate(t *testing.T) {
 	out := renderGolden(t, "docs/architecture.md.tmpl", map[string]any{
 		"prefix": "example",
