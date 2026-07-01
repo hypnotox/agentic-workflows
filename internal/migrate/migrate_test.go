@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"gopkg.in/yaml.v3"
 )
 
@@ -98,7 +99,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	}
 	// A .awf/ tree already at the current schema does not gate.
 	upgraded := t.TempDir()
-	mustWrite(t, filepath.Join(upgraded, ".awf", "config.yaml"), "prefix: ex\n")
+	testsupport.WriteFile(t, filepath.Join(upgraded, ".awf", "config.yaml"), "prefix: ex\n")
 	stampLockAt(t, filepath.Join(upgraded, ".awf", "awf.lock"), Current())
 	if got := GateState(upgraded); got != "ok" {
 		t.Errorf("GateState(current) = %q, want ok", got)
@@ -108,7 +109,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	// before its terminal sync) reports Current() and must not gate — otherwise
 	// sync/check would falsely block the very command that stamps the lock.
 	noLock := t.TempDir()
-	mustWrite(t, filepath.Join(noLock, ".awf", "config.yaml"), "prefix: ex\n")
+	testsupport.WriteFile(t, filepath.Join(noLock, ".awf", "config.yaml"), "prefix: ex\n")
 	if got := Generation(noLock); got != Current() {
 		t.Errorf("Generation(.awf, no lock) = %d, want Current()=%d", got, Current())
 	}
@@ -119,7 +120,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	// A pre-relocation .claude/awf/ tree with no lock returns Current()-1 and gates
 	// (it still needs the awf-dir-relocation migration).
 	preReloc := t.TempDir()
-	mustWrite(t, filepath.Join(preReloc, ".claude", "awf", "config.yaml"), "prefix: ex\n")
+	testsupport.WriteFile(t, filepath.Join(preReloc, ".claude", "awf", "config.yaml"), "prefix: ex\n")
 	if got := Generation(preReloc); got != Current()-1 {
 		t.Errorf("Generation(.claude/awf, no lock) = %d, want Current()-1=%d", got, Current()-1)
 	}
@@ -180,23 +181,6 @@ func TestNoopGapAutoBumps(t *testing.T) {
 	}
 	if got := gateStateFor(5, 4, []int{1, 4}); got != "ahead" {
 		t.Errorf("gateStateFor(5,4,...) = %q, want ahead", got)
-	}
-}
-
-func mustMkdir(t *testing.T, dir string) {
-	t.Helper()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func mustWrite(t *testing.T, path, body string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -344,8 +328,10 @@ func readFile(t *testing.T, path string) string {
 func writeLegacyRoot(t *testing.T, body string) string {
 	t.Helper()
 	root := t.TempDir()
-	mustMkdir(t, filepath.Join(root, ".claude", "awf"))
-	mustWrite(t, filepath.Join(root, ".claude", "awf.yaml"), body)
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf.yaml"), body)
 	return root
 }
 
@@ -368,7 +354,7 @@ func TestReadLegacyReadError(t *testing.T) {
 func TestReadLegacyParseError(t *testing.T) {
 	// An unknown field trips the strict (KnownFields) decoder.
 	p := filepath.Join(t.TempDir(), "awf.yaml")
-	mustWrite(t, p, "prefix: ex\nbogusUnknownField: 1\n")
+	testsupport.WriteFile(t, p, "prefix: ex\nbogusUnknownField: 1\n")
 	_, err := readLegacy(p)
 	if err == nil || !strings.Contains(err.Error(), "parse legacy config") {
 		t.Fatalf("readLegacy(unknown field) = %v, want a parse-legacy-config error", err)
@@ -394,7 +380,9 @@ func TestUpgradePropagatesMigrationError(t *testing.T) {
 func TestApplyTreeLayoutConfigWriteError(t *testing.T) {
 	// A directory squatting on config.yaml's path makes the skeleton write fail.
 	root := writeLegacyRoot(t, "prefix: ex\n")
-	mustMkdir(t, filepath.Join(root, ".claude", "awf", "config.yaml"))
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "config.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := applyTreeLayout(root); err == nil {
 		t.Fatal("applyTreeLayout with config.yaml dir = nil, want a write error")
 	}
@@ -403,7 +391,7 @@ func TestApplyTreeLayoutConfigWriteError(t *testing.T) {
 func TestApplyTreeLayoutSidecarMkdirError(t *testing.T) {
 	// A regular file squatting on the skills/ dir makes the sidecar MkdirAll fail.
 	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  alpha:\n    data:\n      k: v\n")
-	mustWrite(t, filepath.Join(root, ".claude", "awf", "skills"), "not a dir\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "skills"), "not a dir\n")
 	if err := applyTreeLayout(root); err == nil {
 		t.Fatal("applyTreeLayout with skills/ as a file = nil, want a mkdir error")
 	}
@@ -422,8 +410,10 @@ func TestApplyTreeLayoutCopyPartWriteError(t *testing.T) {
 	// A directory squatting on a convention part's destination makes copyPart's
 	// write fail (the source reads fine; only the write target is hostile).
 	root := writeLegacyRoot(t, "prefix: ex\nskills:\n  beta:\n    sections:\n      sec:\n        replaceWith: parts/p.md\n")
-	mustWrite(t, filepath.Join(root, ".claude", "awf", "parts", "p.md"), "BODY\n")
-	mustMkdir(t, filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"))
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "parts", "p.md"), "BODY\n")
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := applyTreeLayout(root); err == nil {
 		t.Fatal("applyTreeLayout with squatted part dst = nil, want a write error")
 	}
@@ -437,8 +427,10 @@ func TestApplyTreeLayoutLockRemoveError(t *testing.T) {
 	if err := os.Remove(lock); err != nil {
 		t.Fatal(err)
 	}
-	mustMkdir(t, lock)
-	mustWrite(t, filepath.Join(lock, "occupant"), "x\n")
+	if err := os.MkdirAll(lock, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(lock, "occupant"), "x\n")
 	if err := applyTreeLayout(root); err == nil {
 		t.Fatal("applyTreeLayout with non-empty awf.lock dir = nil, want a remove error")
 	}
@@ -459,7 +451,7 @@ func TestPortAgentsDocSectionsLocalAndData(t *testing.T) {
 		"      replaceWith: parts/adp.md\n"+
 		"    sec-b:\n"+
 		"      drop: true\n")
-	mustWrite(t, filepath.Join(root, ".claude", "awf", "parts", "adp.md"), "AD PART\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "parts", "adp.md"), "AD PART\n")
 	if err := applyTreeLayout(root); err != nil {
 		t.Fatalf("applyTreeLayout: %v", err)
 	}
@@ -539,7 +531,9 @@ func TestPortAgentsDocProseWriteError(t *testing.T) {
 	// A directory squatting on the you-and-this-project prose part makes the
 	// ownership write fail.
 	root := writeLegacyRoot(t, "prefix: ex\nagentsDoc:\n  data:\n    ownership: \"Own.\"\n")
-	mustMkdir(t, filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"))
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := applyTreeLayout(root); err == nil {
 		t.Fatal("applyTreeLayout with squatted prose part = nil, want a write error")
 	}
@@ -653,14 +647,14 @@ func TestAwfRelocationRefusesExistingTarget(t *testing.T) {
 // awfFile writes a file under <root>/.claude/awf/<rel>.
 func awfFile(t *testing.T, root, rel, body string) {
 	t.Helper()
-	mustWrite(t, filepath.Join(root, ".claude", "awf", rel), body)
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", rel), body)
 }
 
 // invariant: hooks-config-dropped
 func TestDropHooksStrips(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
-	mustWrite(t, cfg, "prefix: ex\nhooks:\n  - pre-commit\n  - pre-push\nskills:\n  - tdd\n")
+	testsupport.WriteFile(t, cfg, "prefix: ex\nhooks:\n  - pre-commit\n  - pre-push\nskills:\n  - tdd\n")
 	if err := applyDropHooks(root); err != nil {
 		t.Fatalf("applyDropHooks: %v", err)
 	}
@@ -680,7 +674,7 @@ func TestDropHooksIdempotent(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
 	src := "prefix: ex\nskills:\n  - tdd\n"
-	mustWrite(t, cfg, src)
+	testsupport.WriteFile(t, cfg, src)
 	if err := applyDropHooks(root); err != nil {
 		t.Fatalf("applyDropHooks: %v", err)
 	}
@@ -698,7 +692,7 @@ func TestDropHooksAbsentConfig(t *testing.T) {
 
 func TestDropHooksMalformedConfig(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
 	if err := applyDropHooks(root); err == nil {
 		t.Error("expected error surfaced from RemoveKey for malformed config.yaml")
 	}
@@ -707,7 +701,7 @@ func TestDropHooksMalformedConfig(t *testing.T) {
 func TestEnableBootstrapAdds(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
-	mustWrite(t, cfg, "prefix: ex\nskills:\n  - tdd\n")
+	testsupport.WriteFile(t, cfg, "prefix: ex\nskills:\n  - tdd\n")
 	if err := applyEnableBootstrap(root); err != nil {
 		t.Fatalf("applyEnableBootstrap: %v", err)
 	}
@@ -726,7 +720,7 @@ func TestEnableBootstrapAdds(t *testing.T) {
 func TestEnableBootstrapOverwrites(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
-	mustWrite(t, cfg, "prefix: ex\nbootstrap:\n  enabled: false\n")
+	testsupport.WriteFile(t, cfg, "prefix: ex\nbootstrap:\n  enabled: false\n")
 	if err := applyEnableBootstrap(root); err != nil {
 		t.Fatalf("applyEnableBootstrap: %v", err)
 	}
@@ -744,7 +738,7 @@ func TestEnableBootstrapAbsentConfig(t *testing.T) {
 
 func TestEnableBootstrapMalformedConfig(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "skills: [a, b\n")
 	if err := applyEnableBootstrap(root); err == nil {
 		t.Error("expected error surfaced from SetMappingScalar for malformed config.yaml")
 	}

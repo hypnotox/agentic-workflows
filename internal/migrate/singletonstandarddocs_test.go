@@ -5,14 +5,16 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestSingletonStandardDocsRelocatesSidecarAndParts(t *testing.T) {
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
-	mustWrite(t, filepath.Join(awf, "config.yaml"), "prefix: ex\ndocs:\n  - architecture\n  - workflow\n  - doc-standard\n")
-	mustWrite(t, filepath.Join(awf, "docs", "workflow.yaml"), "data:\n  k: v\n")
-	mustWrite(t, filepath.Join(awf, "docs", "parts", "workflow", "local-hooks.md"), "LOCAL HOOKS BODY\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "config.yaml"), "prefix: ex\ndocs:\n  - architecture\n  - workflow\n  - doc-standard\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "docs", "workflow.yaml"), "data:\n  k: v\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "docs", "parts", "workflow", "local-hooks.md"), "LOCAL HOOKS BODY\n")
 
 	if err := applySingletonStandardDocs(root); err != nil {
 		t.Fatalf("applySingletonStandardDocs: %v", err)
@@ -45,7 +47,7 @@ func TestSingletonStandardDocsRelocatesSidecarAndParts(t *testing.T) {
 func TestSingletonStandardDocsIdempotent(t *testing.T) {
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
-	mustWrite(t, filepath.Join(awf, "config.yaml"), "prefix: ex\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "config.yaml"), "prefix: ex\n")
 	if err := applySingletonStandardDocs(root); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
@@ -62,7 +64,7 @@ func TestSingletonStandardDocsAbsentConfig(t *testing.T) {
 
 func TestSingletonStandardDocsMalformedConfig(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), "docs: [a, b\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "docs: [a, b\n")
 	if err := applySingletonStandardDocs(root); err == nil {
 		t.Error("expected error surfaced from the malformed docs: probe decode")
 	}
