@@ -3,8 +3,8 @@
 **Goal:** implement [ADR-0045](../decisions/0045-out-of-box-render-completeness.md)
 (catalog default data, graceful-fallback contract, render-completeness advisory) and
 [ADR-0046](../decisions/0046-skill-reference-integrity.md) (enabled-skills render context,
-dead-skill-reference check), plus two ADR-less prose fixes (the `reviewing-adr` terminal-handoff
-misroute; conditional non-core skill references). Design rationale lives in the ADRs — this plan
+conditional non-core skill references, dead-skill-reference check), plus one ADR-less prose fix
+(the `reviewing-adr` terminal-handoff misroute). Design rationale lives in the ADRs — this plan
 is execution detail only.
 
 **Architecture summary:** catalog specs gain `Data map[string]any`; a merge helper overlays
