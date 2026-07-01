@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // scaffold writes a .awf/config.yaml tree under a fresh temp root.
@@ -43,21 +44,9 @@ func testLayout() map[string]any {
 func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	awf := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(awf, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(configYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, configYAML)
 	for rel, body := range files {
-		p := filepath.Join(awf, rel)
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", rel), body)
 	}
 	return root
 }
