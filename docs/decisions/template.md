@@ -10,6 +10,7 @@ tags: []
 related: []
 domains: []
 ---
+# ADR-NNNN: Title
 
 
 <!-- awf:edit body — default; create .awf/parts/adr-template/body.md to override -->

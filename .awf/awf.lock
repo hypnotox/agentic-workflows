@@ -245,8 +245,8 @@
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",
       "templateHash": "sha256:584940bda9ce3488da6e0d6faf1410f1d591db894a07272339007d087424beeb",
-      "configHash": "sha256:77183fc5c7d874f6c6af4c458fd2e114ca701e20f4aba1b20e812533c19e0632",
-      "outputHash": "sha256:f5a2b7057c24a1f6377d8ac324e4675ae643b01660329eceb4f3a25ae5dad5ba"
+      "configHash": "sha256:da4df8083248383ac598325373721a29777cb5fc231bb34fe0d35567b16939a2",
+      "outputHash": "sha256:f449557a37abb5ee1bad1031e662e86b0043b5d0383cb029c2334df769729863"
     },
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
