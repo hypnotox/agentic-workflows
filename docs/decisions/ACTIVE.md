@@ -48,6 +48,10 @@
 - [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) — Implemented
 - [ADR-0044: Shared Test-Support Package](0044-shared-test-support-package.md) — Implemented
 
+## Proposed
+
+- [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
