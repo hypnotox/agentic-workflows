@@ -61,6 +61,10 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
   frontmatter; invoked by `awf sync` (`./x sync`).
 - **`templates/`** — embedded skill, agent, doc, and agent-guide templates; the catalog
   lives at `templates/catalog.yaml`.
+- **`changelog/`** — embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
+  because `go:embed` cannot embed a file outside its own package directory.
+- **`internal/changelog/`** — parses the embedded changelog into filterable entries; powers `awf
+  changelog`.
 
 
 <!-- awf:edit data-flow — from .awf/docs/parts/architecture/data-flow.md -->

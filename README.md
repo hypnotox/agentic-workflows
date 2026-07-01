@@ -96,6 +96,7 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
 | `awf upgrade` | Migrate the `.awf/` config tree to the current schema. |
 | `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
+| `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it. |
 | `awf version` | Print the awf version. |
 
 Run `awf help` for the full synopsis.

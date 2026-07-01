@@ -30,13 +30,17 @@ agree at release time:
 
    All three must pass (`audit` is advisory but should be clean for a release).
 
-2. **Set `project.Version` to the target version.** Edit `const Version` in
-   `internal/project/project.go` to the version you are about to tag (without the `v` prefix —
-   e.g. `"0.2.0"`). If it already matches (as it did for `v0.1.0`), skip to step 4.
+2. **Set `project.Version` to the target version and add its changelog entry.** Edit `const
+   Version` in `internal/project/project.go` to the version you are about to tag (without the `v`
+   prefix — e.g. `"0.2.0"`). Add a matching `## [0.2.0] - YYYY-MM-DD` entry to the top of
+   `changelog/CHANGELOG.md` (newest first), grouped into Breaking changes/Features/Bug
+   fixes/Others by adopter-facing effect (ADR-0041). If `project.Version` already matches (as it
+   did for `v0.1.0`), skip the version-const edit, but the changelog entry is still required for
+   every tag.
 
    ```
    ./x gate && ./x check
-   git add internal/project/project.go .awf/awf.lock
+   git add internal/project/project.go changelog/CHANGELOG.md .awf/awf.lock
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
 

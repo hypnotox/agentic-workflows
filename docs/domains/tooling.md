@@ -12,6 +12,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 `awf commit-gate` (ADR-0036) is the deterministic, blocking counterpart to the advisory audit: it validates a single commit message against the Conventional Commits rule at commit time and exits non-zero on a violation, so a bad subject is refused rather than only reported later. The rule has one definition — the per-commit `audit.CheckConventionalCommit` is consumed by both the `awf audit` range loop and `commit-gate`, sourcing the same `audit.Resolve` settings (allowed types/scopes, 72-char subject), so the two can never drift. `commit-gate` reads the message a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style (strips comment lines, stops at a verbose scissors line), and exempts git-generated merge/autosquash subjects. awf renders no hook (ADR-0032); the command is wired into an adopter's own `commit-msg` hook (this repo's checked-in `.githooks/commit-msg` calls `./x commit-gate "$1"`).
 
+`awf changelog` (ADR-0041) prints the hand-maintained, embedded `changelog/CHANGELOG.md` — entries grouped per release into Breaking changes/Features/Bug fixes/Others by adopter-facing effect, not by mirroring a commit's Conventional-Commits type or `.goreleaser.yaml`'s changelog filter. With no flags it prints the whole file; `--version <v>` prints one release, `--since <v>` prints every release after `v` (exclusive), and `--range <from>..<to>` prints an inclusive span — the three flags are mutually exclusive. `internal/changelog` parses the embedded markdown (mirroring `internal/catalog`'s `templates.FS` pattern) and implements the three filters; a new top-level `changelog/` package holds the raw file since `go:embed` cannot cross a package's own directory boundary.
+
 
 ## Decisions
 
@@ -37,10 +39,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
 - [ADR-0039: Binary-Version Compatibility Gate](../decisions/0039-binary-version-compatibility-gate.md)
 - [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
+- [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
 
 ### Proposed
 
-- [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
 
 ### Superseded by ADR-0032
