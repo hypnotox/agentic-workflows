@@ -24,3 +24,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
 - [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
 
+### Proposed
+
+- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md)
+
