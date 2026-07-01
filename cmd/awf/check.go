@@ -21,6 +21,13 @@ func runCheck(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	notes, err := p.UnsetVarNotes()
+	if err != nil {
+		return err
+	}
+	for _, n := range notes {
+		fmt.Fprintf(stdout, "note: %s\n", n)
+	}
 	drift, err := p.Check()
 	if err != nil {
 		return err

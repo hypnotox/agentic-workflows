@@ -272,18 +272,17 @@ the `\`` convention).
 
 ## Phase 4 — completeness advisory + empty-init regression (ADR-0045 item 4)
 
-- [ ] **4.1 Unset-var report.** New method in `internal/project/check.go`:
-  `func (p *Project) UnsetVarNotes() ([]string, error)` — iterate the same
-  artifact set as `RenderAll` (reuse `RenderAll()` output is NOT enough: it lacks the
-  assembled template) — simplest correct implementation: re-assemble per artifact exactly as
-  `renderTarget` does. Extract a small helper `assembleArtifact(kind, artifact, tid,
-  declared, sc)` in `render.go` returning `(assembled string, parts map[string]string,
-  plan map[string]render.SectionPlan, err error)` — `renderTarget` needs the parts (for
-  `render.Execute`) and the plan (for `consumedParts`) too, so both callers share it.
-  Then compute `render.ReferencedVars(assembled)`, keep refs where `p.Cfg.Vars[r] == ""`
-  (missing or empty), and emit one line per artifact with ≥1 hit:
-  `skill proposing-adr references unset vars: activeMdRegenCmd, adrProposeCommitFmt`.
-  Sort lines (kind, then artifact name) for determinism.
+- [x] **4.1 Unset-var report.** New method in `internal/project/check.go`:
+  `func (p *Project) UnsetVarNotes() ([]string, error)`. As-built (amended during
+  implementation): instead of re-assembling per artifact, `RenderedFile` carries the
+  assembled template in an unexported `assembled` field set by `renderTarget`, and
+  `UnsetVarNotes` walks `RenderAll()` output — the same artifact set by construction,
+  with no duplicated enumeration and no second assembly pass. Adapter duplicates are
+  collapsed by template id. Compute `render.ReferencedVars(f.assembled)`, keep refs
+  whose config value is nil or `""` (`Vars` is `map[string]any`, so a *missing* key
+  reads as nil — plain `== ""` misses it), and emit one line per artifact with ≥1 hit:
+  `skill proposing-adr references unset vars: activeMdRegenCmd, adrProposeCommitFmt`,
+  sorted for determinism.
 - [ ] **4.2 Wire into `cmd/awf/check.go`.** After the version-note block, before `p.Check()`:
 
   ```go

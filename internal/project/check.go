@@ -13,7 +13,57 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
+
+// UnsetVarNotes reports, per rendered artifact, the vars its assembled template
+// references that are unset (missing or empty) in config — the non-failing
+// render-completeness advisory (ADR-0045 item 4). One line per artifact with at
+// least one hit, sorted; adapter duplicates are collapsed by template id.
+func (p *Project) UnsetVarNotes() ([]string, error) {
+	files, err := p.RenderAll()
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var notes []string
+	for _, f := range files {
+		if seen[f.TemplateID] {
+			continue
+		}
+		seen[f.TemplateID] = true
+		var unset []string
+		for _, r := range render.ReferencedVars(f.assembled) {
+			if v := p.Cfg.Vars[r]; v == nil || v == "" {
+				unset = append(unset, r)
+			}
+		}
+		if len(unset) == 0 {
+			continue
+		}
+		notes = append(notes, fmt.Sprintf("%s references unset vars: %s",
+			artifactLabel(f.TemplateID), strings.Join(unset, ", ")))
+	}
+	sort.Strings(notes)
+	return notes, nil
+}
+
+// artifactLabel derives a human label from a template id: catalog kinds get
+// "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"); the
+// singletons read as their kind ("agents-doc").
+func artifactLabel(tid string) string {
+	segs := strings.Split(tid, "/")
+	switch segs[0] {
+	case "skills", "agents", "docs":
+		name := segs[1]
+		if segs[0] != "skills" {
+			name = strings.TrimSuffix(name, ".md.tmpl")
+		}
+		return strings.TrimSuffix(segs[0], "s") + " " + name
+	default:
+		return segs[0]
+	}
+}
 
 // localOutPaths returns the conventional output paths awf would render a local
 // skill/agent to — one per enabled target (the same formulas RenderAll uses); nil

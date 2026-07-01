@@ -27,6 +27,9 @@ type RenderedFile struct {
 	TemplateID   string
 	TemplateHash string
 	ConfigHash   string
+	// assembled is the executed template source (post section-overlay, pre
+	// execution); UnsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
+	assembled string
 }
 
 // data assembles the template data namespace for a target: the prefix, the
@@ -292,6 +295,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	return RenderedFile{
 		Path: outPath, Content: content, TemplateID: tid,
 		TemplateHash: manifest.Hash(src), ConfigHash: cfgHash,
+		assembled: assembled,
 	}, nil
 }
 
