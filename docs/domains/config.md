@@ -25,3 +25,8 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
 - [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md)
 
+### Proposed
+
+- [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
+- [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
+
