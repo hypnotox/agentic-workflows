@@ -40,12 +40,9 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 		if wp, ok := docs["workflow"]; ok {
 			workflowRef = wp.(string)
 		}
-		layout := map[string]any{
-			"docsDir": "docs", "adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
-			"adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md",
-			"plansDir": "docs/plans", "domainsDir": "docs/domains",
-			"docs": docs, "workflowRef": workflowRef,
-		}
+		layout := testLayout()
+		layout["docs"] = docs
+		layout["workflowRef"] = workflowRef
 		vars := map[string]any{}
 		for _, v := range render.ReferencedVars(string(src)) {
 			vars[v] = ""
