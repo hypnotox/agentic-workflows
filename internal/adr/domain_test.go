@@ -1,12 +1,12 @@
 package adr_test
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // TestRenderDomainIndexFiltersGroupsAndAnnotates covers membership filtering by
@@ -16,16 +16,14 @@ import (
 func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"0001-first.md":  "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: First\n",
-		"0002-second.md": "---\nstatus: Implemented\ndomains: [rendering, config]\n---\n# ADR-0002: Second\n",
-		"0003-third.md":  "---\nstatus: Accepted\ndomains: [config]\n---\n# ADR-0003: Third\n",
-		"0004-fourth.md": "---\nstatus: Superseded\ndomains: [rendering]\nsuperseded_by: \"0002\"\n---\n# ADR-0004: Fourth\n",
-		"0005-fifth.md":  "---\nstatus: Draft\ndomains: [rendering]\n---\n# ADR-0005: Fifth\n",
+		"0001-first.md":  testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First")),
+		"0002-second.md": testsupport.ADR("Implemented", testsupport.WithDomains("rendering", "config"), testsupport.WithTitle("0002: Second")),
+		"0003-third.md":  testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0003: Third")),
+		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0004: Fourth")),
+		"0005-fifth.md":  testsupport.ADR("Draft", testsupport.WithDomains("rendering"), testsupport.WithTitle("0005: Fifth")),
 	}
 	for name, content := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-			t.Fatalf("write fixture %s: %v", name, err)
-		}
+		testsupport.WriteFile(t, filepath.Join(dir, name), content)
 	}
 
 	got, err := adr.RenderDomainIndex(dir, "rendering")
@@ -74,10 +72,8 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 // is tagged with the queried domain.
 func TestRenderDomainIndexPlaceholder(t *testing.T) {
 	dir := t.TempDir()
-	content := "---\nstatus: Accepted\ndomains: [config]\n---\n# ADR-0001: Only Config\n"
-	if err := os.WriteFile(filepath.Join(dir, "0001-only-config.md"), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	content := testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0001: Only Config"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-only-config.md"), content)
 	got, err := adr.RenderDomainIndex(dir, "rendering")
 	if err != nil {
 		t.Fatalf("RenderDomainIndex: %v", err)
@@ -91,10 +87,10 @@ func TestRenderDomainIndexPlaceholder(t *testing.T) {
 // producing output.
 func TestRenderDomainIndexParseError(t *testing.T) {
 	dir := t.TempDir()
+	// Deliberately malformed frontmatter — ADR() only emits valid YAML, so this
+	// negative-test input stays a raw literal.
 	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
-	if err := os.WriteFile(filepath.Join(dir, "0001-broken.md"), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-broken.md"), content)
 	got, err := adr.RenderDomainIndex(dir, "rendering")
 	if err == nil {
 		t.Fatal("expected error from malformed frontmatter, got nil")
@@ -108,10 +104,8 @@ func TestRenderDomainIndexParseError(t *testing.T) {
 // parsed ADR.
 func TestParseDomainsAndSupersededBy(t *testing.T) {
 	dir := t.TempDir()
-	content := "---\nstatus: Superseded\ndomains: [rendering, config]\nsuperseded_by: \"0009\"\n---\n# ADR-0007: Example\n"
-	if err := os.WriteFile(filepath.Join(dir, "0007-example.md"), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	content := testsupport.ADR("Superseded", testsupport.WithDomains("rendering", "config"), testsupport.WithSupersededBy("0009"), testsupport.WithTitle("0007: Example"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0007-example.md"), content)
 	adrs, err := adr.ParseDir(dir)
 	if err != nil {
 		t.Fatalf("ParseDir: %v", err)

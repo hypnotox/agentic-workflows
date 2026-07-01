@@ -313,7 +313,7 @@ func TestNextNumberEmptyDir(t *testing.T) {
 func TestNextNumberSkipsGapToMaxPlusOne(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"0001-first.md", "0003-third.md"} {
-		content := "---\nstatus: Accepted\n---\n# ADR-title\n"
+		content := testsupport.ADR("Accepted", testsupport.WithTitle("title"))
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 			t.Fatal(err)
 		}
