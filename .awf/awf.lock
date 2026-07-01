@@ -208,9 +208,9 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:3b30d7bd4148ab6dbdd176e3db81bc8eacfdcff2dd876416a58d22a6ef3da037",
+      "templateHash": "sha256:7ab62cedcc35c61d76b560cbaf712fa71737695c49912efd78b5306af8dc8312",
       "configHash": "sha256:4db128c7a5986c91e4d9a67aa1c7478e600abddbfc917ed29e266e490bdcdf04",
-      "outputHash": "sha256:c9d576624c8f89766419989cccc610050b884def1db1132659a0cc710b5b8c93"
+      "outputHash": "sha256:c6f6ce72f42040cecb7b59299d79f2731a09fcf9230be322f2aca67ee9657393"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -256,9 +256,9 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:d7d4b0c06cb292cb7baa4ab954b3b91e092f70224b0a2dab752053ed105fd4e7",
+      "templateHash": "sha256:94ddb6d6c7e4ba3fecb7344905afdafda4b59c84018b2e605b49a55daf1aafd8",
       "configHash": "sha256:3f50342c9819402e904abc3b274783a83ac098bd08ce6df1dec33e97c270dcfc",
-      "outputHash": "sha256:48613238a2b918ec4b3edace5143ca4a7dc99a2afe8e496ccc700e0e54b49a69"
+      "outputHash": "sha256:353dddc73c35010e8686c83279c5042f2626ebf79a09d1ac97c33647c7b410ff"
     },
     "docs/domains/adr-system.md": {
       "templateId": "",

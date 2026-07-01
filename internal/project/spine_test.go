@@ -718,6 +718,8 @@ func TestAgentsDocTemplate(t *testing.T) {
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
 			"adrReadme": "docs/decisions/README.md", "plansDir": "docs/plans",
+			"workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md",
+			"agentsMdStandard": "docs/agents-md-standard.md",
 		},
 		"data": map[string]any{},
 	}
@@ -756,6 +758,8 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrReadme": "docs/decisions/README.md",
 			"activeMd": "docs/decisions/ACTIVE.md", "plansDir": "docs/plans",
+			"workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md",
+			"agentsMdStandard": "docs/agents-md-standard.md",
 		},
 		"data": map[string]any{
 			"invariants": []map[string]any{

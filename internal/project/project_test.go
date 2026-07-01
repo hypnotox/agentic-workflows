@@ -843,3 +843,29 @@ func TestIsGeneratedIndex(t *testing.T) {
 		t.Errorf("an ordinary doc must not be a generated index (false)")
 	}
 }
+
+// invariant: document-map-lists-mandatory-docs
+func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("AGENTS.md not written: %v", err)
+	}
+	got := string(b)
+	for _, want := range []string{
+		"[docs/workflow.md](docs/workflow.md)",
+		"[docs/doc-standard.md](docs/doc-standard.md)",
+		"[docs/agents-md-standard.md](docs/agents-md-standard.md)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Document map should unconditionally cite %s (docs: array is empty):\n%s", want, got)
+		}
+	}
+}
