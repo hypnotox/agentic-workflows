@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -40,12 +41,14 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 	}
 }
 
-// partRel is the project-relative convention part path the awf:edit pointer names.
-func partRel(kind, artifact, section string) string {
-	if config.IsSingletonKind(kind) {
-		return ".awf/parts/" + kind + "/" + section + ".md"
+// partRel is the project-relative convention part path the awf:edit pointer names,
+// derived from the absolute PartPath so the parts-path structure has one source.
+func (p *Project) partRel(kind, artifact, section string) string {
+	rel, err := filepath.Rel(p.Root, p.Cfg.PartPath(kind, artifact, section))
+	if err != nil { // coverage-ignore: PartPath is always rooted under p.Root, so Rel cannot fail
+		return ""
 	}
-	return ".awf/" + kind + "/parts/" + artifact + "/" + section + ".md"
+	return filepath.ToSlash(rel)
 }
 
 // planSections resolves each catalog-declared section into a render.SectionPlan:
@@ -54,7 +57,7 @@ func partRel(kind, artifact, section string) string {
 func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
 	plan := map[string]render.SectionPlan{}
 	for _, s := range declared {
-		sp := render.SectionPlan{EditPath: partRel(kind, artifact, s)}
+		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {
 			sp.Drop = true
 			plan[s] = sp

@@ -213,7 +213,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		ActiveMd:          lay.ActiveMd,
 		PlansDir:          lay.PlansDir,
 		ConfiguredDomains: p.Cfg.Domains,
-		DomainsPartsDir:   ".awf/domains/parts",
+		DomainsPartsDir:   config.DirName + "/domains/parts",
 		DomainsIndexDir:   lay.DomainsDir,
 	})
 }

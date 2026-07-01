@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 )
@@ -71,7 +72,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 	for _, desc := range kindDescriptors {
 		kind := desc.Plural
 		enabledSet := sliceSet(desc.enable(p.Cfg))
-		base := filepath.Join(p.Root, ".awf", kind)
+		base := filepath.Join(config.RootDir(p.Root), kind)
 		// Sidecars: <kind>/<name>.yaml.
 		entries, err := os.ReadDir(base)
 		if errors.Is(err, os.ErrNotExist) {
@@ -86,7 +87,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 			name := strings.TrimSuffix(e.Name(), ".yaml")
 			if !enabledSet[name] {
 				drift = append(drift, manifest.Drift{
-					Path: filepath.Join(".awf", kind, e.Name()),
+					Path: filepath.Join(config.DirName, kind, e.Name()),
 					Kind: "orphaned", Detail: "sidecar for an artifact not in the enable list",
 				})
 			}
@@ -105,7 +106,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 			}
 			if !enabledSet[t.Name()] {
 				drift = append(drift, manifest.Drift{
-					Path: filepath.Join(".awf", kind, "parts", t.Name()),
+					Path: filepath.Join(config.DirName, kind, "parts", t.Name()),
 					Kind: "orphaned", Detail: "convention parts for an artifact not in the enable list",
 				})
 				continue
@@ -122,7 +123,7 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 				}
 				if section := strings.TrimSuffix(sf.Name(), ".md"); !declared[section] {
 					drift = append(drift, manifest.Drift{
-						Path: filepath.Join(".awf", kind, "parts", t.Name(), sf.Name()),
+						Path: filepath.Join(config.DirName, kind, "parts", t.Name(), sf.Name()),
 						Kind: "orphaned", Detail: "convention part for a section not in the target's declared set",
 					})
 				}
