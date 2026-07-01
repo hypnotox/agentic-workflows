@@ -19,9 +19,9 @@ Features / Bug fixes / Others, excluding `docs:`/`test:`/`chore:`/`ci:` — see 
 in `.goreleaser.yaml`), but reading them requires visiting GitHub and trusts a commit's type prefix
 to say whether it was user-facing.
 
-That trust is misplaced at least once already: `v0.3.1`'s only commit is typed `docs:`
-("instruct adopters to wire awf check into their gate"), yet it edited
-`templates/docs/workflow.md.tmpl` — a rendered template every adopter's `workflow.md` is built
+That trust is misplaced at least once already: `v0.3.1`'s only commit besides the routine
+version-bump commit is typed `docs:` ("instruct adopters to wire awf check into their gate"), yet it
+edited `templates/docs/workflow.md.tmpl` — a rendered template every adopter's `workflow.md` is built
 from. GoReleaser's own filter would have (and did) treat that release as content-free.
 
 We want a command, `awf changelog`, that works with zero network dependency (matching every other
