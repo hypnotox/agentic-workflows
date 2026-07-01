@@ -286,6 +286,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 	if err != nil {
 		return RenderedFile{}, err
 	}
+	content = injectBanner(content)
 	return RenderedFile{Path: p.layout().ActiveMd, Content: content}, nil
 }
 

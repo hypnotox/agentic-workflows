@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -37,5 +39,28 @@ func TestInjectBannerFrontmatter(t *testing.T) {
 	want := "---\nname: x\n---\n<!-- " + bannerText + " -->\nbody\n"
 	if got != want {
 		t.Fatalf("frontmatter banner = %q, want %q", got, want)
+	}
+}
+
+// TestActiveMdCarriesCanonicalBanner regresses a banner drift: generateActiveMD
+// used to return adr.RenderActiveMD's content as-is without ever calling
+// injectBanner, so ACTIVE.md's banner diverged from every other rendered
+// artifact's canonical bannerText.
+func TestActiveMdCarriesCanonicalBanner(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "ACTIVE.md"))
+	if err != nil {
+		t.Fatalf("read ACTIVE.md: %v", err)
+	}
+	want := "<!-- " + bannerText + " -->\n"
+	if !strings.HasPrefix(string(got), want) {
+		t.Fatalf("ACTIVE.md banner = %q, want prefix %q", got[:min(60, len(got))], want)
 	}
 }
