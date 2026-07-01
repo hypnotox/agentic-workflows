@@ -256,9 +256,9 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:94ddb6d6c7e4ba3fecb7344905afdafda4b59c84018b2e605b49a55daf1aafd8",
+      "templateHash": "sha256:ae9bd3fdb3fce96e00e20d321f866b28b456bac29f82779c8eba3b930345f631",
       "configHash": "sha256:3f50342c9819402e904abc3b274783a83ac098bd08ce6df1dec33e97c270dcfc",
-      "outputHash": "sha256:353dddc73c35010e8686c83279c5042f2626ebf79a09d1ac97c33647c7b410ff"
+      "outputHash": "sha256:4cdf9ec5ed0dc930a6eb5b2342e5aaae481482231b1ec45ee4365c039b7aa5a0"
     },
     "docs/domains/adr-system.md": {
       "templateId": "",
