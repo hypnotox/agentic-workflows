@@ -127,15 +127,15 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 	return findings, nil
 }
 
-// scanTags collects slugs backed by a `<marker> invariant: <slug>` comment in a
-// file whose basename matches one of a source's globs (skipping
-// .git/vendor/node_modules). The marker is matched literally; whitespace between
-// the marker and `invariant:` is tolerated.
 // sortBySlug orders findings by slug, the stable output order of both scans.
 func sortBySlug(f []Finding) {
 	sort.Slice(f, func(i, j int) bool { return f[i].Slug < f[j].Slug })
 }
 
+// scanTags collects slugs backed by a `<marker> invariant: <slug>` comment in a
+// file whose basename matches one of a source's globs (skipping
+// .git/vendor/node_modules). The marker is matched literally; whitespace between
+// the marker and `invariant:` is tolerated.
 func scanTags(root string, sources []config.InvariantSource) (map[string]bool, error) {
 	present := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
