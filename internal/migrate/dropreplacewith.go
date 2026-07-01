@@ -125,8 +125,5 @@ func relocatePart(src, dst string) error {
 		}
 		return fmt.Errorf("convention part %s already exists with different content", dst)
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { // coverage-ignore: dst parent under awfDir is writable when the sidecar was readable
-		return err
-	}
-	return os.WriteFile(dst, in, 0o644)
+	return writeFile(dst, in)
 }
