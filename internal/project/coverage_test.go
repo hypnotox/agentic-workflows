@@ -680,3 +680,30 @@ func TestIsManagedMarkdownExcludesBootstrap(t *testing.T) {
 		t.Error("a managed doc template must remain in the dead-reference scan")
 	}
 }
+
+// --- NewADR ---
+
+func TestProjectNewADR(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// docs/decisions/template.md is a rendered singleton (ADR-0021) — it only
+	// exists on disk after a sync, unlike CheckInvariants/Audit above which read
+	// hand-written fixture ADRs directly.
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	path, err := p.NewADR("My Plan Title")
+	if err != nil {
+		t.Fatalf("NewADR: %v", err)
+	}
+	want := filepath.Join(root, "docs", "decisions", "0001-my-plan-title.md")
+	if path != want {
+		t.Errorf("NewADR path = %q, want %q", path, want)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("created file not found: %v", err)
+	}
+}

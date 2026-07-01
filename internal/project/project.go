@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -215,4 +216,13 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		DomainsPartsDir:   ".awf/domains/parts",
 		DomainsIndexDir:   lay.DomainsDir,
 	})
+}
+
+// NewADR scaffolds a new ADR file under the project's decisions dir: the next
+// sequential number, the rendered template with its title/date filled in and
+// marker comments stripped, refusing to overwrite an existing file. Mirrors
+// the CheckInvariants/Audit pattern — cmd/awf reaches this only through this
+// exported method, never internal/project.Layout directly.
+func (p *Project) NewADR(title string) (string, error) {
+	return adr.NewFile(p.decisionsDir(), title)
 }
