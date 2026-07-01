@@ -113,6 +113,18 @@ func Load(awfDir string) (*Config, error) {
 	return &c, nil
 }
 
+// DirName is the config-tree directory name at the project root.
+const DirName = ".awf"
+
+// RootDir returns the config-tree directory for a project root (<root>/.awf).
+func RootDir(root string) string { return filepath.Join(root, DirName) }
+
+// ConfigPath returns the skeleton config.yaml path for a project root.
+func ConfigPath(root string) string { return filepath.Join(RootDir(root), "config.yaml") }
+
+// LockPath returns the awf.lock path for a project root.
+func LockPath(root string) string { return filepath.Join(RootDir(root), "awf.lock") }
+
 // Sidecar reads <root>/<kind>/<name>.yaml; agents-doc lives at <root>/agents-doc.yaml.
 // A missing file yields a zero Sidecar (publication-safe: empty data/sections).
 func (c *Config) Sidecar(kind, name string) (Sidecar, error) {

@@ -35,7 +35,7 @@ func addRemoveBootstrap(root string, add bool, stdout io.Writer) error {
 	if !add && !enabled {
 		return errors.New("bootstrap is not enabled")
 	}
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfgPath := config.ConfigPath(root)
 	b, err := os.ReadFile(cfgPath)
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
@@ -79,7 +79,7 @@ func addRemoveTarget(root, name string, add bool, stdout io.Writer) error {
 	if len(desired) == 0 {
 		return fmt.Errorf("cannot remove the last target %q (a project must render to at least one)", name)
 	}
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfgPath := config.ConfigPath(root)
 	b, err := os.ReadFile(cfgPath)
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
@@ -203,7 +203,7 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 // rewriteConfig edits the enable array for key in .awf/config.yaml (adding or
 // removing name) and writes it back.
 func rewriteConfig(root, key, name string, add bool) error {
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfgPath := config.ConfigPath(root)
 	b, err := os.ReadFile(cfgPath)
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
@@ -221,7 +221,7 @@ func rewriteConfig(root, key, name string, add bool) error {
 // hasSidecarOrParts reports whether an orphaned sidecar (<key>/<name>.yaml) or
 // convention-parts dir (<key>/parts/<name>) for the target exists under .awf/.
 func hasSidecarOrParts(root, key, name string) bool {
-	awf := filepath.Join(root, ".awf")
+	awf := config.RootDir(root)
 	for _, p := range []string{
 		filepath.Join(awf, key, name+".yaml"),
 		filepath.Join(awf, key, "parts", name),

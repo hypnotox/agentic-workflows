@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -38,11 +39,11 @@ func Current() int { return registry[len(registry)-1].To }
 // lock's schema, or Current()-1 when no lock, so the To:3 relocation gates; the
 // legacy single file reports 0; nothing present reports Current().
 func Generation(root string) int {
-	newTree := filepath.Join(root, ".awf", "config.yaml")
+	newTree := config.ConfigPath(root)
 	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
 	if _, err := os.Stat(newTree); err == nil {
-		l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+		l, err := manifest.Load(config.LockPath(root))
 		if err != nil {
 			return Current()
 		}
@@ -65,7 +66,7 @@ func Generation(root string) int {
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op — Generation's no-lock branch already reports Current().
 func stampLockSchema(root string) error {
-	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	lockPath := config.LockPath(root)
 	if !fileExists(lockPath) {
 		return nil // no lock yet; the terminal sync stamps it
 	}

@@ -30,7 +30,7 @@ type Project struct {
 }
 
 func Open(root string) (*Project, error) {
-	cfg, err := config.Load(filepath.Join(root, ".awf"))
+	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (p *Project) isGeneratedIndex(rel string) bool {
 }
 
 func (p *Project) lockPath() string {
-	return filepath.Join(p.Root, ".awf", "awf.lock")
+	return config.LockPath(p.Root)
 }
 
 // CheckInvariants reports Implemented-ADR invariant slugs that lack a backing

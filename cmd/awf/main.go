@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -401,7 +402,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		return err
 	}
 
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfgPath := config.ConfigPath(root)
 	scaffolded := false
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
@@ -489,7 +490,7 @@ func gate(root string) error {
 // computed (no/unloadable lock, empty AWFVersion, or a version that fails semver
 // normalization) so the caller skips rather than errors (ADR-0039 Decision 5).
 func lockVsBinary(root string) (lockV, binV string, ok bool) {
-	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	l, err := manifest.Load(config.LockPath(root))
 	if err != nil || l.AWFVersion == "" {
 		return "", "", false
 	}

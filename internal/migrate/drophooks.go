@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -13,7 +12,7 @@ import (
 // config.RemoveKey so config.yaml serialization stays owned by internal/config
 // (ADR-0026).
 func applyDropHooks(root string) error {
-	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfgPath := config.ConfigPath(root)
 	src, err := os.ReadFile(cfgPath)
 	if os.IsNotExist(err) {
 		return nil

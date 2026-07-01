@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // applyAwfRelocation moves a finished .claude/awf/ config tree (and its lock) to
@@ -12,7 +14,7 @@ import (
 // than overwrite if .awf/ already exists.
 func applyAwfRelocation(root string) error {
 	oldDir := filepath.Join(root, ".claude", "awf")
-	newDir := filepath.Join(root, ".awf")
+	newDir := config.RootDir(root)
 	if _, err := os.Stat(oldDir); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}

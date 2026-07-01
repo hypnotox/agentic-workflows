@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -87,10 +88,10 @@ func copyFile(src, dst string) error {
 // config.yaml does not block uninstall — only the lock and root are needed.
 // invariant: uninstall-removes-lock-tracked
 func Uninstall(root string) (int, error) {
-	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	lockPath := config.LockPath(root)
 	lock, err := manifest.Load(lockPath)
 	if err != nil {
-		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(".awf", "awf.lock"))
+		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
 	removed := 0
 	dirs := map[string]bool{}

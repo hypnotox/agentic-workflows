@@ -467,3 +467,16 @@ func TestBootstrapConfigDecode(t *testing.T) {
 		t.Errorf("bootstrap = %+v, want nil when key absent", c2.Bootstrap)
 	}
 }
+
+func TestPathHelpers(t *testing.T) {
+	root := filepath.Join("x", "y")
+	if got, want := RootDir(root), filepath.Join("x", "y", ".awf"); got != want {
+		t.Errorf("RootDir = %q, want %q", got, want)
+	}
+	if got, want := ConfigPath(root), filepath.Join("x", "y", ".awf", "config.yaml"); got != want {
+		t.Errorf("ConfigPath = %q, want %q", got, want)
+	}
+	if got, want := LockPath(root), filepath.Join("x", "y", ".awf", "awf.lock"); got != want {
+		t.Errorf("LockPath = %q, want %q", got, want)
+	}
+}

@@ -22,7 +22,7 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 // then <name> is stripped from the docs: array — each step a no-op if its
 // source is already absent, so a repeated run is idempotent.
 func applySingletonStandardDocs(root string) error {
-	awfDir := filepath.Join(root, ".awf")
+	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {
 		if err := relocate(filepath.Join(awfDir, "docs", name+".yaml"), filepath.Join(awfDir, name+".yaml")); err != nil { // coverage-ignore: relocate only errors on an unreachable permission fault a test cannot trigger
 			return err
