@@ -1,7 +1,10 @@
 package audit
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestSeverityString(t *testing.T) {
@@ -59,8 +62,8 @@ func TestRuleConventionalCommitsAcceptAny(t *testing.T) {
 	}
 }
 
-const proposedADR = "---\nstatus: Proposed\n---\n# ADR\n"
-const acceptedADR = "---\nstatus: Accepted\n---\n# ADR\n"
+var proposedADR = testsupport.ADR("Proposed")
+var acceptedADR = testsupport.ADR("Accepted")
 
 // invariant: audit-adr-status-cochange
 func TestRuleADRStatusCochange(t *testing.T) {
@@ -225,7 +228,7 @@ func TestUnderDir(t *testing.T) {
 }
 
 func adrChange(action Action, status string, domains string) FileChange {
-	txt := "---\nstatus: " + status + "\ndomains: [" + domains + "]\n---\nbody\n"
+	txt := testsupport.ADR(status, testsupport.WithDomains(strings.Split(domains, ", ")...), testsupport.WithBody("body\n"))
 	return FileChange{Path: "docs/decisions/0099-x.md", Action: action, NewText: txt}
 }
 
