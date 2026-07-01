@@ -15,9 +15,7 @@ import (
 // silent resolution path runs deterministically regardless of the real stdin.
 func forceNonInteractive(t *testing.T) {
 	t.Helper()
-	orig := isInteractive
-	isInteractive = func() bool { return false }
-	t.Cleanup(func() { isInteractive = orig })
+	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 }
 
 // readConfig returns the scaffolded .awf/config.yaml under root.
