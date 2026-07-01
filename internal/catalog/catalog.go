@@ -9,18 +9,24 @@ import (
 )
 
 // TargetSpec declares the render sections of a target that has no further
-// per-target configuration (agents and the always-on singletons).
+// per-target configuration (agents and the always-on singletons). Data carries
+// the artifact's default render data; sidecars override it per top-level key
+// (ADR-0045).
 type TargetSpec struct {
-	Sections []string `yaml:"sections"`
+	Sections []string       `yaml:"sections"`
+	Data     map[string]any `yaml:"data"`
 }
 
 // SkillSpec declares a skill's render sections plus its optional doc dependency:
 // a non-empty RequiresDoc gates the skill on that doc being enabled. Core marks a
 // skill as part of the workflow-core set awf init scaffolds by default (ADR-0022).
+// Data carries the artifact's default render data; sidecars override it per
+// top-level key (ADR-0045).
 type SkillSpec struct {
-	Sections    []string `yaml:"sections"`
-	RequiresDoc string   `yaml:"requiresDoc"`
-	Core        bool     `yaml:"core"`
+	Sections    []string       `yaml:"sections"`
+	RequiresDoc string         `yaml:"requiresDoc"`
+	Core        bool           `yaml:"core"`
+	Data        map[string]any `yaml:"data"`
 }
 
 // DocSpec declares a doc's catalog metadata. Docs no longer carry a Core marker

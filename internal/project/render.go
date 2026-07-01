@@ -96,6 +96,8 @@ type renderKindSpec struct {
 	sections func(name string) []string
 	outPath  func(t Target, name string) string
 	gate     func(name string) bool
+	// defaults returns the artifact's catalog default data (nil = none).
+	defaults func(name string) map[string]any
 }
 
 func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
@@ -110,6 +112,9 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		}
 		if spec.gate != nil && !spec.gate(name) {
 			continue
+		}
+		if spec.defaults != nil {
+			sc = withDefaultData(sc, spec.defaults(name))
 		}
 		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(spec.target, name))
 		if err != nil {
@@ -150,12 +155,14 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 					req := p.Cat.Skills[n].RequiresDoc
 					return req == "" || enabledDocs[req]
 				},
+				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			},
 			{
 				kind: "agents", names: p.Cfg.Agents, target: t,
 				tid:      mustDescriptor("agents").tid,
 				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
+				defaults: func(n string) map[string]any { return p.Cat.Agents[n].Data },
 			},
 		} {
 			rfs, err := p.renderKind(spec)
@@ -171,6 +178,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		return nil, err
 	}
 	if !ad.Local {
+		ad = withDefaultData(ad, p.Cat.Singletons["agents-doc"].Data)
 		data := p.data(ad)
 		docs, err := p.resolvedDocs()
 		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which RenderAll's docs loop already surfaces earlier
@@ -209,6 +217,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			tid:      func(string) string { return sg.tid },
 			sections: func(string) []string { return sg.sections(p.Cat) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
+			defaults: func(string) map[string]any { return p.Cat.Singletons[sg.kind].Data },
 		})
 		if err != nil {
 			return nil, err
