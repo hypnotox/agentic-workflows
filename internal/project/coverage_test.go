@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // corruptSidecar overwrites a sidecar (relative to .awf) with YAML that
@@ -361,8 +362,8 @@ func TestCheckInvariantsReportsUnbacked(t *testing.T) {
 	cfg := "prefix: example\nskills: []\nagents: []\n" +
 		"invariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\n"
 	root := scaffold(t, cfg)
-	adrBody := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n" +
-		"# ADR-0001: First\n## Invariants\n- `inv: my-slug`\n## Context\nx\n"
+	adrBody := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Invariants\n- `inv: my-slug`\n## Context\nx\n"))
 	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-first.md"), adrBody)
 	p, err := Open(root)
 	if err != nil {
@@ -609,7 +610,8 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 
 func TestCheckReportsMissingActiveMD(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	adrBody := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
+	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
 	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-first.md"), adrBody)
 	p, err := Open(root)
 	if err != nil {

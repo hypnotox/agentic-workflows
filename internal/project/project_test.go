@@ -631,10 +631,9 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	adrBody := "---\nstatus: Accepted\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: First\n## Context\nx\n"
-	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adrBody), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
+	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adrBody)
 
 	p, err := Open(root)
 	if err != nil {
@@ -656,9 +655,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 
 	// Change frontmatter status; the on-disk ACTIVE.md is now stale.
 	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
-	if err := os.WriteFile(filepath.Join(adrDir, "0001-first.md"), []byte(adr2), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
 	drift, err := p.Check()
 	if err != nil {
 		t.Fatalf("Check: %v", err)
