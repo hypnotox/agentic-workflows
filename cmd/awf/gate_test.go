@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // gateFixture writes a .awf/ tree with a minimal config.yaml and a hand-written
@@ -18,16 +18,10 @@ import (
 func gateFixture(t *testing.T, awfVersion string, schema int) string {
 	t.Helper()
 	root := t.TempDir()
-	awf := filepath.Join(root, ".awf")
-	if err := os.MkdirAll(awf, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte("prefix: ex\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, "prefix: ex\n")
 	if schema >= 0 {
 		l := &manifest.Lock{AWFVersion: awfVersion, SchemaVersion: schema, Files: map[string]manifest.Entry{}}
-		if err := l.Save(filepath.Join(awf, "awf.lock")); err != nil {
+		if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 			t.Fatal(err)
 		}
 	}
