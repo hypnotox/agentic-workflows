@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.5.1",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "files": {
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
