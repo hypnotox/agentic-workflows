@@ -51,20 +51,21 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(cat.AgentsDoc.Sections) == 0 {
-		t.Error("expected AgentsDoc.Sections to be non-empty")
+	sections := cat.Singletons["agents-doc"].Sections
+	if len(sections) == 0 {
+		t.Error("expected agents-doc Sections to be non-empty")
 	}
 	expected := []string{"you-and-this-project", "identity", "invariants", "workflow", "commands", "document-map"}
 	for _, s := range expected {
 		found := false
-		for _, sec := range cat.AgentsDoc.Sections {
+		for _, sec := range sections {
 			if sec == s {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("expected section %q in AgentsDoc.Sections, got: %v", s, cat.AgentsDoc.Sections)
+			t.Errorf("expected section %q in agents-doc Sections, got: %v", s, sections)
 		}
 	}
 }

@@ -170,7 +170,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		data["docs"] = docs
 		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
-			p.Cat.AgentsDoc.Sections, ad, data, "AGENTS.md")
+			p.Cat.Singletons["agents-doc"].Sections, ad, data, "AGENTS.md")
 		if err != nil {
 			return nil, err
 		}

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"maps"
 	"slices"
 	"testing"
 
@@ -27,6 +28,19 @@ func TestPlainSingletonsMatchCatalogSingletonKinds(t *testing.T) {
 
 	if !slices.Equal(got, want) {
 		t.Errorf("plainSingletons kinds = %v, want catalog.SingletonKinds minus agents-doc = %v", got, want)
+	}
+}
+
+// invariant: singleton-kind-single-source
+func TestCatalogSingletonsMatchSingletonKinds(t *testing.T) {
+	cat, err := catalog.Load(templates.FS)
+	if err != nil {
+		t.Fatalf("catalog.Load: %v", err)
+	}
+	got := slices.Sorted(maps.Keys(cat.Singletons))
+	want := slices.Sorted(slices.Values(catalog.SingletonKinds))
+	if !slices.Equal(got, want) {
+		t.Errorf("cat.Singletons keys = %v, want catalog.SingletonKinds = %v (agents-doc included in both)", got, want)
 	}
 }
 

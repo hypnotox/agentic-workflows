@@ -231,17 +231,16 @@ docs:
     title: Roadmap
     desc: uncommitted ideas and future phases
     sections: [ideas, deferred]
-agentsDoc:
-  sections:
-    - awf-setup
-    - you-and-this-project
-    - identity
-    - invariants
-    - workflow
-    - commands
-    - document-map
-
 singletons:
+  agents-doc:
+    sections:
+      - awf-setup
+      - you-and-this-project
+      - identity
+      - invariants
+      - workflow
+      - commands
+      - document-map
   adr-readme:
     sections:
       - intro
