@@ -8,14 +8,14 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func writeADR(t *testing.T, dir, name, status, invBody string) {
 	t.Helper()
-	content := "---\nstatus: " + status + "\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-X: T\n## Invariants\n" + invBody + "\n## Consequences\nc\n"
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	content := testsupport.ADR(status, testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithTitle("X: T"), testsupport.WithBody("## Invariants\n"+invBody+"\n## Consequences\nc\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, name), content)
 }
 
 func goSrc(t *testing.T, root, body string) {
@@ -303,10 +303,10 @@ func TestCheckScanReadError(t *testing.T) {
 
 func writeRetiringADR(t *testing.T, dir, name, status, retires, invBody string) {
 	t.Helper()
-	content := "---\nstatus: " + status + "\ndate: 2026-06-25\ntags: [x]\nretires_invariants: [" + retires + "]\n---\n# ADR-X: T\n## Invariants\n" + invBody + "\n## Consequences\nc\n"
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	content := testsupport.ADR(status, testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithRetiresInvariants(retires), testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Invariants\n"+invBody+"\n## Consequences\nc\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, name), content)
 }
 
 // invariant: inv-retirement-drops-slug
