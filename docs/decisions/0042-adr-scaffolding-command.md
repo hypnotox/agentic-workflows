@@ -43,7 +43,10 @@ deferred until a second concrete, freely-authored-content case exists (see Alter
      `<!-- awf:edit ... -->` marker comment line, sets the frontmatter `date:` to today via a
      package-level `var now = time.Now` seam (mirroring the existing `var getwd = os.Getwd` /
      `var isInteractive = ...` seam pattern in `cmd/awf/main.go`, so the date is deterministic under
-     test per the 100%-coverage gate), computes the filename as `NNNN-<slug>.md`, and refuses to
+     test per the 100%-coverage gate), rewrites the template's `# ADR-NNNN: Title` heading line to
+     `# ADR-<computed-number>: <title>` (both values are already known to this function — the
+     number from `NextNumber`, the title from the parameter — so no `NNNN`/`Title` placeholder
+     survives into the committed file), computes the filename as `NNNN-<slug>.md`, and refuses to
      overwrite an existing file at that path.
    - Slugification: lowercase the title, collapse every run of characters that is not `[a-z0-9]`
      into a single `-`, then trim leading/trailing `-`. An empty result (e.g. a title with no
@@ -57,7 +60,10 @@ deferred until a second concrete, freely-authored-content case exists (see Alter
    `cmd/awf` never reaches into `internal/project.Layout` fields directly, only through an exported
    `Project` method.
 3. `cmd/awf/new.go`: a new top-level `new` command, added to `commandOrder` and `argSpecs` in
-   `cmd/awf/main.go`. Invocation: `awf new <kind> <title...>`. Today only `kind == "adr"` is valid;
+   `cmd/awf/main.go`. Invocation: `awf new <kind> <title...>`, where every positional argument after
+   `<kind>` is joined with a single space to form the one `title` string `NewFile` takes — there is
+   no existing multi-word-positional-argument precedent elsewhere in `cmd/awf` to defer to, so this
+   is the full joining rule. Today only `kind == "adr"` is valid;
    any other value is a usage error (exit 2), mirroring `list_add.go`'s `unknownKind` helper but
    with its own message (`unknown kind %q (want: adr)`) — `add`/`remove`'s kind vocabulary
    (`skill, agent, doc, domain, target, bootstrap`) is a distinct, unrelated space and `adr` is not
@@ -65,19 +71,35 @@ deferred until a second concrete, freely-authored-content case exists (see Alter
    `project.Open`, exactly like `sync`/`check`/`invariants`/`audit`/`list` already do, since it reads
    the rendered `docs/decisions/template.md` and a version-mismatched binary could misparse its
    marker format. On success it prints the created file's path to stdout.
-4. ADR-0039's invariant text ("every gated command") is amended to include `new` in its enumerated
-   command list.
-5. `awf-proposing-adr`'s procedure (source: `.awf/skills/proposing-adr.yaml`) changes: the current
-   step 1 ("pick the next ADR number") and the file-creation half of step 2 ("copy section structure
-   ... do not shell-copy the file") collapse into a single step that runs `awf new adr "<title>"`
-   and then fills in every section and frontmatter array in the resulting file. The prohibition on
-   shell-copying the template is superseded by this command — `awf new adr` *is* the sanctioned
-   copy path, not a hand-rolled one.
+4. **Partial-item supersedence of ADR-0039**, not an in-place edit: ADR-0039 is `Implemented`, so
+   per `awf-adr-lifecycle` ("once `Accepted` or `Implemented`, the body is frozen — only the
+   `status` field is editable in place") its Invariants text is never hand-edited. This ADR's
+   frontmatter already carries `related: [0039]` (not `supersedes:`); its prose here is the citation
+   partial-item supersedence requires: **this ADR's Invariant `adr-new-version-gated` overrides
+   ADR-0039 Invariant `inv: version-compat-gate`'s command enumeration**, extending the gated-command
+   set it names (`sync`, `check`, `invariants`, `audit`, `list`) to six by adding `new`. ADR-0039's
+   own text and `status: Implemented` are untouched.
+5. `awf-proposing-adr`'s procedure changes: the current step 1 ("pick the next ADR number") and the
+   file-creation half of step 2 ("copy section structure ... do not shell-copy the file") collapse
+   into a single step that runs `awf new adr "<title>"` and then fills in every section and
+   frontmatter array in the resulting file. The prohibition on shell-copying the template is
+   superseded by this command — `awf new adr` *is* the sanctioned copy path, not a hand-rolled one.
+   The change lands in the shipped default template, `templates/skills/proposing-adr/SKILL.md.tmpl`
+   (the `awf:edit procedure-number` and `awf:edit procedure-write` sections) — not in
+   `.awf/skills/proposing-adr.yaml`, which holds only the `adrSections`/`adrTriggers` data block, not
+   this procedure prose — since the fix is universal (every awf-rendered project should get the
+   corrected procedure), not specific to awf's own dogfooded copy. This edits static prose only, no
+   new template variable, so the missingkey=zero constraint (ADR-0001) is unaffected. `./x sync`
+   re-renders awf's own `.claude/skills/awf-proposing-adr/SKILL.md` from the updated default in the
+   same commit.
 
 ## Invariants
 
 - `inv: adr-new-strips-markers` — `awf new adr`'s output file never contains a `GENERATED by awf`
   or `awf:edit` marker comment line.
+- `inv: adr-new-heading-matches-file` — `awf new adr`'s output file's `# ADR-NNNN: <title>` heading
+  always carries the same number as the file's own `NNNN-*.md` filename prefix, and the literal
+  `Title` placeholder never survives into the committed file.
 - `inv: adr-new-sequential-numbering` — `internal/adr.NextNumber` always returns the max existing
   ADR number plus one, and never reuses a number already present in the directory.
 - `inv: adr-new-no-overwrite` — `awf new adr` refuses to overwrite an existing file at its computed
@@ -100,10 +122,21 @@ own scope will have quietly widened the package without documenting it. `cmd/awf
 top-level command surface with its own test file (`new_test.go`), following the existing
 per-command test convention (`invariants_test.go`, `audit_test.go`, etc.).
 
-ADR-0039's gated-command list changes from a fixed five (`sync`, `check`, `invariants`, `audit`,
-`list`) to six, so any future command that reads a rendered artifact must now also ask whether it
-belongs on that list — the criterion (reads binary-schema-sensitive rendered output) is now
-established by precedent, not just named once.
+Three already-committed descriptions of the pre-`new` world go stale the moment this decision lands
+and must be updated in the same implementation commit (docs travel with the change): `docs/architecture.md`'s
+`internal/adr/` bullet (currently "parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their
+frontmatter; invoked by `awf sync`" — must also name the write path and `awf new`); `.awf/agents-doc.yaml`'s
+Binary-version-gate invariant text (the literal source of `AGENTS.md`'s "every gated command (`sync`,
+`check`, `invariants`, `audit`, `list`)" line); and `.awf/domains/parts/tooling/current-state.md`'s
+gated-command enumeration (source of `docs/domains/tooling.md`'s matching prose). The latter two must
+add `new` to their five-command lists per Decision item 4. `./x sync` regenerates `AGENTS.md` and
+`docs/domains/tooling.md` from the edited sources in the same commit.
+
+The effective gated-command set grows from a fixed five (`sync`, `check`, `invariants`, `audit`,
+`list`, per ADR-0039's own frozen text) to six via this ADR's partial-item override, so any future
+command that reads a rendered artifact must now also ask whether it belongs on that list — the
+criterion (reads binary-schema-sensitive rendered output) is now established by precedent, not just
+named once.
 
 No generalized scaffolding framework exists yet for domains or skills; if a second freely-authored
 template case appears, `awf new <kind>` already has a kind-dispatch shape to extend rather than
