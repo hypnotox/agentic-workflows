@@ -67,6 +67,19 @@ func TestSkillRefScannerWholeToken(t *testing.T) {
 	}
 }
 
+// Whole-token matching is boundary-anchored on the left too: a prefix embedded
+// in a larger word (nonexample-tdd) is not a reference.
+func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
+	got := deadSkillRefs(t,
+		"prefix: example\nvars: {}\nskills: []\nagents: []\n",
+		map[string]string{
+			"parts/agents-doc/workflow.md": "Prose about nonexample-tdd tooling.\n",
+		})
+	if len(got) != 0 {
+		t.Fatalf("expected no findings for an embedded prefix, got %v", got)
+	}
+}
+
 // The effective set is enabled minus doc-gate-suppressed, with local-declared
 // skills always kept.
 // invariant: skills-context-effective-set

@@ -337,8 +337,9 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 // whose <name> is a catalog-known skill outside the effective rendered set
 // (inv: skill-ref-dead-fails). Names matching no known skill are ignored
 // (inv: skill-ref-unknown-ignored); fenced code blocks are skipped like the
-// dead-link scan. The regex captures the maximal word run after the prefix, so
-// matching is whole-token (ADR-0046 item 3).
+// dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
+// start mid-word (no word-ish rune before the prefix) and the regex captures
+// the maximal word run after it.
 // invariant: skill-ref-dead-fails
 // invariant: skill-ref-unknown-ignored
 func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile, effective map[string]bool) []manifest.Drift {
@@ -350,7 +351,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds
 	}
 	scan = append(scan, amd)
 	scan = append(scan, dds...)
-	re := regexp.MustCompile(regexp.QuoteMeta(p.Cfg.Prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
+	re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9_-])` + regexp.QuoteMeta(p.Cfg.Prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
 	var drift []manifest.Drift
 	for _, f := range scan {
 		seen := map[string]bool{}
