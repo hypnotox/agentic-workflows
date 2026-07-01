@@ -28,9 +28,9 @@ Load-bearing triggers include:
 ## Conventions enforced
 
 <!-- awf:edit conventions — default; create .awf/skills/parts/proposing-adr/conventions.md to override -->
-- **Next number:** list `docs/decisions/NNNN-*.md`, take the highest existing number plus one. Never reuse numbers.
+- **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
-- **Template:** copy section structure from `docs/decisions/template.md` (write the content directly into the new file; do not shell-copy the file).
+- **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md` — never hand-copy or shell-copy it yourself.
 - **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `docs/domains/<domain>.md` index).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
@@ -38,16 +38,16 @@ Load-bearing triggers include:
 ## Procedure
 
 <!-- awf:edit procedure-number — default; create .awf/skills/parts/proposing-adr/procedure-number.md to override -->
-1. **Pick the next ADR number.** List `docs/decisions/NNNN-*.md` and take the maximum number plus one.
+1. **Scaffold the file.** Run `awf new adr "<Title>"` to create `docs/decisions/NNNN-kebab-title.md` with the next sequential number, the rendered template's marker comments stripped, and its date and title heading filled in.
 
 <!-- awf:edit procedure-write — default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
-2. **Write the ADR file** directly. Copy section structure from `docs/decisions/template.md` and fill all sections:
+2. **Fill in every section** of the scaffolded file:
    - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
    - **Decision:** numbered items, each a discrete commitment. Numbers matter for partial-item supersedence.
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Delete the authoring checklist before committing.
+   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
 3. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
