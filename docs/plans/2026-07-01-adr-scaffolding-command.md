@@ -179,7 +179,7 @@ No new dependencies.
   		return "", err
   	}
   	path := filepath.Join(dir, number+"-"+slug+".md")
-  	if _, err := os.Stat(path); err == nil {
+  	if _, err := os.Stat(path); err == nil { // coverage-ignore: NextNumber always returns one more than every existing NNNN-*.md file, so this path can only pre-exist via a concurrent-process race a single-threaded test cannot construct
   		return "", fmt.Errorf("adr: %s already exists", path)
   	} else if !os.IsNotExist(err) { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
   		return "", err
@@ -317,15 +317,39 @@ No new dependencies.
   	}
   }
 
-  func TestNewFileRefusesOverwrite(t *testing.T) {
+  // TestNewFileSequentialCallsGetDifferentNumbers documents why NewFile's
+  // overwrite guard can never fire from repeated same-process calls: NextNumber
+  // always returns one more than every existing NNNN-*.md file, so a second call
+  // with the same title lands at the next number instead of colliding.
+  func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
   	dir := t.TempDir()
   	writeTemplateFixture(t, dir)
   	swapNow(t, fixedNow)
-  	if _, err := adr.NewFile(dir, "Same Title"); err != nil {
+  	first, err := adr.NewFile(dir, "Same Title")
+  	if err != nil {
   		t.Fatalf("first NewFile: %v", err)
   	}
-  	if _, err := adr.NewFile(dir, "Same Title"); err == nil {
-  		t.Fatal("expected overwrite refusal on second call")
+  	second, err := adr.NewFile(dir, "Same Title")
+  	if err != nil {
+  		t.Fatalf("second NewFile: %v", err)
+  	}
+  	if first == second {
+  		t.Fatalf("expected distinct paths, both were %q", first)
+  	}
+  	wantFirst := filepath.Join(dir, "0001-same-title.md")
+  	wantSecond := filepath.Join(dir, "0002-same-title.md")
+  	if first != wantFirst || second != wantSecond {
+  		t.Errorf("got (%q, %q), want (%q, %q)", first, second, wantFirst, wantSecond)
+  	}
+  }
+
+  func TestNewFilePropagatesNextNumberError(t *testing.T) {
+  	dir := filepath.Join(t.TempDir(), "bad[")
+  	if err := os.Mkdir(dir, 0o755); err != nil {
+  		t.Fatal(err)
+  	}
+  	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+  		t.Fatal("expected NextNumber's glob error to propagate")
   	}
   }
 
