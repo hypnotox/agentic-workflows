@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, catalog, publication-safety, adoption]
-related: [0001, 0011, 0022, 0029, 0039]
+related: [0001, 0006, 0011, 0012, 0022, 0029, 0039]
 domains: [rendering, config]
 ---
 # ADR-0045: Out-of-box render completeness
@@ -46,7 +46,12 @@ Grounding discoveries that shape the design:
   output at sync time while `check` reports clean.
 - `renderTarget` and `artifactConfigHash` receive the same sidecar value in `renderKind`
   (`internal/project/render.go:114` and `:279`), so merging catalog defaults into that shared
-  value covers both consumers at one site.
+  value covers both consumers at one site — with one exception: `agents-doc` resolves its
+  sidecar outside `renderKind` (`internal/project/render.go:169-181`), so the merge must be a
+  helper applied at both sidecar-resolution sites, not code inlined in `renderKind`.
+- Default content has precedent: the docs module ships full per-section default bodies
+  ([ADR-0011](0011-docs-default-content-and-section-taxonomy.md)); the unshipped remainder is
+  exactly the data-driven content of skills, agents, and the singletons.
 - `awf check` findings are uniformly failing (`cmd/awf/check.go:32-42`); the only non-failing
   output precedent is the "binary ahead" note line (`cmd/awf/check.go:16-19`).
 - ADR-0001's invariant "Required vars declared in `catalog.yaml` are validated before
@@ -79,8 +84,9 @@ configuration.
    catalog default overlaid by the sidecar per top-level key: a key absent from the sidecar
    falls through to the catalog default; a key *present* in the sidecar — even with a null or
    empty value — replaces the default entirely (the explicit off-switch). No deep merging.
-   The merge happens once in `renderKind`, upstream of both `renderTarget` and
-   `artifactConfigHash`, so catalog default data participates in the config hash and a
+   The merge happens once per artifact at sidecar resolution — a single helper applied in
+   `renderKind` and in the direct `agents-doc` render path — upstream of both `renderTarget`
+   and `artifactConfigHash`, so catalog default data participates in the config hash and a
    catalog-data change flags the artifact stale exactly like a template change.
 
 3. **Graceful-fallback contract.** Every var or data interpolation in running prose must be
@@ -92,7 +98,9 @@ configuration.
    stay non-empty ([ADR-0006](0006-frontmatter-parser-and-skill-validation.md)). This item
    **supersedes ADR-0001's "required vars validated before rendering" invariant bullet**
    (recorded via `related`; ADR-0001 stays `Accepted`): no required-var mechanism will exist —
-   completeness is advisory, not validation.
+   completeness is advisory, not validation. The implementing change updates the AGENTS.md
+   publication-safety invariant entry (the ADR-0001 line in `.awf/agents-doc.yaml`
+   `data.invariants`) to the extended contract, citing this ADR, in the same commit.
 
 4. **Render-completeness advisory.** `awf check` prints a non-failing, note-style line per
    enabled artifact that references unset vars — derived statically from the template's
@@ -113,8 +121,9 @@ configuration.
   the default.
 - `inv: completeness-advisory-nonfailing` — unset-var notes never affect `awf check`'s exit
   code.
-- Catalog default data is generic: no default names an awf-repo-specific path or command
-  (textual contract, audited at review).
+- `inv: catalog-defaults-generic-denylist` — no catalog default data value contains `./x` or
+  `hypnotox/agentic-workflows` (mechanical backstop; the full generic-content contract remains
+  a textual contract, audited at review).
 
 ## Consequences
 
@@ -134,6 +143,9 @@ Harder / accepted trade-offs:
   under the 100% gate ([ADR-0012](0012-full-coverage-gate-and-conventions.md)).
 - Existing adopters see every data-bearing artifact flagged stale after upgrading (the config
   hash gains catalog data); `awf sync` resolves it — the normal upgrade path per ADR-0039.
+- Advisory notes are unsuppressible: an adopter who deliberately stays at the generic level
+  sees the same unset-var notes on every `awf check`. Accepted — a suppression knob, if the
+  noise proves real, is its own ADR.
 - No config-schema migration: the config tree's shape is unchanged (schema generation stays
   at 6). Sidecar files keep their exact syntax; only their semantics gain a fall-through.
 
@@ -146,3 +158,4 @@ Harder / accepted trade-offs:
 | Warning-severity field on check findings | Introduces a severity model for one consumer; note-lines follow an existing precedent. If more advisories accumulate, a severity model is its own ADR. |
 | Detecting fired fallbacks by scanning rendered output | Generic fallback prose is by design indistinguishable from intentional prose; referenced-vars ∩ empty-config is statically derivable and needs no render instrumentation. |
 | Keep data sidecar-only, document it better | Universal-standard content (ADR states, section lists) is not project configuration; documentation cannot fix a wrong ownership boundary. |
+| Scaffold default sidecar files at `awf init` | Freezes universal content as per-project copies at init time; upgrades cannot improve them and every adopter's copy diverges — the ownership boundary stays wrong, just better hidden. |
