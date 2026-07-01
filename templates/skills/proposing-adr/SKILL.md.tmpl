@@ -17,9 +17,9 @@ Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed
 <!-- awf:section when-to-invoke -->
 Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
 
-Load-bearing triggers include:
-{{ range .data.adrTriggers }}- {{ . }}
-{{ end }}
+{{ with .data.adrTriggers }}Load-bearing triggers include:
+{{ range . }}- {{ . }}
+{{ end }}{{ end }}
 <!-- awf:end -->
 
 ## Conventions enforced
@@ -29,7 +29,7 @@ Load-bearing triggers include:
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}` — never hand-copy or shell-copy it yourself.
 - **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `{{ .layout.domainsDir }}/<domain>.md` index).
-- **Required sections:** {{ range .data.adrSections }}{{ . }}, {{ end }}in that order. Delete the authoring checklist before committing.
+- **Required sections:** {{ with .data.adrSections }}{{ range . }}{{ . }}, {{ end }}in that order. {{ else }}follow the ADR template's section order. {{ end }}Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 <!-- awf:end -->
 

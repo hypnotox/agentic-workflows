@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -43,6 +45,45 @@ func TestLoadMalformedYAML(t *testing.T) {
 	}
 	if _, err := Load(fsys); err == nil {
 		t.Fatal("expected error for malformed catalog.yaml, got nil")
+	}
+}
+
+// Catalog default data must be generic: no default names an awf-repo path or
+// command (ADR-0045). Walks every spec's Data recursively down to the strings.
+// invariant: catalog-defaults-generic-denylist
+func TestCatalogDefaultDataIsGeneric(t *testing.T) {
+	cat, err := Load(templates.FS)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	denylist := []string{"./x", "hypnotox/agentic-workflows"}
+	var walk func(t *testing.T, path string, v any)
+	walk = func(t *testing.T, path string, v any) {
+		switch val := v.(type) {
+		case string:
+			for _, banned := range denylist {
+				if strings.Contains(val, banned) {
+					t.Errorf("%s: default data contains %q: %q", path, banned, val)
+				}
+			}
+		case []any:
+			for i, item := range val {
+				walk(t, fmt.Sprintf("%s[%d]", path, i), item)
+			}
+		case map[string]any:
+			for k, item := range val {
+				walk(t, path+"."+k, item)
+			}
+		}
+	}
+	for name, spec := range cat.Skills {
+		walk(t, "skills."+name, spec.Data)
+	}
+	for name, spec := range cat.Agents {
+		walk(t, "agents."+name, spec.Data)
+	}
+	for name, spec := range cat.Singletons {
+		walk(t, "singletons."+name, spec.Data)
 	}
 }
 

@@ -13,9 +13,10 @@ A task skill for mechanical ADR lifecycle transitions — status transitions, su
 ## The states
 
 <!-- awf:section states -->
-| State | Meaning | Mutability |
+{{ with .data.adrStates }}| State | Meaning | Mutability |
 |---|---|---|
-{{ range .data.adrStates }}| `{{ .name }}` | {{ .meaning }} | {{ .mutability }} |
+{{ range . }}| `{{ .name }}` | {{ .meaning }} | {{ .mutability }} |
+{{ end }}{{ else }}The lifecycle states are defined in the ADR index (`{{ .layout.adrReadme }}`).
 {{ end }}
 <!-- awf:end -->
 

@@ -53,22 +53,22 @@ Apply all five lenses to every implementation diff:
 ## Project-specific focus items
 
 <!-- awf:section project-focus -->
-{{ range .data.correctnessTraps }}
+{{ with .data.correctnessTraps }}{{ range . }}
 - {{ .description }}
-{{ end }}
-{{ range .data.focusItems }}
+{{ end }}{{ end }}
+{{ with .data.focusItems }}{{ range . }}
 **{{ .name }}** — {{ .description }}
 
-{{ end }}
+{{ end }}{{ end }}
 <!-- awf:end -->
 
 ## Doc-currency checklist
 
 <!-- awf:section doc-currency -->
-For each item below, flag a finding if the gating condition is met AND the diff does not include a same-commit update of the listed artifact:
+{{ with .data.docCurrencyItems }}For each item below, flag a finding if the gating condition is met AND the diff does not include a same-commit update of the listed artifact:
 
-{{ range .data.docCurrencyItems }}- {{ .check }}
-{{ end }}
+{{ range . }}- {{ .check }}
+{{ end }}{{ end }}
 <!-- awf:end -->
 
 ## Dedup rule

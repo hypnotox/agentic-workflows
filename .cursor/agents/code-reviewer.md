@@ -63,6 +63,12 @@ Apply all five lenses to every implementation diff:
 - template FuncMap functions must handle empty-string vars gracefully
 
 
+**plan-adherence** — the diff matches the plan's stated file paths and content; unexplained drift is a finding
+
+
+**test-coverage** — behaviour changes carry tests in the same commit; no assertion is weakened to pass
+
+
 
 ## Doc-currency checklist
 

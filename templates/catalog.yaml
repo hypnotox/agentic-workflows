@@ -69,6 +69,11 @@ skills:
       - notes
   tdd:
     sections: [surfaces, notes]
+    data:
+      testSurfaces:
+        - {name: Unit, kind: fast isolated test, location: beside the code under test}
+        - {name: Integration, kind: cross-component test, location: the project's integration suite}
+        - {name: End-to-end, kind: full-system test, location: the project's e2e suite}
   debugging:
     sections:
       - symptom-list
@@ -92,6 +97,19 @@ skills:
       - autonomous-rule
       - terminal-step
       - notes
+    data:
+      adrSections:
+        - Context
+        - Decision
+        - Invariants
+        - Consequences
+        - Alternatives Considered
+      adrTriggers:
+        - Introducing or moving a module/package boundary
+        - Adopting a new external dependency
+        - Changing a persisted format (config, lock file, schema, API contract)
+        - Changing the development workflow's rules
+        - Any decision a future maintainer would need to know the "why" for
   adr-lifecycle:
     core: true
     sections:
@@ -107,6 +125,20 @@ skills:
       - commit-templates
       - amendment-while-proposed
       - notes
+    data:
+      adrStates:
+        - name: Proposed
+          meaning: ADR is written and under review; content is freely mutable
+          mutability: Freely mutable — body and status may both change
+        - name: Accepted
+          meaning: Design is finalised; implementation authorised but not yet complete
+          mutability: Status field only — body is frozen
+        - name: Implemented
+          meaning: Design and implementation have both landed in the repository
+          mutability: Status field only — body is frozen
+        - name: Superseded
+          meaning: Replaced by a later ADR; kept for historical record
+          mutability: Status field only — body is frozen
   bugfix:
     sections:
       - test-tiers
@@ -191,17 +223,45 @@ agents:
       - universal-lenses
       - project-focus
       - doc-currency
+    data:
+      focusItems:
+        - name: decision-clarity
+          description: each Decision item is a discrete, implementable commitment a reader could act on without further consultation
+        - name: consequences-honesty
+          description: trade-offs name real costs and operational implications, not straw men
+      docCurrencyItems:
+        - check: every document that states the behaviour this ADR changes is updated in the same commit
+        - check: the decision index is regenerated when the ADR's status changes
   plan-reviewer:
     sections:
       - universal-lenses
       - project-focus
       - doc-currency
       - resync-note
+    data:
+      focusItems:
+        - name: step-exactness
+          description: every task names exact file paths, exact content or diffs, and exact commands with expected output
+        - name: dependency-order
+          description: tasks are ordered so each builds only on already-completed work
+      docCurrencyItems:
+        - check: the plan schedules updates for every document its changes invalidate, in the same commits
   code-reviewer:
     sections:
       - universal-lenses
       - project-focus
       - doc-currency
+    data:
+      correctnessTraps:
+        - description: "error paths: every returned error is checked or explicitly ignored with a stated reason"
+        - description: boundary conditions at empty, zero, and nil inputs
+      focusItems:
+        - name: plan-adherence
+          description: the diff matches the plan's stated file paths and content; unexplained drift is a finding
+        - name: test-coverage
+          description: behaviour changes carry tests in the same commit; no assertion is weakened to pass
+      docCurrencyItems:
+        - check: the change updates every document that states the old behaviour — same commit
 docs:
   architecture:
     title: Architecture

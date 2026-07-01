@@ -9,7 +9,8 @@ The test-first discipline as a project-owned task skill.
 
 <!-- awf:section surfaces -->
 ## Pick the right test surface
-{{ range .data.testSurfaces }}- **{{ .name }}** → {{ .kind }} in `{{ .location }}`
+{{ with .data.testSurfaces }}{{ range . }}- **{{ .name }}** → {{ .kind }} in `{{ .location }}`
+{{ end }}{{ else }}Pick the smallest surface that can prove the behaviour — unit test beside the code when possible.
 {{ end }}
 <!-- awf:end -->
 

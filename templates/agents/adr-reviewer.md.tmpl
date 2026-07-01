@@ -55,19 +55,19 @@ Apply all five lenses to every ADR:
 ## Project-specific focus items
 
 <!-- awf:section project-focus -->
-{{ range .data.focusItems }}
+{{ with .data.focusItems }}{{ range . }}
 **{{ .name }}** — {{ .description }}
 
-{{ end }}
+{{ end }}{{ end }}
 <!-- awf:end -->
 
 ## Doc-currency checklist
 
 <!-- awf:section doc-currency -->
-For each item below, flag a finding if the gating condition is met AND the ADR does not commit (in its body) to a same-commit update of the listed artifact:
+{{ with .data.docCurrencyItems }}For each item below, flag a finding if the gating condition is met AND the ADR does not commit (in its body) to a same-commit update of the listed artifact:
 
-{{ range .data.docCurrencyItems }}- {{ .check }}
-{{ end }}
+{{ range . }}- {{ .check }}
+{{ end }}{{ end }}
 When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.activeMd }}` must be present. Regen command: `{{ .vars.activeMdRegenCmd }}`.
 <!-- awf:end -->
 
