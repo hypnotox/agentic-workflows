@@ -10,6 +10,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 const checkYAML = `prefix: example
@@ -20,12 +21,7 @@ agents: []
 
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, checkYAML)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
@@ -63,12 +59,7 @@ func repinLockVersion(t *testing.T, root, version string) {
 func TestRunCheckAheadNotice(t *testing.T) {
 	setup := func(t *testing.T) string {
 		root := t.TempDir()
-		if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		testsupport.WriteAwfConfig(t, root, checkYAML)
 		if err := runSync(root, io.Discard); err != nil {
 			t.Fatal(err)
 		}
@@ -105,12 +96,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // only invariants.Check does — so its error must propagate out of runCheck.
 func TestRunCheckSurfacesInvariantError(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(checkYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testsupport.WriteAwfConfig(t, root, checkYAML)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
