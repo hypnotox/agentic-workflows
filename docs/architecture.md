@@ -57,8 +57,9 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
   resolve through it across `list`/`add`/`check`/`validate` (ADR-0027).
 - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
-- **`internal/adr/`** — parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their
-  frontmatter; invoked by `awf sync` (`./x sync`).
+- **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
+  frontmatter, and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
+  `awf sync` (`./x sync`) and `awf new adr`.
 - **`templates/`** — embedded skill, agent, doc, and agent-guide templates; the catalog
   lives at `templates/catalog.yaml`.
 - **`changelog/`** — embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package

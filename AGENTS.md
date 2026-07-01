@@ -43,7 +43,7 @@ Hard rules every change must respect:
 - **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source, unless retired by an Implemented successor ADR (ADR-0031). (ADR-0008)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk. (ADR-0020)
-- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
+- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
 - **Self-pinning bootstrap.** The rendered `awf-bootstrap.sh` pins exactly the rendering binary's `project.Version`. (ADR-0040)
 - **Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing. (ADR-0040)
 
