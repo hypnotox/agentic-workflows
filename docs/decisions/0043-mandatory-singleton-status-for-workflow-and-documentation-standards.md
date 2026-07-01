@@ -137,7 +137,11 @@ merely guarded by a parity test.
 11. **`templates/docs/agents-md-standard.md.tmpl:3`**'s hardcoded `doc-standard.md` link target
     becomes `{{ .layout.docStandard }}`, per ADR-0013's "cross-references via layout, not hardcoded
     paths" principle (verified: both docs render to the same `docsDir`, so no relative-path
-    adjustment is needed beyond what `.layout.docStandard` already provides).
+    adjustment is needed beyond what `.layout.docStandard` already provides). Both this field and
+    (per item 10) `.layout.agentsMdStandard`/`.layout.workflowRef` are guaranteed non-empty once
+    their docs become mandatory singletons (items 1, 7), so no template here can render a no-value
+    token for these vars — the `missingkey=zero` constraint (ADR-0001) holds without a conditional
+    guard.
 
 12. **`docs/doc-standard.md`'s Rules section** gains one line: reference an optional/toggleable doc
     only when it is enabled, citing ADR-0020's dead-reference gate as the mechanical enforcement for
@@ -156,9 +160,10 @@ should trigger a new ADR if violated.
   `plainSingletons` table both derive their kind-name membership from `catalog.SingletonKinds()`; a
   test asserts the two sets are identical (accounting for `agents-doc`, which `IsSingletonKind`
   includes but `plainSingletons` deliberately excludes).
-- `inv: plain-singleton-via-renderkind` — every plain singleton (`adr-readme`, `adr-template`,
-  `plans-readme`, `workflow`, `doc-standard`, `agents-md-standard`) renders through `renderKind`; no
-  hand-rolled render loop for this family exists in `render.go`.
+- `inv: plain-singleton-via-renderkind` — a table-driven test exercises `RenderAll` for each of the
+  six plain singletons (`adr-readme`, `adr-template`, `plans-readme`, `workflow`, `doc-standard`,
+  `agents-md-standard`) and asserts each produces its expected output path and content through
+  `plainSingletons` + `renderKind`.
 - `inv: singleton-doc-migration-relocates-parts` — the `singleton-standard-docs` migration relocates
   both the sidecar file and the convention-part directory for each promoted doc, not only its
   `docs:` array entry.
