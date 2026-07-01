@@ -12,6 +12,8 @@ A single gate command runs the project's checks — tests, vet/lint, and any dri
 The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating.
 
 <!-- awf:edit layout — from .awf/docs/parts/testing/layout.md -->
+## Test layout
+
 Package unit tests are Go `_test.go` files in `internal/<pkg>`, in that package's own test
 package (`package <pkg>` or the black-box `package <pkg>_test` where a test needs no access to
 unexported identifiers). Template golden tests — render assertions against the embedded catalog

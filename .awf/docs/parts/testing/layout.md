@@ -1,3 +1,5 @@
+## Test layout
+
 Package unit tests are Go `_test.go` files in `internal/<pkg>`, in that package's own test
 package (`package <pkg>` or the black-box `package <pkg>_test` where a test needs no access to
 unexported identifiers). Template golden tests — render assertions against the embedded catalog
