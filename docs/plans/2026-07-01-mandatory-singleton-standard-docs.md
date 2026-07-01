@@ -69,10 +69,10 @@ dependencies.
 - Modified: `templates/agents-doc/AGENTS.md.tmpl`, `templates/docs/agents-md-standard.md.tmpl`,
   `templates/docs/doc-standard.md.tmpl`
 - Modified: `.awf/docs/parts/architecture/components.md`, `.awf/domains/parts/rendering/current-state.md`,
-  `.awf/domains/parts/config/current-state.md`
+  `.awf/domains/parts/config/current-state.md`, `.awf/domains/parts/tooling/current-state.md`
 - Modified (rendered, via `./x sync`): `AGENTS.md`, `docs/architecture.md`, `docs/doc-standard.md`,
   `docs/agents-md-standard.md`, `docs/workflow.md`, `docs/domains/rendering.md`, `docs/domains/config.md`,
-  `docs/decisions/ACTIVE.md`, `.awf/awf.lock`
+  `docs/domains/tooling.md`, `docs/decisions/ACTIVE.md`, `.awf/awf.lock`
 - Modified: `docs/decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md`
   (frontmatter `status` only)
 
@@ -1771,13 +1771,29 @@ This phase cannot be split across commits: the moment `templates/catalog.yaml` d
   The `config.yaml` that `awf init` scaffolds enables a curated workflow-core set (ADR-0022) — only the catalog's `core`-flagged skills, plus all agents — while seeding every template-referenced var (across all template families, including the always-on plain singletons) so a later opt-in `awf add` renders cleanly. No doc carries `core` any longer: the three docs that used to (`workflow`, `doc-standard`, `agents-md-standard`) are mandatory singletons outside the toggleable `docs:` catalog (ADR-0043), and a schema migration (`{To: 6}`) relocates their sidecar/convention-part paths and strips them from an upgrading project's `docs:` array.
   ```
 
-- [ ] **Task 4.4 — Flip ADR-0043 to Implemented.** In
+- [ ] **Task 4.4 — Update the `tooling` domain narrative.** In
+  `.awf/domains/parts/tooling/current-state.md`, change:
+
+  ```
+  It scaffolds a curated workflow-core default (ADR-0022): only the ten workflow-chain skills and three workflow docs are enabled, alongside all agents; the remaining catalog skills and docs are opt-in via the config arrays or `awf add`.
+  ```
+
+  to:
+
+  ```
+  It scaffolds a curated workflow-core default (ADR-0022): only the ten workflow-chain skills are enabled, alongside all agents; `workflow`/`doc-standard`/`agents-md-standard` are mandatory always-on singletons outside the toggleable `docs:` catalog and no longer scaffold-enabled docs, and no doc carries `core` any longer (ADR-0043); the remaining catalog skills are opt-in via the config arrays or `awf add`.
+  ```
+
+  (This sentence is otherwise unchanged by this plan — it still describes `awf init`'s adapter/pre-flight/prompting behaviour, none of which this ADR touches.)
+
+- [ ] **Task 4.5 — Flip ADR-0043 to Implemented.** In
   `docs/decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md`,
   change the frontmatter `status: Proposed` to `status: Implemented`.
 
-- [ ] **Task 4.5 — Sync, verify, commit.**
+- [ ] **Task 4.6 — Sync, verify, commit.**
   - Run `./x sync`. Expect `awf sync: done` (re-renders `docs/architecture.md`,
-    `docs/domains/rendering.md`, `docs/domains/config.md`, `docs/decisions/ACTIVE.md`).
+    `docs/domains/rendering.md`, `docs/domains/config.md`, `docs/domains/tooling.md`,
+    `docs/decisions/ACTIVE.md`).
   - Run `./x gate`. Expect `coverage: 100.0%` and `0 issues.`
   - Run `./x invariants`. Expect `awf invariants: clean` — confirm every new `inv:` slug from
     ADR-0043 (`singleton-kind-single-source`, `plain-singleton-via-renderkind`,
@@ -1791,10 +1807,10 @@ This phase cannot be split across commits: the moment `templates/catalog.yaml` d
     `catalog.go`'s `docs:` removal for `mandatory-docs-not-in-docs-catalog`).
   - Run `./x check`. Expect `awf check: clean`.
   - Stage `.awf/docs/parts/architecture/components.md .awf/domains/parts/rendering/current-state.md
-    .awf/domains/parts/config/current-state.md
+    .awf/domains/parts/config/current-state.md .awf/domains/parts/tooling/current-state.md
     docs/decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md
-    docs/architecture.md docs/domains/rendering.md docs/domains/config.md docs/decisions/ACTIVE.md
-    .awf/awf.lock`. Commit:
+    docs/architecture.md docs/domains/rendering.md docs/domains/config.md docs/domains/tooling.md
+    docs/decisions/ACTIVE.md .awf/awf.lock`. Commit:
     `docs(awf): document singleton consolidation and implement ADR-0043`
 
 ## Verification (whole change)
