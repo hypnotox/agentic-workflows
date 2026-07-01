@@ -74,6 +74,23 @@ func orphan(t *testing.T, repo *git.Repository) plumbing.Hash {
 	return h
 }
 
+// enableWorktreeConfigExtension mirrors go-git's own TestVerifyExtensions setup
+// (repository_extensions_test.go): it sets extensions.worktreeConfig on the repo's
+// config the way `git config extensions.worktreeConfig true` would, reproducing a
+// repo state real projects can carry (a leftover from a since-removed `git worktree
+// add`), which open real git via git.PlainOpen must tolerate.
+func enableWorktreeConfigExtension(t *testing.T, repo *git.Repository) {
+	t.Helper()
+	cfg, err := repo.Storer.Config()
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	cfg.Raw.Section("extensions").SetOption("worktreeConfig", "true")
+	if err := repo.Storer.SetConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+}
+
 func findChange(changes []FileChange, path string) (FileChange, bool) {
 	for _, ch := range changes {
 		if ch.Path == path {
@@ -277,5 +294,35 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 	}
 	if !got {
 		t.Errorf("Run did not surface uncommitted-changes: %#v", findings)
+	}
+}
+
+// invariant: audit-worktree-config-extension
+func TestCollectWorktreeConfigExtension(t *testing.T) {
+	repo, dir := initRepo(t)
+	base := commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	commit(t, repo, dir, "feat(awf): one", map[string]string{"a.txt": "x\n"})
+	enableWorktreeConfigExtension(t, repo)
+
+	commits, err := Collect(dir, base.String())
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(commits))
+	}
+}
+
+func TestRuleUncommittedChangesWorktreeConfigExtension(t *testing.T) {
+	repo, dir := initRepo(t)
+	commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	enableWorktreeConfigExtension(t, repo)
+
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}})
+	if len(f) != 1 || f[0].Rule != "uncommitted-changes" {
+		t.Fatalf("dirty tree finding = %#v", f)
 	}
 }

@@ -7,10 +7,42 @@ import (
 
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/storage"
+	"github.com/go-git/go-git/v5/storage/filesystem"
 )
+
+// openRepo opens the repo at repoRoot like git.PlainOpen, but hides its
+// [extensions] config section from go-git's own extension-support check
+// (repository_extensions.go verifyExtensions). That check has an upstream bug:
+// it lowercases the incoming extension name ("worktreeconfig") before comparing
+// it against its allow-list, whose key is mixed-case ("worktreeConfig") — the
+// lookup never matches, so PlainOpen rejects any repo with
+// `extensions.worktreeConfig` set (a flag `git worktree add` can leave behind
+// even after the worktree is removed) regardless of repositoryformatversion.
+// Neither Collect nor ruleUncommittedChanges reads repo extensions, so hiding
+// the section is safe.
+func openRepo(repoRoot string) (*git.Repository, error) {
+	st := filesystem.NewStorage(osfs.New(repoRoot+"/.git"), cache.NewObjectLRUDefault())
+	return git.Open(noExtensionsStorer{st}, osfs.New(repoRoot))
+}
+
+type noExtensionsStorer struct {
+	storage.Storer
+}
+
+func (s noExtensionsStorer) Config() (*gitconfig.Config, error) {
+	cfg, err := s.Storer.Config()
+	if err != nil { // coverage-ignore: the underlying filesystem storer's Config() only fails on a corrupt/unreadable .git/config, which the callers' own PlainOpen-equivalent probing has already ruled out
+		return nil, err
+	}
+	cfg.Raw.RemoveSection("extensions")
+	return cfg, nil
+}
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
 // (ADR-0025). It reads live working-tree state via go-git's Worktree().Status(),
@@ -24,7 +56,7 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	if !in.UncommittedChanges {
 		return nil
 	}
-	repo, err := git.PlainOpen(repoRoot)
+	repo, err := openRepo(repoRoot)
 	if err != nil { // coverage-ignore: Run calls Collect first, which opens the same repo and errors earlier on a non-repo
 		return nil
 	}
@@ -63,7 +95,7 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 // as neutral Commit values. Empty range -> nil. Not-a-repo, an unresolvable
 // base, and unrelated histories are errors.
 func Collect(repoRoot, baseBranch string) ([]Commit, error) {
-	repo, err := git.PlainOpen(repoRoot)
+	repo, err := openRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
