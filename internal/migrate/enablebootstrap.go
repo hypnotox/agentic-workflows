@@ -1,8 +1,6 @@
 package migrate
 
 import (
-	"os"
-
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
@@ -14,17 +12,7 @@ import (
 // re-run safe); a config that already carries bootstrap.enabled is overwritten to
 // true (the upgrade default).
 func applyEnableBootstrap(root string) error {
-	cfgPath := config.ConfigPath(root)
-	src, err := os.ReadFile(cfgPath)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil { // coverage-ignore: ReadFile faults only on a permission error that the test root bypasses
-		return err
-	}
-	out, err := config.SetMappingScalar(src, "bootstrap", "enabled", true)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(cfgPath, out, 0o644)
+	return editConfig(root, func(src []byte) ([]byte, error) {
+		return config.SetMappingScalar(src, "bootstrap", "enabled", true)
+	})
 }
