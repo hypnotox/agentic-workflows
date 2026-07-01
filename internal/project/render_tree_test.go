@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // debuggingVars seeds every var the debugging skill template references so it
@@ -78,17 +80,6 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
-func writeFileAt(t *testing.T, root, rel, body string) {
-	t.Helper()
-	abs := filepath.Join(root, rel)
-	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(abs, []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
 // invariant: parts-convention
 func TestConventionPartPrecedence(t *testing.T) {
 	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\n"
@@ -143,12 +134,12 @@ func TestLocalFrontmatterChecked(t *testing.T) {
 		t.Error("expected sync error: local skill file absent")
 	}
 	// (b) Present but with empty name/description fails identically to a rendered target.
-	writeFileAt(t, root, out, "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")
+	testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")
 	if err := p.Sync(); err == nil {
 		t.Error("expected sync error: local skill has empty frontmatter")
 	}
 	// (c) Valid frontmatter → sync succeeds and check reports no frontmatter drift.
-	writeFileAt(t, root, out, "---\nname: my-local\ndescription: a local skill\n---\nbody\n")
+	testsupport.WriteFile(t, filepath.Join(root, out), "---\nname: my-local\ndescription: a local skill\n---\nbody\n")
 	if err := p.Sync(); err != nil {
 		t.Fatalf("sync should succeed with valid local frontmatter: %v", err)
 	}
@@ -174,7 +165,7 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 	}
 	valid := "---\nname: my-local\ndescription: a local skill\n---\nbody\n"
 	// Only the claude copy present → the cursor path is flagged absent.
-	writeFileAt(t, root, ".claude/skills/example-my-local/SKILL.md", valid)
+	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-my-local/SKILL.md"), valid)
 	var fails []string
 	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
 		t.Fatal(err)
@@ -183,7 +174,7 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 		t.Errorf("expected only the cursor path flagged absent, got %v", fails)
 	}
 	// Both copies present → clean.
-	writeFileAt(t, root, ".cursor/skills/example-my-local/SKILL.md", valid)
+	testsupport.WriteFile(t, filepath.Join(root, ".cursor/skills/example-my-local/SKILL.md"), valid)
 	fails = nil
 	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
 		t.Fatal(err)

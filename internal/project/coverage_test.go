@@ -15,7 +15,7 @@ import (
 // the strict decoder rejects (unknown field), so a fresh Sidecar read fails.
 func corruptSidecar(t *testing.T, root, rel string) {
 	t.Helper()
-	writeFileAt(t, root, filepath.Join(".awf", rel), "bogusUnknownField: true\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", rel), "bogusUnknownField: true\n")
 }
 
 // --- Open error paths ---
@@ -314,7 +314,7 @@ func TestCheckLocalFrontmatterSurfacesMalformedSidecar(t *testing.T) {
 
 func TestSyncFailsOnMalformedADR(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-bad.md"),
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
 	p, err := Open(root)
 	if err != nil {
@@ -331,7 +331,7 @@ func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	// A regular file squatting on .claude/skills makes MkdirAll of the skill's
 	// output directory fail for every user (incl. root).
-	writeFileAt(t, root, filepath.Join(".claude", "skills"), "i am a file, not a dir\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills"), "i am a file, not a dir\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -364,7 +364,7 @@ func TestCheckInvariantsReportsUnbacked(t *testing.T) {
 	root := scaffold(t, cfg)
 	adrBody := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Invariants\n- `inv: my-slug`\n## Context\nx\n"))
-	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-first.md"), adrBody)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -397,7 +397,7 @@ func TestOrphansSkipsNonDirAndNonMarkdown(t *testing.T) {
 		"skills/parts/debugging/debugging-surfaces.md": "## Surfaces\n\nbody\n",
 	})
 	// A subdirectory inside the section parts dir is skipped too.
-	writeFileAt(t, root, filepath.Join(".awf", "skills", "parts", "debugging", "sub", "x.md"), "nested\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "debugging", "sub", "x.md"), "nested\n")
 
 	p, err := Open(root)
 	if err != nil {
@@ -601,7 +601,7 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Introduce a malformed ADR; Check regenerates the index and fails.
-	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-bad.md"),
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
 	if _, err := p.Check(); err == nil {
 		t.Fatal("expected Check to fail regenerating the index from a malformed ADR")
@@ -612,7 +612,7 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
-	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-first.md"), adrBody)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)

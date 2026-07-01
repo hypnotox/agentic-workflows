@@ -19,7 +19,7 @@ const domainCfg = "prefix: example\nskills: []\nagents: []\ndomains: [rendering]
 
 func writeADR(t *testing.T, root, name, body string) {
 	t.Helper()
-	writeFileAt(t, root, filepath.Join("docs", "decisions", name), body)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", name), body)
 }
 
 func readDomainDoc(t *testing.T, root, name string) string {
