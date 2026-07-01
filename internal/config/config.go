@@ -168,7 +168,7 @@ func (c *Config) Validate() error {
 	if c.Prefix == "" {
 		return errors.New("prefix must not be empty")
 	}
-	if strings.ContainsAny(c.Prefix, "/\\") || strings.Contains(c.Prefix, "..") {
+	if hasPathSep(c.Prefix) {
 		return fmt.Errorf("prefix %q must not contain path separators", c.Prefix)
 	}
 	if strings.HasPrefix(c.DocsDir, "/") || strings.Contains(c.DocsDir, "..") {
@@ -205,7 +205,7 @@ func (c *Config) Validate() error {
 		return errors.New("targets must not be empty")
 	}
 	for _, t := range c.Targets {
-		if t == "" || strings.ContainsAny(t, "/\\") || strings.Contains(t, "..") {
+		if t == "" || hasPathSep(t) {
 			return fmt.Errorf("target %q must be a non-empty name without path separators", t)
 		}
 	}
@@ -219,10 +219,16 @@ func ValidateDomainName(name string) error {
 	if name == "" {
 		return errors.New("domain name must not be empty")
 	}
-	if strings.ContainsAny(name, "/\\") || strings.Contains(name, "..") {
+	if hasPathSep(name) {
 		return fmt.Errorf("domain %q must not contain path separators or \"..\"", name)
 	}
 	return nil
+}
+
+// hasPathSep reports whether s contains a path separator or a ".." segment — the
+// shared reject condition for prefix/target/domain names.
+func hasPathSep(s string) bool {
+	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")
 }
 
 // validateBasenameGlob rejects a glob that contains a path separator (it must be
