@@ -34,12 +34,6 @@ func (p *Project) layout() Layout {
 	for _, name := range p.Cfg.Docs {
 		docs[name] = p.docOutPath(name)
 	}
-	// invariant: workflow-ref-fallback — retained here as a pending-retirement
-	// backing tag: ADR-0043 (still Proposed) retires this invariant only once
-	// Implemented (ADR-0031's mechanism), so ADR-0013 still requires it backed
-	// until then. The fallback branch itself is already gone below — workflow
-	// can no longer leave Cfg.Docs, so WorkflowRef is always the fixed path.
-	// Delete this tag in the same commit that flips ADR-0043 to Implemented.
 	return Layout{
 		DocsDir:          d,
 		ADRDir:           dec,

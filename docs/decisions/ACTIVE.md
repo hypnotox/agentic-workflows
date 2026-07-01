@@ -46,10 +46,7 @@
 - [ADR-0040: Self-Pinning Rendered Bootstrap](0040-self-pinning-rendered-bootstrap.md) — Implemented
 - [ADR-0041: Embedded Changelog and the `awf changelog` Command](0041-embedded-changelog-command.md) — Implemented
 - [ADR-0042: `awf new adr` Scaffolding Command](0042-adr-scaffolding-command.md) — Implemented
-
-## Proposed
-
-- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) — Proposed
+- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) — Implemented
 
 ## Superseded by ADR-0032
 
