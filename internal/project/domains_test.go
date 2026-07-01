@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -34,9 +35,9 @@ func TestDomainDocRendersIndexAndNarrative(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
 		"domains/parts/rendering/current-state.md": "## Current state\n\nThe render engine is stable.\n",
 	})
-	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
-	writeADR(t, root, "0002-layout.md", "---\nstatus: Accepted\ndomains: [rendering]\n---\n# ADR-0002: Layout\n")
-	writeADR(t, root, "0003-config.md", "---\nstatus: Accepted\ndomains: [config]\n---\n# ADR-0003: Config\n")
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
+	writeADR(t, root, "0002-layout.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: Layout")))
+	writeADR(t, root, "0003-config.md", testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0003: Config")))
 
 	p, err := Open(root)
 	if err != nil {
@@ -68,7 +69,7 @@ func TestDomainDocRendersIndexAndNarrative(t *testing.T) {
 // invariant: domain-doc-regenerated
 func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -80,7 +81,7 @@ func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 		t.Fatalf("expected clean after sync, got: %#v", drift)
 	}
 	// Retag a NEW ADR into the rendering domain without re-syncing.
-	writeADR(t, root, "0002-new.md", "---\nstatus: Accepted\ndomains: [rendering]\n---\n# ADR-0002: New\n")
+	writeADR(t, root, "0002-new.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: New")))
 	drift, err := p.Check()
 	if err != nil {
 		t.Fatalf("Check: %v", err)
@@ -92,7 +93,7 @@ func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 
 func TestDomainDocMissingWhenDeleted(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, _ := Open(root)
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
@@ -108,7 +109,7 @@ func TestDomainDocMissingWhenDeleted(t *testing.T) {
 
 func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-engine.md", "---\nstatus: Implemented\ndomains: [rendering]\n---\n# ADR-0001: Engine\n")
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 	p, _ := Open(root)
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
