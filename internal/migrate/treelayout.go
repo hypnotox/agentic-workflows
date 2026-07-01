@@ -85,21 +85,33 @@ func applyTreeLayout(root string) error {
 // dropping those sections from the sidecar (the convention binds them). drop
 // overrides and data/local stay in the sidecar.
 func portSidecar(awfDir, kind, name string, sc legacySidecar) error {
-	keptSections := map[string]any{}
-	for _, sec := range slices.Sorted(maps.Keys(sc.Sections)) {
-		ov := sc.Sections[sec]
+	kept, err := portSectionOverrides(sc.Sections, awfDir, func(sec string) string {
+		return filepath.Join(awfDir, kind, "parts", name, sec+".md")
+	})
+	if err != nil {
+		return err
+	}
+	return writeSidecarDoc(filepath.Join(awfDir, kind, name+".yaml"), sc.Data, kept, sc.Local, false)
+}
+
+// portSectionOverrides walks a legacy sidecar's section overrides: each replaceWith
+// section is copied out to the convention part at dst(sec); each drop is preserved
+// in the returned kept map. The shared body of portSidecar and portAgentsDoc.
+func portSectionOverrides(sections map[string]legacySectionOverride, awfDir string, dst func(sec string) string) (map[string]any, error) {
+	kept := map[string]any{}
+	for _, sec := range slices.Sorted(maps.Keys(sections)) {
+		ov := sections[sec]
 		if ov.ReplaceWith != "" {
-			dst := filepath.Join(awfDir, kind, "parts", name, sec+".md")
-			if err := copyPart(filepath.Join(awfDir, ov.ReplaceWith), dst); err != nil {
-				return err
+			if err := copyPart(filepath.Join(awfDir, ov.ReplaceWith), dst(sec)); err != nil {
+				return nil, err
 			}
 			continue
 		}
 		if ov.Drop {
-			keptSections[sec] = map[string]any{"drop": true}
+			kept[sec] = map[string]any{"drop": true}
 		}
 	}
-	return writeSidecarDoc(filepath.Join(awfDir, kind, name+".yaml"), sc.Data, keptSections, sc.Local, false)
+	return kept, nil
 }
 
 // portAgentsDoc re-models the agents-doc singleton: the ownership/identity
@@ -130,21 +142,13 @@ func portAgentsDoc(awfDir string, ad legacySidecar) error {
 			return err
 		}
 	}
-	keptSections := map[string]any{}
-	for _, sec := range slices.Sorted(maps.Keys(ad.Sections)) {
-		ov := ad.Sections[sec]
-		if ov.ReplaceWith != "" {
-			dst := filepath.Join(awfDir, "parts", "agents-doc", sec+".md")
-			if err := copyPart(filepath.Join(awfDir, ov.ReplaceWith), dst); err != nil {
-				return err
-			}
-			continue
-		}
-		if ov.Drop {
-			keptSections[sec] = map[string]any{"drop": true}
-		}
+	kept, err := portSectionOverrides(ad.Sections, awfDir, func(sec string) string {
+		return filepath.Join(awfDir, "parts", "agents-doc", sec+".md")
+	})
+	if err != nil {
+		return err
 	}
-	return writeSidecarDoc(filepath.Join(awfDir, "agents-doc.yaml"), data, keptSections, ad.Local, false)
+	return writeSidecarDoc(filepath.Join(awfDir, "agents-doc.yaml"), data, kept, ad.Local, false)
 }
 
 // copyPart reads a legacy part body and writes it verbatim to its convention
