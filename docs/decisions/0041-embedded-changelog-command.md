@@ -63,12 +63,7 @@ type-prefix proxy.
 5. `docs/releasing.md`'s cut-a-release runbook gains a required step to update
    `changelog/CHANGELOG.md`, folded into the existing step that bumps `internal/project/project.go`'s
    `Version` const, so both land in the same release-prep commit.
-6. `internal/audit` gains a new rule, `changelog-cochange` (Warning severity, mirroring the existing
-   `dependency-adr` rule's caution rather than the Error-severity co-change rules): if a commit
-   changes `internal/project/project.go`'s `Version` const without also changing
-   `changelog/CHANGELOG.md`, `awf audit` reports it — giving the new runbook step in Decision 5
-   automated backup rather than relying on memory alone.
-7. `changelog/CHANGELOG.md` is backfilled now for every existing tag, v0.1.0 through the release
+6. `changelog/CHANGELOG.md` is backfilled now for every existing tag, v0.1.0 through the release
    current at authoring time, using real tag dates (`git tag --format='%(creatordate:short)'`), so
    `awf changelog` is useful immediately regardless of which version an adopter is currently on.
 
@@ -82,9 +77,6 @@ type-prefix proxy.
   is chronologically newer than `to` rather than silently reordering them.
 - `inv: changelog-flags-exclusive` — `awf changelog` rejects a command line that sets 2 or more of
   `--version`/`--since`/`--range` at once.
-- `inv: changelog-audit-cochange` — the audit rule described in Decision 6 fires whenever
-  `internal/project/project.go`'s `Version` const changes without `changelog/CHANGELOG.md`
-  co-changing in the same commit.
 - Category placement in `changelog/CHANGELOG.md` (Breaking changes / Features / Bug fixes / Others)
   is judged by adopter-facing effect, not by a commit's Conventional-Commits type or
   `.goreleaser.yaml`'s filter — a textual contract for whoever authors the next release's entry, not
@@ -94,8 +86,8 @@ type-prefix proxy.
 
 Adopters get an always-available, offline `awf changelog`, consistent with every other awf command
 having zero network dependency. Every future release-prep commit gains one more required
-hand-authored artifact — real, ongoing maintenance cost — partially offset by the new advisory
-audit rule (Decision 6) catching an omission.
+hand-authored artifact — real, ongoing maintenance cost, relying on the runbook step in Decision 5
+and reviewer discipline alone, with no automated backstop if it is missed.
 
 The curated changelog will diverge from GoReleaser's auto-generated GitHub Release notes for the
 same tag: different category rules, different inclusion criteria. That is accepted duplication, not
@@ -115,3 +107,4 @@ takes toward `templates.FS`.
 | Generate the changelog from local git tags + Conventional Commits, mirroring `internal/audit`'s commit walk | Only works if the adopter has awf's own source repo cloned locally; most adopters run the installed binary inside an unrelated project and have no such history to walk. |
 | Mirror `.goreleaser.yaml`'s exact type-prefix exclude filter for backfill content | `v0.3.1`'s only user-facing effect landed in a `docs:`-typed commit that touched a rendered template; a hand-curated file has no excuse to inherit an automated proxy's blind spot, so effect-based curation was chosen instead. |
 | Fold Breaking changes into the Features/Bug fixes categories, matching GoReleaser's own grouping | Adopters upgrading need an explicit, scannable signal when a config migration or CLI behavior change requires action; worth diverging from GoReleaser's taxonomy for that visibility. |
+| Add an `internal/audit` rule flagging a `Version`-const change uncoupled from a `changelog/CHANGELOG.md` change | Every existing audit rule sources its paths from configurable `Inputs` fields populated from `.awf/config.yaml`; hardcoding awf's own repo paths would bake a permanent no-op into the shared engine every adopter's `awf audit` runs, and a version-file/changelog-file pairing isn't a shape most adopters are expected to have — deferred rather than generalized or hardcoded. |
