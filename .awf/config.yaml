@@ -54,7 +54,7 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   gateDuration: ~15s
-  invariantTestPath: ""
+  invariantTestPath: ./internal/...
   modulePrefix: github.com/hypnotox/agentic-workflows
   testCmd: go test ./...
 bootstrap:
