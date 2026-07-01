@@ -68,7 +68,7 @@ Pick the status transition, then:
 4. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate — default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
-5. **Run `./x gate`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
+5. **Run the gate (`./x gate`).** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 <!-- awf:edit commit-templates — default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
 ## Commit subject templates

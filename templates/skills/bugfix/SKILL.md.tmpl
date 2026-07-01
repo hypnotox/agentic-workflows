@@ -26,7 +26,7 @@ If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.
 {{ if .layout.docs.pitfalls }}3. **Check `{{ .layout.docs.pitfalls }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 {{ end }}<!-- awf:end -->
 
-4. **Verify via the gates.** `{{ .vars.gateCmd }}` (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+4. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
 5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 
@@ -49,4 +49,4 @@ The oracle is non-negotiable. A fix that adjusts expected output instead of the 
 ## Notes
 
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
-- Doc-currency rule: if the fix invalidates anything documented in any of {{ .vars.docCurrencyTargets }} — update it in the same commit.
+- Doc-currency rule: if the fix invalidates anything documented in {{ with .vars.docCurrencyTargets }}any of {{ . }}{{ else }}the project's docs{{ end }} — update it in the same commit.

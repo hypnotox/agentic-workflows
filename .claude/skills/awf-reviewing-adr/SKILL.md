@@ -38,7 +38,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using the `awf` scope. The agent applies the edits; this skill ensures the commit convention is followed.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
 6. **Re-review loop.** The `adr-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.

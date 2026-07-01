@@ -58,15 +58,15 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 <!-- awf:end -->
 
 <!-- awf:section invariants-rule -->
-5. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.awf/config.yaml` `invariants.sources`, shipping in the same commit. `{{ .vars.checkCmd }}` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `{{ .vars.gateCmd }}` and `{{ .vars.checkCmd }}` to confirm.
+5. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.awf/config.yaml` `invariants.sources`, shipping in the same commit. `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run {{ with .vars.gateCmd }}`{{ . }}` and {{ end }}`{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` to confirm.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-6. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+6. **Regenerate ACTIVE.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
-7. **Commit everything in one commit.** Format: `{{ .vars.adrProposeCommitFmt }}`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+7. **Commit everything in one commit.** Format: `{{ with .vars.adrProposeCommitFmt }}{{ . }}{{ else }}docs(adr): propose NNNN <short title>{{ end }}`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section autonomous-rule -->
@@ -81,7 +81,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 
 <!-- awf:section notes -->
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
-- `{{ .layout.activeMd }}` is never hand-edited; it is always regenerated via `{{ .vars.activeMdRegenCmd }}`.
+- `{{ .layout.activeMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
 - For the full ADR lifecycle, see `{{ .layout.workflowRef }}`.
 <!-- awf:end -->

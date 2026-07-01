@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-executing-plans
-description: Use to execute a written {{ .prefix }} plan inline (one task at a time, in the current session) when the plan's tasks are tightly coupled or sequential. Codifies bite-sized tasks, one commit per task, {{ .vars.gateCmd }} per commit, ADR status flip in the final commit, terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-subagent-driven-development.
+description: Use to execute a written {{ .prefix }} plan inline (one task at a time, in the current session) when the plan's tasks are tightly coupled or sequential. Codifies bite-sized tasks, one commit per task, {{ with .vars.gateCmd }}{{ . }} per commit{{ else }}gate-per-commit{{ end }}, ADR status flip in the final commit, terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-subagent-driven-development.
 ---
 
 # {{ .prefix }}-executing-plans
@@ -35,7 +35,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:section procedure-per-task -->
 3. **Per task — execute, verify, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
-   - **Verify** with `{{ .vars.gateCmd }}` (fast tier). See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
+   - **Verify** with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier). See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
    - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
 <!-- awf:end -->
 
@@ -43,11 +43,11 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-detail -->
-{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier (`{{ .vars.gateCmd }}`) is the default. Run `{{ .vars.gateCmdFull }}` when the regression test lives in a pre-push-only surface:{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .layout.workflowRef }}`.
+{{ if .data.e2eSuitePaths }}   **Gate tiers:** fast tier ({{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}) is the default.{{ with .vars.gateCmdFull }} Run `{{ . }}` when the regression test lives in a pre-push-only surface:{{ end }}{{ range .data.e2eSuitePaths }} `{{ .path }}`{{ end }}. The fast tier does not exercise those surfaces. See `{{ .layout.workflowRef }}`.
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->
-4. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+4. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section procedure-non-adr-final-commit -->

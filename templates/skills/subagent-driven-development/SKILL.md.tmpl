@@ -47,7 +47,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section dispatch-conventions -->
 4. **Per task — dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **`{{ .vars.gateCmd }}` per commit.** Fast tier by default; `{{ .vars.gateCmdFull }}` for the pre-push tier when a pre-push-only surface is involved. See `{{ .layout.workflowRef }}`.
+   - **{{ with .vars.gateCmd }}`{{ . }}`{{ else }}Gate{{ end }} per commit.** Fast tier by default{{ with .vars.gateCmdFull }}; `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
@@ -66,7 +66,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
+7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->

@@ -35,7 +35,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
-3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using `awf` scope. The agent applies the edits; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using the `awf` scope. The agent applies the edits; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
 4. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.

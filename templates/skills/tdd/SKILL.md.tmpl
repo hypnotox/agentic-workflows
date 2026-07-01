@@ -17,9 +17,9 @@ The test-first discipline as a project-owned task skill.
 ## Procedure
 
 1. Write the failing test capturing the wrong (bug) or missing (feature) behaviour.
-2. Run it and confirm it fails for the right reason: `{{ .vars.testCmd }}`.
+2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.
 3. Implement the minimal change to pass.
-4. Run the gate: `{{ .vars.gateCmd }}`.
+4. Run the gate{{ with .vars.gateCmd }}: `{{ . }}`{{ end }}.
 
 <!-- awf:section notes -->
 ## Notes

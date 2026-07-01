@@ -36,7 +36,7 @@ Hard rules every change must respect:
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated — never hand-edited.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
-- **Publication-safe templates.** Wrap optional output in a conditional; no var leaks an unresolved-value token. (ADR-0001)
+- **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
 - **Conventional Commits, `awf` scope.** One concern per commit; stage explicitly, no `git add -A`.
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`. (ADR-0006)

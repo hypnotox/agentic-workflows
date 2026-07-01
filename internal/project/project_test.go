@@ -445,19 +445,23 @@ func TestSyncRendersAgentFromMap(t *testing.T) {
 	}
 }
 
-// TestSyncErrorsOnMissingVar verifies that Sync returns an error when a rendered
-// template would contain the literal string "<no value>" due to a missing var.
-// The tdd skill references {{ .vars.testCmd }} and {{ .vars.gateCmd }} without
-// guards, so omitting them from vars triggers the check.
-func TestSyncErrorsOnMissingVar(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
+// TestSyncErrorsOnUnresolvedValueToken verifies the publication-safety net:
+// Sync errors when rendered output contains the literal unresolved-value token.
+// Since ADR-0045 every shipped var interpolation degrades gracefully, so the
+// trigger here is content that carries the token itself (the ADR-0011/ADR-0014
+// gotcha: prose containing the literal token trips the guard).
+func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n",
+		map[string]string{
+			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
+		})
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	err = p.Sync()
 	if err == nil {
-		t.Fatal("expected Sync to return an error when vars are missing, got nil")
+		t.Fatal("expected Sync to return an error on an unresolved-value token, got nil")
 	}
 	if !strings.Contains(err.Error(), "<no value>") {
 		t.Errorf("error should mention \"<no value>\", got: %v", err)

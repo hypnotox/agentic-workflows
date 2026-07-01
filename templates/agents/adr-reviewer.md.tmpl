@@ -43,7 +43,7 @@ Apply all five lenses to every ADR:
 
 1. **decision-clarity** — each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
 
-1. **invariants-checkability** — each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect. When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ .vars.invariantTestPath }}`.
+1. **invariants-checkability** — each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect.{{ with .vars.invariantTestPath }} When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ . }}`.{{ end }}
 
 1. **alternatives-honesty** — no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
@@ -68,7 +68,7 @@ Apply all five lenses to every ADR:
 
 {{ range . }}- {{ .check }}
 {{ end }}{{ end }}
-When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.activeMd }}` must be present. Regen command: `{{ .vars.activeMdRegenCmd }}`.
+When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.activeMd }}` must be present. Regen command: `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
 <!-- awf:end -->
 
 ## Dedup rule

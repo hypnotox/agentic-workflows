@@ -69,11 +69,11 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-4. **Regenerate ACTIVE.md.** Run `{{ .vars.activeMdRegenCmd }}` to regenerate `{{ .layout.activeMd }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+4. **Regenerate ACTIVE.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
-5. **Run `{{ .vars.gateCmd }}`.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
+5. **Run the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }}.** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section commit-templates -->
@@ -104,6 +104,6 @@ Once `Accepted` or `Implemented`, the body is frozen — only the `status` field
 <!-- awf:section notes -->
 - **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
-- **`{{ .layout.activeMd }}` is auto-generated** by `{{ .vars.activeMdRegenCmd }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
+- **`{{ .layout.activeMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

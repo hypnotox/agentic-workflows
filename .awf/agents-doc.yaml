@@ -14,8 +14,8 @@ data:
         - cmd: awf audit
           desc: report workflow-conformance findings over the branch's commits (advisory)
     invariants:
-        - ref: ADR-0001
-          text: '**Publication-safe templates.** Wrap optional output in a conditional; no var leaks an unresolved-value token.'
+        - ref: ADR-0001, ADR-0045
+          text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
         - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.'
         - text: '**Conventional Commits, `awf` scope.** One concern per commit; stage explicitly, no `git add -A`.'
         - ref: ADR-0006
