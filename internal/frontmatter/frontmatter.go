@@ -15,7 +15,7 @@ import (
 // is false and body is the original content unchanged.
 func Split(content []byte) (yamlBlock []byte, body []byte, found bool) {
 	lines := bytes.SplitAfter(content, []byte("\n")) // keep line terminators
-	if len(lines) == 0 || strings.TrimRight(string(lines[0]), "\r\n") != "---" {
+	if strings.TrimRight(string(lines[0]), "\r\n") != "---" {
 		return nil, content, false
 	}
 	for i := 1; i < len(lines); i++ {
