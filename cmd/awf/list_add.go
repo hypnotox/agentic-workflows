@@ -142,7 +142,35 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 			fmt.Fprintf(stdout, "note: skill %q requires the %q doc, which is not enabled — it will not render until you run `awf add doc %s`\n", name, req, req)
 		}
 	}
+	if kind == "domain" {
+		if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
+			return err
+		}
+	}
 	return runSync(root, stdout)
+}
+
+// domainCurrentStateStub is the starter content for a new domain's current-state
+// convention part: a concrete writing prompt instead of a blank file. It names the
+// doc-standard path in plain text, not a markdown link, since doc-standard is an
+// optional catalog doc — a link would risk ADR-0020's dead-reference gate on a
+// project that hasn't enabled it.
+const domainCurrentStateStub = "Describe where the %q domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.\n"
+
+// scaffoldDomainCurrentState writes name's current-state convention part with a
+// starter prompt, unless one already exists — idempotent, so it never clobbers
+// hand-authored content from a prior add or a manual file.
+func scaffoldDomainCurrentState(p *project.Project, name string) error {
+	path := p.Cfg.PartPath("domains", name, "current-state")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) { // coverage-ignore: fails only on a permission fault a test cannot trigger
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // coverage-ignore: parent is under the just-validated .awf dir; fails only on a permission fault a test cannot trigger
+		return err
+	}
+	return os.WriteFile(path, fmt.Appendf(nil, domainCurrentStateStub, name), 0o644)
 }
 
 func runRemove(root, kind, name string, stdout io.Writer) error {

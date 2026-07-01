@@ -63,6 +63,17 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	if !strings.Contains(readConfig(t, root), "domains:") {
 		t.Error("domains: block not created")
 	}
+	stubPath := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
+	stub, err := os.ReadFile(stubPath)
+	if err != nil {
+		t.Fatalf("read scaffolded current-state.md: %v", err)
+	}
+	if !strings.Contains(string(stub), `"payments" domain`) {
+		t.Errorf("stub does not name the domain: %q", stub)
+	}
+	if !strings.Contains(string(stub), "doc-standard.md") {
+		t.Errorf("stub does not point at the doc standard: %q", stub)
+	}
 
 	// Rejections.
 	if err := runAdd(root, "bogus", "x", io.Discard); err == nil {
@@ -76,6 +87,36 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
 		t.Error("expected already-enabled error")
+	}
+}
+
+// TestRunAddDomainScaffoldIdempotent confirms add domain never clobbers an
+// existing current-state.md — pre-authored content (e.g. from a prior
+// add/remove cycle, or hand-authored before the domain was ever enabled)
+// survives a fresh add.
+func TestRunAddDomainScaffoldIdempotent(t *testing.T) {
+	root := scaffoldedProject(t)
+
+	stubDir := filepath.Join(root, ".awf", "domains", "parts", "billing")
+	if err := os.MkdirAll(stubDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const handAuthored = "Billing settled onto Stripe in 2026Q1; see ADR-0031.\n"
+	stubPath := filepath.Join(stubDir, "current-state.md")
+	if err := os.WriteFile(stubPath, []byte(handAuthored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runAdd(root, "domain", "billing", io.Discard); err != nil {
+		t.Fatalf("add domain billing: %v", err)
+	}
+
+	got, err := os.ReadFile(stubPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != handAuthored {
+		t.Errorf("add domain overwrote hand-authored current-state.md: got %q, want %q", got, handAuthored)
 	}
 }
 
