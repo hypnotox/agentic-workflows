@@ -608,6 +608,13 @@ No new dependencies.
   	}
   }
 
+  func TestRunNewADRError(t *testing.T) {
+  	root := scaffoldProject(t)
+  	if err := runNew(root, "adr", []string{"!!!"}, os.Stdout); err == nil {
+  		t.Fatal("expected NewADR error for an all-punctuation title")
+  	}
+  }
+
   func TestRunNewUnknownKind(t *testing.T) {
   	root := scaffoldProject(t)
   	if err := runNew(root, "skill", []string{"x"}, os.Stdout); err == nil {
@@ -634,7 +641,7 @@ No new dependencies.
   }
   ```
 
-- [ ] **Task 2.7 — Extend the shared gate test.** In `cmd/awf/gate_test.go`, in
+- [ ] **Task 2.7 — Extend the shared gate test and bare-dir test.** In `cmd/awf/gate_test.go`, in
   `TestGatedCommandsRejectAheadSchema`, add one more assertion after the existing `runList` check:
 
   ```go
@@ -643,15 +650,29 @@ No new dependencies.
   	}
   ```
 
+  In `cmd/awf/run_test.go`'s `TestHandlersOnBareDirError`, add a `new` subtest after the existing
+  `list` subtest (covers `runNew`'s `project.Open` error branch):
+
+  ```go
+  	t.Run("new", func(t *testing.T) {
+  		if err := runNew(bare(t), "adr", []string{"x"}, io.Discard); err == nil {
+  			t.Error("expected Open error")
+  		}
+  	})
+  ```
+
 - [ ] **Task 2.8 — Verify and commit.**
   - Run `go build ./...`. Expect no errors.
   - Run `./x gate`. Expect `coverage: 100.0%` and `0 issues.`
   - Run `./x check`. Expect `awf check: clean`.
-  - Manually smoke-test: `go run ./cmd/awf new adr "Smoke Test Title"` in a scratch dir with a
-    synced `.awf/` tree — confirm the printed path exists and contains no marker comments (delete
-    the scratch dir afterward; do not commit it).
-  - Stage `cmd/awf/new.go cmd/awf/new_test.go cmd/awf/main.go cmd/awf/gate_test.go`. Commit:
-    `feat(awf): add awf new adr command`
+  - Manually smoke-test: build the binary (`go build -o /tmp/awf-smoke ./cmd/awf`), then in a
+    scratch dir with a synced `.awf/` tree, `cd` into it and run `/tmp/awf-smoke new adr "Smoke Test
+    Title"` — confirm the printed path exists and contains no marker comments (delete the scratch
+    dir afterward; do not commit it). Do not use `go run -C <repo-root> run ./cmd/awf ...` for this —
+    `-C` changes the *running binary's* working directory too, so it would create the file in this
+    repo's own `docs/decisions/` instead of the scratch dir.
+  - Stage `cmd/awf/new.go cmd/awf/new_test.go cmd/awf/main.go cmd/awf/gate_test.go
+    cmd/awf/run_test.go`. Commit: `feat(awf): add awf new adr command`
 
 ## Phase 3 — Route `awf-proposing-adr` through the new command
 

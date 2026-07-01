@@ -36,7 +36,7 @@ var isInteractive = func() bool {
 // commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
 var commandOrder = []string{
 	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "add", "remove", "upgrade", "uninstall", "changelog", "version",
+	"list", "new", "add", "remove", "upgrade", "uninstall", "changelog", "version",
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -65,7 +65,7 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|add|remove|upgrade|uninstall|changelog|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|new|add|remove|upgrade|uninstall|changelog|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -114,6 +114,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			kindFilter = args[2]
 		}
 		cmdErr = runList(cwd, kindFilter, stdout)
+	case "new":
+		if len(args) < 4 {
+			cmdErr = &usageErr{"usage: awf new <kind> <title>"}
+		} else {
+			cmdErr = runNew(cwd, args[2], args[3:], stdout)
+		}
 	case "add":
 		switch {
 		case len(args) == 4:
@@ -164,7 +170,7 @@ func (e *usageErr) Error() string { return e.msg }
 
 // argSpec declares a subcommand's accepted flags and positional bounds. boolFlags
 // take no value; valueFlags consume the following token; maxPos < 0 is unbounded
-// (add/remove refine their arity in the switch to keep their specific messages).
+// (new/add/remove refine their arity in the switch to keep their specific messages).
 type argSpec struct {
 	boolFlags, valueFlags []string
 	minPos, maxPos        int
@@ -235,6 +241,15 @@ wire this into your own commit-msg hook.
 		help: `Usage: awf list [<kind>]
 
 Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain).
+`,
+	},
+	"new": {
+		maxPos: -1, summary: "Scaffold a new templated artifact — kind ∈ {adr}",
+		help: `Usage: awf new <kind> <title>
+
+Scaffold a new templated artifact. <kind> is adr.
+
+Example: awf new adr "Some Decision Title"
 `,
 	},
 	"add": {

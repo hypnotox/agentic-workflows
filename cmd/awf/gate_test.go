@@ -115,4 +115,7 @@ func TestGatedCommandsRejectAheadSchema(t *testing.T) {
 	if err := runList(root, "", &out); err == nil {
 		t.Error("runList: expected gate error on ahead schema")
 	}
+	if err := runNew(root, "adr", []string{"x"}, &out); err == nil {
+		t.Error("runNew: expected gate error on ahead schema")
+	}
 }

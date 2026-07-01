@@ -189,6 +189,11 @@ func TestHandlersOnBareDirError(t *testing.T) {
 			t.Error("expected Open error")
 		}
 	})
+	t.Run("new", func(t *testing.T) {
+		if err := runNew(bare(t), "adr", []string{"x"}, io.Discard); err == nil {
+			t.Error("expected Open error")
+		}
+	})
 	t.Run("add", func(t *testing.T) {
 		if err := runAdd(bare(t), "skill", "tdd", io.Discard); err == nil {
 			t.Error("expected Open error")
