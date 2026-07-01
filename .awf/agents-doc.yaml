@@ -22,6 +22,8 @@ data:
           text: '**Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`.'
         - ref: ADR-0008
           text: '**Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source, unless retired by an Implemented successor ADR (ADR-0031).'
+        - ref: ADR-0046
+          text: '**No dead skill references.** `awf check` fails on a rendered reference to a catalog skill outside the effective enabled set.'
         - ref: ADR-0012
           text: '**100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`.'
         - ref: ADR-0020

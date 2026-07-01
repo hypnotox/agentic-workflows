@@ -47,11 +47,8 @@
 - [ADR-0042: `awf new adr` Scaffolding Command](0042-adr-scaffolding-command.md) — Implemented
 - [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) — Implemented
 - [ADR-0044: Shared Test-Support Package](0044-shared-test-support-package.md) — Implemented
-
-## Proposed
-
-- [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Proposed
-- [ADR-0046: Skill-reference integrity](0046-skill-reference-integrity.md) — Proposed
+- [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Implemented
+- [ADR-0046: Skill-reference integrity](0046-skill-reference-integrity.md) — Implemented
 
 ## Superseded by ADR-0032
 

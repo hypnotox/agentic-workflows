@@ -363,7 +363,11 @@ the `\`` convention).
   artifact's ConfigHash changes; a skill artifact that never references `.skills` keeps its
   hash. (The AGENTS.md assertion goes green only after task 5.4 makes the template
   reference `.skills` — fine, the phase gates once at 5.8.)
-- [ ] **5.4 Conditionalize non-core references.**
+- [x] **5.4 Conditionalize non-core references.** *(As-built amendment, recorded in
+  ADR-0046 Decision 2: the agent guide's chain prose is additionally gated on
+  `.skills.brainstorming` and the task-skills clause anchors on core `adr-lifecycle`
+  — the original unconditional chain list made every chain-less config, including
+  every minimal test fixture, an illegal state. A partial chain still hard-fails.)*
   - `templates/agents-doc/AGENTS.md.tmpl:55` — replace the trailing task-skills clause with
     (exact replacement; plain conditionals — text/template has no `list`/`append` builtins):
 

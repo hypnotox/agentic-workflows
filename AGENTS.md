@@ -41,6 +41,7 @@ Hard rules every change must respect:
 - **Conventional Commits, `awf` scope.** One concern per commit; stage explicitly, no `git add -A`.
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`. (ADR-0006)
 - **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source, unless retired by an Implemented successor ADR (ADR-0031). (ADR-0008)
+- **No dead skill references.** `awf check` fails on a rendered reference to a catalog skill outside the effective enabled set. (ADR-0046)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk. (ADR-0020)
 - **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
