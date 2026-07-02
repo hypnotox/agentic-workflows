@@ -227,8 +227,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:5a9b5db8d885c0dd34595ffbd0d08035ae821c3cc24671ff1675e0ce270ef091",
-      "configHash": "sha256:c765269e677340da1970a28be7ed160f670a80de968a339778219ab1edfab164",
-      "outputHash": "sha256:177ac9bab7b6b585c32e068b75c5cbd4375b245d2b2ed8b663296c12811b7a9f"
+      "configHash": "sha256:95c3536ba5c542d556fcaac6d922ca6bc2e07d6568d971e768ba0e9a7ee04721",
+      "outputHash": "sha256:24eb0a61cb4771708cea3e537d3c988e8f40ac41717b25ff0f48f26c2281361b"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -317,8 +317,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:83f532a39fd8d932aabe0e55aaf131fcedd63dd40e5bfee8e068803a3b22c1e4",
-      "configHash": "sha256:c06d630d6b9124ef5a3210f4112fa605f29a1b30cea0bffe20b418eb5dbc969f",
-      "outputHash": "sha256:2fffdd8f8ebb80ea1ebb2eb7739c6db2fabdfb719dc3cb4151927c74f0f52481"
+      "configHash": "sha256:0657e2985b7e92531c8f8720997dde5e6c4e30f0667a6b5fd60d8f2840c2e697",
+      "outputHash": "sha256:e4e08f994fb303c5dd1ee665bc48492ac832d335dcc1d7d96c4d9e3a84be404b"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

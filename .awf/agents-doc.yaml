@@ -36,3 +36,7 @@ data:
           text: '**Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing.'
         - ref: ADR-0048
           text: '**Inert hook payloads.** With the `hooks` singleton enabled, exactly three payload scripts render under `.awf/hooks/`; awf never activates hooks or touches git config — the `.githooks/` stubs are this repo''s own wiring.'
+        - ref: ADR-0049
+          text: '**Single version authority.** `awfVersion()` returns `project.Version`; no ldflags var or build info feeds gating, stamping, or pinning, and a schema-generation bump requires a matching `minVersionBySchema` entry and version bump.'
+        - ref: ADR-0049
+          text: '**Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`.'

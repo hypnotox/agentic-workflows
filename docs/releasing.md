@@ -11,14 +11,13 @@ is the canonical install path; `go install` is the source fallback.
 
 ## Versioning
 
-awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). Two version surfaces exist and must
-agree at release time:
-
-- **The git tag** (e.g. `v0.1.0`) — GoReleaser derives the release version from it and stamps it
-  into the binary via `-ldflags "-X main.version=…"`. This drives `awf version` on released builds.
-- **`project.Version`** (`internal/project/project.go`) — the lock's `AWFVersion` and the dev/test
-  fallback for `awf version`. It is **not** ldflags-driven, so renders stay reproducible. Bump it to
-  match the tag in the release-prep commit.
+awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). `project.Version`
+(`internal/project/project.go`) is the single version authority (ADR-0049): it drives `awf
+version`, the lock's `AWFVersion`, the bootstrap pin, and the binary-version gate. The git tag
+must equal it — the Release workflow hard-fails on a mismatch before building, so the tag can
+never mint a version the binary does not carry. Schema-generation bumps raise the floor
+mechanically: `minVersionBySchema` must contain an entry for the current generation, at or
+below `project.Version`, or the gate fails.
 
 ## Cut a release
 
@@ -30,13 +29,12 @@ agree at release time:
 
    All three must pass (`audit` is advisory but should be clean for a release).
 
-2. **Set `project.Version` to the target version and add its changelog entry.** Edit `const
-   Version` in `internal/project/project.go` to the version you are about to tag (without the `v`
-   prefix — e.g. `"0.2.0"`). Add a matching `## [0.2.0] - YYYY-MM-DD` entry to the top of
-   `changelog/CHANGELOG.md` (newest first), grouped into Breaking changes/Features/Bug
-   fixes/Others by adopter-facing effect (ADR-0041). If `project.Version` already matches (as it
-   did for `v0.1.0`), skip the version-const edit, but the changelog entry is still required for
-   every tag.
+2. **Verify `project.Version` equals the target version and add its changelog entry.** A
+   schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
+   matches; bump it only when it does not. Add a matching `## [0.2.0] - YYYY-MM-DD` entry to
+   the top of `changelog/CHANGELOG.md` (newest first), grouped into Breaking
+   changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041). The changelog entry
+   is required for every tag.
 
    ```
    ./x gate && ./x check

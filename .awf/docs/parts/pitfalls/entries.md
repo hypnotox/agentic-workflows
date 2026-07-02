@@ -1,3 +1,11 @@
 ## `awf audit` and `extensions.worktreeConfig`
 
 `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` — a flag `git worktree add` can leave behind even after the worktree is removed — regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/audit/git.go`'s `openRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; neither `Collect` nor `ruleUncommittedChanges` reads repo extensions, so hiding the section is safe. Any future `internal/audit` code opening a repo must go through `openRepo`, not `git.PlainOpen` directly.
+
+## Stdout is API in command-substitution scripts
+
+`.awf/bootstrap.sh` is consumed as `"$(bash .awf/bootstrap.sh)" <args>`, so its stdout is the
+binary path and nothing else — a checksum tool's `<asset>: OK` line on stdout execs as part of
+the command and fails only on cache-miss runs, which presents as flaky CI. Every diagnostic in
+rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`inv:
+bootstrap-stdout-path-only`, ADR-0049).

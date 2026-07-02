@@ -48,6 +48,8 @@ Hard rules every change must respect:
 - **Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` pins exactly the rendering binary's `project.Version`. (ADR-0040)
 - **Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing. (ADR-0040)
 - **Inert hook payloads.** With the `hooks` singleton enabled, exactly three payload scripts render under `.awf/hooks/`; awf never activates hooks or touches git config — the `.githooks/` stubs are this repo's own wiring. (ADR-0048)
+- **Single version authority.** `awfVersion()` returns `project.Version`; no ldflags var or build info feeds gating, stamping, or pinning, and a schema-generation bump requires a matching `minVersionBySchema` entry and version bump. (ADR-0049)
+- **Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`. (ADR-0049)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
