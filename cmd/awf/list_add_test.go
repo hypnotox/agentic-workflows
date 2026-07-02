@@ -279,6 +279,96 @@ func TestDispatchBootstrap(t *testing.T) {
 	}
 }
 
+// TestRunHooksCLI mirrors TestRunBootstrapCLI for the git-hook payloads
+// singleton (ADR-0048): list state, the add/remove toggle round-trip with
+// render/prune, and the guard errors.
+func TestRunHooksCLI(t *testing.T) {
+	// scaffoldProject uses minimalYAML, which carries no hooks key (disabled).
+	root := scaffoldProject(t)
+
+	// list hooks before any change: available, one row per payload.
+	var buf bytes.Buffer
+	if err := runList(root, "hooks", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if out := buf.String(); !strings.Contains(out, "hooks:") ||
+		!strings.Contains(out, ".awf/hooks/pre-commit.sh") ||
+		!strings.Contains(out, ".awf/hooks/commit-msg.sh") ||
+		!strings.Contains(out, ".awf/hooks/pre-push.sh") ||
+		!strings.Contains(out, "available") {
+		t.Errorf("list hooks (initial):\n%s", out)
+	}
+
+	// remove when disabled errors.
+	if err := runRemove(root, "hooks", "", io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "is not enabled") {
+		t.Errorf("expected is-not-enabled error, got %v", err)
+	}
+
+	// add enables it (config gains enabled: true, sync renders the payloads).
+	if err := runAdd(root, "hooks", "", io.Discard); err != nil {
+		t.Fatalf("add hooks: %v", err)
+	}
+	cfg := readConfig(t, root)
+	if !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("hooks not enabled in config:\n%s", cfg)
+	}
+	for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
+		if _, err := os.Stat(filepath.Join(root, ".awf", "hooks", n+".sh")); err != nil {
+			t.Errorf("%s.sh not rendered after add: %v", n, err)
+		}
+	}
+
+	// list hooks now reports enabled.
+	buf.Reset()
+	if err := runList(root, "hooks", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "enabled") {
+		t.Errorf("list hooks (enabled):\n%s", buf.String())
+	}
+
+	// add when already enabled errors.
+	if err := runAdd(root, "hooks", "", io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "already enabled") {
+		t.Errorf("expected already-enabled error, got %v", err)
+	}
+
+	// remove disables it and prunes the rendered files and their directory.
+	if err := runRemove(root, "hooks", "", io.Discard); err != nil {
+		t.Fatalf("remove hooks: %v", err)
+	}
+	if !strings.Contains(readConfig(t, root), "enabled: false") {
+		t.Errorf("hooks not disabled in config:\n%s", readConfig(t, root))
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "hooks")); !os.IsNotExist(err) {
+		t.Errorf(".awf/hooks/ not pruned after remove: err=%v", err)
+	}
+}
+
+// TestDispatchHooks covers run()'s nameless-hooks dispatch branches (ADR-0048),
+// mirroring TestDispatchBootstrap.
+func TestDispatchHooks(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: no hooks key (disabled)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "add", "hooks"}, &out, &errb); code != 0 {
+		t.Fatalf("add hooks dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "hooks:") || !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("hooks not enabled after add dispatch:\n%s", cfg)
+	}
+
+	errb.Reset()
+	if code := run([]string{"awf", "remove", "hooks"}, &out, &errb); code != 0 {
+		t.Fatalf("remove hooks dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
+		t.Errorf("hooks not disabled after remove dispatch:\n%s", cfg)
+	}
+}
+
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {

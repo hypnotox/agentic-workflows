@@ -115,8 +115,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		switch {
 		case len(args) == 4:
 			cmdErr = runAdd(cwd, args[2], args[3], stdout)
-		case len(args) == 3 && args[2] == "bootstrap": // nameless bootstrap form (ADR-0040)
-			cmdErr = runAdd(cwd, "bootstrap", "", stdout)
+		case len(args) == 3 && (args[2] == "bootstrap" || args[2] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
+			cmdErr = runAdd(cwd, args[2], "", stdout)
 		case len(args) == 3:
 			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2])}
 		default:
@@ -126,8 +126,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		switch {
 		case len(args) == 4:
 			cmdErr = runRemove(cwd, args[2], args[3], stdout)
-		case len(args) == 3 && args[2] == "bootstrap": // nameless bootstrap form (ADR-0040)
-			cmdErr = runRemove(cwd, "bootstrap", "", stdout)
+		case len(args) == 3 && (args[2] == "bootstrap" || args[2] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
+			cmdErr = runRemove(cwd, args[2], "", stdout)
 		default:
 			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
 		}
@@ -231,7 +231,7 @@ wire this into your own commit-msg hook.
 		maxPos: 1, summary: "Show targets and their per-project state (all kinds, or one)",
 		help: `Usage: awf list [<kind>]
 
-Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap).
+Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap|hooks).
 `,
 	},
 	"new": {
@@ -244,17 +244,17 @@ Example: awf new adr "Some Decision Title"
 `,
 	},
 	"add": {
-		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap}",
+		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
 		help: `Usage: awf add <kind> <name>
 
-Enable a target. <kind> is skill, agent, doc, domain, target, or bootstrap.
+Enable a target. <kind> is skill, agent, doc, domain, target, bootstrap, or hooks.
 `,
 	},
 	"remove": {
 		maxPos: -1, summary: "Disable a target (a freeform domain, or a catalog target)",
 		help: `Usage: awf remove <kind> <name>
 
-Disable a target — a catalog skill/agent/doc, a freeform domain, an adapter target, or the bootstrap.
+Disable a target — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
 `,
 	},
 	"upgrade": {
