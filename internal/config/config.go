@@ -48,6 +48,7 @@ type Config struct {
 	Invariants *InvariantConfig `yaml:"invariants"`
 	Audit      *AuditConfig     `yaml:"audit"`
 	Bootstrap  *BootstrapConfig `yaml:"bootstrap"`
+	Hooks      *HooksConfig     `yaml:"hooks"`
 	root       string           // <project>/.awf, for sidecar/part resolution
 }
 
@@ -72,6 +73,17 @@ type InvariantSource struct {
 // only Enabled true renders the artifact — a nested enable entry rather than a
 // top-level scalar bool (the Alternatives table rejected the bare bool).
 type BootstrapConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// HooksConfig configures the rendered .awf/hooks/ payload singleton (ADR-0048):
+// three inert git-hook payload scripts adopters wire into hook setups they own.
+// BootstrapConfig semantics: a nil *HooksConfig (key absent) and Enabled false
+// both mean "do not render"; only Enabled true renders the payloads. The key
+// reuses the name the schema-4 drop-hooks migration stripped (ADR-0032); the
+// legacy array shape never reaches this struct — gated commands migrate first,
+// ungated ones fail loudly on the strict parser's type error.
+type HooksConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

@@ -468,6 +468,33 @@ func TestBootstrapConfigDecode(t *testing.T) {
 	}
 }
 
+func TestHooksConfigDecode(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\nhooks:\n  enabled: true\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Hooks == nil || !c.Hooks.Enabled {
+		t.Errorf("hooks = %+v, want enabled true", c.Hooks)
+	}
+
+	absent := writeConfig(t, "prefix: example\n")
+	c2, err := Load(absent)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c2.Hooks != nil {
+		t.Errorf("hooks = %+v, want nil when key absent", c2.Hooks)
+	}
+
+	// The legacy pre-ADR-0032 array shape must fail loudly on the strict
+	// parser, never silently misparse (ADR-0048).
+	legacy := writeConfig(t, "prefix: example\nhooks:\n  - pre-commit\n")
+	if _, err := Load(legacy); err == nil {
+		t.Error("expected legacy hooks array shape to be rejected")
+	}
+}
+
 func TestPathHelpers(t *testing.T) {
 	root := filepath.Join("x", "y")
 	if got, want := RootDir(root), filepath.Join("x", "y", ".awf"); got != want {

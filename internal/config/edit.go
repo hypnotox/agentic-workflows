@@ -22,6 +22,7 @@ type Skeleton struct {
 	Docs       []string          `yaml:"docs"`
 	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
 	Bootstrap  *BootstrapConfig  `yaml:"bootstrap,omitempty"`
+	Hooks      *HooksConfig      `yaml:"hooks,omitempty"`
 }
 
 // CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
