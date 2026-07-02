@@ -69,10 +69,15 @@ Grounding discoveries that shape the design:
    a link target that exists only when bootstrap is enabled would fail the dead-reference
    scan in every project that disables it.
 
+5. **Docs travel with the change.** The implementing commits update every surface
+   enumerated under Consequences, and the commit that flips this ADR's status regenerates
+   `docs/decisions/ACTIVE.md` via `./x sync`.
+
 ## Invariants
 
 - `inv: bootstrap-config-tree-path` — when enabled, the bootstrap renders at
-  `.awf/bootstrap.sh` and nothing renders at the repo root.
+  `.awf/bootstrap.sh` and no rendered output path is `awf-bootstrap.sh` (the retired
+  root location).
 - ADR-0040's `bootstrap-pin` and `bootstrap-checksum` invariants continue to hold at the
   new path (their backing tests assert the relocated output).
 - No awf-managed rendered markdown carries an inline markdown link to the bootstrap path
@@ -88,7 +93,8 @@ Easier:
 
 Harder / accepted trade-offs:
 - Every live surface naming the old path moves in the implementing commits: the render
-  literal and its comments, the `awf list` bootstrap row label
+  literal and the Go comments naming the rendered path (`render.go`, `check.go:199`,
+  `config.go:69`), the `awf list` bootstrap row label
   (`cmd/awf/list_add.go:261`), the path assertions in `bootstrap_test.go` and
   `list_add_test.go`, awf's own AGENTS.md `awf-setup` part and invariants bullet, and the
   `rendering`/`tooling` domain narratives ("repo-root singleton"). Frozen ADR and plan
@@ -98,6 +104,10 @@ Harder / accepted trade-offs:
   ([ADR-0039](0039-binary-version-compatibility-gate.md)) nudging upgrades.
 - The `bash` invocation is one word longer than a direct execution; the alternative
   (shipping an executable bit) would reintroduce the mode special-case ADR-0032 removed.
+- Adopter-authored references to the old path — hook scripts, CI steps, wrappers capturing
+  `"$(bash awf-bootstrap.sh)"` — are outside awf's rendering surface: `awf sync` removes
+  the old file but cannot rewrite what points at it, so each adopter edits those by hand
+  when they upgrade.
 
 ## Alternatives Considered
 
@@ -107,3 +117,4 @@ Harder / accepted trade-offs:
 | `scripts/awf-bootstrap.sh` | Creates or co-opts a top-level directory outside awf's namespace; `.awf/` already marks ownership. |
 | Ship the script executable (mode special-case) | Reintroduces exactly the file-mode machinery ADR-0032 removed; `bash` invocation costs one word. |
 | Rename the template/tid to match | Buys nothing adopter-visible; touches `embed.go` and the tid-keyed coverage test for free churn. |
+| Default-disable the bootstrap instead of relocating | Forfeits the self-pinning win ([ADR-0040](0040-self-pinning-rendered-bootstrap.md)'s root fix) for every adopter who never finds the toggle; the trust objection is the placement, not the artifact's existence. |
