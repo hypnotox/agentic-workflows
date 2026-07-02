@@ -69,6 +69,20 @@ Requires Go 1.26+.
 
 </details>
 
+### Pinning with `.awf/bootstrap.sh`
+
+Projects that enable the `bootstrap` artifact get a small rendered shell script at
+`.awf/bootstrap.sh` (enabled by default on `awf init`). It downloads the **exact awf
+version the repo was rendered with** from GitHub releases, verifies the archive's SHA-256
+against the release checksums before installing, caches the binary under
+`~/.cache/awf/<version>/`, and prints its path — so hooks and CI run the pinned version
+without anyone installing awf by hand:
+
+    "$(bash .awf/bootstrap.sh)" check
+
+It touches nothing outside its cache directory, and `awf remove bootstrap` deletes it if
+you'd rather manage the binary yourself.
+
 ## Quickstart
 
     cd your-project
@@ -90,7 +104,7 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show enabled artifacts/adapters and their per-project state (all kinds, or one; `awf list target` shows adapters). |
-| `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target` (e.g. `awf add target cursor`). |
+| `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap` (e.g. `awf add target cursor`). |
 | `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, or an adapter runtime). |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
@@ -116,6 +130,21 @@ a script under `.git/hooks/`. Have that hook run `awf check` alongside your test
 drift is caught at commit time, not just in CI. If you adopted an earlier awf that ran `awf setup`, your repo's
 `core.hooksPath` still points at the no-longer-rendered `.githooks/`; run `git config --unset
 core.hooksPath` (or keep the now hand-owned hook files) after upgrading.
+
+Local hooks are per-clone, so back them with CI. A minimal GitHub Actions job — the
+bootstrap script keeps CI on the exact awf version the repo was rendered with:
+
+```yaml
+jobs:
+  awf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Drift check (pinned awf)
+        run: '"$(bash .awf/bootstrap.sh)" check'
+      - name: Gate
+        run: make gate # your project's gate command
+```
 
 ## Documentation
 
