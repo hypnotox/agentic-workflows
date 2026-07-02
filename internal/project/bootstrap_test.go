@@ -58,16 +58,55 @@ func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
-	verify := strings.Index(rf.Content, "sha256sum -c")
 	install := strings.Index(rf.Content, "install -m 0755")
-	if verify < 0 {
-		t.Fatalf("bootstrap missing sha256sum -c step:\n%s", rf.Content)
-	}
 	if install < 0 {
 		t.Fatalf("bootstrap missing install step:\n%s", rf.Content)
 	}
-	if verify >= install {
-		t.Errorf("checksum verify (index %d) must precede install (index %d)", verify, install)
+	for _, verify := range []string{"sha256sum -c - >&2", "shasum -a 256 -c - >&2"} {
+		idx := strings.Index(rf.Content, verify)
+		if idx < 0 {
+			t.Fatalf("bootstrap missing checksum branch %q:\n%s", verify, rf.Content)
+		}
+		if idx >= install {
+			t.Errorf("checksum verify %q (index %d) must precede install (index %d)", verify, idx, install)
+		}
+	}
+}
+
+// invariant: bootstrap-stdout-path-only
+func TestBootstrapStdoutPathOnly(t *testing.T) {
+	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
+	}
+	for _, line := range strings.Split(rf.Content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.Contains(trimmed, "echo ") {
+			continue
+		}
+		if trimmed == `echo "$binary"` || strings.Contains(trimmed, ">&2") || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		t.Errorf("stdout-polluting line in bootstrap: %q (only the binary path may print to stdout)", trimmed)
+	}
+}
+
+// invariant: bootstrap-local-first
+func TestBootstrapLocalFirstResolution(t *testing.T) {
+	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
+	}
+	probe := strings.Index(rf.Content, "command -v awf")
+	download := strings.Index(rf.Content, "curl ")
+	if probe < 0 {
+		t.Fatalf("bootstrap missing the local PATH probe:\n%s", rf.Content)
+	}
+	if download >= 0 && probe >= download {
+		t.Errorf("local probe (index %d) must precede the download (index %d)", probe, download)
+	}
+	if !strings.Contains(rf.Content, `[ "${local_version}" = "${AWF_VERSION}" ]`) {
+		t.Errorf("local probe must require an exact pinned-version match:\n%s", rf.Content)
 	}
 }
 

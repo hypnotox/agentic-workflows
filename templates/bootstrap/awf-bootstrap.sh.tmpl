@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 # Fetches and verifies a pinned awf binary, caches it, and prints its path.
+# Stdout carries exactly one line — the resolved binary path; every
+# diagnostic goes to stderr (ADR-0049).
 set -euo pipefail
 
 AWF_VERSION="{{ .version }}"
 REPO="hypnotox/agentic-workflows"
+
+# Local-first: an awf on PATH reporting exactly the pinned version wins over
+# any download (ADR-0049).
+if command -v awf >/dev/null 2>&1; then
+  local_version="$(awf version 2>/dev/null | awk '{print $2}' || true)"
+  if [ "${local_version}" = "${AWF_VERSION}" ]; then
+    command -v awf
+    exit 0
+  fi
+fi
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 arch="$(uname -m)"
@@ -32,7 +44,11 @@ trap 'rm -rf "$tmp"' EXIT
 curl -fsSL "${base}/${asset}" -o "${tmp}/${asset}"
 curl -fsSL "${base}/checksums.txt" -o "${tmp}/checksums.txt"
 
-(cd "$tmp" && grep " ${asset}\$" checksums.txt | sha256sum -c -)
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "$tmp" && grep " ${asset}\$" checksums.txt | sha256sum -c - >&2)
+else
+  (cd "$tmp" && grep " ${asset}\$" checksums.txt | shasum -a 256 -c - >&2)
+fi
 
 tar -xzf "${tmp}/${asset}" -C "$tmp"
 mkdir -p "$cache_dir"
