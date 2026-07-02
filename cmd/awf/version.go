@@ -35,9 +35,6 @@ func versionLine(info *debug.BuildInfo, ok bool) string {
 // gating, lock stamping, or bootstrap pinning.
 func awfVersion() string {
 	// invariant: single-version-authority
-	// invariant: version-ldflags-precedence — stale marker kept while ADR-0049
-	// is Proposed (ADR-0030 still requires the slug and a Proposed retirement
-	// does not drop it, ADR-0031); Task 5.2's flip commit deletes these lines.
 	return project.Version
 }
 
