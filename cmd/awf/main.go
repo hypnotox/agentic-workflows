@@ -224,7 +224,8 @@ Validate one commit message against the Conventional Commits rules (type, scope,
 72-char subject) and exit non-zero on a violation — the commit-side analog of the
 gate. Reads FILE (the path a commit-msg hook passes as $1) or stdin; cleans the
 message git-style and exempts merge/autosquash subjects. awf installs no hook —
-wire this into your own commit-msg hook.
+wire this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh
+payload runs it when the hooks artifact is enabled).
 `,
 	},
 	"list": {

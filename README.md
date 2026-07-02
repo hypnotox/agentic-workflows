@@ -104,8 +104,8 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf sync` | Re-render after a template or config change. |
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show enabled artifacts/adapters and their per-project state (all kinds, or one; `awf list target` shows adapters). |
-| `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap` (e.g. `awf add target cursor`). |
-| `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, an adapter runtime, or the bootstrap). |
+| `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks` (e.g. `awf add target cursor`). |
+| `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, an adapter runtime, the bootstrap, or the hooks). |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
 | `awf upgrade` | Migrate the `.awf/` config tree to the current schema. |
@@ -124,12 +124,16 @@ Run `awf help` for the full synopsis.
 - **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
 - **Back out anytime** — `awf uninstall` removes everything awf generated, leaving your `.awf/` config in place.
 
-awf does **not** install or manage git hooks. To run the gate automatically, install one yourself
-— point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or add
-a script under `.git/hooks/`. Have that hook run `awf check` alongside your test gate so rendered-file
-drift is caught at commit time, not just in CI. If you adopted an earlier awf that ran `awf setup`, your repo's
-`core.hooksPath` still points at the no-longer-rendered `.githooks/`; run `git config --unset
-core.hooksPath` (or keep the now hand-owned hook files) after upgrading.
+awf never installs or activates git hooks — the wiring is yours. It does render hook
+*content*: with the `hooks` artifact enabled (on by default from `awf init`, or `awf add hooks`),
+three inert payload scripts land under `.awf/hooks/` — `pre-commit.sh` (drift check, then your
+gate), `commit-msg.sh` (`awf commit-gate`), and `pre-push.sh` (the fullest gate tier you
+configure) — drift-checked and kept current like every rendered file. Invoke them from wiring
+you own: an executable `.git/hooks/pre-commit` stub containing `exec bash
+.awf/hooks/pre-commit.sh "$@"`, a tracked `core.hooksPath` directory, or your hook manager's
+config. If you adopted an earlier awf that ran `awf setup`, your repo's `core.hooksPath` still
+points at the no-longer-rendered `.githooks/`; run `git config --unset core.hooksPath` (or keep
+the now hand-owned hook files) after upgrading.
 
 Local hooks are per-clone, so back them with CI. A minimal GitHub Actions job — the
 bootstrap script keeps CI on the exact awf version the repo was rendered with:

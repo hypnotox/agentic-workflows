@@ -208,7 +208,7 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:757ce95334fde11cd37455661aaba3b4ee42320283e10cfd84fa06d601223272",
+      "templateHash": "sha256:5a9b5db8d885c0dd34595ffbd0d08035ae821c3cc24671ff1675e0ce270ef091",
       "configHash": "sha256:140ee83ccde712ecc4dce1fcd0214c1b2ea5288e9b0aa8b9dd535990bcee883f",
       "outputHash": "sha256:b33798c207045fcd33aa9e1d5a52d297196f14ca7b3e2129d603e537dcedab0d"
     },
@@ -316,7 +316,7 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:d2928b6827298ab08b8b533ced81b0ab5eec6b69fd8a62da18e368c6000765e7",
+      "templateHash": "sha256:eb21e9278b38dec2caccb606c41ae1907afc2fb0e31dd45c35b5cbba04f9f00c",
       "configHash": "sha256:05572baf16e07a9b04acaed9c547564333e11719296560107b36ee06afacf870",
       "outputHash": "sha256:3b7067757ee9d42e04557b3656a96ac0a936cdde346c767feebe27b1876a01ae"
     }
