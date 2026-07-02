@@ -881,3 +881,33 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 		}
 	}
 }
+
+// A reviewing skill enabled without its dispatched agent fails project open —
+// the error names both sides and the fix (ADR-0050).
+// invariant: reviewing-skill-agent-pairing
+func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [reviewing-impl]\nagents: []\n")
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected pairing error for reviewing-impl without code-reviewer")
+	}
+	want := `skill "reviewing-impl" requires agent "code-reviewer"; enable the agent or disable the skill`
+	if err.Error() != want {
+		t.Errorf("error = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [reviewing-impl]\nagents: [code-reviewer]\n")
+	if _, err := Open(root); err != nil {
+		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
+	}
+}
+
+func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: [reviewing-impl]\nagents: []\n",
+		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"})
+	if _, err := Open(root); err != nil {
+		t.Fatalf("local skill sidecar must skip the pairing check, got: %v", err)
+	}
+}

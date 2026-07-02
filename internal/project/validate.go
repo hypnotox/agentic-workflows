@@ -61,6 +61,16 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		if !slices.Contains(pool, name) {
 			return fmt.Errorf("%s %q is not in the catalog", d.Singular, name)
 		}
+		// Pairing validation (ADR-0050): a reviewing skill may never be enabled
+		// without the agent it dispatches. Unlike requiresDoc suppression, this
+		// is a hard error — a silently-thinner chain is the failure mode the
+		// workflow exists to prevent.
+		// invariant: reviewing-skill-agent-pairing
+		if d.Plural == "skills" {
+			if req := p.Cat.Skills[name].RequiresAgent; req != "" && !slices.Contains(p.Cfg.Agents, req) {
+				return fmt.Errorf("skill %q requires agent %q; enable the agent or disable the skill", name, req)
+			}
+		}
 		if declared, ok := d.sections(p.Cat, name); ok {
 			if err := checkSectionsAllowed(d.Plural, name, declared, sc.Sections); err != nil {
 				return err
