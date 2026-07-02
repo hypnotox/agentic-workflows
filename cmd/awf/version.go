@@ -4,31 +4,60 @@ import (
 	"fmt"
 	"io"
 	"runtime/debug"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// version is the release version stamped into the binary at build time via
-// `-ldflags "-X main.version=<tag>"` (see .goreleaser.yaml). It is empty for
-// `go build`, `go run`, and test builds.
-var version string
-
-// runVersion prints the awf version.
+// runVersion prints the awf version plus display-only build provenance.
 func runVersion(stdout io.Writer) {
-	fmt.Fprintf(stdout, "awf %s\n", awfVersion())
+	info, ok := debug.ReadBuildInfo()
+	fmt.Fprintln(stdout, versionLine(info, ok))
 }
 
-// awfVersion returns the awf version, preferring the ldflags-injected release
-// version, then the module version stamped by `go install module@version`, and
-// finally the embedded project.Version for dev and test builds.
+// versionLine renders the "awf <version>" line, appending display-only build
+// provenance when present (ADR-0049 Decision 2). Split from runVersion so
+// every branch is reachable from tests regardless of what the test binary's
+// own build info carries.
+func versionLine(info *debug.BuildInfo, ok bool) string {
+	line := "awf " + awfVersion()
+	if !ok {
+		return line
+	}
+	if p := formatProvenance(info); p != "" {
+		line += " (" + p + ")"
+	}
+	return line
+}
+
+// awfVersion returns the awf version. project.Version is the single version
+// authority (ADR-0049): no ldflags var or module build info feeds version
+// gating, lock stamping, or bootstrap pinning.
 func awfVersion() string {
-	// invariant: version-ldflags-precedence
-	if version != "" {
-		return version
-	}
-	info, ok := debug.ReadBuildInfo()
-	if ok && info.Main.Version != "" && info.Main.Version != "(devel)" { // coverage-ignore: Main.Version is set only by `go install module@version`, never for test or dev builds
-		return info.Main.Version
-	}
+	// invariant: single-version-authority
+	// invariant: version-ldflags-precedence — stale marker kept while ADR-0049
+	// is Proposed (ADR-0030 still requires the slug and a Proposed retirement
+	// does not drop it, ADR-0031); Task 5.2's flip commit deletes these lines.
 	return project.Version
+}
+
+// formatProvenance renders display-only build metadata — the module version
+// when it adds information beyond the const, and the short VCS revision
+// (ADR-0049 Decision 2).
+func formatProvenance(info *debug.BuildInfo) string {
+	var parts []string
+	if v := info.Main.Version; v != "" && v != "(devel)" && v != "v"+project.Version {
+		parts = append(parts, v)
+	}
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" && s.Value != "" {
+			rev := s.Value
+			if len(rev) > 12 {
+				rev = rev[:12]
+			}
+			parts = append(parts, "rev "+rev)
+			break
+		}
+	}
+	return strings.Join(parts, ", ")
 }

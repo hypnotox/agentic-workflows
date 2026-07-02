@@ -18,6 +18,14 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Verify tag matches project.Version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          want="$(go run ./cmd/awf version | awk '{print $2}')"
+          if [ "$tag" != "$want" ]; then
+            echo "tag v${tag} does not match project.Version ${want}" >&2
+            exit 1
+          fi
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: '~> v2'

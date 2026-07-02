@@ -11,9 +11,9 @@ import (
 )
 
 // normalizeSemver returns s in the single-leading-v form x/mod/semver requires.
-// awfVersion() already returns the v-form for `go install` builds, so a naive
-// prefix would yield "vv0.4.0" and fail semver.IsValid; trimming any existing v
-// first makes the normalization idempotent (ADR-0039 Decision 3).
+// project.Version and lock awfVersion values are the no-v form, but historical
+// locks may carry either; trimming any existing v first makes the
+// normalization idempotent (ADR-0039 Decision 3, single-sourced by ADR-0049).
 func normalizeSemver(s string) (string, bool) {
 	v := "v" + strings.TrimPrefix(s, "v")
 	if !semver.IsValid(v) {
