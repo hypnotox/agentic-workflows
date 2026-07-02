@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-set -euo pipefail
-./x gate full
+exec bash .awf/hooks/pre-push.sh "$@"

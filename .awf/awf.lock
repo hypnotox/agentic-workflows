@@ -2,6 +2,24 @@
   "awfVersion": "0.5.1",
   "schemaVersion": 6,
   "files": {
+    ".awf/hooks/commit-msg.sh": {
+      "templateId": "hooks/commit-msg.sh.tmpl",
+      "templateHash": "sha256:3358e8fb368ece3b4a7933d028136f2bc363c5af35bd5811e4ecd7965c3e5f46",
+      "configHash": "sha256:f581463297d968c356c3092d02c13d287fd8ff0c6946681a93dd49c69abaea25",
+      "outputHash": "sha256:f44e2e4f7f0aac99d35318328e2419c73aa7e8e634e3485a0162e566f877a99f"
+    },
+    ".awf/hooks/pre-commit.sh": {
+      "templateId": "hooks/pre-commit.sh.tmpl",
+      "templateHash": "sha256:649314045d8a6204d5d44ff533a201ce32221f5d759272b9e326e5ffafadd592",
+      "configHash": "sha256:460a3325f9a1423dbe1c70e032d1547705f928640ae9b11bba765f8d5c055bf5",
+      "outputHash": "sha256:57ca891312ed8a8bf13b9cf9fe9fa8d62921159ae87645cd57aa04271cae8ddf"
+    },
+    ".awf/hooks/pre-push.sh": {
+      "templateId": "hooks/pre-push.sh.tmpl",
+      "templateHash": "sha256:61ae20960b9dd638239129059f5f5fa12205ed53b85fd8519d9452cdcd34c427",
+      "configHash": "sha256:265d6326a3515129cc544d1cc0d97f223818c8d84ac9402cf921e6d320bd80fe",
+      "outputHash": "sha256:ba2d9cc2c9eae036b3caecca8479be9d848b67b8f2500d14cbeb42fc47d54e81"
+    },
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:e0b09475fcea1f286bcf339a2c18103d48ddddfe2c079f19573739aec0b56be9",
@@ -209,8 +227,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:5a9b5db8d885c0dd34595ffbd0d08035ae821c3cc24671ff1675e0ce270ef091",
-      "configHash": "sha256:140ee83ccde712ecc4dce1fcd0214c1b2ea5288e9b0aa8b9dd535990bcee883f",
-      "outputHash": "sha256:b33798c207045fcd33aa9e1d5a52d297196f14ca7b3e2129d603e537dcedab0d"
+      "configHash": "sha256:c765269e677340da1970a28be7ed160f670a80de968a339778219ab1edfab164",
+      "outputHash": "sha256:177ac9bab7b6b585c32e068b75c5cbd4375b245d2b2ed8b663296c12811b7a9f"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -270,7 +288,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:d494eadb653dbf2f983553b68d96ff9dc07def52b366e1ecb47bdd56b1d0977b"
+      "outputHash": "sha256:70552e107b033a6a0b224ac7f57dcf309351d2a6ff8550baedf38902856665e2"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -282,13 +300,13 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:e3eebaba71cce18cb8c74e3ad05b856aa769688245f91b66fee7f19f15dcf7a8"
+      "outputHash": "sha256:00d1e4f6197628ac55a51aa4c73a35ea73ba2c38e82df61260b7abb7257f6bd0"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:1b49ae4398c4d9fbc97b9254fadd6f78742dd3fcdf27d8e3c6a2b004f4bbb10b"
+      "outputHash": "sha256:2c276c97dc58971a632f0eb0c9348ce313bc0a813b3613edd1eef9be1667383c"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
@@ -317,8 +335,8 @@
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
       "templateHash": "sha256:eb21e9278b38dec2caccb606c41ae1907afc2fb0e31dd45c35b5cbba04f9f00c",
-      "configHash": "sha256:05572baf16e07a9b04acaed9c547564333e11719296560107b36ee06afacf870",
-      "outputHash": "sha256:3b7067757ee9d42e04557b3656a96ac0a936cdde346c767feebe27b1876a01ae"
+      "configHash": "sha256:cfe19c754491b59e10463845995160b721bd2215ba8b204a1173d6c64d9f4c93",
+      "outputHash": "sha256:81fa284e4092da4434c9dfd4426649940f33b2382e0e4814035d3ea549ea3cdc"
     }
   }
 }

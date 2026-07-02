@@ -1,4 +1,2 @@
 #!/usr/bin/env bash
-set -euo pipefail
-./x check
-./x gate
+exec bash .awf/hooks/pre-commit.sh "$@"

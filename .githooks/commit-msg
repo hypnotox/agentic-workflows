@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-set -euo pipefail
-./x commit-gate "$1"
+exec bash .awf/hooks/commit-msg.sh "$@"
