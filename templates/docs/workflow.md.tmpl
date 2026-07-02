@@ -32,10 +32,28 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
 <!-- awf:end -->
 
+<!-- awf:section composing-the-gate -->
+## Composing the gate
+
+The gate is one command{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} that must be green before every commit. Compose it from three layers:
+
+- **Minimum:** the test suite{{ with .vars.testCmd }} (`{{ . }}`){{ end }}, the language's standard linter, and `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` — so behaviour, style, and rendered-file drift all block a commit.
+- **As the project grows:** add what your stack makes cheap — a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
+- **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier{{ with .vars.gateCmdFull }} (`{{ . }}`){{ end }} that runs before merging or releasing rather than on every commit.
+
+A script or task-runner alias makes the gate one word to run and one place to grow.
+<!-- awf:end -->
+
 <!-- awf:section local-hooks -->
 ## Local git hooks
 
 awf does not install or manage git hooks. To enforce the green-gate rule automatically, install a hook yourself — point `core.hooksPath` at a tracked hook directory (`git config core.hooksPath .githooks`) or drop a script under `.git/hooks/`. Have your pre-commit hook run **`awf check`** (so rendered-file drift fails the commit, not just CI) followed by your test gate; `core.hooksPath` is local, uncommitted config, so each clone wires it once.
 
 `awf commit-gate` is the deterministic, blocking commit-message gate: it validates one commit message against the Conventional Commits rules (type, scope, 72-char subject — the same rules `awf audit` reports) and exits non-zero on a violation, so a bad subject is refused at commit time instead of merely flagged later. Wire it into a `commit-msg` hook that runs `awf commit-gate "$1"` (the hook is yours to install — awf renders none). Run `awf commit-gate --help` for details.
+<!-- awf:end -->
+
+<!-- awf:section ci -->
+## Continuous integration
+
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push, and the fuller tier{{ with .vars.gateCmdFull }} (`{{ . }}`){{ end }} before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints — `"$(bash .awf/bootstrap.sh)" check` — instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
 <!-- awf:end -->

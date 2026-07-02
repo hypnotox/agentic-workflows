@@ -324,7 +324,9 @@ singletons:
       - chain
       - commit-discipline
       - doc-currency
+      - composing-the-gate
       - local-hooks
+      - ci
   doc-standard:
     sections:
       - principles

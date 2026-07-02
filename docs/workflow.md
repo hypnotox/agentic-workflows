@@ -29,6 +29,17 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 
 Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
 
+<!-- awf:edit composing-the-gate — default; create .awf/parts/workflow/composing-the-gate.md to override -->
+## Composing the gate
+
+The gate is one command (`./x gate`) that must be green before every commit. Compose it from three layers:
+
+- **Minimum:** the test suite (`go test ./...`), the language's standard linter, and `./x check` — so behaviour, style, and rendered-file drift all block a commit.
+- **As the project grows:** add what your stack makes cheap — a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
+- **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier (`./x gate full`) that runs before merging or releasing rather than on every commit.
+
+A script or task-runner alias makes the gate one word to run and one place to grow.
+
 <!-- awf:edit local-hooks — from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
@@ -36,3 +47,8 @@ This repository keeps hand-maintained hooks under `.githooks/` (not awf-rendered
 
 `awf commit-gate` is the deterministic, blocking commit-message gate — the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders no hook (ADR-0032); an adopter wires the command into their own `commit-msg` hook — the one-line `.githooks/commit-msg` here is the worked example.
 
+
+<!-- awf:edit ci — default; create .awf/parts/workflow/ci.md to override -->
+## Continuous integration
+
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints — `"$(bash .awf/bootstrap.sh)" check` — instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
