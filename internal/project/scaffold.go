@@ -18,8 +18,8 @@ import (
 // the union of all {{ .vars.X }} names referenced by every catalog template. Each
 // var is seeded with an empty string so that strict render (missingkey=zero +
 // <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
-// skill renders cleanly. It also seeds the self-pinning bootstrap enabled by
-// default (ADR-0040).
+// skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040)
+// and the git-hook payloads (ADR-0048) enabled by default.
 func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig, trim *config.CatalogTrim) ([]byte, error) {
 	cat, err := catalog.Load(templates.FS)
 	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
@@ -42,6 +42,13 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 	// render — their vars must be seeded even though they left cat.Docs (ADR-0043).
 	for _, sg := range plainSingletons {
 		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing template in the embedded FS, so collectVars cannot fail
+			return nil, err
+		}
+	}
+	// Hook payloads render by default (ADR-0048) — seed their vars (commitGateCmd)
+	// so an init prompt answer is not silently dropped.
+	for _, name := range hookNames {
+		if err := collectVars(templates.FS, "hooks/"+name+".sh.tmpl", varSet); err != nil { // coverage-ignore: every hookNames entry has a backing template in the embedded FS, so collectVars cannot fail
 			return nil, err
 		}
 	}
@@ -82,6 +89,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		Docs:       docNames,
 		Invariants: inv,
 		Bootstrap:  &config.BootstrapConfig{Enabled: true},
+		Hooks:      &config.HooksConfig{Enabled: true},
 	})
 }
 

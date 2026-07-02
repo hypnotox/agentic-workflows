@@ -363,6 +363,11 @@ vars:
     description: Command that checks rendered output for drift.
     default: ""
     options: ["./x check", "awf check"]
+  - key: commitGateCmd
+    kind: string
+    description: Command that validates one commit message (the commit-msg hook payload appends the message-file argument).
+    default: ""
+    options: ["./x commit-gate", "awf commit-gate"]
   - key: testCmd
     kind: string
     description: Command that runs the test suite.

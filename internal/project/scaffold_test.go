@@ -39,6 +39,15 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
 		t.Errorf("scaffold bootstrap = %+v, want enabled true", c.Bootstrap)
 	}
+	// invariant: init-hooks-default-on
+	if c.Hooks == nil || !c.Hooks.Enabled {
+		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
+	}
+	// The hook payloads' vars are seeded like every other referenced var, so an
+	// init prompt answer for commitGateCmd is not silently dropped.
+	if !bytes.Contains(b, []byte("commitGateCmd:")) {
+		t.Errorf("scaffold should seed commitGateCmd (referenced by the hook payloads):\n%s", b)
+	}
 }
 
 // writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and

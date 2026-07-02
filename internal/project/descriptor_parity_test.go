@@ -38,6 +38,9 @@ func TestVarDescriptorParity(t *testing.T) {
 	for name := range cat.Docs {
 		paths = append(paths, "docs/"+name+".md.tmpl")
 	}
+	for _, name := range hookNames {
+		paths = append(paths, "hooks/"+name+".sh.tmpl")
+	}
 	for _, p := range paths {
 		src, err := templates.FS.ReadFile(p)
 		if err != nil {
