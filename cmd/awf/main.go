@@ -231,7 +231,7 @@ wire this into your own commit-msg hook.
 		maxPos: 1, summary: "Show targets and their per-project state (all kinds, or one)",
 		help: `Usage: awf list [<kind>]
 
-Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain).
+Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap).
 `,
 	},
 	"new": {
@@ -244,17 +244,17 @@ Example: awf new adr "Some Decision Title"
 `,
 	},
 	"add": {
-		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, bootstrap}",
+		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap}",
 		help: `Usage: awf add <kind> <name>
 
-Enable a target. <kind> is skill, agent, doc, domain, or bootstrap.
+Enable a target. <kind> is skill, agent, doc, domain, target, or bootstrap.
 `,
 	},
 	"remove": {
 		maxPos: -1, summary: "Disable a target (a freeform domain, or a catalog target)",
 		help: `Usage: awf remove <kind> <name>
 
-Disable a target — a catalog skill/agent/doc, a freeform domain, or the bootstrap.
+Disable a target — a catalog skill/agent/doc, a freeform domain, an adapter target, or the bootstrap.
 `,
 	},
 	"upgrade": {

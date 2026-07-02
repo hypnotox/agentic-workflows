@@ -105,7 +105,7 @@ catalog is opt-in with `awf add <kind> <name>` (and `awf remove <kind> <name>` t
 | `awf check` | Fail on stale or hand-edited rendered output. |
 | `awf list [<kind>]` | Show enabled artifacts/adapters and their per-project state (all kinds, or one; `awf list target` shows adapters). |
 | `awf add <kind> <name>` | Enable an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap` (e.g. `awf add target cursor`). |
-| `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, or an adapter runtime). |
+| `awf remove <kind> <name>` | Disable an artifact or adapter (a catalog artifact, a freeform domain, an adapter runtime, or the bootstrap). |
 | `awf audit` | Report workflow-conformance findings over the branch (advisory). |
 | `awf invariants` | Report Implemented-ADR invariants lacking a backing comment. |
 | `awf upgrade` | Migrate the `.awf/` config tree to the current schema. |
