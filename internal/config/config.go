@@ -66,7 +66,8 @@ type InvariantSource struct {
 	Marker string   `yaml:"marker"`
 }
 
-// BootstrapConfig configures the rendered awf-bootstrap.sh singleton (ADR-0040). A
+// BootstrapConfig configures the rendered .awf/bootstrap.sh singleton (ADR-0040,
+// relocated by ADR-0047). A
 // nil *BootstrapConfig (key absent) and Enabled false both mean "do not render";
 // only Enabled true renders the artifact — a nested enable entry rather than a
 // top-level scalar bool (the Alternatives table rejected the bare bool).

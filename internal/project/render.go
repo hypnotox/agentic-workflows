@@ -256,11 +256,12 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rfs...)
 	}
-	// awf-bootstrap.sh (neutral repo-root singleton; rendered only when enabled —
-	// ADR-0040). No catalog spec / no overridable sections, like the CLAUDE.md bridge.
+	// .awf/bootstrap.sh (neutral config-tree singleton; rendered only when enabled —
+	// ADR-0040, relocated by ADR-0047). No catalog spec / no overridable sections,
+	// like the CLAUDE.md bridge.
 	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
 		brf, err := p.renderTarget("bootstrap", "", bootstrapTID,
-			nil, config.Sidecar{}, p.data(config.Sidecar{}), "awf-bootstrap.sh")
+			nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/bootstrap.sh")
 		if err != nil { // coverage-ignore: the bootstrap template references only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
 			return nil, err
 		}

@@ -192,7 +192,7 @@ func TestRunBootstrapCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	if out := buf.String(); !strings.Contains(out, "bootstrap:") ||
-		!strings.Contains(out, "awf-bootstrap.sh") || !strings.Contains(out, "available") {
+		!strings.Contains(out, ".awf/bootstrap.sh") || !strings.Contains(out, "available") {
 		t.Errorf("list bootstrap (initial):\n%s", out)
 	}
 
@@ -210,8 +210,8 @@ func TestRunBootstrapCLI(t *testing.T) {
 	if !strings.Contains(cfg, "bootstrap:") || !strings.Contains(cfg, "enabled: true") {
 		t.Errorf("bootstrap not enabled in config:\n%s", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(root, "awf-bootstrap.sh")); err != nil {
-		t.Errorf("awf-bootstrap.sh not rendered after add: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "bootstrap.sh")); err != nil {
+		t.Errorf("bootstrap.sh not rendered after add: %v", err)
 	}
 
 	// list bootstrap now reports enabled.
@@ -236,8 +236,8 @@ func TestRunBootstrapCLI(t *testing.T) {
 	if !strings.Contains(readConfig(t, root), "enabled: false") {
 		t.Errorf("bootstrap not disabled in config:\n%s", readConfig(t, root))
 	}
-	if _, err := os.Stat(filepath.Join(root, "awf-bootstrap.sh")); !os.IsNotExist(err) {
-		t.Errorf("awf-bootstrap.sh not pruned after remove: err=%v", err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "bootstrap.sh")); !os.IsNotExist(err) {
+		t.Errorf("bootstrap.sh not pruned after remove: err=%v", err)
 	}
 
 	// A broken config surfaces the project.Open error from addRemoveBootstrap.

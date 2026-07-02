@@ -258,7 +258,7 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 			state = "enabled"
 		}
 		fmt.Fprintln(stdout, "bootstrap:")
-		fmt.Fprintf(stdout, "  %-28s %s\n", "awf-bootstrap.sh", state)
+		fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/bootstrap.sh", state)
 		return nil
 	}
 	kinds := project.Kinds()

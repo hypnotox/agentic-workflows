@@ -9,7 +9,7 @@ repository. Read it before taking any action; keep it current as decisions evolv
 
 This project's rendered skills, agents, and docs — and this guide — are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
 
-- **Toggle an artifact or adapter** — `awf add <kind> <name>` / `awf remove <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf add target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the self-pinning `awf-bootstrap.sh` installer singleton (which awf itself disables, building from source). The workflow-chain skills reference one another by name, so disable them as a unit rather than piecemeal, or a handoff will point at a skill that isn't enabled.
+- **Toggle an artifact or adapter** — `awf add <kind> <name>` / `awf remove <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf add target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the self-pinning `.awf/bootstrap.sh` installer singleton (which awf itself disables, building from source). The workflow-chain skills reference one another by name, so disable them as a unit rather than piecemeal, or a handoff will point at a skill that isn't enabled.
 - **Set a variable** — edit `vars` in `.awf/config.yaml`.
 - **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
 - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
@@ -45,7 +45,7 @@ Hard rules every change must respect:
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk. (ADR-0020)
 - **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
-- **Self-pinning bootstrap.** The rendered `awf-bootstrap.sh` pins exactly the rendering binary's `project.Version`. (ADR-0040)
+- **Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` pins exactly the rendering binary's `project.Version`. (ADR-0040)
 - **Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing. (ADR-0040)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
