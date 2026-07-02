@@ -36,3 +36,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0047: Bootstrap relocation into the config tree](../decisions/0047-bootstrap-relocation-into-the-config-tree.md)
 - [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
 
+### Proposed
+
+- [ADR-0050: Reviewing-skill and agent pairing](../decisions/0050-reviewing-skill-and-agent-pairing.md)
+
