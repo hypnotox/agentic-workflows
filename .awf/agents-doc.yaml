@@ -40,3 +40,5 @@ data:
           text: '**Single version authority.** `awfVersion()` returns `project.Version`; no ldflags var or build info feeds gating, stamping, or pinning, and a schema-generation bump requires a matching `minVersionBySchema` entry and version bump.'
         - ref: ADR-0049
           text: '**Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`.'
+        - ref: ADR-0050
+          text: '**Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair.'

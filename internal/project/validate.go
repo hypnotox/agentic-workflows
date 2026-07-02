@@ -80,6 +80,24 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 	return nil
 }
 
+// SkillsRequiringAgent returns the enabled, non-local skills whose catalog
+// spec requires agent — exactly the set the pairing validation would fail on
+// if the agent left the enable array. `awf remove agent` refuses while it is
+// non-empty (ADR-0050).
+func (p *Project) SkillsRequiringAgent(agent string) []string {
+	var out []string
+	for _, name := range p.Cfg.Skills {
+		sc, err := p.Cfg.Sidecar("skills", name)
+		if err != nil || sc.Local { // err: unreachable — Open pre-validated every enabled sidecar
+			continue
+		}
+		if p.Cat.Skills[name].RequiresAgent == agent {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 // checkSectionsAllowed verifies that every key in used appears in declared.
 // kind and name are used only for error formatting; name may be empty for a
 // singleton (e.g. agents-doc).

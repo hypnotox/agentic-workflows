@@ -474,6 +474,84 @@ func TestRunListStatesAndKinds(t *testing.T) {
 	}
 }
 
+// `awf remove agent` refuses upfront — before any config rewrite — while an
+// enabled, non-local skill requires the agent (ADR-0050).
+// invariant: remove-agent-pairing-guard
+func TestRunRemoveAgentPairingGuard(t *testing.T) {
+	root := scaffoldedProject(t) // 10 core skills incl. the reviewing four; all 3 agents
+	before := readConfig(t, root)
+	err := runRemove(root, "agent", "code-reviewer", io.Discard)
+	if err == nil || !strings.Contains(err.Error(), `skill "reviewing-impl" requires agent "code-reviewer"`) {
+		t.Fatalf("expected pairing refusal, got %v", err)
+	}
+	if got := readConfig(t, root); got != before {
+		t.Errorf("config must be untouched on refusal:\n%s", got)
+	}
+
+	// A local sidecar takes the requiring skill out of the pairing's scope,
+	// mirroring the validator exactly.
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-adr.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runRemove(root, "agent", "adr-reviewer", io.Discard); err != nil {
+		t.Fatalf("remove agent with only a local requirer: %v", err)
+	}
+	// The sync inside that removal pruned the formerly-managed rendered file
+	// (no longer produced once the skill is local); restore it so later syncs
+	// pass the local-frontmatter contract (inv: local-frontmatter, ADR-0037).
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-adr", "SKILL.md"),
+		"---\nname: example-reviewing-adr\ndescription: local reviewing skill\n---\nbody\n")
+
+	// Disabling the requiring skill unblocks the removal.
+	if err := runRemove(root, "skill", "reviewing-impl", io.Discard); err != nil {
+		t.Fatalf("remove skill reviewing-impl: %v", err)
+	}
+	if err := runRemove(root, "agent", "code-reviewer", io.Discard); err != nil {
+		t.Fatalf("remove agent after disabling its skill: %v", err)
+	}
+}
+
+// `awf add skill` enables the skill's required agent in the same config
+// rewrite, announced by a note (ADR-0050).
+// invariant: add-skill-pairs-agent
+func TestRunAddSkillPairsAgent(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: skills [tdd], agents []
+	var out bytes.Buffer
+	if err := runAdd(root, "skill", "reviewing-impl", &out); err != nil {
+		t.Fatalf("add skill reviewing-impl: %v", err)
+	}
+	if !strings.Contains(out.String(), `note: also enabled agent "code-reviewer" (required by skill "reviewing-impl")`) {
+		t.Errorf("missing pairing note, got %q", out.String())
+	}
+	cfg := readConfig(t, root)
+	if !strings.Contains(cfg, "- reviewing-impl") || !strings.Contains(cfg, "- code-reviewer") {
+		t.Errorf("expected both skill and agent enabled:\n%s", cfg)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "agents", "code-reviewer.md")); err != nil {
+		t.Errorf("code-reviewer not rendered after paired add: %v", err)
+	}
+
+	// Second paired add enables the shared plan-reviewer once; a skill whose
+	// agent is already enabled adds without a note.
+	out.Reset()
+	if err := runAdd(root, "skill", "reviewing-plan", &out); err != nil {
+		t.Fatalf("add skill reviewing-plan: %v", err)
+	}
+	if !strings.Contains(out.String(), `note: also enabled agent "plan-reviewer"`) {
+		t.Errorf("expected plan-reviewer note, got %q", out.String())
+	}
+	out.Reset()
+	if err := runAdd(root, "skill", "reviewing-plan-resync", &out); err != nil {
+		t.Fatalf("add skill reviewing-plan-resync: %v", err)
+	}
+	if strings.Contains(out.String(), "also enabled agent") {
+		t.Errorf("no note expected when the agent is already enabled, got %q", out.String())
+	}
+}
+
 func TestDispatchAddRemoveList(t *testing.T) {
 	root := scaffoldedProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

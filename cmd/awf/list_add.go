@@ -137,8 +137,23 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 	if slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q already enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, true); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
+	edits := []enableEdit{{key: key, name: name}}
+	// Pairing (ADR-0050): adding a skill that dispatches a reviewer agent
+	// enables the missing agent in the same config rewrite — the additive fix
+	// is safe to apply silently, announced by a note.
+	// invariant: add-skill-pairs-agent
+	var pairedAgent string
+	if kind == "skill" {
+		if req := p.Cat.Skills[name].RequiresAgent; req != "" && !slices.Contains(p.Cfg.Agents, req) {
+			pairedAgent = req
+			edits = append(edits, enableEdit{key: "agents", name: req})
+		}
+	}
+	if err := rewriteConfig(root, true, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
 		return err
+	}
+	if pairedAgent != "" {
+		fmt.Fprintf(stdout, "note: also enabled agent %q (required by skill %q)\n", pairedAgent, name)
 	}
 	// Doc-gated skill: warn when its required doc is not enabled, since it would
 	// otherwise render nothing (inv: doc-gated-skill-suppressed).
@@ -196,7 +211,16 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q is not enabled", kind, name)
 	}
-	if err := rewriteConfig(root, key, name, false); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
+	// Pairing guard (ADR-0050): refuse BEFORE the config rewrite — the
+	// rewrite-then-sync order would otherwise strand a half-broken tree that
+	// every gated command rejects. The predicate is the validator's exactly.
+	// invariant: remove-agent-pairing-guard
+	if kind == "agent" {
+		if paired := p.SkillsRequiringAgent(name); len(paired) > 0 {
+			return fmt.Errorf("skill %q requires agent %q; enable the agent or disable the skill", paired[0], name)
+		}
+	}
+	if err := rewriteConfig(root, false, enableEdit{key: key, name: name}); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
 		return err
 	}
 	if hasSidecarOrParts(root, key, name) {
@@ -205,19 +229,26 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 	return runSync(root, stdout)
 }
 
-// rewriteConfig edits the enable array for key in .awf/config.yaml (adding or
-// removing name) and writes it back.
-func rewriteConfig(root, key, name string, add bool) error {
+// enableEdit is one enable-array edit for rewriteConfig: the config key and
+// the member name to add or remove.
+type enableEdit struct{ key, name string }
+
+// rewriteConfig applies one or more enable-array edits to .awf/config.yaml in
+// a single read-modify-write, so a paired skill+agent add lands in the same
+// config rewrite (ADR-0050).
+func rewriteConfig(root string, add bool, edits ...enableEdit) error {
 	cfgPath := config.ConfigPath(root)
 	b, err := os.ReadFile(cfgPath)
 	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
 		return err
 	}
-	updated, err := config.SetArrayMember(b, key, name, add)
-	if err != nil { // coverage-ignore: callers guard add-present / remove-absent before this, and config.Load already rejected a malformed config, so SetArrayMember cannot error here
-		return err
+	for _, e := range edits {
+		b, err = config.SetArrayMember(b, e.key, e.name, add)
+		if err != nil { // coverage-ignore: callers guard add-present / remove-absent before this, and config.Load already rejected a malformed config, so SetArrayMember cannot error here
+			return err
+		}
 	}
-	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
+	if err := os.WriteFile(cfgPath, b, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
 		return err
 	}
 	return nil
