@@ -20,7 +20,17 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-const Version = "0.5.1"
+// Version is the awf release version — the single version authority
+// (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
+// CLI output all read this const.
+const Version = "0.6.0"
+
+// minVersionBySchema maps each config-schema generation to the minimum
+// project.Version allowed to render it; adding a migration without an entry
+// here (and a matching const bump) fails the gate (ADR-0049 Decision 4).
+var minVersionBySchema = map[int]string{
+	6: "0.6.0",
+}
 
 type Project struct {
 	Root    string
