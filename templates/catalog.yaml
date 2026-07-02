@@ -258,7 +258,7 @@ agents:
     data:
       correctnessTraps:
         - description: "error paths: every returned error is checked or explicitly ignored with a stated reason"
-        - description: boundary conditions at empty, zero, and nil inputs
+        - description: boundary conditions at empty, zero, and null/nil inputs
       focusItems:
         - name: plan-adherence
           description: the diff matches the plan's stated file paths and content; unexplained drift is a finding
@@ -359,7 +359,7 @@ vars:
     options: ["./x gate full"]
   - key: gateDuration
     kind: string
-    description: 'Approximate gate runtime, quoted in docs (e.g. "~15s").'
+    description: 'Gate runtime as quoted in docs; the value carries its own approximation marker (e.g. "~15s").'
     default: ""
     options: ["~15s"]
   - key: checkCmd

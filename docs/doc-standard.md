@@ -15,8 +15,8 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
 - **Present-tense, authoritative voice.** Describe what is; use the imperative for instructions.
 - **Tool-agnostic, action-first.** Rendered skill and agent prose names the action an agent takes, not the tool one runtime exposes to take it: "dispatch a fresh-context subagent", not a runtime's tool name. Project-specific identifiers (skill names, command names) are not runtime tools and stay.
-- **Reference optional docs only when enabled.** Link a toggleable doc only if it is currently enabled in the project's `docs:` array; the dead-reference gate enforces this mechanically for markdown links (ADR-0020).
-- **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a same-`docsDir` sibling doc needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value — using the full value from a file already under `docsDir` doubles the path (ADR-0020).
+- **Reference optional docs only when enabled.** Link a toggleable doc only if it is currently enabled in the project's `docs:` array; the dead-reference gate enforces this mechanically for markdown links.
+- **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a same-`docsDir` sibling doc needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value — using the full value from a file already under `docsDir` doubles the path.
 
 <!-- awf:edit structure — default; create .awf/parts/doc-standard/structure.md to override -->
 ## Structure

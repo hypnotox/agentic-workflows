@@ -39,13 +39,13 @@ Severity is informational only; route by classification kind.
 <!-- awf:section universal-lenses -->
 Apply all five lenses to every implementation diff:
 
-1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (e.g. `%w` wrapping); SQL concurrency issues (wrong index, missing row lock).
+1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (wrapping or context propagation, per the language's idiom); storage-layer concurrency (locking, transaction boundaries).
 
 1. **plan-adherence** — all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
 
-1. **testing-discipline** — every behaviour-changing change has a regression test; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
+1. **testing-discipline** — every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
 
-1. **doc-currency (impl-level)** — ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; CLAUDE.md shape preserved.
+1. **doc-currency (impl-level)** — ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
 
 1. **convention-alignment** — Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 <!-- awf:end -->

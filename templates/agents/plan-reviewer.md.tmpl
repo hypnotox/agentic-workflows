@@ -49,7 +49,7 @@ Apply all five lenses to every plan:
 
 1. **convention-alignment** — Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
-1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 <!-- awf:end -->
 
 ## Project-specific focus items
