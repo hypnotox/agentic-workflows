@@ -113,7 +113,7 @@ The audit's output goes into the ADR's **Context** section under a "Coupling aud
 <!-- awf:edit scope-shrink-rule — default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->
 ## Scope shrink rule
 
-If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a `docs(adr): defer X` amendment to the Context section before implementation starts. Do not proceed with an underscoped ADR.
+If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN — defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
 
 <!-- awf:edit notes — default; create .awf/skills/parts/refactor-coupling-audit/notes.md to override -->
 ## Notes

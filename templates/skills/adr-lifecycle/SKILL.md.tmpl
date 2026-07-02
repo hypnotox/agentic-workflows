@@ -84,8 +84,6 @@ Use these subjects for each transition type:
 - `docs(adr): accept NNNN <short title>` — `Proposed → Accepted`
 - `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` — `Accepted → Implemented` in the final implementation commit
 - `docs(adr): supersede NNNN with MMMM <short title>` — in the successor's introducing commit; predecessor flip lands here
-- `docs(adr): defer NNNN; <one-line reason>` — `Proposed → Deferred`
-- `docs(adr): decline NNNN; <one-line reason>` — `Proposed → Declined`
 <!-- awf:end -->
 
 <!-- awf:section amendment-while-proposed -->
@@ -94,7 +92,7 @@ Use these subjects for each transition type:
 While `status: Proposed`, all sections may be amended freely as edge cases or scope refinements surface. Two flavours:
 
 - **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
-- **Deferral.** When scope shrinks mid-flight, open a `docs(adr): defer <title>; <reason>` commit that updates the ADR Context with what was learned. Deferred work lands in a follow-up ADR or the roadmap.
+- **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why — commit as `docs(adr): amend NNNN — defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
 
 Once `Accepted` or `Implemented`, the body is frozen — only the `status` field is editable in place.
 <!-- awf:end -->
