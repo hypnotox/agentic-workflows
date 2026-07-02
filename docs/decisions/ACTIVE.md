@@ -54,6 +54,10 @@
 - [ADR-0049: Single version authority](0049-single-version-authority.md) — Implemented
 - [ADR-0050: Reviewing-skill and agent pairing](0050-reviewing-skill-and-agent-pairing.md) — Implemented
 
+## Proposed
+
+- [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
