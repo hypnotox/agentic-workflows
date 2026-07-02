@@ -5,8 +5,8 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [config, init, audit]
-related: [0017, 0029, 0036]
-domains: [config]
+related: [0017, 0029, 0036, 0045, 0046]
+domains: [config, rendering]
 ---
 # ADR-0051: Single commit-scope knob
 
@@ -35,10 +35,11 @@ answers into the invariants block (`invariants-marker`, `invariants-globs`) and 
    migration, no schema bump.
 
 2. **New descriptor target `audit-scopes`.** A `commitScopes` string descriptor replaces the
-   `commitScope` var descriptor: the answer is comma-split, trimmed, and written to
-   `audit.allowedScopes` by `ScaffoldConfig`; an empty answer writes nothing (audit semantics:
-   nil = accept any, per ADR-0017). `awf init --describe` documents the comma convention in the
-   descriptor description.
+   `commitScope` var descriptor: `initspec.Resolve` routes the answer (comma-split, trimmed) out
+   of the vars map — the same seam as the invariants and catalog-trim targets — and
+   `ScaffoldConfig` writes it to `audit.allowedScopes`; an empty answer writes nothing (audit
+   semantics: nil = accept any, per ADR-0017). `awf init --describe` documents the comma
+   convention in the descriptor description.
 
 3. **Templates read scopes from the render context.** `Project.data()` gains a `commitScopes`
    key: the display-formatted scope list from the resolved audit settings (e.g. `` `adr`, `awf`,
@@ -47,17 +48,29 @@ answers into the invariants block (`invariants-marker`, `invariants-globs`) and 
    commit scope conventions"). Prose and gate now agree by construction: both read
    `audit.allowedScopes` through the same `audit.Resolve` path.
 
+   Because `commitScopes` is a render input outside the vars map, it must also join the drift
+   signal: `artifactConfigHash` folds the resolved scope list into the hash of any artifact whose
+   assembled template references `.commitScopes` (a `render.ReferencesScopes` gate, mirroring the
+   ADR-0046 `ReferencesSkills` mechanism). Without this, editing `audit.allowedScopes` changes
+   fresh render output while `awf check` — comparing only template and config hashes against the
+   lock — reports clean, breaking the drift oracle.
+
 4. **Descriptor parity holds.** The var-descriptor parity test (ADR-0029) covers targeted
    descriptors; `commitScopes` joins the descriptor list with its target, and
    `render.ReferencedVars` no longer sees a `commitScope` var to seed.
 
 ## Invariants
 
-- `inv: commit-scope-single-storage` — no shipped template reads a `commitScope` var; every
-  rendered commit-scope mention derives from `audit.allowedScopes` via the render context.
+- `inv: commit-scope-single-storage` — no file under `templates/` contains the string
+  `.vars.commitScope`, and the catalog `vars:` block carries no `commitScope` descriptor; every
+  rendered commit-scope mention derives from `audit.allowedScopes` via the `commitScopes` render
+  context key.
 - `inv: audit-scopes-descriptor-routed` — the `commitScopes` init answer lands in
   `audit.allowedScopes` (comma-split, trimmed), and an empty answer leaves the audit block
   unwritten.
+- `inv: scopes-in-confighash` — the resolved scope list participates in `artifactConfigHash` for
+  every artifact whose assembled template references `.commitScopes`, so an `audit.allowedScopes`
+  edit flags those artifacts stale in `awf check`.
 - The rendered prose and `commit-gate` can never disagree on scopes (textual contract — both
   consume `audit.Resolve`).
 
@@ -70,6 +83,10 @@ answers into the invariants block (`invariants-marker`, `invariants-globs`) and 
 - Adopters who set only the old var lose the prose mention until they set
   `audit.allowedScopes` (the fallback prose keeps the sentence coherent); the changelog entry
   for the next release names the swap.
+- The ADR-0045 render-completeness advisory (`UnsetVarNotes`) stops covering the scope mention:
+  it scans referenced *vars*, and `commitScopes` is no longer one. This is accepted rather than
+  worked around — unset scopes is a valid accept-any configuration (ADR-0017), not a config gap,
+  so an "unset" note would be noise.
 - `.awf/config.yaml` in this repo drops `vars.commitScope`; rendered reviewing skills re-render
   with the plural form.
 
@@ -78,5 +95,6 @@ answers into the invariants block (`invariants-marker`, `invariants-globs`) and 
 | Alternative | Why not chosen |
 |---|---|
 | Keep both knobs, document the difference | The names invite the confusion the analysis reproduced; documentation does not remove a trap, it annotates it. |
+| Keep both knobs, have `awf check` enforce agreement (`vars.commitScope` ∈ `audit.allowedScopes`) | Still two storages to edit; the check flags the drift instead of removing the duplicate knob, and the accept-any nil case makes agreement semantics awkward (any var value "agrees" with no scopes). |
 | Seed `audit.allowedScopes` from the `commitScope` var at init | Prose and gate still read different storage after init; hand-drift returns the moment either is edited. |
 | Expose raw `[]string` scopes to templates | Pushes list-formatting into every template site; a Go-computed display string keeps templates dumb and uniform. |
