@@ -272,7 +272,7 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 			state = "enabled"
 		}
 		fmt.Fprintln(stdout, "hooks:")
-		for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
+		for _, n := range project.HookNames() {
 			fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/hooks/"+n+".sh", state)
 		}
 		return nil

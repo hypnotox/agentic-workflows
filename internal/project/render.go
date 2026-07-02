@@ -25,6 +25,10 @@ const (
 // unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
 var hookNames = []string{"pre-commit", "commit-msg", "pre-push"}
 
+// HookNames returns the git-hook payload names the hooks singleton renders
+// (ADR-0048), for CLI surfaces that enumerate them (the KnownTargets pattern).
+func HookNames() []string { return slices.Clone(hookNames) }
+
 type RenderedFile struct {
 	Path         string
 	Content      string
