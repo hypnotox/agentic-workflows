@@ -52,6 +52,10 @@
 - [ADR-0047: Bootstrap relocation into the config tree](0047-bootstrap-relocation-into-the-config-tree.md) — Implemented
 - [ADR-0048: Rendered git-hook payloads singleton](0048-rendered-git-hook-payloads-singleton.md) — Implemented
 
+## Proposed
+
+- [ADR-0049: Single version authority](0049-single-version-authority.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
