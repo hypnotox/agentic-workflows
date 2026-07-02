@@ -10,11 +10,11 @@ arch="$(uname -m)"
 case "$arch" in
   x86_64|amd64) arch="amd64" ;;
   arm64|aarch64) arch="arm64" ;;
-  *) echo "awf-bootstrap: unsupported arch: $arch" >&2; exit 1 ;;
+  *) echo "awf bootstrap: unsupported arch: $arch" >&2; exit 1 ;;
 esac
 case "$os" in
   linux|darwin) ;;
-  *) echo "awf-bootstrap: unsupported os: $os" >&2; exit 1 ;;
+  *) echo "awf bootstrap: unsupported os: $os" >&2; exit 1 ;;
 esac
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/awf/${AWF_VERSION}"
