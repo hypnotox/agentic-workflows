@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [hooks, rendering, adoption, tooling]
-related: [0023, 0032, 0036, 0039, 0040, 0045, 0047]
+related: [0023, 0032, 0035, 0036, 0039, 0040, 0045, 0047]
 domains: [rendering, config, tooling]
 ---
 # ADR-0048: Rendered git-hook payloads singleton
@@ -123,8 +123,10 @@ adopters own all hook *wiring* — awf never touches `.git/` or git config.
    inert until the adopter invokes them from wiring they own — a hand-written stub, a
    `core.hooksPath` directory, husky/lefthook, or CI. This ADR **partially supersedes
    ADR-0032** (recorded via `related`; ADR-0032 stays `Implemented`): its Decision item 1
-   (no rendered hook files) and the textual invariant "the catalog and config schema
-   declare no `hook` kind or `hooks` key" are superseded by items 1-2 above; its Decision
+   (no rendered hook files) and the `hooks`-key clause of its textual invariant "the
+   catalog and config schema declare no `hook` kind or `hooks` key" are superseded by
+   items 1-2 above — the rest of that invariant stays true: the catalog still declares no
+   `hook` kind, and `.githooks/` still receives no rendered files. Its Decision
    items 2 (no activation) and 6 (`setup-guards-hookspath` retired) remain in force, and
    `inv: hooks-config-dropped` remains valid for the legacy array shape.
 
@@ -213,7 +215,9 @@ Doc-currency obligations the implementing commits must satisfy:
   `templates/embed.go` re-adds the hooks template directory.
 - The `rendering`, `config`, and `tooling` domain narratives reflect the singleton.
 - awf's own `.awf/config.yaml`, rendered tree, and `.githooks/` stubs land together with
-  the dogfood flip.
+  the dogfood flip, and its `.awf/agents-doc.yaml` invariants entries gain the new
+  hook-payload invariants (the ADR-0047 precedent: the agent guide's Invariants list
+  travels with the dogfooded change).
 
 ## Alternatives Considered
 
