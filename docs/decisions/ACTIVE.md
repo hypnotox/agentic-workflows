@@ -49,10 +49,7 @@
 - [ADR-0044: Shared Test-Support Package](0044-shared-test-support-package.md) — Implemented
 - [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Implemented
 - [ADR-0046: Skill-reference integrity](0046-skill-reference-integrity.md) — Implemented
-
-## Proposed
-
-- [ADR-0047: Bootstrap relocation into the config tree](0047-bootstrap-relocation-into-the-config-tree.md) — Proposed
+- [ADR-0047: Bootstrap relocation into the config tree](0047-bootstrap-relocation-into-the-config-tree.md) — Implemented
 
 ## Superseded by ADR-0032
 

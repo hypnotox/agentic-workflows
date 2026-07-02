@@ -33,8 +33,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md)
 - [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
 - [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
-
-### Proposed
-
 - [ADR-0047: Bootstrap relocation into the config tree](../decisions/0047-bootstrap-relocation-into-the-config-tree.md)
 
