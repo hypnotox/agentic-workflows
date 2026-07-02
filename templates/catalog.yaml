@@ -146,6 +146,7 @@ skills:
       - oracle-note
   reviewing-plan:
     core: true
+    requiresAgent: plan-reviewer
     sections:
       - when-fires
       - procedure
@@ -158,6 +159,7 @@ skills:
       - notes
   reviewing-plan-resync:
     core: true
+    requiresAgent: plan-reviewer
     sections:
       - when-fires
       - dispatch-subagent-narrowed
@@ -168,6 +170,7 @@ skills:
       - notes
   reviewing-adr:
     core: true
+    requiresAgent: adr-reviewer
     sections:
       - when-fires
       - procedure
@@ -181,6 +184,7 @@ skills:
       - notes
   reviewing-impl:
     core: true
+    requiresAgent: code-reviewer
     sections:
       - when-fires
       - sha-range-detection

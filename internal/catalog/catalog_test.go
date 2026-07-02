@@ -110,3 +110,29 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 		}
 	}
 }
+
+// Every reviewing skill is a thin dispatcher around one reviewer agent; the
+// catalog must pair them so the ADR-0050 validation can enforce it — the
+// prefix anchor keeps a future reviewing skill from reopening the blind spot.
+// invariant: reviewing-skill-specs-paired
+func TestReviewingSkillSpecsArePaired(t *testing.T) {
+	cat, err := Load(templates.FS)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for name, spec := range cat.Skills {
+		if !strings.HasPrefix(name, "reviewing-") {
+			if spec.RequiresAgent != "" {
+				t.Errorf("skill %q: requiresAgent %q on a non-reviewing skill (ADR-0050 scopes the field to dispatchers)", name, spec.RequiresAgent)
+			}
+			continue
+		}
+		if spec.RequiresAgent == "" {
+			t.Errorf("reviewing skill %q carries no requiresAgent", name)
+			continue
+		}
+		if _, ok := cat.Agents[spec.RequiresAgent]; !ok {
+			t.Errorf("skill %q requires agent %q, which is not in the catalog agents map", name, spec.RequiresAgent)
+		}
+	}
+}
