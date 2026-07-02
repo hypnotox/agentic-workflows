@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [version-ldflags-precedence]
 superseded_by: ""
 tags: [versioning, release, bootstrap]
-related: [30, 39, 40, 48]
+related: [0030, 0039, 0040, 0048]
 domains: [tooling]
 ---
 # ADR-0049: Single version authority
@@ -18,7 +18,9 @@ version from `debug.ReadBuildInfo()` (`go install` builds), and the `project.Ver
 (dev/test fallback). Meanwhile `Sync` stamps the **const** into the lock's `AWFVersion`
 (`internal/project/project.go:128`), and the rendered bootstrap pins the **const** (ADR-0040).
 
-A 2026-07-02 analysis reproduced three failures born from this split:
+A 2026-07-02 analysis reproduced three failures — items 1 and 2 born from this split, item 3 an
+independent bootstrap-contract defect batched here because Decisions 5–7 reopen the ADR-0040
+contract the version fix already perturbs:
 
 1. **A permanent, un-clearable version note.** Go now stamps a VCS pseudo-version into plain
    `go build` binaries (verified: `go build` at HEAD reports `v0.5.2-0.20260702…`), so the
@@ -40,6 +42,13 @@ A 2026-07-02 analysis reproduced three failures born from this split:
    and when the pinned version has no published release yet, direct bootstrap callers hard-fail
    (the hook shim's fetch-failure fallback to a PATH `awf` is the only escape, per ADR-0048).
 
+This decision adopts what ADR-0030's alternatives table rejected ("Bump `project.Version` const
+only, no ldflags var"). Each of that rejection's reasons is answered rather than ignored: the
+tag==const guard it "relies on" becomes a pipeline hard-fail (Decision 3), snapshot builds keep
+their `git describe`-style detail as display-only provenance (Decision 2), and coupling the lock
+version to the CLI display is no longer a cost but the point — one identity everywhere is what
+removes the split behind failures 1 and 2.
+
 ## Decision
 
 1. **`project.Version` is the sole version authority.** `awfVersion()` returns `project.Version`
@@ -48,22 +57,27 @@ A 2026-07-02 analysis reproduced three failures born from this split:
    errors, the check ahead-note, the lock stamp, and the bootstrap pin all read the same value;
    `awf sync` therefore genuinely clears an ahead-note, making ADR-0039 Decision 3's
    parenthetical true as written. Amends ADR-0030 Decision 4 (the precedence chain is retired
-   with its invariant).
+   with its invariant, and ADR-0030's textual contract that `.goreleaser.yaml` injects
+   `main.version` lapses with it).
 
-2. **Build provenance is display-only.** `awf version` prints `project.Version` and may append
+2. **Build provenance is display-only.** `awf version` prints `project.Version` and appends
    build metadata from `debug.ReadBuildInfo()` (module pseudo-version, VCS revision) as a
-   parenthetical suffix. Provenance never feeds gating, stamping, or pinning.
+   parenthetical suffix when present. Provenance never feeds gating, stamping, or pinning.
 
 3. **A release tag must equal `project.Version`.** The release pipeline fails when the tag's
-   version differs from the const. `docs/releasing.md` drops the "skip the version-const edit if
-   it already matches" allowance's optional tone: the release-prep commit is where the const and
-   changelog move together, and the pipeline guard makes divergence impossible rather than
-   documented-against.
+   version differs from the const. `docs/releasing.md` is rewritten to the single-surface model:
+   the release-prep step *verifies* the const equals the target tag — bumping it when no
+   schema-coupled change (Decision 4) already has — and always adds the changelog entry; the
+   pipeline guard makes divergence impossible rather than documented-against. (The old "skip the
+   version-const edit if it already matches" allowance becomes the normal case, not a
+   coincidence to tolerate.)
 
 4. **Schema-generation bumps force version bumps, mechanically.** A `minVersionBySchema`
    table in `internal/project` maps each config-schema generation to the minimum
    `project.Version` allowed to render it. A test asserts (a) an entry exists for
-   `migrate.Current()` and (b) `semver.Compare(project.Version, min) >= 0`. Adding a migration
+   `migrate.Current()` and (b) `semver.Compare("v"+project.Version, "v"+min) >= 0` (the
+   `v`-normalization `x/mod/semver` requires — the const is the no-`v` form, per the ADR-0039
+   grounding). Adding a migration
    without a table entry, or with an unbumped const, fails the gate. (`internal/project` already
    imports `internal/migrate`; the reverse placement would cycle.)
 
@@ -85,6 +99,13 @@ A 2026-07-02 analysis reproduced three failures born from this split:
    (stock macOS); both branches verify before install, and ADR-0040's `bootstrap-checksum`
    backing test is extended to cover both.
 
+8. **Docs travel with the change.** The implementing commits rewrite `docs/releasing.md` to the
+   single-surface model (Decision 3, dropping the ldflags stamping step), refresh the rendered
+   `AGENTS.md` invariants list for the retired and new invariants (a `.awf/` part edit
+   re-rendered via `awf sync`), and add the `0.6.0` changelog entry (ADR-0041 grouping) at
+   release-prep. The commit that flips this ADR's status regenerates `docs/decisions/ACTIVE.md`
+   via `./x sync`.
+
 ## Invariants
 
 - `inv: single-version-authority` — `awfVersion()` returns `project.Version`; no ldflags var or
@@ -92,9 +113,12 @@ A 2026-07-02 analysis reproduced three failures born from this split:
 - `inv: schema-min-version` — `minVersionBySchema` contains an entry for `migrate.Current()`,
   and `project.Version` is semver-at-or-above it.
 - `inv: bootstrap-stdout-path-only` — the rendered bootstrap writes exactly one line to stdout:
-  the resolved binary path; all diagnostics go to stderr.
+  the resolved binary path; all diagnostics go to stderr. (Golden-render assertion, per the
+  ADR-0040 precedent: every diagnostic and checksum-verification line in the rendered script
+  carries a stderr redirect; the only bare `echo`s print the resolved binary path.)
 - `inv: bootstrap-local-first` — the rendered bootstrap uses a PATH `awf` reporting exactly the
-  pinned version before attempting any download.
+  pinned version before attempting any download. (Golden-render assertion: the PATH-probe block
+  appears in the rendered script before the first `curl`.)
 - The release pipeline refuses a tag that does not equal `project.Version` (textual contract;
   lives in CI, outside the invariant scanner's source globs).
 
