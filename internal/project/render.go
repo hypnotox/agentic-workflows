@@ -21,6 +21,10 @@ const (
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
 )
 
+// hookNames are the git-hook payload scripts the hooks singleton renders as a
+// unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
+var hookNames = []string{"pre-commit", "commit-msg", "pre-push"}
+
 type RenderedFile struct {
 	Path         string
 	Content      string
@@ -266,6 +270,19 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			return nil, err
 		}
 		out = append(out, brf)
+	}
+	// .awf/hooks/*.sh git-hook payloads (neutral config-tree singleton; rendered
+	// as a unit only when enabled — ADR-0048). No catalog spec / no overridable
+	// sections, like the bootstrap; awf never activates them.
+	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
+		for _, name := range hookNames {
+			hrf, err := p.renderTarget("hooks", "", "hooks/"+name+".sh.tmpl",
+				nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/hooks/"+name+".sh")
+			if err != nil { // coverage-ignore: every var reference in the hook templates is with/else- or if-wrapped (ADR-0045), and they use no parts, so renderTarget cannot produce <no value> or a read error
+				return nil, err
+			}
+			out = append(out, hrf)
+		}
 	}
 	return out, nil
 }

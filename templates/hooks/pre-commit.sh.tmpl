@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Pre-commit payload: drift check, then the project gate. Inert until wired
+# into a hook setup you own — e.g. a .git/hooks/pre-commit stub containing:
+#   exec bash .awf/hooks/pre-commit.sh "$@"
+set -euo pipefail
+{{ if not .vars.checkCmd }}
+# Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
+awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
+{{ end }}
+{{- with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}
+{{- with .vars.gateCmd }}
+{{ . }}
+{{- end }}

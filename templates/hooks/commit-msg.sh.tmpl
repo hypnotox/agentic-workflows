@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Commit-msg payload: the deterministic commit-message gate. Inert until wired
+# into a hook setup you own — e.g. a .git/hooks/commit-msg stub containing:
+#   exec bash .awf/hooks/commit-msg.sh "$@"
+set -euo pipefail
+{{ if not .vars.commitGateCmd }}
+# Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
+awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
+{{ end }}
+{{- with .vars.commitGateCmd }}{{ . }}{{ else }}awf commit-gate{{ end }} "$1"

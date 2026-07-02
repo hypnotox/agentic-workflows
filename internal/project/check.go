@@ -50,8 +50,9 @@ func (p *Project) UnsetVarNotes() ([]string, error) {
 }
 
 // artifactLabel derives a human label from a template id: catalog kinds get
-// "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"); the
-// singletons read as their kind ("agents-doc").
+// "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"), hook
+// payloads their script ("hooks pre-commit" — ADR-0048); the singletons read
+// as their kind ("agents-doc").
 func artifactLabel(tid string) string {
 	segs := strings.Split(tid, "/")
 	switch segs[0] {
@@ -61,6 +62,8 @@ func artifactLabel(tid string) string {
 			name = strings.TrimSuffix(name, ".md.tmpl")
 		}
 		return strings.TrimSuffix(segs[0], "s") + " " + name
+	case "hooks":
+		return "hooks " + strings.TrimSuffix(segs[1], ".sh.tmpl")
 	default:
 		return segs[0]
 	}
@@ -196,9 +199,10 @@ func (p *Project) declaredSections(kind, name string) []string {
 
 // isManagedMarkdown reports whether a RenderAll template id is awf-managed rendered
 // markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
-// RenderAll produces except the CLAUDE.md bridge and the bootstrap shell script.
+// RenderAll produces except the CLAUDE.md bridge and the shell scripts (the
+// bootstrap and the git-hook payloads, ADR-0048).
 func isManagedMarkdown(tid string) bool {
-	return tid != bridgeTID && tid != bootstrapTID
+	return tid != bridgeTID && tid != bootstrapTID && !strings.HasPrefix(tid, "hooks/")
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
