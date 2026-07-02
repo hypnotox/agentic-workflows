@@ -10,7 +10,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.work
 <!-- awf:end -->
 
 <!-- awf:section per-task-review-note -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task — catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->

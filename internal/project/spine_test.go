@@ -661,7 +661,8 @@ func TestReviewingImplTemplate(t *testing.T) {
 			"commitScope": "feat",
 			"gateCmd":     "./x gate",
 		},
-		"data": map[string]any{},
+		"layout": map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-impl", data)

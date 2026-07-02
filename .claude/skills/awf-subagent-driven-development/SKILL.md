@@ -10,7 +10,7 @@ description: Use to execute a written awf plan by dispatching one subagent per t
 The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `awf-executing-plans`.
 
 <!-- awf:edit per-task-review-note — default; create .awf/skills/parts/subagent-driven-development/per-task-review-note.md to override -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `awf-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `awf-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task — catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `awf-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/subagent-driven-development/when-to-invoke.md to override -->
 ## When to invoke

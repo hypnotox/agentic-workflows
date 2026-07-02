@@ -23,14 +23,14 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
 
 <!-- awf:section pitfalls-check -->
-{{ if .layout.docs.pitfalls }}3. **Check `{{ .layout.docs.pitfalls }}` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+{{ if .layout.docs.pitfalls }}   Before writing the fix, check `{{ .layout.docs.pitfalls }}` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 {{ end }}<!-- awf:end -->
 
-4. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
-5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
+4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 
-6. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
+5. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
 
 <!-- awf:section test-tiers -->
 ## Test tiers

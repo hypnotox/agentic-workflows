@@ -10,7 +10,7 @@ description: >
 
 # awf-refactor-coupling-audit
 
-A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit that `docs/workflow.md` mandates before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
+A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/refactor-coupling-audit/when-to-invoke.md to override -->
 ## When to invoke
@@ -30,7 +30,7 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 <!-- awf:edit audit-shape-selection — default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
 ### Audit shape
 
-**Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` and file reads in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single fresh-context exploration subagent to absorb the grep transcript noise per `docs/workflow.md`.
+**Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` and file reads in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single fresh-context exploration subagent to absorb the grep transcript noise.
 
 <!-- awf:edit category-1-top-level-files — default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
 ### 1. Top-level package files
@@ -118,6 +118,6 @@ If the audit reveals the refactor is larger than the ADR's originally proposed s
 <!-- awf:edit notes — default; create .awf/skills/parts/refactor-coupling-audit/notes.md to override -->
 ## Notes
 
-1. Authoritative source for the audit categories: `docs/workflow.md`. This skill is a procedural pointer, not a contract restatement — when the playbook prose evolves, follow the prose.
+1. This skill is the authoritative source for the audit categories.
 2. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
 3. For recurring coupling surprises specific to this project, see the `customise:` hints above; capture them via a convention part when patterns repeat.

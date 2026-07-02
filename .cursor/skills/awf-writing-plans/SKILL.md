@@ -43,7 +43,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 
 <!-- awf:edit procedure-write-plan — default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
-2. **Write the plan file in one go.** Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
+2. **Write the plan file in one go.** The plan must be self-contained — every step executable by an agent with no prior conversation context.
 
 <!-- awf:edit doc-currency-check — default; create .awf/skills/parts/writing-plans/doc-currency-check.md to override -->
 
@@ -52,10 +52,10 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 
 <!-- awf:edit plan-commit-step — default; create .awf/skills/parts/writing-plans/plan-commit-step.md to override -->
-
+3. **Commit the plan** as soon as it is written: `docs(plans): add YYYY-MM-DD-<topic>`. The review step expects a committed plan; review fixes land as new commits, never `--amend`.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/writing-plans/terminal-step.md to override -->
-3. **Terminal step: invoke `awf-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
+4. **Terminal step: invoke `awf-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
 ## Notes
 

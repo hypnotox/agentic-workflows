@@ -59,7 +59,7 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 - Gates are mandatory; if red, fix the root cause. Do not bypass with `--no-verify` except in genuine emergencies, and follow up with a fix commit.
 
 <!-- awf:edit notes-auto-commit — default; create .awf/skills/parts/executing-plans/notes-auto-commit.md to override -->
-- Auto-commit when green: tests pass + lint clean → commit without asking (per `docs/workflow.md`).
+- Auto-commit when green: tests pass + lint clean → commit without asking.
 
 <!-- awf:edit notes-one-concern — default; create .awf/skills/parts/executing-plans/notes-one-concern.md to override -->
 - One concern per commit; if a task accumulates unrelated tweaks, split it.

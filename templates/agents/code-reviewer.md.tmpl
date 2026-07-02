@@ -81,7 +81,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
-1. Apply mechanical and reasoned fixes directly as new commits; note rationale for reasoned fixes. Never `--amend` prior commits.
+1. Apply mechanical and reasoned fixes directly as new commits; run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} before each fix commit; note rationale for reasoned fixes. Never `--amend` prior commits.
 1. Re-review the updated artifact. Exit when: (a) no findings, (b) remaining findings are wording-only, or (c) the artifact is clean by inspection. **3-round soft cap**: after three rounds with remaining structural findings, surface the current state as `user-decision` findings and stop looping without explicit direction.
 1. Emit the digest (see format below).
 

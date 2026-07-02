@@ -24,14 +24,14 @@ If the root cause is not yet known, invoke `awf-debugging` first.
 2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
 
 <!-- awf:edit pitfalls-check — default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
-3. **Check `docs/pitfalls.md` for known-tricky areas.** The pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
+   Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
-4. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
+3. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
-5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
+4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
-6. **Invoke `awf-reviewing-impl` as the terminal step.**
+5. **Invoke `awf-reviewing-impl` as the terminal step.**
 
 <!-- awf:edit test-tiers — default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers

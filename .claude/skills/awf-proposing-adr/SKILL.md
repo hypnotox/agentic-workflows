@@ -65,7 +65,7 @@ Load-bearing triggers include:
 7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 <!-- awf:edit autonomous-rule — default; create .awf/skills/parts/proposing-adr/autonomous-rule.md to override -->
-8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
+8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval — once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
 9. **Terminal step: invoke `awf-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
