@@ -13,7 +13,7 @@ The fix-and-verify task skill. Companion to `awf-debugging`: where debugging own
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
 - **Trivial bugfix that validly skips the chain** — the narrow exception in `docs/workflow.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
-- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `awf-reviewing-impl` pair.
+- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair (`awf-reviewing-impl`).
 
 If the root cause is not yet known, invoke `awf-debugging` first.
 

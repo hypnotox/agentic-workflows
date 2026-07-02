@@ -52,13 +52,13 @@
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:1bc886a38ffcac63f984ae270ae57628461515efc7c585ee25fdfa12b6fc4365",
+      "templateHash": "sha256:19d4493ce0e6e7030ce6fb950622311628aa7a2c8747070597b1a12c3ab718a6",
       "configHash": "sha256:fd10273d4b0db49c30c2d4716431c674163fd6cce70bf3a1670cf614fa68ffae",
-      "outputHash": "sha256:78ce97d831bd35209a583d2d6039ec881ef4d0618d9a18271c5615722af7fde3"
+      "outputHash": "sha256:862c7bae3874476a19ce768a64c107dbdbb640fb62651bcdd95eb54f95715d5e"
     },
     ".claude/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:21a983cdf159d07cae3ddb4787dab03c06089d8204aee443b58ea2f78857e435",
+      "templateHash": "sha256:08ed9d1df8c2464e3328efc9fda145ce78f1f4f6f19f0abab4a447d3cdebf8dd",
       "configHash": "sha256:2fd7cd5ce1460561995aec805a2407c0ea0ad058d0be3b4394ad1874cc3ce9c8",
       "outputHash": "sha256:3938bc426cd152228dd0ceaaf3ed84c2aa9615f4f2fc7bc3c62184251187ae30"
     },
@@ -76,8 +76,8 @@
     },
     ".claude/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
-      "templateHash": "sha256:68e20f15e4262107670b63551a99116189abaee2ced421487bb5831d5fe16996",
-      "configHash": "sha256:7fc3bdc64efd6a1efecb0978036c18f1c4be78faff9e07733c6124867596d8df",
+      "templateHash": "sha256:ee3c73317ab5ac256f79ba647f99ad366e45c6e45ff8023c6d4fd94dc6129ee9",
+      "configHash": "sha256:0194c59cd6ef225ba00c7fefee4546fb50636a60df0256c18800591166817d5b",
       "outputHash": "sha256:7d9d1bae76e0d27ae3d440898df5611b33e6de1ac08db5586504263a20247a3f"
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
@@ -154,13 +154,13 @@
     },
     ".cursor/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:1bc886a38ffcac63f984ae270ae57628461515efc7c585ee25fdfa12b6fc4365",
+      "templateHash": "sha256:19d4493ce0e6e7030ce6fb950622311628aa7a2c8747070597b1a12c3ab718a6",
       "configHash": "sha256:fd10273d4b0db49c30c2d4716431c674163fd6cce70bf3a1670cf614fa68ffae",
-      "outputHash": "sha256:78ce97d831bd35209a583d2d6039ec881ef4d0618d9a18271c5615722af7fde3"
+      "outputHash": "sha256:862c7bae3874476a19ce768a64c107dbdbb640fb62651bcdd95eb54f95715d5e"
     },
     ".cursor/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:21a983cdf159d07cae3ddb4787dab03c06089d8204aee443b58ea2f78857e435",
+      "templateHash": "sha256:08ed9d1df8c2464e3328efc9fda145ce78f1f4f6f19f0abab4a447d3cdebf8dd",
       "configHash": "sha256:2fd7cd5ce1460561995aec805a2407c0ea0ad058d0be3b4394ad1874cc3ce9c8",
       "outputHash": "sha256:3938bc426cd152228dd0ceaaf3ed84c2aa9615f4f2fc7bc3c62184251187ae30"
     },
@@ -178,8 +178,8 @@
     },
     ".cursor/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
-      "templateHash": "sha256:68e20f15e4262107670b63551a99116189abaee2ced421487bb5831d5fe16996",
-      "configHash": "sha256:7fc3bdc64efd6a1efecb0978036c18f1c4be78faff9e07733c6124867596d8df",
+      "templateHash": "sha256:ee3c73317ab5ac256f79ba647f99ad366e45c6e45ff8023c6d4fd94dc6129ee9",
+      "configHash": "sha256:0194c59cd6ef225ba00c7fefee4546fb50636a60df0256c18800591166817d5b",
       "outputHash": "sha256:7d9d1bae76e0d27ae3d440898df5611b33e6de1ac08db5586504263a20247a3f"
     },
     ".cursor/skills/awf-reviewing-adr/SKILL.md": {
@@ -226,7 +226,7 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:5a9b5db8d885c0dd34595ffbd0d08035ae821c3cc24671ff1675e0ce270ef091",
+      "templateHash": "sha256:29048d2ef5152282147e3f1798006014edeea41a62fa4619890a5bb5da215e21",
       "configHash": "sha256:7e0fbaef6749228561e7044a71dd6cedac8694513e1d6fcfa8662bbfefac046c",
       "outputHash": "sha256:3e4c8fdca44d5a7f239eb20907c38beef01464ed182c3a8be00b9e52f72f3e48"
     },

@@ -22,7 +22,7 @@ Before finalising the Context section of a refactor ADR that:
 
 Skip when the refactor is contained within one package (no cross-package coupling to audit) or when the refactor is a pure rename without coupling shifts.
 
-This is a **task skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before `{{ .prefix }}-proposing-adr` finalises the Decision.
+This is a **task skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before {{ if index .skills "proposing-adr" }}`{{ .prefix }}-proposing-adr`{{ else }}the project's decision process{{ end }} finalises the Decision.
 <!-- awf:end -->
 
 ## Procedure

@@ -80,6 +80,18 @@ func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 	}
 }
 
+// A chain-less config that enables only task skills renders with zero dead
+// skill references: every chain-skill mention in a task skill is guarded with
+// generic fallback prose (ADR-0045, ADR-0046).
+func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
+	got := deadSkillRefs(t,
+		"prefix: example\nvars: {}\nskills: [tdd, bugfix, debugging, refactor-coupling-audit, roadmap-graduation]\ndocs: [roadmap]\nagents: []\n",
+		nil)
+	if len(got) != 0 {
+		t.Fatalf("expected no dead skill references, got %v", got)
+	}
+}
+
 // The effective set is enabled minus doc-gate-suppressed, with local-declared
 // skills always kept.
 // invariant: skills-context-effective-set

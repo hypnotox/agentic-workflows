@@ -18,7 +18,7 @@ Use when behaviour is wrong and the cause is not yet known — unexpected output
 
 ## When to invoke
 
-Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(fix it directly with a regression test in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to `{{ .prefix }}-brainstorming` after confirming the root cause.
+Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(fix it directly with a regression test in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
 
 ## Procedure
 
@@ -38,7 +38,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 5. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier).{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the fast tier does not exercise.{{ end }}
 
-6. **Hand off.** When the root cause is confirmed and the failing test is in place, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix with its regression test and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, invoke `{{ .prefix }}-brainstorming` instead.
+6. **Hand off.** When the root cause is confirmed and the failing test is in place, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix with its regression test and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
 
 <!-- awf:section oracle-invariant -->
 ## Oracle invariant

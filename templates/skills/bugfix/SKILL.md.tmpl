@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-bugfix
-description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ .prefix }}-reviewing-impl. Self-contained.
+description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ if index .skills "reviewing-impl" }}{{ .prefix }}-reviewing-impl{{ else }}the project's review step{{ end }}. Self-contained.
 ---
 
 # {{ .prefix }}-bugfix
@@ -12,7 +12,7 @@ The fix-and-verify task skill.{{ if .skills.debugging }} Companion to `{{ .prefi
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
 - **Trivial bugfix that validly skips the chain** — the narrow exception in `{{ .layout.workflowRef }}` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
-- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
+- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair{{ if index .skills "reviewing-impl" }} (`{{ .prefix }}-reviewing-impl`){{ end }}.
 
 {{ if .skills.debugging }}If the root cause is not yet known, invoke `{{ .prefix }}-debugging` first.{{ else }}If the root cause is not yet known, confirm it with a falsifiable check before touching code.{{ end }}
 
@@ -30,7 +30,7 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 
 4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 
-5. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
+5. {{ if index .skills "reviewing-impl" }}**Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**{{ else }}**Run the project's review step as the terminal step.**{{ end }}
 
 <!-- awf:section test-tiers -->
 ## Test tiers

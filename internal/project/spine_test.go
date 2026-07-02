@@ -354,7 +354,7 @@ func TestBugfixTemplate(t *testing.T) {
 			"docCurrencyTargets": "docs/ and docs/decisions/",
 		},
 		"data":   map[string]any{},
-		"skills": map[string]bool{"tdd": true, "debugging": true},
+		"skills": map[string]bool{"tdd": true, "debugging": true, "reviewing-impl": true},
 	}
 
 	out := renderSkillGolden(t, "bugfix", data)
@@ -386,7 +386,7 @@ func TestDebuggingTemplate(t *testing.T) {
 			"gateCmdFull": "./x gate full",
 		},
 		"data":   map[string]any{},
-		"skills": map[string]bool{"tdd": true, "bugfix": true},
+		"skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true},
 	}
 
 	out := renderSkillGolden(t, "debugging", data)
@@ -402,6 +402,7 @@ func TestDebuggingTemplate(t *testing.T) {
 		"reproduces the failure",
 		"root cause",
 		"example-bugfix",
+		"example-brainstorming",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -812,8 +813,9 @@ func TestUnsetFallbackRenders(t *testing.T) {
 				"Write the failing test first",
 				"The project's gate (fast tier) is the default",
 				"the project's docs",
+				"Run the project's review step as the terminal step.",
 			},
-			ban: []string{"example-tdd", "example-debugging", "``"},
+			ban: []string{"example-tdd", "example-debugging", "example-reviewing-impl", "``"},
 		},
 		{
 			tmpl: "skills/debugging/SKILL.md.tmpl",
@@ -822,12 +824,14 @@ func TestUnsetFallbackRenders(t *testing.T) {
 				"Write it test-first.",
 				"the project's gate",
 				"apply the fix with its regression test",
+				"a design discussion before changing behaviour",
 			},
-			ban: []string{"example-bugfix", "example-tdd", "``"},
+			ban: []string{"example-bugfix", "example-tdd", "example-brainstorming", "``"},
 		},
 		{
 			tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
-			want: []string{"<module-prefix>/"},
+			want: []string{"<module-prefix>/", "the project's decision process"},
+			ban:  []string{"example-proposing-adr"},
 		},
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
@@ -907,6 +911,27 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
+// Each task skill appears in the AGENTS.md task-skills sentence iff enabled;
+// the sentence renders when any of the four is (ADR-0046 follow-up sweep).
+func TestAgentsDocTaskSkillsGating(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{"gateCmd": "make gate"},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+		"skills": map[string]bool{"brainstorming": true, "bugfix": true},
+	}
+	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`.") {
+		t.Errorf("expected a bugfix-only task-skills sentence:\n%s", out)
+	}
+	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("disabled task skill %q must not render:\n%s", banned, out)
 		}
 	}
 }
