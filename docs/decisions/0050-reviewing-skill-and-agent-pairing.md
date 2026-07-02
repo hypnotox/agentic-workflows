@@ -57,9 +57,10 @@ gated command failing until the user re-adds the agent by hand.
    render artifacts, not dead weight, and flagging them would forbid legitimate configs.
 
 4. **`awf remove agent` refuses upfront.** Before rewriting the config, `runRemove` checks
-   whether any enabled skill's spec requires the agent being removed and refuses with the
-   pairing message, leaving the config untouched. Without this, the rewrite-then-sync order
-   strands a half-broken tree.
+   whether any enabled, non-`local` skill's spec requires the agent being removed and refuses
+   with the pairing message, leaving the config untouched. Without this, the rewrite-then-sync
+   order strands a half-broken tree. The non-`local` scope mirrors Decision 2 exactly: the
+   guard must refuse precisely the removals that validation would fail, no more.
 
 5. **`awf add skill` auto-enables the required agent.** Adding a reviewing skill whose agent is
    not enabled appends the agent to the enable array in the same config rewrite, with a note
@@ -69,8 +70,9 @@ gated command failing until the user re-adds the agent by hand.
 
 6. **Fresh init is structurally safe.** `ScaffoldConfig` enables every catalog agent
    unconditionally (`internal/project/scaffold.go`), and the init skill-trim descriptor does not
-   touch agents, so no init path can violate the pairing; no init-side change is needed. A test
-   pins the catalog side: every reviewing-skill spec carries its `requiresAgent`.
+   touch agents, so no init path can violate the pairing; no init-side change is needed. A
+   prefix-anchored test pins the catalog side: every catalog skill named `reviewing-*` carries a
+   non-empty `requiresAgent`, so a future reviewing skill cannot reopen the blind spot.
 
 ## Invariants
 
@@ -78,11 +80,12 @@ gated command failing until the user re-adds the agent by hand.
   carries `requiresAgent` fails `sync`/`check` (via `project.Open`) when that agent is not in
   the `agents:` enable array.
 - `inv: remove-agent-pairing-guard` — `awf remove agent` refuses, with the config file
-  unchanged, while an enabled skill requires the agent.
+  unchanged, while an enabled, non-`local` skill requires the agent.
 - `inv: add-skill-pairs-agent` — `awf add skill` enables the skill's required agent in the same
   config rewrite when it is missing.
-- All four reviewing-skill catalog specs carry `requiresAgent` naming their dispatched agent
-  (pinned by a catalog test; textual contract for future reviewing skills).
+- `inv: reviewing-skill-specs-paired` — every catalog skill named `reviewing-*` carries a
+  non-empty `requiresAgent` naming its dispatched agent (prefix-anchored catalog test, covering
+  future reviewing skills as well as the current four).
 
 ## Consequences
 
@@ -95,6 +98,9 @@ gated command failing until the user re-adds the agent by hand.
   (suppression vs validation); the field docs in `internal/catalog` must state the contrast.
 - Two CLI behaviours change shape: `awf remove agent` can refuse; `awf add skill` can write two
   arrays in one rewrite.
+- The implementation change updates the AGENTS.md invariants list (`data.invariants` in
+  `.awf/agents-doc.yaml`) with a pairing entry in the same commit, per the ADR-0046 precedent
+  for new failing checks.
 
 ## Alternatives Considered
 
@@ -102,5 +108,6 @@ gated command failing until the user re-adds the agent by hand.
 |---|---|
 | Always-on agents (drop the `agents:` array for catalog agents) | Chain-less configs would render dead-weight reviewers; removing the array is a schema migration disproportionate to the defect. |
 | Suppression semantics (mirror `requiresDoc`) | Silently dropping a reviewing skill severs the chain invisibly — the failure mode the workflow exists to prevent. |
+| Advisory warning (a `check` warning or CLI note, like the `requiresDoc` add-note) | Warnings do not gate; the broken dispatcher still renders and the severed chain still lands. The doc-gate note works because suppression leaves the tree consistent — here there is no consistent degraded state to warn about. |
 | Extend the ADR-0046 dead-reference scan to agent names | Catches the symptom in rendered prose; unprefixed agent names risk false positives, and the config layer states the requirement directly with a better error. |
 | Derive agents from enabled skills (agents stop being configurable) | Cleanest mental model but a config-schema migration plus `awf add/remove agent` semantics change; local agents still need the array. |
