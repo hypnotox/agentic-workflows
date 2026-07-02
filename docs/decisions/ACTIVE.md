@@ -50,10 +50,7 @@
 - [ADR-0045: Out-of-box render completeness](0045-out-of-box-render-completeness.md) — Implemented
 - [ADR-0046: Skill-reference integrity](0046-skill-reference-integrity.md) — Implemented
 - [ADR-0047: Bootstrap relocation into the config tree](0047-bootstrap-relocation-into-the-config-tree.md) — Implemented
-
-## Proposed
-
-- [ADR-0048: Rendered git-hook payloads singleton](0048-rendered-git-hook-payloads-singleton.md) — Proposed
+- [ADR-0048: Rendered git-hook payloads singleton](0048-rendered-git-hook-payloads-singleton.md) — Implemented
 
 ## Superseded by ADR-0032
 
