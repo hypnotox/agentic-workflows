@@ -48,6 +48,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0044: Shared Test-Support Package](../decisions/0044-shared-test-support-package.md)
 - [ADR-0047: Bootstrap relocation into the config tree](../decisions/0047-bootstrap-relocation-into-the-config-tree.md)
 
+### Proposed
+
+- [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

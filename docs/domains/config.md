@@ -27,3 +27,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
 - [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
 
+### Proposed
+
+- [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
+
