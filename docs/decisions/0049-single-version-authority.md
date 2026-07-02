@@ -77,9 +77,9 @@ removes the split behind failures 1 and 2.
    `project.Version` allowed to render it. A test asserts (a) an entry exists for
    `migrate.Current()` and (b) `semver.Compare("v"+project.Version, "v"+min) >= 0` (the
    `v`-normalization `x/mod/semver` requires — the const is the no-`v` form, per the ADR-0039
-   grounding). Adding a migration
-   without a table entry, or with an unbumped const, fails the gate. (`internal/project` already
-   imports `internal/migrate`; the reverse placement would cycle.)
+   grounding). Adding a migration without a table entry, or with an unbumped const, fails the
+   gate. (`internal/project` already imports `internal/migrate`; the reverse placement would
+   cycle.)
 
 5. **Bump `project.Version` to `0.6.0` now**, seeding the table with `{6: "0.6.0"}` — schema
    generation 6 is already live past `v0.5.1`. Until `v0.6.0` is tagged, renders pin a not-yet-
@@ -143,7 +143,7 @@ removes the split behind failures 1 and 2.
 | Alternative | Why not chosen |
 |---|---|
 | Keep ldflags precedence, only demote the build-info branch | Retains a second identity source that the tag guard must then police anyway; `awf version` and the lock would still disagree on source builds. |
-| Fix only the comparison (`lockVsBinary` reads the const, `awfVersion()` unchanged) | Clears the note but gate errors and `awf version` keep reporting an identity that is never stamped or pinned — the split that caused all three failures survives. |
+| Fix only the comparison (`lockVsBinary` reads the const, `awfVersion()` unchanged) | Clears the note but gate errors and `awf version` keep reporting an identity that is never stamped or pinned — the split behind failures 1 and 2 survives. |
 | Derive the version purely from VCS build info (drop the const) | Pseudo-versions are not downloadable release assets; breaks self-pinning (ADR-0040) and reproducible renders. |
 | Detect released-ness and render a PATH-fallback bootstrap for unreleased versions | Requires remote knowledge at render time and weakens the self-pinning invariant; local-first resolution achieves the same relief deterministically. |
 | Runtime compatibility probe in the hook shim (fall back when the pinned binary rejects the tree) | Treats the symptom in every rendered payload instead of removing the version split at its source. |
