@@ -145,7 +145,7 @@ func ExpandIncludes(src string, partialFS fs.FS) (string, error) {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
 	expanded, err := render.ExpandIncludes(string(src), templates.FS)
-	if err != nil {
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	plan, err := p.planSections(kind, artifact, declared, sc.Sections)
@@ -645,12 +645,19 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 
 ### Task 3.3 — Update the architecture components doc
 
-- [ ] In `.awf/docs/parts/architecture/components.md`, locate the sentence describing the render
-  pipeline (the `ParseSections`/`Assemble`/`Execute` description). Add, immediately before the
-  `ParseSections` mention, a clause noting the pre-pass — for example, if the current text reads
-  "…each template is parsed by `ParseSections`…", change it to "…each template is first expanded
-  by `ExpandIncludes` (splicing awf-owned `templates/partials/` bodies, ADR-0052), then parsed by
-  `ParseSections`…". Keep the edit to one clause; do not restructure the paragraph.
+- [ ] In `.awf/docs/parts/architecture/components.md`, the `internal/render/` bullet currently
+  reads (the file does not use the literal string `ParseSections`; edit this exact clause):
+
+  > - **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section
+  >   overlays (sidecar overrides + convention parts) then executes the template.
+
+  Replace the clause `assembles section overlays (sidecar overrides + convention parts) then
+  executes the template.` with:
+
+  `first expands awf-owned `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then
+  assembles section overlays (sidecar overrides + convention parts) and executes the template.`
+
+  Keep the edit to that one clause; do not restructure the bullet.
 
 ### Task 3.4 — Flip ADR-0052 to Implemented
 
