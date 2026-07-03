@@ -65,10 +65,10 @@ func TestRunChangelogSince(t *testing.T) {
 
 func TestRunChangelogSinceLatest(t *testing.T) {
 	var out bytes.Buffer
-	if err := runChangelog("", "0.5.1", "", &out); err != nil {
+	if err := runChangelog("", "0.6.0", "", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
 	}
-	if !strings.Contains(out.String(), "no releases since 0.5.1") {
+	if !strings.Contains(out.String(), "no releases since 0.6.0") {
 		t.Errorf("expected the no-newer-releases message, got:\n%s", out.String())
 	}
 }

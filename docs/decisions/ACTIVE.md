@@ -53,10 +53,7 @@
 - [ADR-0048: Rendered git-hook payloads singleton](0048-rendered-git-hook-payloads-singleton.md) — Implemented
 - [ADR-0049: Single version authority](0049-single-version-authority.md) — Implemented
 - [ADR-0050: Reviewing-skill and agent pairing](0050-reviewing-skill-and-agent-pairing.md) — Implemented
-
-## Proposed
-
-- [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Proposed
+- [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Implemented
 
 ## Superseded by ADR-0032
 

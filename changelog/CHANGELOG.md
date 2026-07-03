@@ -6,6 +6,56 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [0.6.0] - 2026-07-03
+### Breaking changes
+- The three standard docs (`workflow`, `doc-standard`, `agents-md-standard`) are now mandatory
+  always-on singletons instead of toggleable catalog docs; config schema migrates to
+  generation 6 (ADR-0043). Run `awf upgrade` after updating.
+- The rendered bootstrap moves off the repo root into the config tree at `.awf/bootstrap.sh`
+  (ADR-0047); update any hook or CI reference to the old `awf-bootstrap.sh` path.
+- The `commitScope` var is removed: commit scopes now live only in `audit.allowedScopes`, set
+  at init via the comma-separated `commitScopes` answer, quoted by the reviewing skills from
+  the same storage `awf commit-gate` enforces, and folded into the drift signal (ADR-0051).
+  A leftover var entry is inert; set `audit.allowedScopes` and re-sync to keep the prose.
+### Features
+- Render three inert git-hook payload scripts (`pre-commit`/`commit-msg`/`pre-push`) under
+  `.awf/hooks/` via a `hooks` singleton — enabled by default at init, toggled with
+  `awf add/remove hooks`; awf still never touches git config (ADR-0048).
+- Add `awf new adr`, scaffolding the next sequential ADR from the rendered template (ADR-0042).
+- Add `awf changelog` with `--version`/`--since`/`--range` filters over an embedded changelog
+  (ADR-0041).
+- `awf add domain` scaffolds the domain's `current-state.md` convention part alongside the
+  config edit.
+- The rendered workflow doc gains gate-composition and CI-backstop sections.
+- Every var/data interpolation degrades to coherent generic prose when unset — an empty
+  `awf init` renders publication-safe output — and `awf check`/`awf init` print advisory
+  notes for referenced-but-unset vars (ADR-0045).
+- `awf check` fails on a rendered reference to a catalog skill outside the enabled set, and
+  templates can read the enabled-skill set to conditionalize prose (ADR-0046).
+- Reviewing skills and their reviewer agents are pair-validated: `awf add skill` enables the
+  missing agent, `awf remove agent` refuses while an enabled skill requires it, and gated
+  commands fail on an unpaired config (ADR-0050).
+- `awf init` refuses collisions before asking a single prompt, prints unset-var notes and a
+  next-steps block after rendering, and falls silent when stdin hits EOF instead of
+  streaming the remaining prompts.
+- Bare `awf list` shows all seven kinds (including targets, bootstrap, and hooks), and
+  `awf help <command>` prints that command's help text.
+- The rendered `AGENTS.md` Commands section shows a self-describing placeholder when no
+  commands are configured and de-duplicates identical command values.
+### Bug fixes
+- Single-source the binary version on `project.Version` so the version gate, lock stamp, and
+  bootstrap pin cannot disagree; the bootstrap prefers a matching local binary, prints only
+  the binary path on stdout, and falls back to `shasum` where `sha256sum` is missing
+  (ADR-0049).
+- Anchor the rendered skill-reference scanner on a token boundary, so prose like
+  `example-bootstrap.sh` no longer trips the dead-skill-reference check.
+- Restore the ADR title heading dropped when a project overrides the ADR template's
+  sections, and route the generated ACTIVE.md through the canonical generated-by banner.
+### Others
+- Sweep chain-prose seams, tool-specific vocabulary, and repo residue from the rendered
+  templates; hook-command descriptor options no longer suggest unpinned `awf` invocations;
+  the `domains` frontmatter guidance now scopes itself to projects with configured domains.
+
 ## [0.5.1] - 2026-07-01
 ### Bug fixes
 - Fix `awf audit`/`awf check` failing to open a repository with `extensions.worktreeConfig` set (a
