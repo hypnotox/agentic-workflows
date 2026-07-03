@@ -228,3 +228,25 @@ func TestInitCommitScopesAnswer(t *testing.T) {
 		t.Errorf("commitScopes must not be seeded as a var:\n%s", cfg)
 	}
 }
+
+// After the chained sync succeeds, init prints the render-completeness notes
+// (same rendering as awf check, ADR-0045) and a fixed next-steps block.
+func TestInitPrintsNotesAndNextSteps(t *testing.T) {
+	root := t.TempDir()
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("init: exit %d (%s)", code, errb.String())
+	}
+	for _, want := range []string{
+		"references unset vars",
+		"next steps:",
+		".awf/parts/agents-doc/identity.md",
+		".awf/hooks/",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("init output missing %q:\n%s", want, out.String())
+		}
+	}
+}

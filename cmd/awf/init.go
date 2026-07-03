@@ -95,6 +95,20 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err := runSync(root, stdout); err != nil {
 		return err
 	}
+	// Post-init orientation: the same unset-var notes awf check prints
+	// (ADR-0045), then a fixed next-steps block.
+	np, err := project.Open(root)
+	if err != nil { // coverage-ignore: the chained runSync just opened this same tree
+		return err
+	}
+	notes, err := np.UnsetVarNotes()
+	if err != nil { // coverage-ignore: RenderAll succeeded moments ago inside runSync
+		return err
+	}
+	for _, n := range notes {
+		fmt.Fprintf(stdout, "note: %s\n", n)
+	}
+	fmt.Fprint(stdout, initNextSteps)
 	return nil
 }
 
@@ -143,3 +157,13 @@ func probeCollisions(root string) ([]string, error) {
 	}
 	return project.CollisionsAt(root, planned), nil
 }
+
+// initNextSteps is the fixed orientation block init prints after a
+// successful render.
+const initNextSteps = `
+next steps:
+  1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf sync.
+  2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf sync.
+  3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section) — awf never activates hooks itself.
+  4. Commit .awf/ and the rendered files together.
+`
