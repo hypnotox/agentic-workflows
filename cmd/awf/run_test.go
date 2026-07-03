@@ -557,6 +557,11 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when project.Open errors")
 	}
+	// --force skips the probe, so the same malformed config now fails at
+	// runInit's own post-scaffold project.Open — keeping that branch covered.
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
+		t.Fatal("expected init --force to fail when project.Open errors")
+	}
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
@@ -604,5 +609,57 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "note: awf now generates") {
 		t.Errorf("missing ownership-takeover note: %q", out.String())
+	}
+}
+
+// A collision refuses BEFORE any prompt: with a colliding AGENTS.md and an
+// interactive stdin, init exits without emitting a single prompt line and
+// without creating .awf/.
+func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
+	testsupport.SwapVar(t, &stdin, io.Reader(strings.NewReader("SHOULD-NOT-BE-CONSUMED\n")))
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to refuse on collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	if out.String() != "" {
+		t.Errorf("prompt text emitted before the collision refusal:\n%s", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
+		t.Errorf(".awf/ should not exist after a probe refusal (err=%v)", err)
+	}
+}
+
+// A trim answer can enable a non-core artifact the curated-core probe set does
+// not cover: the probe passes, and the accurate post-answer check still
+// refuses and rolls the scaffolded config back.
+func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
+	root := t.TempDir()
+	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skillPath, []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
+		t.Fatal("expected init to refuse on the post-answer collision")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
+		t.Error("scaffolded config should have been rolled back")
 	}
 }

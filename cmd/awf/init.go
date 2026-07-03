@@ -41,6 +41,19 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err := initspec.MergeSetFlags(answers, sets); err != nil {
 		return err
 	}
+	// Pre-prompt probe (conservative): refuse collisions before asking a single
+	// question or writing anything. The post-answer InitCollisions below stays
+	// as the accurate second line — a trim answer can enable non-core artifacts
+	// this curated-core probe set does not cover. --force skips the probe.
+	if !force {
+		collisions, err := probeCollisions(root)
+		if err != nil {
+			return err
+		}
+		if len(collisions) > 0 {
+			return collisionRefusal(collisions)
+		}
+	}
 	vars, inv, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
 	if err != nil {
 		return err
@@ -75,8 +88,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 			_ = os.Remove(cfgPath)               // remove the config we scaffolded
 			_ = os.Remove(filepath.Dir(cfgPath)) // remove .awf only if now empty
 		}
-		return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
-			strings.Join(collisions, "\n  "))
+		return collisionRefusal(collisions)
 	}
 	// Under --force, the chained runSync backs up every foreign file via the shared
 	// BackupFile mechanism (ADR-0035) — one backup path for init and sync alike.
@@ -84,4 +96,50 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		return err
 	}
 	return nil
+}
+
+// collisionRefusal is the shared refusal for both collision checks, so the
+// probe and the post-answer check read identically.
+func collisionRefusal(collisions []string) error {
+	return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s",
+		strings.Join(collisions, "\n  "))
+}
+
+// probeCollisions computes the collision set before any prompt. With an
+// existing config tree it asks the real project; otherwise it scaffolds a
+// default (curated-core) config into a throwaway temp dir, plans that
+// project's outputs, and tests the project-relative paths against root.
+func probeCollisions(root string) ([]string, error) {
+	if _, err := os.Stat(config.ConfigPath(root)); err == nil {
+		p, err := project.Open(root)
+		if err != nil {
+			return nil, err
+		}
+		return p.InitCollisions()
+	}
+	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
+	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
+		return nil, err
+	}
+	defer os.RemoveAll(tmp)
+	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil, nil)
+	if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime
+		return nil, err
+	}
+	cfgPath := config.ConfigPath(tmp)
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses
+		return nil, err
+	}
+	if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice
+		return nil, err
+	}
+	tp, err := project.Open(tmp)
+	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
+		return nil, err
+	}
+	planned, err := tp.PlannedOutputs()
+	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
+		return nil, err
+	}
+	return project.CollisionsAt(root, planned), nil
 }

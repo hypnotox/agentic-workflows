@@ -20,8 +20,17 @@ func (p *Project) InitCollisions() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return CollisionsAt(p.Root, planned), nil
+}
+
+// CollisionsAt filters planned project-relative paths to those that already
+// exist under root and are not recorded in root's lock (not awf-managed).
+// Split from InitCollisions so init's pre-prompt probe can plan outputs in a
+// throwaway scaffold and test them against the real root; the ADR-0016
+// collision semantics are unchanged.
+func CollisionsAt(root string, planned []string) []string {
 	managed := map[string]bool{}
-	if lock, err := manifest.Load(p.lockPath()); err == nil {
+	if lock, err := manifest.Load(config.LockPath(root)); err == nil {
 		for path := range lock.Files {
 			managed[path] = true
 		}
@@ -31,12 +40,12 @@ func (p *Project) InitCollisions() ([]string, error) {
 		if managed[rel] {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(p.Root, rel)); err == nil {
+		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
 			collisions = append(collisions, rel)
 		}
 	}
 	sort.Strings(collisions)
-	return collisions, nil
+	return collisions
 }
 
 // BackupFile copies a colliding project-relative file to a free <path>.awf-bak[.N]
