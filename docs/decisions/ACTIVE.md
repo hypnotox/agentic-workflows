@@ -55,6 +55,10 @@
 - [ADR-0050: Reviewing-skill and agent pairing](0050-reviewing-skill-and-agent-pairing.md) — Implemented
 - [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Implemented
 
+## Proposed
+
+- [ADR-0052: Template Include Directive for Awf-Owned Partials](0052-template-include-directive-for-awf-owned-partials.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
