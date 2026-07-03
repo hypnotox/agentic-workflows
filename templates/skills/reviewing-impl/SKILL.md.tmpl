@@ -34,7 +34,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}.
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
 
    The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
 <!-- awf:end -->
@@ -47,7 +47,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
 <!-- awf:end -->
 
 <!-- awf:section run-audit -->

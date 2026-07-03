@@ -565,12 +565,11 @@ func TestBrainstormingTemplate(t *testing.T) {
 
 func TestReviewingPlanTemplate(t *testing.T) {
 	data := map[string]any{
-		"prefix": "example",
-		"vars": map[string]any{
-			"commitScope": "docs(plans)",
-		},
-		"layout": map[string]any{"plansDir": "docs/plans"},
-		"data":   map[string]any{},
+		"prefix":       "example",
+		"vars":         map[string]any{},
+		"commitScopes": "`docs(plans)`",
+		"layout":       map[string]any{"plansDir": "docs/plans"},
+		"data":         map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-plan", data)
@@ -596,12 +595,11 @@ func TestReviewingPlanTemplate(t *testing.T) {
 
 func TestReviewingPlanResyncTemplate(t *testing.T) {
 	data := map[string]any{
-		"prefix": "example",
-		"vars": map[string]any{
-			"commitScope": "docs(plans)",
-		},
-		"layout": map[string]any{"plansDir": "docs/plans"},
-		"data":   map[string]any{},
+		"prefix":       "example",
+		"vars":         map[string]any{},
+		"commitScopes": "`docs(plans)`",
+		"layout":       map[string]any{"plansDir": "docs/plans"},
+		"data":         map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-plan-resync", data)
@@ -626,12 +624,11 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 
 func TestReviewingAdrTemplate(t *testing.T) {
 	data := map[string]any{
-		"prefix": "example",
-		"vars": map[string]any{
-			"commitScope": "docs(adr)",
-		},
-		"layout": map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
-		"data":   map[string]any{},
+		"prefix":       "example",
+		"vars":         map[string]any{},
+		"commitScopes": "`docs(adr)`",
+		"layout":       map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
+		"data":         map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-adr", data)
@@ -659,11 +656,11 @@ func TestReviewingImplTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"commitScope": "feat",
-			"gateCmd":     "./x gate",
+			"gateCmd": "./x gate",
 		},
-		"layout": map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
-		"data":   map[string]any{},
+		"commitScopes": "`feat`",
+		"layout":       map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},
+		"data":         map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "reviewing-impl", data)

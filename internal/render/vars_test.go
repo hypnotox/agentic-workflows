@@ -31,3 +31,12 @@ func TestReferencedVarsDeduplicated(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
+
+func TestReferencesScopes(t *testing.T) {
+	if !render.ReferencesScopes("x {{ with .commitScopes }}y{{ end }} z") {
+		t.Error("expected a .commitScopes action to be detected")
+	}
+	if render.ReferencesScopes("prose mentioning .commitScopes outside an action") {
+		t.Error("a non-action mention must not match")
+	}
+}

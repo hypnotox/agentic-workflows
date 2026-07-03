@@ -207,3 +207,24 @@ func TestInitCatalogTrim(t *testing.T) {
 func TestIsInteractive(t *testing.T) {
 	t.Logf("isInteractive() = %v", isInteractive())
 }
+
+// A commitScopes answer lands in audit.allowedScopes, never in vars; the
+// silent default writes no audit block (ADR-0051).
+func TestInitCommitScopesAnswer(t *testing.T) {
+	root := t.TempDir()
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init", "--set", "commitScopes=adr, awf"}, &out, &errb); code != 0 {
+		t.Fatalf("init --set commitScopes: exit %d (%s)", code, errb.String())
+	}
+	cfg := readInitConfig(t, root)
+	for _, want := range []string{"audit:", "allowedScopes:", "- adr", "- awf"} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("config missing %q:\n%s", want, cfg)
+		}
+	}
+	if strings.Contains(cfg, "commitScopes:") {
+		t.Errorf("commitScopes must not be seeded as a var:\n%s", cfg)
+	}
+}

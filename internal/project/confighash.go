@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -42,6 +43,12 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		// changes; folding the effective set in flags it stale (ADR-0046).
 		// invariant: skills-set-in-confighash
 		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
+	}
+	if render.ReferencesScopes(assembled) {
+		// A template that reads .commitScopes re-renders when audit.allowedScopes
+		// changes; folding the resolved list in flags it stale (ADR-0051).
+		// invariant: scopes-in-confighash
+		proj["commitScopes"] = audit.Resolve(p.Cfg.Audit).AllowedScopes
 	}
 	proj["sidecar"] = sc
 	sort.Strings(partPaths)

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -44,13 +45,30 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix":  p.Cfg.Prefix,
-		"vars":    nonNil(p.Cfg.Vars),
-		"data":    nonNil(sc.Data),
-		"layout":  p.layout().templateMap(),
-		"version": Version,
-		"skills":  p.effSkills,
+		"prefix":       p.Cfg.Prefix,
+		"vars":         nonNil(p.Cfg.Vars),
+		"data":         nonNil(sc.Data),
+		"layout":       p.layout().templateMap(),
+		"version":      Version,
+		"skills":       p.effSkills,
+		"commitScopes": p.commitScopesDisplay(),
 	}
+}
+
+// commitScopesDisplay returns the display-formatted allowed commit-scope list
+// (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes — the same
+// audit.Resolve path awf commit-gate reads, so prose and gate agree by
+// construction — or "" when scopes are accept-any (ADR-0051).
+func (p *Project) commitScopesDisplay() string {
+	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
+	if len(scopes) == 0 {
+		return ""
+	}
+	quoted := make([]string, len(scopes))
+	for i, s := range scopes {
+		quoted[i] = "`" + s + "`"
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // effectiveSkills returns the skill names whose files exist on disk under awf's

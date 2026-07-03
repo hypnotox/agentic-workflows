@@ -31,7 +31,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using the `awf` scope.
+   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`.
 
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 
@@ -42,7 +42,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using the `awf` scope. The agent applies the edits; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`. The agent applies the edits; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan/re-review-loop.md to override -->
 6. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.

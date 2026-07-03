@@ -29,7 +29,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}.
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
 
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 <!-- awf:end -->
@@ -42,7 +42,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}. The agent applies the edits; this skill ensures the commit convention is followed.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->

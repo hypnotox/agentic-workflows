@@ -50,7 +50,6 @@ vars:
   adrProposeCommitFmt: 'docs(adr): propose NNNN <short title>'
   checkCmd: ./x check
   commitGateCmd: ./x commit-gate
-  commitScope: awf
   docCurrencyTargets: AGENTS.md, docs/decisions/README.md
   gateCmd: ./x gate
   gateCmdFull: ./x gate full

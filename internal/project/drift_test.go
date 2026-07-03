@@ -1,7 +1,9 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -132,5 +134,57 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 	}
 	if lock.AWFVersion != Version {
 		t.Errorf("AWFVersion = %q, want %q (independent tool version)", lock.AWFVersion, Version)
+	}
+}
+
+// Editing audit.allowedScopes reflags exactly the artifacts whose assembled
+// templates reference .commitScopes; non-referencing artifacts stay in sync,
+// and the rendered prose quotes the configured scopes (ADR-0051).
+// invariant: scopes-in-confighash
+func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
+	cfg := func(scope string) string {
+		return "prefix: example\nvars: {}\nskills:\n" +
+			"  - adr-lifecycle\n  - brainstorming\n  - executing-plans\n  - proposing-adr\n" +
+			"  - reviewing-adr\n  - reviewing-impl\n  - reviewing-plan\n  - reviewing-plan-resync\n" +
+			"  - subagent-driven-development\n  - tdd\n  - writing-plans\n" +
+			"agents:\n  - adr-reviewer\n  - code-reviewer\n  - plan-reviewer\n" +
+			"audit:\n  allowedScopes:\n    - " + scope + "\n"
+	}
+	root := scaffold(t, cfg("awf"))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := os.ReadFile(filepath.Join(root, ".claude/skills/example-reviewing-adr/SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(rendered), "using a Conventional-Commits scope from `awf`") {
+		t.Errorf("rendered prose does not quote audit.allowedScopes:\n%s", rendered)
+	}
+	testsupport.WriteAwfConfig(t, root, cfg("core"))
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p2.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	flagged := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind != "stale" {
+			t.Errorf("unexpected drift kind %q on %s", d.Kind, d.Path)
+		}
+		flagged[d.Path] = true
+	}
+	if !flagged[".claude/skills/example-reviewing-adr/SKILL.md"] {
+		t.Errorf("scopes edit did not reflag the referencing skill; drift = %v", drift)
+	}
+	if flagged[".claude/skills/example-tdd/SKILL.md"] {
+		t.Error("scopes edit reflagged the non-referencing tdd skill")
 	}
 }

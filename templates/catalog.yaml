@@ -377,11 +377,12 @@ vars:
     description: Command that runs the test suite.
     default: ""
     options: ["./x test", "go test ./...", "npm test"]
-  - key: commitScope
+  - key: commitScopes
     kind: string
-    description: Conventional Commits scope for this project.
+    target: audit-scopes
+    description: Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes — enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.
     default: ""
-    options: ["awf"]
+    options: ["adr,awf,plans"]
   - key: modulePrefix
     kind: string
     description: Module path / import prefix for the project.

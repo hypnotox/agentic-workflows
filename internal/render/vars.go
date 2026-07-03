@@ -14,6 +14,14 @@ var skillsRE = regexp.MustCompile(`\{\{[^{}]*[.$]skills[^{}]*\}\}`)
 // into their config hash (ADR-0046).
 func ReferencesSkills(src string) bool { return skillsRE.MatchString(src) }
 
+var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
+
+// ReferencesScopes reports whether src reads the resolved commit-scope render
+// context (any {{ … .commitScopes … }} action) — such templates fold the
+// resolved scope list into their config hash (ADR-0051, mirroring ADR-0046's
+// ReferencesSkills).
+func ReferencesScopes(src string) bool { return scopesRE.MatchString(src) }
+
 // ReferencedVars returns the sorted, de-duplicated list of variable names
 // referenced via {{ .vars.X }} patterns in src.
 func ReferencedVars(src string) []string {

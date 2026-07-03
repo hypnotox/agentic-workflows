@@ -24,7 +24,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}.
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
 
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 <!-- awf:end -->
@@ -39,7 +39,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}. The agent applies the edits; this skill ensures the commit convention is followed. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
+3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}. The agent applies the edits; this skill ensures the commit convention is followed. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
