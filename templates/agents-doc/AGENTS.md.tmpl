@@ -66,10 +66,15 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 {{ end -}}
 ```
 {{- else -}}
-{{ with .vars.testCmd }}- `{{ . }}` — run the test suite
-{{ end }}{{ with .vars.gateCmd }}- `{{ . }}` — run the gate before committing
-{{ end }}{{ with .vars.checkCmd }}- `{{ . }}` — check rendered files for drift
-{{ end }}{{- end }}
+{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := or .vars.checkCmd "" -}}
+{{- if or $test $gate $check -}}
+{{ with $test }}- `{{ . }}` — run the test suite
+{{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}` — run the gate before committing
+{{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}` — check rendered files for drift
+{{ end }}{{- else }}
+<!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf sync. -->
+{{ end -}}
+{{- end }}
 <!-- awf:end -->
 
 <!-- awf:section document-map -->
