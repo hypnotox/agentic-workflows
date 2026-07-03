@@ -81,7 +81,9 @@ without anyone installing awf by hand:
     "$(bash .awf/bootstrap.sh)" check
 
 It touches nothing outside its cache directory, and `awf remove bootstrap` deletes it if
-you'd rather manage the binary yourself.
+you'd rather manage the binary yourself. The bootstrap and the rendered hook payloads are
+bash scripts and the bootstrap targets the linux/darwin archives — on Windows, install awf
+on `PATH` and run it directly instead of through the pin.
 
 ## Quickstart
 
@@ -122,6 +124,7 @@ Run `awf help` for the full synopsis.
 
 - **`awf init --force`** overwrites them, backing each original up to `<path>.awf-bak` first.
 - **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
+- **Prefix** — rendered skills are named `<prefix>-<skill>`; `awf init` derives `prefix` from the repo directory's basename. Change it via the `prefix` key in `.awf/config.yaml`, then `awf sync`.
 - **Back out anytime** — `awf uninstall` removes everything awf generated, leaving your `.awf/` config in place.
 
 awf never installs or activates git hooks — the wiring is yours. It does render hook

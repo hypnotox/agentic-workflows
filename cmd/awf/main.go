@@ -187,7 +187,9 @@ Flags:
   --force        overwrite colliding files, backing each up to <path>.awf-bak
   --describe     print the fillable value descriptors as JSON and exit
   --set k=v      set a value non-interactively (repeatable)
-  --answers FILE read values from a JSON/YAML answers file
+  --answers FILE read values from a JSON/YAML answers file: a flat key→value map
+                 of descriptor keys (see --describe); multiselect answers
+                 (skills, docs) are comma-joined name lists
 `,
 	},
 	"sync": {
