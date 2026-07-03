@@ -41,7 +41,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err := initspec.MergeSetFlags(answers, sets); err != nil {
 		return err
 	}
-	vars, inv, trim, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
+	vars, inv, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}

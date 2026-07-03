@@ -20,9 +20,17 @@ type Skeleton struct {
 	Skills     []string          `yaml:"skills"`
 	Agents     []string          `yaml:"agents"`
 	Docs       []string          `yaml:"docs"`
+	Audit      *SkeletonAudit    `yaml:"audit,omitempty"`
 	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
 	Bootstrap  *BootstrapConfig  `yaml:"bootstrap,omitempty"`
 	Hooks      *HooksConfig      `yaml:"hooks,omitempty"`
+}
+
+// SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
+// allowedScopes — the one audit field init collects. Deliberately not
+// *AuditConfig, whose zero-value fields would serialize as explicit settings.
+type SkeletonAudit struct {
+	AllowedScopes []string `yaml:"allowedScopes"`
 }
 
 // CatalogTrim optionally overrides which catalog skills/docs a scaffolded config

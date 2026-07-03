@@ -98,22 +98,23 @@ func MergeSetFlags(base map[string]string, sets []string) error {
 }
 
 // Resolve maps descriptors + answers to a vars map, an optional invariants config,
-// and an optional catalog trim. For a string/enum descriptor the value is: the
+// an optional catalog trim, and the resolved commit-scope list. For a string/enum
+// descriptor the value is: the
 // explicit answer if present; otherwise an interactive prompt (when interactive);
 // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
 // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension. The
 // invariants-marker/globs targets are collected into a *config.InvariantConfig:
 // both non-empty → enabled config; exactly one → error; neither → nil.
-func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.InvariantConfig, *config.CatalogTrim, error) {
+func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.InvariantConfig, *config.CatalogTrim, []string, error) {
 	vars := map[string]string{}
-	var marker, globs string
+	var marker, globs, scopesRaw string
 	var skillsSel, docsSel *[]string
 	r := bufio.NewReader(in)
 	for _, d := range descs {
 		if d.Kind == "multiselect" {
 			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			if selected {
 				switch d.Target {
@@ -132,7 +133,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			if interactive {
 				p, err := prompt(r, out, d)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				val = p
 			} else {
@@ -144,6 +145,8 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			marker = val
 		case "invariants-globs":
 			globs = val
+		case "audit-scopes":
+			scopesRaw = val
 		default:
 			vars[d.Key] = val
 		}
@@ -161,7 +164,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		// inv stays nil: no invariants config supplied (decide on parsed globs, so
 		// a whitespace-only globs value counts as unset).
 	case marker == "" || len(gs) == 0:
-		return nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
+		return nil, nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
 	default:
 		inv = &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: gs, Marker: marker}}}
 	}
@@ -170,7 +173,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 	if skillsSel != nil || docsSel != nil {
 		trim = &config.CatalogTrim{Skills: skillsSel, Docs: docsSel}
 	}
-	return vars, inv, trim, nil
+	return vars, inv, trim, splitNames(scopesRaw), nil
 }
 
 // resolveMultiselect resolves one multiselect descriptor to a selection plus a
