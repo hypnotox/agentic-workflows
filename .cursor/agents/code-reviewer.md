@@ -40,7 +40,7 @@ Severity is informational only; route by classification kind.
 <!-- awf:edit universal-lenses — default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every implementation diff:
 
-1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (wrapping or context propagation, per the language's idiom); storage-layer concurrency (locking, transaction boundaries).
+1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
 1. **plan-adherence** — all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
 
