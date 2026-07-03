@@ -344,11 +344,15 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
+	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
+		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+	}
 	plan, err := p.planSections(kind, artifact, declared, sc.Sections)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(render.ParseSections(string(src)), plan)
+	assembled, parts := render.Assemble(render.ParseSections(expanded), plan)
 	content, err := render.Execute(assembled, data, parts, tid)
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
@@ -363,7 +367,10 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	}
 	return RenderedFile{
 		Path: outPath, Content: content, TemplateID: tid,
-		TemplateHash: manifest.Hash(src), ConfigHash: cfgHash,
+		// TemplateHash covers the post-expansion source so an edit to an included
+		// partial flags every including artifact stale (ADR-0052).
+		// invariant: include-in-templatehash
+		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		assembled: assembled,
 	}, nil
 }
