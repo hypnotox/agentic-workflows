@@ -234,6 +234,52 @@ agents:
 	}
 }
 
+// TestSyncKeepsLocalConvertedSkill guards the managed→local prune bug: converting
+// a previously-managed skill to local must not delete its on-disk file. RenderAll
+// skips local artifacts, so without protection Sync's prune treats the (now hand-
+// authored) file as a stale managed output and removes it — breaking every later
+// sync/check with "local skill file absent".
+func TestSyncKeepsLocalConvertedSkill(t *testing.T) {
+	cfg := `prefix: example
+vars:
+  testCmd: go test ./...
+  gateCmd: make gate
+skills:
+  - tdd
+agents:
+  - code-reviewer
+`
+	root := scaffoldFiles(t, cfg, nil)
+	// First sync renders tdd as a managed skill and locks its output path.
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
+	if _, err := os.Stat(skillPath); err != nil {
+		t.Fatalf("managed skill not rendered: %v", err)
+	}
+	// Convert tdd to local: its rendered file becomes the hand-authored local one.
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"), "local: true\n")
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("sync after local conversion: %v", err)
+	}
+	if _, err := os.Stat(skillPath); err != nil {
+		t.Fatalf("local-converted skill file was pruned: %v", err)
+	}
+	// The follow-up sync must still find the local file (the regression symptom).
+	if err := p.Sync(); err != nil {
+		t.Fatalf("second sync after local conversion: %v", err)
+	}
+}
+
 // writeLocalSkill writes a hand-authored local skill file with valid frontmatter.
 func writeLocalSkill(t *testing.T, root, rel string) {
 	t.Helper()

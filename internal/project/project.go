@@ -163,6 +163,16 @@ func (p *Project) SyncReport() ([]Backup, error) {
 		}
 		want[f.Path] = true
 	}
+	// Local artifacts are not rendered (skipped by RenderAll), so their hand-authored
+	// files never enter `want` above. Protect them from the prune below so converting
+	// a managed skill/agent to local does not delete its file.
+	localPaths, err := p.localTargetPaths()
+	if err != nil { // coverage-ignore: checkLocalFrontmatter above already surfaced any malformed local sidecar
+		return nil, err
+	}
+	for _, rel := range localPaths {
+		want[rel] = true
+	}
 	// Prune files from the previous lock that are no longer produced, then remove
 	// every directory left empty — walking all ancestors deepest-first, not just the
 	// immediate parent, so dropping a target clears its whole tree (inv:

@@ -118,6 +118,30 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 	return nil
 }
 
+// localTargetPaths returns the on-disk output paths of every declared local
+// skill/agent across all enabled targets. RenderAll does not produce these
+// (local artifacts are hand-authored), so Sync's prune must treat them as wanted;
+// otherwise converting a skill from managed to local deletes its file.
+func (p *Project) localTargetPaths() ([]string, error) {
+	var paths []string
+	for _, kv := range []struct {
+		kind  string
+		names []string
+	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
+		for _, name := range kv.names {
+			sc, err := p.Cfg.Sidecar(kv.kind, name)
+			if err != nil {
+				return nil, err
+			}
+			if !sc.Local {
+				continue
+			}
+			paths = append(paths, p.localOutPaths(kv.kind, name)...)
+		}
+	}
+	return paths, nil
+}
+
 // orphans reports sidecar and convention-part files whose artifact is not in the
 // matching enable list, plus convention-part files of an enabled artifact whose
 // section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).

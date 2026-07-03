@@ -310,6 +310,22 @@ func TestCheckLocalFrontmatterSurfacesMalformedSidecar(t *testing.T) {
 	}
 }
 
+// --- localTargetPaths: malformed sidecar (direct) ---
+
+func TestLocalTargetPathsSurfacesMalformedSidecar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: [my-local]\nagents: []\n", map[string]string{
+		"skills/my-local.yaml": "local: true\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corruptSidecar(t, root, "skills/my-local.yaml")
+	if _, err := p.localTargetPaths(); err == nil {
+		t.Fatal("expected localTargetPaths to surface a malformed sidecar")
+	}
+}
+
 // --- Sync: ADR-index generation failure ---
 
 func TestSyncFailsOnMalformedADR(t *testing.T) {
