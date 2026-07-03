@@ -269,6 +269,40 @@ func hasSidecarOrParts(root, key, name string) bool {
 	return false
 }
 
+// listTargets, listBootstrap, and listHooks print the three non-catalog kind
+// blocks; runList shares them between the single-kind filters and the bare
+// all-kinds listing.
+func listTargets(p *project.Project, stdout io.Writer) {
+	fmt.Fprintln(stdout, "targets:")
+	for _, n := range project.KnownTargets() {
+		state := "available"
+		if slices.Contains(p.Cfg.Targets, n) {
+			state = "enabled"
+		}
+		fmt.Fprintf(stdout, "  %-28s %s\n", n, state)
+	}
+}
+
+func listBootstrap(p *project.Project, stdout io.Writer) {
+	state := "available"
+	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
+		state = "enabled"
+	}
+	fmt.Fprintln(stdout, "bootstrap:")
+	fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/bootstrap.sh", state)
+}
+
+func listHooks(p *project.Project, stdout io.Writer) {
+	state := "available"
+	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
+		state = "enabled"
+	}
+	fmt.Fprintln(stdout, "hooks:")
+	for _, n := range project.HookNames() {
+		fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/hooks/"+n+".sh", state)
+	}
+}
+
 func runList(root, kindFilter string, stdout io.Writer) error {
 	if err := gate(root); err != nil {
 		return err
@@ -277,35 +311,15 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if kindFilter == "target" {
-		fmt.Fprintln(stdout, "targets:")
-		for _, n := range project.KnownTargets() {
-			state := "available"
-			if slices.Contains(p.Cfg.Targets, n) {
-				state = "enabled"
-			}
-			fmt.Fprintf(stdout, "  %-28s %s\n", n, state)
-		}
+	switch kindFilter {
+	case "target":
+		listTargets(p, stdout)
 		return nil
-	}
-	if kindFilter == "bootstrap" {
-		state := "available"
-		if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-			state = "enabled"
-		}
-		fmt.Fprintln(stdout, "bootstrap:")
-		fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/bootstrap.sh", state)
+	case "bootstrap":
+		listBootstrap(p, stdout)
 		return nil
-	}
-	if kindFilter == "hooks" {
-		state := "available"
-		if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
-			state = "enabled"
-		}
-		fmt.Fprintln(stdout, "hooks:")
-		for _, n := range project.HookNames() {
-			fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/hooks/"+n+".sh", state)
-		}
+	case "hooks":
+		listHooks(p, stdout)
 		return nil
 	}
 	kinds := project.Kinds()
@@ -320,7 +334,11 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "%s:\n", pl)
 		pool, catalogBacked := catalogNames(p.Cat, kind)
 		if !catalogBacked { // domains: configured set only
-			for _, n := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
+			names := slices.Sorted(slices.Values(p.Cfg.Domains))
+			if len(names) == 0 {
+				fmt.Fprintln(stdout, "  (none)")
+			}
+			for _, n := range names {
 				fmt.Fprintf(stdout, "  %-28s %s\n", n, "configured")
 			}
 			continue
@@ -328,6 +346,12 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 		for _, n := range pool {
 			fmt.Fprintf(stdout, "  %-28s %s\n", n, artifactState(p, kind, n))
 		}
+	}
+	// Bare list covers every kind: append the non-catalog blocks last.
+	if kindFilter == "" {
+		listTargets(p, stdout)
+		listBootstrap(p, stdout)
+		listHooks(p, stdout)
 	}
 	return nil
 }

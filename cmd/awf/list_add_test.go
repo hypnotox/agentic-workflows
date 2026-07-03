@@ -592,3 +592,29 @@ func TestDispatchAddRemoveList(t *testing.T) {
 		t.Fatalf("list dispatch: %s", errb.String())
 	}
 }
+
+// Bare `awf list` covers every kind — the four catalog/domain kinds plus
+// target, bootstrap, and hooks — and an empty kind prints (none) under its
+// header. A single-kind filter still prints only that kind.
+func TestRunListBareShowsAllKinds(t *testing.T) {
+	root := scaffoldedProject(t)
+	var out bytes.Buffer
+	if err := runList(root, "", &out); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	for _, want := range []string{
+		"skills:", "agents:", "docs:", "domains:\n  (none)",
+		"targets:", "bootstrap:", ".awf/bootstrap.sh", "hooks:", ".awf/hooks/pre-commit.sh",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("bare list missing %q:\n%s", want, out.String())
+		}
+	}
+	out.Reset()
+	if err := runList(root, "skill", &out); err != nil {
+		t.Fatalf("list skill: %v", err)
+	}
+	if strings.Contains(out.String(), "targets:") || strings.Contains(out.String(), "hooks:") {
+		t.Errorf("filtered list must not append the singleton kinds:\n%s", out.String())
+	}
+}
