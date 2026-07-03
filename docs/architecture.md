@@ -47,8 +47,9 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 - **`internal/catalog/`** — reads `templates/catalog.yaml`; declares the available skills, agents,
   docs, and their sections. `Singletons` and the compile-time `SingletonKinds` list name every
   always-on singleton (ADR-0043).
-- **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section
-  overlays (sidecar overrides + convention parts) then executes the template.
+- **`internal/render/`** — Go `text/template` rendering (ADR-0001); first expands awf-owned
+  `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
+  overlays (sidecar overrides + convention parts) and executes the template.
 - **`internal/manifest/`** — reads and writes `.awf/awf.lock` (schema-versioned); drives
   drift detection for `awf check`.
 - **`internal/migrate/`** — ordered schema-migration registry (ADR-0010); the `tree-layout`
