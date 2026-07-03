@@ -592,35 +592,12 @@ Apply all five lenses to every implementation diff:
 - [ ] Run `./x check`. Expected: `awf check: clean`. (The lock's `TemplateHash`/`ConfigHash` for
   the three reviewers changed under `./x sync`; `.awf/awf.lock` is expected to appear in
   `git status`.)
-- [ ] Run `./x gate`. Expected: `coverage: 100.0%`, `0 issues.`
+### Task 2.9 — Extend the golden test to prove the include expanded
 
-### Task 2.9 — Commit Phase 2
-
-- [ ] Stage exactly the changed files and commit:
-
-```
-git add templates/partials/review-spine-head.md templates/partials/review-spine-tail.md \
-  templates/embed.go templates/agents/adr-reviewer.md.tmpl \
-  templates/agents/plan-reviewer.md.tmpl templates/agents/code-reviewer.md.tmpl \
-  templates/catalog.yaml .awf/awf.lock
-git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
-```
-
-  Commit body: note the spine now has a single source across the three reviewers, output is
-  byte-identical, and the per-reviewer differences moved to catalog `data:` defaults; cite
-  ADR-0052.
-
----
-
-## Phase 3 — Golden test, doc currency, and ADR flip to Implemented
-
-### Task 3.1 — Extend the golden test to prove the include expanded
-
-- [ ] In `internal/project/golden_test.go`, after the existing `code-reviewer.md` interpolation
-  assertion (the `strings.Contains(string(agent), "Independent fresh-context reviewer for example")`
-  block, ~line 26), add an assertion that spine content spliced from the tail partial is present
-  in the fully rendered agent — proving `awf:include` expanded through the real render path.
-  Insert after line 26 (before the `plansReadme` block):
+- [ ] In `internal/project/golden_test.go`, in `TestEndToEndGolden`, after the existing
+  `code-reviewer.md` interpolation assertion (the `strings.Contains(string(agent), "Independent
+  fresh-context reviewer for example")` block), add spine-content assertions proving `awf:include`
+  expanded through the real render path. Insert the block before the `plansReadme` read:
 
 ```go
 	// The review-discipline spine is spliced in from templates/partials via awf:include
@@ -632,9 +609,74 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 	}
 ```
 
-- [ ] Run `go test ./internal/project/ -run TestEndToEndGolden`. Expected: `ok`.
+### Task 2.10 — Add the expanded-source TemplateHash regression test
 
-### Task 3.2 — Update the rendering domain doc
+This backs the `include-in-templatehash` invariant: without it, a regression reverting item 2 to
+`manifest.Hash(src)` would pass byte-identity, the coverage gate, and `./x invariants`.
+
+- [ ] In `internal/project/golden_test.go`, add these imports to the import block: `"io/fs"`,
+  `"github.com/hypnotox/agentic-workflows/internal/manifest"`, and
+  `"github.com/hypnotox/agentic-workflows/templates"`. Then append this test function:
+
+```go
+func TestTemplateHashCoversExpandedSource(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const tid = "agents/code-reviewer.md.tmpl"
+	var got string
+	for _, f := range files {
+		if f.TemplateID == tid {
+			got = f.TemplateHash
+		}
+	}
+	if got == "" {
+		t.Fatal("code-reviewer not rendered")
+	}
+	raw, err := fs.ReadFile(templates.FS, tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// code-reviewer.md.tmpl carries awf:include directives, so its expanded source differs
+	// from its raw bytes; TemplateHash must be over the expanded source (ADR-0052). A
+	// regression to manifest.Hash(src) would make these equal.
+	if got == manifest.Hash(raw) {
+		t.Error("TemplateHash equals raw-source hash; expected expanded-source hash")
+	}
+}
+```
+
+- [ ] Run `go test ./internal/project/ -run 'TestEndToEndGolden|TestTemplateHashCoversExpandedSource'`.
+  Expected: `ok`.
+
+### Task 2.11 — Gate and commit Phase 2
+
+- [ ] Run `./x gate`. Expected: `coverage: 100.0%`, `0 issues.`
+- [ ] Stage exactly the changed files and commit:
+
+```
+git add templates/partials/review-spine-head.md templates/partials/review-spine-tail.md \
+  templates/embed.go templates/agents/adr-reviewer.md.tmpl \
+  templates/agents/plan-reviewer.md.tmpl templates/agents/code-reviewer.md.tmpl \
+  templates/catalog.yaml internal/project/golden_test.go .awf/awf.lock
+git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
+```
+
+  Commit body: note the spine now has a single source across the three reviewers, output is
+  byte-identical, the per-reviewer differences moved to catalog `data:` defaults, and the two
+  tests back the include expansion and the expanded-source TemplateHash; cite ADR-0052.
+
+---
+
+## Phase 3 — Doc currency and ADR flip to Implemented
+
+### Task 3.1 — Update the rendering domain doc
 
 - [ ] In `.awf/domains/parts/rendering/current-state.md`, append this sentence to the end of the
   single existing paragraph (before the final newline):
@@ -643,7 +685,7 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
  A general `awf:include` directive (ADR-0052) splices awf-owned embedded partials under `templates/partials/` into any template before section parsing — the spliced text is thereafter indistinguishable from inline content, and `TemplateHash` is computed over the post-expansion source so a partial edit flags every including artifact stale; partials are awf-owned only (no project config surface) and a missing, nested, or section-bearing partial is a hard render error. Its first use deduplicates the review-discipline spine shared by the three reviewer agents.
 ```
 
-### Task 3.3 — Update the architecture components doc
+### Task 3.2 — Update the architecture components doc
 
 - [ ] In `.awf/docs/parts/architecture/components.md`, the `internal/render/` bullet currently
   reads (the file does not use the literal string `ParseSections`; edit this exact clause):
@@ -659,12 +701,12 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 
   Keep the edit to that one clause; do not restructure the bullet.
 
-### Task 3.4 — Flip ADR-0052 to Implemented
+### Task 3.3 — Flip ADR-0052 to Implemented
 
 - [ ] In `docs/decisions/0052-template-include-directive-for-awf-owned-partials.md`, change the
   frontmatter `status: Proposed` to `status: Implemented`.
 
-### Task 3.5 — Sync, verify, and commit Phase 3
+### Task 3.4 — Sync, verify, and commit Phase 3
 
 - [ ] Run `./x sync`. Expected: `awf sync: done`. This regenerates `docs/domains/rendering.md`,
   `docs/architecture.md`, and `docs/decisions/ACTIVE.md` (0052 moves from Proposed to
@@ -682,7 +724,7 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 git add docs/decisions/0052-template-include-directive-for-awf-owned-partials.md \
   docs/decisions/ACTIVE.md .awf/domains/parts/rendering/current-state.md \
   docs/domains/rendering.md .awf/docs/parts/architecture/components.md \
-  docs/architecture.md internal/project/golden_test.go .awf/awf.lock
+  docs/architecture.md .awf/awf.lock
 git commit -m "docs(adr): mark 0052 implemented and document awf:include"
 ```
 
