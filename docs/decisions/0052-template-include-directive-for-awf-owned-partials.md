@@ -136,18 +136,32 @@ Harder / accepted trade-offs:
 - The per-reviewer differences move from inline prose into catalog `data:` defaults, which is
   slightly less legible at a glance than inline text; covered by the byte-identical golden
   regression test.
+- Existing adopters see the three reviewer agents flagged stale after upgrading: restructuring
+  their templates changes both the lock `TemplateHash` (item 2's expanded-source hash) and the
+  `configHash` (the new per-artifact catalog `data:` keys fold into `artifactConfigHash` per
+  ADR-0045), even though rendered output is byte-identical. `awf sync` resolves it — the normal
+  upgrade path (ADR-0039). Artifacts carrying no `awf:include` are untouched: expansion is a
+  no-op for them, so their `TemplateHash` is unchanged.
 - Nested includes and project-authored partials are deferred; a future consumer needing either
   reopens the decision.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+- All five `inv:` slugs above land a matching `// invariant: <slug>` source marker under
+  `./internal/...`, each backed by a test, in the same range that flips this ADR to
+  `Implemented`; otherwise the ADR-0008 backed-invariants gate fails. No existing Implemented
+  invariant is retired (`retires_invariants: []`).
 - The `awf:include` directive materially shifts the `rendering` domain narrative
   (`docs/domains/rendering.md`) and the render-pipeline description in `docs/architecture.md`;
   both are refreshed in the implementing range.
 - A one-line clarifying nod in the rendering narrative that awf-owned partials are templated
   content spliced pre-parse (reinforcing, not contradicting, ADR-0034's raw-convention
   boundary).
+- No `docs/decisions/README.md` row is owed (the index is the generated `ACTIVE.md`; the README
+  is a how-to, ADR-0005), and no AGENTS.md invariant entry is owed: `awf:include` is an
+  author-only, awf-internal template mechanism an adopter never writes, not a project-facing
+  rule.
 
 ## Alternatives Considered
 
