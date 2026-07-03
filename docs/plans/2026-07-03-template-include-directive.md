@@ -682,7 +682,7 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
   single existing paragraph (before the final newline):
 
 ```
- A general `awf:include` directive (ADR-0052) splices awf-owned embedded partials under `templates/partials/` into any template before section parsing — the spliced text is thereafter indistinguishable from inline content, and `TemplateHash` is computed over the post-expansion source so a partial edit flags every including artifact stale; partials are awf-owned only (no project config surface) and a missing, nested, or section-bearing partial is a hard render error. Its first use deduplicates the review-discipline spine shared by the three reviewer agents.
+ A general `awf:include` directive (ADR-0052) splices awf-owned embedded partials under `templates/partials/` into any template before section parsing — the spliced text is thereafter indistinguishable from inline content, and `TemplateHash` is computed over the post-expansion source so a partial edit flags every including artifact stale; these partials are awf-owned templated content spliced pre-parse — on the templated side of ADR-0034's raw-vs-templated boundary, not project-supplied raw-convention input — so they carry no project config surface, and a missing, nested, or section-bearing partial is a hard render error. Its first use deduplicates the review-discipline spine shared by the three reviewer agents.
 ```
 
 ### Task 3.2 — Update the architecture components doc
