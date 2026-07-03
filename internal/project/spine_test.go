@@ -16,7 +16,11 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 		t.Fatalf("read template: %v", err)
 	}
 	withLayoutDefaults(data)
-	asm, parts := render.Assemble(render.ParseSections(string(src)), nil)
+	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	if err != nil {
+		t.Fatalf("expand includes: %v", err)
+	}
+	asm, parts := render.Assemble(render.ParseSections(expanded), nil)
 	out, err := render.Execute(asm, data, parts, "test")
 	if err != nil {
 		t.Fatalf("render: %v", err)

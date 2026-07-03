@@ -236,6 +236,13 @@ agents:
       docCurrencyItems:
         - check: every document that states the behaviour this ADR changes is updated in the same commit
         - check: the decision index is regenerated when the ADR's status changes
+      reviewSubject: ADR
+      readStep: Read the ADR in full. Read every doc, ADR, or state doc it references by name.
+      digestLabel: ADR
+      digestSummary: |-
+        - Decision: <one line, the load-bearing item>
+        - Invariants: <1–2 headlines>
+        - Trade-off: <one notable rejected alternative + why>
   plan-reviewer:
     sections:
       - universal-lenses
@@ -250,6 +257,13 @@ agents:
           description: tasks are ordered so each builds only on already-completed work
       docCurrencyItems:
         - check: the plan schedules updates for every document its changes invalidate, in the same commits
+      reviewSubject: plan
+      readStep: Read the artifact in full. Read every doc, ADR, or state doc it references by name.
+      digestLabel: Plan
+      digestSummary: |-
+        - Goal: <one line from the plan header>
+        - Shape: <phase count, commit count, files created/modified>
+        - Headline tasks: <1–2 sentences naming the load-bearing tasks>
   code-reviewer:
     sections:
       - universal-lenses
@@ -266,6 +280,14 @@ agents:
           description: behaviour changes carry tests in the same commit; no assertion is weakened to pass
       docCurrencyItems:
         - check: the change updates every document that states the old behaviour — same commit
+      reviewSubject: diff
+      readStep: "Read the diff in full (`git diff baseSha..headSha`). Read every plan, ADR, or state doc referenced by name in the brief."
+      fixesAsCommits: true
+      digestLabel: Impl
+      digestSummary: |-
+        - Commits: <one line per commit subject>
+        - Headline change: <1–2 sentences>
+        - Test additions: <file count or named test files>
 docs:
   architecture:
     title: Architecture
