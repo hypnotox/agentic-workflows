@@ -6,6 +6,13 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [0.6.1] - 2026-07-03
+### Bug fixes
+- Converting a managed skill or agent to `local: true` no longer deletes its file on the next
+  sync. The prune step now preserves every declared local artifact's output path, so a
+  managed→local conversion keeps the hand-authored file instead of breaking later syncs with
+  "local skill file absent".
+
 ## [0.6.0] - 2026-07-03
 ### Breaking changes
 - The three standard docs (`workflow`, `doc-standard`, `agents-md-standard`) are now mandatory
