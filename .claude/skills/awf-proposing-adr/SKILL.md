@@ -31,7 +31,7 @@ Load-bearing triggers include:
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md` — never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (≥1 coarse domain key — drives the per-domain `docs/domains/<domain>.md` index).
+- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `docs/domains/<domain>.md` index — fill ≥1 before committing when the project configures domain docs; otherwise leave `[]`).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
@@ -47,7 +47,7 @@ Load-bearing triggers include:
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty.
+   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty — `domains` stays `[]` when the project configures no domain docs.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
 3. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.

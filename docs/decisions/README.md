@@ -45,8 +45,9 @@ domains: [area]       # coarse domain keys driving the per-domain decision index
 ```
 
 `domains:` lists the coarse domains this decision belongs to; each one's generated
-`## Decisions` index under `docs/domains/` is built from this field, so set it on every
-ADR (use the project's existing domain names).
+`## Decisions` index under `docs/domains/` is built from this field. Fill it on every
+ADR when the project configures domain docs (use the existing domain names); otherwise
+leave it `[]`.
 
 <!-- awf:edit invariants — from .awf/parts/adr-readme/invariants.md -->
 ## Invariant tagging
