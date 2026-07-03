@@ -66,3 +66,22 @@ func TestCommandOrderMatchesArgSpecs(t *testing.T) {
 		}
 	}
 }
+
+// `awf help <cmd>` prints that command's --help text; an unknown command
+// falls back to the top-level overview and exits 0, like bare `awf help`.
+func TestHelpSubcommandDispatch(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "help", "sync"}, &out, &errb); code != 0 {
+		t.Fatalf("help sync: exit %d (%s)", code, errb.String())
+	}
+	if out.String() != argSpecs["sync"].help {
+		t.Errorf("awf help sync = %q, want the sync --help text", out.String())
+	}
+	out.Reset()
+	if code := run([]string{"awf", "help", "bogus"}, &out, &errb); code != 0 {
+		t.Fatalf("help bogus: exit %d (%s)", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "Commands:") {
+		t.Errorf("unknown command should fall back to the overview:\n%s", out.String())
+	}
+}

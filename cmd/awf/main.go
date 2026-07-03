@@ -61,6 +61,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
+		if a == "help" && len(args) >= 3 {
+			if spec, ok := argSpecs[args[2]]; ok {
+				fmt.Fprint(stdout, spec.help)
+				return 0
+			}
+		}
 		fmt.Fprint(stdout, globalHelp())
 		return 0
 	}
