@@ -6,6 +6,14 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [0.6.2] - 2026-07-03
+### Others
+- Add a general `awf:include` template-partials directive — awf-owned embedded partials under
+  `templates/partials/`, spliced before section parsing, with the drift hash computed over the
+  expanded source so a partial edit still flags dependent artifacts stale — and use it to
+  deduplicate the review-discipline spine shared by the three reviewer agents. An awf-internal
+  change: rendered template output is byte-for-byte unchanged (ADR-0052).
+
 ## [0.6.1] - 2026-07-03
 ### Bug fixes
 - Converting a managed skill or agent to `local: true` no longer deletes its file on the next
