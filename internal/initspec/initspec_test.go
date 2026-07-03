@@ -260,3 +260,31 @@ func TestResolveAuditScopesEmptyIsNil(t *testing.T) {
 		t.Errorf("empty answer must resolve to nil scopes, got %v", scopes)
 	}
 }
+
+// A prompt stream that hits EOF (e.g. /dev/null, which stats as a char device
+// and so counts as interactive) switches every remaining descriptor to the
+// silent path: the in-flight prompt keeps its default, no further prompt text
+// is emitted, and later values resolve empty.
+func TestResolveEOFFallsSilent(t *testing.T) {
+	ds := []catalog.VarDescriptor{
+		{Key: "first", Kind: "string", Default: "d1"},
+		{Key: "second", Kind: "string", Default: "d2"},
+	}
+	var out strings.Builder
+	vars, _, _, _, err := Resolve(ds, nil, strings.NewReader(""), &out, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "first —") {
+		t.Errorf("the first prompt should have been emitted:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "second —") {
+		t.Errorf("prompt text emitted after EOF:\n%s", out.String())
+	}
+	if vars["first"] != "d1" {
+		t.Errorf(`vars["first"] = %q, want the prompted default "d1"`, vars["first"])
+	}
+	if vars["second"] != "" {
+		t.Errorf(`vars["second"] = %q, want "" (silent path)`, vars["second"])
+	}
+}

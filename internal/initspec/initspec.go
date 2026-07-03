@@ -97,6 +97,29 @@ func MergeSetFlags(base map[string]string, sets []string) error {
 	return nil
 }
 
+// promptReader wraps the prompt input and latches EOF, so Resolve stops
+// prompting (and stops emitting prompt text) once the input is exhausted —
+// an init reading /dev/null or a closed stdin degrades to the silent path
+// instead of streaming every remaining prompt to nobody.
+type promptReader struct {
+	r   *bufio.Reader
+	eof bool
+}
+
+// line reads one line; EOF is latched, not returned — the partial line (or
+// empty string) read alongside it is still the answer.
+func (pr *promptReader) line() (string, error) {
+	s, err := pr.r.ReadString('\n')
+	if err == io.EOF {
+		pr.eof = true
+		return s, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("initspec: read input: %w", err)
+	}
+	return s, nil
+}
+
 // Resolve maps descriptors + answers to a vars map, an optional invariants config,
 // an optional catalog trim, and the resolved commit-scope list. For a string/enum
 // descriptor the value is: the
@@ -109,10 +132,10 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 	vars := map[string]string{}
 	var marker, globs, scopesRaw string
 	var skillsSel, docsSel *[]string
-	r := bufio.NewReader(in)
+	r := &promptReader{r: bufio.NewReader(in)}
 	for _, d := range descs {
 		if d.Kind == "multiselect" {
-			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive)
+			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive && !r.eof)
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
@@ -130,7 +153,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		}
 		val, ok := answers[d.Key]
 		if !ok {
-			if interactive {
+			if interactive && !r.eof {
 				p, err := prompt(r, out, d)
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -182,7 +205,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 // option numbers for the complete desired set) when interactive; otherwise not
 // selected. selected=false means "no selection: keep the scaffold's curated-core
 // default"; selected=true carries the verbatim set (possibly empty = deselect all).
-func resolveMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor, answers map[string]string, interactive bool) ([]string, bool, error) {
+func resolveMultiselect(r *promptReader, out io.Writer, d catalog.VarDescriptor, answers map[string]string, interactive bool) ([]string, bool, error) {
 	if raw, ok := answers[d.Key]; ok {
 		sel := splitNames(raw)
 		for _, n := range sel {
@@ -201,7 +224,7 @@ func resolveMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor,
 // promptMultiselect renders the numbered option list (core marked [x]) and reads a
 // complete selection as comma-separated 1-based numbers. Empty input keeps the core
 // default (selected=false); an out-of-range or non-numeric token errors.
-func promptMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) ([]string, bool, error) {
+func promptMultiselect(r *promptReader, out io.Writer, d catalog.VarDescriptor) ([]string, bool, error) {
 	core := map[string]bool{}
 	for _, n := range splitNames(d.Default) {
 		core[n] = true
@@ -215,9 +238,9 @@ func promptMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) 
 		fmt.Fprintf(out, "  %d) [%s] %s\n", i+1, mark, o)
 	}
 	fmt.Fprint(out, "  enter full selection (comma-sep numbers), empty=keep: ")
-	line, err := r.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return nil, false, fmt.Errorf("initspec: read input: %w", err)
+	line, err := r.line()
+	if err != nil {
+		return nil, false, err
 	}
 	line = strings.TrimSpace(line)
 	if line == "" {
@@ -250,7 +273,7 @@ func splitNames(s string) []string {
 
 // prompt reads one line for descriptor d, returning d.Default on empty input.
 // For an enum, a numeric reply selects the option at that 1-based index.
-func prompt(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) (string, error) {
+func prompt(r *promptReader, out io.Writer, d catalog.VarDescriptor) (string, error) {
 	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
 	if d.Kind == "enum" {
 		for i, o := range d.Options {
@@ -260,9 +283,9 @@ func prompt(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) (string, er
 		fmt.Fprintf(out, "  e.g. %s\n", strings.Join(d.Options, ", "))
 	}
 	fmt.Fprintf(out, "  [%s]: ", d.Default)
-	line, err := r.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("initspec: read input: %w", err)
+	line, err := r.line()
+	if err != nil {
+		return "", err
 	}
 	line = strings.TrimRight(line, "\r\n")
 	if line == "" {
