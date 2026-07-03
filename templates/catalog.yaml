@@ -364,14 +364,14 @@ vars:
     options: ["~15s"]
   - key: checkCmd
     kind: string
-    description: Command that checks rendered output for drift.
+    description: Command that checks rendered output for drift. Leave empty to have the rendered hook payloads run the pinned awf via the bootstrap shim.
     default: ""
-    options: ["./x check", "awf check"]
+    options: ["./x check"]
   - key: commitGateCmd
     kind: string
-    description: Command that validates one commit message (the commit-msg hook payload appends the message-file argument).
+    description: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim.
     default: ""
-    options: ["./x commit-gate", "awf commit-gate"]
+    options: ["./x commit-gate"]
   - key: testCmd
     kind: string
     description: Command that runs the test suite.
