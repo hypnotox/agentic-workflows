@@ -54,6 +54,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0053: Deterministic workflow-chain golden-task eval suite](../decisions/0053-deterministic-workflow-chain-golden-task-eval-suite.md)
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](../decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md)
 
+### Proposed
+
+- [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
