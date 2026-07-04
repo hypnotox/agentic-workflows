@@ -4,8 +4,8 @@ date: 2026-07-04
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [docs, rendering]
-related: [0011, 0020, 0043, 0057, 0058]
+tags: [docs, rendering, singleton, config]
+related: [0004, 0011, 0013, 0020, 0034, 0043, 0057, 0058]
 domains: [rendering, config]
 ---
 # ADR-0059: Mandatory working-with-awf usage doc singleton
@@ -39,7 +39,12 @@ lived in `docs:` and adds no config field.
    `doc-standard` / `agents-md-standard`: suppressible only via a `local: true` sidecar, covered
    automatically by the dead-internal-link scan (ADR-0020) and the validate/scaffold loops.
    **Adoption and `awf init` are out of scope** — first-time adoption is documented in the awf repo
-   itself, not rendered into adopter projects.
+   itself, not rendered into adopter projects. Concretely this adds a new template default
+   `templates/docs/working-with-awf.md.tmpl` (its `awf:section` markers matching item 2), a
+   `working-with-awf` entry in `templates/catalog.yaml`'s `singletons:` map (carrying the item-2
+   sections) and in `catalog.SingletonKinds`, and a `plainSingletons` entry in
+   `internal/project/singleton.go` — no `internal/config` change, so `IsSingletonKind` picks it up by
+   membership with no schema touch.
 
 2. **Section taxonomy** (five sections):
    - `overview` — the generate-from-config model: every rendered file comes from the `.awf/` tree and
@@ -68,10 +73,15 @@ lived in `docs:` and adds no config field.
 - `inv: working-with-awf-mandatory` — the `working-with-awf` doc renders as an always-on singleton
   for every project (present in `plainSingletons` and `catalog.SingletonKinds`), suppressible only
   via a `local: true` sidecar. Backed by the singleton-set test extended to assert its presence.
-- The ADR-0043 `document-map-lists-mandatory-docs` invariant is amended in scope to cover
-  `working-with-awf`: its backing test asserts all **four** mandatory docs appear in the rendered
-  `AGENTS.md` document map. ADR-0043 stays `Implemented` (cited in `related`); this is a
-  scope-widening textual amendment via successor, not a supersession, and retires no invariant.
+- **Partial-item supersedence of ADR-0043's `document-map-lists-mandatory-docs` invariant.** This
+  ADR overrides that single invariant to widen its scope to `working-with-awf`: its backing test
+  (`TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally`) asserts all **four** mandatory
+  docs appear in the rendered `AGENTS.md` document map. This is partial-item supersedence in the
+  project's lifecycle vocabulary, not amendment (which is reserved for a still-`Proposed` ADR editing
+  its own body) and not full supersedence: `related: [0043]`, no status flip, and the successor prose
+  names the overridden item. ADR-0043 stays `Implemented`; no invariant is retired. Its frozen text
+  still enumerates the original three docs, so this successor is the authoritative record of the
+  fourth.
 
 ## Consequences
 
