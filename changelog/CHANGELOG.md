@@ -6,6 +6,26 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [0.7.0] - 2026-07-04
+### Breaking changes
+- The brainstorming skill's terminal-handoff section is renamed from `terminal-handoff` to
+  `terminal-step` for uniform chain-handoff naming (ADR-0054). Its rendered prose is unchanged,
+  but any override at `.awf/skills/parts/brainstorming/terminal-handoff.md` must be renamed to
+  `terminal-step.md` to keep applying.
+### Features
+- Add a `Red flags` rationalization-guard section (a "Rationalization | Reality" table) to the
+  `tdd`, `debugging`, `executing-plans`, and `subagent-driven-development` skills, each
+  overridable via `.awf/skills/parts/<skill>/red-flags.md`.
+### Others
+- Add a deterministic golden-task eval suite (`internal/evals`) that renders every catalog skill
+  and agent through a full `Project.Sync` and asserts cross-artifact workflow-chain seams —
+  forward handoffs name their successor on an invocation-verb line, and the chain graph is
+  connected and reachable from `brainstorming` (ADR-0053, ADR-0054). Test-only; no change to
+  rendered output or CLI behavior.
+- Enforce `skill-section-parity`: every catalog skill/agent template's `awf:section` markers must
+  match its declared sections, so a section rename can no longer half-land with a blank override
+  path (ADR-0054).
+
 ## [0.6.2] - 2026-07-03
 ### Others
 - Add a general `awf:include` template-partials directive — awf-owned embedded partials under
