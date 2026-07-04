@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, parts]
-related: [0034, 0045, 0057]
+related: [0012, 0034, 0045, 0057]
 domains: [rendering]
 ---
 # ADR-0058: Backslash escape and value-token-free guard for placeholders
@@ -41,11 +41,16 @@ the literal syntax — so nothing here touches them.
    (not a bare `\{{=`), so it neutralises both passes and does not consume a backslash before an
    unrelated `{{=` in prose.
 
-2. **NUL-sentinel implementation.** `substitutePlaceholders` replaces each escaped opener with a
-   NUL-delimited sentinel *before* the two existing passes and restores it to a bare `{{=` *after* —
-   the same inert-sentinel technique ADR-0034 uses for part bodies. The sentinel is created and
-   fully restored within the function, never reaches `Assemble`, and a NUL byte cannot occur in
-   markdown, so it cannot collide with real content. The escape composes with the existing
+2. **NUL-sentinel implementation.** `substitutePlaceholders` consumes only the leading backslash and
+   stands the matched `{{=` behind a NUL-delimited sentinel *before* the two existing passes,
+   restoring that `{{=` verbatim *after* — the same inert-sentinel technique ADR-0034 uses for part
+   bodies. Only the `{{=` is hidden; the matched `\s*awf` tail and everything after it stay in the
+   body untouched throughout, so on restore the entire remainder (the `{{=`, any interior
+   whitespace, `awf`, and the rest of the token) renders verbatim minus the backslash — including the
+   whitespace near-miss `\{{= awf:x}}`. The sentinel is created and fully restored within the
+   function, never reaches `Assemble`, and a NUL byte cannot occur in markdown, so it cannot collide
+   with real content — nor with `render.Assemble`'s own `\x00awf:part:` sentinel, which sees no NUL in
+   this function's fully-restored output. The escape composes with the existing
    `strings.Contains(body, "{{=")` fast path: an escaped token still contains `{{=`, so the fast
    path never wrongly skips an escaped body.
 
@@ -58,6 +63,20 @@ the literal syntax — so nothing here touches them.
    caller is `planSections`). At build it hard-errors, naming the offending key, if any registry
    *value* matches the residual pattern `\{\{=\s*awf` — a clear, correctly-located build-time error
    instead of the confusing post-substitution residual error on awf-produced text.
+
+**Unifying rationale.** Items 1–4 are one decision: they give the `{{=awf` token a way to appear as
+inert literal *data* on both surfaces of the ADR-0057 mechanism — the authored raw-part surface
+(escape, items 1–3) and the config-derived registry-value surface (token-free guard, item 4) — so
+neither the substitution pass nor the residual guard ever fires on text that merely names the token.
+
+**Relationship to ADR-0057 and ADR-0034.** This refines ADR-0057's raw-part surface only; ADR-0057
+stays `Implemented`, recorded via `related` with no status flip. It further narrows the
+byte-for-byte promise a second time — after ADR-0057 narrowed ADR-0034 item 1's "appears verbatim"
+clause for the sentinel, the escape adds one more narrow exception (a lone `\{{=…awf` drops its
+backslash). Neither `parts-raw` nor `part-placeholder-sandboxed` is retired (`retires_invariants:
+[]`): the load-bearing "never run through `text/template`" clause stays true, and the escape is a
+literal pre-pass, not a template action. ADR-0034 is not re-touched here — ADR-0057 already recorded
+that relationship.
 
 ## Invariants
 
@@ -81,6 +100,23 @@ the literal syntax — so nothing here touches them.
   no longer byte-for-byte — the backslash is consumed. This is the intended, documented cost of an
   escape; a part that genuinely wants a literal backslash before the token uses the double-backslash
   edge.
+
+Doc-currency obligations the implementing commit(s) must satisfy (this ADR is the first of a
+two-ADR effort with ADR-0059; concrete sequencing lands through the shared plan authored after both
+settle):
+- The two invariants' backing tests (`// invariant: escaped-placeholder-literal`,
+  `// invariant: placeholder-value-token-free`) land in the same change that flips this ADR to
+  `Implemented`; no existing Implemented invariant is retired (`retires_invariants: []`).
+- The mechanism-describing narrative parts reworded during the ADR-0057 rollout
+  (`.awf/docs/parts/architecture/data-flow.md`, `.awf/domains/parts/rendering/current-state.md`) may
+  state the `{{=awf:…}}` token directly via the new escape; any such edit re-renders through
+  `./x sync` in the same commit.
+- `docs/architecture.md`'s render-flow note gains the pre-pass escape / NUL-sentinel step so the
+  raw-part narrative stays accurate.
+- The status flip to `Accepted`/`Implemented` regenerates `docs/decisions/ACTIVE.md` and the
+  `rendering` domain index (this ADR carries `domains: [rendering]`, so ADR-0033's
+  ADR→domain-index co-change and ADR-0019 staleness apply) via `./x sync`, staged in the same commit.
+- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md` (ADR-0005).
 
 ## Alternatives Considered
 
