@@ -136,7 +136,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
 - [ ] **1.8 Flip ADR-0056 and verify.**
   - Set `status: Implemented` in `docs/decisions/0056-structured-commit-scope-config-with-meanings.md`.
   - `./x sync` (regenerates ACTIVE.md), `./x check` (clean), `./x gate` (100%, `scope-config-dual-form` now backed).
-  - **Commit** (stage explicitly): `feat(config): structured commit-scope config with meanings`. Include the two config files, the two audit files, render.go, the new test, fixed tests, the ADR, ACTIVE.md, **the regenerated domain index docs `docs/domains/config.md`, `docs/domains/rendering.md`, `docs/domains/tooling.md`** (0056 carries `domains: [config, rendering, tooling]`, so the Proposed→Implemented flip changes each domain's ADR-status index — ADR-0033 co-change), awf.lock.
+  - **Commit** (stage explicitly): `feat(config): support structured commit-scope entries with meanings`. Include the two config files, the two audit files, render.go, the new test, fixed tests, the ADR, ACTIVE.md, **the regenerated domain index docs `docs/domains/config.md`, `docs/domains/rendering.md`, `docs/domains/tooling.md`** (0056 carries `domains: [config, rendering, tooling]`, so the Proposed→Implemented flip changes each domain's ADR-status index — ADR-0033 co-change), awf.lock.
   - Note: retyping `commitScopes` to `[]ScopeSpec` changes the *marshalled* shape folded into the confighash of every `.commitScopes`-referencing artifact (guide + reviewing skills), so `./x sync` will churn many `awf.lock` hash lines even though the rendered *content* is unchanged (`commitScopesDisplay` still emits names only). This churn is expected; stage the whole `awf.lock`.
   - Expected `./x gate` tail: `coverage: 100.0%` and `0 issues.`
 
@@ -209,7 +209,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   - Set `status: Implemented` in `docs/decisions/0057-*.md`.
   - Update `docs/architecture.md` render-flow note (~lines 88-91) to mention the part-placeholder substitution pass; update the `rendering` domain narrative source (`.awf/domains/parts/rendering/current-state.md`) with a sentence on the `{{=awf:…}}` sandbox and its reflag.
   - `./x sync`, `./x check` (clean), `./x gate` (100%, both ADR-0057 invariants backed).
-  - **Commit**: `feat(rendering): sandboxed {{=awf:}} placeholder substitution in parts`. Include placeholders.go(+test), render.go wiring, confighash.go, vars.go, drift test, the ADR, `docs/architecture.md`, the domain source `.awf/domains/parts/rendering/current-state.md`, **the regenerated domain index docs `docs/domains/rendering.md` and `docs/domains/config.md`** (0057 carries `domains: [rendering, config]` — the flip changes both indexes, ADR-0033), ACTIVE.md, awf.lock. (This single commit also carries all of Phase 2's work — see the Phase 2 note.)
+  - **Commit**: `feat(rendering): add sandboxed {{=awf:}} placeholder substitution in parts`. Include placeholders.go(+test), render.go wiring, confighash.go, vars.go, drift test, the ADR, `docs/architecture.md`, the domain source `.awf/domains/parts/rendering/current-state.md`, **the regenerated domain index docs `docs/domains/rendering.md` and `docs/domains/config.md`** (0057 carries `domains: [rendering, config]` — the flip changes both indexes, ADR-0033), ACTIVE.md, awf.lock. (This single commit also carries all of Phase 2's work — see the Phase 2 note.)
 
 ---
 
@@ -237,14 +237,18 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
         meaning: CLI, audit/gate, coverage, CI, ./x, changelog, evals
   ```
 
-- [ ] **4.2 Derive the taxonomy table.** In `.awf/parts/workflow/commit-discipline.md` replace the hand-written markdown table (the `| scope | use it for |` block and its 8 rows) with a single line `{{=awf:commitScopeTable}}`. Keep the intro sentence, the "stored once in `audit.allowedScopes`" line, and the domains-convention note (it contains no scope tokens). Verify zero hand-written scope tokens remain in the file.
+- [ ] **4.2 Derive the taxonomy table and de-tokenise the prose.** In `.awf/parts/workflow/commit-discipline.md`:
+  - Replace the hand-written markdown table (the `| scope | use it for |` block and its 8 rows) with a single line `{{=awf:commitScopeTable}}`.
+  - Keep the intro sentence and the "stored once in `audit.allowedScopes`" line.
+  - **Reword the domains-convention paragraph so it enumerates no scope tokens** (ADR-0055's list is now in the derived table above it). The paragraph currently hand-writes six: the domain-mirror list (`` `adr-system` ``, `` `config` ``, `` `invariants` ``, `` `rendering` ``, `` `tooling` ``) and the `` `adr` ``/`` `adr-system` `` wrong-but-valid example. Rewrite to: "The code scopes mirror the domain vocabulary in `.awf/config.yaml` — see [the domain docs](domains) for what each area covers. The correspondence is hand-maintained, not machine-enforced (ADR-0055): adding a domain does not add a scope. The gate only checks set membership; it cannot catch a wrong-but-valid pick (a docs scope where a code scope was meant), so pick the scope that names the area you actually changed."
+  - Verify: `grep -nE '\x60(adr|adr-system|awf|config|invariants|plans|rendering|tooling)\x60' .awf/parts/workflow/commit-discipline.md` returns nothing (zero hand-written scope tokens remain).
 
 - [ ] **4.3 Sync, verify, commit.**
   - `./x sync` — `docs/workflow.md` renders the table from config; the placeholder-reflag folds scope data into the workflow.md hash.
   - `grep -n "adr-system" docs/workflow.md` shows the rendered table row (proves derivation).
   - `./x check` (clean), `./x gate` (100%).
   - Sanity: temporarily add a 9th scope to `.awf/config.yaml`, `./x check` must report `docs/workflow.md` (or its artifact) drift/stale until re-synced; revert.
-  - **Commit**: `feat(awf): derive workflow.md commit-scope taxonomy from config`. Include `.awf/config.yaml`, the part, `docs/workflow.md`, awf.lock.
+  - **Commit**: `feat(config): derive workflow.md commit-scope taxonomy from config`. Include `.awf/config.yaml`, the part, `docs/workflow.md`, awf.lock.
 
 ---
 
