@@ -39,7 +39,8 @@ plan is the execution record only.
   chain test). Imports: `internal/catalog`, `internal/render`, `templates` (parity test); `regexp`,
   `os`, `strings` (evals). No new dependency.
 - Template/config edits: `templates/skills/brainstorming/SKILL.md.tmpl`, `templates/catalog.yaml`,
-  `.awf/agents-doc.yaml`, `.awf/docs/parts/testing/layout.md` (all re-rendered by `./x sync`).
+  `.awf/agents-doc.yaml`, `.awf/docs/parts/testing/layout.md`,
+  `.awf/domains/parts/tooling/current-state.md` (all re-rendered by `./x sync`).
 
 ## File structure
 
@@ -47,6 +48,7 @@ plan is the execution record only.
   `docs/plans/2026-07-04-uniform-machine-enforced-chain-handoff-convention.md` (this file).
 - **Modified:** `internal/evals/chain_test.go` (rewritten), `templates/skills/brainstorming/SKILL.md.tmpl`,
   `templates/catalog.yaml`, `.awf/agents-doc.yaml`, `.awf/docs/parts/testing/layout.md`,
+  `.awf/domains/parts/tooling/current-state.md`,
   `docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md` (status flip),
   plus sync-regenerated outputs: `.claude/skills/awf-brainstorming/SKILL.md`,
   `.cursor/skills/awf-brainstorming/SKILL.md`, `AGENTS.md`, `docs/testing.md`,
@@ -458,7 +460,27 @@ template's `awf:section` markers match its `catalog.yaml`-declared sections, so 
 cannot half-land with a blank-path provenance pointer.
 ```
 
-### Task 4.3 — Flip ADR-0054 status to Implemented
+### Task 4.3 — Refresh the tooling domain narrative
+
+ADR-0054 is tagged `domains: [tooling]`, so its Decision item 6 requires recording the convention in the
+tooling domain narrative in the implementing range (this also clears the `domain-doc-staleness` audit
+Warning). In `.awf/domains/parts/tooling/current-state.md`, append a new paragraph at the end of the
+file, immediately after the final `internal/testsupport` paragraph (the line ending
+`... any package's tests.`):
+
+```markdown
+
+`internal/evals` (ADR-0053) is a test-only package that renders the full catalog via `Project.Sync` and
+asserts cross-artifact workflow-chain seams no single-template test covers. ADR-0054 hardens this into a
+machine-enforced handoff convention: the nine chain-progression skills share the `terminal-step` handoff
+marker, each forward handoff must name its successor on an invocation-verb line, and the chain graph must
+stay connected (no orphaned node, every node reachable from `brainstorming`); a companion section-parity
+guard (`TestSkillAndAgentSectionParity`, invariant `skill-section-parity`) asserts every skill/agent
+template's `awf:section` markers match its `catalog.yaml` sections, so a section-slug rename cannot
+half-land with a blank-path provenance pointer.
+```
+
+### Task 4.4 — Flip ADR-0054 status to Implemented
 
 In `docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md`, change the
 frontmatter line:
@@ -473,7 +495,7 @@ to:
 status: Implemented
 ```
 
-### Task 4.4 — Re-render, verify drift + invariant backing, and gate
+### Task 4.5 — Re-render, verify drift + invariant backing, and gate
 
 ```
 ./x sync
@@ -487,12 +509,12 @@ Expected: `./x sync` → `awf sync: done`; `./x check` → `awf check: clean` (n
 
 `./x sync` regenerates `AGENTS.md` (new invariant row), `docs/testing.md` (updated paragraph),
 `docs/decisions/ACTIVE.md` (0054 now Implemented), `docs/domains/tooling.md` (0054 moved to the
-Implemented index), and `.awf/awf.lock`.
+Implemented index **and** the new narrative paragraph from Task 4.3), and `.awf/awf.lock`.
 
-### Task 4.5 — Commit Phase 4
+### Task 4.6 — Commit Phase 4
 
 ```
-git add .awf/agents-doc.yaml .awf/docs/parts/testing/layout.md docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md AGENTS.md docs/testing.md docs/decisions/ACTIVE.md docs/domains/tooling.md .awf/awf.lock
+git add .awf/agents-doc.yaml .awf/docs/parts/testing/layout.md .awf/domains/parts/tooling/current-state.md docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md AGENTS.md docs/testing.md docs/decisions/ACTIVE.md docs/domains/tooling.md .awf/awf.lock
 git commit -m "docs(adr): mark 0054 implemented and wire handoff-convention docs"
 ```
 
