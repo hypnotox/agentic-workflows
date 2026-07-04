@@ -4,9 +4,9 @@ date: 2026-07-04
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [config, audit]
-related: [0017, 0036, 0051, 0055]
-domains: [config]
+tags: [config, audit, rendering]
+related: [0008, 0017, 0036, 0039, 0049, 0051, 0055]
+domains: [config, rendering, tooling]
 ---
 # ADR-0056: Structured commit-scope config with meanings
 
@@ -51,11 +51,13 @@ rather than "just an additive field".
    scope mapping errors). `AuditConfig.AllowedScopes` becomes `[]ScopeSpec`. This is the only way to
    accept the mixed list under strict parsing; widening `[]string` alone cannot.
 
-3. **The three touch points are reconciled onto the structured form.** `audit.Settings` carries the
-   resolved scopes with their meanings; `audit.Resolve` maps `[]ScopeSpec` through. The
-   init/scaffold collector (`SkeletonAudit`) continues to **emit bare strings** — `awf init` writes
-   names only, and meanings are added by hand or by an adopter later; scaffolding names-only keeps
-   init output minimal and the round-trip stable.
+3. **The config and settings types move to the structured form; the scaffold stays scalar.**
+   `AuditConfig.AllowedScopes` and `audit.Settings.AllowedScopes` both become `[]ScopeSpec`, and
+   `audit.Resolve` maps `[]ScopeSpec` through so settings carry the resolved scopes with their
+   meanings. The init/scaffold collector `SkeletonAudit.AllowedScopes` **stays `[]string`** and
+   continues to **emit bare strings** — `awf init` writes names only, and meanings are added by
+   hand or by an adopter later; scaffolding names-only keeps init output minimal and the round-trip
+   stable (a bare-string list re-parses cleanly through the `ScopeSpec` decoder).
 
 4. **The commit-gate reads `name`; `meaning` is inert metadata.** `awf commit-gate`/`awf audit`
    match a commit's scope against the set of `Name`s exactly as before — gate behaviour is
@@ -89,9 +91,21 @@ companion ADR's plan — not here.
   bare strings.
 - One real cross-ADR coupling: the meaning-bearing renderer in the companion ADR hard-depends on
   this ADR's `Meaning` field, so this ADR lands first in the shared plan.
-- A small cost: three internal call sites move from `[]string` to `[]ScopeSpec`, and every reader
-  that only wanted names now goes through `.Name`. This is mechanical but touches the audit and
-  config packages together.
+- A small cost: `AuditConfig` and `audit.Settings` move from `[]string` to `[]ScopeSpec`, and every
+  reader that only wanted names now goes through `.Name` — the commit-gate's `containsFold` match in
+  `internal/audit/audit.go` and the `commitScopesDisplay` scope-list formatter in
+  `internal/project/render.go`. `commitScopesDisplay` keeps emitting a names-only display string, so
+  ADR-0051's `commit-scope-single-storage` and ADR-0055's `guide-scopes-derived` contracts (both
+  fed by the `commitScopes` render key) are unaffected. This is mechanical but spans the config,
+  audit, and **project** packages together, and all three must land in one commit to keep the build
+  green.
+- Forward compatibility is one-directional: an existing string-list config stays valid under the
+  new decoder, but a config that opts into the mapping form is unreadable by a binary predating the
+  `ScopeSpec` decoder — that binary rejects it with a raw YAML type error rather than the ADR-0039
+  version-gate message, because the schema generation is unchanged. This matches every other
+  additive `.awf/config.yaml` surface (e.g. the strict-parsed `domains:` field, added without a
+  schema bump): the schema gate protects a new binary reading an old config, not an old binary
+  reading a new config.
 
 ## Alternatives Considered
 
