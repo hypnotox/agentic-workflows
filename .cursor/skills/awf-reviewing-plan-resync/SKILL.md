@@ -24,7 +24,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
    The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
 
@@ -37,7 +37,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    **Return edge:** when a finding implicates the ADR itself — the plan is right and the still-`Proposed` decision text is wrong — do not bend the plan to stale decision text. Amend the ADR (via `awf-adr-lifecycle`'s amendment-while-Proposed procedure), re-run `awf-reviewing-adr` on the amended ADR, then re-run this resync — looping until plan and ADR(s) converge.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
-3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`. The agent applies the edits; this skill ensures the commit convention is followed. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
+3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. The agent applies the edits; this skill ensures the commit convention is followed. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
 4. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.

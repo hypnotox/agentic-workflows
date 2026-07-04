@@ -38,8 +38,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0050: Reviewing-skill and agent pairing](../decisions/0050-reviewing-skill-and-agent-pairing.md)
 - [ADR-0051: Single commit-scope knob](../decisions/0051-single-commit-scope-knob.md)
 - [ADR-0052: Template Include Directive for Awf-Owned Partials](../decisions/0052-template-include-directive-for-awf-owned-partials.md)
-
-### Proposed
-
 - [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
 

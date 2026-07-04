@@ -57,10 +57,7 @@
 - [ADR-0052: Template Include Directive for Awf-Owned Partials](0052-template-include-directive-for-awf-owned-partials.md) — Implemented
 - [ADR-0053: Deterministic workflow-chain golden-task eval suite](0053-deterministic-workflow-chain-golden-task-eval-suite.md) — Implemented
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](0054-uniform-machine-enforced-workflow-chain-handoff-convention.md) — Implemented
-
-## Proposed
-
-- [ADR-0055: Granular domain-aligned commit scopes](0055-granular-domain-aligned-commit-scopes.md) — Proposed
+- [ADR-0055: Granular domain-aligned commit scopes](0055-granular-domain-aligned-commit-scopes.md) — Implemented
 
 ## Superseded by ADR-0032
 

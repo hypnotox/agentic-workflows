@@ -38,7 +38,7 @@ Hard rules every change must respect:
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
-- **Conventional Commits, scopes `adr`/`awf`/`plans`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes` (ADR-0051).
+- **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes` (ADR-0051).
 - **Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`. (ADR-0006)
 - **Backed invariants.** Every `inv: <slug>` tag in an Implemented ADR is backed by a matching `<marker> invariant: <slug>` comment in source, unless retired by an Implemented successor ADR (ADR-0031). (ADR-0008)
 - **No dead skill references.** `awf check` fails on a rendered reference to a catalog skill outside the effective enabled set. (ADR-0046)
@@ -52,6 +52,7 @@ Hard rules every change must respect:
 - **Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`. (ADR-0049)
 - **Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair. (ADR-0050)
 - **Single commit-scope storage.** Commit scopes live only in `audit.allowedScopes` — no `commitScope` var, no hand-written scope prose in templates; templates quote the `commitScopes` render key, and a scopes edit reflags referencing artifacts in `awf check`. (ADR-0051)
+- **Config-derived guide scopes.** The agent guide's commit-scope mention renders from `audit.allowedScopes` via the `commitScopes` render key — never a hand-written token list — and degrades to generic Conventional-Commits prose when scopes are accept-any; awf's five code scopes mirror the `domains:` list by hand-maintained convention. (ADR-0055)
 - **Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Load` so it cannot silently stop covering a new chain artifact. (ADR-0053)
 - **Uniform machine-enforced chain handoffs.** Every catalog skill/agent template's `awf:section` markers match its `catalog.yaml`-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`). (ADR-0054)
 

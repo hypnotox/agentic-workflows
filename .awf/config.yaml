@@ -5,8 +5,13 @@ agents:
 audit:
   allowedScopes:
     - adr
+    - adr-system
     - awf
+    - config
+    - invariants
     - plans
+    - rendering
+    - tooling
 docs:
   - architecture
   - development

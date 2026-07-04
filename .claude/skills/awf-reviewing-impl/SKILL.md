@@ -32,7 +32,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`.
+   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
    The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
 
@@ -43,7 +43,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `awf`, `plans`; `./x gate` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
 
 <!-- awf:edit run-audit — default; create .awf/skills/parts/reviewing-impl/run-audit.md to override -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run

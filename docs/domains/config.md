@@ -29,8 +29,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
 - [ADR-0050: Reviewing-skill and agent pairing](../decisions/0050-reviewing-skill-and-agent-pairing.md)
 - [ADR-0051: Single commit-scope knob](../decisions/0051-single-commit-scope-knob.md)
-
-### Proposed
-
 - [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
 

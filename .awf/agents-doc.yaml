@@ -17,7 +17,7 @@ data:
         - ref: ADR-0001, ADR-0045
           text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
         - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.'
-        - text: '**Conventional Commits, scopes `adr`/`awf`/`plans`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes` (ADR-0051).'
+        - kind: scopes
         - ref: ADR-0006
           text: '**Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`.'
         - ref: ADR-0008
@@ -44,6 +44,8 @@ data:
           text: '**Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair.'
         - ref: ADR-0051
           text: '**Single commit-scope storage.** Commit scopes live only in `audit.allowedScopes` — no `commitScope` var, no hand-written scope prose in templates; templates quote the `commitScopes` render key, and a scopes edit reflags referencing artifacts in `awf check`.'
+        - ref: ADR-0055
+          text: '**Config-derived guide scopes.** The agent guide''s commit-scope mention renders from `audit.allowedScopes` via the `commitScopes` render key — never a hand-written token list — and degrades to generic Conventional-Commits prose when scopes are accept-any; awf''s five code scopes mirror the `domains:` list by hand-maintained convention.'
         - ref: ADR-0053
           text: '**Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Load` so it cannot silently stop covering a new chain artifact.'
         - ref: ADR-0054
