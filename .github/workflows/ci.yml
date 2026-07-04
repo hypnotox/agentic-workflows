@@ -20,6 +20,14 @@ jobs:
         run: ./x gate
       - name: Drift check (rendered output matches config)
         run: ./x check
+      - name: Coverage profile (for Codecov)
+        run: go test ./... -coverpkg=./... -coverprofile=coverage.out
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          fail_ci_if_error: true
 
   release-config:
     runs-on: ubuntu-latest

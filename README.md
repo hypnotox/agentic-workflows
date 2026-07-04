@@ -3,10 +3,10 @@
 > **An opinionated agentic-development workflow, wrapped in deterministic checks so it actually holds.**
 
 [![CI](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml/badge.svg)](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/hypnotox/agentic-workflows/graph/badge.svg)](https://codecov.io/gh/hypnotox/agentic-workflows)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-skills_%26_agents-D97757)](https://www.anthropic.com/claude-code)
 
 `awf` renders a standardised, opinionated agentic-development workflow into any project — a suite of
 [Claude Code](https://www.anthropic.com/claude-code) skills, independent review agents,
