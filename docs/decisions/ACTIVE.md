@@ -56,6 +56,10 @@
 - [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Implemented
 - [ADR-0052: Template Include Directive for Awf-Owned Partials](0052-template-include-directive-for-awf-owned-partials.md) — Implemented
 
+## Proposed
+
+- [ADR-0053: Deterministic workflow-chain golden-task eval suite](0053-deterministic-workflow-chain-golden-task-eval-suite.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
