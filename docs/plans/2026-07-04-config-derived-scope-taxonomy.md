@@ -24,9 +24,12 @@ Eliminate the last hand-written commit-scope drift surface. `docs/workflow.md`'s
 - `internal/audit/audit.go` — scope match reads `.Name`.
 - `internal/project/render.go` — `commitScopesDisplay` reads `.Name`; new registry + substitution wired into `planSections`.
 - `internal/project/confighash.go` — fold scope data when a consumed part references `{{=awf:commitScope*}}`.
+- `internal/render/vars.go` — add `ReferencesScopePlaceholder` + `scopePlaceholderRE` (Task 3.1).
 - `.awf/config.yaml` — adopt mapping form with meanings (Task 4).
 - `.awf/parts/workflow/commit-discipline.md` — replace hand-written table with `{{=awf:commitScopeTable}}` (Task 4).
-- `docs/architecture.md`, `docs/domains/rendering.md` — render-flow note (Task 3).
+- `docs/architecture.md` — render-flow note gains the pre-`Assemble` `{{=awf:…}}` substitution step (Task 3.3).
+- `.awf/domains/parts/rendering/current-state.md` — rendering-domain narrative **source**; add the `{{=awf:…}}` sandbox + reflag sentence (Task 3.3). Do **not** hand-edit the rendered `docs/domains/rendering.md`.
+- `docs/domains/{config,rendering,tooling}.md` — regenerated (not hand-edited) by `./x sync` on the ADR status flips: 0056 flip regenerates all three (`domains: [config, rendering, tooling]`, Task 1.8); 0057 flip regenerates `config.md`/`rendering.md` (`domains: [rendering, config]`, Task 3.3).
 - `docs/decisions/0056-*.md`, `docs/decisions/0057-*.md`, `docs/decisions/ACTIVE.md` — status flips.
 
 **Created:**
