@@ -75,7 +75,10 @@ Four constraints shape the design:
    skill and every catalog agent enabled — plus, for each enabled skill carrying a `requiresDoc` gate
    (ADR-0013), the required doc is also enabled so that skill is not silently suppressed from the
    rendered set. Deriving the set from the catalog (rather than hand-listing) keeps the fixture
-   exhaustive as the catalog grows: a newly-added chain skill is covered automatically.
+   exhaustive as the catalog grows: a newly-added chain skill is covered automatically. This
+   full-catalog fixture is deliberately the inverse of the curated `awf init` default
+   ([ADR-0022](0022-curated-init-default.md)) — the suite must exercise every seam, not the
+   shipped subset.
 
 3. **Assertions are strictly cross-artifact.** Every golden-task assertion depends on the full-catalog
    render and asserts a relationship spanning two or more rendered artifacts along a workflow path — a
@@ -138,6 +141,16 @@ Four constraints shape the design:
   YAML scenario DSL; re-asserting single-artifact content already covered elsewhere.
 - **Relationship to ADR-0017:** this is a *reinterpretation* of ADR-0017's deferred second half, not its
   fulfilment. ADR-0017 remains Implemented and unchanged; its live-agent corpus stays deferred.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+- The new backed invariant `evals-full-catalog-coverage` gains an AGENTS.md invariants entry (the
+  `data.invariants` list in `.awf/agents-doc.yaml`), citing this ADR, in the implementing range —
+  mirroring the precedent [ADR-0046](0046-skill-reference-integrity.md) set for a new backed check.
+- `docs/testing.md` documents the new test category via its part source
+  `.awf/docs/parts/testing/layout.md` (Decision item 7); the `tooling` domain narrative is refreshed
+  in the implementing range if the new suite materially shifts it.
 
 ## Alternatives Considered
 
