@@ -45,4 +45,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ### Proposed
 
 - [ADR-0058: Backslash escape and value-token-free guard for placeholders](../decisions/0058-backslash-escape-and-value-token-free-guard-for-placeholders.md)
+- [ADR-0059: Mandatory working-with-awf usage doc singleton](../decisions/0059-mandatory-working-with-awf-usage-doc-singleton.md)
 

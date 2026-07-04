@@ -33,3 +33,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0056: Structured commit-scope config with meanings](../decisions/0056-structured-commit-scope-config-with-meanings.md)
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
 
+### Proposed
+
+- [ADR-0059: Mandatory working-with-awf usage doc singleton](../decisions/0059-mandatory-working-with-awf-usage-doc-singleton.md)
+
