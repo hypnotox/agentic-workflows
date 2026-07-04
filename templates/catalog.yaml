@@ -10,7 +10,7 @@ skills:
       - no-spec-rule
       - grounding-check-output-format
       - grounding-check-dispatch-template
-      - terminal-handoff
+      - terminal-step
       - definitions
       - anti-patterns
   writing-plans:

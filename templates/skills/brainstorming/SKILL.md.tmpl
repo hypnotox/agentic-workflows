@@ -55,7 +55,7 @@ Per `{{ .layout.workflowRef }}`: hard prerequisite for any non-trivial change. N
 <!-- awf:section grounding-check-dispatch-template -->
 <!-- awf:end -->
 
-<!-- awf:section terminal-handoff -->
+<!-- awf:section terminal-step -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
    - **Load-bearing + complex** → invoke `{{ .prefix }}-proposing-adr` first (which chains through `{{ .prefix }}-reviewing-adr`); once the ADR(s) are settled, invoke `{{ .prefix }}-writing-plans`.
    - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed, then invoke `{{ .prefix }}-reviewing-impl`.
