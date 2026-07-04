@@ -62,6 +62,7 @@
 ## Proposed
 
 - [ADR-0056: Structured commit-scope config with meanings](0056-structured-commit-scope-config-with-meanings.md) — Proposed
+- [ADR-0057: Sandboxed placeholder substitution in convention parts](0057-sandboxed-placeholder-substitution-in-convention-parts.md) — Proposed
 
 ## Superseded by ADR-0032
 
