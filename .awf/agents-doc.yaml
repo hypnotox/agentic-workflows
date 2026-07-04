@@ -46,3 +46,5 @@ data:
           text: '**Single commit-scope storage.** Commit scopes live only in `audit.allowedScopes` — no `commitScope` var, no hand-written scope prose in templates; templates quote the `commitScopes` render key, and a scopes edit reflags referencing artifacts in `awf check`.'
         - ref: ADR-0053
           text: '**Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Load` so it cannot silently stop covering a new chain artifact.'
+        - ref: ADR-0054
+          text: '**Uniform machine-enforced chain handoffs.** Every catalog skill/agent template''s `awf:section` markers match its `catalog.yaml`-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`).'

@@ -18,6 +18,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 `internal/testsupport` (ADR-0044) is awf's shared test-fixture package — `TestMain` HOME isolation, project-config scaffolding, ADR frontmatter fixtures, file-writing primitives, and the seam-swap idiom, plus `internal/testsupport/gitfixture` for git-repo fixtures — consolidating idioms that had drifted into independent, sometimes-inconsistent copies across `cmd/awf`, `internal/project`, `internal/audit`, `internal/coverage`, `internal/migrate`, and `internal/invariants`. It is a leaf package: no file in `internal/testsupport` (including `gitfixture`) may import another `internal/*` awf package, mechanically enforced by a dedicated test that walks the package's own import graph, so it stays safely importable from any package's tests.
 
+`internal/evals` (ADR-0053) is a test-only package that renders the full catalog via `Project.Sync` and asserts cross-artifact workflow-chain seams no single-template test covers. ADR-0054 hardens this into a machine-enforced handoff convention: the nine chain-progression skills share the `terminal-step` handoff marker, each forward handoff must name its successor on an invocation-verb line, and the chain graph must stay connected (no orphaned node, every node reachable from `brainstorming`); a companion section-parity guard (`TestSkillAndAgentSectionParity`, invariant `skill-section-parity`) asserts every skill/agent template's `awf:section` markers match its `catalog.yaml` sections, so a section-slug rename cannot half-land with a blank-path provenance pointer.
+
 
 ## Decisions
 
@@ -50,9 +52,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
 - [ADR-0049: Single version authority](../decisions/0049-single-version-authority.md)
 - [ADR-0053: Deterministic workflow-chain golden-task eval suite](../decisions/0053-deterministic-workflow-chain-golden-task-eval-suite.md)
-
-### Proposed
-
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](../decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md)
 
 ### Superseded by ADR-0032
