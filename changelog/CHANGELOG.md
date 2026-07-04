@@ -7,6 +7,8 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-07-05
 ### Features
 - Granular, domain-aligned commit scopes: `audit.allowedScopes` expands from `[adr, awf, plans]`
   to eight domain-named scopes, and each entry may carry a `{name, meaning}` mapping so the scope
