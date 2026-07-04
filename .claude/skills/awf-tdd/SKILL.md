@@ -25,3 +25,15 @@ The test-first discipline as a project-owned task skill.
 <!-- awf:edit notes — default; create .awf/skills/parts/tdd/notes.md to override -->
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
+
+<!-- awf:edit red-flags — default; create .awf/skills/parts/tdd/red-flags.md to override -->
+## Red flags
+
+These thoughts mean stop — you're rationalizing:
+
+| Rationalization | Reality |
+|---|---|
+| "The code is trivial — I'll add the test after." | Test-after isn't TDD. The failing test comes first and must be seen to fail. |
+| "It passes now, so the test is good." | A test never observed failing proves nothing. Confirm it fails for the right reason first. |
+| "I'll relax the assertion to get green." | Fix the code, not the oracle. A weakened assertion is a deleted test. |
+| "One more tweak while I'm in here." | Minimal change to pass. Extra scope rides in unproven by any test. |

@@ -70,3 +70,15 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 - The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
 - One concern per commit; auto-commit when green.
 - **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.
+
+<!-- awf:edit red-flags — default; create .awf/skills/parts/subagent-driven-development/red-flags.md to override -->
+## Red flags
+
+These thoughts mean stop — you're rationalizing:
+
+| Rationalization | Reality |
+|---|---|
+| "I'll dispatch the tasks in parallel to save time." | Sequential only. Parallel dispatch races on files and the ADR flip. |
+| "The implementer reported DONE — advance." | DONE is a claim, not a verification. Run the per-task review first. |
+| "It came back BLOCKED — retry the same prompt." | Never blindly retry. Change the context, task size, or model. |
+| "Per-task review is optional — skip it to move faster." | Then the terminal review is the only gate, and it absorbs everything you skipped. |

@@ -66,3 +66,15 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 
 <!-- awf:edit notes-docs-travel — default; create .awf/skills/parts/executing-plans/notes-docs-travel.md to override -->
 - Docs travel with the change: any commit that changes reality updates the corresponding docs or `AGENTS.md` in the same commit.
+
+<!-- awf:edit red-flags — default; create .awf/skills/parts/executing-plans/red-flags.md to override -->
+## Red flags
+
+These thoughts mean stop — you're rationalizing:
+
+| Rationalization | Reality |
+|---|---|
+| "These two tasks are small — one commit is fine." | One commit per task. Batching hides which change did what and breaks bisection. |
+| "The plan step is slightly off — I'll adjust it." | No silent drift. Raise the amendment to the user first. |
+| "The gate failure looks unrelated — commit anyway." | Gates are mandatory. Fix the root cause; no `--no-verify`. |
+| "I'll update the docs in a follow-up commit." | Docs travel with the change — the same commit that makes them true. |

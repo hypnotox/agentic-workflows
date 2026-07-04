@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -18,7 +19,7 @@ func TestLoadFromEmbed(t *testing.T) {
 	if !ok {
 		t.Fatal("tdd not in catalog")
 	}
-	if len(spec.Sections) != 2 || spec.Sections[0] != "surfaces" {
+	if spec.Sections[0] != "surfaces" || !slices.Contains(spec.Sections, "red-flags") {
 		t.Errorf("tdd sections = %v", spec.Sections)
 	}
 	if _, ok := cat.Agents["code-reviewer"]; !ok {

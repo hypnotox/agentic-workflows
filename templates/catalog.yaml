@@ -52,6 +52,7 @@ skills:
       - notes-auto-commit
       - notes-one-concern
       - notes-docs-travel
+      - red-flags
   subagent-driven-development:
     core: true
     sections:
@@ -67,8 +68,9 @@ skills:
       - final-task-adr-flip
       - terminal-step
       - notes
+      - red-flags
   tdd:
-    sections: [surfaces, notes]
+    sections: [surfaces, notes, red-flags]
     data:
       testSurfaces:
         - {name: Unit, kind: fast isolated test, location: beside the code under test}
@@ -81,6 +83,7 @@ skills:
       - test-isolation
       - oracle-invariant
       - devdb-note
+      - red-flags
   proposing-adr:
     core: true
     sections:

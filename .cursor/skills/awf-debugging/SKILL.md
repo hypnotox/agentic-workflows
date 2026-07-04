@@ -65,3 +65,15 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 
 - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
+
+<!-- awf:edit red-flags — default; create .awf/skills/parts/debugging/red-flags.md to override -->
+## Red flags
+
+These thoughts mean stop — you're rationalizing:
+
+| Rationalization | Reality |
+|---|---|
+| "I can see the bug — let me just fix it." | No hypothesis, no fix. Name a falsifiable cause and check it against the real system first. |
+| "The error's gone, so it's fixed." | Symptom ≠ root cause. Confirm the underlying cause is addressed, not just silenced. |
+| "The expected value looks wrong — I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
+| "It's just a flaky environment — retry." | Infrastructure down is not a bug to code around. Stop and report it. |
