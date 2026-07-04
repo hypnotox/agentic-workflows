@@ -66,7 +66,7 @@ func (p *Project) commitScopesDisplay() string {
 	}
 	quoted := make([]string, len(scopes))
 	for i, s := range scopes {
-		quoted[i] = "`" + s + "`"
+		quoted[i] = "`" + s.Name + "`"
 	}
 	return strings.Join(quoted, ", ")
 }

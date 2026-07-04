@@ -6,13 +6,22 @@ import "github.com/hypnotox/agentic-workflows/internal/config"
 type Settings struct {
 	BaseBranch          string
 	AllowedTypes        []string
-	AllowedScopes       []string
+	AllowedScopes       []config.ScopeSpec
 	DependencyManifests []string
 	SubjectMaxLength    int
 	DiffThreshold       int
 	DomainDocStaleness  bool
 	UndocumentedDomain  bool
 	UncommittedChanges  bool
+}
+
+// ScopeNames returns just the allowed scope names, for gate matching.
+func (s Settings) ScopeNames() []string {
+	names := make([]string, len(s.AllowedScopes))
+	for i, sc := range s.AllowedScopes {
+		names[i] = sc.Name
+	}
+	return names
 }
 
 // Resolve resolves the effective audit settings from the raw config, applying

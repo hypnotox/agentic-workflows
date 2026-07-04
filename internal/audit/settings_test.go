@@ -48,7 +48,7 @@ func TestResolveExplicitOverrides(t *testing.T) {
 	s := Resolve(&config.AuditConfig{
 		BaseBranch:          "develop",
 		AllowedTypes:        []string{}, // explicit empty = accept any
-		AllowedScopes:       []string{"awf"},
+		AllowedScopes:       []config.ScopeSpec{{Name: "awf"}},
 		SubjectMaxLength:    intPtr(0),
 		DependencyManifests: []string{}, // explicit empty = disabled
 		DiffThreshold:       intPtr(0),
@@ -65,7 +65,7 @@ func TestResolveExplicitOverrides(t *testing.T) {
 	if len(s.AllowedTypes) != 0 {
 		t.Errorf("allowedTypes = %v, want empty (accept any)", s.AllowedTypes)
 	}
-	if len(s.AllowedScopes) != 1 || s.AllowedScopes[0] != "awf" {
+	if len(s.AllowedScopes) != 1 || s.AllowedScopes[0].Name != "awf" {
 		t.Errorf("allowedScopes = %v, want [awf]", s.AllowedScopes)
 	}
 	if len(s.DependencyManifests) != 0 {

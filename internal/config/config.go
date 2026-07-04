@@ -92,15 +92,15 @@ type HooksConfig struct {
 // slice means "accept any / disabled" per field. Resolution and defaults live in
 // internal/audit (audit.Resolve), which owns the audit domain semantics.
 type AuditConfig struct {
-	BaseBranch          string   `yaml:"baseBranch"`
-	AllowedTypes        []string `yaml:"allowedTypes"`
-	AllowedScopes       []string `yaml:"allowedScopes"`
-	SubjectMaxLength    *int     `yaml:"subjectMaxLength"`
-	DependencyManifests []string `yaml:"dependencyManifests"`
-	DiffThreshold       *int     `yaml:"diffThreshold"`
-	DomainDocStaleness  *bool    `yaml:"domainDocStaleness"`
-	UndocumentedDomain  *bool    `yaml:"undocumentedDomain"`
-	UncommittedChanges  *bool    `yaml:"uncommittedChanges"`
+	BaseBranch          string      `yaml:"baseBranch"`
+	AllowedTypes        []string    `yaml:"allowedTypes"`
+	AllowedScopes       []ScopeSpec `yaml:"allowedScopes"`
+	SubjectMaxLength    *int        `yaml:"subjectMaxLength"`
+	DependencyManifests []string    `yaml:"dependencyManifests"`
+	DiffThreshold       *int        `yaml:"diffThreshold"`
+	DomainDocStaleness  *bool       `yaml:"domainDocStaleness"`
+	UndocumentedDomain  *bool       `yaml:"undocumentedDomain"`
+	UncommittedChanges  *bool       `yaml:"uncommittedChanges"`
 }
 
 // Load reads <awfDir>/config.yaml with the strict decoder, records awfDir as the

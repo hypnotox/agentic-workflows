@@ -140,7 +140,7 @@ func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	if len(s.AllowedTypes) > 0 && !containsFold(s.AllowedTypes, m[1]) {
 		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
 	}
-	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.AllowedScopes, scope) {
+	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.ScopeNames(), scope) {
 		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
 	}
 	if s.SubjectMaxLength > 0 && len(c.Subject) > s.SubjectMaxLength {

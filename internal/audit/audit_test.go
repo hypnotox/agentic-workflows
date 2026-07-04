@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -29,7 +30,7 @@ func countRule(findings []Finding, rule string, sev Severity) int {
 
 // invariant: audit-conventional-commits
 func TestRuleConventionalCommits(t *testing.T) {
-	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []string{"awf"}, SubjectMaxLength: 20}}
+	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []config.ScopeSpec{{Name: "awf"}}, SubjectMaxLength: 20}}
 	cases := []struct {
 		name    string
 		commit  Commit
