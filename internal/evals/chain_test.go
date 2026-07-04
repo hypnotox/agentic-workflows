@@ -2,6 +2,7 @@ package evals
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -16,25 +17,40 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// assertHandoff asserts a cross-artifact seam: the rendered `from` skill names
-// the prefixed `to` skill AND the `to` skill is itself present in the rendered
-// set. Neither spine_test.go (single-template render, no target-existence
-// check) nor ADR-0046 (reference to an *absent* skill) covers "handoff to a
-// present skill" — that seam is this suite's mandate (ADR-0053).
+// invocationVerb matches a workflow-chain invocation instruction — the verb that
+// makes a line a handoff/dispatch rather than an incidental mention (ADR-0054).
+// Case-insensitive so "invoke"/"Invoke"/"Dispatch"/"chains through" all anchor.
+var invocationVerb = regexp.MustCompile(`(?i)(invoke|dispatch|hands off|chains through)`)
+
+// namesOnInvocationLine reports whether body has a line carrying both an
+// invocation verb and the token as a whole skill/agent name — i.e. the token is
+// named in an actual instruction, not merely present somewhere in the prose
+// (ADR-0053 owns mere presence) and not just as an existing target (ADR-0046
+// owns that). The trailing boundary ([^-\w] or line end) stops
+// "example-reviewing-plan" from matching an "example-reviewing-plan-resync" line.
+func namesOnInvocationLine(body, token string) bool {
+	tokenRe := regexp.MustCompile(regexp.QuoteMeta(token) + `([^-\w]|$)`)
+	for _, line := range strings.Split(body, "\n") {
+		if tokenRe.MatchString(line) && invocationVerb.MatchString(line) {
+			return true
+		}
+	}
+	return false
+}
+
+// assertHandoff asserts the rendered `from` skill names the prefixed `to` skill
+// on an invocation-verb line — the successor sits in a real handoff instruction.
 func assertHandoff(t *testing.T, root, from, to string) {
 	t.Helper()
 	body := read(t, skillPath(root, from))
 	want := evalPrefix + "-" + to
-	if !strings.Contains(body, want) {
-		t.Errorf("skill %q does not hand off to %q", from, want)
-	}
-	if _, err := os.Stat(skillPath(root, to)); err != nil {
-		t.Errorf("handoff target %q not present in rendered set: %v", want, err)
+	if !namesOnInvocationLine(body, want) {
+		t.Errorf("skill %q does not hand off to %q on an invocation line", from, want)
 	}
 }
 
-// TestWorkflowChainHandoffs asserts each load-bearing chain handoff resolves to
-// a skill present in the same full-catalog render.
+// TestWorkflowChainHandoffs asserts each load-bearing chain handoff names its
+// successor in an actual invocation instruction in the same full-catalog render.
 func TestWorkflowChainHandoffs(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)
@@ -52,13 +68,12 @@ func TestWorkflowChainHandoffs(t *testing.T) {
 }
 
 // assertDispatch asserts a skill->agent->partial seam: the rendered reviewing
-// `skill` names the reviewer `agent`, and that agent carries the shared
-// review-spine partial (ADR-0052) identified by spineToken. This spans three
-// artifacts no single existing test composes.
+// `skill` names the reviewer `agent` on an invocation-verb line, and that agent
+// carries the shared review-spine partial (ADR-0052) identified by spineToken.
 func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 	t.Helper()
-	if body := read(t, skillPath(root, skill)); !strings.Contains(body, agent) {
-		t.Errorf("skill %q does not dispatch agent %q", skill, agent)
+	if body := read(t, skillPath(root, skill)); !namesOnInvocationLine(body, agent) {
+		t.Errorf("skill %q does not dispatch agent %q on an invocation line", skill, agent)
 	}
 	if agentBody := read(t, agentPath(root, agent)); !strings.Contains(agentBody, spineToken) {
 		t.Errorf("agent %q missing spine partial token %q", agent, spineToken)
@@ -66,7 +81,7 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 }
 
 // TestReviewerDispatchCarriesSpine asserts each reviewing skill dispatches its
-// reviewer agent and that agent carries the review-spine partial.
+// reviewer agent (on an invocation line) and that agent carries the spine partial.
 func TestReviewerDispatchCarriesSpine(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)
@@ -78,5 +93,77 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 		t.Run(tc.skill, func(t *testing.T) {
 			assertDispatch(t, root, tc.skill, tc.agent, "## Classification rules")
 		})
+	}
+}
+
+// chainNodes is the pinned forward-chain progression node set (ADR-0054 item 3).
+// chainTerminal is the sole terminal (exempt from the outgoing-edge requirement).
+// Task skills bugfix/debugging are deliberately NOT nodes — their handoffs are
+// covered by the per-edge positional check above.
+var chainNodes = []string{
+	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
+	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
+	"subagent-driven-development", "reviewing-impl",
+}
+
+const (
+	chainRoot     = "brainstorming"
+	chainTerminal = "reviewing-impl"
+)
+
+// chainEdges returns, for each chain node, the set of other chain nodes it names
+// on an invocation-verb line in the full-catalog render.
+func chainEdges(t *testing.T, root string) map[string][]string {
+	t.Helper()
+	edges := map[string][]string{}
+	for _, from := range chainNodes {
+		body := read(t, skillPath(root, from))
+		for _, to := range chainNodes {
+			if to == from {
+				continue
+			}
+			if namesOnInvocationLine(body, evalPrefix+"-"+to) {
+				edges[from] = append(edges[from], to)
+			}
+		}
+	}
+	return edges
+}
+
+// TestChainConnectivity asserts the forward-chain handoff graph has no orphaned
+// node (every non-terminal node emits >=1 outgoing invocation edge) and every
+// node is reachable from the root brainstorming (ADR-0054 item 3). This catches a
+// skill that loses all its handoff instructions — a whole-node failure the
+// per-edge positional check cannot see.
+func TestChainConnectivity(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalog(t, cat)
+	edges := chainEdges(t, root)
+
+	for _, n := range chainNodes {
+		if n == chainTerminal {
+			continue
+		}
+		if len(edges[n]) == 0 {
+			t.Errorf("chain node %q is orphaned: no outgoing invocation edge", n)
+		}
+	}
+
+	seen := map[string]bool{chainRoot: true}
+	queue := []string{chainRoot}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, to := range edges[cur] {
+			if !seen[to] {
+				seen[to] = true
+				queue = append(queue, to)
+			}
+		}
+	}
+	for _, n := range chainNodes {
+		if !seen[n] {
+			t.Errorf("chain node %q is unreachable from %q", n, chainRoot)
+		}
 	}
 }
