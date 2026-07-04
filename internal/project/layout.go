@@ -22,6 +22,7 @@ type Layout struct {
 	WorkflowRef      string
 	DocStandard      string
 	AgentsMdStandard string
+	WorkingWithAwf   string
 	DomainsDir       string
 }
 
@@ -46,6 +47,7 @@ func (p *Project) layout() Layout {
 		WorkflowRef:      d + "/workflow.md",
 		DocStandard:      d + "/doc-standard.md",
 		AgentsMdStandard: d + "/agents-md-standard.md",
+		WorkingWithAwf:   d + "/working-with-awf.md",
 		DomainsDir:       d + "/domains", // inv: domains-dir-given
 	}
 }
@@ -70,6 +72,7 @@ func (l Layout) templateMap() map[string]any {
 		"workflowRef":      l.WorkflowRef,
 		"docStandard":      l.DocStandard,
 		"agentsMdStandard": l.AgentsMdStandard,
+		"workingWithAwf":   l.WorkingWithAwf,
 		"domainsDir":       l.DomainsDir,
 	}
 }

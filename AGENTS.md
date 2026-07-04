@@ -14,6 +14,8 @@ This project's rendered skills, agents, and docs — and this guide — are prod
 - **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
 - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
 
+See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide — commands, overrides, placeholders, and the sync/check loop.
+
 
 <!-- awf:edit you-and-this-project — from .awf/parts/agents-doc/you-and-this-project.md -->
 ## You and this project
@@ -91,6 +93,7 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/ADR/plan chain, commit discipline.
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md) — how-to-write rules for all awf-managed prose.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md) — layout, content, and rules for the agent guide.
+- **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md) — day-to-day usage: commands, overrides, placeholders, and the sync/check loop.
 - **Architecture:** [docs/architecture.md](docs/architecture.md) — system shape, packages, key components, dependencies
 - **Development:** [docs/development.md](docs/development.md) — local setup, the command runner, dependency reference
 - **Glossary:** [docs/glossary.md](docs/glossary.md) — project jargon and term ownership

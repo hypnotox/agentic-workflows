@@ -61,10 +61,7 @@
 - [ADR-0056: Structured commit-scope config with meanings](0056-structured-commit-scope-config-with-meanings.md) — Implemented
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](0057-sandboxed-placeholder-substitution-in-convention-parts.md) — Implemented
 - [ADR-0058: Backslash escape and value-token-free guard for placeholders](0058-backslash-escape-and-value-token-free-guard-for-placeholders.md) — Implemented
-
-## Proposed
-
-- [ADR-0059: Mandatory working-with-awf usage doc singleton](0059-mandatory-working-with-awf-usage-doc-singleton.md) — Proposed
+- [ADR-0059: Mandatory working-with-awf usage doc singleton](0059-mandatory-working-with-awf-usage-doc-singleton.md) — Implemented
 
 ## Superseded by ADR-0032
 

@@ -366,6 +366,13 @@ singletons:
       - layout
       - content
       - rules
+  working-with-awf:
+    sections:
+      - overview
+      - commands
+      - config-and-overrides
+      - placeholders
+      - sync-and-drift
 
 domainDoc:
   sections:

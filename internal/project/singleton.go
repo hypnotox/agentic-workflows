@@ -6,7 +6,7 @@ import "github.com/hypnotox/agentic-workflows/internal/catalog"
 // render/validate identity: a kind name, its embedded template id, and
 // accessors for its fixed output path and catalog sections. plainSingletons is
 // the single source of truth both RenderAll (via renderKind) and
-// validateAgainstCatalog range over — adding a 7th plain singleton means
+// validateAgainstCatalog range over — adding an 8th plain singleton means
 // appending one entry here, not hand-editing two separate loops (ADR-0043).
 // invariant: plain-singleton-via-renderkind
 type singletonSpec struct {
@@ -46,5 +46,10 @@ var plainSingletons = []singletonSpec{
 		kind: "agents-md-standard", tid: "docs/agents-md-standard.md.tmpl",
 		outPath:  func(l Layout) string { return l.AgentsMdStandard },
 		sections: func(c *catalog.Catalog) []string { return c.Singletons["agents-md-standard"].Sections },
+	},
+	{
+		kind: "working-with-awf", tid: "docs/working-with-awf.md.tmpl",
+		outPath:  func(l Layout) string { return l.WorkingWithAwf },
+		sections: func(c *catalog.Catalog) []string { return c.Singletons["working-with-awf"].Sections },
 	},
 }

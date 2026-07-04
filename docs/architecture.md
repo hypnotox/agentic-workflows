@@ -58,8 +58,8 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
   `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source — enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`add`/`check`/`validate` (ADR-0027). `singleton.go`'s
-  `plainSingletons` table is the analogous single source of truth for the six neutral always-on
-  singletons' render/validate identity (ADR-0043).
+  `plainSingletons` table is the analogous single source of truth for the seven neutral always-on
+  singletons' render/validate identity (ADR-0043, ADR-0059).
 - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their

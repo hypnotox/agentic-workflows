@@ -35,6 +35,7 @@ func testLayout() map[string]any {
 		"workflowRef":      "docs/workflow.md",
 		"docStandard":      "docs/doc-standard.md",
 		"agentsMdStandard": "docs/agents-md-standard.md",
+		"workingWithAwf":   "docs/working-with-awf.md",
 		"domainsDir":       "docs/domains",
 	}
 }
@@ -612,6 +613,9 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if l.AgentsMdStandard != "documentation/agents-md-standard.md" {
 		t.Errorf("agentsMdStandard = %q", l.AgentsMdStandard)
 	}
+	if l.WorkingWithAwf != "documentation/working-with-awf.md" {
+		t.Errorf("workingWithAwf = %q", l.WorkingWithAwf)
+	}
 	// invariant: layout-docs-enabled-only
 	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
@@ -622,7 +626,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	// templateMap reproduces the historical .layout map (ConfigHash stability).
 	tm := l.templateMap()
 	for _, k := range []string{"docsDir", "adrDir", "activeMd", "adrReadme", "adrTemplate",
-		"plansDir", "plansReadme", "docs", "workflowRef", "docStandard", "agentsMdStandard", "domainsDir"} {
+		"plansDir", "plansReadme", "docs", "workflowRef", "docStandard", "agentsMdStandard", "workingWithAwf", "domainsDir"} {
 		if _, ok := tm[k]; !ok {
 			t.Errorf("templateMap missing key %q", k)
 		}
@@ -784,6 +788,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 
 // invariant: adr-system-singletons-rendered
 // invariant: plain-singleton-via-renderkind
+// invariant: working-with-awf-mandatory
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
@@ -801,6 +806,7 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 		"docs/workflow.md":           false,
 		"docs/doc-standard.md":       false,
 		"docs/agents-md-standard.md": false,
+		"docs/working-with-awf.md":   false,
 	}
 	for _, f := range files {
 		if _, ok := want[f.Path]; ok {
@@ -821,6 +827,9 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "workflow.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "working-with-awf.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	p2, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -835,6 +844,9 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 		}
 		if f.Path == "docs/workflow.md" {
 			t.Error("workflow.md should be suppressed by local: true")
+		}
+		if f.Path == "docs/working-with-awf.md" {
+			t.Error("working-with-awf.md should be suppressed by local: true")
 		}
 	}
 }
@@ -918,6 +930,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 	}
 	got := string(b)
 	for _, want := range []string{
+		"[docs/working-with-awf.md](docs/working-with-awf.md)",
 		"[docs/workflow.md](docs/workflow.md)",
 		"[docs/doc-standard.md](docs/doc-standard.md)",
 		"[docs/agents-md-standard.md](docs/agents-md-standard.md)",

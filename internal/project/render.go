@@ -275,7 +275,8 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 	}
 	// Plain singletons: adr-readme, adr-template, plans-readme, workflow,
-	// doc-standard, agents-md-standard (always-on unless local; ADR-0021, ADR-0043).
+	// doc-standard, agents-md-standard, working-with-awf (always-on unless local;
+	// ADR-0021, ADR-0043, ADR-0059).
 	lay := p.layout()
 	for _, sg := range plainSingletons {
 		rfs, err := p.renderKind(renderKindSpec{

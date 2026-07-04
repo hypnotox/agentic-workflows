@@ -53,7 +53,7 @@ type DocSpec struct {
 // the compile-time list and the YAML-driven map never drift apart silently.
 var SingletonKinds = []string{
 	"agents-doc", "adr-readme", "adr-template", "plans-readme",
-	"workflow", "doc-standard", "agents-md-standard",
+	"workflow", "doc-standard", "agents-md-standard", "working-with-awf",
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
