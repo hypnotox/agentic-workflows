@@ -31,8 +31,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0051: Single commit-scope knob](../decisions/0051-single-commit-scope-knob.md)
 - [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
 - [ADR-0056: Structured commit-scope config with meanings](../decisions/0056-structured-commit-scope-config-with-meanings.md)
-
-### Proposed
-
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
 

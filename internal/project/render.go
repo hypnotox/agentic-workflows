@@ -112,6 +112,7 @@ func (p *Project) partRel(kind, artifact, section string) string {
 // otherwise the template default renders. Precedence: drop > convention part > default.
 func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
 	plan := map[string]render.SectionPlan{}
+	reg := p.placeholderRegistry()
 	for _, s := range declared {
 		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {
@@ -121,8 +122,12 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		}
 		b, err := os.ReadFile(p.Cfg.PartPath(kind, artifact, s))
 		if err == nil {
+			body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), string(b), reg)
+			if serr != nil {
+				return nil, serr
+			}
 			sp.HasPart = true
-			sp.PartBody = string(b)
+			sp.PartBody = body
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}

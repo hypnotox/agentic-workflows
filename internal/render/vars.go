@@ -22,6 +22,13 @@ var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
 // ReferencesSkills).
 func ReferencesScopes(src string) bool { return scopesRE.MatchString(src) }
 
+var scopePlaceholderRE = regexp.MustCompile(`\{\{=awf:commitScope[A-Za-z0-9]*\}\}`)
+
+// ReferencesScopePlaceholder reports whether a raw convention-part body uses a
+// {{=awf:commitScope*}} sandbox placeholder (ADR-0057), so the artifact folds
+// the resolved scope list into its config hash and reflags on a scopes edit.
+func ReferencesScopePlaceholder(body string) bool { return scopePlaceholderRE.MatchString(body) }
+
 // ReferencedVars returns the sorted, de-duplicated list of variable names
 // referenced via {{ .vars.X }} patterns in src.
 func ReferencedVars(src string) []string {

@@ -59,10 +59,7 @@
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](0054-uniform-machine-enforced-workflow-chain-handoff-convention.md) — Implemented
 - [ADR-0055: Granular domain-aligned commit scopes](0055-granular-domain-aligned-commit-scopes.md) — Implemented
 - [ADR-0056: Structured commit-scope config with meanings](0056-structured-commit-scope-config-with-meanings.md) — Implemented
-
-## Proposed
-
-- [ADR-0057: Sandboxed placeholder substitution in convention parts](0057-sandboxed-placeholder-substitution-in-convention-parts.md) — Proposed
+- [ADR-0057: Sandboxed placeholder substitution in convention parts](0057-sandboxed-placeholder-substitution-in-convention-parts.md) — Implemented
 
 ## Superseded by ADR-0032
 

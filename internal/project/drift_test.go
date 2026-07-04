@@ -188,3 +188,45 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 		t.Error("scopes edit reflagged the non-referencing tdd skill")
 	}
 }
+
+// Editing audit.allowedScopes reflags an artifact whose raw convention part uses
+// a {{=awf:commitScope*}} placeholder — the config-hash folds scope data via the
+// part-body scan, not the template-source scan — while a non-referencing
+// artifact stays in sync (ADR-0057).
+// invariant: part-scopes-in-confighash
+func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
+	cfg := func(meaning string) string {
+		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
+	}
+	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
+		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:commitScopeTable}}\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p2.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	flagged := map[string]bool{}
+	for _, d := range drift {
+		flagged[d.Path] = true
+	}
+	if !flagged["docs/workflow.md"] {
+		t.Errorf("scopes edit did not reflag the placeholder-using part artifact; drift = %v", drift)
+	}
+	// The ADR readme references no scopes in template or part — it must not reflag.
+	if flagged["docs/decisions/README.md"] {
+		t.Error("scopes edit reflagged a non-referencing artifact (docs/decisions/README.md)")
+	}
+}
