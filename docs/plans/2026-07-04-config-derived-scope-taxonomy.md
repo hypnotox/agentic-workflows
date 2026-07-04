@@ -47,6 +47,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
 
   import (
   	"errors"
+  	"fmt"
 
   	"gopkg.in/yaml.v3"
   )
@@ -69,7 +70,16 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   	if n.Kind != yaml.MappingNode {
   		return errors.New("scope entry must be a string or a {name, meaning} mapping")
   	}
-  	type raw ScopeSpec // avoid recursion; inherit strict decode from the decoder
+  	// Strictness is NOT inherited: yaml.v3 Node.Decode spins up a fresh
+  	// non-strict decoder, so the parent's KnownFields(true) does not apply here.
+  	// Enforce the closed key set explicitly (a mapping node's Content is a flat
+  	// key,value,key,value… list).
+  	for i := 0; i+1 < len(n.Content); i += 2 {
+  		if k := n.Content[i].Value; k != "name" && k != "meaning" {
+  			return fmt.Errorf("scope mapping has unknown key %q (allowed: name, meaning)", k)
+  		}
+  	}
+  	type raw ScopeSpec // avoid recursion
   	var r raw
   	if err := n.Decode(&r); err != nil {
   		return err
@@ -81,7 +91,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   	return nil
   }
   ```
-  Note: the parent decoder is `KnownFields(true)` (config load), so `n.Decode(&r)` inherits strict field checking — an unknown key in a scope mapping errors. Confirm this in the test (1.5).
+  Note: **`n.Decode(&r)` does *not* inherit the config loader's `KnownFields(true)`** — yaml.v3's `Node.Decode` creates a fresh decoder with strictness off (verified: an unknown key is silently dropped, not errored). The unknown-key check above is therefore explicit and is what backs the "unknown scope key errors" assertion in test 1.6 — do not rely on inherited strictness.
 
 - [ ] **1.2 Retype `AuditConfig.AllowedScopes`.** In `internal/config/config.go` change line ~97 `AllowedScopes []string` → `AllowedScopes []ScopeSpec`. Leave the `yaml:"allowedScopes"` tag.
 
@@ -116,19 +126,25 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   ```
   Leave `SkeletonAudit.AllowedScopes []string` in `internal/config/edit.go` unchanged — init keeps emitting bare strings (they re-parse cleanly through `ScopeSpec`).
 
-- [ ] **1.6 Parse test.** Create `internal/config/scopespec_test.go` with `TestScopeSpecDualForm` (carries `// invariant: scope-config-dual-form`): decode a YAML `audit.allowedScopes` list mixing `- adr` and `- {name: rendering, meaning: the render engine}`; assert the bare element → `{Name:"adr", Meaning:""}` and the mapping element → both fields; assert an unknown mapping key (`- {name: x, foo: y}`) errors; assert a mapping missing `name` errors. Use the strict `KnownFields` decoder path the real config load uses.
+- [ ] **1.6 Parse test.** Create `internal/config/scopespec_test.go` with `TestScopeSpecDualForm` (carries `// invariant: scope-config-dual-form`): decode a YAML `audit.allowedScopes` list mixing `- adr` and `- {name: rendering, meaning: the render engine}`; assert the bare element → `{Name:"adr", Meaning:""}` and the mapping element → both fields; assert an unknown mapping key (`- {name: x, foo: y}`) errors (this error comes from `ScopeSpec.UnmarshalYAML`'s explicit key check, **not** from the loader's `KnownFields` — which does not reach into `Node.Decode`); assert a mapping missing `name` errors. Decode through the same strict config-load path (`yaml.NewDecoder` + `KnownFields(true)`) so the test mirrors reality.
 
-- [ ] **1.7 Fix existing tests.** Update any test constructing `AllowedScopes`/`Settings.AllowedScopes` as `[]string` (search: `AllowedScopes:` in `internal/audit/*_test.go`, `internal/project/*_test.go`, `internal/config/*_test.go`) to `[]config.ScopeSpec{{Name: "..."}}`. Notably `internal/audit/settings_test.go` (the `[awf]` case) and any drift/render fixtures.
+- [ ] **1.7 Fix existing tests.** Grep `AllowedScopes` (no trailing colon — a colon-only search misses field *reads*) across `internal/audit`, `internal/project`, `internal/config`. Two concrete sites confirmed by inspection, both in `package audit`:
+  - `internal/audit/settings_test.go`: the construction `AllowedScopes: []string{"awf"}` (line ~51) → `[]config.ScopeSpec{{Name: "awf"}}`, **and** the read `s.AllowedScopes[0] != "awf"` (line ~68) → `s.AllowedScopes[0].Name != "awf"`. The `s.AllowedScopes != nil` nil-checks (lines ~24/40) compile unchanged.
+  - `internal/audit/audit_test.go`: `AllowedScopes: []string{"awf"}` (line ~32) → `[]config.ScopeSpec{{Name: "awf"}}`; add the `internal/config` import (this file does not import it yet).
+  The init-path tests (`cmd/awf/init_test.go`, `internal/initspec/*`) and YAML-string drift/spine fixtures need no change — `SkeletonAudit.AllowedScopes` stays `[]string` and bare-string YAML re-parses cleanly through `ScopeSpec`. A `./x gate` compile failure will surface any site the grep misses.
 
 - [ ] **1.8 Flip ADR-0056 and verify.**
   - Set `status: Implemented` in `docs/decisions/0056-structured-commit-scope-config-with-meanings.md`.
   - `./x sync` (regenerates ACTIVE.md), `./x check` (clean), `./x gate` (100%, `scope-config-dual-form` now backed).
-  - **Commit** (stage explicitly): `feat(config): structured commit-scope config with meanings`. Include the two config files, the two audit files, render.go, the new test, fixed tests, the ADR, ACTIVE.md, awf.lock.
+  - **Commit** (stage explicitly): `feat(config): structured commit-scope config with meanings`. Include the two config files, the two audit files, render.go, the new test, fixed tests, the ADR, ACTIVE.md, **the regenerated domain index docs `docs/domains/config.md`, `docs/domains/rendering.md`, `docs/domains/tooling.md`** (0056 carries `domains: [config, rendering, tooling]`, so the Proposed→Implemented flip changes each domain's ADR-status index — ADR-0033 co-change), awf.lock.
+  - Note: retyping `commitScopes` to `[]ScopeSpec` changes the *marshalled* shape folded into the confighash of every `.commitScopes`-referencing artifact (guide + reviewing skills), so `./x sync` will churn many `awf.lock` hash lines even though the rendered *content* is unchanged (`commitScopesDisplay` still emits names only). This churn is expected; stage the whole `awf.lock`.
   - Expected `./x gate` tail: `coverage: 100.0%` and `0 issues.`
 
 ---
 
 ## Phase 2 — Placeholder substitution mechanism (ADR-0057 core)
+
+> **Phase 2 is not committed on its own.** It has no commit/flip step: its files (placeholders.go, the render.go wiring, its tests) land together with Phase 3 in the single `feat(rendering)` commit at 3.3 (the mechanism and its confighash reflag are one concern). Run `./x gate` at the end of Phase 3, not here. Do not create a partial commit after 2.3.
 
 - [ ] **2.1 Registry + substitution.** Create `internal/project/placeholders.go`:
   - `func (p *Project) placeholderRegistry() map[string]string` — build the available (non-empty only) key→value map from the resolved config/render context:
@@ -141,19 +157,24 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   - `var awfPlaceholderRE = regexp.MustCompile(`\{\{=awf:([A-Za-z][A-Za-z0-9]*)\}\}`)`.
   - `func (p *Project) substitutePlaceholders(partName, body string, reg map[string]string) (string, error)`:
     - Replace each strict match: if `reg[key]` present → value; else → hard error `fmt.Errorf("%s: unknown or empty placeholder {{=awf:%s}}; available: %s", partName, key, availableKeys(reg))` where `availableKeys` returns the sorted registry keys.
-    - After replacement, if `strings.Contains(out, "{{=awf")` → hard error `fmt.Errorf("%s: malformed awf placeholder (residual {{=awf); available: %s", partName, availableKeys(reg))`.
-    - Fast path: if body has no `{{=awf` substring, return it unchanged (no regex work).
+    - After replacement, run the **residual leak guard** with a *loose* regex, not a literal substring. Define a package var whose pattern is the Go raw-string literal `\{\{=\s*awf` (i.e. `awfResidualRE := regexp.MustCompile` of that pattern); if `awfResidualRE.MatchString(out)` → hard error `fmt.Errorf("%s: malformed awf placeholder (residual %s); available: %s", partName, awfResidualRE.FindString(out), availableKeys(reg))`. **A literal `strings.Contains(out, "{{=awf")` is WRONG** — it misses the space near-miss `{{= awf:x}}` (which ADR-0057 item 5 and test 2.3 require catching): `{{= awf` does not contain the substring `{{=awf`. The `\s*` in the pattern bridges the space.
+    - Fast path: if body has no `{{=` substring, return it unchanged (no regex work). The fast-path sentinel is `{{=` (three chars), **not** `{{=awf` — otherwise `{{= awf:x}}` takes the fast path and never reaches the residual guard, rendering verbatim. A bare `{{=` that is not an awf placeholder (e.g. Mustache set-delimiter prose) falls through: the strict regex won't substitute it and the loose residual pattern (`awf` required after `{{=\s*`) won't match it, so it passes unchanged.
 
-- [ ] **2.2 Wire into `planSections`.** In `internal/project/render.go` (`planSections`, ~line 122) after `b, err := os.ReadFile(...)` and setting `sp.PartBody = string(b)`, run substitution:
+- [ ] **2.2 Wire into `planSections`.** In `internal/project/render.go` (`planSections`, ~line 122). The substitution must run **inside the existing `if err == nil` branch** (the branch that sets `HasPart`/`PartBody`) — a missing part (`os.ErrNotExist`) must stay `HasPart:false`, so do **not** move `sp.HasPart = true` outside the read-success branch. Replace the body of that branch:
   ```go
-  body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), string(b), p.placeholderRegistry())
-  if serr != nil {
-  	return nil, serr
+  b, err := os.ReadFile(p.Cfg.PartPath(kind, artifact, s))
+  if err == nil {
+  	body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), string(b), reg)
+  	if serr != nil {
+  		return nil, serr
+  	}
+  	sp.HasPart = true
+  	sp.PartBody = body
+  } else if !errors.Is(err, os.ErrNotExist) {
+  	return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
   }
-  sp.HasPart = true
-  sp.PartBody = body
   ```
-  Compute the registry once per `planSections` call (hoist `reg := p.placeholderRegistry()` above the loop) to avoid rebuilding per section.
+  Hoist `reg := p.placeholderRegistry()` above the `for` loop (compute once per `planSections` call, not per section); the snippet uses that `reg`.
 
 - [ ] **2.3 Tests.** Create `internal/project/placeholders_test.go` (carries `// invariant: part-placeholder-sandboxed`) covering every branch for 100% coverage:
   - no-placeholder body → unchanged (fast path).
@@ -162,6 +183,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   - empty-value key: build a Project with accept-any scopes so `commitScopeTable` is absent from the registry; `{{=awf:commitScopeTable}}` → error.
   - near-miss residuals `{{=awf:}}`, `{{= awf:x}}`, `{{=awf:commit-scope}}` → residual-guard error.
   - `placeholderRegistry` with populated scopes (keys present) and empty scopes (scope keys absent, `prefix` still present).
+  - **Every conditional insert must fire once for the 100% statement gate.** Each `if value != "" { reg[key] = value }` line is an executable statement that is only covered when its value is non-empty. Build at least one Project fixture whose registry populates **every** key — `commitScopeList`, `commitScopeTable`, `commitScopeSentence` (populated scopes), `prefix` (non-empty prefix), and `gateCmd`/`checkCmd` (set `vars.gateCmd`/`vars.checkCmd` non-empty) — otherwise the never-inserted keys leave dead statements and `./x gate` fails below 100%.
   - Drive at least one case through a real `planSections`/`Sync` over a scaffold with a part using a placeholder, asserting the rendered output contains the table (integration coverage of the wiring).
 
 ---
@@ -187,7 +209,7 @@ Atomic: `AllowedScopes` changes type, so `config` + `audit` + `project` must com
   - Set `status: Implemented` in `docs/decisions/0057-*.md`.
   - Update `docs/architecture.md` render-flow note (~lines 88-91) to mention the part-placeholder substitution pass; update the `rendering` domain narrative source (`.awf/domains/parts/rendering/current-state.md`) with a sentence on the `{{=awf:…}}` sandbox and its reflag.
   - `./x sync`, `./x check` (clean), `./x gate` (100%, both ADR-0057 invariants backed).
-  - **Commit**: `feat(rendering): sandboxed {{=awf:}} placeholder substitution in parts`. Include placeholders.go(+test), render.go wiring, confighash.go, vars.go, drift test, the ADR, architecture/domain docs, ACTIVE.md, awf.lock.
+  - **Commit**: `feat(rendering): sandboxed {{=awf:}} placeholder substitution in parts`. Include placeholders.go(+test), render.go wiring, confighash.go, vars.go, drift test, the ADR, `docs/architecture.md`, the domain source `.awf/domains/parts/rendering/current-state.md`, **the regenerated domain index docs `docs/domains/rendering.md` and `docs/domains/config.md`** (0057 carries `domains: [rendering, config]` — the flip changes both indexes, ADR-0033), ACTIVE.md, awf.lock. (This single commit also carries all of Phase 2's work — see the Phase 2 note.)
 
 ---
 
