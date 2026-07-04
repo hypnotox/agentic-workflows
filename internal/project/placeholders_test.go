@@ -36,14 +36,14 @@ func projectAcceptAny(t *testing.T) *Project {
 }
 
 func TestPlaceholderRegistry(t *testing.T) {
-	reg := projectWithScopes(t).placeholderRegistry()
+	reg, _ := projectWithScopes(t).placeholderRegistry()
 	for _, k := range []string{"commitScopeList", "commitScopeTable", "commitScopeSentence", "prefix", "gateCmd", "checkCmd"} {
 		if reg[k] == "" {
 			t.Errorf("populated registry missing key %q", k)
 		}
 	}
 
-	bare := projectAcceptAny(t).placeholderRegistry()
+	bare, _ := projectAcceptAny(t).placeholderRegistry()
 	if bare["prefix"] != "bare" {
 		t.Errorf("prefix = %q, want bare", bare["prefix"])
 	}
@@ -75,7 +75,7 @@ func TestCommitScopeTableAndSentence(t *testing.T) {
 
 func TestSubstitutePlaceholders(t *testing.T) {
 	p := projectWithScopes(t)
-	reg := p.placeholderRegistry()
+	reg, _ := p.placeholderRegistry()
 
 	// Fast path: no placeholder token.
 	if out, err := p.substitutePlaceholders("x", "plain prose, no tokens", reg); err != nil || out != "plain prose, no tokens" {
@@ -108,9 +108,58 @@ func TestSubstitutePlaceholders(t *testing.T) {
 	}
 
 	// Empty-value key (accept-any project has no commitScopeTable) → hard error.
-	bareReg := projectAcceptAny(t).placeholderRegistry()
+	bareReg, _ := projectAcceptAny(t).placeholderRegistry()
 	if _, err := projectAcceptAny(t).substitutePlaceholders("part", "{{=awf:commitScopeTable}}", bareReg); err == nil {
 		t.Error("empty-value key: want error, got nil")
+	}
+}
+
+// invariant: escaped-placeholder-literal
+func TestPlaceholderEscape(t *testing.T) {
+	p := projectWithScopes(t)
+	reg, _ := p.placeholderRegistry()
+
+	// A backslash-escaped token renders the literal token (backslash consumed),
+	// with no substitution and no residual-guard error.
+	out, err := p.substitutePlaceholders("x", `\{{=awf:commitScopeTable}}`, reg)
+	if err != nil {
+		t.Fatalf("escaped token: %v", err)
+	}
+	if out != "{{=awf:commitScopeTable}}" {
+		t.Errorf("escaped token = %q, want literal {{=awf:commitScopeTable}}", out)
+	}
+
+	// An escaped whitespace near-miss also renders literally.
+	out, err = p.substitutePlaceholders("x", `\{{= awf:x}}`, reg)
+	if err != nil || out != "{{= awf:x}}" {
+		t.Errorf("escaped near-miss: out=%q err=%v", out, err)
+	}
+
+	// Double backslash: literal backslash + literal token, not a substitution.
+	out, err = p.substitutePlaceholders("x", `\\{{=awf:commitScopeList}}`, reg)
+	if err != nil {
+		t.Fatalf("double backslash: %v", err)
+	}
+	if out != `\{{=awf:commitScopeList}}` {
+		t.Errorf("double backslash = %q, want \\{{=awf:commitScopeList}}", out)
+	}
+}
+
+// invariant: placeholder-value-token-free
+func TestPlaceholderValueTokenFree(t *testing.T) {
+	// A scope meaning carrying the token taints commitScopeTable's value.
+	root := scaffold(t, "prefix: awftest\nvars: {}\nskills: []\nagents: []\n"+
+		"audit:\n  allowedScopes:\n    - {name: adr, meaning: \"see {{=awf:commitScopeList}}\"}\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.placeholderRegistry(); err == nil || !strings.Contains(err.Error(), "commitScopeTable") {
+		t.Errorf("placeholderRegistry err = %v, want naming commitScopeTable", err)
+	}
+	// Sync surfaces the same error through planSections (covers its error branch).
+	if err := p.Sync(); err == nil || !strings.Contains(err.Error(), "commitScopeTable") {
+		t.Errorf("Sync err = %v, want naming commitScopeTable", err)
 	}
 }
 

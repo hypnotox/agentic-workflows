@@ -112,7 +112,10 @@ func (p *Project) partRel(kind, artifact, section string) string {
 // otherwise the template default renders. Precedence: drop > convention part > default.
 func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
 	plan := map[string]render.SectionPlan{}
-	reg := p.placeholderRegistry()
+	reg, err := p.placeholderRegistry()
+	if err != nil {
+		return nil, err
+	}
 	for _, s := range declared {
 		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {

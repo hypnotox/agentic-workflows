@@ -19,11 +19,22 @@ var awfPlaceholderRE = regexp.MustCompile(`\{\{=awf:([A-Za-z][A-Za-z0-9]*)\}\}`)
 // hard error rather than published noise.
 var awfResidualRE = regexp.MustCompile(`\{\{=\s*awf`)
 
+// awfEscapeRE matches a backslash-escaped opener `\{{=…awf` — the escape target
+// mirrors the residual guard's `\s*awf` scope so it neutralises both passes
+// (ADR-0058). The capture group is vestigial (the func replace uses the whole match).
+var awfEscapeRE = regexp.MustCompile(`\\\{\{=\s*awf`)
+
+// awfEscSentinel stands in for a `{{=` opener that was backslash-escaped, hiding
+// it from the substitution and residual passes; restored to a bare `{{=` after.
+// NUL cannot occur in markdown, so it never collides with real content and is
+// fully restored before the body leaves substitutePlaceholders.
+const awfEscSentinel = "\x00awf-esc\x00"
+
 // placeholderRegistry builds the available {{=awf:key}} values from the resolved
 // config/render context. A key is present only when its value is non-empty
 // (ADR-0057): an empty value makes the key "not available", so a part using it
 // hard-errors instead of rendering nothing.
-func (p *Project) placeholderRegistry() map[string]string {
+func (p *Project) placeholderRegistry() (map[string]string, error) {
 	reg := map[string]string{}
 	put := func(k, v string) {
 		if v != "" {
@@ -40,7 +51,15 @@ func (p *Project) placeholderRegistry() map[string]string {
 	if v, ok := p.Cfg.Vars["checkCmd"].(string); ok {
 		put("checkCmd", v)
 	}
-	return reg
+	for k, v := range reg {
+		if awfResidualRE.MatchString(v) {
+			// A registry value must never itself carry the token, else the
+			// residual guard would fire on awf-produced text (ADR-0058).
+			// invariant: placeholder-value-token-free
+			return nil, fmt.Errorf("registry value for key %q contains a {{=awf token", k)
+		}
+	}
+	return reg, nil
 }
 
 // commitScopeTable renders the allowed scopes as a markdown name|meaning table,
@@ -76,6 +95,13 @@ func (p *Project) substitutePlaceholders(partName, body string, reg map[string]s
 	if !strings.Contains(body, "{{=") {
 		return body, nil
 	}
+	// Protect \{{=…awf escapes: consume the backslash, stand the {{= behind a
+	// sentinel so neither pass sees it; the \s*awf tail stays in-body. Restored
+	// to a bare {{= after both passes. invariant: escaped-placeholder-literal
+	body = awfEscapeRE.ReplaceAllStringFunc(body, func(m string) string {
+		rest := m[1:]                    // drop leading backslash: {{= + ws + awf
+		return awfEscSentinel + rest[3:] // hide {{=, keep ws + awf
+	})
 	var subErr error
 	out := awfPlaceholderRE.ReplaceAllStringFunc(body, func(m string) string {
 		key := awfPlaceholderRE.FindStringSubmatch(m)[1]
@@ -94,7 +120,7 @@ func (p *Project) substitutePlaceholders(partName, body string, reg map[string]s
 	if awfResidualRE.MatchString(out) {
 		return "", fmt.Errorf("%s: malformed awf placeholder (residual {{=awf); available: %s", partName, availableKeys(reg))
 	}
-	return out, nil
+	return strings.ReplaceAll(out, awfEscSentinel, "{{="), nil
 }
 
 // availableKeys returns the sorted registry keys for an error message.

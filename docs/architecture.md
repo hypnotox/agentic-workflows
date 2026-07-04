@@ -89,11 +89,13 @@ Convention-part bodies are **raw input** (ADR-0034): only awf-owned template def
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
 skeleton is executed, then the raw part bodies are restored verbatim — so a literal `{{` in a part
 renders byte-for-byte and a part is never variable-interpolated. The one narrow exception (ADR-0057)
-is a closed set of `awf:`-namespaced sandbox placeholders (the `commitScopeTable` key and its
-siblings): `planSections` substitutes them from a dynamic, config-derived registry on the raw part
-body *before* assembly — a literal string replace, never `text/template` — with an unknown-or-empty
-key or a malformed near-miss a hard error, and a part using a scope placeholder folded into its
-config hash so a scopes edit reflags it.
+is a closed set of `{{=awf:key}}` sandbox placeholders (e.g. `{{=awf:commitScopeTable}}`):
+`planSections` substitutes them from a dynamic, config-derived registry on the raw part body
+*before* assembly — a literal string replace, never `text/template` — with an unknown-or-empty key
+or a malformed near-miss a hard error, and a part using a scope placeholder folded into its config
+hash so a scopes edit reflags it. A backslash escapes the token — `\{{=awf:key}}` renders the
+literal `{{=awf:key}}` via a NUL-sentinel pre-pass, which is how this sentence prints one — and a
+registry value may never itself carry the token (ADR-0058).
 
 
 <!-- awf:edit dependencies — from .awf/docs/parts/architecture/dependencies.md -->
