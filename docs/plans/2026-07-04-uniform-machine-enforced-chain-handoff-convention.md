@@ -220,7 +220,7 @@ provenance pointer replaces `terminal-handoff`).
 
 ```
 git add templates/skills/brainstorming/SKILL.md.tmpl templates/catalog.yaml .claude/skills/awf-brainstorming/SKILL.md .cursor/skills/awf-brainstorming/SKILL.md .awf/awf.lock
-git commit -m "refactor(awf): rename brainstorming terminal-handoff section to terminal-step"
+git commit -m "refactor(awf): rename brainstorming handoff section to terminal-step"
 ```
 
 ---
@@ -422,7 +422,7 @@ Expected: `coverage: 100.0% (...)` and `0 issues.`
 
 ```
 git add internal/evals/chain_test.go
-git commit -m "test(awf): strengthen evals with positional and connectivity chain checks"
+git commit -m "test(awf): strengthen evals with positional and connectivity checks"
 ```
 
 ---
