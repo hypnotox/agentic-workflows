@@ -75,8 +75,10 @@ and the 100% coverage gate (ADR-0012).
    positional matcher has a stable anchor: a skill→skill handoff reads `invoke <code>example-<skill></code>`
    and a reviewing-skill→reviewer-agent dispatch reads `Dispatch the <code>agent</code>`. Outliers are
    aligned; wording is already close. `reviewing-plan-resync` keeps its distinct
-   `dispatch-subagent-narrowed` marker and is **excluded from the forward-chain graph** — it reconciles
-   a plan against a settled ADR rather than progressing the chain.
+   `dispatch-subagent-narrowed` **agent-dispatch** marker unchanged (that marker governs the
+   plan-reviewer dispatch, not a skill handoff, so slug uniformity does not apply to it); it remains a
+   full **forward-chain node** because it is the chain's plan→implementation bridge — it is invoked by
+   `reviewing-plan` (and `reviewing-adr`) and in turn invokes the execution skills.
 
 2. **Positional handoff assertion replaces the redundant existence check.** In
    `internal/evals/chain_test.go`, `assertHandoff` / `assertDispatch` drop the `os.Stat` existence
@@ -89,10 +91,16 @@ and the 100% coverage gate (ADR-0012).
 3. **Connectivity guard over the full-catalog render.** A new assertion builds the forward-chain
    handoff graph from the invocation-verb lines of the full-catalog `Sync` render (edges = a skill's
    body invoking another chain skill) and asserts two graph properties: **no orphaned node** (every
-   non-terminal forward-chain skill has ≥1 outgoing invocation edge) and **reachability** (every
-   forward-chain node is reachable from `brainstorming`). `reviewing-plan-resync` is excluded from the
-   node set. This catches a skill that loses all its handoff instructions — a whole-node failure the
-   per-edge positional check cannot see.
+   non-terminal node has ≥1 outgoing invocation edge to another in-set node) and **reachability** (every
+   node is reachable from the root `brainstorming`). The node set is pinned to the nine chain-progression
+   skills that form the canonical workflow — `brainstorming`, `proposing-adr`, `reviewing-adr`,
+   `writing-plans`, `reviewing-plan`, `reviewing-plan-resync`, `executing-plans`,
+   `subagent-driven-development`, `reviewing-impl` — with `reviewing-impl` the sole terminal node
+   (exempt from the outgoing-edge requirement). The as-needed **task skills** `bugfix` and `debugging`
+   are **not** connectivity nodes (they are not linear-chain progression steps); their handoffs remain
+   covered by the per-edge positional check in item 2 (e.g. `bugfix → reviewing-impl`). This catches a
+   skill that loses all its handoff instructions — a whole-node failure the per-edge positional check
+   cannot see.
 
 4. **Skill/agent section-parity guard.** A new test in `internal/project` (mirroring
    `docs_sections_test.go`) asserts, for every catalog skill and agent, that the set of `awf:section`
@@ -123,8 +131,9 @@ and the 100% coverage gate (ADR-0012).
   presence) and the positional evals assertion (phrasing) running in the gate.
 - Every forward-chain handoff names its successor on an invocation-verb line in the full-catalog render
   — enforced by the positional assertion in `internal/evals` running in the gate.
-- The forward-chain handoff graph has no orphaned node and every node is reachable from `brainstorming`
-  (`reviewing-plan-resync` excluded) — enforced by the connectivity assertion running in the gate.
+- The forward-chain handoff graph over the nine chain-progression nodes (task skills `bugfix`/`debugging`
+  excluded) has no orphaned node and every node is reachable from `brainstorming`, with `reviewing-impl`
+  the sole terminal — enforced by the connectivity assertion running in the gate.
 
 ## Consequences
 
@@ -165,7 +174,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Keep the existence check, just add the positional check | The `os.Stat` check is redundant with ADR-0046 and near-always-true under the full-catalog fixture; keeping it is dead weight. Replacing it is net-simpler. |
 | Anchor the positional check on the `awf:edit` marker slug | Slugs are not uniform (`terminal-handoff` vs `terminal-step`) and the task skills carry no handoff marker at all, so a slug anchor cannot cover every handoff. Invocation-verb wording is uniform across all skills. |
 | Do the marker rename without the section-parity guard | The rename is exactly the failure mode (a two-file lockstep edit) that renders green with a blank path and no gate catches. Shipping the rename without the backstop would risk silently corrupting a provenance pointer. |
-| Normalize `reviewing-plan-resync` into the graph too | Resync reconciles a plan against a settled ADR; it is not a forward-chain progression step. Folding it in would conflate a reconcile pass with handoffs and needlessly widen the adopter-API change to a second slug. |
+| Exclude `reviewing-plan-resync` from the connectivity graph | Resync is the chain's sole plan→implementation bridge — the only skill whose body invokes the execution skills. Excluding it makes `executing-plans`/`subagent-driven-development` unreachable and orphans `reviewing-plan`, breaking the very reachability property item 3 asserts. It must be a full node. |
+| Also normalize resync's `dispatch-subagent-narrowed` slug to `dispatch-subagent` | That slug governs the narrowed-mode plan-reviewer *agent dispatch*, not a skill handoff, so slug uniformity does not apply; normalizing it would widen the adopter-API change to a second slug for no positional-test gain (resync's forward handoff already uses canonical `Invoke` wording). |
 | Literal end-to-end reachability only (`brainstorming → … → reviewing-impl`) | `brainstorming` has a *direct* edge to `reviewing-impl` (the "neither" path), so end-to-end reachability is near-trivially true and barely bites. The orphaned-node + reachable-from-root guard adds real signal. |
 | Split into two ADRs (convention + parity guard) | The parity guard is not independently load-bearing — it exists to make the rename safe. It is a facet of the single "uniform, machine-enforced handoff convention" commitment, so one ADR is the right altitude. |
 | A separate ADR family / live-agent walkability | Out of lane and cost-prohibitive, already ruled out by ADR-0053; this stays in the deterministic `go test` lane. |
