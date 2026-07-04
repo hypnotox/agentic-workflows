@@ -59,6 +59,10 @@
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](0054-uniform-machine-enforced-workflow-chain-handoff-convention.md) — Implemented
 - [ADR-0055: Granular domain-aligned commit scopes](0055-granular-domain-aligned-commit-scopes.md) — Implemented
 
+## Proposed
+
+- [ADR-0056: Structured commit-scope config with meanings](0056-structured-commit-scope-config-with-meanings.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
