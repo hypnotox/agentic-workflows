@@ -52,6 +52,7 @@ Hard rules every change must respect:
 - **Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`. (ADR-0049)
 - **Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair. (ADR-0050)
 - **Single commit-scope storage.** Commit scopes live only in `audit.allowedScopes` — no `commitScope` var, no hand-written scope prose in templates; templates quote the `commitScopes` render key, and a scopes edit reflags referencing artifacts in `awf check`. (ADR-0051)
+- **Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Load` so it cannot silently stop covering a new chain artifact. (ADR-0053)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

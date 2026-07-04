@@ -55,10 +55,7 @@
 - [ADR-0050: Reviewing-skill and agent pairing](0050-reviewing-skill-and-agent-pairing.md) — Implemented
 - [ADR-0051: Single commit-scope knob](0051-single-commit-scope-knob.md) — Implemented
 - [ADR-0052: Template Include Directive for Awf-Owned Partials](0052-template-include-directive-for-awf-owned-partials.md) — Implemented
-
-## Proposed
-
-- [ADR-0053: Deterministic workflow-chain golden-task eval suite](0053-deterministic-workflow-chain-golden-task-eval-suite.md) — Proposed
+- [ADR-0053: Deterministic workflow-chain golden-task eval suite](0053-deterministic-workflow-chain-golden-task-eval-suite.md) — Implemented
 
 ## Superseded by ADR-0032
 

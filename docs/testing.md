@@ -21,6 +21,14 @@ unexported identifiers). Template golden tests — render assertions against the
 command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
 in `cmd/awf/*_test.go`.
 
+Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
+files, no production source). Each scenario runs a full `Project.Sync` over a fixture config derived
+from the embedded catalog — every skill, agent, and doc enabled — and asserts *cross-artifact* seams a
+single-template test cannot: that a skill's terminal handoff names a skill present in the same rendered
+set, and that a reviewing skill's dispatched reviewer agent carries the shared review-spine partial. The
+fixture's enabled set is catalog-derived so it cannot silently stop covering a newly-added chain
+artifact (ADR-0053).
+
 Shared test-fixture building — project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures — goes through
 `internal/testsupport` (and its `gitfixture` subpackage), a leaf package with no dependency on

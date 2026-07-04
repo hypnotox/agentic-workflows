@@ -49,9 +49,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0047: Bootstrap relocation into the config tree](../decisions/0047-bootstrap-relocation-into-the-config-tree.md)
 - [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
 - [ADR-0049: Single version authority](../decisions/0049-single-version-authority.md)
-
-### Proposed
-
 - [ADR-0053: Deterministic workflow-chain golden-task eval suite](../decisions/0053-deterministic-workflow-chain-golden-task-eval-suite.md)
 
 ### Superseded by ADR-0032
