@@ -6,6 +6,21 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [Unreleased]
+### Features
+- Granular, domain-aligned commit scopes: `audit.allowedScopes` expands from `[adr, awf, plans]`
+  to eight domain-named scopes, and each entry may carry a `{name, meaning}` mapping so the scope
+  taxonomy renders from config (ADR-0055, ADR-0056).
+- Convention parts can splice awf-derived values via the `awf:`-namespaced placeholder syntax — a
+  dynamic, non-empty-only registry (scope list/table/sentence, prefix, gate commands),
+  hard-error guards, and a backslash escape for documenting the syntax (ADR-0057, ADR-0058).
+- New mandatory `working-with-awf` usage doc rendered into every project — a post-adoption guide
+  to the CLI, overrides, the placeholder registry, and the sync/check loop (ADR-0059).
+### Others
+- The agent guide's commit-scope prose and the `docs/workflow.md` taxonomy table now derive from
+  `audit.allowedScopes`; editing scopes reflags them (ADR-0055, ADR-0057). The guide's
+  `awf-setup` section now points at the new usage doc rather than carrying the whole reference.
+
 ## [0.7.0] - 2026-07-04
 ### Breaking changes
 - The brainstorming skill's terminal-handoff section is renamed from `terminal-handoff` to

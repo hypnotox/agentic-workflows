@@ -29,12 +29,15 @@ below `project.Version`, or the gate fails.
 
    All three must pass (`audit` is advisory but should be clean for a release).
 
-2. **Verify `project.Version` equals the target version and add its changelog entry.** A
+2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
-   matches; bump it only when it does not. Add a matching `## [0.2.0] - YYYY-MM-DD` entry to
-   the top of `changelog/CHANGELOG.md` (newest first), grouped into Breaking
-   changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041). The changelog entry
-   is required for every tag.
+   matches; bump it only when it does not. Changes accumulate under a standing `## [Unreleased]`
+   section at the top of `changelog/CHANGELOG.md` as they land — grouped into Breaking
+   changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041), so the changelog is
+   always release-ready. At release, rename that header to `## [0.2.0] - YYYY-MM-DD` and add a
+   fresh empty `## [Unreleased]` above it. `awf changelog` ignores the `[Unreleased]` section
+   (its parser only recognises numeric-versioned headers). A changelog entry is required for
+   every tag.
 
    ```
    ./x gate && ./x check
