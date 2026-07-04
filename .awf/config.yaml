@@ -4,14 +4,22 @@ agents:
   - plan-reviewer
 audit:
   allowedScopes:
-    - adr
-    - adr-system
-    - awf
-    - config
-    - invariants
-    - plans
-    - rendering
-    - tooling
+    - name: adr
+      meaning: ADR markdown documents
+    - name: adr-system
+      meaning: the ADR machinery code (ACTIVE.md generation, lifecycle)
+    - name: awf
+      meaning: genuinely cross-cutting / repo-meta work — the umbrella of last resort
+    - name: config
+      meaning: the .awf config tree, schema, migrations
+    - name: invariants
+      meaning: invariant backing and checks
+    - name: plans
+      meaning: plan markdown documents
+    - name: rendering
+      meaning: the render engine and templates
+    - name: tooling
+      meaning: CLI, audit/gate, coverage, CI, ./x, changelog, evals
 docs:
   - architecture
   - development
