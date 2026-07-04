@@ -110,9 +110,14 @@ everywhere else.
 - `inv: guide-scopes-derived` — the agent-guide template renders its commit-scope mention from
   the `$.commitScopes` render key, and `.awf/agents-doc.yaml` carries no hand-written commit-scope
   token list; the mention degrades to generic Conventional-Commits prose when scopes are
-  accept-any. Backed by a golden test that renders the guide invariants with a `kind: scopes`
-  entry under both a populated and an empty `commitScopes`, carrying the `// invariant:
-  guide-scopes-derived` marker.
+  accept-any. Backed by a golden test under `./internal/...` (carrying the `// invariant:
+  guide-scopes-derived` marker) that renders awf's *own* `agents-doc.yaml` invariants — not a
+  synthetic fixture — under both a populated and an empty `commitScopes` and asserts the exact
+  rendered scope line. This backs all three clauses at once: the derivation and the accept-any
+  degradation are asserted directly, and a re-introduced hand-written scope `text:` entry would
+  surface as a second scope mention in the asserted output, failing the test. (A fixture-only
+  render would check derivation and degradation but leave the "no hand-written token list" clause
+  aspirational, since it never inspects awf's real data.)
 - awf's five code commit scopes (`adr-system`, `config`, `invariants`, `rendering`, `tooling`)
   equal the `domains:` entries — a hand-maintained textual convention, not machine-enforced.
 
