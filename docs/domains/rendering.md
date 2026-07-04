@@ -42,3 +42,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0056: Structured commit-scope config with meanings](../decisions/0056-structured-commit-scope-config-with-meanings.md)
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
 
+### Proposed
+
+- [ADR-0058: Backslash escape and value-token-free guard for placeholders](../decisions/0058-backslash-escape-and-value-token-free-guard-for-placeholders.md)
+

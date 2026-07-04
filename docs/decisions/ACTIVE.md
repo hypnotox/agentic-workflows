@@ -61,6 +61,10 @@
 - [ADR-0056: Structured commit-scope config with meanings](0056-structured-commit-scope-config-with-meanings.md) — Implemented
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](0057-sandboxed-placeholder-substitution-in-convention-parts.md) — Implemented
 
+## Proposed
+
+- [ADR-0058: Backslash escape and value-token-free guard for placeholders](0058-backslash-escape-and-value-token-free-guard-for-placeholders.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
