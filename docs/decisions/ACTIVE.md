@@ -66,6 +66,10 @@
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Implemented
 - [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Implemented
 
+## Proposed
+
+- [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
