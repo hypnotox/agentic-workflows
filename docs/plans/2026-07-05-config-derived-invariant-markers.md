@@ -503,6 +503,22 @@ Scope: `config`. Decision item 2 of ADR-0064. Read each file before editing. Cov
     // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
     // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension.
     ```
+  - Also reword the **package doc comment** (lines ~1-6), which still advertises an invariants return ("resolved (vars, invariants-config, catalog-trim) triple"). Before:
+    ```go
+    // Package initspec resolves awf init answers against the catalog's value
+    // descriptors and emits the descriptor schema (ADR-0029). It bridges the
+    // catalog's VarDescriptor set to a resolved (vars, invariants-config, catalog-trim)
+    // triple via explicit answers, an optional line-based prompter, or the silent
+    // default.
+    ```
+    After:
+    ```go
+    // Package initspec resolves awf init answers against the catalog's value
+    // descriptors and emits the descriptor schema (ADR-0029). It bridges the
+    // catalog's VarDescriptor set to a resolved (vars, catalog-trim) pair plus the
+    // commit-scope list via explicit answers, an optional line-based prompter, or the
+    // silent default.
+    ```
   - Change `var marker, globs, scopesRaw string` (line ~136) to:
     ```go
     	var scopesRaw string
@@ -662,7 +678,7 @@ Scope: `config`. Decision item 2 of ADR-0064. Read each file before editing. Cov
     ```go
     var validTargets = []string{"", "var", "catalog-skills", "catalog-docs", "audit-scopes"}
     ```
-  - Reword the test doc comment sentence that references them (lines ~20-21): change `Non-var descriptors (the invariants marker/globs) are exempt.` to `Non-var descriptors (catalog trim, audit scopes) are exempt.`
+  - Reword the test doc comment sentence that references them (lines ~19-21). The source wraps the phrase across two comment lines — the current text is `... names a var absent from every template. Non-var descriptors (the invariants` / `// marker/globs) are exempt. The referenced set is re-derived ...`. Replace the wrapped `(the invariants` / `// marker/globs)` span so the sentence reads `Non-var descriptors (catalog trim, audit scopes) are exempt.` (keep it on one comment line or re-wrap to fit the surrounding width).
 
 - [ ] **3.9 Add the `no-single-marker-init-descriptor` backing test.** In `internal/catalog/catalog_test.go` (package `catalog`), add:
   ```go
@@ -707,9 +723,9 @@ Scope: `adr`.
     config), so only the interactive/`--set` seeding path is removed (ADR-0064).
   ```
 
-- [ ] **4.2 Flip ADR-0064 to Implemented + regenerate.** In `docs/decisions/0064-config-derived-invariant-comment-markers.md`, change the frontmatter `status: Proposed` to `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and any per-domain indexes (this ADR carries `domains: [rendering, config, invariants]`). Run `./x invariants` (or `./x check`, which includes it) and confirm all three ADR-0064 slugs are backed: `invariant-markers-derived`, `invariant-markers-in-confighash`, `no-single-marker-init-descriptor`. Run `./x check` (clean) and `./x gate` (green). If the drift gate flags `ACTIVE.md` or a domain index, re-run `./x sync` and re-stage. Stage explicitly: `changelog/CHANGELOG.md`, `docs/decisions/0064-config-derived-invariant-comment-markers.md`, `docs/decisions/ACTIVE.md`, and any regenerated `docs/domains/*.md`. Commit:
+- [ ] **4.2 Flip ADR-0064 to Implemented + regenerate.** In `docs/decisions/0064-config-derived-invariant-comment-markers.md`, change the frontmatter `status: Proposed` to `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and any per-domain indexes (this ADR carries `domains: [rendering, config, invariants]`). Run `./x invariants` (or `./x check`, which includes it) and confirm all three ADR-0064 slugs are backed: `invariant-markers-derived`, `invariant-markers-in-confighash`, `no-single-marker-init-descriptor`. Run `./x check` (clean) and `./x gate` (green). If the drift gate flags `ACTIVE.md` or a domain index, re-run `./x sync` and re-stage. Stage explicitly: `changelog/CHANGELOG.md`, `docs/decisions/0064-config-derived-invariant-comment-markers.md`, `docs/decisions/ACTIVE.md`, and any regenerated `docs/domains/*.md`. This commit changes no production Go — only changelog prose, the ADR frontmatter status, and regenerated indexes — so it takes the `docs`/`adr` shape (matching the phase's declared scope and awf's ADR-flip precedent, e.g. `docs(adr): mark ADR-0063 Implemented`), not `feat(rendering)` (the rendering feature already landed in Phase 2). Commit:
   ```
-  feat(rendering): implement ADR-0064 config-derived invariant markers
+  docs(adr): mark ADR-0064 config-derived invariant markers implemented
   ```
 
 ---
