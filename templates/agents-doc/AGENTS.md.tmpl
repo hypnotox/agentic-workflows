@@ -89,11 +89,8 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 - **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}) — architecture decisions and lifecycle.
 - **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}) — generated status index; do not hand-edit.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}) — implementation plans for complex work.
-- **Workflow:** [{{ .layout.workflowRef }}]({{ .layout.workflowRef }}) — principles, the brainstorm/ADR/plan chain, commit discipline.
-- **Documentation Standard:** [{{ .layout.docStandard }}]({{ .layout.docStandard }}) — how-to-write rules for all awf-managed prose.
-- **Authoring AGENTS.md:** [{{ .layout.agentsMdStandard }}]({{ .layout.agentsMdStandard }}) — layout, content, and rules for the agent guide.
-- **Working with awf:** [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) — day-to-day usage: commands, overrides, placeholders, and the sync/check loop.
-{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+{{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }} — {{ . }}{{ end }}
 {{ end -}}
 <!-- awf:end -->

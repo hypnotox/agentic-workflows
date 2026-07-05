@@ -251,6 +251,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			return nil, err
 		}
 		data["docs"] = docs
+		data["mandatoryDocs"] = p.documentMapDocs()
 		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
 			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md")
 		if err != nil {

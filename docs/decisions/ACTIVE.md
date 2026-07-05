@@ -64,10 +64,7 @@
 - [ADR-0059: Mandatory working-with-awf usage doc singleton](0059-mandatory-working-with-awf-usage-doc-singleton.md) — Implemented
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md) — Implemented
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Implemented
-
-## Proposed
-
-- [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Proposed
+- [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Implemented
 
 ## Superseded by ADR-0032
 

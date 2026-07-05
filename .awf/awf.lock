@@ -226,9 +226,9 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:e18d523f75ff2c0ea2d6ceb78465e974800e6fc1ad5a40074a3cb7087070a5c0",
+      "templateHash": "sha256:19e2fc7e332d55e40510e4566911cf6d37287497dc88943a27b54b84288245e2",
       "configHash": "sha256:85bd5b2a71426b0ed58cf051838faa66905dec6a43cb04f05d4d6012be05beb7",
-      "outputHash": "sha256:75df8e699ed72cada5a4329243e373e34face8b560143f75a18173511b09407a"
+      "outputHash": "sha256:9baa1230d8e507d695e2fa10b00592d148e46e593e55e10a3147425f5b98ed12"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -252,7 +252,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:db0eabd081701e94df09bd76162029c32c0ddacdf92638f64fd718cfcbc8ac36"
+      "outputHash": "sha256:384fa652943fdc4de6d8a589ce031dbc546a0f14fa24f3c7c4cda0aa9ead29ff"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -300,7 +300,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f86eaecbb09d9463ac8da5936beafdea9b55e5cc33df88695c55a4b8219f6993"
+      "outputHash": "sha256:7570fc95588fd96aec03b08de4ff2edf56b0d0498e8e3aa0ed31ef13ca128e3d"
     },
     "docs/domains/tooling.md": {
       "templateId": "",

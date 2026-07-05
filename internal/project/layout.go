@@ -106,3 +106,28 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 	}
 	return out, nil
 }
+
+// documentMapDocs builds the AGENTS.md document-map entries for the mandatory
+// DocumentMap docs from the catalog's title/desc, sorted by name (ADR-0062).
+// Unlike resolvedDocs it is UNCONDITIONAL — a mandatory doc-map line renders
+// regardless of a local: sidecar, matching the historically hardcoded lines.
+func (p *Project) documentMapDocs() []map[string]any {
+	d := strings.TrimRight(p.Cfg.DocsDir, "/")
+	var names []string
+	for name, e := range p.Cat.Docs {
+		if e.DocumentMap {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	out := make([]map[string]any, 0, len(names))
+	for _, name := range names {
+		e := p.Cat.Docs[name]
+		out = append(out, map[string]any{
+			"title": e.Title,
+			"desc":  e.Desc,
+			"path":  d + "/" + e.Path,
+		})
+	}
+	return out
+}
