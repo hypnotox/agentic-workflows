@@ -67,6 +67,10 @@
 - [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Implemented
 - [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Implemented
 
+## Proposed
+
+- [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

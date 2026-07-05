@@ -15,3 +15,7 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 - [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](../decisions/0008-language-agnostic-invariant-backing.md)
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 
+### Proposed
+
+- [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
+
