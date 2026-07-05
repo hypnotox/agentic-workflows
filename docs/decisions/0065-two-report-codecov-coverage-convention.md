@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, testing, coverage]
-related: [12]
+related: [0012, 0063]
 domains: [tooling]
 ---
 # ADR-0065: Two-Report Codecov Coverage Convention
@@ -164,7 +164,14 @@ Downstream work unblocked: an implementation sequence covering — add the
 --emit-filtered` mode with tests; add `codecov.yml`; wire the dual flagged upload in
 `.github/workflows/ci.yml`; add the two README badges; and document the line-vs-statement
 distinction in `docs/testing.md`. When this ADR flips to Implemented, the same commit backs
-the tagged invariant and regenerates `docs/decisions/ACTIVE.md`. A separate, later effort
+the tagged invariant, records the line-vs-statement two-report distinction in
+`docs/testing.md` (Decision 6), and regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
+No `AGENTS.md` (`.awf/agents-doc.yaml`) Invariants bullet is owed: the reporting parity is
+CI-side and the contributor-facing coverage rules that bind everyday changes are already the
+existing ADR-0012 and ADR-0063 bullets; the `covered-profile-honors-ignores` invariant stays
+greppable in source and documented in `docs/testing.md`. No `docs/decisions/README.md` index
+row is owed (this repo's README is a how-to guide; `ACTIVE.md` is the generated index). A
+separate, later effort
 (not gated by this ADR) removes the ~10 genuinely-eliminable `coverage-ignore` markers —
 the redundant-re-read cluster in `cmd/awf/list_add.go` — to raise the `raw` figure.
 
