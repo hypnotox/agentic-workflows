@@ -48,6 +48,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	// changes; folding the resolved list in flags it stale (ADR-0051).
 	// invariant: scopes-in-confighash
 	foldScopes := render.ReferencesScopes(assembled)
+	foldInvariants := render.ReferencesInvariantMarkers(assembled)
 	proj["sidecar"] = sc
 	sort.Strings(partPaths)
 	parts := map[string]string{}
@@ -62,11 +63,24 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 			// invariant: part-scopes-in-confighash
 			foldScopes = true
 		}
+		if render.ReferencesInvariantMarkerPlaceholder(string(b)) {
+			// A convention part using {{=awf:invariantMarker*}} re-renders when
+			// invariants.sources changes (ADR-0064).
+			// invariant: invariant-markers-in-confighash
+			foldInvariants = true
+		}
 		parts[filepath.Base(filepath.Dir(pp))+"/"+filepath.Base(pp)] = manifest.Hash(b)
 	}
 	proj["parts"] = parts
 	if foldScopes {
 		proj["commitScopes"] = audit.Resolve(p.Cfg.Audit).AllowedScopes
+	}
+	if foldInvariants {
+		if p.Cfg.Invariants != nil {
+			proj["invariantMarkers"] = p.Cfg.Invariants.Sources
+		} else {
+			proj["invariantMarkers"] = nil
+		}
 	}
 	enc, err := yaml.Marshal(proj)
 	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here
