@@ -227,8 +227,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:19e2fc7e332d55e40510e4566911cf6d37287497dc88943a27b54b84288245e2",
-      "configHash": "sha256:854dd82b41e36827666b0a8482ed7f14dccb8d525c2194ad0080de983314b5f0",
-      "outputHash": "sha256:229c5a76e55d8943158a2fdcd902cea811b2887e42e9f7c1f14862017585a8a2"
+      "configHash": "sha256:ba01d3d69bb3c8d8f99054ca119c13d204e39608c57250daa26188390440a386",
+      "outputHash": "sha256:218c4e1aecfbd1202cc32aa74065dfca2feae9a3bfd0ee8b1470a3d31c8b17ea"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -245,8 +245,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",
-      "configHash": "sha256:a66b896d2c6fd638ec11c43704fed26dd3e0a14e50563bb62dfdae38d47320ea",
-      "outputHash": "sha256:a9f7899bb7c042f441157ee70b3e553aa51817d6e844643f92495e2fa7817466"
+      "configHash": "sha256:2dd79c3274d5e1a7af11e08f224544e81ec57c403dbee8b8964ea025e1b5342b",
+      "outputHash": "sha256:79145471865f29bf062126aa680d8d3ad42cd49fa1422d6c7fb8f798c5c56c2f"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:7f53be7b708422b9de01d2e1030b00f3a6d5a719fae56796130cb935e6e82604"
+      "outputHash": "sha256:4421626b274fc41d9ca8750f6a36fc7715893f6204e84b630a4d4e19a06d7c35"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

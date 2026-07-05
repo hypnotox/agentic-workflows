@@ -29,6 +29,8 @@ data:
           text: '**No dead skill references.** `awf check` fails on a rendered reference to a catalog skill outside the effective enabled set.'
         - ref: ADR-0012
           text: '**100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`.'
+        - ref: ADR-0063
+          text: '**Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch.'
         - ref: ADR-0020
           text: '**No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk.'
         - ref: ADR-0039
