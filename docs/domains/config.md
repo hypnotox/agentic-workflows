@@ -37,4 +37,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 ### Proposed
 
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
+- [ADR-0061: Unified catalog doc model for toggleable docs and singletons](../decisions/0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md)
 

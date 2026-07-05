@@ -66,6 +66,7 @@
 ## Proposed
 
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md) — Proposed
+- [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Proposed
 
 ## Superseded by ADR-0032
 
