@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [invariants, rendering, config, drift, init]
-related: [8, 29, 45, 51, 55, 57]
+related: [0008, 0029, 0045, 0051, 0055, 0057]
 domains: [rendering, config, invariants]
 ---
 # ADR-0064: Config-derived invariant comment markers
@@ -84,7 +84,9 @@ marker mapping from it.
    pass a permanently-nil value), the `invariants-marker`/`invariants-globs` entries in the
    `descriptor_parity_test.go` `validTargets` list and the `catalog.go` target-enumeration doc
    comment, and the corresponding `initspec_test.go` / `cmd/awf/init_test.go` cases (including the
-   "must be set together" error-path case). Adopters configure `invariants.sources` by hand. This
+   "must be set together" error-path case). Every remaining `ScaffoldConfig` call site
+   (`internal/project/scaffold_test.go`, `cmd/awf/list_add_test.go`) and the `initspec.Resolve`
+   caller at `cmd/awf/init.go` drop to the new arity. Adopters configure `invariants.sources` by hand. This
    partially supersedes **ADR-0029 Decision item 1** (its invariants marker/globs descriptor clause
    only); ADR-0029 stays `Implemented`.
 
@@ -118,6 +120,15 @@ marker mapping from it.
   exercised by awf's dogfood and must be covered by explicit multi-source tests.
 - No config schema-generation bump and no `awf upgrade` migration: the change is init-only plumbing;
   the `config.InvariantConfig` struct and lock schema are untouched.
+
+Doc-currency obligations the implementing commit(s) must satisfy:
+
+- The rendered `docs/decisions/README.md` ("Invariant tagging") and `docs/working-with-awf.md`
+  re-render via `./x sync` in the same commit as the template / part / `data()` change.
+- When this ADR flips to `Implemented`, `./x sync` regenerates `docs/decisions/ACTIVE.md`. No
+  `docs/decisions/README.md` index row is owed (that README is the rendered how-to guide; `ACTIVE.md`
+  is the generated index — ADR-0003/0004), and AGENTS.md needs no change (its "Backed invariants"
+  bullet already describes the marker generically as `<marker>`).
 
 ## Alternatives Considered
 
