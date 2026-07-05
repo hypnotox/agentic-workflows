@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [catalog, rendering, config, refactor]
-related: [0022, 0027, 0043]
+related: [0022, 0027, 0043, 0045]
 domains: [rendering, config]
 ---
 # ADR-0060: Catalog representation moves from embedded YAML to compile-time Go
@@ -25,11 +25,12 @@ Tests already construct `catalog.Catalog` values directly in Go.
 
 Two costs follow from storing this Go-internal data as parsed YAML:
 
-- **A runtime parse that cannot meaningfully fail.** All four production `catalog.Load(templates.FS)`
-  call sites (`internal/project/project.go`, `internal/project/scaffold.go`, `cmd/awf/init.go`,
-  and the evals fixture) carry `// coverage-ignore` comments because the embedded parse is
-  unreachable-to-fail, and `internal/catalog` keeps two error-path tests (malformed/missing YAML)
-  that exist only to cover branches that can never trigger in production.
+- **A runtime parse that cannot meaningfully fail.** The three production `catalog.Load(templates.FS)`
+  call sites (`internal/project/project.go`, `internal/project/scaffold.go`, `cmd/awf/init.go`)
+  carry `// coverage-ignore` comments because the embedded parse is unreachable-to-fail; the evals
+  fixture (`internal/evals/fixture_test.go`) reads the same parse from a test. `internal/catalog`
+  additionally keeps two error-path tests (malformed/missing YAML) that exist only to cover branches
+  that can never trigger in production.
 - **Forced compile-time duplication.** `catalog.SingletonKinds` is a hand-maintained `[]string`
   kept *separate* from the loaded `Catalog.Singletons` map precisely because `config.IsSingletonKind`
   needs the classification without holding a `*Catalog` — `config` imports `catalog` but must not
@@ -62,12 +63,14 @@ projections is deferred to a successor ADR so this step stays a behavior-preserv
    `Load` error branches are removed with them. `config.IsSingletonKind` continues to read
    `catalog.SingletonKinds` — no behavioural change.
 
-4. **Behaviour-preserving.** Rendered output is byte-identical: the migration reproduces the current
-   default `Data` values with the same runtime shapes YAML produced (`map[string]any` / `[]any` /
-   scalars), so the per-file `ConfigHash` and the committed `.awf/awf.lock` stay stable and
-   `awf check` remains clean. If faithfully reproducing a value proves impractical, a one-time
-   `awf.lock` regeneration is acceptable — output equality is the contract, not lock byte-identity —
-   but no rendered artifact may change.
+4. **Behaviour-preserving — output equality is the contract.** The hard, invariant-backed guarantee
+   is that every rendered artifact is byte-identical after the move; no rendered file may change. Lock
+   byte-identity is a strong goal, not the contract: the migration reproduces the current default
+   `Data` values with the same runtime shapes YAML produced (`map[string]any` / `[]any` / scalars), so
+   the per-file `ConfigHash` and the committed `.awf/awf.lock` are expected to stay stable and
+   `awf check` clean. If faithfully reproducing a value proves impractical, a one-time `awf.lock`
+   regeneration — committed in the same change, so `awf check` is clean afterward — is acceptable:
+   output equality is the contract, not lock byte-identity.
 
 5. **Scope boundary.** `SingletonKinds` remains a hand-maintained list and every invariant listed in
    ADR-0043/0027 keeps its current wording and backing. Merging the toggleable-doc and singleton
@@ -95,12 +98,19 @@ projections is deferred to a successor ADR so this step stays a behavior-preserv
   paths, and the document-map set from a single collection is ordinary Go code rather than a
   runtime-parse workaround. That work — and its ADR-0043 invariant reconciliation — is the successor
   ADR.
-- Live awf-managed docs that name `templates/catalog.yaml` in prose (`docs/architecture.md`,
-  `docs/testing.md`, and the convention parts `.awf/docs/parts/architecture/components.md` and
-  `.awf/docs/parts/testing/layout.md` that render into them) update in the same commit that removes
-  the file (docs-travel-with-change). Frozen ADRs and plans are append-only and stay as written.
-- No adopter impact: the catalog lives in the binary, so no schema bump, no migration, and — with
-  faithful value reproduction — no `awf check` drift for adopters on upgrade.
+- Live awf-managed docs that name `templates/catalog.yaml` or `catalog.Load` in prose update in the
+  same commit that removes them (docs-travel-with-change): `docs/architecture.md` and `docs/testing.md`
+  (via the convention parts `.awf/docs/parts/architecture/components.md` and
+  `.awf/docs/parts/testing/layout.md` that render into them); the agent guide's `Full-catalog eval
+  coverage` invariant, which states the evals fixture enabled-set is "derived from `catalog.Load`" — a
+  symbol this ADR deletes — together with its `catalog.yaml`-declared-sections wording (via the
+  `.awf/agents-doc.yaml` sidecar that renders `AGENTS.md`); and `docs/domains/tooling.md`'s
+  `catalog.yaml`-sections wording (via `.awf/domains/parts/tooling/current-state.md`). Frozen ADRs and
+  plans are append-only and stay as written.
+- No adopter impact: the catalog lives in the binary, so no schema bump and no migration. With
+  faithful value reproduction there is no `awf check` drift for adopters on upgrade; if the fallback
+  regeneration path is taken instead, an adopter may see a one-time `.awf/awf.lock` hash churn on the
+  next `awf sync` — harmless, since no rendered artifact changes and a re-sync reconciles it.
 
 ## Alternatives Considered
 
