@@ -60,7 +60,7 @@ func fullCatalogConfig(cat *catalog.Catalog) string {
 }
 
 // syncFullCatalog scaffolds a temp project with the full-catalog config, runs a
-// real Project.Sync, and returns the project root. It reuses the exported
+// real Project.SyncReport, and returns the project root. It reuses the exported
 // testsupport primitives rather than internal/project's package-private
 // scaffold helper (ADR-0053 Decision item 5).
 func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
@@ -71,7 +71,7 @@ func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	if err := p.Sync(); err != nil {
+	if _, err := p.SyncReport(); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	return root

@@ -227,8 +227,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:19e2fc7e332d55e40510e4566911cf6d37287497dc88943a27b54b84288245e2",
-      "configHash": "sha256:85bd5b2a71426b0ed58cf051838faa66905dec6a43cb04f05d4d6012be05beb7",
-      "outputHash": "sha256:9baa1230d8e507d695e2fa10b00592d148e46e593e55e10a3147425f5b98ed12"
+      "configHash": "sha256:854dd82b41e36827666b0a8482ed7f14dccb8d525c2194ad0080de983314b5f0",
+      "outputHash": "sha256:229c5a76e55d8943158a2fdcd902cea811b2887e42e9f7c1f14862017585a8a2"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:769527dd35cff58ab1c8eddd76ae6dae20e2da7dfade80202b3a81216c825ee6"
+      "outputHash": "sha256:7f53be7b708422b9de01d2e1030b00f3a6d5a719fae56796130cb935e6e82604"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
@@ -329,8 +329,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:f0537f89664422b541c9c0bc3b1daf959161641385fc75bb3cde8faaafdb7a1a",
-      "configHash": "sha256:0f64e1c3dc4b40dde49e3684be845c64454f034a7f0637fe61947e9e8281b48e",
-      "outputHash": "sha256:72e4ad742b3a1b81b028c0b3184ed8a87edd0865cd732391ebb1c57669d19ab7"
+      "configHash": "sha256:f7b98a0e7cc228e5544087041da4d43c0509c19ead43e84f3ce57c39ac82eaeb",
+      "outputHash": "sha256:ff20ad38d64d61a6d5ec7a360906860fe5b9b963c0c3ae4704925e3c37491ff9"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

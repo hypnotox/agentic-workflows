@@ -50,7 +50,7 @@ data:
         - ref: ADR-0055
           text: '**Config-derived guide scopes.** The agent guide''s commit-scope mention renders from `audit.allowedScopes` via the `commitScopes` render key — never a hand-written token list — and degrades to generic Conventional-Commits prose when scopes are accept-any; awf''s five code scopes mirror the `domains:` list by hand-maintained convention.'
         - ref: ADR-0053
-          text: '**Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Standard` so it cannot silently stop covering a new chain artifact.'
+          text: '**Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.SyncReport` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Standard` so it cannot silently stop covering a new chain artifact.'
         - ref: ADR-0054
           text: '**Uniform machine-enforced chain handoffs.** Every catalog skill/agent template''s `awf:section` markers match its catalog-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`).'
         - ref: ADR-0060, ADR-0061

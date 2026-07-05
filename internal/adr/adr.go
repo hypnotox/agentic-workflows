@@ -182,16 +182,6 @@ func sections(body string) map[string]string {
 // date-stamping (mirrors cmd/awf's getwd/isInteractive seam pattern).
 var now = time.Now
 
-// SetNowForTest overrides the now seam for a test and returns the previous
-// value, so the caller can restore it. Exported because adr_test.go is an
-// external test package (package adr_test), mirroring the project's existing
-// var-seam-for-coverage convention rather than adding an internal test file.
-func SetNowForTest(fn func() time.Time) (prev func() time.Time) {
-	prev = now
-	now = fn
-	return prev
-}
-
 // markerLineRe matches an awf-injected marker comment line, so NewFile can
 // strip every one — the GENERATED banner and each per-section awf:edit
 // provenance pointer — from a copied template.

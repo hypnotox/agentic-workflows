@@ -8,7 +8,7 @@ command functions directly (not a subprocess) against a temp directory built wit
 in `cmd/awf/*_test.go`.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
-files, no production source). Each scenario runs a full `Project.Sync` over a fixture config derived
+files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived
 from the embedded catalog — every skill, agent, and doc enabled — and asserts *cross-artifact* seams a
 single-template test cannot: that a skill names its handoff successor on an *invocation-verb line* (a
 real handoff instruction, not an incidental mention), that a reviewing skill dispatches a reviewer agent

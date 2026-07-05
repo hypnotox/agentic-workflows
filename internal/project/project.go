@@ -78,12 +78,7 @@ type Backup struct {
 	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
 }
 
-func (p *Project) Sync() error {
-	_, err := p.SyncReport()
-	return err
-}
-
-// SyncReport renders and writes the project like Sync, additionally backing up any
+// SyncReport renders and writes the project, additionally backing up any
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
 // it, and returning those backups (ADR-0035).
 func (p *Project) SyncReport() ([]Backup, error) {

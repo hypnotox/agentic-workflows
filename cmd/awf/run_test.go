@@ -277,7 +277,7 @@ func TestRunListSidecarError(t *testing.T) {
 }
 
 func TestRunSyncSyncError(t *testing.T) {
-	// A directory squatting on a rendered output path makes p.Sync() fail.
+	// A directory squatting on a rendered output path makes p.SyncReport() fail.
 	root := scaffoldProject(t)
 	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
 	if err := os.RemoveAll(out); err != nil {
