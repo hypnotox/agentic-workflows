@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [mandatory-docs-not-in-docs-catalog]
 superseded_by: ""
 tags: [catalog, docs, singleton, rendering, config, refactor]
-related: [0021, 0022, 0027, 0043, 0059, 0060]
+related: [0004, 0021, 0022, 0027, 0031, 0037, 0043, 0059, 0060]
 domains: [rendering, config]
 ---
 # ADR-0061: Unified catalog doc model for toggleable docs and singletons
@@ -38,14 +38,30 @@ loaded map, and makes deriving every projection from one collection ordinary Go 
 directly on that: with the data already in Go, the two maps can become one collection whose entries
 carry their own nature, and the ~6 hand-maintained sites collapse into projections over it.
 
-Grounding surfaced the sharp edges. The largest is a **pool leak**: ~6 consumers derive the
-toggleable-doc pool from the doc-map's keys — the `docs` `kindDescriptor` facet (`kind.go`),
-`validateAgainstCatalog`, `CatalogNames` for `awf list`/`add`/`remove`, the `awf init` catalog-docs
-multiselect (`initspec`), the evals fixture, and `scaffold`'s var-seeding loop. After the merge each
-must filter to `mandatory == false`, or a mandatory singleton leaks into the toggleable-doc CLI,
-validation, and init surfaces. `agents-doc` is the irregular member — it renders to root `AGENTS.md`
+Grounding surfaced two sharp edges. The first is a **pool leak**: several consumers derive the
+toggleable-doc pool from the doc-map's keys. Three of them funnel through the single `docs`
+`kindDescriptor` `poolNames` facet (`kind.go` — `slices.Sorted(maps.Keys(c.Docs))`):
+`validateAgainstCatalog`, `CatalogNames` for `awf list`/`add`/`remove`, and `scaffold`'s
+var-collection loop — so one `!Mandatory` filter at that facet covers all three (scaffold still seeds
+each mandatory doc's vars through the `plainSingletons` loop, so the filter drops a harmless
+double-seed, not real coverage; scaffold's `docs:` array is built from the catalog-trim, never from
+the pool). Two more read `cat.Docs` directly and each needs its own `!Mandatory` filter: the
+`awf init` catalog-docs multiselect (`initspec.go:50`) and the evals fixture (`fixture_test.go:60`,
+which seeds a `docs:` array). Miss one and a mandatory singleton leaks into the toggleable-doc CLI,
+validation, or init surface. `agents-doc` is the irregular member — it renders to root `AGENTS.md`
 (not a `docsDir` path), has no document-map entry of its own (it *is* the map), and drives the
 CLAUDE.md bridge from a bespoke `RenderAll` branch — so a uniform loop must special-case it.
+
+The second edge is **template-path reconstruction**. Merging every singleton into `Docs` brings in
+keys whose templates do *not* live at `docs/<name>.md.tmpl` — `adr-readme`
+(`adr-readme/README.md.tmpl`), `adr-template`, `plans-readme`, and `agents-doc`. Every site that
+rebuilds a template id as `docs/<name>.md.tmpl` from a doc-map key breaks on them: the `docs`
+`poolNames` facet's `tid` closure (protected once the pool is filtered to `!Mandatory`) and — more
+sharply — three live invariant-backing tests that iterate `cat.Docs` raw and would `t.Fatalf` reading
+a non-existent `docs/adr-readme.md.tmpl`: `TestDocsSectionParity` (`inv: docs-section-parity`),
+`TestVarDescriptorParity` (`inv: var-descriptor-parity`), and `scaffold_test.go`'s var-parity check
+(`inv: scaffold-seeds-all-vars`). These read the raw map, not the filtered pool, so they must switch
+to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) is that authority.
 
 ## Decision
 
@@ -64,8 +80,15 @@ CLAUDE.md bridge from a bespoke `RenderAll` branch — so a uniform loop must sp
    - `Layout`'s singleton path fields and `templateMap` keys derive from each mandatory entry's `Path`
      and `TemplateKey`; template-facing `.layout.*` names are unchanged (no contract break).
    - The `docs` `kindDescriptor` pool and its ~6 consumers derive from entries where `!Mandatory`.
-   - `RenderAll`'s render loops, the document-map assembly, both formerly-hardcoded tests, and the
-     `render.go` enumeration comment iterate the collection.
+   - `RenderAll`'s render loops, the document-map assembly, and the `render.go` enumeration comment
+     iterate the collection; every template id is read from each entry's `TID` rather than rebuilt as
+     `docs/<name>.md.tmpl`, since merged-in singletons render from non-`docs/` templates.
+   - The two formerly-hardcoded tests re-back by nature, not by iterating the collection into their
+     own expectations: `TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally` renders
+     `AGENTS.md` and asserts each mandatory `DocumentMap` entry's link appears in the *rendered output*
+     (a real check, not a tautology), while `TestLayoutDerivesFromDocsDir` stays a concrete-value
+     fixture — its expected paths remain literal strings (gaining the new entry's path) — because a
+     layout test that derived its expectations from the same collection it checks would prove nothing.
 
 3. **Mandatory entries are excluded from the toggleable-doc pool.** The toggleable pool
    (`CatalogNames`, `validateAgainstCatalog`, the `awf init` catalog-docs options, `scaffold`
@@ -76,7 +99,12 @@ CLAUDE.md bridge from a bespoke `RenderAll` branch — so a uniform loop must sp
 4. **`agents-doc` is special-cased by its `AgentsDoc` flag.** It is a mandatory entry with an empty
    `Path`/`TemplateKey` and `DocumentMap: false`; it keeps its bespoke `RenderAll` branch (root
    `AGENTS.md`, `resolvedDocs` injection, CLAUDE.md bridge). No projection that expects a `docsDir`
-   path or a document-map slot iterates it.
+   path or a document-map slot iterates it. `DocumentMap: true` is set on exactly the four standard
+   docs the `document-map-lists-mandatory-docs` invariant names (`workflow`, `doc-standard`,
+   `agents-md-standard`, `working-with-awf`); `adr-readme`, `adr-template`, and `plans-readme` are
+   `DocumentMap: false` because their map lines ("ADR index", "Active ADRs", "Plans") stay hardcoded
+   from `.layout.adrReadme`/`.activeMd`/`.plansReadme`, not driven by a `DocEntry` projection — so the
+   re-backed document-map test iterates exactly the four the invariant contracts, no wider.
 
 5. **Invariant reconciliation.** `mandatory-docs-not-in-docs-catalog` is retired via this ADR's
    `retires_invariants` frontmatter and its backing test (`TestCatalogDocsExcludeSingletonKinds`,
@@ -131,6 +159,13 @@ CLAUDE.md bridge from a bespoke `RenderAll` branch — so a uniform loop must sp
   `.awf/domains/parts/rendering/` that name "singletons" vs "toggleable docs" as two mechanisms —
   update in the same commit to describe one collection (docs-travel-with-change). Frozen ADRs/plans
   stay as written; ADR-0043 and ADR-0059 remain `Implemented`, their retired invariant recorded here.
+- The three `docs/<name>.md.tmpl`-reconstructing parity tests (`docs-section-parity`,
+  `var-descriptor-parity`, `scaffold-seeds-all-vars`) are updated in the same change to read `TID` or
+  filter `!Mandatory`; they `t.Fatalf` the moment a non-`docs/`-template singleton lands in `Docs`, so
+  the fix is not optional cleanup but a landing prerequisite.
+- When this ADR flips to `Accepted`/`Implemented`, the same commit regenerates
+  `docs/decisions/ACTIVE.md` via `./x sync` and removes the retired invariant's backing test in
+  lockstep with the flip — retirement is inert until the retiring ADR is `Implemented` (ADR-0031).
 - Document-map descriptions remain hardcoded in the template, so a future entry still needs its
   document-map line added there by hand until the deferred templating follow-up lands.
 
