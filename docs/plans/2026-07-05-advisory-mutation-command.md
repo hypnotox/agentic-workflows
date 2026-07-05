@@ -61,7 +61,10 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   go tool gremlins --version
   ```
   Expected: the grep shows `github.com/go-gremlins/gremlins/cmd/gremlins` inside the block;
-  `--version` prints `gremlins version v0.6.0 ...` with no "missing go.sum entry" error.
+  `--version` runs with no "missing go.sum entry" error. It prints `gremlins version dev ...`,
+  not `v0.6.0`: gremlins stamps its version via release-time ldflags, so a `go tool` source
+  build always reports `dev`. The pin itself is `v0.6.0` — confirm via `go list -m
+  github.com/go-gremlins/gremlins` (or the `go.mod`/`go.sum` entries from Task 1.1).
 - [ ] **Task 1.3 — Write `.gremlins.yaml`** at the repo root, exactly:
   ```yaml
   # Deterministic mutation-testing config for `./x mutants` (ADR-0066). Integration
