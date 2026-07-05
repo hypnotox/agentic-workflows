@@ -2,7 +2,7 @@
 status: Proposed
 date: 2026-07-05
 supersedes: []
-retires_invariants: [mandatory-docs-not-in-docs-catalog]
+retires_invariants: [mandatory-docs-not-in-docs-catalog, singleton-kind-single-source]
 superseded_by: ""
 tags: [catalog, docs, singleton, rendering, config, refactor]
 related: [0004, 0021, 0022, 0027, 0031, 0037, 0043, 0059, 0060]
@@ -106,39 +106,52 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
    from `.layout.adrReadme`/`.activeMd`/`.plansReadme`, not driven by a `DocEntry` projection — so the
    re-backed document-map test iterates exactly the four the invariant contracts, no wider.
 
-5. **Invariant reconciliation.** `mandatory-docs-not-in-docs-catalog` is retired via this ADR's
-   `retires_invariants` frontmatter and its backing test (`TestCatalogDocsExcludeSingletonKinds`,
-   `internal/project/singleton_test.go`) is removed in the same change — its premise, a separate
-   `docs:` block and a `DocSpec.Core` field, no longer exists. It is replaced by
-   `mandatory-doc-pool-exclusion` (item 3) and the overarching `unified-doc-model` invariant (item 2).
-   The surviving ADR-0043/0059 invariants keep their wording and are re-backed to iterate the
-   collection: `singleton-kind-single-source` (both projections still derive from one source),
+5. **`plainSingletons` becomes a pure derivation.** It is generated from the collection — one entry
+   per `Mandatory && !AgentsDoc` doc, with `tid`/output path/sections read from that `DocEntry`'s
+   `TID`/`Path`/`Sections` — with no hand-authored render table left. This is what makes "adding a
+   mandatory doc is one `DocEntry`" true for the render path, not just the metadata.
+
+6. **Invariant reconciliation.** Two ADR-0043 invariants are retired via this ADR's
+   `retires_invariants` frontmatter, their backing tests removed in the same change:
+   - `mandatory-docs-not-in-docs-catalog` — its premise, a separate `docs:` block and a `DocSpec.Core`
+     field, no longer exists; backing test `TestCatalogDocsExcludeSingletonKinds`
+     (`internal/project/singleton_test.go`) is deleted, its guarantee re-expressed as
+     `mandatory-doc-pool-exclusion` (item 3).
+   - `singleton-kind-single-source` — it guarded drift between two independently-maintained kind lists;
+     with `SingletonKinds` and `plainSingletons` both derived from the one collection (item 2, item 5)
+     the drift it named cannot exist, and its two backing tests
+     (`TestCatalogSingletonsMatchSingletonKinds`, whose subject `cat.Singletons` the merge deletes, and
+     `TestPlainSingletonsMatchCatalogSingletonKinds`, now a tautology over one source) are deleted. Its
+     surviving job — that a non-`agents-doc` mandatory entry reaches `plainSingletons` — is absorbed by
+     `unified-doc-model` (item 2).
+
+   The remaining ADR-0043/0059 invariants keep their contracts, re-backed to read the collection:
    `plain-singleton-via-renderkind` (the now-derived `plainSingletons` still renders each plain
    singleton through `renderKind`), `document-map-lists-mandatory-docs` (the document-map test now
    iterates mandatory `DocumentMap` entries instead of a hardcoded list), and
    `singleton-doc-migration-relocates-parts` (guards a frozen past migration; untouched).
 
-6. **Document-map description templating is out of scope.** The `AGENTS.md` template keeps its
+7. **Document-map description templating is out of scope.** The `AGENTS.md` template keeps its
    hardcoded singleton document-map link text and descriptions this pass; the `.layout.*` references
    still resolve from the catalog-derived `Layout`, so the merge does not force touching them. Driving
    the whole document map from catalog `Title`/`Desc` is a clean follow-up, not part of this ADR.
 
 ## Invariants
 
-- `inv: unified-doc-model` — the entire doc surface, toggleable and mandatory, derives from the single
-  `catalog` doc collection. `SingletonKinds`, `plainSingletons`, the `Layout` singleton paths +
-  `templateMap` keys, and the toggleable-doc pool are all projections over it, with no independent
-  hand-maintained doc/singleton list. Backed by tests that iterate the collection and assert each
-  projection matches (a mandatory entry appears in `SingletonKinds`; a non-`agents-doc` mandatory
-  entry appears in `plainSingletons`; each mandatory `TemplateKey`/`Path` appears in `templateMap`).
+- `inv: unified-doc-model` — every doc/singleton projection is a derivation over the single `catalog`
+  doc collection, asserted by iterating that collection: every `Mandatory` entry appears in
+  `SingletonKinds`; every `Mandatory && !AgentsDoc` entry appears in `plainSingletons` (and no other
+  kind does); every mandatory entry's `TemplateKey`/`Path` appears in `Layout`'s `templateMap` with the
+  derived path. (The "no hand-maintained list" property is a design consequence of full derivation, not
+  itself the machine check — the projection-vs-collection assertions above are. Pool exclusion is the
+  separate `mandatory-doc-pool-exclusion` invariant.)
 - `inv: mandatory-doc-pool-exclusion` — no `Mandatory` entry appears in the toggleable-doc pool: it is
   absent from `CatalogNames("doc")`, rejected by `awf add doc` / `awf remove doc`, and never seeds a
   scaffolded `docs:` array. Backed by a test asserting the `!Mandatory` filter across the pool
   consumers.
-- The surviving invariants `singleton-kind-single-source`, `plain-singleton-via-renderkind`,
-  `document-map-lists-mandatory-docs` (ADR-0043, widened by ADR-0059), and
-  `singleton-doc-migration-relocates-parts` keep their contracts; their backings are updated to
-  iterate the unified collection where they previously read a split map.
+- The surviving invariants `plain-singleton-via-renderkind`, `document-map-lists-mandatory-docs`
+  (ADR-0043, widened by ADR-0059), and `singleton-doc-migration-relocates-parts` keep their contracts;
+  their backings are updated to iterate the unified collection where they previously read a split map.
 
 ## Consequences
 
@@ -158,7 +171,8 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
   `docs/domains/rendering.md`, and the convention parts under `.awf/docs/parts/` and
   `.awf/domains/parts/rendering/` that name "singletons" vs "toggleable docs" as two mechanisms —
   update in the same commit to describe one collection (docs-travel-with-change). Frozen ADRs/plans
-  stay as written; ADR-0043 and ADR-0059 remain `Implemented`, their retired invariant recorded here.
+  stay as written; ADR-0043 and ADR-0059 remain `Implemented`, the two retired ADR-0043 invariants
+  (`mandatory-docs-not-in-docs-catalog`, `singleton-kind-single-source`) recorded here.
 - The three `docs/<name>.md.tmpl`-reconstructing parity tests (`docs-section-parity`,
   `var-descriptor-parity`, `scaffold-seeds-all-vars`) are updated in the same change to read `TID` or
   filter `!Mandatory`; they `t.Fatalf` the moment a non-`docs/`-template singleton lands in `Docs`, so
