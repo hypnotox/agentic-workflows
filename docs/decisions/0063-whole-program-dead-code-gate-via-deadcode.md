@@ -54,13 +54,15 @@ Two forces shaped the design:
    imports no other `internal/*` awf package, so it can never keep a real awf function alive.
    Ignoring it is a structural boundary, not an ad-hoc exemption.
 
-The remaining two findings are defects, not exemptions: `Project.Sync` is prod-dead
-(delete), and `SetNowForTest` is a test seam that leaks into a production file — it is the
-one exported `*ForTest` function in the repo (the project's dominant seam idiom is the
-unexported package var, e.g. `var now`, `var getwd`, which production calls and deadcode
-never flags). It only exists exported because `internal/adr`'s external test package
-(`package adr_test`) cannot reach the unexported `now`; relocating the seam into an
-in-package `_test.go` removes it from the production binary entirely.
+The remaining two findings are both test-only helpers sitting in production files, not
+production code: `Project.Sync` is a prod-dead convenience wrapper (only tests call it), and
+`SetNowForTest` is a test seam — the one exported `*ForTest` function in the repo (the
+project's dominant seam idiom is the unexported package var, e.g. `var now`, `var getwd`,
+which production calls and deadcode never flags). `SetNowForTest` only exists exported
+because `internal/adr`'s external test package (`package adr_test`) cannot reach the
+unexported `now`. The uniform resolution is to relocate each into an in-package `_test.go`
+file, which removes it from the production binary entirely — the same principle that puts
+cross-package helpers in `internal/testsupport`: test-only code belongs in test files.
 
 deadcode itself always exits 0, even when it reports findings, so a wrapper is required to
 turn "any surviving finding" into a non-zero exit — mirroring how `cmd/covercheck` converts
@@ -101,17 +103,24 @@ Scope is this repo's own gate only; promoting dead-code analysis into the render
    false positive (reflection, interface-only dispatch, `//go:linkname`) ever arise, that is
    the trigger to revisit this decision with a concrete case — not a hatch built in advance.
 
-6. **Resolve the two day-one findings so the gate is green on adoption:**
-   - Delete `internal/project.Project.Sync`; migrate its call sites across eleven test files
-     (58 `p.Sync()` calls, one of them the `internal/evals` fixture) to `SyncReport` (the two
-     bare `_ = p.Sync()` sites become `_, _ = p.SyncReport()`), and update the stale comment
-     referencing `p.Sync()` at `cmd/awf/run_test.go:280`.
+6. **Resolve the two day-one findings so the gate is green on adoption — both by relocating
+   a test-only helper out of production, not by deletion:**
+   - Move `internal/project.Project.Sync` (the `func (p *Project) Sync() error { _, err :=
+     p.SyncReport(); return err }` convenience wrapper) from `project.go` into a new
+     `internal/project/export_test.go` declared `package project`. All 28 in-package test
+     files (`package project`) keep calling `p.Sync()` unchanged; only the single
+     cross-package caller `internal/evals/fixture_test.go` — which cannot see an in-package
+     test helper — migrates to `if _, err := p.SyncReport(); err != nil`, with its adjacent
+     doc comment updated. `Sync()` leaves the production binary, so deadcode stops seeing it;
+     `SyncReport` remains the sole production sync entry point. The stale comment referencing
+     `p.Sync()` at `cmd/awf/run_test.go:280` is updated for accuracy.
    - Move `internal/adr.SetNowForTest` (with its doc comment) from `adr.go` into a new
      `internal/adr/export_test.go` declared `package adr`; the external `adr_test.go`
      (`package adr_test`) calls it unchanged. The unexported `now` var stays in `adr.go`.
 
-   The gate-wiring step (Decision 4) must land *after* both fixes, or the gate goes red
-   mid-series.
+   Both fixes apply one rule — a test-only helper belongs in a `_test.go` file, never a
+   production one. The gate-wiring step (Decision 4) must land *after* both, or the gate goes
+   red mid-series.
 
 7. **`cmd/deadcodecheck` is subject to the ADR-0012 100% coverage gate** like every other
    package; `./x` and the `go.mod` tool directive are hand-maintained repo files outside the
@@ -164,8 +173,9 @@ Ruled out (for now):
 - Promoting dead-code analysis into the rendered awf standard (out of scope, deferred).
 
 Downstream work unblocked: an implementation plan covering — add the tool dep + `go mod tidy`;
-write `cmd/deadcodecheck` with tests and the `// invariant: deadcode-gate` backing; delete
-`Project.Sync` and migrate its callers; move `SetNowForTest` to `export_test.go`; wire the
+write `cmd/deadcodecheck` with tests and the `// invariant: deadcode-gate` backing; relocate
+`Project.Sync` to `internal/project/export_test.go` and migrate the single `internal/evals`
+caller to `SyncReport`; move `SetNowForTest` to `internal/adr/export_test.go`; wire the
 `./x gate`/`./x deadcode` step; and refresh the three generated narratives that name
 `Project.Sync` as the eval entry point by editing their `.awf/` sources — `.awf/agents-doc.yaml`
 (→ AGENTS.md), `.awf/docs/parts/testing/layout.md` (→ docs/testing.md), and
@@ -181,5 +191,6 @@ the same commit backs the tagged invariant and regenerates `docs/decisions/ACTIV
 | Gate on `deadcode -test ./...` | Always empty under the ADR-0012 coverage floor; catches only code unreachable even from tests, never the prod-unused-but-tested class that motivates this ADR. |
 | Advisory `deadcode` report (no gate) | Relies on humans reading it; does not enforce "no unused production code." The findings are few and fixable, so a blocking gate is affordable. |
 | Ship a `//deadcode:ignore` escape hatch up front | Both day-one findings are resolved by fixing the code, so the hatch would ship used zero times. A reason-required hatch invites tolerating dead code; defer until a real analyzer false positive justifies one. |
+| Delete `Project.Sync` outright and migrate all 58 `p.Sync()` call sites | 57 of the 58 are in-package (`package project`) tests that legitimately use the wrapper's ergonomics; deleting churns eleven files for no design gain and treats `Sync` inconsistently with `SetNowForTest` (also a test-only helper, relocated not deleted). Relocating to `internal/project/export_test.go` removes it from production with a single-site (`internal/evals`) migration. |
 | Rely on golangci-lint `unused` alone | Package-scoped and conservative about exported identifiers; it does not flag `Project.Sync` (a test calls it). Only whole-program reachability closes the gap. |
 | Exclude `internal/testsupport` from deadcode's root/package set | deadcode needs the whole program to compute reachability correctly; the right lever is report-time path filtering, not shrinking the analysis scope. |
