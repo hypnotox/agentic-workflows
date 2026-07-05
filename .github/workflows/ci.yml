@@ -25,11 +25,15 @@ jobs:
         run: go test ./... -coverpkg=./... -coverprofile=coverage.out
       - name: Filtered coverage profile (coverage-ignore blocks dropped)
         run: go run ./cmd/covercheck --emit-filtered coverage.out > coverage.covered.out
+      # disable_search so each flag uploads ONLY its named file — otherwise the CLI
+      # auto-discovers both .out files and merges them into every flag, collapsing
+      # raw and covered to the same number.
       - name: Upload raw coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.out
+          disable_search: true
           flags: raw
           fail_ci_if_error: true
       - name: Upload covered coverage to Codecov
@@ -37,6 +41,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.covered.out
+          disable_search: true
           flags: covered
           fail_ci_if_error: true
 
