@@ -316,7 +316,11 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   ```
   go test ./cmd/mutants/ -cover
   ```
-  Expected: `ok` with `coverage: 100.0% of statements`.
+  Expected: `ok` with `coverage: 97.2% of statements` — the raw `go tool cover` figure excludes
+  only `main()` (line 33), whose `// coverage-ignore: os.Exit wrapper` directive is applied by
+  `cmd/covercheck` (the gate), not by `go tool`. The 100% floor is confirmed by `./x gate` in
+  Task 2.4 (covercheck reports `coverage: 100.0%` tree-wide with the ignore honored) — this
+  mirrors the `cmd/covercheck`/`cmd/deadcodecheck` siblings exactly.
 - [ ] **Task 2.4 — Gate + commit.** Run `./x gate` (must pass; `cmd/mutants` reaches 100% and its
   `main()`/`run()` are reachable, so the deadcode gate stays green). Stage `cmd/mutants/` and commit:
   ```
