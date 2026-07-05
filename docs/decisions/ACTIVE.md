@@ -63,10 +63,7 @@
 - [ADR-0058: Backslash escape and value-token-free guard for placeholders](0058-backslash-escape-and-value-token-free-guard-for-placeholders.md) — Implemented
 - [ADR-0059: Mandatory working-with-awf usage doc singleton](0059-mandatory-working-with-awf-usage-doc-singleton.md) — Implemented
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md) — Implemented
-
-## Proposed
-
-- [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Proposed
+- [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Implemented
 
 ## Superseded by ADR-0032
 

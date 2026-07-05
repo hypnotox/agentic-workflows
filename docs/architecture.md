@@ -43,10 +43,11 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 - **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
-  `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds` (ADR-0043).
+  `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
 - **`internal/catalog/`** — declares the available skills, agents, docs, and their sections as a
-  compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. `Singletons` and the
-  compile-time `SingletonKinds` list name every always-on singleton (ADR-0043).
+  compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Docs and always-on
+  singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
+  `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
 - **`internal/render/`** — Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -58,8 +59,8 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
   `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source — enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`add`/`check`/`validate` (ADR-0027). `singleton.go`'s
-  `plainSingletons` table is the analogous single source of truth for the seven neutral always-on
-  singletons' render/validate identity (ADR-0043, ADR-0059).
+  `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries — the render/validate
+  identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
 - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their

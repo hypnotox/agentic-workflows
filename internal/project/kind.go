@@ -46,11 +46,15 @@ var kindDescriptors = []kindDescriptor{
 	},
 	{
 		Plural: "docs", Singular: "doc",
-		enable:    func(c *config.Config) []string { return c.Docs },
-		poolNames: func(c *catalog.Catalog) []string { return slices.Sorted(maps.Keys(c.Docs)) },
+		enable: func(c *config.Config) []string { return c.Docs },
+		// Toggleable pool excludes Mandatory singletons (ADR-0061 inv:
+		// mandatory-doc-pool-exclusion), so a singleton never becomes addable via
+		// `awf add doc` or validated as a toggleable doc.
+		poolNames: catalog.NonMandatoryDocNames,
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
 		outPath:   nil,
-		tid:       func(n string) string { return fmt.Sprintf("docs/%s.md.tmpl", n) },
+		// Read the entry's TID: merged-in singletons render from non-docs/ templates.
+		tid: func(n string) string { return catalog.Standard.Docs[n].TID },
 	},
 	{
 		Plural: "domains", Singular: "domain",

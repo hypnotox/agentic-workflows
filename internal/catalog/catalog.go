@@ -1,9 +1,11 @@
 // Package catalog is the compile-time Go value declaring the standard's skills, agents, and docs.
 package catalog
 
+import "slices"
+
 // TargetSpec declares the render sections of a target that has no further
-// per-target configuration (agents and the always-on singletons). Data carries
-// the artifact's default render data; sidecars override it per top-level key
+// per-target configuration (agents and the domain doc). Data carries the
+// artifact's default render data; sidecars override it per top-level key
 // (ADR-0045).
 type TargetSpec struct {
 	Sections []string       `yaml:"sections"`
@@ -28,25 +30,54 @@ type SkillSpec struct {
 	Data          map[string]any `yaml:"data"`
 }
 
-// DocSpec declares a doc's catalog metadata. Docs no longer carry a Core marker
-// (ADR-0043): the three docs that used to set it are always-on singletons now,
-// outside this map entirely.
-type DocSpec struct {
-	Title    string   `yaml:"title"`
-	Desc     string   `yaml:"desc"`
-	Sections []string `yaml:"sections"`
+// DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable
+// doc (Mandatory false) or an always-on singleton (Mandatory true). Path is the
+// docsDir-relative output suffix (empty for agents-doc, which renders to root
+// AGENTS.md); TemplateKey is its .layout camelCase key (empty when not
+// layout-exposed); TID is the embedded template id; DocumentMap marks entries
+// the AGENTS.md document map lists via .layout.*; AgentsDoc flags the one
+// root-output special case. Title/Desc/Sections/Data are as before.
+type DocEntry struct {
+	Title       string
+	Desc        string
+	Sections    []string
+	Data        map[string]any
+	Mandatory   bool
+	Path        string
+	TemplateKey string
+	TID         string
+	DocumentMap bool
+	AgentsDoc   bool
 }
 
-// SingletonKinds lists every kind name that is an always-on singleton — never
-// toggled via an enable array (ADR-0004, ADR-0021, ADR-0043). It is a plain
-// compile-time list, not derived from a loaded Catalog, because
-// internal/config.IsSingletonKind needs this classification without holding a
-// *Catalog instance. internal/project tests its members against both this list
-// and Catalog.Singletons' loaded keys (an exact match, agents-doc included), so
-// the compile-time list and the YAML-driven map never drift apart silently.
-var SingletonKinds = []string{
-	"agents-doc", "adr-readme", "adr-template", "plans-readme",
-	"workflow", "doc-standard", "agents-md-standard", "working-with-awf",
+// SingletonKinds returns every always-on singleton kind (the Mandatory doc
+// entries, agents-doc included), derived from the one doc collection — no
+// hand-maintained list (ADR-0061). internal/config.IsSingletonKind reads it for
+// sidecar/part path classification.
+func SingletonKinds() []string {
+	var out []string
+	for k, e := range Standard.Docs {
+		if e.Mandatory {
+			out = append(out, k)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// NonMandatoryDocNames returns c's sorted toggleable-doc names (Mandatory
+// false) — the pool an adopter selects from and that `awf add`/`remove doc`
+// operate on. Mandatory singletons are excluded (ADR-0061). It takes the catalog
+// so the kind-descriptor pool honours the catalog handed to it.
+func NonMandatoryDocNames(c *Catalog) []string {
+	var out []string
+	for k, e := range c.Docs {
+		if !e.Mandatory {
+			out = append(out, k)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
@@ -65,10 +96,9 @@ type VarDescriptor struct {
 }
 
 type Catalog struct {
-	Skills     map[string]SkillSpec  `yaml:"skills"`
-	Agents     map[string]TargetSpec `yaml:"agents"`
-	DomainDoc  TargetSpec            `yaml:"domainDoc"`
-	Singletons map[string]TargetSpec `yaml:"singletons"`
-	Docs       map[string]DocSpec    `yaml:"docs"`
-	Vars       []VarDescriptor       `yaml:"vars"`
+	Skills    map[string]SkillSpec  `yaml:"skills"`
+	Agents    map[string]TargetSpec `yaml:"agents"`
+	DomainDoc TargetSpec            `yaml:"domainDoc"`
+	Docs      map[string]DocEntry   `yaml:"docs"`
+	Vars      []VarDescriptor       `yaml:"vars"`
 }

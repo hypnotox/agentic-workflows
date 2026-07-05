@@ -244,7 +244,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		return nil, err
 	}
 	if !ad.Local {
-		ad = withDefaultData(ad, p.Cat.Singletons["agents-doc"].Data)
+		ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
 		data := p.data(ad)
 		docs, err := p.resolvedDocs()
 		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which RenderAll's docs loop already surfaces earlier
@@ -252,7 +252,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		data["docs"] = docs
 		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
-			p.Cat.Singletons["agents-doc"].Sections, ad, data, "AGENTS.md")
+			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md")
 		if err != nil {
 			return nil, err
 		}
@@ -274,9 +274,9 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			out = append(out, brf)
 		}
 	}
-	// Plain singletons: adr-readme, adr-template, plans-readme, workflow,
-	// doc-standard, agents-md-standard, working-with-awf (always-on unless local;
-	// ADR-0021, ADR-0043, ADR-0059).
+	// Plain singletons: every Mandatory non-agents-doc entry in the catalog doc
+	// collection, derived into plainSingletons (always-on unless local; ADR-0021,
+	// ADR-0043, ADR-0059, ADR-0061).
 	lay := p.layout()
 	for _, sg := range plainSingletons {
 		rfs, err := p.renderKind(renderKindSpec{
@@ -284,7 +284,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			tid:      func(string) string { return sg.tid },
 			sections: func(string) []string { return sg.sections(p.Cat) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
-			defaults: func(string) map[string]any { return p.Cat.Singletons[sg.kind].Data },
+			defaults: func(string) map[string]any { return p.Cat.Docs[sg.kind].Data },
 		})
 		if err != nil {
 			return nil, err

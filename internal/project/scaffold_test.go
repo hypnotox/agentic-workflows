@@ -195,8 +195,8 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	for name := range cat.Agents {
 		paths = append(paths, "agents/"+name+".md.tmpl")
 	}
-	for name := range cat.Docs {
-		paths = append(paths, "docs/"+name+".md.tmpl")
+	for _, e := range cat.Docs {
+		paths = append(paths, e.TID) // merged-in singletons render from non-docs/ templates
 	}
 	for _, sg := range plainSingletons {
 		paths = append(paths, sg.tid)

@@ -148,7 +148,7 @@ func trimDescs() []catalog.VarDescriptor {
 func TestCatalogVarsComputesTrimOptions(t *testing.T) {
 	cat := &catalog.Catalog{
 		Skills: map[string]catalog.SkillSpec{"brainstorming": {Core: true}, "tdd": {}},
-		Docs:   map[string]catalog.DocSpec{"workflow": {}, "testing": {}},
+		Docs:   map[string]catalog.DocEntry{"workflow": {}, "testing": {}},
 		Vars: []catalog.VarDescriptor{
 			{Key: "gateCmd", Kind: "string"},
 			{Key: "skills", Kind: "multiselect", Target: "catalog-skills"},

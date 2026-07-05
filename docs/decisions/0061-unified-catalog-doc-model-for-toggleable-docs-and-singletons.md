@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-05
 supersedes: []
 retires_invariants: [mandatory-docs-not-in-docs-catalog, singleton-kind-single-source]

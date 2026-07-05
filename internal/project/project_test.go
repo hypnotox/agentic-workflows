@@ -1,12 +1,14 @@
 package project
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -593,28 +595,12 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
 	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
-		l.ActiveMd != "documentation/decisions/ACTIVE.md" || l.AdrReadme != "documentation/decisions/README.md" ||
-		l.AdrTemplate != "documentation/decisions/template.md" || l.PlansDir != "documentation/plans" ||
-		l.PlansReadme != "documentation/plans/README.md" {
+		l.ActiveMd != "documentation/decisions/ACTIVE.md" || l.PlansDir != "documentation/plans" {
 		t.Errorf("layout = %+v", l)
 	}
 	// invariant: domains-dir-given
 	if l.DomainsDir != "documentation/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
-	}
-	// workflow/doc-standard/agents-md-standard are mandatory singletons (ADR-0043):
-	// their paths are always fixed, never fall back or depend on Cfg.Docs.
-	if l.WorkflowRef != "documentation/workflow.md" {
-		t.Errorf("workflowRef = %q", l.WorkflowRef)
-	}
-	if l.DocStandard != "documentation/doc-standard.md" {
-		t.Errorf("docStandard = %q", l.DocStandard)
-	}
-	if l.AgentsMdStandard != "documentation/agents-md-standard.md" {
-		t.Errorf("agentsMdStandard = %q", l.AgentsMdStandard)
-	}
-	if l.WorkingWithAwf != "documentation/working-with-awf.md" {
-		t.Errorf("workingWithAwf = %q", l.WorkingWithAwf)
 	}
 	// invariant: layout-docs-enabled-only
 	wantDocs := map[string]string{
@@ -623,13 +609,37 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if !reflect.DeepEqual(l.Docs, wantDocs) {
 		t.Errorf("Docs = %v, want %v", l.Docs, wantDocs)
 	}
-	// templateMap reproduces the historical .layout map (ConfigHash stability).
+	// templateMap reproduces the historical .layout map by literal value (ConfigHash
+	// stability). The fixed directory keys are hand-built; the mandatory-singleton
+	// keys derive from the catalog (ADR-0061) — assert each one's exact value so a
+	// wrong derivation is caught, not just a present key.
 	tm := l.templateMap()
-	for _, k := range []string{"docsDir", "adrDir", "activeMd", "adrReadme", "adrTemplate",
-		"plansDir", "plansReadme", "docs", "workflowRef", "docStandard", "agentsMdStandard", "workingWithAwf", "domainsDir"} {
-		if _, ok := tm[k]; !ok {
-			t.Errorf("templateMap missing key %q", k)
+	wantTM := map[string]string{
+		"docsDir":          "documentation",
+		"adrDir":           "documentation/decisions",
+		"activeMd":         "documentation/decisions/ACTIVE.md",
+		"plansDir":         "documentation/plans",
+		"domainsDir":       "documentation/domains",
+		"adrReadme":        "documentation/decisions/README.md",
+		"adrTemplate":      "documentation/decisions/template.md",
+		"plansReadme":      "documentation/plans/README.md",
+		"workflowRef":      "documentation/workflow.md",
+		"docStandard":      "documentation/doc-standard.md",
+		"agentsMdStandard": "documentation/agents-md-standard.md",
+		"workingWithAwf":   "documentation/working-with-awf.md",
+	}
+	for k, want := range wantTM {
+		if tm[k] != want {
+			t.Errorf("templateMap[%q] = %v, want %q", k, tm[k], want)
 		}
+	}
+	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
+		t.Errorf("templateMap[docs] = %v", tm["docs"])
+	}
+	// 5 fixed dir keys + docs + 7 mandatory-singleton keys = 13, byte-for-byte the
+	// historical key set (agents-doc has no TemplateKey and is excluded).
+	if len(tm) != 13 {
+		t.Errorf("templateMap has %d keys, want 13", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -929,15 +939,21 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 		t.Fatalf("AGENTS.md not written: %v", err)
 	}
 	got := string(b)
-	for _, want := range []string{
-		"[docs/working-with-awf.md](docs/working-with-awf.md)",
-		"[docs/workflow.md](docs/workflow.md)",
-		"[docs/doc-standard.md](docs/doc-standard.md)",
-		"[docs/agents-md-standard.md](docs/agents-md-standard.md)",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("Document map should unconditionally cite %s (docs: array is empty):\n%s", want, got)
+	// Iterate the catalog's DocumentMap entries (default docsDir "docs") so a new
+	// mandatory document-map doc cannot silently stop being covered (ADR-0061).
+	mapped := 0
+	for name, e := range catalog.Standard.Docs {
+		if !e.DocumentMap {
+			continue
 		}
+		mapped++
+		link := fmt.Sprintf("[docs/%s](docs/%s)", e.Path, e.Path)
+		if !strings.Contains(got, link) {
+			t.Errorf("Document map should unconditionally cite %s (%s; docs: array is empty):\n%s", link, name, got)
+		}
+	}
+	if mapped != 4 {
+		t.Errorf("expected 4 DocumentMap entries, iterated %d", mapped)
 	}
 }
 

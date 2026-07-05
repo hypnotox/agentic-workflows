@@ -27,7 +27,7 @@ func (p *Project) validateAgainstCatalog() error {
 		return err
 	}
 	if !ad.Local {
-		if err := checkSectionsAllowed("agents-doc", "", p.Cat.Singletons["agents-doc"].Sections, ad.Sections); err != nil {
+		if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
 			return err
 		}
 	}

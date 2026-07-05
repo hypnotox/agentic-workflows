@@ -19,6 +19,9 @@ import (
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
+		if spec.Mandatory {
+			continue // singletons render from non-docs/ templates through the full layout; covered by TestAdrSingletonSectionParity
+		}
 		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {

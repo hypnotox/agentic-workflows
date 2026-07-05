@@ -45,8 +45,8 @@ func assertSectionParity(t *testing.T, label, tid string, sections []string) {
 // TestSkillAndAgentSectionParity asserts that for every catalog skill and agent
 // the set of awf:section markers in its template source equals its
 // catalog-declared sections list. Without this guard a section-slug rename that
-// updates the template but not catalog.yaml (or vice versa) renders green with a
-// blank-path provenance pointer that no other gate catches (ADR-0054).
+// updates the template but not the catalog Standard value (or vice versa) renders
+// green with a blank-path provenance pointer that no other gate catches (ADR-0054).
 //
 // invariant: skill-section-parity
 func TestSkillAndAgentSectionParity(t *testing.T) {

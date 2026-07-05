@@ -4,26 +4,23 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
 // Layout is the fixed, awf-given docs layout derived from cfg.DocsDir, in typed
 // form for Go consumers. These paths are not configurable through vars.
 // templateMap projects it into the .layout template namespace (templates read a
-// map, not unexported struct fields) and into the per-file ConfigHash.
+// map, not unexported struct fields) and into the per-file ConfigHash. The
+// mandatory-singleton paths are not struct fields: they derive from the catalog
+// doc collection in templateMap (ADR-0061).
 type Layout struct {
-	DocsDir          string
-	ADRDir           string
-	ActiveMd         string
-	AdrReadme        string
-	AdrTemplate      string
-	PlansDir         string
-	PlansReadme      string
-	Docs             map[string]string // name -> output path; present iff enabled (inv: layout-docs-enabled-only)
-	WorkflowRef      string
-	DocStandard      string
-	AgentsMdStandard string
-	WorkingWithAwf   string
-	DomainsDir       string
+	DocsDir    string
+	ADRDir     string
+	ActiveMd   string
+	PlansDir   string
+	Docs       map[string]string // name -> output path; present iff enabled (inv: layout-docs-enabled-only)
+	DomainsDir string
 }
 
 func (p *Project) layout() Layout {
@@ -36,45 +33,42 @@ func (p *Project) layout() Layout {
 		docs[name] = p.docOutPath(name)
 	}
 	return Layout{
-		DocsDir:          d,
-		ADRDir:           dec,
-		ActiveMd:         dec + "/ACTIVE.md",
-		AdrReadme:        dec + "/README.md",
-		AdrTemplate:      dec + "/template.md",
-		PlansDir:         d + "/plans",
-		PlansReadme:      d + "/plans/README.md",
-		Docs:             docs,
-		WorkflowRef:      d + "/workflow.md",
-		DocStandard:      d + "/doc-standard.md",
-		AgentsMdStandard: d + "/agents-md-standard.md",
-		WorkingWithAwf:   d + "/working-with-awf.md",
-		DomainsDir:       d + "/domains", // inv: domains-dir-given
+		DocsDir:    d,
+		ADRDir:     dec,
+		ActiveMd:   dec + "/ACTIVE.md",
+		PlansDir:   d + "/plans",
+		Docs:       docs,
+		DomainsDir: d + "/domains", // inv: domains-dir-given
 	}
 }
 
 // templateMap projects the layout into the map the .layout template namespace and
-// the per-file ConfigHash consume, reproducing the historical layout() map exactly
-// so the ConfigHash stays byte-identical (no drift).
+// the per-file ConfigHash consume. The fixed directory/generated keys are set
+// here; the mandatory-singleton keys (adrReadme, adrTemplate, plansReadme,
+// workflowRef, docStandard, agentsMdStandard, workingWithAwf) derive from the
+// catalog doc collection — each entry's TemplateKey at docsDir/Path — so the map
+// reproduces the historical key set and values byte-for-byte (ADR-0061).
 func (l Layout) templateMap() map[string]any {
 	docs := map[string]any{}
 	for k, v := range l.Docs {
 		docs[k] = v
 	}
-	return map[string]any{
-		"docsDir":          l.DocsDir,
-		"adrDir":           l.ADRDir,
-		"activeMd":         l.ActiveMd,
-		"adrReadme":        l.AdrReadme,
-		"adrTemplate":      l.AdrTemplate,
-		"plansDir":         l.PlansDir,
-		"plansReadme":      l.PlansReadme,
-		"docs":             docs,
-		"workflowRef":      l.WorkflowRef,
-		"docStandard":      l.DocStandard,
-		"agentsMdStandard": l.AgentsMdStandard,
-		"workingWithAwf":   l.WorkingWithAwf,
-		"domainsDir":       l.DomainsDir,
+	m := map[string]any{
+		"docsDir":    l.DocsDir,
+		"adrDir":     l.ADRDir,
+		"activeMd":   l.ActiveMd,
+		"plansDir":   l.PlansDir,
+		"docs":       docs,
+		"domainsDir": l.DomainsDir,
 	}
+	for _, k := range catalog.SingletonKinds() {
+		e := catalog.Standard.Docs[k]
+		if e.AgentsDoc || e.TemplateKey == "" {
+			continue
+		}
+		m[e.TemplateKey] = l.DocsDir + "/" + e.Path
+	}
+	return m
 }
 
 // docOutPath is the output path for a managed doc, rooted at docsDir.

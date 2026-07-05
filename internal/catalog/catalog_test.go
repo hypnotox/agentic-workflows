@@ -16,7 +16,7 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 		t.Fatalf("catalog.yaml must not be embedded; got stat err = %v", err)
 	}
 	if len(Standard.Skills) == 0 || len(Standard.Agents) == 0 || len(Standard.Docs) == 0 ||
-		len(Standard.Singletons) == 0 || len(Standard.Vars) == 0 || len(Standard.DomainDoc.Sections) == 0 {
+		len(SingletonKinds()) == 0 || len(Standard.Vars) == 0 || len(Standard.DomainDoc.Sections) == 0 {
 		t.Fatalf("catalog.Standard is not populated across all kinds")
 	}
 }
@@ -52,14 +52,14 @@ func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 	for name, spec := range cat.Agents {
 		walk(t, "agents."+name, spec.Data)
 	}
-	for name, spec := range cat.Singletons {
-		walk(t, "singletons."+name, spec.Data)
+	for name, e := range cat.Docs {
+		walk(t, "docs."+name, e.Data)
 	}
 }
 
 func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 	cat := Standard
-	sections := cat.Singletons["agents-doc"].Sections
+	sections := cat.Docs["agents-doc"].Sections
 	if len(sections) == 0 {
 		t.Error("expected agents-doc Sections to be non-empty")
 	}

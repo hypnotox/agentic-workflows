@@ -45,10 +45,13 @@ func CatalogVars(cat *catalog.Catalog) []catalog.VarDescriptor {
 	for name, spec := range cat.Skills {
 		skills[name] = spec.Core
 	}
-	// No doc carries Core any longer (ADR-0043): every name is a non-core option.
+	// No doc carries Core any longer (ADR-0043); Mandatory singletons are excluded
+	// from the toggleable pool (ADR-0061). Every remaining name is a non-core option.
 	docs := map[string]bool{}
-	for name := range cat.Docs {
-		docs[name] = false
+	for name, e := range cat.Docs {
+		if !e.Mandatory {
+			docs[name] = false
+		}
 	}
 	out := make([]catalog.VarDescriptor, len(cat.Vars))
 	for i, d := range cat.Vars {

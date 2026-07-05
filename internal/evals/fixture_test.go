@@ -53,7 +53,9 @@ func fullCatalogConfig(cat *catalog.Catalog) string {
 	b.WriteString("targets:\n  - claude\n")
 	writeList(&b, "skills", sortedKeys(cat.Skills))
 	writeList(&b, "agents", sortedKeys(cat.Agents))
-	writeList(&b, "docs", sortedKeys(cat.Docs))
+	// Only toggleable docs go in the docs: enable array; Mandatory singletons
+	// render unconditionally and must not be listed (ADR-0061).
+	writeList(&b, "docs", catalog.NonMandatoryDocNames(cat))
 	return b.String()
 }
 

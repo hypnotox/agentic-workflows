@@ -165,32 +165,32 @@ var Standard = &Catalog{
 		},
 	},
 	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
-	Singletons: map[string]TargetSpec{
-		"agents-doc": {Sections: []string{
-			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow",
-			"commands", "document-map",
+	Docs: map[string]DocEntry{
+		// Toggleable docs (Mandatory false) — rendered only when enabled in config.
+		"architecture": {Title: "Architecture", Desc: "system shape, packages, key components, dependencies", Sections: []string{"overview", "components", "data-flow", "dependencies"}, TID: "docs/architecture.md.tmpl"},
+		"testing":      {Title: "Testing", Desc: "gate tiers, test layout, what each tier covers", Sections: []string{"gate", "tiers", "layout"}, TID: "docs/testing.md.tmpl"},
+		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}, TID: "docs/development.md.tmpl"},
+		"debugging":    {Title: "Debugging", Desc: "recipes for common failure modes", Sections: []string{"surfaces", "recipes"}, TID: "docs/debugging.md.tmpl"},
+		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"entries"}, TID: "docs/pitfalls.md.tmpl"},
+		"glossary":     {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"terms"}, TID: "docs/glossary.md.tmpl"},
+		"roadmap":      {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},
+		// Always-on singletons (Mandatory true). agents-doc renders to root AGENTS.md
+		// (empty Path/TemplateKey, AgentsDoc true); the four DocumentMap docs are cited
+		// in AGENTS.md's document map via .layout.*.
+		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
+			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "commands", "document-map",
 		}},
-		"adr-readme":   {Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "active-md"}},
-		"adr-template": {Sections: []string{"frontmatter", "body"}},
-		"plans-readme": {Sections: []string{"intro", "naming", "structure"}},
-		"workflow": {Sections: []string{
-			"principles", "chain", "commit-discipline", "doc-currency", "composing-the-gate",
-			"local-hooks", "ci",
+		"adr-readme":   {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "active-md"}},
+		"adr-template": {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
+		"plans-readme": {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
+		"workflow": {Mandatory: true, DocumentMap: true, Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
+			"principles", "chain", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",
 		}},
-		"doc-standard":       {Sections: []string{"principles", "rules", "structure"}},
-		"agents-md-standard": {Sections: []string{"layout", "content", "rules"}},
-		"working-with-awf": {Sections: []string{
+		"doc-standard":       {Mandatory: true, DocumentMap: true, Path: "doc-standard.md", TemplateKey: "docStandard", TID: "docs/doc-standard.md.tmpl", Sections: []string{"principles", "rules", "structure"}},
+		"agents-md-standard": {Mandatory: true, DocumentMap: true, Path: "agents-md-standard.md", TemplateKey: "agentsMdStandard", TID: "docs/agents-md-standard.md.tmpl", Sections: []string{"layout", "content", "rules"}},
+		"working-with-awf": {Mandatory: true, DocumentMap: true, Path: "working-with-awf.md", TemplateKey: "workingWithAwf", TID: "docs/working-with-awf.md.tmpl", Sections: []string{
 			"overview", "commands", "config-and-overrides", "placeholders", "sync-and-drift",
 		}},
-	},
-	Docs: map[string]DocSpec{
-		"architecture": {Title: "Architecture", Desc: "system shape, packages, key components, dependencies", Sections: []string{"overview", "components", "data-flow", "dependencies"}},
-		"testing":      {Title: "Testing", Desc: "gate tiers, test layout, what each tier covers", Sections: []string{"gate", "tiers", "layout"}},
-		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}},
-		"debugging":    {Title: "Debugging", Desc: "recipes for common failure modes", Sections: []string{"surfaces", "recipes"}},
-		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"entries"}},
-		"glossary":     {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"terms"}},
-		"roadmap":      {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}},
 	},
 	Vars: []VarDescriptor{
 		{Key: "gateCmd", Kind: "string", Description: "Command that runs the full pre-commit gate (tests, lint, coverage).", Default: "", Options: []string{"./x gate", "make gate", "go test ./..."}},

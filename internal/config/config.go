@@ -166,7 +166,7 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 // IsSingletonKind reports whether kind is an always-on singleton whose sidecar lives at
 // <root>/<kind>.yaml and whose parts live under <root>/parts/<kind>/ (ADR-0021, ADR-0043).
 func IsSingletonKind(kind string) bool {
-	return slices.Contains(catalog.SingletonKinds, kind)
+	return slices.Contains(catalog.SingletonKinds(), kind)
 }
 
 // PartPath returns the convention part path for a section of an artifact.

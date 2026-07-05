@@ -1,55 +1,15 @@
 package project
 
 import (
-	"maps"
-	"slices"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
-// invariant: singleton-kind-single-source
-func TestPlainSingletonsMatchCatalogSingletonKinds(t *testing.T) {
-	var got []string
-	for _, sg := range plainSingletons {
-		got = append(got, sg.kind)
-	}
-	slices.Sort(got)
-
-	var want []string
-	for _, k := range catalog.SingletonKinds {
-		if k == "agents-doc" {
-			continue
-		}
-		want = append(want, k)
-	}
-	slices.Sort(want)
-
-	if !slices.Equal(got, want) {
-		t.Errorf("plainSingletons kinds = %v, want catalog.SingletonKinds minus agents-doc = %v", got, want)
-	}
-}
-
-// invariant: singleton-kind-single-source
-func TestCatalogSingletonsMatchSingletonKinds(t *testing.T) {
-	cat := catalog.Standard
-	got := slices.Sorted(maps.Keys(cat.Singletons))
-	want := slices.Sorted(slices.Values(catalog.SingletonKinds))
-	if !slices.Equal(got, want) {
-		t.Errorf("cat.Singletons keys = %v, want catalog.SingletonKinds = %v (agents-doc included in both)", got, want)
-	}
-}
-
-// invariant: mandatory-docs-not-in-docs-catalog
-func TestCatalogDocsExcludeSingletonKinds(t *testing.T) {
-	cat := catalog.Standard
-	for name := range cat.Docs {
-		if slices.Contains(catalog.SingletonKinds, name) {
-			t.Errorf("cat.Docs contains %q, which is a singleton kind and must not be a toggleable doc", name)
-		}
-	}
-}
+// The former singleton-kind-single-source and mandatory-docs-not-in-docs-catalog
+// backing tests are retired with those ADR-0043 invariants (ADR-0061): with
+// SingletonKinds and plainSingletons both derived from the one doc collection,
+// their drift guards are subsumed by unified-doc-model / mandatory-doc-pool-exclusion
+// (backed in unified_doc_model_test.go).
 
 // agentsDocContent renders the tree and returns AGENTS.md's content.
 func agentsDocContent(t *testing.T, configYAML string) string {
