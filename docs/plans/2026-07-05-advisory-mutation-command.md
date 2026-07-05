@@ -78,8 +78,10 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   ```
   go tool gremlins unleash -o /tmp/mut-refs.json ./internal/refs
   ```
-  Expected output includes `Killed: 13, Lived: 3, Not covered: 5` and `Timed out: 0,` — the
-  config auto-loaded (single worker, integration mode, zero timeouts).
+  Expected output includes `Killed: 13, Lived: 3` and — the load-bearing trust signal —
+  `Timed out: 0,`; the config auto-loaded (single worker, integration mode, zero timeouts).
+  (The `Not covered:` count is package-local coverage noise the wrapper drops; don't gate this
+  check on its exact value.)
 - [ ] **Task 1.5 — Gate + commit.** Run `./x gate` (must pass — the MVS bump leaves lint,
   coverage, and deadcode green; spike-verified). Stage `go.mod go.sum .gremlins.yaml` and commit:
   ```
@@ -345,6 +347,10 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
       go run ./cmd/mutants "$tmp"
       ;;
   ```
+  Note: under the committed `.gremlins.yaml` the efficacy/coverage thresholds stay at their `0`
+  defaults, so `gremlins unleash` exits `0` even with surviving mutants — `set -e` therefore does
+  not abort before `go run ./cmd/mutants` runs. Never add a threshold to the config, or the
+  survivor path (Task 3.3) would abort the script before the wrapper prints.
 - [ ] **Task 3.2 — Update usage.** In `x`, change the usage line to include `mutants`:
   ```
       echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants>" >&2
@@ -374,7 +380,9 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
 ## Phase 4 — Document the command
 
 - [ ] **Task 4.1 — Rewrite the testing-doc stance.** In `.awf/docs/parts/testing/gate.md`, in the
-  "Coverage is not verification" section, replace the final sentence exactly:
+  "Coverage is not verification" section, replace the final sentence exactly (it is hard-wrapped
+  across three source lines in the current file — match the wrapped text, not this single-line
+  rendering):
   - `This is a deliberate manual habit, not a gate: an automated mutation-testing step was evaluated and left out (the available tooling was too timeout-sensitive and mode-dependent to yield trustworthy, reproducible numbers here).`
   →
   - `This is a deliberate manual habit. \`./x mutants\` (ADR-0066) makes it reproducible: it runs \`gremlins\` mutation testing under a deterministic config (\`.gremlins.yaml\`, \`-i --workers 1\`) and prints the survived mutants for you to triage — run it with no arguments to check your diff against \`main\`, or pass a package path (e.g. \`./x mutants ./internal/refs\`) for a deep dive. Its numbers are trustworthy only when the run reports \`Timed out: 0\`; a nonzero count can hide a real survivor, so raise the timeout coefficient and rerun. It stays advisory — never part of the gate — and every survivor still needs you to judge whether it is a real gap or an unkillable equivalent mutant.`
@@ -387,7 +395,8 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   ```
 - [ ] **Task 4.3 — Add the AGENTS.md invariant.** In `.awf/agents-doc.yaml`, in `data.invariants`,
   immediately after the ADR-0063 dead-code-gate entry (the `- ref: ADR-0063` / `text: '**Dead-code
-  gate.** ...'` pair), add:
+  gate.** ...'` pair), add (indent to match the siblings exactly — 8 spaces before `- ref`, 10
+  before `text`):
   ```yaml
         - ref: ADR-0066
           text: '**Advisory mutation triage.** `./x mutants` runs `gremlins` under the deterministic `.gremlins.yaml` config and is never part of `./x gate`; `cmd/mutants` exits non-zero when any mutant times out (the run is untrustworthy) and otherwise reports only survived (`LIVED`) mutants, treating a missing or empty report as no survivors.'
