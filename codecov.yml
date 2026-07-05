@@ -1,0 +1,41 @@
+# Two-report coverage (ADR-0065).
+#
+# `raw`     — honest line coverage over the whole tree (~94%); climbs only as
+#             real branches get covered.
+# `covered` — line coverage over the // coverage-ignore-filtered profile emitted
+#             by `covercheck --emit-filtered` (~100%): the blocks the ADR-0012
+#             gate holds accountable, with sanctioned defensive branches dropped.
+#
+# `./x gate` (statement coverage, ADR-0012) is the SOLE hard coverage gate. Every
+# Codecov status here is informational — Codecov reports line coverage, a metric
+# that differs from the gate's statement coverage by design, so it never blocks a
+# merge. codecov.yml carries no path/line ignore: the coverage-ignore convention's
+# single source of truth is internal/coverage, applied by filtering the profile.
+
+codecov:
+  notify:
+    after_n_builds: 2 # wait for both flagged uploads before commenting
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+flag_management:
+  default_rules:
+    carryforward: false
+    statuses:
+      - type: project
+        informational: true
+      - type: patch
+        informational: true
+  individual_flags:
+    - name: raw
+    - name: covered
+
+comment:
+  layout: "reach, flags, files"

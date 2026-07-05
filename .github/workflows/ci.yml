@@ -23,11 +23,21 @@ jobs:
         run: ./x check
       - name: Coverage profile (for Codecov)
         run: go test ./... -coverpkg=./... -coverprofile=coverage.out
-      - name: Upload coverage to Codecov
+      - name: Filtered coverage profile (coverage-ignore blocks dropped)
+        run: go run ./cmd/covercheck --emit-filtered coverage.out > coverage.covered.out
+      - name: Upload raw coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.out
+          flags: raw
+          fail_ci_if_error: true
+      - name: Upload covered coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.covered.out
+          flags: covered
           fail_ci_if_error: true
 
   release-config:
