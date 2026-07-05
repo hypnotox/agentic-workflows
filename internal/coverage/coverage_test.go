@@ -225,3 +225,122 @@ func TestPercentEmptyIs100(t *testing.T) {
 		t.Fatal("empty report should be 100%")
 	}
 }
+
+// invariant: covered-profile-honors-ignores
+func TestFilterDropsIgnoredKeepsRest(t *testing.T) {
+	// Line 2 carries the directive; its block must be dropped from the emitted
+	// profile, and the line-3 block must survive verbatim — the "covered" report
+	// contains exactly the blocks the ADR-0012 gate holds accountable.
+	src := "package m\nvar x = 1 //" + " coverage-ignore: defensive\nvar y = 2\n"
+	root, modPath := module(t, src)
+	prof := writeProfile(t, root,
+		modPath+"/f.go:2.1,2.10 1 0\n"+
+			modPath+"/f.go:3.1,3.10 1 1\n")
+	got, err := Filter(prof, root, modPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "mode: set\n" + modPath + "/f.go:3.1,3.10 1 1\n"
+	if got != want {
+		t.Fatalf("filtered profile mismatch:\ngot  %q\nwant %q", got, want)
+	}
+}
+
+func TestFilterMergesDuplicatesAndSortsDeterministically(t *testing.T) {
+	// Duplicate emissions (one per test binary) collapse to one line with OR-ed
+	// counts, and output is ordered by (file, startLine) regardless of input order.
+	root, modPath := module(t, "package m\nfunc F() {}\nfunc G() {}\n")
+	prof := writeProfile(t, root,
+		modPath+"/f.go:3.1,3.5 1 0\n"+
+			modPath+"/f.go:2.1,2.5 1 0\n"+
+			modPath+"/f.go:2.1,2.5 1 1\n") // dup of line-2 block, covered
+	got, err := Filter(prof, root, modPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "mode: set\n" +
+		modPath + "/f.go:2.1,2.5 1 1\n" +
+		modPath + "/f.go:3.1,3.5 1 0\n"
+	if got != want {
+		t.Fatalf("filtered profile mismatch:\ngot  %q\nwant %q", got, want)
+	}
+}
+
+func TestFilterSortsAcrossFilesAndSpans(t *testing.T) {
+	// Exercises both sort tiebreaks: ordering across distinct files, and — within
+	// one file, at the same start line — ordering by span.
+	root := t.TempDir()
+	modPath := "example.com/m"
+	testsupport.WriteGoModule(t, root, modPath, "package m\nfunc F() {}\n") // writes f.go
+	if err := os.WriteFile(filepath.Join(root, "a.go"),
+		[]byte("package m\nfunc A() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prof := writeProfile(t, root,
+		modPath+"/f.go:2.1,2.5 1 1\n"+
+			modPath+"/a.go:2.10,2.14 1 1\n"+ // same start line 2 as the next, larger span
+			modPath+"/a.go:2.1,2.5 1 0\n")
+	got, err := Filter(prof, root, modPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "mode: set\n" +
+		modPath + "/a.go:2.1,2.5 1 0\n" +
+		modPath + "/a.go:2.10,2.14 1 1\n" +
+		modPath + "/f.go:2.1,2.5 1 1\n"
+	if got != want {
+		t.Fatalf("filtered profile mismatch:\ngot  %q\nwant %q", got, want)
+	}
+}
+
+func TestFilterParseError(t *testing.T) {
+	root, modPath := module(t, "package m\n")
+	if _, err := Filter(filepath.Join(root, "nope.out"), root, modPath); err == nil {
+		t.Fatal("expected error for missing profile")
+	}
+}
+
+func TestFilterIgnoredLinesError(t *testing.T) {
+	// A reasonless directive surfaces from ignoredLines through Filter.
+	src := "package m\nvar x = 1 //" + " coverage-ignore\n"
+	root, modPath := module(t, src)
+	prof := writeProfile(t, root, modPath+"/f.go:2.1,2.10 1 0\n")
+	if _, err := Filter(prof, root, modPath); err == nil {
+		t.Fatal("expected error for a reasonless directive")
+	}
+}
+
+func TestFilterProfileResolvesModule(t *testing.T) {
+	src := "package m\nvar x = 1 //" + " coverage-ignore: defensive\nvar y = 2\n"
+	root, modPath := module(t, src)
+	prof := writeProfile(t, root,
+		modPath+"/f.go:2.1,2.10 1 0\n"+
+			modPath+"/f.go:3.1,3.10 1 1\n")
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	got, err := FilterProfile(prof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "mode: set\n" + modPath + "/f.go:3.1,3.10 1 1\n"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFilterProfileGetwdError(t *testing.T) {
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
+	if _, err := FilterProfile("x"); err == nil {
+		t.Fatal("expected getwd error to propagate")
+	}
+}
+
+func TestFilterProfileNoModuleLine(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("// no module line\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	if _, err := FilterProfile("x"); err == nil {
+		t.Fatal("expected no-module-line error")
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -79,6 +80,28 @@ func Check(profilePath, srcRoot, modPath string) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	uniq := mergeBlocks(blocks)
+	ignored, err := ignoredLines(uniq, srcRoot, modPath)
+	if err != nil {
+		return Report{}, err
+	}
+	var rep Report
+	for _, b := range uniq {
+		if ignored[b.file][b.startLine] {
+			continue
+		}
+		rep.Total += b.numStmt
+		if b.count > 0 {
+			rep.Covered += b.numStmt
+		}
+	}
+	return rep, nil
+}
+
+// mergeBlocks collapses the per-test-binary duplication of a `-coverpkg` profile:
+// blocks sharing a file+span identity merge into one, OR-ing the counts (mode: set)
+// exactly as `go tool cover` does, so the denominator is not inflated.
+func mergeBlocks(blocks []block) []block {
 	merged := map[string]block{}
 	for _, b := range blocks {
 		k := b.file + ":" + b.span
@@ -95,21 +118,62 @@ func Check(profilePath, srcRoot, modPath string) (Report, error) {
 	for _, b := range merged {
 		uniq = append(uniq, b)
 	}
+	return uniq
+}
+
+// FilterProfile resolves the module root from the working directory and returns
+// the profile at profilePath with its coverage-ignored blocks removed (see Filter).
+func FilterProfile(profilePath string) (string, error) {
+	root, err := moduleRoot()
+	if err != nil {
+		return "", err
+	}
+	modPath, err := modulePath(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return "", err
+	}
+	return Filter(profilePath, root, modPath)
+}
+
+// Filter returns a coverprofile containing exactly the blocks of the profile at
+// profilePath that are NOT dropped by a coverage-ignore directive — the same
+// blocks the ADR-0012 gate holds accountable, sharing ignoredLines verbatim so the
+// two can never disagree on what "ignored" means (ADR-0065's covered report). The
+// output carries a "mode: set" header (the mode parseProfile discards; awf's gate
+// profile is always set) and merged-unique blocks in deterministic (file, startLine,
+// span) order, so it round-trips as valid Codecov input.
+func Filter(profilePath, srcRoot, modPath string) (string, error) {
+	blocks, err := parseProfile(profilePath)
+	if err != nil {
+		return "", err
+	}
+	uniq := mergeBlocks(blocks)
 	ignored, err := ignoredLines(uniq, srcRoot, modPath)
 	if err != nil {
-		return Report{}, err
+		return "", err
 	}
-	var rep Report
+	kept := make([]block, 0, len(uniq))
 	for _, b := range uniq {
 		if ignored[b.file][b.startLine] {
 			continue
 		}
-		rep.Total += b.numStmt
-		if b.count > 0 {
-			rep.Covered += b.numStmt
-		}
+		kept = append(kept, b)
 	}
-	return rep, nil
+	slices.SortFunc(kept, func(a, b block) int {
+		if a.file != b.file {
+			return strings.Compare(a.file, b.file)
+		}
+		if a.startLine != b.startLine {
+			return a.startLine - b.startLine
+		}
+		return strings.Compare(a.span, b.span)
+	})
+	var sb strings.Builder
+	sb.WriteString("mode: set\n")
+	for _, b := range kept {
+		fmt.Fprintf(&sb, "%s:%s %d %d\n", b.file, b.span, b.numStmt, b.count)
+	}
+	return sb.String(), nil
 }
 
 // block is one parsed coverprofile line.

@@ -14,6 +14,19 @@ import (
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
 
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) >= 2 && args[1] == "--emit-filtered" {
+		if len(args) < 3 {
+			fmt.Fprintln(stderr, "usage: covercheck --emit-filtered <coverprofile>")
+			return 2
+		}
+		filtered, err := coverage.FilterProfile(args[2])
+		if err != nil {
+			fmt.Fprintln(stderr, "covercheck:", err)
+			return 1
+		}
+		fmt.Fprint(stdout, filtered)
+		return 0
+	}
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: covercheck <coverprofile>")
 		return 2
