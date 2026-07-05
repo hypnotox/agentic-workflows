@@ -63,6 +63,10 @@
 - [ADR-0058: Backslash escape and value-token-free guard for placeholders](0058-backslash-escape-and-value-token-free-guard-for-placeholders.md) — Implemented
 - [ADR-0059: Mandatory working-with-awf usage doc singleton](0059-mandatory-working-with-awf-usage-doc-singleton.md) — Implemented
 
+## Proposed
+
+- [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

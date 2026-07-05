@@ -34,3 +34,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
 - [ADR-0059: Mandatory working-with-awf usage doc singleton](../decisions/0059-mandatory-working-with-awf-usage-doc-singleton.md)
 
+### Proposed
+
+- [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
+
