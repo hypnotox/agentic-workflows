@@ -83,6 +83,9 @@ while the four hardcoded lines do.
   repo re-renders its own `AGENTS.md` in the same commit.
 - The `data.docMap` extras block and its `**{{ .path }}:**` label are untouched — a pre-existing
   cosmetic inconsistency left as-is.
+- When this ADR flips to `Accepted`/`Implemented`, the same commit regenerates
+  `docs/decisions/ACTIVE.md` (and the `rendering` per-domain decision index) via `./x sync`, staged
+  alongside the template and catalog change (docs-travel-with-change).
 
 ## Alternatives Considered
 
