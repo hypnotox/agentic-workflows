@@ -431,6 +431,12 @@ func TestInvariantGlobValidation(t *testing.T) {
 	if err := emptyMarker.Validate(); err == nil {
 		t.Error("expected empty marker to be rejected (a bare marker would match prose)")
 	}
+	emptyGlobs := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Marker: "//"}},
+	}}
+	if err := emptyGlobs.Validate(); err == nil {
+		t.Error("expected a source with no globs to be rejected (it scans no files)")
+	}
 }
 
 func TestAuditDependencyManifestValidation(t *testing.T) {

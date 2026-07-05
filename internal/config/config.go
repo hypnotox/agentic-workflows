@@ -197,6 +197,9 @@ func (c *Config) Validate() error {
 			if src.Marker == "" {
 				return fmt.Errorf("invariants source %v has an empty marker; set a literal comment marker (e.g. \"//\", \"#\")", src.Globs)
 			}
+			if len(src.Globs) == 0 {
+				return fmt.Errorf("invariants source with marker %q has no globs; list at least one filename glob (e.g. \"*.go\")", src.Marker)
+			}
 			for _, g := range src.Globs {
 				if err := validateBasenameGlob(g); err != nil {
 					return fmt.Errorf("invariants glob: %w", err)
