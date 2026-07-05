@@ -435,6 +435,11 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	if !strings.Contains(err.Error(), "bogus") {
 		t.Errorf("error should mention 'bogus', got: %v", err)
 	}
+	// The label carries the artifact name for a named artifact (name != ""), so
+	// the message identifies which skill; assert it so that branch is pinned.
+	if !strings.Contains(err.Error(), `"tdd"`) {
+		t.Errorf("error should name the offending skill \"tdd\", got: %v", err)
+	}
 }
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {

@@ -13,6 +13,7 @@ func TestLinks(t *testing.T) {
 		want []string
 	}{
 		{"simple", "see [a](b.md) here", []string{"b.md"}},
+		{"empty link text", "[](b.md)", []string{"b.md"}},
 		{"http skipped", "[x](http://e.com)", nil},
 		{"https skipped", "[x](https://e.com)", nil},
 		{"mailto skipped", "[x](mailto:a@b.c)", nil},
