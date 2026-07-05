@@ -947,9 +947,11 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			continue
 		}
 		mapped++
-		link := fmt.Sprintf("[docs/%s](docs/%s)", e.Path, e.Path)
-		if !strings.Contains(got, link) {
-			t.Errorf("Document map should unconditionally cite %s (%s; docs: array is empty):\n%s", link, name, got)
+		// Assert the whole rendered line — title, link, and catalog desc — so a
+		// mandatory doc is cited with its data-driven title/desc, not just linked.
+		line := fmt.Sprintf("- **%s:** [docs/%s](docs/%s) — %s", e.Title, e.Path, e.Path, e.Desc)
+		if !strings.Contains(got, line) {
+			t.Errorf("Document map should unconditionally cite %q (%s; docs: array is empty):\n%s", line, name, got)
 		}
 	}
 	if mapped != 4 {
