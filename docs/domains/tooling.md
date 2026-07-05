@@ -55,9 +55,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0054: Uniform machine-enforced workflow-chain handoff convention](../decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md)
 - [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
 - [ADR-0056: Structured commit-scope config with meanings](../decisions/0056-structured-commit-scope-config-with-meanings.md)
-
-### Proposed
-
 - [ADR-0063: Whole-Program Dead-Code Gate via deadcode](../decisions/0063-whole-program-dead-code-gate-via-deadcode.md)
 
 ### Superseded by ADR-0032

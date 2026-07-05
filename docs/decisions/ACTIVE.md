@@ -65,10 +65,7 @@
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md) — Implemented
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Implemented
 - [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Implemented
-
-## Proposed
-
-- [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Proposed
+- [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Implemented
 
 ## Superseded by ADR-0032
 
