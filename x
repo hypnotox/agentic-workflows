@@ -44,6 +44,10 @@ case "$cmd" in
   commit-gate)
     go run ./cmd/awf commit-gate "$@"
     ;;
+  new)
+    # Scaffold a new ADR (or other awf artifact) from source, e.g. ./x new adr "<title>".
+    go run ./cmd/awf new "$@"
+    ;;
   build)
     go build -o awf ./cmd/awf
     ;;
@@ -51,7 +55,7 @@ case "$cmd" in
     go install ./cmd/awf
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|invariants|audit|commit-gate|build|install>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|invariants|audit|commit-gate|new|build|install>" >&2
     exit 2
     ;;
 esac
