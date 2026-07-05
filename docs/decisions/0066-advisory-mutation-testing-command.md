@@ -100,8 +100,11 @@ language-agnostic.
    - exits **non-zero if any mutation status is `TIMED OUT`** — the trust signal; the numbers
      are inflated and a survivor may be hidden, so the result is untrustworthy and the message
      tells the user to raise `--timeout-coefficient`;
-   - treats a **missing output file as an empty run** ("no survived mutants", exit 0) — gremlins
-     writes no file when there is nothing to report;
+   - treats a **missing or empty (zero-byte) output file as an empty run** ("no survived
+     mutants", exit 0) — gremlins writes no `-o` file when there is nothing to report, and when
+     the wrapper pre-creates `$tmp` (e.g. via `mktemp`, as `./x gate` does for its profile) that
+     file is left empty rather than removed, so both the absent-file and empty-file cases must be
+     tolerated;
    - **drops `NOT COVERED`** (package-local coverage noise) and ignores every other status
      (`KILLED`, `NOT VIABLE`, `SKIPPED`, `RUNNABLE`);
    - prints the `LIVED` mutants as a `file:line  TYPE` triage list, or "no survived mutants"
@@ -142,10 +145,10 @@ language-agnostic.
 
 - `inv: mutants-timeout-untrusted` — `cmd/mutants` exits non-zero when any mutation in its
   input JSON has status `TIMED OUT`, and otherwise reports exactly the `LIVED` mutants —
-  dropping `NOT COVERED` and every other status — treating a missing input file as an empty
-  run. Backed by a `// invariant: mutants-timeout-untrusted` marker on the `cmd/mutants` test
-  that asserts a `TIMED OUT` input fails, a `LIVED`/`NOT COVERED` mix reports only the
-  `LIVED`, and a missing file reports no survivors (lands with the implementation).
+  dropping `NOT COVERED` and every other status — treating a missing or empty input file as an
+  empty run. Backed by a `// invariant: mutants-timeout-untrusted` marker on the `cmd/mutants`
+  test that asserts a `TIMED OUT` input fails, a `LIVED`/`NOT COVERED` mix reports only the
+  `LIVED`, and a missing or empty file reports no survivors (lands with the implementation).
 - `./x mutants` is advisory and is never invoked by `./x gate`; the gate's behaviour is
   unchanged by this decision. (textual)
 - The deterministic recipe lives only in `.gremlins.yaml`, nested under `unleash:`, with
@@ -200,3 +203,4 @@ the same commit backs the tagged invariant and regenerates `docs/decisions/ACTIV
 | Equivalent-mutant suppression file (`known-equivalent.json`) | go-gremlins has no per-mutant suppression and equivalence is undecidable; a hand-maintained list is a maintenance surface that fights the tool's grain. Diff-mode default keeps noise low without it. |
 | Bash + `jq` wrapper instead of `cmd/mutants` | Untested JSON-in-bash logic plus a new `jq` dependency; a tested Go tool matches the established `cmd/covercheck` / `cmd/deadcodecheck` pattern and carries the trust-signal invariant. |
 | `cmd/mutants` reads stdin (like `cmd/deadcodecheck`) | gremlins `-o` writes to a *file*, not stdout; taking the file path as an arg (like `cmd/covercheck`) avoids a needless `cat`→stdin hop and handles the no-file empty-run case naturally. |
+| A different Go mutation tool (e.g. `go-mutesting`) | go-gremlins is the actively-maintained Go mutation tool and the one the prior in-repo evaluation already measured; peer tools are less maintained and would discard the deterministic `Timed out: 0` recipe verified here. |
