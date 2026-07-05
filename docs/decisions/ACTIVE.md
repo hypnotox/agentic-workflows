@@ -68,10 +68,7 @@
 - [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Implemented
 - [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Implemented
 - [ADR-0065: Two-Report Codecov Coverage Convention](0065-two-report-codecov-coverage-convention.md) — Implemented
-
-## Proposed
-
-- [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Proposed
+- [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Implemented
 
 ## Superseded by ADR-0032
 
