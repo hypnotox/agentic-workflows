@@ -7,6 +7,12 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+### Others
+- Internal: the standard's catalog moves from an embedded `catalog.yaml` parsed at runtime to a
+  compile-time Go value (`catalog.Standard`), and the toggleable docs and always-on singletons
+  merge into one `DocEntry` collection from which every projection derives — so adding a mandatory
+  doc is a single entry instead of ~6 hand-edited sites (ADR-0060, ADR-0061). Rendered output is
+  byte-identical; no adopter migration or schema change.
 
 ## [0.8.0] - 2026-07-05
 ### Features
