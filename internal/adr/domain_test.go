@@ -68,6 +68,35 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 	}
 }
 
+// TestRenderDomainIndexExactLayout pins the exact byte layout across a status-group
+// boundary: no leading blank line before the first group, and exactly one blank line
+// separating groups. A looser Contains/Index assertion misses a spurious separator
+// change (e.g. a leading newline), so this asserts the whole rendered string.
+func TestRenderDomainIndexExactLayout(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"0001-first.md":  testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First")),
+		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0004: Fourth")),
+	}
+	for name, content := range files {
+		testsupport.WriteFile(t, filepath.Join(dir, name), content)
+	}
+
+	got, err := adr.RenderDomainIndex(dir, "rendering")
+	if err != nil {
+		t.Fatalf("RenderDomainIndex: %v", err)
+	}
+
+	want := "### Implemented\n\n" +
+		"- [ADR-0001: First](../decisions/0001-first.md)\n" +
+		"\n" +
+		"### Superseded\n\n" +
+		"- [ADR-0004: Fourth](../decisions/0004-fourth.md) → superseded by ADR-0002\n"
+	if got != want {
+		t.Errorf("layout mismatch:\n got %q\nwant %q", got, want)
+	}
+}
+
 // TestRenderDomainIndexPlaceholder returns a placeholder (never empty) when no ADR
 // is tagged with the queried domain.
 func TestRenderDomainIndexPlaceholder(t *testing.T) {
