@@ -18,9 +18,15 @@ case "$cmd" in
     go run ./cmd/covercheck "$prof"
     go vet ./...
     go tool golangci-lint run
+    go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     ;;
   lint)
     go tool golangci-lint run "$@"
+    ;;
+  deadcode)
+    # Whole-program dead-code gate (ADR-0063): fails on any production func
+    # unreachable from a main outside internal/testsupport/. Run without -test.
+    go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     ;;
   fmt)
     go tool golangci-lint fmt "$@"
@@ -55,7 +61,7 @@ case "$cmd" in
     go install ./cmd/awf
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|invariants|audit|commit-gate|new|build|install>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install>" >&2
     exit 2
     ;;
 esac
