@@ -7,6 +7,12 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+
+## [0.9.0] - 2026-07-05
+### Bug fixes
+- `awf check` / `awf sync` now reject an `invariants.sources` entry that carries a comment marker
+  but no globs — such a source scans no files, and was previously accepted silently (ADR-0064
+  follow-up).
 ### Others
 - ADR-system invariant-tagging guidance (`docs/decisions/README.md`) now derives its comment
   marker from `invariants.sources` instead of a hardcoded `//`: the adr-readme template renders
