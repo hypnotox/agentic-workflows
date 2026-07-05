@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, gate, dead-code]
-related: [2, 12, 44]
+related: [2, 12, 44, 53]
 domains: [tooling]
 ---
 # ADR-0063: Whole-Program Dead-Code Gate via deadcode
@@ -102,9 +102,10 @@ Scope is this repo's own gate only; promoting dead-code analysis into the render
    the trigger to revisit this decision with a concrete case — not a hatch built in advance.
 
 6. **Resolve the two day-one findings so the gate is green on adoption:**
-   - Delete `internal/project.Project.Sync`; migrate its eleven test call sites to
-     `SyncReport` (the `_ = p.Sync()` sites become `_, _ = p.SyncReport()`), and update the
-     stale comment referencing `p.Sync()` at `cmd/awf/run_test.go:280`.
+   - Delete `internal/project.Project.Sync`; migrate its call sites across eleven test files
+     (58 `p.Sync()` calls, one of them the `internal/evals` fixture) to `SyncReport` (the two
+     bare `_ = p.Sync()` sites become `_, _ = p.SyncReport()`), and update the stale comment
+     referencing `p.Sync()` at `cmd/awf/run_test.go:280`.
    - Move `internal/adr.SetNowForTest` (with its doc comment) from `adr.go` into a new
      `internal/adr/export_test.go` declared `package adr`; the external `adr_test.go`
      (`package adr_test`) calls it unchanged. The unexported `now` var stays in `adr.go`.
@@ -151,6 +152,11 @@ Harder / accepted trade-offs:
 - With no escape hatch, a future analyzer false positive would hard-block the gate until the
   code is refactored or this ADR is revisited. This is deliberate: the strictness is the
   point, and a real case is the right trigger for a hatch, not speculation.
+- `internal/testsupport/` is ignored wholesale, so it becomes a dead-code blind spot: an
+  exported helper there that no test calls anymore is flagged by neither this gate nor
+  golangci-lint's package-scoped `unused` (the package is imported by `_test.go` files, so its
+  exported funcs are never reported). Keeping that package's helpers all-live stays a manual
+  discipline this gate does not enforce.
 
 Ruled out (for now):
 - A `//deadcode:ignore` directive or central allowlist (Decision 5).
@@ -160,9 +166,13 @@ Ruled out (for now):
 Downstream work unblocked: an implementation plan covering — add the tool dep + `go mod tidy`;
 write `cmd/deadcodecheck` with tests and the `// invariant: deadcode-gate` backing; delete
 `Project.Sync` and migrate its callers; move `SetNowForTest` to `export_test.go`; wire the
-`./x gate`/`./x deadcode` step; refresh the tooling domain doc, AGENTS.md, and the testing/
-development docs. When this ADR flips to Implemented, the same commit backs the tagged
-invariant and regenerates `docs/decisions/ACTIVE.md`.
+`./x gate`/`./x deadcode` step; and refresh the three generated narratives that name
+`Project.Sync` as the eval entry point by editing their `.awf/` sources — `.awf/agents-doc.yaml`
+(→ AGENTS.md), `.awf/docs/parts/testing/layout.md` (→ docs/testing.md), and
+`.awf/domains/parts/tooling/current-state.md` (→ docs/domains/tooling.md) — to say `SyncReport`,
+then re-render with `awf sync` (never hand-edit the rendered files); the `Project.Sync` mentions
+inside the append-only ADR-0053 stay as historical record. When this ADR flips to Implemented,
+the same commit backs the tagged invariant and regenerates `docs/decisions/ACTIVE.md`.
 
 ## Alternatives Considered
 
