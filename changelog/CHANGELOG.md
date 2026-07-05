@@ -13,6 +13,10 @@ query a single version or a range.
   merge into one `DocEntry` collection from which every projection derives — so adding a mandatory
   doc is a single entry instead of ~6 hand-edited sites (ADR-0060, ADR-0061). Rendered output is
   byte-identical; no adopter migration or schema change.
+- The `AGENTS.md` document map now renders its mandatory-doc lines from the catalog rather than
+  hardcoded template lines, so a new mandatory doc appears with no template edit (ADR-0062). The
+  four mandatory lines reorder to alphabetical and drop their trailing periods — the only
+  adopter-visible output change.
 
 ## [0.8.0] - 2026-07-05
 ### Features
