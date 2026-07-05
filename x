@@ -60,8 +60,26 @@ case "$cmd" in
   install)
     go install ./cmd/awf
     ;;
+  mutants)
+    # Advisory mutation triage (ADR-0066). No args: mutate production code changed
+    # vs main. A path arg (e.g. ./internal/refs): mutate that package. Never gated.
+    # Under .gremlins.yaml the efficacy/coverage thresholds stay 0, so gremlins exits
+    # 0 even with survivors and set -e does not abort before cmd/mutants runs.
+    tmp="$(mktemp)"
+    trap 'rm -f "$tmp"' EXIT
+    if [ "$#" -gt 0 ]; then
+      go tool gremlins unleash -o "$tmp" "$@"
+    else
+      base="$(git merge-base HEAD main)" || {
+        echo "mutants: no merge-base with 'main' (detached HEAD or missing branch); pass a package path, e.g. ./x mutants ./internal/refs" >&2
+        exit 2
+      }
+      go tool gremlins unleash -D "$base" -o "$tmp" ./...
+    fi
+    go run ./cmd/mutants "$tmp"
+    ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants>" >&2
     exit 2
     ;;
 esac
