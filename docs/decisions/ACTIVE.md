@@ -69,6 +69,10 @@
 - [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Implemented
 - [ADR-0065: Two-Report Codecov Coverage Convention](0065-two-report-codecov-coverage-convention.md) — Implemented
 
+## Proposed
+
+- [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

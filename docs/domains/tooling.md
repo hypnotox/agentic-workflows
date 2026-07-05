@@ -58,6 +58,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0063: Whole-Program Dead-Code Gate via deadcode](../decisions/0063-whole-program-dead-code-gate-via-deadcode.md)
 - [ADR-0065: Two-Report Codecov Coverage Convention](../decisions/0065-two-report-codecov-coverage-convention.md)
 
+### Proposed
+
+- [ADR-0066: Advisory mutation-testing command](../decisions/0066-advisory-mutation-testing-command.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
