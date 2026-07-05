@@ -3,8 +3,8 @@
 > **An opinionated agentic-development workflow, wrapped in deterministic checks so it actually holds.**
 
 [![CI](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml/badge.svg)](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml)
-[![coverage (raw, line)](https://codecov.io/gh/hypnotox/agentic-workflows/graph/badge.svg?flag=raw)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=raw)
-[![coverage (covered, accountable)](https://codecov.io/gh/hypnotox/agentic-workflows/graph/badge.svg?flag=covered)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=covered)
+[![coverage: raw (all code, line)](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=raw&label=coverage%3A%20raw)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=raw)
+[![coverage: accountable (non-ignored, line)](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=covered&label=coverage%3A%20accountable)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=covered)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#)
