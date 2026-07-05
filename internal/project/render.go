@@ -45,13 +45,14 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix":       p.Cfg.Prefix,
-		"vars":         nonNil(p.Cfg.Vars),
-		"data":         nonNil(sc.Data),
-		"layout":       p.layout().templateMap(),
-		"version":      Version,
-		"skills":       p.effSkills,
-		"commitScopes": p.commitScopesDisplay(),
+		"prefix":           p.Cfg.Prefix,
+		"vars":             nonNil(p.Cfg.Vars),
+		"data":             nonNil(sc.Data),
+		"layout":           p.layout().templateMap(),
+		"version":          Version,
+		"skills":           p.effSkills,
+		"commitScopes":     p.commitScopesDisplay(),
+		"invariantMarkers": p.invariantMarkersDisplay(),
 	}
 }
 
@@ -69,6 +70,24 @@ func (p *Project) commitScopesDisplay() string {
 		quoted[i] = "`" + s.Name + "`"
 	}
 	return strings.Join(quoted, ", ")
+}
+
+// invariantMarkersDisplay returns the inline glob→marker mapping derived from
+// invariants.sources (e.g. "`*.go` → `//`, `*.py` → `#`"), the invariant-tagging
+// analog of commitScopesDisplay — or "" when no sources are configured (ADR-0064).
+func (p *Project) invariantMarkersDisplay() string {
+	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
+		return ""
+	}
+	entries := make([]string, len(p.Cfg.Invariants.Sources))
+	for i, s := range p.Cfg.Invariants.Sources {
+		globs := make([]string, len(s.Globs))
+		for j, g := range s.Globs {
+			globs[j] = "`" + g + "`"
+		}
+		entries[i] = strings.Join(globs, ", ") + " → `" + s.Marker + "`"
+	}
+	return strings.Join(entries, ", ")
 }
 
 // effectiveSkills returns the skill names whose files exist on disk under awf's

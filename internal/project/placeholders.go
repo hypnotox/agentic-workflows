@@ -44,6 +44,8 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 	put("commitScopeList", p.commitScopesDisplay())
 	put("commitScopeTable", p.commitScopeTable())
 	put("commitScopeSentence", p.commitScopeSentence())
+	put("invariantMarkerSentence", p.invariantMarkerSentence())
+	put("invariantMarkerTable", p.invariantMarkerTable())
 	put("prefix", p.Cfg.Prefix)
 	if v, ok := p.Cfg.Vars["gateCmd"].(string); ok {
 		put("gateCmd", v)
@@ -85,6 +87,35 @@ func (p *Project) commitScopeSentence() string {
 		return ""
 	}
 	return "The allowed commit scopes are " + list + "."
+}
+
+// invariantMarkerSentence renders a self-contained sentence stating the invariant
+// backing-comment markers by file type, or "" when no sources are configured
+// (ADR-0064, the commitScopeSentence analog).
+func (p *Project) invariantMarkerSentence() string {
+	m := p.invariantMarkersDisplay()
+	if m == "" {
+		return ""
+	}
+	return "Its marker follows the file's type: " + m + "."
+}
+
+// invariantMarkerTable renders the glob→marker mapping as a markdown table, or ""
+// when no sources are configured (ADR-0064, the commitScopeTable analog).
+func (p *Project) invariantMarkerTable() string {
+	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("| files | marker |\n|---|---|\n")
+	for _, s := range p.Cfg.Invariants.Sources {
+		globs := make([]string, len(s.Globs))
+		for j, g := range s.Globs {
+			globs[j] = "`" + g + "`"
+		}
+		b.WriteString("| " + strings.Join(globs, ", ") + " | `" + s.Marker + "` |\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // substitutePlaceholders replaces every {{=awf:key}} in a raw convention-part
