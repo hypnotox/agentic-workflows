@@ -100,3 +100,18 @@ func TestReviewingSkillSpecsArePaired(t *testing.T) {
 		}
 	}
 }
+
+// invariant: no-single-marker-init-descriptor
+//
+// The catalog exposes no invariants-marker/globs var descriptor; the marker
+// reaches config only through invariants.sources (ADR-0064).
+func TestNoSingleMarkerInitDescriptor(t *testing.T) {
+	for _, d := range Standard.Vars {
+		if d.Key == "invariantsMarker" || d.Key == "invariantsGlobs" {
+			t.Errorf("catalog still declares removed descriptor key %q", d.Key)
+		}
+		if d.Target == "invariants-marker" || d.Target == "invariants-globs" {
+			t.Errorf("catalog still declares removed descriptor target %q", d.Target)
+		}
+	}
+}

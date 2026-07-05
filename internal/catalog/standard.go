@@ -205,8 +205,6 @@ var Standard = &Catalog{
 		{Key: "adrProposeCommitFmt", Kind: "string", Description: "Commit-subject format for a proposed ADR.", Default: "", Options: []string{"docs(adr): propose NNNN <title>"}},
 		{Key: "docCurrencyTargets", Kind: "string", Description: "Docs that must be updated alongside behaviour changes.", Default: "", Options: []string{"AGENTS.md, docs/"}},
 		{Key: "invariantTestPath", Kind: "string", Description: "Path or glob where invariant-backing tests live.", Default: "", Options: []string{"./internal/..."}},
-		{Key: "invariantsMarker", Kind: "enum", Target: "invariants-marker", Description: `Comment marker preceding ` + "`invariant: <slug>`" + ` backing comments (language-specific).`, Default: "", Options: []string{"//", "#", "--", ";", "%"}},
-		{Key: "invariantsGlobs", Kind: "string", Target: "invariants-globs", Description: "Comma-separated filename globs scanned for invariant backing comments (basename match).", Default: "", Options: []string{"*.go", "*.py", "*.ts", "*.rb"}},
 		{Key: "skills", Kind: "multiselect", Target: "catalog-skills", Description: "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog."},
 		{Key: "docs", Kind: "multiselect", Target: "catalog-docs", Description: "Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog."},
 	},

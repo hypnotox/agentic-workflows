@@ -21,7 +21,7 @@ import (
 // skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040)
 // and the git-hook payloads (ADR-0048) enabled by default, and writes a resolved
 // commit-scope list to audit.allowedScopes (ADR-0051).
-func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig, trim *config.CatalogTrim, scopes []string) ([]byte, error) {
+func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogTrim, scopes []string) ([]byte, error) {
 	cat := catalog.Standard
 
 	// Collect referenced var names from every catalog template family — not only
@@ -88,15 +88,14 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
 	}
 	return config.MarshalSkeleton(config.Skeleton{
-		Prefix:     prefix,
-		Vars:       seeded,
-		Skills:     skillNames,
-		Agents:     agentNames,
-		Docs:       docNames,
-		Audit:      auditBlk,
-		Invariants: inv,
-		Bootstrap:  &config.BootstrapConfig{Enabled: true},
-		Hooks:      &config.HooksConfig{Enabled: true},
+		Prefix:    prefix,
+		Vars:      seeded,
+		Skills:    skillNames,
+		Agents:    agentNames,
+		Docs:      docNames,
+		Audit:     auditBlk,
+		Bootstrap: &config.BootstrapConfig{Enabled: true},
+		Hooks:     &config.HooksConfig{Enabled: true},
 	})
 }
 

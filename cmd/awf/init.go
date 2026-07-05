@@ -50,7 +50,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 			return collisionRefusal(collisions)
 		}
 	}
-	vars, inv, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
+	vars, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim, scopes)
+		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
@@ -132,7 +132,7 @@ func probeCollisions(root string) ([]string, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(tmp)
-	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil, nil)
+	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil)
 	if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime
 		return nil, err
 	}

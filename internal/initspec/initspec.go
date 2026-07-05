@@ -1,14 +1,13 @@
 // Package initspec resolves awf init answers against the catalog's value
 // descriptors and emits the descriptor schema (ADR-0029). It bridges the
-// catalog's VarDescriptor set to a resolved (vars, invariants-config, catalog-trim)
-// triple via explicit answers, an optional line-based prompter, or the silent
-// default.
+// catalog's VarDescriptor set to a resolved (vars, catalog-trim) pair plus the
+// commit-scope list via explicit answers, an optional line-based prompter, or the
+// silent default.
 package initspec
 
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -123,24 +122,21 @@ func (pr *promptReader) line() (string, error) {
 	return s, nil
 }
 
-// Resolve maps descriptors + answers to a vars map, an optional invariants config,
-// an optional catalog trim, and the resolved commit-scope list. For a string/enum
-// descriptor the value is: the
+// Resolve maps descriptors + answers to a vars map, an optional catalog trim, and
+// the resolved commit-scope list. For a string/enum descriptor the value is: the
 // explicit answer if present; otherwise an interactive prompt (when interactive);
 // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
-// resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension. The
-// invariants-marker/globs targets are collected into a *config.InvariantConfig:
-// both non-empty → enabled config; exactly one → error; neither → nil.
-func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.InvariantConfig, *config.CatalogTrim, []string, error) {
+// resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension.
+func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.CatalogTrim, []string, error) {
 	vars := map[string]string{}
-	var marker, globs, scopesRaw string
+	var scopesRaw string
 	var skillsSel, docsSel *[]string
 	r := &promptReader{r: bufio.NewReader(in)}
 	for _, d := range descs {
 		if d.Kind == "multiselect" {
 			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive && !r.eof)
 			if err != nil {
-				return nil, nil, nil, nil, err
+				return nil, nil, nil, err
 			}
 			if selected {
 				switch d.Target {
@@ -159,7 +155,7 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			if interactive && !r.eof {
 				p, err := prompt(r, out, d)
 				if err != nil {
-					return nil, nil, nil, nil, err
+					return nil, nil, nil, err
 				}
 				val = p
 			} else {
@@ -167,10 +163,6 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			}
 		}
 		switch d.Target {
-		case "invariants-marker":
-			marker = val
-		case "invariants-globs":
-			globs = val
 		case "audit-scopes":
 			scopesRaw = val
 		default:
@@ -178,28 +170,11 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		}
 	}
 
-	var gs []string
-	for _, g := range strings.Split(globs, ",") {
-		if g = strings.TrimSpace(g); g != "" {
-			gs = append(gs, g)
-		}
-	}
-	var inv *config.InvariantConfig
-	switch {
-	case marker == "" && len(gs) == 0:
-		// inv stays nil: no invariants config supplied (decide on parsed globs, so
-		// a whitespace-only globs value counts as unset).
-	case marker == "" || len(gs) == 0:
-		return nil, nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
-	default:
-		inv = &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: gs, Marker: marker}}}
-	}
-
 	var trim *config.CatalogTrim
 	if skillsSel != nil || docsSel != nil {
 		trim = &config.CatalogTrim{Skills: skillsSel, Docs: docsSel}
 	}
-	return vars, inv, trim, splitNames(scopesRaw), nil
+	return vars, trim, splitNames(scopesRaw), nil
 }
 
 // resolveMultiselect resolves one multiselect descriptor to a selection plus a

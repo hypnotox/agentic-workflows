@@ -20,7 +20,7 @@ import (
 // TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
 // that parses cleanly under the strict config.Load decoder.
 func TestScaffoldParsesCleanly(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -65,7 +65,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 
 	// Skills selected verbatim (incl. deselecting core); Docs nil -> no core docs to keep.
 	pickSkills := []string{"tdd", "brainstorming"}
-	b, err := ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Skills: &pickSkills}, nil)
+	b, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &pickSkills}, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 			coreSkills[name] = true
 		}
 	}
-	b2, err := ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)
+	b2, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 // TestScaffoldEnablesAllCatalogAgents asserts that the scaffolded config enables
 // exactly the set of agents declared in the catalog.
 func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.
 func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
 // temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
-	b, err := ScaffoldConfig("testproject", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("testproject", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 // TestScaffoldYAMLContainsNoPlaceholders verifies that scaffold output contains
 // no "<no value>" tokens or unrendered template actions.
 func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil, nil)
+	b, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 // no audit key at all (ADR-0051).
 // invariant: audit-scopes-descriptor-routed
 func TestScaffoldWritesAuditScopes(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil, []string{"adr", "awf"})
+	b, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestScaffoldWritesAuditScopes(t *testing.T) {
 			t.Errorf("scaffold missing %q:\n%s", want, b)
 		}
 	}
-	b2, err := ScaffoldConfig("example", nil, nil, nil, nil)
+	b2, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}

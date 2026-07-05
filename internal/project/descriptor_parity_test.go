@@ -12,12 +12,12 @@ import (
 // validKinds and validTargets bound the descriptor schema the embedded catalog
 // may use.
 var validKinds = []string{"string", "enum", "multiselect"}
-var validTargets = []string{"", "var", "invariants-marker", "invariants-globs", "catalog-skills", "catalog-docs", "audit-scopes"}
+var validTargets = []string{"", "var", "catalog-skills", "catalog-docs", "audit-scopes"}
 
 // TestVarDescriptorParity asserts that every var referenced by any catalog
 // template has a matching var-target descriptor, and no var-target descriptor
-// names a var absent from every template. Non-var descriptors (the invariants
-// marker/globs) are exempt. The referenced set is re-derived from the templates
+// names a var absent from every template. Non-var descriptors (catalog trim,
+// audit scopes) are exempt. The referenced set is re-derived from the templates
 // here, independently of any production helper.
 // invariant: var-descriptor-parity
 func TestVarDescriptorParity(t *testing.T) {

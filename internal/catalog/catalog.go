@@ -81,11 +81,11 @@ func NonMandatoryDocNames(c *Catalog) []string {
 }
 
 // VarDescriptor describes one fillable init value: a config var, or (via Target)
-// the invariants backing config. Kind ∈ {string, enum, multiselect}; multiselect
-// is reserved for the deferred catalog-trim work (ADR-0029). Target ∈ {"" or
-// "var", "invariants-marker", "invariants-globs"}; "" means a plain config var.
-// Default pre-fills interactive prompts and appears in `awf init --describe`; it
-// is never applied on the silent non-interactive path (ADR-0029).
+// a non-var routing target (catalog trim, audit scopes). Kind ∈ {string, enum,
+// multiselect}. Target ∈ {"" or "var", "catalog-skills", "catalog-docs",
+// "audit-scopes"}; "" means a plain config var. Default pre-fills interactive
+// prompts and appears in `awf init --describe`; it is never applied on the silent
+// non-interactive path (ADR-0029).
 type VarDescriptor struct {
 	Key         string   `yaml:"key" json:"key"`
 	Kind        string   `yaml:"kind" json:"kind"`

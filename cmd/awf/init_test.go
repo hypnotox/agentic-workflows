@@ -125,7 +125,7 @@ func TestInitErrorPaths(t *testing.T) {
 	}{
 		{name: "bad --set", args: []string{"awf", "init", "--set", "noequals"}},
 		{name: "missing --answers file", args: []string{"awf", "init", "--answers", "/nonexistent/answers.json"}},
-		{name: "half-set invariants", args: []string{"awf", "init", "--set", "invariantsMarker=//"}},
+		{name: "invalid multiselect answer", args: []string{"awf", "init", "--set", "skills=nonexistent-skill"}},
 		{name: "non-map answers", pre: func(root string) []string {
 			f := filepath.Join(root, "bad.yaml")
 			_ = os.WriteFile(f, []byte("- a\n- b\n"), 0o644)
