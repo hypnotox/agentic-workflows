@@ -50,7 +50,13 @@ type Config struct {
 	Bootstrap  *BootstrapConfig `yaml:"bootstrap"`
 	Hooks      *HooksConfig     `yaml:"hooks"`
 	root       string           // <project>/.awf, for sidecar/part resolution
+	raw        []byte           // the exact config.yaml bytes Load read, for in-place byte edits
 }
+
+// Source returns the exact config.yaml bytes Load read. A byte-level editor
+// (SetArrayMember, SetArray, SetMappingScalar) reuses these instead of re-reading
+// the file, which after a successful Load could only fail on a race.
+func (c *Config) Source() []byte { return c.raw }
 
 // InvariantConfig configures language-agnostic invariant backing. A nil
 // *InvariantConfig (key absent) means "unchecked"; Disabled is the explicit
@@ -117,6 +123,7 @@ func Load(awfDir string) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	c.root = awfDir
+	c.raw = b
 	if c.DocsDir == "" {
 		c.DocsDir = "docs"
 	}

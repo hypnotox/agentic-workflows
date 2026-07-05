@@ -50,6 +50,21 @@ docs:
 	}
 }
 
+func TestLoadRetainsSource(t *testing.T) {
+	// Load keeps the exact bytes it read, so a byte-level editor can reuse them
+	// instead of re-reading config.yaml (and defending against a read that cannot
+	// fail after Load already succeeded).
+	body := "prefix: example\nskills:\n  - tdd\n"
+	dir := writeConfig(t, body)
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if string(c.Source()) != body {
+		t.Errorf("Source() = %q, want %q", c.Source(), body)
+	}
+}
+
 // invariant: enable-arrays
 func TestEnableListsAreArrays(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n  - bugfix\n")

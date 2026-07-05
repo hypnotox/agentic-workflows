@@ -41,11 +41,7 @@ func addRemoveSingleton(root, key string, add bool, stdout io.Writer) error {
 		return fmt.Errorf("%s is not enabled", key)
 	}
 	cfgPath := config.ConfigPath(root)
-	b, err := os.ReadFile(cfgPath)
-	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
-		return err
-	}
-	updated, err := config.SetMappingScalar(b, key, "enabled", add)
+	updated, err := config.SetMappingScalar(p.Cfg.Source(), key, "enabled", add)
 	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetMappingScalar's parse/mapping checks cannot fail here
 		return err
 	}
@@ -85,11 +81,7 @@ func addRemoveTarget(root, name string, add bool, stdout io.Writer) error {
 		return fmt.Errorf("cannot remove the last target %q (a project must render to at least one)", name)
 	}
 	cfgPath := config.ConfigPath(root)
-	b, err := os.ReadFile(cfgPath)
-	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
-		return err
-	}
-	updated, err := config.SetArray(b, "targets", desired)
+	updated, err := config.SetArray(p.Cfg.Source(), "targets", desired)
 	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArray's parse/mapping checks cannot fail here
 		return err
 	}
@@ -149,7 +141,7 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 			edits = append(edits, enableEdit{key: "agents", name: req})
 		}
 	}
-	if err := rewriteConfig(root, true, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
+	if err := rewriteConfig(root, p.Cfg.Source(), true, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
 		return err
 	}
 	if pairedAgent != "" {
@@ -220,7 +212,7 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 			return fmt.Errorf("skill %q requires agent %q; enable the agent or disable the skill", paired[0], name)
 		}
 	}
-	if err := rewriteConfig(root, false, enableEdit{key: key, name: name}); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
+	if err := rewriteConfig(root, p.Cfg.Source(), false, enableEdit{key: key, name: name}); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
 		return err
 	}
 	if hasSidecarOrParts(root, key, name) {
@@ -233,22 +225,18 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 // the member name to add or remove.
 type enableEdit struct{ key, name string }
 
-// rewriteConfig applies one or more enable-array edits to .awf/config.yaml in
-// a single read-modify-write, so a paired skill+agent add lands in the same
-// config rewrite (ADR-0050).
-func rewriteConfig(root string, add bool, edits ...enableEdit) error {
-	cfgPath := config.ConfigPath(root)
-	b, err := os.ReadFile(cfgPath)
-	if err != nil { // coverage-ignore: config.yaml was just read by project.Open; a re-read cannot fail without a race
-		return err
-	}
+// rewriteConfig applies one or more enable-array edits to src (the config.yaml
+// bytes project.Open already read) in a single modify-write, so a paired
+// skill+agent add lands in the same config rewrite (ADR-0050).
+func rewriteConfig(root string, src []byte, add bool, edits ...enableEdit) error {
+	b := src
 	for _, e := range edits {
-		b, err = config.SetArrayMember(b, e.key, e.name, add)
-		if err != nil { // coverage-ignore: callers guard add-present / remove-absent before this, and config.Load already rejected a malformed config, so SetArrayMember cannot error here
+		var err error
+		if b, err = config.SetArrayMember(b, e.key, e.name, add); err != nil { // coverage-ignore: callers guard add-present / remove-absent before this, and config.Load already rejected a malformed config, so SetArrayMember cannot error here
 			return err
 		}
 	}
-	if err := os.WriteFile(cfgPath, b, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
+	if err := os.WriteFile(config.ConfigPath(root), b, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault that root bypasses
 		return err
 	}
 	return nil
