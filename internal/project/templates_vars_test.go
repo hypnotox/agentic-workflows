@@ -68,10 +68,7 @@ func TestCommitScopeSingleStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 	for _, d := range cat.Vars {
 		if d.Key == "commitScope" {
 			t.Error("catalog still carries a commitScope var descriptor (ADR-0051)")

@@ -21,10 +21,7 @@ var validTargets = []string{"", "var", "invariants-marker", "invariants-globs", 
 // here, independently of any production helper.
 // invariant: var-descriptor-parity
 func TestVarDescriptorParity(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 
 	// Referenced vars across every catalog template family.
 	referenced := map[string]bool{}

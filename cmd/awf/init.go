@@ -11,14 +11,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 func runInit(root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil { // coverage-ignore: catalog.Load over the embedded FS cannot fail at runtime
-		return err
-	}
+	cat := catalog.Standard
 	descs := initspec.CatalogVars(cat)
 	if describe {
 		out, err := initspec.Describe(descs)

@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // Version is the awf release version — the single version authority
@@ -52,10 +51,7 @@ func Open(root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	cat, err := catalog.Load(templates.FS)
-	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
-		return nil, err
-	}
+	cat := catalog.Standard
 	targets, err := resolveTargets(cfg.Targets)
 	if err != nil {
 		return nil, err

@@ -17,10 +17,7 @@ import (
 // template defaults with no leaked <no value> token.
 // invariant: docs-section-parity
 func TestDocsSectionParity(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	for name, spec := range cat.Docs {
 		tid := fmt.Sprintf("docs/%s.md.tmpl", name)
 		src, err := fs.ReadFile(templates.FS, tid)
@@ -59,10 +56,7 @@ func TestDocsSectionParity(t *testing.T) {
 // catalog so the test stays correct as the taxonomy evolves.
 // invariant: section-orphan-flagged
 func TestSectionOrphanDetection(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
 	cfg := "prefix: example\n" + sprintfVars("") +
@@ -104,10 +98,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 
 // invariant: adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cat := catalog.Standard
 	lay := testLayout()
 	for _, sg := range plainSingletons {
 		src, err := fs.ReadFile(templates.FS, sg.tid)

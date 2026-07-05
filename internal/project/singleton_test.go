@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // invariant: singleton-kind-single-source
@@ -34,10 +33,7 @@ func TestPlainSingletonsMatchCatalogSingletonKinds(t *testing.T) {
 
 // invariant: singleton-kind-single-source
 func TestCatalogSingletonsMatchSingletonKinds(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 	got := slices.Sorted(maps.Keys(cat.Singletons))
 	want := slices.Sorted(slices.Values(catalog.SingletonKinds))
 	if !slices.Equal(got, want) {
@@ -47,10 +43,7 @@ func TestCatalogSingletonsMatchSingletonKinds(t *testing.T) {
 
 // invariant: mandatory-docs-not-in-docs-catalog
 func TestCatalogDocsExcludeSingletonKinds(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 	for name := range cat.Docs {
 		if slices.Contains(catalog.SingletonKinds, name) {
 			t.Errorf("cat.Docs contains %q, which is a singleton kind and must not be a toggleable doc", name)

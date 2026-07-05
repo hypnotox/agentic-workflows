@@ -17,10 +17,7 @@ import (
 // on the neutral "subagent" / "subagent's prompt" replacement language.
 // invariant: skill-prose-tool-agnostic
 func TestSkillProseToolAgnostic(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	forbidden := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)subagent_type`),
 		regexp.MustCompile(`(?i)\bsubagent type\b`),

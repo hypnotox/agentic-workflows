@@ -1,12 +1,5 @@
-// Package catalog loads the embedded catalog.yaml that declares the standard's skills, agents, and docs.
+// Package catalog is the compile-time Go value declaring the standard's skills, agents, and docs.
 package catalog
-
-import (
-	"fmt"
-	"io/fs"
-
-	"gopkg.in/yaml.v3"
-)
 
 // TargetSpec declares the render sections of a target that has no further
 // per-target configuration (agents and the always-on singletons). Data carries
@@ -78,16 +71,4 @@ type Catalog struct {
 	Singletons map[string]TargetSpec `yaml:"singletons"`
 	Docs       map[string]DocSpec    `yaml:"docs"`
 	Vars       []VarDescriptor       `yaml:"vars"`
-}
-
-func Load(fsys fs.FS) (*Catalog, error) {
-	b, err := fs.ReadFile(fsys, "catalog.yaml")
-	if err != nil {
-		return nil, fmt.Errorf("read catalog: %w", err)
-	}
-	var c Catalog
-	if err := yaml.Unmarshal(b, &c); err != nil {
-		return nil, fmt.Errorf("parse catalog: %w", err)
-	}
-	return &c, nil
 }

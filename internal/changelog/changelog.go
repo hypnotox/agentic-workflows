@@ -21,7 +21,7 @@ type Entry struct {
 
 var headerRe = regexp.MustCompile(`^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$`)
 
-// Load reads "CHANGELOG.md" from fsys and parses it. Mirrors catalog.Load(templates.FS).
+// Load reads "CHANGELOG.md" from fsys and parses it.
 // invariant: changelog-embed-decodes
 func Load(fsys fs.FS) ([]Entry, error) {
 	b, err := fs.ReadFile(fsys, "CHANGELOG.md")

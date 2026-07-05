@@ -18,10 +18,7 @@ import (
 // name/description and no leaked <no value> token.
 // invariant: templates-valid-frontmatter
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	// check renders one template with a docs map seeded only for the skill's own
 	// required doc — mirroring the suppression guarantee (a doc-gated skill renders
 	// only when its doc is enabled, so its unguarded .layout.docs.<doc> resolves;

@@ -174,10 +174,7 @@ func TestDomainPartOrphan(t *testing.T) {
 
 // invariant: docs-section-parity (domain template)
 func TestDomainDocSectionParity(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	src, err := fs.ReadFile(templates.FS, "domains/domain.md.tmpl")
 	if err != nil {
 		t.Fatalf("read domain template: %v", err)

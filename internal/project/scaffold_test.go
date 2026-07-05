@@ -74,10 +74,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 		t.Fatalf("config.Load: %v", err)
 	}
 
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 
 	wantSkills := map[string]bool{}
 	for name, spec := range cat.Skills {
@@ -106,10 +103,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 // core verbatim while a nil dimension keeps the core (full-deselectable trim).
 // invariant: catalog-trim-applied
 func TestScaffoldCatalogTrim(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 
 	// Skills selected verbatim (incl. deselecting core); Docs nil -> no core docs to keep.
 	pickSkills := []string{"tdd", "brainstorming"}
@@ -164,10 +158,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 		t.Fatalf("config.Load: %v", err)
 	}
 
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 
 	for name := range cat.Agents {
 		if !slices.Contains(cfg.Agents, name) {
@@ -195,10 +186,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("catalog.Load: %v", err)
-	}
+	cat := catalog.Standard
 
 	var paths []string
 	for name := range cat.Skills {

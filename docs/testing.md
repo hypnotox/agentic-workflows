@@ -30,7 +30,7 @@ carrying the shared review-spine partial, and that the forward-chain handoff gra
 orphaned node, every node reachable from `brainstorming` (ADR-0053, ADR-0054). The fixture's enabled set
 is catalog-derived so it cannot silently stop covering a newly-added chain artifact. A companion
 section-parity guard in `internal/project` (`TestSkillAndAgentSectionParity`) asserts every skill/agent
-template's `awf:section` markers match its `catalog.yaml`-declared sections, so a section-slug rename
+template's `awf:section` markers match its catalog-declared sections, so a section-slug rename
 cannot half-land with a blank-path provenance pointer.
 
 Shared test-fixture building — project-config scaffolding, ADR frontmatter fixtures,

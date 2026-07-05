@@ -50,10 +50,7 @@ func assertSectionParity(t *testing.T, label, tid string, sections []string) {
 //
 // invariant: skill-section-parity
 func TestSkillAndAgentSectionParity(t *testing.T) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	for name, spec := range cat.Skills {
 		assertSectionParity(t, "skill "+name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.Sections)
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // evalPrefix is the skill-name prefix the golden-task fixture renders under.
@@ -21,10 +20,7 @@ const evalPrefix = "example"
 // loadCatalog loads the embedded catalog or fails the test.
 func loadCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()
-	cat, err := catalog.Load(templates.FS)
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
+	cat := catalog.Standard
 	return cat
 }
 

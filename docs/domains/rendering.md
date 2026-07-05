@@ -43,9 +43,9 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
 - [ADR-0058: Backslash escape and value-token-free guard for placeholders](../decisions/0058-backslash-escape-and-value-token-free-guard-for-placeholders.md)
 - [ADR-0059: Mandatory working-with-awf usage doc singleton](../decisions/0059-mandatory-working-with-awf-usage-doc-singleton.md)
+- [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
 
 ### Proposed
 
-- [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](../decisions/0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md)
 

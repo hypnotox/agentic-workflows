@@ -22,10 +22,7 @@ import (
 // and the git-hook payloads (ADR-0048) enabled by default, and writes a resolved
 // commit-scope list to audit.allowedScopes (ADR-0051).
 func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig, trim *config.CatalogTrim, scopes []string) ([]byte, error) {
-	cat, err := catalog.Load(templates.FS)
-	if err != nil { // coverage-ignore: catalog.Load over the embedded templates.FS cannot fail at runtime
-		return nil, fmt.Errorf("scaffold: load catalog: %w", err)
-	}
+	cat := catalog.Standard
 
 	// Collect referenced var names from every catalog template family — not only
 	// the core ones — so an opt-in target added later renders without <no value>.

@@ -1,51 +1,23 @@
 package catalog
 
 import (
+	"errors"
 	"fmt"
-	"slices"
+	"io/fs"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-func TestLoadFromEmbed(t *testing.T) {
-	cat, err := Load(templates.FS)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+// invariant: catalog-go-single-source
+func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
+	if _, err := fs.Stat(templates.FS, "catalog.yaml"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("catalog.yaml must not be embedded; got stat err = %v", err)
 	}
-	spec, ok := cat.Skills["tdd"]
-	if !ok {
-		t.Fatal("tdd not in catalog")
-	}
-	if spec.Sections[0] != "surfaces" || !slices.Contains(spec.Sections, "red-flags") {
-		t.Errorf("tdd sections = %v", spec.Sections)
-	}
-	if _, ok := cat.Agents["code-reviewer"]; !ok {
-		t.Errorf("code-reviewer not in agents map, got: %v", cat.Agents)
-	}
-	arch, ok := cat.Docs["architecture"]
-	if !ok {
-		t.Fatalf("architecture not in docs map, got: %v", cat.Docs)
-	}
-	if arch.Title != "Architecture" || len(arch.Sections) == 0 {
-		t.Errorf("architecture doc spec = %+v", arch)
-	}
-}
-
-func TestLoadMissingFile(t *testing.T) {
-	if _, err := Load(fstest.MapFS{}); err == nil {
-		t.Fatal("expected error for missing catalog.yaml, got nil")
-	}
-}
-
-func TestLoadMalformedYAML(t *testing.T) {
-	fsys := fstest.MapFS{
-		"catalog.yaml": &fstest.MapFile{Data: []byte("skills: [this is: not valid mapping")},
-	}
-	if _, err := Load(fsys); err == nil {
-		t.Fatal("expected error for malformed catalog.yaml, got nil")
+	if len(Standard.Skills) == 0 || len(Standard.Agents) == 0 || len(Standard.Docs) == 0 ||
+		len(Standard.Singletons) == 0 || len(Standard.Vars) == 0 || len(Standard.DomainDoc.Sections) == 0 {
+		t.Fatalf("catalog.Standard is not populated across all kinds")
 	}
 }
 
@@ -53,10 +25,7 @@ func TestLoadMalformedYAML(t *testing.T) {
 // command (ADR-0045). Walks every spec's Data recursively down to the strings.
 // invariant: catalog-defaults-generic-denylist
 func TestCatalogDefaultDataIsGeneric(t *testing.T) {
-	cat, err := Load(templates.FS)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cat := Standard
 	denylist := []string{"./x", "hypnotox/agentic-workflows"}
 	var walk func(t *testing.T, path string, v any)
 	walk = func(t *testing.T, path string, v any) {
@@ -89,10 +58,7 @@ func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 }
 
 func TestAgentsDocSectionsNonEmpty(t *testing.T) {
-	cat, err := Load(templates.FS)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cat := Standard
 	sections := cat.Singletons["agents-doc"].Sections
 	if len(sections) == 0 {
 		t.Error("expected agents-doc Sections to be non-empty")
@@ -117,10 +83,7 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 // prefix anchor keeps a future reviewing skill from reopening the blind spot.
 // invariant: reviewing-skill-specs-paired
 func TestReviewingSkillSpecsArePaired(t *testing.T) {
-	cat, err := Load(templates.FS)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cat := Standard
 	for name, spec := range cat.Skills {
 		if !strings.HasPrefix(name, "reviewing-") {
 			if spec.RequiresAgent != "" {
