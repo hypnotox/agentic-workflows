@@ -93,6 +93,11 @@ ADR; this plan is the execution record.
   	return err
   }
   ```
+  Then reword `SyncReport`'s doc comment in `internal/project/project.go` so production
+  prose no longer points at the now test-only `Sync` (godoc for `SyncReport` would otherwise
+  reference a symbol absent from the package's non-test API):
+  - `// SyncReport renders and writes the project like Sync, additionally backing up any` →
+    `// SyncReport renders and writes the project, additionally backing up any`
 - [ ] **Task 2.2 — Migrate the single cross-package caller.** In `internal/evals/fixture_test.go`,
   change the comment and call in `syncFullCatalog`:
   - `// real Project.Sync, and returns the project root. It reuses the exported` →
@@ -327,7 +332,7 @@ ADR; this plan is the execution record.
       go tool deadcode -json ./... | go run ./cmd/deadcodecheck
   ```
 - [ ] **Task 4.2 — Add the `deadcode` subcommand.** In `x`, after the `lint)` case block
-  (`    go tool golangci-lint run "$@" ;;`) add a new case:
+  (three lines: `  lint)`, then `    go tool golangci-lint run "$@"`, then `    ;;`) add a new case:
   ```
     deadcode)
       go tool deadcode -json ./... | go run ./cmd/deadcodecheck
