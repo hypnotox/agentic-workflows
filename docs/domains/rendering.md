@@ -46,8 +46,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](../decisions/0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md)
 - [ADR-0062: Data-driven document map for mandatory docs](../decisions/0062-data-driven-document-map-for-mandatory-docs.md)
-
-### Proposed
-
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 

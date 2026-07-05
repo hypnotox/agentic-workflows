@@ -8,6 +8,16 @@ query a single version or a range.
 
 ## [Unreleased]
 ### Others
+- ADR-system invariant-tagging guidance (`docs/decisions/README.md`) now derives its comment
+  marker from `invariants.sources` instead of a hardcoded `//`: the adr-readme template renders
+  the glob→marker mapping (via `.invariantMarkers`, degrading to marker-agnostic prose when no
+  sources are set), and editing `invariants.sources` reflags the guidance (ADR-0064). Two new
+  override placeholders — `invariantMarkerSentence`, `invariantMarkerTable` — are documented in
+  the working-with-awf placeholder table.
+- `awf init` no longer prompts for `invariantsMarker` / `invariantsGlobs` or accepts
+  `--set invariantsMarker=…`; configure `invariants.sources` in `.awf/config.yaml` directly. The
+  out-of-box default is unchanged (both descriptors defaulted empty, seeding no invariants
+  config), so only the interactive/`--set` seeding path is removed (ADR-0064).
 - Internal: the standard's catalog moves from an embedded `catalog.yaml` parsed at runtime to a
   compile-time Go value (`catalog.Standard`), and the toggleable docs and always-on singletons
   merge into one `DocEntry` collection from which every projection derives — so adding a mandatory

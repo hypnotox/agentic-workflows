@@ -66,10 +66,7 @@
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md) — Implemented
 - [ADR-0062: Data-driven document map for mandatory docs](0062-data-driven-document-map-for-mandatory-docs.md) — Implemented
 - [ADR-0063: Whole-Program Dead-Code Gate via deadcode](0063-whole-program-dead-code-gate-via-deadcode.md) — Implemented
-
-## Proposed
-
-- [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Proposed
+- [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Implemented
 
 ## Superseded by ADR-0032
 
