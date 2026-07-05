@@ -17,6 +17,9 @@ data:
         - ref: ADR-0001, ADR-0045
           text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
         - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.'
+        # Typed marker (ADR-0055), not a hand-written ref/text entry: the template's
+        # `kind == "scopes"` branch renders the Conventional-Commits / commit-scope
+        # invariant from audit.allowedScopes so a scopes edit updates the guide.
         - kind: scopes
         - ref: ADR-0006
           text: '**Valid skill/agent frontmatter.** Rendered skills and agents carry parseable frontmatter with non-empty `name`/`description`.'
@@ -50,3 +53,5 @@ data:
           text: '**Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.Sync` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Standard` so it cannot silently stop covering a new chain artifact.'
         - ref: ADR-0054
           text: '**Uniform machine-enforced chain handoffs.** Every catalog skill/agent template''s `awf:section` markers match its catalog-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`).'
+        - ref: ADR-0060, ADR-0061
+          text: '**Unified compile-time doc model.** The catalog is a compile-time Go value (`catalog.Standard`, no embedded YAML), and every doc — toggleable or always-on singleton — is one `DocEntry` from which every projection (`SingletonKinds`, `plainSingletons`, the `.layout` paths, the toggleable pool) derives; adding a mandatory doc is a single entry.'
