@@ -3,7 +3,6 @@ package audit
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -231,9 +230,12 @@ func TestRuleUncommittedChanges(t *testing.T) {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}
 	// The tracked/untracked tally is load-bearing in the Detail message; assert
-	// the exact counts so a miscount in the classification loop is caught.
-	if !strings.Contains(f[0].Detail, "1 tracked change(s), 1 untracked file(s)") {
-		t.Errorf("Detail should report 1 tracked + 1 untracked, got: %q", f[0].Detail)
+	// the exact Detail so both a miscount in the classification loop and an
+	// off-by-one on either counter are caught (a substring match would let a
+	// "-1"/"11" count slip through since it contains the "1" token).
+	wantDetail := "working tree not clean: 1 tracked change(s), 1 untracked file(s); commit or discard before concluding the implementation"
+	if f[0].Detail != wantDetail {
+		t.Errorf("Detail mismatch:\n got %q\nwant %q", f[0].Detail, wantDetail)
 	}
 
 	// Disabled: no finding even when dirty.
