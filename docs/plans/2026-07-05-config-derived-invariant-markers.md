@@ -1,0 +1,730 @@
+# Plan: Config-derived invariant comment markers (ADR-0064)
+
+**ADRs:** [ADR-0064](../decisions/0064-config-derived-invariant-comment-markers.md) — config-derived invariant comment markers. Rationale lives in the ADR; this plan is execution only.
+
+## Goal
+
+Make `invariants.sources` the single source of truth for invariant comment markers. (1) Derive the glob→marker mapping into the ADR-system "Invariant tagging" guidance — in the adr-readme template default (via a `.invariantMarkers` render key with an ADR-0045 graceful fallback) and in awf's own section override (via a `{{=awf:invariantMarkerSentence}}` placeholder) — and fold `invariants.sources` into the config hash on both the template-reference and part-placeholder paths so a sources edit reflags the guidance stale. (2) Drop the single-marker `invariantsMarker` / `invariantsGlobs` init descriptors and the `*config.InvariantConfig` plumbing they fed, dropping `Resolve` / `ScaffoldConfig` to the new arity. Adopters configure `invariants.sources` by hand.
+
+## Architecture summary
+
+The change mirrors the commit-scope taxonomy (ADR-0051/0055/0057) exactly:
+
+- **Render-key form** — `(*Project).invariantMarkersDisplay()` (the `commitScopesDisplay()` analog) exposed as `.invariantMarkers` in `data()`, consumed by the adr-readme template default with a `{{ with .invariantMarkers }}…{{ else }}…{{ end }}` fallback.
+- **Placeholder form** — `{{=awf:invariantMarkerSentence}}` / `{{=awf:invariantMarkerTable}}` in `placeholderRegistry()` (the `commitScopeSentence()` / `commitScopeTable()` analogs), for RAW convention parts, present-only-when-non-empty (ADR-0057). awf's own `.awf/parts/adr-readme/invariants.md` dogfoods the sentence placeholder.
+- **Confighash fold** — `render.ReferencesInvariantMarkers` (template path, the `ReferencesScopes` analog) plus a `render.ReferencesInvariantMarkerPlaceholder` part-bytes scan (the `ReferencesScopePlaceholder` analog) in `confighash.go`, folding `p.Cfg.Invariants.Sources` into the hash. Both paths required: a part override replaces the default's `.invariantMarkers` reference in `assembled`, so only the part scan catches awf's dogfooded override.
+- **Init-descriptor removal** — delete the `invariants-marker` / `invariants-globs` descriptors and the `*config.InvariantConfig` return threaded `initspec.Resolve` → `cmd/awf/init.go` → `project.ScaffoldConfig`. No config schema bump, no `awf upgrade` migration (existing configs already carry `invariants.sources`; the `config.InvariantConfig` struct is untouched).
+
+## Tech stack
+
+Go 1.26, module `github.com/hypnotox/agentic-workflows`. Packages touched: `internal/project` (render.go, placeholders.go, confighash.go), `internal/render` (vars.go), `internal/catalog` (standard.go, catalog.go), `internal/initspec` (initspec.go), `cmd/awf` (init.go), `templates/` (adr-readme, docs/working-with-awf), `.awf/` (parts/adr-readme override), `changelog/`. Gate: `./x gate` before every commit — 100% statement coverage (ADR-0012) + `go vet` + golangci-lint + a whole-program `deadcode` gate that fails on any production function unreachable from a `main`. Drift oracle: `./x sync && ./x check`. Commit subjects imperative; one concern per commit; allowed scopes: `adr adr-system awf config invariants plans rendering tooling`.
+
+## File structure
+
+**Created:**
+- `docs/plans/2026-07-05-config-derived-invariant-markers.md` (this plan)
+- `internal/project/invariant_markers_test.go` (unit tests, Phase 1)
+- `internal/project/invariant_markers_render_test.go` (real-render + confighash regression, Phase 2)
+
+**Modified:**
+- `internal/project/render.go` (`invariantMarkersDisplay()` + `data()` key) — Phase 1
+- `internal/project/placeholders.go` (`invariantMarkerSentence()` / `invariantMarkerTable()` + registry) — Phase 1
+- `internal/render/vars.go` (`ReferencesInvariantMarkers` / `ReferencesInvariantMarkerPlaceholder`) — Phase 2
+- `internal/render/vars_test.go` (tests) — Phase 2
+- `internal/project/confighash.go` (fold) — Phase 2
+- `templates/adr-readme/README.md.tmpl` (invariants section) — Phase 2
+- `.awf/parts/adr-readme/invariants.md` (dogfooded override) — Phase 2
+- `templates/docs/working-with-awf.md.tmpl` (placeholder-key table rows) — Phase 2
+- `internal/catalog/standard.go` (delete two descriptors) — Phase 3
+- `internal/catalog/catalog.go` (doc comment) + `internal/catalog/catalog_test.go` (backing test) — Phase 3
+- `internal/initspec/initspec.go` (drop the invariants return) — Phase 3
+- `internal/initspec/initspec_test.go` (arity + removed cases) — Phase 3
+- `cmd/awf/init.go` (call sites) — Phase 3
+- `internal/project/scaffold.go` (drop the `inv` param) — Phase 3
+- `internal/project/scaffold_test.go`, `cmd/awf/list_add_test.go`, `cmd/awf/init_test.go` (call sites / removed case) — Phase 3
+- `internal/project/descriptor_parity_test.go` (`validTargets`) — Phase 3
+- `changelog/CHANGELOG.md` (Unreleased entry) — Phase 4
+- `docs/decisions/0064-config-derived-invariant-comment-markers.md` (status flip) — Phase 4
+
+**Regenerated by `./x sync`** (staged with their driving commit): `docs/decisions/README.md` (Phase 2), `docs/working-with-awf.md` (Phase 2), `docs/decisions/ACTIVE.md` + domain-index docs (Phase 4), and `.awf/awf.lock` each phase that changes rendered output.
+
+---
+
+## Phase 1 — rendering: derive the mapping methods
+
+Scope: `rendering`. These `(*Project)` methods are reachable the moment they land (`data()` / `placeholderRegistry()` call them on the render path), so no deadcode risk. Unit tests in this phase cover every branch (100% gate).
+
+- [ ] **1.1 Add `invariantMarkersDisplay()` and the `data()` key.** In `internal/project/render.go`, insert the method immediately after `commitScopesDisplay()` (which ends at the `return strings.Join(quoted, ", ")` block, line ~72):
+  ```go
+  // invariantMarkersDisplay returns the inline glob→marker mapping derived from
+  // invariants.sources (e.g. "`*.go` → `//`, `*.py` → `#`"), the invariant-tagging
+  // analog of commitScopesDisplay — or "" when no sources are configured (ADR-0064).
+  func (p *Project) invariantMarkersDisplay() string {
+  	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
+  		return ""
+  	}
+  	entries := make([]string, len(p.Cfg.Invariants.Sources))
+  	for i, s := range p.Cfg.Invariants.Sources {
+  		globs := make([]string, len(s.Globs))
+  		for j, g := range s.Globs {
+  			globs[j] = "`" + g + "`"
+  		}
+  		entries[i] = strings.Join(globs, ", ") + " → `" + s.Marker + "`"
+  	}
+  	return strings.Join(entries, ", ")
+  }
+  ```
+  In `data()` (the `map[string]any{…}` literal, ~line 47), add the key immediately after the `"commitScopes": p.commitScopesDisplay(),` line:
+  ```go
+  		"commitScopes": p.commitScopesDisplay(),
+  		"invariantMarkers": p.invariantMarkersDisplay(),
+  ```
+  (`strings` is already imported in render.go.)
+
+- [ ] **1.2 Add `invariantMarkerSentence()` and `invariantMarkerTable()` + register them.** In `internal/project/placeholders.go`, insert both methods immediately after `commitScopeSentence()` (which ends at its `return "The allowed commit scopes are " + list + "."` block, line ~88):
+  ```go
+  // invariantMarkerSentence renders a self-contained sentence stating the invariant
+  // backing-comment markers by file type, or "" when no sources are configured
+  // (ADR-0064, the commitScopeSentence analog).
+  func (p *Project) invariantMarkerSentence() string {
+  	m := p.invariantMarkersDisplay()
+  	if m == "" {
+  		return ""
+  	}
+  	return "Its marker follows the file's type: " + m + "."
+  }
+
+  // invariantMarkerTable renders the glob→marker mapping as a markdown table, or ""
+  // when no sources are configured (ADR-0064, the commitScopeTable analog).
+  func (p *Project) invariantMarkerTable() string {
+  	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
+  		return ""
+  	}
+  	var b strings.Builder
+  	b.WriteString("| files | marker |\n|---|---|\n")
+  	for _, s := range p.Cfg.Invariants.Sources {
+  		globs := make([]string, len(s.Globs))
+  		for j, g := range s.Globs {
+  			globs[j] = "`" + g + "`"
+  		}
+  		b.WriteString("| " + strings.Join(globs, ", ") + " | `" + s.Marker + "` |\n")
+  	}
+  	return strings.TrimRight(b.String(), "\n")
+  }
+  ```
+  In `placeholderRegistry()`, add the two `put` calls immediately after the `put("commitScopeSentence", p.commitScopeSentence())` line (~line 46):
+  ```go
+  	put("commitScopeSentence", p.commitScopeSentence())
+  	put("invariantMarkerSentence", p.invariantMarkerSentence())
+  	put("invariantMarkerTable", p.invariantMarkerTable())
+  ```
+  (`strings` is already imported in placeholders.go.)
+
+- [ ] **1.3 Unit test file.** Create `internal/project/invariant_markers_test.go`:
+  ```go
+  package project
+
+  import (
+  	"testing"
+
+  	"github.com/hypnotox/agentic-workflows/internal/config"
+  )
+
+  // projectWithInvariants builds a bare *Project carrying the given invariant
+  // sources (nil = no invariants configured), for the pure marker-mapping methods.
+  func projectWithInvariants(sources []config.InvariantSource) *Project {
+  	var inv *config.InvariantConfig
+  	if sources != nil {
+  		inv = &config.InvariantConfig{Sources: sources}
+  	}
+  	return &Project{Cfg: &config.Config{Invariants: inv}}
+  }
+
+  func TestInvariantMarkersDisplay(t *testing.T) {
+  	cases := []struct {
+  		name    string
+  		sources []config.InvariantSource
+  		want    string
+  	}{
+  		{"nil", nil, ""},
+  		{"empty", []config.InvariantSource{}, ""},
+  		{"single", []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}, "`*.go` → `//`"},
+  		{"polyglot-multiglob", []config.InvariantSource{
+  			{Globs: []string{"*.go"}, Marker: "//"},
+  			{Globs: []string{"*.py", "*.pyi"}, Marker: "#"},
+  		}, "`*.go` → `//`, `*.py`, `*.pyi` → `#`"},
+  	}
+  	for _, tc := range cases {
+  		t.Run(tc.name, func(t *testing.T) {
+  			if got := projectWithInvariants(tc.sources).invariantMarkersDisplay(); got != tc.want {
+  				t.Errorf("display = %q, want %q", got, tc.want)
+  			}
+  		})
+  	}
+  }
+
+  func TestInvariantMarkerSentence(t *testing.T) {
+  	if got := projectWithInvariants(nil).invariantMarkerSentence(); got != "" {
+  		t.Errorf("nil sentence = %q, want empty", got)
+  	}
+  	got := projectWithInvariants([]config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}).invariantMarkerSentence()
+  	if got != "Its marker follows the file's type: `*.go` → `//`." {
+  		t.Errorf("sentence = %q", got)
+  	}
+  }
+
+  func TestInvariantMarkerTable(t *testing.T) {
+  	if got := projectWithInvariants(nil).invariantMarkerTable(); got != "" {
+  		t.Errorf("nil table = %q, want empty", got)
+  	}
+  	got := projectWithInvariants([]config.InvariantSource{
+  		{Globs: []string{"*.go"}, Marker: "//"},
+  		{Globs: []string{"*.py", "*.pyi"}, Marker: "#"},
+  	}).invariantMarkerTable()
+  	want := "| files | marker |\n|---|---|\n| `*.go` | `//` |\n| `*.py`, `*.pyi` | `#` |"
+  	if got != want {
+  		t.Errorf("table =\n%q\nwant\n%q", got, want)
+  	}
+  }
+  ```
+
+- [ ] **1.4 Verify + commit.** Run `./x gate`. Expect the tail to include `coverage: 100.0%`, `0 issues.`, and `deadcodecheck: no production dead code` (exact wording per your runner). Stage explicitly: `git add internal/project/render.go internal/project/placeholders.go internal/project/invariant_markers_test.go`. Commit:
+  ```
+  feat(rendering): derive invariant marker mapping from invariants.sources
+  ```
+
+---
+
+## Phase 2 — rendering: consume the mapping in guidance + confighash fold
+
+Scope: `rendering`. **Deadcode ordering:** `render.ReferencesInvariantMarkers` / `ReferencesInvariantMarkerPlaceholder` land in the SAME commit as their `confighash.go` caller (2.1 + 2.2 together) so neither is momentarily unreachable. All rendered-output changes and the sync land in this one commit.
+
+- [ ] **2.1 Add the two `render` predicates + tests.** In `internal/render/vars.go`, add immediately after the `ReferencesScopePlaceholder` function (line ~30, before `ReferencedVars`):
+  ```go
+  var invariantMarkersRE = regexp.MustCompile(`\{\{[^{}]*[.$]invariantMarkers[^{}]*\}\}`)
+
+  // ReferencesInvariantMarkers reports whether src reads the .invariantMarkers
+  // render context, so the artifact folds invariants.sources into its config hash
+  // (ADR-0064, mirroring ReferencesScopes).
+  func ReferencesInvariantMarkers(src string) bool { return invariantMarkersRE.MatchString(src) }
+
+  var invariantMarkerPlaceholderRE = regexp.MustCompile(`\{\{=awf:invariantMarker[A-Za-z0-9]*\}\}`)
+
+  // ReferencesInvariantMarkerPlaceholder reports whether a raw convention-part body
+  // uses a {{=awf:invariantMarker*}} placeholder (ADR-0064, mirroring
+  // ReferencesScopePlaceholder).
+  func ReferencesInvariantMarkerPlaceholder(body string) bool { return invariantMarkerPlaceholderRE.MatchString(body) }
+  ```
+  In `internal/render/vars_test.go`, append tests mirroring `TestReferencesScopes` (positive action + negative non-action, and placeholder positive + near-miss negative):
+  ```go
+  func TestReferencesInvariantMarkers(t *testing.T) {
+  	if !render.ReferencesInvariantMarkers("x {{ with .invariantMarkers }}y{{ end }} z") {
+  		t.Error("expected a .invariantMarkers action to be detected")
+  	}
+  	if render.ReferencesInvariantMarkers("prose mentioning .invariantMarkers outside an action") {
+  		t.Error("a non-action mention must not match")
+  	}
+  }
+
+  func TestReferencesInvariantMarkerPlaceholder(t *testing.T) {
+  	if !render.ReferencesInvariantMarkerPlaceholder("a {{=awf:invariantMarkerSentence}} b") {
+  		t.Error("expected an {{=awf:invariantMarker*}} placeholder to be detected")
+  	}
+  	if render.ReferencesInvariantMarkerPlaceholder("{{=awf:commitScopeTable}}") {
+  		t.Error("a non-invariant placeholder must not match")
+  	}
+  }
+  ```
+
+- [ ] **2.2 Fold `invariants.sources` in `artifactConfigHash`.** In `internal/project/confighash.go`, after the existing `foldScopes := render.ReferencesScopes(assembled)` line (~line 50), add:
+  ```go
+  	foldScopes := render.ReferencesScopes(assembled)
+  	foldInvariants := render.ReferencesInvariantMarkers(assembled)
+  ```
+  Inside the `for _, pp := range partPaths` loop, immediately after the existing `if render.ReferencesScopePlaceholder(string(b)) { … foldScopes = true }` block (~line 59-64), add:
+  ```go
+  		if render.ReferencesInvariantMarkerPlaceholder(string(b)) {
+  			// A convention part using {{=awf:invariantMarker*}} re-renders when
+  			// invariants.sources changes (ADR-0064).
+  			// invariant: invariant-markers-in-confighash
+  			foldInvariants = true
+  		}
+  ```
+  After the existing `if foldScopes { proj["commitScopes"] = … }` block (~line 68-70), add:
+  ```go
+  	if foldInvariants {
+  		if p.Cfg.Invariants != nil {
+  			proj["invariantMarkers"] = p.Cfg.Invariants.Sources
+  		} else {
+  			proj["invariantMarkers"] = nil
+  		}
+  	}
+  ```
+  Both `foldInvariants` branches are covered later this phase: the `Invariants != nil` branch by awf's own part-override render (2.7 sync) and the confighash test (2.6), the `else` branch by the no-sources render case (2.5) which runs through `RenderAll` → `artifactConfigHash` with the template default referencing `.invariantMarkers` and no sources configured.
+
+- [ ] **2.3 Reword the adr-readme template default.** In `templates/adr-readme/README.md.tmpl`, the `awf:section invariants` block. Change ONLY the first sentence's marker clause. Before:
+  ```
+  Give each machine-enforceable Invariants bullet an explicit slug —
+  ``- `inv: <slug>` — …`` — and add a matching `// invariant: <slug>` comment to a test that
+  exercises it. `awf check` and the standalone `awf invariants` fail when an **Implemented** ADR has
+  ```
+  After:
+  ```
+  Give each machine-enforceable Invariants bullet an explicit slug —
+  ``- `inv: <slug>` — …`` — and add a matching `` `invariant: <slug>` `` comment, prefixed with {{ with .invariantMarkers }}the comment marker for the file's type ({{ . }}){{ else }}your project's comment marker{{ end }}, to a test that
+  exercises it. `awf check` and the standalone `awf invariants` fail when an **Implemented** ADR has
+  ```
+  Leave the remaining three sentences of the section verbatim. The `{{ with .invariantMarkers }}` action makes `ReferencesInvariantMarkers(assembled)` true on the template path; the `{{ else }}` degrades to marker-agnostic prose when no sources are set (ADR-0045). `.invariantMarkers` is always set in `data()`, so no `<no value>`.
+
+- [ ] **2.4 Dogfood the placeholder in awf's override.** Rewrite `.awf/parts/adr-readme/invariants.md` so the guidance sentence is reworded around the placeholder (not a literal token-swap). Before:
+  ```
+  ## Invariant tagging
+
+  Give each machine-enforceable Invariants bullet an explicit slug —
+  ``- `inv: <slug>` — …`` — and add a matching `// invariant: <slug>` comment to a test that
+  exercises it. `awf check` (here `./x check`) and the standalone `awf invariants` (`./x invariants`)
+  fail when an **Implemented** ADR has a tagged slug with no backing test. Proposed/Accepted ADRs
+  are not yet enforced (tests land with implementation); Superseded ADRs are skipped. Bullets
+  without a slug are textual contracts, not machine-checked.
+  ```
+  After:
+  ```
+  ## Invariant tagging
+
+  Give each machine-enforceable Invariants bullet an explicit slug —
+  ``- `inv: <slug>` — …`` — and add a matching `` `invariant: <slug>` `` comment to a test that
+  exercises it. {{=awf:invariantMarkerSentence}} `awf check` (here `./x check`) and the standalone `awf invariants` (`./x invariants`)
+  fail when an **Implemented** ADR has a tagged slug with no backing test. Proposed/Accepted ADRs
+  are not yet enforced (tests land with implementation); Superseded ADRs are skipped. Bullets
+  without a slug are textual contracts, not machine-checked.
+  ```
+  awf's `.awf/config.yaml` carries `invariants.sources` (`*.go → //`), so `invariantMarkerSentence()` is non-empty and the placeholder resolves; `ReferencesInvariantMarkerPlaceholder` on this raw body makes awf's rendered README fold `invariants.sources`.
+
+- [ ] **2.5 Add the real-render regression test (backs `invariant-markers-derived`).** Create `internal/project/invariant_markers_render_test.go`. Use the real `RenderAll` path (NOT `renderGolden`, which hand-injects data and bypasses `data()`). Mirror `TestAdrSingletonsRenderedAndSuppressible`'s scaffold+RenderAll shape:
+  ```go
+  package project
+
+  import (
+  	"strings"
+  	"testing"
+  )
+
+  // invariant: invariant-markers-derived
+  //
+  // The adr-readme invariant-tagging guidance renders its comment-marker mapping
+  // from invariants.sources via the template default's .invariantMarkers key, and
+  // degrades to marker-agnostic prose when no sources are configured (ADR-0064).
+  func TestInvariantMarkersRenderedFromSources(t *testing.T) {
+  	// Multi-source (polyglot) config — awf's own dogfood is single-source, so the
+  	// multi-marker rendering must be covered explicitly (ADR-0064 Consequences).
+  	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+  		"invariants:\n  sources:\n" +
+  		"    - {globs: [\"*.go\"], marker: \"//\"}\n" +
+  		"    - {globs: [\"*.py\"], marker: \"#\"}\n"
+  	root := scaffold(t, cfg)
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	files, err := p.RenderAll()
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	readme := renderedByPath(t, files, "docs/decisions/README.md")
+  	if !strings.Contains(readme, "`*.go` → `//`") || !strings.Contains(readme, "`*.py` → `#`") {
+  		t.Errorf("README invariant guidance missing derived markers:\n%s", readme)
+  	}
+  	// No bare hardcoded marker literal survives from the template.
+  	if strings.Contains(readme, "`// invariant: <slug>`") {
+  		t.Errorf("README still carries a hardcoded `// invariant: <slug>` literal:\n%s", readme)
+  	}
+
+  	// No sources: the guidance degrades to marker-agnostic prose.
+  	bare := scaffold(t, "prefix: bare\nvars: {}\nskills: []\nagents: []\n")
+  	bp, err := Open(bare)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	bfiles, err := bp.RenderAll()
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	bareReadme := renderedByPath(t, bfiles, "docs/decisions/README.md")
+  	if !strings.Contains(bareReadme, "your project's comment marker") {
+  		t.Errorf("no-sources README missing graceful fallback:\n%s", bareReadme)
+  	}
+  }
+
+  // renderedByPath returns the content of the RenderAll output at path, failing if absent.
+  func renderedByPath(t *testing.T, files []RenderedFile, path string) string {
+  	t.Helper()
+  	for _, f := range files {
+  		if f.Path == path {
+  			return f.Content
+  		}
+  	}
+  	t.Fatalf("no rendered file at %s", path)
+  	return ""
+  }
+  ```
+  These two scaffolds use the template default (no `.awf/parts/adr-readme/invariants.md` present in a temp scaffold), so they exercise `ReferencesInvariantMarkers` (template path) with sources set (non-nil fold branch) and unset (nil fold `else` branch).
+
+- [ ] **2.6 Add the confighash reflag regression test (backs `invariant-markers-in-confighash`).** Append to `internal/project/invariant_markers_render_test.go`. Cover BOTH paths — template-reference (a scaffold using the template default) and part-placeholder (a scaffold carrying an override part with `{{=awf:invariantMarkerSentence}}`) — by asserting an `invariants.sources` edit reflags the artifact stale via `Check()` (mirror `TestScopesEditReflagsReferencingArtifacts` / `TestScopesEditReflagsPlaceholderPart`):
+  ```go
+  // invariant: invariant-markers-in-confighash (regression on both hash-fold paths)
+  //
+  // Editing invariants.sources reflags an artifact that references the marker
+  // mapping — via the template default's .invariantMarkers key or an override
+  // part's {{=awf:invariantMarker*}} placeholder — stale in Check (ADR-0064).
+  func TestInvariantMarkersEditReflags(t *testing.T) {
+  	cfg := func(marker string) string {
+  		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+  			"invariants:\n  sources:\n    - {globs: [\"*.go\"], marker: \"" + marker + "\"}\n"
+  	}
+
+  	// (a) Template-reference path: default adr-readme references .invariantMarkers.
+  	tmplRoot := scaffold(t, cfg("//"))
+  	syncClean(t, tmplRoot)
+  	testsupport.WriteAwfConfig(t, tmplRoot, cfg("##")) // marker edit
+  	if !reflaggedStale(t, tmplRoot, "docs/decisions/README.md") {
+  		t.Error("template-path: sources edit did not reflag docs/decisions/README.md")
+  	}
+
+  	// (b) Part-placeholder path: an override part splices the sentence placeholder.
+  	partRoot := scaffoldFiles(t, cfg("//"), map[string]string{
+  		"parts/adr-readme/invariants.md": "## Invariant tagging\n\n{{=awf:invariantMarkerSentence}}\n",
+  	})
+  	syncClean(t, partRoot)
+  	testsupport.WriteAwfConfig(t, partRoot, cfg("##"))
+  	if !reflaggedStale(t, partRoot, "docs/decisions/README.md") {
+  		t.Error("part-path: sources edit did not reflag docs/decisions/README.md")
+  	}
+  }
+
+  // syncClean opens+syncs root and fails on any residual drift.
+  func syncClean(t *testing.T, root string) {
+  	t.Helper()
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if err := p.Sync(); err != nil {
+  		t.Fatal(err)
+  	}
+  }
+
+  // reflaggedStale re-opens root and reports whether path is flagged stale in Check.
+  func reflaggedStale(t *testing.T, root, path string) bool {
+  	t.Helper()
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	drift, err := p.Check()
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	for _, d := range drift {
+  		if d.Path == path && d.Kind == "stale" {
+  			return true
+  		}
+  	}
+  	return false
+  }
+  ```
+  Add the import `"github.com/hypnotox/agentic-workflows/internal/testsupport"` to this test file (used by `testsupport.WriteAwfConfig`). If the golangci-lint import-grouping check flags ordering, run `./x fmt` (or `gofmt`/`goimports` per the runner) before committing.
+
+- [ ] **2.7 Add the placeholder-key doc rows.** In `templates/docs/working-with-awf.md.tmpl`, the `## Placeholders in overrides` key table. After the `| \`commitScopeSentence\` | a one-sentence statement of the allowed scopes |` row, add:
+  ```
+  | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
+  | `invariantMarkerSentence` | a sentence naming the invariant comment markers by file type |
+  | `invariantMarkerTable` | a markdown table of file globs and their invariant comment markers |
+  | `prefix` | the project's artifact prefix |
+  ```
+  (Insert the two new rows between the `commitScopeSentence` and `prefix` rows; the surrounding rows are shown for placement only — do not duplicate them.)
+
+- [ ] **2.8 Re-render + verify + commit.** Run `./x sync` — this regenerates awf's own `docs/decisions/README.md` (now shows `Its marker follows the file's type: \`*.go\` → \`//\`.`) and `docs/working-with-awf.md` (new rows), and updates `.awf/awf.lock`. Confirm `./x check` is clean and `./x gate` passes (`coverage: 100.0%`, `0 issues.`, deadcode clean). Stage explicitly: the two `render`/`confighash` files, the two test files, `templates/adr-readme/README.md.tmpl`, `.awf/parts/adr-readme/invariants.md`, `templates/docs/working-with-awf.md.tmpl`, the regenerated `docs/decisions/README.md` + `docs/working-with-awf.md`, and `.awf/awf.lock`. Commit:
+  ```
+  feat(rendering): render invariant markers into tagging guidance
+  ```
+
+---
+
+## Phase 3 — config: drop the single-marker init descriptors
+
+Scope: `config`. Decision item 2 of ADR-0064. Read each file before editing. Coverage: removing the enum descriptor (`invariantsMarker`) removes the only enum descriptor exercised by `initspec` tests, so 3.6 re-covers the `prompt()` enum path with a synthetic enum descriptor to keep the 100% gate green.
+
+- [ ] **3.1 Delete the two descriptors.** In `internal/catalog/standard.go`, delete both lines from the `Vars` slice (~lines 208-209):
+  ```go
+  		{Key: "invariantsMarker", Kind: "enum", Target: "invariants-marker", Description: `Comment marker preceding ` + "`invariant: <slug>`" + ` backing comments (language-specific).`, Default: "", Options: []string{"//", "#", "--", ";", "%"}},
+  		{Key: "invariantsGlobs", Kind: "string", Target: "invariants-globs", Description: "Comma-separated filename globs scanned for invariant backing comments (basename match).", Default: "", Options: []string{"*.go", "*.py", "*.ts", "*.rb"}},
+  ```
+
+- [ ] **3.2 Reword the `VarDescriptor` doc comment.** In `internal/catalog/catalog.go`, the doc comment above `type VarDescriptor struct` (~lines 83-88). Before:
+  ```go
+  // VarDescriptor describes one fillable init value: a config var, or (via Target)
+  // the invariants backing config. Kind ∈ {string, enum, multiselect}; multiselect
+  // is reserved for the deferred catalog-trim work (ADR-0029). Target ∈ {"" or
+  // "var", "invariants-marker", "invariants-globs"}; "" means a plain config var.
+  // Default pre-fills interactive prompts and appears in `awf init --describe`; it
+  // is never applied on the silent non-interactive path (ADR-0029).
+  ```
+  After:
+  ```go
+  // VarDescriptor describes one fillable init value: a config var, or (via Target)
+  // a non-var routing target (catalog trim, audit scopes). Kind ∈ {string, enum,
+  // multiselect}. Target ∈ {"" or "var", "catalog-skills", "catalog-docs",
+  // "audit-scopes"}; "" means a plain config var. Default pre-fills interactive
+  // prompts and appears in `awf init --describe`; it is never applied on the silent
+  // non-interactive path (ADR-0029).
+  ```
+
+- [ ] **3.3 Drop the invariants return from `initspec.Resolve`.** In `internal/initspec/initspec.go`:
+  - Change the signature (line ~134):
+    ```go
+    func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.CatalogTrim, []string, error) {
+    ```
+  - Update the doc comment above it to drop the invariants-config sentence. Before:
+    ```go
+    // Resolve maps descriptors + answers to a vars map, an optional invariants config,
+    // an optional catalog trim, and the resolved commit-scope list. For a string/enum
+    // descriptor the value is: the
+    // explicit answer if present; otherwise an interactive prompt (when interactive);
+    // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
+    // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension. The
+    // invariants-marker/globs targets are collected into a *config.InvariantConfig:
+    // both non-empty → enabled config; exactly one → error; neither → nil.
+    ```
+    After:
+    ```go
+    // Resolve maps descriptors + answers to a vars map, an optional catalog trim, and
+    // the resolved commit-scope list. For a string/enum descriptor the value is: the
+    // explicit answer if present; otherwise an interactive prompt (when interactive);
+    // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
+    // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension.
+    ```
+  - Change `var marker, globs, scopesRaw string` (line ~136) to:
+    ```go
+    	var scopesRaw string
+    ```
+  - Delete the two invariants cases from the `switch d.Target` (lines ~170-173):
+    ```go
+    		case "invariants-marker":
+    			marker = val
+    		case "invariants-globs":
+    			globs = val
+    ```
+    (leave `case "audit-scopes":` and `default:` intact).
+  - Delete the glob-splitting loop and the invariants-assembly switch (lines ~181-196):
+    ```go
+    	var gs []string
+    	for _, g := range strings.Split(globs, ",") {
+    		if g = strings.TrimSpace(g); g != "" {
+    			gs = append(gs, g)
+    		}
+    	}
+    	var inv *config.InvariantConfig
+    	switch {
+    	case marker == "" && len(gs) == 0:
+    		// inv stays nil: no invariants config supplied (decide on parsed globs, so
+    		// a whitespace-only globs value counts as unset).
+    	case marker == "" || len(gs) == 0:
+    		return nil, nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")
+    	default:
+    		inv = &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: gs, Marker: marker}}}
+    	}
+    ```
+  - Update every remaining early return in `Resolve` from the 5-value form to 4-value: `return nil, nil, nil, nil, err` → `return nil, nil, nil, err` (the two occurrences inside the multiselect and prompt error branches, ~lines 142 and 162), and the final return `return vars, inv, trim, splitNames(scopesRaw), nil` → `return vars, trim, splitNames(scopesRaw), nil` (~line 202).
+  - Remove the now-unused `"errors"` import (line ~11). `strings` and `config` stay used (`strings.Split`/`TrimSpace` elsewhere; `*config.CatalogTrim`).
+
+- [ ] **3.4 Update `cmd/awf/init.go` call sites.** In `cmd/awf/init.go`:
+  - Line ~53: `vars, inv, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())` → drop `inv`:
+    ```go
+    	vars, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
+    ```
+  - Line ~64: `scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim, scopes)` → drop `inv`:
+    ```go
+    		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
+    ```
+  - Line ~135 (`probeCollisions`): `scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil, nil)` → drop one `nil` (the `inv` slot):
+    ```go
+    	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil)
+    ```
+
+- [ ] **3.5 Drop the `inv` param from `ScaffoldConfig`.** In `internal/project/scaffold.go`:
+  - Signature (line ~24): remove `inv *config.InvariantConfig`:
+    ```go
+    func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogTrim, scopes []string) ([]byte, error) {
+    ```
+  - In the `config.Skeleton{…}` literal (line ~90-100), delete the `Invariants: inv,` line. `config.Skeleton.Invariants` is `*InvariantConfig` with `yaml:"invariants,omitempty"`, so omitting it leaves the field nil and the rendered skeleton byte-identical for the no-invariants case (which was the only case this param ever carried on the default/non-interactive path).
+  - `config` import stays used (`config.MarshalSkeleton`, `config.Skeleton`, `config.SkeletonAudit`, `config.BootstrapConfig`, `config.HooksConfig`, `*config.CatalogTrim`).
+
+- [ ] **3.6 Update `internal/initspec/initspec_test.go`.** Rewrite the invariants-coupled tests; keep enum coverage via a synthetic non-invariants enum descriptor.
+  - Replace the `descs()` helper (lines ~12-18) with:
+    ```go
+    func descs() []catalog.VarDescriptor {
+    	return []catalog.VarDescriptor{
+    		{Key: "gateCmd", Kind: "string", Default: "./x gate", Options: []string{"./x gate", "make"}},
+    		{Key: "flavor", Kind: "enum", Options: []string{"//", "#"}},
+    	}
+    }
+    ```
+    (`flavor` is a plain var-target enum: it keeps `prompt()`'s enum option-listing and numeric-index branches covered after the real enum descriptor's removal, and lands in the vars map.)
+  - Replace `TestResolveSilentSeedsEmpty` (drop the `inv` assertion, 4-value arity):
+    ```go
+    func TestResolveSilentSeedsEmpty(t *testing.T) {
+    	vars, _, _, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false)
+    	if err != nil {
+    		t.Fatal(err)
+    	}
+    	if vars["gateCmd"] != "" {
+    		t.Errorf("silent gateCmd = %q, want empty", vars["gateCmd"])
+    	}
+    }
+    ```
+  - Replace `TestResolveExplicitAnswersWin`:
+    ```go
+    func TestResolveExplicitAnswersWin(t *testing.T) {
+    	a := map[string]string{"gateCmd": "make test", "flavor": "//"}
+    	vars, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false)
+    	if err != nil {
+    		t.Fatal(err)
+    	}
+    	if vars["gateCmd"] != "make test" {
+    		t.Errorf("gateCmd = %q", vars["gateCmd"])
+    	}
+    	if vars["flavor"] != "//" {
+    		t.Errorf("flavor = %q", vars["flavor"])
+    	}
+    }
+    ```
+  - Replace `TestResolveInteractiveDefaultAndEnumIndex` (input: gateCmd empty→default, flavor "2"→second option):
+    ```go
+    func TestResolveInteractiveDefaultAndEnumIndex(t *testing.T) {
+    	// gateCmd: empty line → default; flavor: "2" → second enum option.
+    	in := strings.NewReader("\n2\n")
+    	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+    	if err != nil {
+    		t.Fatal(err)
+    	}
+    	if vars["gateCmd"] != "./x gate" {
+    		t.Errorf("gateCmd = %q, want default", vars["gateCmd"])
+    	}
+    	if vars["flavor"] != "#" {
+    		t.Errorf("flavor = %q, want #", vars["flavor"])
+    	}
+    }
+    ```
+  - Replace `TestResolveInteractiveLiteralAndEnumNonNumeric` (input: gateCmd literal, flavor non-numeric literal):
+    ```go
+    func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
+    	// gateCmd: literal; flavor: non-numeric literal → literal value.
+    	in := strings.NewReader("custom\n//\n")
+    	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+    	if err != nil {
+    		t.Fatal(err)
+    	}
+    	if vars["gateCmd"] != "custom" {
+    		t.Errorf("gateCmd = %q", vars["gateCmd"])
+    	}
+    	if vars["flavor"] != "//" {
+    		t.Errorf("flavor = %q", vars["flavor"])
+    	}
+    }
+    ```
+  - Replace `TestResolvePromptReadError` (4-value):
+    ```go
+    func TestResolvePromptReadError(t *testing.T) {
+    	if _, _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
+    		t.Fatal("expected error from a failing reader")
+    	}
+    }
+    ```
+  - DELETE `TestResolveInvariantsHalfSetErrors` (lines ~89-94) and `TestResolveInvariantsWhitespaceGlobsIsHalfSet` (lines ~96-103) entirely.
+  - For every OTHER `Resolve(...)` call in the file, drop the second (`*config.InvariantConfig`) return position — each 5-return call becomes 4. Specifically:
+    - `TestResolveMultiselectSilentKeepsCore`: `_, _, trim, _, err :=` → `_, trim, _, err :=`
+    - `TestResolveMultiselectExplicit`: `_, _, trim, _, err :=` → `_, trim, _, err :=`
+    - `TestResolveMultiselectExplicitUnknownName`: `if _, _, _, _, err :=` → `if _, _, _, err :=`
+    - `TestResolveMultiselectInteractive`: `_, _, trim, _, err :=` → `_, trim, _, err :=`
+    - `TestResolveMultiselectInteractiveInvalidToken`: `if _, _, _, _, err :=` → `if _, _, _, err :=`
+    - `TestResolveMultiselectPromptReadError`: `if _, _, _, _, err :=` → `if _, _, _, err :=`
+    - `TestResolveAuditScopes`: `vars, _, _, scopes, err :=` → `vars, _, scopes, err :=`
+    - `TestResolveAuditScopesEmptyIsNil`: `_, _, _, scopes, err :=` → `_, _, scopes, err :=`
+    - `TestResolveEOFFallsSilent`: `vars, _, _, _, err :=` → `vars, _, _, err :=`
+
+- [ ] **3.7 Update the remaining `ScaffoldConfig` / init call sites.**
+  - `internal/project/scaffold_test.go`: every `ScaffoldConfig(...)` call drops its 3rd argument (the `inv` slot). The calls: `ScaffoldConfig("example", nil, nil, nil, nil)` → `ScaffoldConfig("example", nil, nil, nil)` (lines ~23, 181, 253, 278); `ScaffoldConfig("myproj", nil, nil, nil, nil)` → `("myproj", nil, nil, nil)` (lines ~68, 152); `ScaffoldConfig("testproject", nil, nil, nil, nil)` → `("testproject", nil, nil, nil)` (line ~220); `ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Skills: &pickSkills}, nil)` → `("myproj", nil, &config.CatalogTrim{Skills: &pickSkills}, nil)` (line ~110); `ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)` → `("myproj", nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)` (line ~133); `ScaffoldConfig("example", nil, nil, nil, []string{"adr", "awf"})` → `("example", nil, nil, []string{"adr", "awf"})` (line ~269).
+  - `cmd/awf/list_add_test.go` line ~20: `ScaffoldConfig("example", nil, nil, nil, nil)` → `ScaffoldConfig("example", nil, nil, nil)`.
+  - `cmd/awf/init_test.go`: in `TestInitErrorPaths`, DELETE the `{name: "half-set invariants", args: []string{"awf", "init", "--set", "invariantsMarker=//"}},` case (line ~128) — the descriptor no longer exists, so `--set invariantsMarker=//` is now an accepted (ignored) key and would no longer error.
+
+- [ ] **3.8 Update `descriptor_parity_test.go`.** In `internal/project/descriptor_parity_test.go`:
+  - Line ~15: remove `"invariants-marker"` and `"invariants-globs"`:
+    ```go
+    var validTargets = []string{"", "var", "catalog-skills", "catalog-docs", "audit-scopes"}
+    ```
+  - Reword the test doc comment sentence that references them (lines ~20-21): change `Non-var descriptors (the invariants marker/globs) are exempt.` to `Non-var descriptors (catalog trim, audit scopes) are exempt.`
+
+- [ ] **3.9 Add the `no-single-marker-init-descriptor` backing test.** In `internal/catalog/catalog_test.go` (package `catalog`), add:
+  ```go
+  // invariant: no-single-marker-init-descriptor
+  //
+  // The catalog exposes no invariants-marker/globs var descriptor; the marker
+  // reaches config only through invariants.sources (ADR-0064).
+  func TestNoSingleMarkerInitDescriptor(t *testing.T) {
+  	for _, d := range Standard.Vars {
+  		if d.Key == "invariantsMarker" || d.Key == "invariantsGlobs" {
+  			t.Errorf("catalog still declares removed descriptor key %q", d.Key)
+  		}
+  		if d.Target == "invariants-marker" || d.Target == "invariants-globs" {
+  			t.Errorf("catalog still declares removed descriptor target %q", d.Target)
+  		}
+  	}
+  }
+  ```
+
+- [ ] **3.10 Verify + commit.** Run `./x gate`. Confirm `coverage: 100.0%` (the synthetic `flavor` enum in 3.6 preserves the `prompt()` enum branches; the removed error/glob branches leave no uncovered lines), `0 issues.`, and deadcode clean (dropping the `inv` param removes no now-orphaned production function). Run `./x check` — clean (no rendered output changed this phase). Stage explicitly: `internal/catalog/standard.go`, `internal/catalog/catalog.go`, `internal/catalog/catalog_test.go`, `internal/initspec/initspec.go`, `internal/initspec/initspec_test.go`, `cmd/awf/init.go`, `cmd/awf/init_test.go`, `internal/project/scaffold.go`, `internal/project/scaffold_test.go`, `cmd/awf/list_add_test.go`, `internal/project/descriptor_parity_test.go`. Commit:
+  ```
+  refactor(config): drop single-marker invariants init descriptors
+  ```
+
+---
+
+## Phase 4 — changelog + ADR status flip
+
+Scope: `adr`.
+
+- [ ] **4.1 Add the changelog entry.** In `changelog/CHANGELOG.md`, under the standing `## [Unreleased]` section, in the `### Others` subsection (add the subsection if the whole batch warrants a `### Features` line instead — match the file's existing per-category grouping; these changes alter rendered template output and CLI behavior, so `### Others` fits the "internal / minor adopter-visible" precedent set by the ADR-0060/0061 entries). Append:
+  ```
+  - ADR-system invariant-tagging guidance (`docs/decisions/README.md`) now derives its comment
+    marker from `invariants.sources` instead of a hardcoded `//`: the adr-readme template renders
+    the glob→marker mapping (via `.invariantMarkers`, degrading to marker-agnostic prose when no
+    sources are set), and editing `invariants.sources` reflags the guidance (ADR-0064). Two new
+    override placeholders — `invariantMarkerSentence`, `invariantMarkerTable` — are documented in
+    the working-with-awf placeholder table.
+  - `awf init` no longer prompts for `invariantsMarker` / `invariantsGlobs` or accepts
+    `--set invariantsMarker=…`; configure `invariants.sources` in `.awf/config.yaml` directly. The
+    out-of-box default is unchanged (both descriptors defaulted empty, seeding no invariants
+    config), so only the interactive/`--set` seeding path is removed (ADR-0064).
+  ```
+
+- [ ] **4.2 Flip ADR-0064 to Implemented + regenerate.** In `docs/decisions/0064-config-derived-invariant-comment-markers.md`, change the frontmatter `status: Proposed` to `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and any per-domain indexes (this ADR carries `domains: [rendering, config, invariants]`). Run `./x invariants` (or `./x check`, which includes it) and confirm all three ADR-0064 slugs are backed: `invariant-markers-derived`, `invariant-markers-in-confighash`, `no-single-marker-init-descriptor`. Run `./x check` (clean) and `./x gate` (green). If the drift gate flags `ACTIVE.md` or a domain index, re-run `./x sync` and re-stage. Stage explicitly: `changelog/CHANGELOG.md`, `docs/decisions/0064-config-derived-invariant-comment-markers.md`, `docs/decisions/ACTIVE.md`, and any regenerated `docs/domains/*.md`. Commit:
+  ```
+  feat(rendering): implement ADR-0064 config-derived invariant markers
+  ```
+
+---
+
+## Invariant backing summary
+
+| `inv:` slug | Backing file : test / marker |
+|---|---|
+| `invariant-markers-derived` | `internal/project/invariant_markers_render_test.go` : `TestInvariantMarkersRenderedFromSources` (real `RenderAll`, multi-source markers + no-source fallback) |
+| `invariant-markers-in-confighash` | marker in `internal/project/confighash.go` (part-path fold branch); regression `internal/project/invariant_markers_render_test.go` : `TestInvariantMarkersEditReflags` (template + part paths) |
+| `no-single-marker-init-descriptor` | `internal/catalog/catalog_test.go` : `TestNoSingleMarkerInitDescriptor` |
+
+## Verification checklist
+
+- [ ] `./x gate` green after every phase commit (`coverage: 100.0%`, `0 issues.`, deadcode clean)
+- [ ] `./x check` clean after Phase 2 (rendered `docs/decisions/README.md` + `docs/working-with-awf.md` re-synced) and after Phase 4 (`ACTIVE.md` + domain indexes re-synced)
+- [ ] `./x invariants` reports all three ADR-0064 slugs backed (after Phase 4 status flip)
+- [ ] `./x audit` advisory-clean over the branch's commits (scopes `rendering`, `config`, `adr`; one concern per commit)
