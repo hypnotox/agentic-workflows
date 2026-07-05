@@ -27,6 +27,18 @@ CI publishes two Codecov numbers as flags:
 
 Both Codecov statuses are informational — Codecov never blocks a merge; the gate does.
 
+### Coverage is not verification
+
+The 100% floor proves every statement **runs** under test; it does not prove any test
+would **fail** if that statement were wrong. A line can be covered by a test that never
+asserts on its effect — the gate stays green while a broken result slips through. When you
+add or change logic, spot-check it by hand: flip a condition, negate a comparison, or
+change a constant in the source, and confirm a test turns red. If nothing fails, the gap is
+a missing assertion, not missing coverage — add the assertion, then revert the edit. This
+is a deliberate manual habit, not a gate: an automated mutation-testing step was evaluated
+and left out (the available tooling was too timeout-sensitive and mode-dependent to yield
+trustworthy, reproducible numbers here).
+
 
 <!-- awf:edit tiers — default; create .awf/docs/parts/testing/tiers.md to override -->
 ## Tiers
