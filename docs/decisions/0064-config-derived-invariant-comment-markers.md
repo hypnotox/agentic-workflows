@@ -61,11 +61,17 @@ marker mapping from it.
      (deterministic). The mapping derives from `Sources` regardless of `Invariants.Disabled` — the
      mapping documents the marker convention; `disabled` governs enforcement, not the convention. It
      returns `""` when `Invariants` is nil or `Sources` is empty.
-   - Consume it in the adr-readme and `working-with-awf.md` template defaults with an ADR-0045
-     graceful fallback: `{{ with .invariantMarkers }}…{{ . }}…{{ else }}using your project's comment
-     marker{{ end }}` — an inline sentence in adr-readme, a glob|marker table in working-with-awf.
+     `.invariantMarkers` is an **inline sentence** form (the `commitScopesDisplay()` analog), consumed
+     in the adr-readme template default with an ADR-0045 graceful fallback: `{{ with .invariantMarkers
+     }}…{{ . }}…{{ else }}using your project's comment marker{{ end }}`. This is the one place the live
+     mapping is rendered into a template default.
    - Add `{{=awf:invariantMarkerSentence}}` and `{{=awf:invariantMarkerTable}}` to
-     `placeholderRegistry()` for RAW convention parts, present-only-when-non-empty (ADR-0057).
+     `placeholderRegistry()` (backed by `invariantMarkerSentence()` / `invariantMarkerTable()` methods,
+     the `commitScopeSentence()` / `commitScopeTable()` analogs), for RAW convention parts,
+     present-only-when-non-empty (ADR-0057). `working-with-awf.md.tmpl` **documents** these placeholder
+     keys in its existing placeholder-key table (mirroring how it documents `commitScope…`); it does
+     not inject a live table — matching the commit-scope precedent, which deliberately documents rather
+     than live-renders a mapping in that guide.
    - **Fold `invariants.sources` into the artifact config hash on BOTH paths.** Add a
      `render.ReferencesInvariantMarkers` analog of `ReferencesScopes` for the template-reference path
      AND a part-bytes placeholder analog in the `confighash.go` part-reading loop, folding the marker
@@ -73,9 +79,11 @@ marker mapping from it.
      `.invariantMarkers` reference is replaced by a sentinel in `assembled`, so only the part-bytes
      analog catches awf's own dogfooded override. Omitting either reintroduces the drift-oracle blind
      spot (`awf check` clean while `awf sync` rewrites).
-   - **Dogfood the placeholder.** Edit the existing `.awf/parts/adr-readme/invariants.md` override to
-     use `{{=awf:invariantMarkerSentence}}` in place of its hardcoded `` `// invariant: <slug>` ``, so
-     awf's own render exercises the placeholder path under the gate.
+   - **Dogfood the placeholder.** Edit the existing `.awf/parts/adr-readme/invariants.md` override so
+     its guidance sentence is **reworded** around `{{=awf:invariantMarkerSentence}}` (not a literal
+     token-swap of the self-contained sentence into the inline code-span slot, which would read
+     ungrammatically) in place of its hardcoded `` `// invariant: <slug>` ``, so awf's own render
+     exercises the placeholder path under the gate.
 
 2. **Drop the single-marker init descriptors.** Remove the `invariantsMarker` and `invariantsGlobs`
    catalog descriptors, the `case "invariants-marker"`/`"invariants-globs"` collection and the
@@ -92,12 +100,13 @@ marker mapping from it.
 
 ## Invariants
 
-- `inv: invariant-markers-derived` — the adr-readme and working-with-awf guidance render their
-  comment-marker guidance from `invariants.sources` (via `.invariantMarkers` / the
-  `{{=awf:invariantMarker…}}` placeholders), never a hardcoded marker literal; with no sources
-  configured they degrade to marker-agnostic generic prose. Backed by a real-render
-  (`RenderAll`/`SyncReport`) test that configures a multi-source `invariants.sources` and asserts each
-  source's marker appears — not a `renderGolden` hand-injected-data test, which bypasses `data()`.
+- `inv: invariant-markers-derived` — the adr-readme invariant-tagging guidance renders its
+  comment-marker mapping from `invariants.sources` (via the `.invariantMarkers` render key in the
+  template default and `{{=awf:invariantMarkerSentence}}` in awf's own section override), never a
+  hardcoded marker literal; with no sources configured it degrades to marker-agnostic generic prose.
+  Backed by a real-render (`RenderAll`/`SyncReport`) test that configures a multi-source
+  `invariants.sources` and asserts each source's marker appears in the rendered README — not a
+  `renderGolden` hand-injected-data test, which bypasses `data()`.
 - `inv: invariant-markers-in-confighash` — an artifact that references the marker mapping (template
   render key or part placeholder) folds `invariants.sources` into its config hash, so editing
   `invariants.sources` reflags that artifact stale in `awf check`. Backed by a confighash test on
