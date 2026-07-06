@@ -187,6 +187,15 @@ Harder / accepted trade-offs:
   makes such promotions deferred follow-ups rather than inline work (Decision 6).
 - The canonical chain grows from nine nodes to ten; the eval graph, `workflow.md`, and
   `AGENTS.md` must all reflect the new terminal node in the same change (docs travel).
+- `retrospective` is Core (always rendered), but two of its four rungs name **toggleable**
+  destinations: rung 4 is the `pitfalls` doc (`Mandatory: false`) and rung 3 is the
+  `code-reviewer` project-focus. Rung 3 is safe by construction — `retrospective` only runs
+  after `reviewing-impl`, which `RequiresAgent: code-reviewer` (ADR-0050), so the reviewer is
+  always present when the retrospective is reachable. Rung 4 is not: an adopter can enable the
+  chain while leaving `pitfalls` disabled. The rung-4 reference must therefore degrade to
+  generic prose (and carry no inline link to `pitfalls.md`) when the doc is absent, per the
+  publication-safe-templates invariant (ADR-0001/ADR-0045) and the no-dead-internal-links
+  invariant (ADR-0020) — a template obligation for the downstream plan, not a blocker here.
 
 Ruled out:
 - A findings ledger with a deterministic recurrence-count signal (Approach B).
