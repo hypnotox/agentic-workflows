@@ -38,8 +38,13 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 <!-- awf:edit components — from .awf/docs/parts/architecture/components.md -->
 ## Components
 
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `upgrade`
-  subcommands. `sync`/`check` enforce the schema-generation gate (ADR-0010) before opening the project.
+- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `remove`, `new`,
+  `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
+  subcommands. The gated commands enforce the binary-version gate (ADR-0010, ADR-0039) before
+  opening the project.
+- **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`** — repo-only gate and triage helpers:
+  the 100% statement-coverage floor (ADR-0012), the dead-code gate (ADR-0063), and the advisory
+  mutation-survivor report (ADR-0066). Not part of the rendered standard.
 - **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
@@ -111,4 +116,7 @@ registry value may never itself carry the token (ADR-0058).
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`) — pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
+- **`gremlins`** (`github.com/go-gremlins/gremlins`) — pinned as a `go tool` dependency; `./x mutants`
+  runs it under the deterministic `.gremlins.yaml` config and `cmd/mutants` reports survived mutants
+  (ADR-0066). Advisory only — never part of the gate. This repo only, not part of the rendered standard.
 
