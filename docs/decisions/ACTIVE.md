@@ -71,6 +71,10 @@
 - [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Implemented
 - [ADR-0067: Retrospective terminal step and finding-promotion ladder](0067-retrospective-terminal-step-and-finding-promotion-ladder.md) — Implemented
 
+## Proposed
+
+- [ADR-0068: Project-local skills and agents](0068-project-local-skills-and-agents.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
