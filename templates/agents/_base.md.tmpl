@@ -1,0 +1,13 @@
+---
+name: {{ with .data.slug }}{{ . }}{{ else }}local-agent{{ end }}
+description: >
+  {{ with .data.description }}{{ . }}{{ else }}A project-local {{ $.prefix }} agent.{{ end }}
+---
+
+# {{ with .data.slug }}{{ . }}{{ else }}local-agent{{ end }}
+
+<!-- awf:section content -->
+{{ with .data.description }}{{ . }}
+
+{{ end }}Describe this agent's role, its inputs, and how it reports back. Replace this by editing the `content` convention part.
+<!-- awf:end -->

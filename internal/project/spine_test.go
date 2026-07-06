@@ -885,6 +885,25 @@ func TestUnsetFallbackRenders(t *testing.T) {
 			},
 			ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 		},
+		// invariant: local-base-publication-safe
+		{
+			tmpl: "skills/_base/SKILL.md.tmpl",
+			want: []string{
+				"example-local-skill",
+				"A project-local example skill.",
+				"Describe when to use this skill",
+			},
+			ban: []string{"<no value>", "``"},
+		},
+		{
+			tmpl: "agents/_base.md.tmpl",
+			want: []string{
+				"name: local-agent",
+				"A project-local example agent.",
+				"Describe this agent's role",
+			},
+			ban: []string{"<no value>"},
+		},
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},

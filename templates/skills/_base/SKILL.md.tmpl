@@ -1,0 +1,13 @@
+---
+name: {{ .prefix }}-{{ with .data.slug }}{{ . }}{{ else }}local-skill{{ end }}
+description: >
+  {{ with .data.description }}{{ . }}{{ else }}A project-local {{ $.prefix }} skill.{{ end }}
+---
+
+# {{ .prefix }}-{{ with .data.slug }}{{ . }}{{ else }}local-skill{{ end }}
+
+<!-- awf:section content -->
+{{ with .data.description }}{{ . }}
+
+{{ end }}Describe when to use this skill and the procedure it follows. Replace this by editing the `content` convention part.
+<!-- awf:end -->

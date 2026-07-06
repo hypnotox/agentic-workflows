@@ -8,8 +8,10 @@ import "slices"
 // artifact's default render data; sidecars override it per top-level key
 // (ADR-0045).
 type TargetSpec struct {
-	Sections []string       `yaml:"sections"`
-	Data     map[string]any `yaml:"data"`
+	Sections []string `yaml:"sections"`
+	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
+	Base bool           `yaml:"base"`
+	Data map[string]any `yaml:"data"`
 }
 
 // SkillSpec declares a skill's render sections plus its optional gating fields.
@@ -23,11 +25,15 @@ type TargetSpec struct {
 // awf init scaffolds by default (ADR-0022). Data carries the artifact's
 // default render data; sidecars override it per top-level key (ADR-0045).
 type SkillSpec struct {
-	Sections      []string       `yaml:"sections"`
-	RequiresDoc   string         `yaml:"requiresDoc"`
-	RequiresAgent string         `yaml:"requiresAgent"`
-	Core          bool           `yaml:"core"`
-	Data          map[string]any `yaml:"data"`
+	Sections      []string `yaml:"sections"`
+	RequiresDoc   string   `yaml:"requiresDoc"`
+	RequiresAgent string   `yaml:"requiresAgent"`
+	Core          bool     `yaml:"core"`
+	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
+	// template id to the shared base template, not the name-derived catalog path.
+	// Standard skills never set it.
+	Base bool           `yaml:"base"`
+	Data map[string]any `yaml:"data"`
 }
 
 // DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable
