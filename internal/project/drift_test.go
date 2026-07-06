@@ -145,7 +145,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	cfg := func(scope string) string {
 		return "prefix: example\nvars: {}\nskills:\n" +
 			"  - adr-lifecycle\n  - brainstorming\n  - executing-plans\n  - proposing-adr\n" +
-			"  - reviewing-adr\n  - reviewing-impl\n  - reviewing-plan\n  - reviewing-plan-resync\n" +
+			"  - retrospective\n  - reviewing-adr\n  - reviewing-impl\n  - reviewing-plan\n  - reviewing-plan-resync\n" +
 			"  - subagent-driven-development\n  - tdd\n  - writing-plans\n" +
 			"agents:\n  - adr-reviewer\n  - code-reviewer\n  - plan-reviewer\n" +
 			"audit:\n  allowedScopes:\n    - " + scope + "\n"

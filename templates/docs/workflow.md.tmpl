@@ -12,10 +12,10 @@ You own the project's long-term health, not just the task in front of you: bugs 
 Non-trivial work follows one canonical chain:
 
 ```
-brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review
+brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review → retrospective
 ```
 
-Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs, and planning that surfaces a new load-bearing decision loops back to propose or amend one. Each written artifact gets a fresh-context review; when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. Implementation review is the terminal gate.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs, and planning that surfaces a new load-bearing decision loops back to propose or amend one. Each written artifact gets a fresh-context review; when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. Implementation review is the terminal gate; a main-thread **retrospective** then closes the feedback loop, promoting any recurring, codifiable finding toward a deterministic check.
 
 For the detailed criteria of when a decision is load-bearing enough to warrant an ADR — and the ADR format itself — see [`{{ .layout.adrReadme }}`](decisions/README.md).
 <!-- awf:end -->

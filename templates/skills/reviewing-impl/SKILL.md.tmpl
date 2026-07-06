@@ -1,11 +1,11 @@
 ---
 name: {{ .prefix }}-reviewing-impl
-description: Terminal step after implementation commits. Dispatches the code-reviewer subagent, routes findings, applies fixes.
+description: Independent review step after implementation commits. Dispatches the code-reviewer subagent, routes findings, applies fixes.
 ---
 
 # {{ .prefix }}-reviewing-impl
 
-Invoked as the terminal step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
+Invoked as the independent review step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
 
 ## When this skill fires
 
@@ -62,10 +62,14 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 7. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
 <!-- awf:end -->
 
+<!-- awf:section hand-off -->
+8. **Invoke `{{ .prefix }}-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.
+<!-- awf:end -->
+
 ## Notes
 
 <!-- awf:section notes -->
-- This is the terminal step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
+- This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->

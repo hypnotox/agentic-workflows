@@ -69,10 +69,7 @@
 - [ADR-0064: Config-derived invariant comment markers](0064-config-derived-invariant-comment-markers.md) — Implemented
 - [ADR-0065: Two-Report Codecov Coverage Convention](0065-two-report-codecov-coverage-convention.md) — Implemented
 - [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Implemented
-
-## Proposed
-
-- [ADR-0067: Retrospective terminal step and finding-promotion ladder](0067-retrospective-terminal-step-and-finding-promotion-ladder.md) — Proposed
+- [ADR-0067: Retrospective terminal step and finding-promotion ladder](0067-retrospective-terminal-step-and-finding-promotion-ladder.md) — Implemented
 
 ## Superseded by ADR-0032
 

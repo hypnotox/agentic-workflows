@@ -67,12 +67,12 @@ Hard rules every change must respect:
 Canonical chain for non-trivial work:
 
 ```
-brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review
+brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review → retrospective
 ```
 
-Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one — one plan links zero or more ADRs. Each written artifact gets a fresh-context review (`awf-reviewing-adr`, `awf-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `awf-reviewing-impl` is the terminal review.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one — one plan links zero or more ADRs. Each written artifact gets a fresh-context review (`awf-reviewing-adr`, `awf-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `awf-reviewing-impl` is the terminal review, after which `awf-retrospective` closes the feedback loop by promoting recurring findings toward deterministic checks.
 
-**Chain skills** (invoke in order): `awf-brainstorming`, `awf-proposing-adr`, `awf-reviewing-adr`, `awf-writing-plans`, `awf-reviewing-plan`, `awf-reviewing-plan-resync`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
+**Chain skills** (invoke in order): `awf-brainstorming`, `awf-proposing-adr`, `awf-reviewing-adr`, `awf-writing-plans`, `awf-reviewing-plan`, `awf-reviewing-plan-resync`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`, `awf-retrospective`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
 
 Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 

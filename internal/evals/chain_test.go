@@ -60,6 +60,7 @@ func TestWorkflowChainHandoffs(t *testing.T) {
 		{"proposing-adr", "reviewing-adr"},
 		{"writing-plans", "reviewing-plan"},
 		{"bugfix", "reviewing-impl"},
+		{"reviewing-impl", "retrospective"},
 	} {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
 			assertHandoff(t, root, tc.from, tc.to)
@@ -103,12 +104,12 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 var chainNodes = []string{
 	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
 	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
-	"subagent-driven-development", "reviewing-impl",
+	"subagent-driven-development", "reviewing-impl", "retrospective",
 }
 
 const (
 	chainRoot     = "brainstorming"
-	chainTerminal = "reviewing-impl"
+	chainTerminal = "retrospective"
 )
 
 // chainEdges returns, for each chain node, the set of other chain nodes it names

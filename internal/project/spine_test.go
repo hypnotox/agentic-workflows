@@ -680,6 +680,7 @@ func TestReviewingImplTemplate(t *testing.T) {
 		"user-decision",
 		"SHA range",
 		"docs/decisions/",
+		"example-retrospective",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -775,6 +776,7 @@ func TestAgentsDocTemplate(t *testing.T) {
 		"## Document map",
 		"example-brainstorming",
 		"example-reviewing-impl",
+		"example-retrospective",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {

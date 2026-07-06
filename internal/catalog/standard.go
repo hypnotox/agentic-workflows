@@ -95,7 +95,7 @@ var Standard = &Catalog{
 		}},
 		"reviewing-impl": {Core: true, RequiresAgent: "code-reviewer", Sections: []string{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
-			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "notes",
+			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
 		"retrospective": {Core: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
