@@ -264,7 +264,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f861bf74951f01ce7a42d5ebb6ed6e9d655ce06e26ff05cd8f6eec611925447e"
+      "outputHash": "sha256:15b8344720d568725a5bb9e101cdf5d769688a410bcaa998a1518b7d9e2ebde9"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
