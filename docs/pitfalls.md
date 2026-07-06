@@ -32,3 +32,15 @@ tests still hand-enumerate their skill set and fail only at `./x gate` time, not
 The durable fix is to derive these skill sets from `catalog.Standard` the way ADR-0053 did for the
 eval fixture, closing the silent-rot gap; until then, adding a skill means updating these by hand.
 
+## `//go:embed` silently skips `_`- and `.`-prefixed paths
+
+The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
+`templates/agents/_base.md.tmpl` (ADR-0068). Go's `//go:embed` walk **excludes** every file or
+directory whose name begins with `_` or `.` unless the pattern is `all:`-prefixed — so the bare
+`//go:embed skills agents …` form embeds neither `_base`, and `fs.ReadFile(templates.FS, …)` fails
+at render with a bare `file does not exist`. `templates/embed.go` therefore uses
+`all:skills all:agents`. Do not "simplify" it back: dropping `all:` silently drops the base
+templates. `TestUnsetFallbackRenders` reads both base templates from `templates.FS`, so a
+regression fails the gate — but the failure is a confusing missing-file error, not an obvious embed
+bug, hence this note.
+
