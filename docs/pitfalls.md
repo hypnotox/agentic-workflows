@@ -32,6 +32,23 @@ tests still hand-enumerate their skill set and fail only at `./x gate` time, not
 The durable fix is to derive these skill sets from `catalog.Standard` the way ADR-0053 did for the
 eval fixture, closing the silent-rot gap; until then, adding a skill means updating these by hand.
 
+## Hard-coded counts in domain narratives drift
+
+The domain current-state narratives (`.awf/domains/parts/*/current-state.md`) are free prose, so a
+spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain skills")
+is invisible to every deterministic check and goes stale the moment the catalog grows — a 2026-07-07
+currency sweep found three such stale counts from ADR-0067/0068 alone, in paragraphs the
+feature commits never touched. When a narrative must quantify the catalog, prefer count-free
+phrasing ("the `core`-flagged skills", "the chain-progression skills") or expect to sweep every
+count in the doc — not just the paragraph you are editing — whenever a chain artifact lands.
+
+## README.md is outside the drift oracle
+
+`README.md` is hand-owned — not rendered, so `awf check` never flags it. Its command table and
+feature claims drift silently when the CLI grows (`awf new` and `awf commit-gate` shipped without
+README rows). Adding or changing a CLI command means updating the README table in the same
+change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
+
 ## `//go:embed` silently skips `_`- and `.`-prefixed paths
 
 The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
