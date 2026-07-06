@@ -20,13 +20,14 @@ const (
 // are only read (ADR-0068).
 // invariant: local-catalog-clone
 func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
-	cat := &catalog.Catalog{
-		Skills:    maps.Clone(catalog.Standard.Skills),
-		Agents:    maps.Clone(catalog.Standard.Agents),
-		DomainDoc: catalog.Standard.DomainDoc,
-		Docs:      catalog.Standard.Docs,
-		Vars:      catalog.Standard.Vars,
-	}
+	// Start from a full struct copy so any Catalog field (present or future) is
+	// carried unchanged, then replace only the two maps synthesis mutates with
+	// fresh clones. The remaining fields stay shared with the global by value —
+	// synthesis never touches them (ADR-0068).
+	clone := *catalog.Standard
+	clone.Skills = maps.Clone(catalog.Standard.Skills)
+	clone.Agents = maps.Clone(catalog.Standard.Agents)
+	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
 		return catalog.SkillSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}
 	}); err != nil {
