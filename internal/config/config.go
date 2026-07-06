@@ -269,18 +269,22 @@ func ValidateDomainName(name string) error {
 }
 
 // ValidateArtifactName reports whether name is usable as a local skill/agent
-// name (ADR-0068): non-empty, free of path separators or "..", and not in awf's
-// reserved "_"-prefixed namespace (which the base templates occupy).
+// name (ADR-0068): non-empty lowercase kebab-case (letters, digits, hyphens).
+// The charset is frontmatter-safe — it excludes the path separators and ".." the
+// invariant requires, awf's reserved "_" namespace, and the colon/space/quote
+// characters that would otherwise interpolate into the base template's name: line
+// and break its YAML frontmatter. It mirrors every catalog artifact's naming.
 // invariant: local-name-validated
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
 	}
-	if hasPathSep(name) {
-		return fmt.Errorf("%s %q must not contain path separators or \"..\"", kind, name)
-	}
-	if strings.HasPrefix(name, "_") {
-		return fmt.Errorf("%s %q must not start with \"_\" (reserved)", kind, name)
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
+		default:
+			return fmt.Errorf("%s %q must be lowercase kebab-case: letters, digits, and hyphens only", kind, name)
+		}
 	}
 	return nil
 }

@@ -533,7 +533,7 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
-	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved"} {
+	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)
 		}

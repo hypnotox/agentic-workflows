@@ -109,8 +109,8 @@ func TestLocalReservedNameFailsOpen(t *testing.T) {
 		"skills/_x.yaml": "data:\n  description: nope\n",
 	})
 	_, err := Open(root)
-	if err == nil || !strings.Contains(err.Error(), "reserved") {
-		t.Fatalf("expected reserved-name error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "kebab-case") {
+		t.Fatalf("expected invalid-name error, got %v", err)
 	}
 }
 
@@ -121,8 +121,8 @@ func TestLocalAgentReservedNameFailsOpen(t *testing.T) {
 		"agents/_a.yaml": "data:\n  description: x\n",
 	})
 	_, err := Open(root)
-	if err == nil || !strings.Contains(err.Error(), "reserved") {
-		t.Fatalf("expected reserved-name error from agents synthesis, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "kebab-case") {
+		t.Fatalf("expected invalid-name error from agents synthesis, got %v", err)
 	}
 }
 
