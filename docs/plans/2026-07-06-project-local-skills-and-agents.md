@@ -41,7 +41,7 @@ this plan is the execution record.
 ## Tech stack
 
 - Go 1.26. Packages touched: `internal/catalog` (two struct fields), `internal/config`
-  (`HasSidecar`, `ValidateArtifactName`, `SidecarPath`), `internal/project` (new `local.go`,
+  (`HasSidecar`, `ValidateArtifactName`), `internal/project` (new `local.go`,
   `Open` rewire, two render tid methods), `cmd/awf` (`new.go`, `main.go`).
 - Templates: `templates/skills/_base/`, `templates/agents/_base.md.tmpl`, `templates/embed.go`,
   `templates/docs/working-with-awf.md.tmpl`.
@@ -59,16 +59,16 @@ this plan is the execution record.
 - `internal/catalog/catalog.go` (add `Base bool` to `SkillSpec` and `TargetSpec`)
 - `templates/embed.go` (`all:skills all:agents`)
 - `internal/project/spine_test.go` (two `TestUnsetFallbackRenders` cases + invariant marker)
-- `internal/config/config.go` (`HasSidecar`, `SidecarPath`, `ValidateArtifactName`)
-- `internal/config/config_test.go` (unit tests for the three new funcs)
+- `internal/config/config.go` (`HasSidecar`, `ValidateArtifactName`)
+- `internal/config/config_test.go` (unit tests for the two new funcs)
 - `internal/project/project.go` (rewire `Open` to merge before validate)
 - `internal/project/render.go` (`skillTID`/`agentTID`; swap the two render tid closures)
 - `cmd/awf/new.go` (dispatch skill/agent; scaffold local artifact)
 - `cmd/awf/main.go` (`new` arg handling by kind; help text)
 - `cmd/awf/new_test.go` (fix unknown-kind test; add skill/agent scaffolding tests)
 - `templates/docs/working-with-awf.md.tmpl` (commands + local-artifacts prose)
-- Rendered outputs via `./x sync` (`docs/working-with-awf.md`, its `.cursor` twin, `.awf/awf.lock`,
-  `docs/decisions/ACTIVE.md`)
+- Rendered outputs via `./x sync` (`docs/working-with-awf.md` — a neutral doc, rendered once with no
+  per-target twin — `.awf/awf.lock`, `docs/decisions/ACTIVE.md`)
 - `docs/decisions/0068-...md` (status flip to Implemented in the final commit)
 
 ---
@@ -178,18 +178,10 @@ leak-free degradation. Nothing renders them in production yet, so the suite stay
 Wires the base templates into production: a declared non-Standard name renders from the base
 template, once per target.
 
-- [ ] **Add config helpers.** In `internal/config/config.go`, add after `ConfigPath`:
-  ```go
-  // SidecarPath returns the sidecar file path for an artifact of a project root:
-  // <root>/.awf/<kind>/<name>.yaml, or <root>/.awf/<kind>.yaml for a singleton kind.
-  func SidecarPath(root, kind, name string) string {
-  	if IsSingletonKind(kind) {
-  		return filepath.Join(RootDir(root), kind+".yaml")
-  	}
-  	return filepath.Join(RootDir(root), kind, name+".yaml")
-  }
-  ```
-  Add a `HasSidecar` method after `Sidecar`:
+- [ ] **Add config helpers.** In `internal/config/config.go`, add a `HasSidecar` method
+  after `Sidecar` (no `SidecarPath` helper is added — Phase 3 inlines the one path it needs
+  from `RootDir`; a `SidecarPath` introduced here would have no production caller until
+  Phase 3 and would fail this commit's dead-code gate, ADR-0063):
   ```go
   // HasSidecar reports whether a declaring sidecar file exists for an artifact —
   // the presence signal that marks a non-catalog name as an intentional local
@@ -344,7 +336,8 @@ template, once per target.
   	}
   	return p, nil
   ```
-  (The `catalog` import stays used by `effectiveCatalog`; confirm `goimports`/`./x fmt` leaves it.)
+  (The `catalog` import stays used by the `Cat *catalog.Catalog` struct field in `project.go`,
+  so nothing removes it; confirm `goimports`/`./x fmt` leaves it.)
 
 - [ ] **Add the tid hook** in `internal/project/render.go`. Add two methods near `renderKind`:
   ```go
@@ -373,8 +366,12 @@ template, once per target.
 - [ ] **Create `internal/project/local_test.go`** covering every new branch. It must exercise: a
   local skill and a local agent rendering from the base template once per target; the clone leaving
   `catalog.Standard` unmutated; an undeclared non-Standard name failing `Open`; a `_`-prefixed /
-  path-separator name failing `Open`; a malformed local sidecar failing `Open`; a Standard-name
-  collision staying the Standard spec. Use the existing `scaffoldProject`-style test root helper in
+  path-separator name failing `Open`; a malformed local sidecar failing `Open`; a non-Standard name
+  whose sidecar sets `local: true` (skipped — not synthesized, not base-rendered, no error, covering
+  the `sc.Local` continue); at least one `Open`-failing case enabled under `agents:` rather than
+  `skills:` (so both `effectiveCatalog` synthesis error-returns execute, not only the skills-side
+  one); a Standard-name collision staying the Standard spec. Use the existing
+  `scaffoldProject`-style test root helper in
   the `project` package (see `project_test.go` for the local fixture builder) — enable a local name
   in `.awf/config.yaml`, write `.awf/skills/<name>.yaml` (with `data.description`) and
   `.awf/skills/parts/<name>/content.md`, call `Open` + `RenderAll`, and assert:
@@ -385,7 +382,11 @@ template, once per target.
   - `Open` returns an error from `ValidateArtifactName` for a `_x`/`a/b` name;
   - `Open` returns a parse error for a malformed `.awf/skills/<name>.yaml`;
   - enabling a name equal to a Standard skill (e.g. `tdd`) with a `content` part leaves
-    `p.Cat.Skills["tdd"].Base == false` and its Sections unchanged.
+    `p.Cat.Skills["tdd"].Base == false` and its Sections unchanged;
+  - a non-Standard name with a `local: true` sidecar is absent from `p.Cat.Skills` after `Open` (no
+    synthesized entry) and produces no base-rendered `RenderedFile`;
+  - one of the `Open`-failing cases (bad name or malformed sidecar) is enabled under `agents:`, so
+    the agents-side `return nil, err` in `effectiveCatalog` is exercised.
 
 - [ ] **Verify.** Run `./x gate`. Expected: `coverage: 100.0% (…)`, `0 issues.`,
   `deadcodecheck: no production dead code`. Then `./x check` — expected `awf check: clean` (no
@@ -395,7 +396,7 @@ template, once per target.
 - [ ] **Commit:**
   ```
   git add internal/config/config.go internal/config/config_test.go internal/project/local.go internal/project/local_test.go internal/project/project.go internal/project/render.go
-  git commit -m "feat(rendering): render project-local skills and agents from base templates"
+  git commit -m "feat(rendering): render project-local skills and agents"
   ```
 
 ---
@@ -481,7 +482,7 @@ template, once per target.
   	if err != nil { // coverage-ignore: a string map always marshals
   		return err
   	}
-  	scPath := config.SidecarPath(root, pl, name)
+  	scPath := filepath.Join(config.RootDir(root), pl, name+".yaml")
   	if err := os.MkdirAll(filepath.Dir(scPath), 0o755); err != nil { // coverage-ignore: parent is the just-opened .awf tree; fails only on a permission fault a test cannot trigger
   		return err
   	}
@@ -569,13 +570,12 @@ template, once per target.
 
 - [ ] **Re-render and verify no unexpected drift.** Run `./x sync`, then `git status --short`.
   Expected changed paths: `templates/docs/working-with-awf.md.tmpl`, `docs/working-with-awf.md`,
-  `.cursor/…/working-with-awf.md` (if the cursor target renders it), and `.awf/awf.lock`. Run
-  `./x gate` → green.
+  and `.awf/awf.lock` — working-with-awf is a neutral doc (rendered once to docsDir), so there is
+  no per-target `.cursor` twin. Run `./x gate` → green.
 
 - [ ] **Commit:**
   ```
   git add templates/docs/working-with-awf.md.tmpl docs/working-with-awf.md .awf/awf.lock
-  # include the .cursor twin if `git status` shows it changed
   git commit -m "docs(rendering): document awf new skill/agent and local artifacts"
   ```
 
@@ -616,5 +616,9 @@ enforces them once the status is `Implemented`.
   rather than the separate `ValidateSkillName`/`ValidateAgentName` the ADR names in Decision item 8
   — the observable contract (`inv: local-name-validated`) is unchanged. Flagged for the plan↔ADR
   resync.
+- `effectiveCatalog` clones the Standard `Skills`/`Agents` maps with a shallow `maps.Clone`, not the
+  ADR's literal "deep-copies" wording. Shallow suffices for `inv: local-catalog-clone`: synthesis
+  only inserts new keys and reads existing values, so no shared `SkillSpec`/`TargetSpec` (nor its
+  `Sections`/`Data`) is ever mutated. Flagged for the plan-ADR resync.
 - No awf-own enable arrays change, so awf does not dogfood a local artifact; the feature is covered
   by `internal/project` and `cmd/awf` tests, not by awf's own rendered tree.
