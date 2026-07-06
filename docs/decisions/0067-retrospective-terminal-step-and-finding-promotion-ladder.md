@@ -86,8 +86,12 @@ deterministic harness over time.
    Core sibling references to `executing-plans`/`subagent-driven-development` (safe precisely
    because all are Core). The canonical-chain description in `docs/workflow.md` and the rendered
    `AGENTS.md` is updated to end at the retrospective, and the `internal/evals` chain graph
-   (`chainNodes`, `chainEdges`, and the pinned handoff-edge list) gains the tenth node and the
-   `reviewing-impl → retrospective` edge.
+   gains the tenth node in `chainNodes`, the `reviewing-impl → retrospective` edge in the pinned
+   handoff-edge list, and — decisively — the `chainTerminal` constant flips from
+   `reviewing-impl` to `retrospective`. That last move is not optional: `TestChainConnectivity`
+   exempts only `chainTerminal` from the outgoing-edge requirement, so a `retrospective` added to
+   `chainNodes` without moving the constant would be flagged orphaned for having no successor
+   (`chainEdges` is derived from `chainNodes`, so it needs no separate edit).
 
 3. **The retrospective runs in the main thread, not a dispatched subagent.** It is a skill the
    driving agent follows (like `executing-plans`), because it depends on full session context:
@@ -133,7 +137,9 @@ deterministic harness over time.
    *existing* eval machinery extended to cover it — the ADR-0053 full-catalog fixture is
    catalog-derived (`inv: evals-full-catalog-coverage`) and so picks up the new skill
    automatically, and the ADR-0054 handoff/connectivity assertions cover the new node once it
-   is added to `chainNodes`/`chainEdges`. The invariants the ladder *produces* at rung 1 are
+   is added to `chainNodes`, the pinned handoff-edge list, and the `chainTerminal` constant is
+   moved to it (see Decision 2 — the connectivity test only exempts the constant's node from the
+   outgoing-edge requirement). The invariants the ladder *produces* at rung 1 are
    adopter-authored, not awf-authored.
 
 10. **Docs travel with the change.** `docs/workflow.md` gains the retrospective and the
@@ -147,8 +153,8 @@ deterministic harness over time.
 - `retrospective` is a Core catalog skill and the terminal node of the canonical workflow
   chain; `reviewing-impl` hands off to it and no chain node hands off past it. Mechanically
   enforced by the ADR-0053 catalog-derived eval fixture and the ADR-0054 chain-graph
-  assertions once `retrospective` is added to `chainNodes`/`chainEdges` — this ADR adds no new
-  slug of its own. (textual)
+  assertions once `retrospective` is added to `chainNodes`, the pinned handoff-edge list, and
+  the `chainTerminal` constant is moved to it — this ADR adds no new slug of its own. (textual)
 - The retrospective runs in the main thread and dispatches no fresh-context subagent. (textual)
 - Promotion routes a recurring, codifiable observation to the strongest applicable rung, and a
   rung-1 promotion uses the config-driven, language-agnostic invariant mechanism so it is
@@ -192,7 +198,8 @@ Ruled out:
 Downstream work unblocked: an implementation plan covering — the `retrospective` catalog entry
 and its template with `awf:section` markers matching the declared `Sections`
 (`inv: skill-section-parity`); the `reviewing-impl` terminal-handoff edit; the
-`internal/evals` chain-graph node/edge additions; the `docs/workflow.md` and `AGENTS.md`
+`internal/evals` chain-graph node/edge additions **and the `chainTerminal` constant flip**; the
+`docs/workflow.md` and `AGENTS.md`
 canonical-chain updates; the `pitfalls.md` reframing; and enabling the skill in awf's own
 `.awf/config.yaml`. When this ADR flips to `Implemented`, the same commit regenerates
 `docs/decisions/ACTIVE.md`.
