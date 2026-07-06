@@ -873,6 +873,19 @@ func TestUnsetFallbackRenders(t *testing.T) {
 			ban:  []string{"example-proposing-adr"},
 		},
 		{
+			// Every conditional rung/reference degrades to generic prose when its
+			// skill/var/doc is absent — no empty inline code, no dangling reference
+			// (ADR-0045/ADR-0020 publication-safety; ADR-0067 rung-4 pitfalls obligation).
+			tmpl: "skills/retrospective/SKILL.md.tmpl",
+			want: []string{
+				"the project's review step",
+				"the project's pitfalls notes",
+				"the project's decision process",
+				"Record it in the project's pitfalls notes.",
+			},
+			ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
+		},
+		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},
 			ban:  []string{"For each item below"},
