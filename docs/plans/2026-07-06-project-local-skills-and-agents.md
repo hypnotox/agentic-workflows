@@ -612,13 +612,13 @@ enforces them once the status is `Implemented`.
 ## Notes
 
 - The design lives in ADR-0068; this plan does not restate rationale.
-- `ValidateArtifactName(kind, name)` is one shared validator (mirroring `ValidateDomainName`)
-  rather than the separate `ValidateSkillName`/`ValidateAgentName` the ADR names in Decision item 8
-  — the observable contract (`inv: local-name-validated`) is unchanged. Flagged for the plan↔ADR
-  resync.
-- `effectiveCatalog` clones the Standard `Skills`/`Agents` maps with a shallow `maps.Clone`, not the
-  ADR's literal "deep-copies" wording. Shallow suffices for `inv: local-catalog-clone`: synthesis
-  only inserts new keys and reads existing values, so no shared `SkillSpec`/`TargetSpec` (nor its
-  `Sections`/`Data`) is ever mutated. Flagged for the plan-ADR resync.
+- `ValidateArtifactName(kind, name)` is one shared validator (mirroring `ValidateDomainName`).
+  ADR-0068 Decision item 8 was amended (commit d9e6d09) to name this single shared validator,
+  matching the plan; the observable contract is `inv: local-name-validated`.
+- `effectiveCatalog` clones the Standard `Skills`/`Agents` maps with a shallow `maps.Clone`. Shallow
+  suffices for `inv: local-catalog-clone`: synthesis only inserts new keys and reads existing values,
+  so no shared `SkillSpec`/`TargetSpec` (nor its `Sections`/`Data`) is ever mutated. ADR-0068
+  Decision item 3 was amended (commit d9e6d09) to state "a shallow `maps.Clone` suffices", matching
+  the plan.
 - No awf-own enable arrays change, so awf does not dogfood a local artifact; the feature is covered
   by `internal/project` and `cmd/awf` tests, not by awf's own rendered tree.
