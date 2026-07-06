@@ -244,12 +244,14 @@ Show targets and their per-project enabled state, for all kinds or one (skill|ag
 `,
 	},
 	"new": {
-		maxPos: -1, summary: "Scaffold a new templated artifact — kind ∈ {adr}",
-		help: `Usage: awf new <kind> <title>
+		maxPos: -1, summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent}",
+		help: `Usage: awf new <kind> <args>
 
-Scaffold a new templated artifact. <kind> is adr.
+Scaffold a new artifact. <kind> is adr, skill, or agent.
 
-Example: awf new adr "Some Decision Title"
+- awf new adr "Some Decision Title"
+- awf new skill <name> "<description>"   (a project-local skill)
+- awf new agent <name> "<description>"   (a project-local agent)
 `,
 	},
 	"add": {
