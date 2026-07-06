@@ -183,6 +183,24 @@ type renderKindSpec struct {
 	defaults func(name string) map[string]any
 }
 
+// skillTID resolves a skill's template id: the shared base template for a
+// synthesized local entry, else the name-derived catalog path (ADR-0068).
+// invariant: local-renders-from-base
+func (p *Project) skillTID(n string) string {
+	if p.Cat.Skills[n].Base {
+		return baseSkillTID
+	}
+	return mustDescriptor("skills").tid(n)
+}
+
+// agentTID mirrors skillTID for agents.
+func (p *Project) agentTID(n string) string {
+	if p.Cat.Agents[n].Base {
+		return baseAgentTID
+	}
+	return mustDescriptor("agents").tid(n)
+}
+
 func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
@@ -233,7 +251,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		for _, spec := range []renderKindSpec{
 			{
 				kind: "skills", names: p.Cfg.Skills, target: t,
-				tid:      mustDescriptor("skills").tid,
+				tid:      p.skillTID,
 				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
 				outPath:  func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) },
 				// Doc-gated skill: omit from the render set when its required doc is not
@@ -244,7 +262,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			},
 			{
 				kind: "agents", names: p.Cfg.Agents, target: t,
-				tid:      mustDescriptor("agents").tid,
+				tid:      p.agentTID,
 				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
 				defaults: func(n string) map[string]any { return p.Cat.Agents[n].Data },

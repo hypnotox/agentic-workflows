@@ -528,3 +528,43 @@ func TestPathHelpers(t *testing.T) {
 		t.Errorf("LockPath = %q, want %q", got, want)
 	}
 }
+
+func TestValidateArtifactName(t *testing.T) {
+	if err := ValidateArtifactName("skill", "good-name"); err != nil {
+		t.Errorf("valid name rejected: %v", err)
+	}
+	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved"} {
+		if err := ValidateArtifactName("skill", bad); err == nil {
+			t.Errorf("expected %q rejected", bad)
+		}
+	}
+}
+
+func TestHasSidecar(t *testing.T) {
+	dir := writeConfig(t, "prefix: x\n")
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Absent (non-singleton).
+	if has, err := c.HasSidecar("skills", "nope"); err != nil || has {
+		t.Fatalf("expected absent, got has=%v err=%v", has, err)
+	}
+	// Present (non-singleton).
+	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "skills", "yep.yaml"), []byte("data: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if has, err := c.HasSidecar("skills", "yep"); err != nil || !has {
+		t.Fatalf("expected present, got has=%v err=%v", has, err)
+	}
+	// Singleton kind branch: sidecar lives at <root>/<kind>.yaml.
+	if err := os.WriteFile(filepath.Join(dir, "agents-doc.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if has, err := c.HasSidecar("agents-doc", ""); err != nil || !has {
+		t.Fatalf("expected singleton present, got has=%v err=%v", has, err)
+	}
+}

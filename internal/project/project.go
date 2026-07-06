@@ -51,12 +51,16 @@ func Open(root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	cat := catalog.Standard
 	targets, err := resolveTargets(cfg.Targets)
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{Root: root, Cfg: cfg, Cat: cat, Targets: targets}
+	p := &Project{Root: root, Cfg: cfg, Targets: targets}
+	cat, err := p.effectiveCatalog()
+	if err != nil {
+		return nil, err
+	}
+	p.Cat = cat
 	if err := p.validateAgainstCatalog(); err != nil {
 		return nil, err
 	}

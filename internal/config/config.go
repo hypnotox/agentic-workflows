@@ -170,6 +170,26 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	return s, nil
 }
 
+// HasSidecar reports whether a declaring sidecar file exists for an artifact —
+// the presence signal that marks a non-catalog name as an intentional local
+// artifact rather than a typo (ADR-0068).
+func (c *Config) HasSidecar(kind, name string) (bool, error) {
+	var rel string
+	if IsSingletonKind(kind) {
+		rel = kind + ".yaml"
+	} else {
+		rel = filepath.Join(kind, name+".yaml")
+	}
+	_, err := os.Stat(filepath.Join(c.root, rel))
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, fmt.Errorf("stat sidecar %s: %w", rel, err) // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
+}
+
 // IsSingletonKind reports whether kind is an always-on singleton whose sidecar lives at
 // <root>/<kind>.yaml and whose parts live under <root>/parts/<kind>/ (ADR-0021, ADR-0043).
 func IsSingletonKind(kind string) bool {
@@ -244,6 +264,23 @@ func ValidateDomainName(name string) error {
 	}
 	if hasPathSep(name) {
 		return fmt.Errorf("domain %q must not contain path separators or \"..\"", name)
+	}
+	return nil
+}
+
+// ValidateArtifactName reports whether name is usable as a local skill/agent
+// name (ADR-0068): non-empty, free of path separators or "..", and not in awf's
+// reserved "_"-prefixed namespace (which the base templates occupy).
+// invariant: local-name-validated
+func ValidateArtifactName(kind, name string) error {
+	if name == "" {
+		return fmt.Errorf("%s name must not be empty", kind)
+	}
+	if hasPathSep(name) {
+		return fmt.Errorf("%s %q must not contain path separators or \"..\"", kind, name)
+	}
+	if strings.HasPrefix(name, "_") {
+		return fmt.Errorf("%s %q must not start with \"_\" (reserved)", kind, name)
 	}
 	return nil
 }
