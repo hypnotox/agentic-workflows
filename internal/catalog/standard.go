@@ -97,6 +97,9 @@ var Standard = &Catalog{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "notes",
 		}},
+		"retrospective": {Core: true, Sections: []string{
+			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
+		}},
 		"refactor-coupling-audit": {Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",

@@ -688,6 +688,42 @@ func TestReviewingImplTemplate(t *testing.T) {
 	}
 }
 
+func TestRetrospectiveTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"skills": map[string]bool{"reviewing-impl": true, "proposing-adr": true},
+		"vars": map[string]any{
+			"gateCmd":           "./x gate",
+			"invariantTestPath": "./internal/...",
+		},
+		"layout": map[string]any{
+			"docs":        map[string]any{"pitfalls": "docs/pitfalls.md"},
+			"workflowRef": "docs/workflow.md",
+		},
+		"data": map[string]any{},
+	}
+
+	out := renderSkillGolden(t, "retrospective", data)
+
+	if !strings.Contains(out, "name: example-retrospective") {
+		t.Errorf("expected 'name: example-retrospective' in output:\n%s", out)
+	}
+
+	// Load-bearing phrases unique to the retrospective ladder (ADR-0067).
+	loadBearing := []string{
+		"main thread",
+		"promotion ladder",
+		"Invariant",
+		"example-proposing-adr",
+		"docs/pitfalls.md",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

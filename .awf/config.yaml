@@ -47,6 +47,7 @@ skills:
   - executing-plans
   - proposing-adr
   - refactor-coupling-audit
+  - retrospective
   - reviewing-adr
   - reviewing-impl
   - reviewing-plan
