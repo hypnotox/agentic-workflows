@@ -104,7 +104,7 @@ An observation is a **promotion candidate** when the main thread saw it recur wi
 
 Route each recurring, codifiable observation to the **strongest** rung it can support:
 
-1. **Invariant** — a load-bearing rule the project must remember. {{ if index .skills "proposing-adr" }}Invoke `{{ .prefix }}-proposing-adr` to record the decision{{ else }}Record the decision through the project's decision process{{ end }}, give it an `inv:` slug, and back it with a `<marker> invariant: <slug>` comment or test{{ with .vars.invariantTestPath }} (backing tests live under `{{ . }}`){{ end }}. The marker and globs are config-driven, so this works in any language.
+1. **Invariant** — a load-bearing rule the project must remember. {{ if index .skills "proposing-adr" }}Record the decision via `{{ .prefix }}-proposing-adr`{{ else }}Record the decision through the project's decision process{{ end }}, give it an `inv:` slug, and back it with a `<marker> invariant: <slug>` comment or test{{ with .vars.invariantTestPath }} (backing tests live under `{{ . }}`){{ end }}. The marker and globs are config-driven, so this works in any language.
 2. **Gate test or lint rule** — an ordinary mechanically-checkable rule that does not rise to an invariant. Add a test or linter rule so {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} catches it; no decision record needed.
 3. **Code-review focus item** — a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
 4. **Pitfalls note** — tricky knowledge that is not mechanically checkable.{{ if .layout.docs.pitfalls }} Add an entry to `{{ .layout.docs.pitfalls }}`.{{ else }} Record it in the project's pitfalls notes.{{ end }}
@@ -260,8 +260,12 @@ In `templates/skills/reviewing-impl/SKILL.md.tmpl`:
 3. In the `notes` section, change `This is the terminal step of the implementation phase: a
    single, independent` to `This is the independent review step of the implementation phase: a
    single, independent`.
+4. In the frontmatter `description` (line 3), change `Terminal step after implementation
+   commits.` to `Independent review step after implementation commits.` — `reviewing-impl` is no
+   longer the chain's terminal step (retrospective is), so its own self-description must not
+   claim otherwise.
 
-- [ ] Apply the three template edits and the catalog `Sections` edit. The reference to
+- [ ] Apply the four template edits and the catalog `Sections` edit. The reference to
   `{{ .prefix }}-retrospective` is unconditional, mirroring the existing unconditional
   `{{ .prefix }}-executing-plans` reference (both Core).
 
