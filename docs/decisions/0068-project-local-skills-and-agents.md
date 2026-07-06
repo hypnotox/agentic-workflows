@@ -72,8 +72,9 @@ project-defined entries is a distinct concern, and this ADR treats it as such.
    name).
 
 3. **The effective catalog is a per-project clone of `catalog.Standard` plus
-   synthesized local entries.** `project.Open` deep-copies the Standard
-   `Skills`/`Agents` maps into a fresh `Catalog` and inserts, for each local name,
+   synthesized local entries.** `project.Open` clones the Standard
+   `Skills`/`Agents` maps into a fresh `Catalog` (a shallow `maps.Clone` suffices —
+   synthesis is insert-only and never mutates an existing spec) and inserts, for each local name,
    a synthesized `SkillSpec`/`TargetSpec` with `Sections: ["content"]` marked to
    resolve to the base template. `catalog.Standard` is **never mutated**. Every
    catalog-ranging path — render, validate, list, add/remove — inherits locals
@@ -90,7 +91,8 @@ project-defined entries is a distinct concern, and this ADR treats it as such.
    `.awf/skills/parts/<name>/content.md` (agents: `.awf/agents/parts/<name>/…`),
    spliced verbatim with `{{=awf:key}}` placeholder substitution — never
    Go-template-executed (ADR-0057/0058, `inv: parts-raw`). The base template
-   sources the artifact's `name` (`{{ .prefix }}-<slug>`) and `description` from
+   sources the artifact's `name` (`{{ .prefix }}-<slug>` for skills; an unprefixed
+   `<slug>` for agents, matching existing awf agent naming) and `description` from
    synthesized/sidecar `data`, each guarded so an unset value degrades to
    publication-safe generic prose, never `<no value>` (ADR-0045).
 
@@ -107,10 +109,10 @@ project-defined entries is a distinct concern, and this ADR treats it as such.
    `new adr`'s single joined title. The `new` help text and the unknown-kind
    error (and its test) update in the same commit.
 
-8. **Local names are filesystem-validated.** A `ValidateSkillName`/
-   `ValidateAgentName` check rejects path separators and `..`, mirroring
-   `ValidateDomainName`, because a local name reaches `.awf/…` and `.claude/…`
-   paths. The reserved base-template name is not usable as a local name.
+8. **Local names are filesystem-validated.** A shared
+   `ValidateArtifactName(kind, name)` check rejects path separators and `..`,
+   mirroring `ValidateDomainName`, because a local name reaches `.awf/…` and
+   `.claude/…` paths. The reserved base-template name is not usable as a local name.
 
 9. **Harness-agnostic output is inherited, not built.** A local artifact renders
    once per enabled target through the existing multi-target loop (ADR-0037); a
