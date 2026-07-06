@@ -15,6 +15,7 @@ awf into a new repo is documented in the awf project itself.
 - `awf add <kind> <name>` / `awf remove <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact.
 - `awf list` — show the catalog and what is enabled.
 - `awf new adr "<title>"` — scaffold the next ADR.
+- `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` — scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
 - `awf upgrade` — migrate the config tree after upgrading the awf binary.
 - `awf audit` — report Conventional-Commits / workflow-conformance findings over the branch (advisory).
 - `awf commit-gate <file>` — validate one commit message (used by a commit-msg hook).
@@ -32,6 +33,14 @@ doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
 the template default. Convention parts are raw input: their content renders verbatim and is never
 run through the template engine — see [the documentation standard](doc-standard.md) for the
 authoring rules.
+
+**Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own.
+`awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a
+declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a
+built-in base template — once per enabled target — so a skill you define once is emitted for every
+agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md` (agents:
+`.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter
+description.
 <!-- awf:end -->
 
 <!-- awf:section placeholders -->
