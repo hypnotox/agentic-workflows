@@ -45,10 +45,14 @@ advisory — never part of the gate — and every survivor still needs you to ju
 is a real gap or an unkillable equivalent mutant.
 
 
-<!-- awf:edit tiers — default; create .awf/docs/parts/testing/tiers.md to override -->
+<!-- awf:edit tiers — from .awf/docs/parts/testing/tiers.md -->
 ## Tiers
 
-The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating.
+awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
+identical steps — the `full` argument is accepted only so the rendered pre-push hook
+payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
+tier to reach for; the whole gate is fast enough to run before every commit.
+
 
 <!-- awf:edit layout — from .awf/docs/parts/testing/layout.md -->
 ## Test layout

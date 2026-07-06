@@ -257,8 +257,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:b70350c57947d2ca77f239679dc889dbef00d8e23705e985f3c302fea56cd83e",
-      "configHash": "sha256:2dd79c3274d5e1a7af11e08f224544e81ec57c403dbee8b8964ea025e1b5342b",
-      "outputHash": "sha256:79145471865f29bf062126aa680d8d3ad42cd49fa1422d6c7fb8f798c5c56c2f"
+      "configHash": "sha256:fd0177b43665cd3f6a0744b0f1b5366af781f4ab32fbb2d5920aaee6fc0aa527",
+      "outputHash": "sha256:975e563b1f9178b5d17123c71a831258278951efbd390e6f55960016385434c2"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
@@ -281,8 +281,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:da59a4b1b21f219f0a15a1918a72b92223133f5fbdb777e3af5d92657d8f2e06",
-      "configHash": "sha256:bdb2fd3d038d018c8a3893b0d4ac477c378710aeb12c66a03182f94a780146ff",
-      "outputHash": "sha256:c38be6b5f1266fa326030fb622b018d0e548220d77c79662acfdc1dfb134dae3"
+      "configHash": "sha256:60729c860d476ba32b1cc9cfd9f2b733da0828994d993157b8cc8bbf2b60dbba",
+      "outputHash": "sha256:524ddfb6d14c07ef3467d5f6ad22a72ed06a0ddfa40b332564b2d799a3e97e12"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -300,7 +300,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:41a45eac431c3775f2af01e3b1d3bf48a3f7a4c47371ff7efd1068cec5439a8f"
+      "outputHash": "sha256:0522874864e0fc8d386e87aa5940a3da910fcd8ae2dec028318fcc87003124d6"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -312,19 +312,19 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:4d9df9faea182ca1c78d813a1092a7d6a22cdbf191bf92b184440d417aa6176f"
+      "outputHash": "sha256:e0571a04cb7b69d5e69ade82fa5892ef9b089d8bc455626ef733642ba1f1c1a0"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:3b9de6903e2d2d574b0c954c5eebd06a32a59fa34d8e2669716c7f327877104b"
+      "outputHash": "sha256:eee7061c4702730bac612226a4c116af5e877bfd55c780b3d165ee851bacad74"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:07419666c4af9479b93cebeeed2895917290ce22fbe71c198dd6d6404d688818",
-      "configHash": "sha256:3766e78bcf7f4676da1e206608564a9038e0876a1eb2fa6d8e75d115067ee19f",
-      "outputHash": "sha256:7a7235a4a0c35edcd8851a699a0de2b7d32b9e469be9bd980a30887c562478b5"
+      "configHash": "sha256:562cd29b6e197d040cd86db53e18a6ba738866ec8a32f62fdfad4cd7fdb98f10",
+      "outputHash": "sha256:1c43c17eb92e2e1fd92d980950da3490086d75ef933e8e3eb2fde61f3aec24cf"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
@@ -341,8 +341,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:f0537f89664422b541c9c0bc3b1daf959161641385fc75bb3cde8faaafdb7a1a",
-      "configHash": "sha256:25780c94a4d4059ff368fda2227fdb5eae074f8dede154e656468cb7bc5f604d",
-      "outputHash": "sha256:f596f88050fa6f7cb249504ef5c399a690e8827c39eab7843be2eaa10030c5c1"
+      "configHash": "sha256:f8966b6d8813e89bad47e20891d3a8b65918ea6689beafde3b900ecb1bc3be0d",
+      "outputHash": "sha256:bad306fdffc2fc79acf965be4399d774113929078017dfcb11a5cdd8ff991020"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
@@ -352,9 +352,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:ee0126635bd0867f7280470e5ce46df7c21e964f23dcd75a669949e4f8bff49b",
+      "templateHash": "sha256:c8b3ec7eca3158605ea7e51d1be2fc17f553a04bb645802f1f4fdbe02601dfb3",
       "configHash": "sha256:bdb2fd3d038d018c8a3893b0d4ac477c378710aeb12c66a03182f94a780146ff",
-      "outputHash": "sha256:1e037fd1e4497a269ab7f7cf6e59da36ece4eb9ebfe9d53c149b1992ba357542"
+      "outputHash": "sha256:e0d1ab29c6bc1888ab17c57ff648d43ecd647ae15eb4901970eadcecb25b2b36"
     }
   }
 }
