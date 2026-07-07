@@ -411,4 +411,4 @@ Per ADR-0073:
 
 - **Terminal handoff:** after Phase 3, invoke `awf-reviewing-impl` — which, thanks to Phase 2, now runs `./x audit-local` on this very effort. Expected result: **clean** (no adopter-facing path touched → no changelog entry required), a live self-test of the new tool.
 - **No CHANGELOG `[Unreleased]` entry** is added by this effort — it is repo-local tooling touching no adopter-facing path. This is the correct outcome, and the new tool would agree.
-- **Scope** is `tooling` throughout (its `audit.allowedScopes` meaning enumerates "./x, changelog, evals").
+- **Scope** is `tooling` for the two code phases (its `audit.allowedScopes` meaning enumerates "./x, changelog, evals"); the Phase 3 ADR status-flip commit uses `adr` (ADR markdown), per the ADR-lifecycle convention.
