@@ -107,3 +107,16 @@ lockless `.claude/awf/` tree is the tree-layout port's output, so 1). Treat any 
 in migration or versioning code as a red flag unless k describes the current head by
 definition.
 
+## Binary-side render changes do not reflag rendered outputs
+
+`awf check` hashes config bytes and template bytes — a change to the *Go render logic*
+(a new render key, a changed derivation like `taskSkills`) alters what a fresh render
+produces while every hash still matches, so check stays clean over now-stale outputs. This
+shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
+rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
+deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade advises
+"run awf sync" as a note instead of failing). The discipline: any commit that changes render
+output for unchanged config/templates must run `./x sync` *after the final code state* and
+commit the refreshed outputs — verify by grepping the rendered file for the change, not by
+trusting a clean check.
+
