@@ -36,15 +36,13 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
 // references that are unset (missing or empty) in config — the non-failing
 // render-completeness advisory (ADR-0045 item 4). One line per artifact with at
-// least one hit, sorted; adapter duplicates are collapsed by template id.
+// least one hit, sorted. Duplicates collapse by the note itself: adapter
+// duplicates produce identical notes, while base-shared artifacts (project-local
+// skills all render from one base template id) each report their own vars.
 func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	seen := map[string]bool{}
 	var notes []string
 	for _, f := range files {
-		if seen[f.TemplateID] {
-			continue
-		}
-		seen[f.TemplateID] = true
 		var unset []string
 		for _, r := range render.ReferencedVars(f.assembled) {
 			if v := p.Cfg.Vars[r]; v == nil || v == "" {
@@ -54,8 +52,13 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 		if len(unset) == 0 {
 			continue
 		}
-		notes = append(notes, fmt.Sprintf("%s references unset vars: %s",
-			artifactLabel(f.TemplateID), strings.Join(unset, ", ")))
+		note := fmt.Sprintf("%s references unset vars: %s",
+			artifactLabel(f.TemplateID), strings.Join(unset, ", "))
+		if seen[note] {
+			continue
+		}
+		seen[note] = true
+		notes = append(notes, note)
 	}
 	sort.Strings(notes)
 	return notes

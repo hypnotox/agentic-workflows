@@ -57,6 +57,30 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 	}
 }
 
+// Base-shared artifacts (project-local skills all render from one base
+// template id) must each report their own unset vars: the collapse key is the
+// note itself, not the template id, or the second local artifact is silently
+// skipped.
+func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
+	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []RenderedFile{
+		{Path: ".claude/skills/example-a/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.alpha }}"},
+		{Path: ".claude/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"},
+		{Path: ".cursor/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"}, // adapter duplicate
+	}
+	notes := p.unsetVarNotes(files)
+	joined := strings.Join(notes, "\n")
+	if !strings.Contains(joined, "alpha") || !strings.Contains(joined, "beta") {
+		t.Errorf("each base-shared artifact must report its own unset vars, got %v", notes)
+	}
+	if len(notes) != 2 {
+		t.Errorf("adapter duplicate must still collapse to one note, got %d: %v", len(notes), notes)
+	}
+}
+
 func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n",
 		map[string]string{
