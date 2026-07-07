@@ -38,7 +38,8 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 // render-completeness advisory (ADR-0045 item 4). One line per artifact with at
 // least one hit, sorted. Duplicates collapse by the note itself: adapter
 // duplicates produce identical notes, while base-shared artifacts (project-local
-// skills all render from one base template id) each report their own vars.
+// skills all render from one base template id) each report their own vars under
+// a path-derived label (see localLabel).
 func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	seen := map[string]bool{}
 	var notes []string
@@ -52,8 +53,12 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 		if len(unset) == 0 {
 			continue
 		}
+		label := artifactLabel(f.TemplateID)
+		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+			label = localLabel(f.TemplateID, f.Path)
+		}
 		note := fmt.Sprintf("%s references unset vars: %s",
-			artifactLabel(f.TemplateID), strings.Join(unset, ", "))
+			label, strings.Join(unset, ", "))
 		if seen[note] {
 			continue
 		}
@@ -108,6 +113,19 @@ func artifactLabel(tid string) string {
 	default:
 		return segs[0]
 	}
+}
+
+// localLabel labels a base-shared project-local artifact (ADR-0068) by its
+// output path: every local skill/agent renders from the same base template id,
+// so the template-derived label ("skill _base") cannot say which artifact a
+// note is about. The name keeps its on-disk form (skill directories keep the
+// "<prefix>-" prefix); adapter duplicates share one path-derived name, so note
+// dedup still collapses them.
+func localLabel(tid, path string) string {
+	if tid == baseSkillTID {
+		return "skill " + filepath.Base(filepath.Dir(path))
+	}
+	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")
 }
 
 // localOutPaths returns the conventional output paths awf would render a local

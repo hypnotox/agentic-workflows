@@ -70,13 +70,22 @@ func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
 		{Path: ".claude/skills/example-a/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.alpha }}"},
 		{Path: ".claude/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"},
 		{Path: ".cursor/skills/example-b/SKILL.md", TemplateID: baseSkillTID, assembled: "{{ .vars.beta }}"}, // adapter duplicate
+		{Path: ".claude/agents/reviewer.md", TemplateID: baseAgentTID, assembled: "{{ .vars.gamma }}"},
 	}
 	notes := p.unsetVarNotes(files)
 	joined := strings.Join(notes, "\n")
-	if !strings.Contains(joined, "alpha") || !strings.Contains(joined, "beta") {
-		t.Errorf("each base-shared artifact must report its own unset vars, got %v", notes)
+	for _, want := range []string{
+		// Labels derive from the output path — a template-derived "skill _base"
+		// could not say which local artifact a note is about.
+		"skill example-a references unset vars: alpha",
+		"skill example-b references unset vars: beta",
+		"agent reviewer references unset vars: gamma",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing note %q, got %v", want, notes)
+		}
 	}
-	if len(notes) != 2 {
+	if len(notes) != 3 {
 		t.Errorf("adapter duplicate must still collapse to one note, got %d: %v", len(notes), notes)
 	}
 }
