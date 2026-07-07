@@ -100,6 +100,13 @@ Per ADR-0073:
   // render-logic-only change under internal/render can slip it (ADR-0073).
   var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/"}
 
+  // rules is the repo-local audit's rule registry (ADR-0073 Decision 1): each rule
+  // reports findings over the range, and a second repo-local rule is a new function
+  // appended here plus nothing else. Today it holds the one changelog rule.
+  var rules = []func(git gitFunc, base, head string, log io.Writer) []finding{
+  	changelogRule,
+  }
+
   func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
   	rng := "origin/main..HEAD"
   	if len(args) >= 2 {
@@ -111,10 +118,12 @@ Per ADR-0073:
   		return 2
   	}
   	errs := 0
-  	for _, f := range changelogRule(git, base, head, stdout) {
-  		fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.label(), f.rule, f.detail)
-  		if f.sev == errorSev {
-  			errs++
+  	for _, rule := range rules {
+  		for _, f := range rule(git, base, head, stdout) {
+  			fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.label(), f.rule, f.detail)
+  			if f.sev == errorSev {
+  				errs++
+  			}
   		}
   	}
   	// invariant: repo-audit-error-exit
