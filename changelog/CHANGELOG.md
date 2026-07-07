@@ -150,6 +150,10 @@ query a single version or a range.
 
 ## [0.6.2] - 2026-07-03
 ### Others
+- The code-review agent's universal correctness lens is now paradigm-neutral: "race conditions,
+  missing locks" broadens to "concurrency hazards (data races, unsynchronised shared state)" and
+  the storage-layer concurrency clause is dropped — a project with a storage layer re-adds those
+  traps via the reviewer sidecar's project-focus data.
 - Add a general `awf:include` template-partials directive — awf-owned embedded partials under
   `templates/partials/`, spliced before section parsing, with the drift hash computed over the
   expanded source so a partial edit still flags dependent artifacts stale — and use it to
@@ -208,10 +212,17 @@ query a single version or a range.
   `example-bootstrap.sh` no longer trips the dead-skill-reference check.
 - Restore the ADR title heading dropped when a project overrides the ADR template's
   sections, and route the generated ACTIVE.md through the canonical generated-by banner.
+- The `add`/`remove`/`list` command help now enumerates the `target` kind those commands
+  already dispatch, and `awf init` help documents the `--answers` file schema (a flat
+  key→value map; multiselect answers comma-joined).
 ### Others
 - Sweep chain-prose seams, tool-specific vocabulary, and repo residue from the rendered
   templates; hook-command descriptor options no longer suggest unpinned `awf` invocations;
   the `domains` frontmatter guidance now scopes itself to projects with configured domains.
+- The `adr-lifecycle` skill drops the `Proposed→Deferred`/`Proposed→Declined` commit templates
+  (states outside the default 4-state lifecycle) and rewords deferral as a Context amendment on
+  a still-Proposed ADR; `refactor-coupling-audit` aligns its scope-shrink rule with that
+  amendment form, and `reviewing-plan-resync` gains the ADR-amendment return edge.
 
 ## [0.5.1] - 2026-07-01
 ### Bug fixes
