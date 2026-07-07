@@ -3,6 +3,7 @@ package audit
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -51,6 +52,21 @@ func TestRuleConventionalCommits(t *testing.T) {
 				t.Errorf("got %d errors, want %d", got, tc.wantErr)
 			}
 		})
+	}
+}
+
+// The subject-length limit counts characters, not bytes — a multi-byte subject
+// within the limit must not be flagged.
+func TestSubjectLengthCountsRunes(t *testing.T) {
+	s := Settings{SubjectMaxLength: 72}
+	// 21 runes before the umlauts + 48 'ä' runes = 69 runes, 117 bytes.
+	subject := "docs: präzisiere " + strings.Repeat("ä", 48) + " zwei"
+	if got := CheckConventionalCommit(Commit{Subject: subject}, s); len(got) != 0 {
+		t.Errorf("%d-rune subject flagged: %v", utf8.RuneCountInString(subject), got)
+	}
+	over := "docs: " + strings.Repeat("ä", 70)
+	if got := CheckConventionalCommit(Commit{Subject: over}, s); len(got) != 1 {
+		t.Errorf("76-rune subject not flagged: %v", got)
 	}
 }
 

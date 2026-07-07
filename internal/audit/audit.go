@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
@@ -144,8 +145,8 @@ func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.ScopeNames(), scope) {
 		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
 	}
-	if s.SubjectMaxLength > 0 && len(c.Subject) > s.SubjectMaxLength {
-		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", len(c.Subject), s.SubjectMaxLength)))
+	if n := utf8.RuneCountInString(c.Subject); s.SubjectMaxLength > 0 && n > s.SubjectMaxLength {
+		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, s.SubjectMaxLength)))
 	}
 	return out
 }
