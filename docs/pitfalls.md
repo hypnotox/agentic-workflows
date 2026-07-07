@@ -135,3 +135,17 @@ full token, strip `awfPlaceholderRE` matches before the brace check rather than 
 guard. (This very entry backslash-escapes its tokens because the pitfalls doc is itself a raw
 convention part run through the same substitution.)
 
+## A dispatched review subagent sometimes commits on a new branch, not `main`
+
+The `plan-reviewer` / `adr-reviewer` / `code-reviewer` subagents apply their fixes as commits;
+occasionally one creates a `resync/…` or `review/…` branch and commits there instead of on the
+working branch (`main`), leaving the main-thread session behind by those commits (seen with the
+resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort). It surfaces as
+`git branch --show-current` returning an unexpected branch after a subagent returns, or the
+reviewer reporting a commit SHA that `git log` on `main` does not show. Reconcile before
+continuing: `git checkout main && git merge --ff-only <branch> && git branch -d <branch>` (the
+branch is normally `main` plus the fix commits, so the fast-forward is clean; if it is not, the
+subagent also diverged and you must inspect). Prevention is partial — the dispatch brief can say
+"commit on the current branch; never create a branch" — so always verify the branch after a
+fix-applying subagent returns rather than trusting it stayed put.
+
