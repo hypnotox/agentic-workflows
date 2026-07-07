@@ -178,6 +178,44 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	}
 }
 
+// Singleton convention parts (.awf/parts/<kind>/<section>.md) are subject to
+// the same orphan scan as per-artifact parts: a typo'd section or an unknown
+// kind must be flagged instead of silently never rendering.
+func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
+		"parts/workflow/typo-section.md": "stray\n",
+		"parts/nonsense/x.md":            "stray\n",
+		"parts/workflow/principles.md":   "## Principles\n\nLegit override.\n",
+		"parts/loose.md":                 "not a kind dir\n",
+		"parts/workflow/notes.txt":       "not a part file\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orphaned := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind == "orphaned" {
+			orphaned[d.Path] = true
+		}
+	}
+	for _, want := range []string{".awf/parts/workflow/typo-section.md", ".awf/parts/nonsense"} {
+		if !orphaned[want] {
+			t.Errorf("expected orphan drift for %s; drift = %#v", want, drift)
+		}
+	}
+	if orphaned[".awf/parts/workflow/principles.md"] {
+		t.Error("declared-section singleton part wrongly flagged as orphan")
+	}
+}
+
 func sprintfVars(pitfalls string) string {
 	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  docCurrencyTargets: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
@@ -242,6 +243,42 @@ func (p *Project) orphans() ([]manifest.Drift, error) {
 						Kind: "orphaned", Detail: "convention part for a section not in the target's declared set",
 					})
 				}
+			}
+		}
+	}
+	// Singleton parts: parts/<kind>/<section>.md (ADR-0021, ADR-0043). An unknown
+	// kind directory or an undeclared section file would silently never render.
+	singletonSet := sliceSet(catalog.SingletonKinds())
+	spRoot := filepath.Join(config.RootDir(p.Root), "parts")
+	kinds, err := os.ReadDir(spRoot)
+	if err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: ReadDir on an existing parts dir fails only on a permission fault a test cannot trigger
+		return nil, err
+	}
+	for _, kd := range kinds {
+		if !kd.IsDir() {
+			continue
+		}
+		if !singletonSet[kd.Name()] {
+			drift = append(drift, manifest.Drift{
+				Path: filepath.Join(config.DirName, "parts", kd.Name()),
+				Kind: "orphaned", Detail: "convention parts for an unknown singleton kind",
+			})
+			continue
+		}
+		declared := sliceSet(p.Cat.Docs[kd.Name()].Sections)
+		sections, err := os.ReadDir(filepath.Join(spRoot, kd.Name()))
+		if err != nil { // coverage-ignore: ReadDir on a just-listed subdirectory fails only on a permission fault a test cannot trigger
+			continue
+		}
+		for _, sf := range sections {
+			if sf.IsDir() || !strings.HasSuffix(sf.Name(), ".md") {
+				continue
+			}
+			if section := strings.TrimSuffix(sf.Name(), ".md"); !declared[section] {
+				drift = append(drift, manifest.Drift{
+					Path: filepath.Join(config.DirName, "parts", kd.Name(), sf.Name()),
+					Kind: "orphaned", Detail: "convention part for a section not in the singleton's declared set",
+				})
 			}
 		}
 	}
