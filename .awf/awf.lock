@@ -130,9 +130,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:30de7e77790c0d30d98e66709e8b292c78cd5b46900349530e73be9de203404c",
+      "templateHash": "sha256:1ee2087483c79d653dbd5798bf887a4f009c03f77418b372399acde35e5016d8",
       "configHash": "sha256:60817872ce035c28eaad6deafbf87911afdd64160066afb00fff35f9adb72961",
-      "outputHash": "sha256:f9a0017742799fa10b5c47f3fab1bd17ed0bbe84f8a5cbc26181095d463829ce"
+      "outputHash": "sha256:7879d1c0b5381a9393ca390792e101f22ab6e7363e28807dad7b028d2eca6f98"
     },
     ".cursor/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -238,9 +238,9 @@
     },
     ".cursor/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:30de7e77790c0d30d98e66709e8b292c78cd5b46900349530e73be9de203404c",
+      "templateHash": "sha256:1ee2087483c79d653dbd5798bf887a4f009c03f77418b372399acde35e5016d8",
       "configHash": "sha256:60817872ce035c28eaad6deafbf87911afdd64160066afb00fff35f9adb72961",
-      "outputHash": "sha256:f9a0017742799fa10b5c47f3fab1bd17ed0bbe84f8a5cbc26181095d463829ce"
+      "outputHash": "sha256:7879d1c0b5381a9393ca390792e101f22ab6e7363e28807dad7b028d2eca6f98"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -340,9 +340,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:479783dbcb355e7195475f7ede5733b3169fce647f5ab47de18106669d2dd8e9",
+      "templateHash": "sha256:a11d3c0229ef603121e185995ddc398f30fd2ab93ee31b399f77aacbadacbf76",
       "configHash": "sha256:bdb2fd3d038d018c8a3893b0d4ac477c378710aeb12c66a03182f94a780146ff",
-      "outputHash": "sha256:9aa139e4626958f0f3569a1cd195b3de493294a95ab65742b1933ab424ceb6f0"
+      "outputHash": "sha256:e827e0a2fee1b2fff29e7a9527060f59c595d9a8b9c0b62f8da1ca887da9ff03"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",

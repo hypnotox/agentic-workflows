@@ -24,6 +24,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 
 <!-- awf:edit conventions-tasks — default; create .awf/skills/parts/writing-plans/conventions-tasks.md to override -->
 - **Tasks:** bite-sized (~2-5 min each), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
+- **Self-contained phases:** every phase's closing commit must pass `./x gate` on its own. Never introduce a function, type, or file whose first production use lands in a later phase — place each definition in the phase that first uses it, merging or reordering phases as needed.
 
 <!-- awf:edit conventions-no-placeholders — default; create .awf/skills/parts/writing-plans/conventions-no-placeholders.md to override -->
 - **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.

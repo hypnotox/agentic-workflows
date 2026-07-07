@@ -26,7 +26,8 @@ where the date is the day the plan is written (ISO-8601). Example:
   deleted).
 - Phases of bite-sized tasks (~2-5 min each) as `- [ ]` checkboxes, each naming exact paths, the
   exact content or diff, and the exact verifying command with its expected output.
-- A commit step at the end of each phase.
+- A commit step at the end of each phase. Each phase must pass the project's gate on its own:
+  code is introduced in the phase that first uses it, never a phase earlier.
 
 A plan is mutable while its ADR is `Proposed` (or while non-ADR work is in flight) and freezes once
 the ADR is `Accepted`/`Implemented`. Plans stay in the repository permanently as the historical

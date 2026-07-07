@@ -263,6 +263,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"bite-sized",
 		"exact file paths",
 		"No placeholders",
+		"whose first production use lands in a later phase",
 		"example-reviewing-plan",
 	}
 	for _, phrase := range loadBearing {
