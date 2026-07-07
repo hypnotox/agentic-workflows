@@ -697,6 +697,9 @@ func TestIsManagedMarkdownExcludesBootstrap(t *testing.T) {
 	if !isManagedMarkdown("docs/architecture.md.tmpl") {
 		t.Error("a managed doc template must remain in the dead-reference scan")
 	}
+	if isManagedMarkdown(memoryTID) {
+		t.Error("the memory gitignore template must not be scanned for dead references")
+	}
 }
 
 // --- NewADR ---

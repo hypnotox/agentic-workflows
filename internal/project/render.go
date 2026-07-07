@@ -20,6 +20,7 @@ import (
 const (
 	bridgeTID    = "claude/CLAUDE.md.tmpl"
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
+	memoryTID    = "memory/gitignore.tmpl"
 )
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
@@ -353,6 +354,16 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			out = append(out, hrf)
 		}
 	}
+	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered —
+	// ADR-0069, no config gate unlike bootstrap/hooks). Self-ignoring, so the
+	// working-memory convention's ephemerality is mechanical, not remembered.
+	// Deliberately non-configurable: no catalog spec, no sections, no CLI kind.
+	mrf, err := p.renderTarget("memory", "", memoryTID,
+		nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/memory/.gitignore")
+	if err != nil { // coverage-ignore: the memory gitignore template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
+		return nil, err
+	}
+	out = append(out, mrf)
 	return out, nil
 }
 
@@ -407,7 +418,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if strings.Contains(content, "<no value>") {
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset", outPath)
 	}
-	content = injectBanner(content)
+	content = injectBanner(content, tid)
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan))
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
@@ -430,7 +441,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 	if err != nil {
 		return RenderedFile{}, err
 	}
-	content = injectBanner(content)
+	content = injectBanner(content, "")
 	return RenderedFile{Path: p.layout().ActiveMd, Content: content}, nil
 }
 

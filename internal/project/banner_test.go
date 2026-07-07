@@ -10,7 +10,7 @@ import (
 // TestInjectBannerShebang covers the shebang branch: the banner becomes a
 // `#`-comment second line, after the shebang, so the script stays executable.
 func TestInjectBannerShebang(t *testing.T) {
-	got := injectBanner("#!/usr/bin/env bash\nset -e\n")
+	got := injectBanner("#!/usr/bin/env bash\nset -e\n", "")
 	lines := strings.Split(got, "\n")
 	if lines[0] != "#!/usr/bin/env bash" {
 		t.Fatalf("first line = %q, want the shebang", lines[0])
@@ -26,7 +26,7 @@ func TestInjectBannerShebang(t *testing.T) {
 
 // TestInjectBannerPlain covers the unchanged non-frontmatter HTML-comment branch.
 func TestInjectBannerPlain(t *testing.T) {
-	got := injectBanner("# Title\n\nbody\n")
+	got := injectBanner("# Title\n\nbody\n", "")
 	if !strings.HasPrefix(got, "<!-- "+bannerText+" -->\n") {
 		t.Fatalf("plain content missing leading HTML banner: %q", got)
 	}
@@ -35,10 +35,20 @@ func TestInjectBannerPlain(t *testing.T) {
 // TestInjectBannerFrontmatter covers the unchanged frontmatter branch: the banner
 // lands after the closing `---`.
 func TestInjectBannerFrontmatter(t *testing.T) {
-	got := injectBanner("---\nname: x\n---\nbody\n")
+	got := injectBanner("---\nname: x\n---\nbody\n", "")
 	want := "---\nname: x\n---\n<!-- " + bannerText + " -->\nbody\n"
 	if got != want {
 		t.Fatalf("frontmatter banner = %q, want %q", got, want)
+	}
+}
+
+// The memory gitignore is neither markdown nor a shebang script: its banner is a
+// leading #-comment keyed on the template id (ADR-0069).
+func TestInjectBannerMemoryGitignore(t *testing.T) {
+	got := injectBanner("*\n!.gitignore\n", memoryTID)
+	want := "# " + bannerText + "\n*\n!.gitignore\n"
+	if got != want {
+		t.Errorf("memory gitignore banner:\ngot  %q\nwant %q", got, want)
 	}
 }
 

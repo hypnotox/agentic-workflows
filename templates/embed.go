@@ -3,5 +3,5 @@ package templates
 
 import "embed"
 
-//go:embed all:skills all:agents agents-doc docs domains claude adr-readme adr-template plans-readme bootstrap hooks partials
+//go:embed all:skills all:agents agents-doc docs domains claude adr-readme adr-template plans-readme bootstrap hooks partials memory
 var FS embed.FS
