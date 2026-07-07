@@ -4,9 +4,10 @@
   `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
   subcommands. The gated commands enforce the binary-version gate (ADR-0010, ADR-0039) before
   opening the project.
-- **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`** — repo-only gate and triage helpers:
-  the 100% statement-coverage floor (ADR-0012), the dead-code gate (ADR-0063), and the advisory
-  mutation-survivor report (ADR-0066). Not part of the rendered standard.
+- **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/repoaudit`** — repo-only gate,
+  triage, and audit helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
+  (ADR-0063), the advisory mutation-survivor report (ADR-0066), and the repo-local changelog
+  conformance audit (`./x audit-local`, ADR-0073). Not part of the rendered standard.
 - **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.

@@ -78,8 +78,14 @@ case "$cmd" in
     fi
     go run ./cmd/mutants "$tmp"
     ;;
+  audit-local)
+    # Repo-local conformance audit (ADR-0073) — repo-specific, NOT part of the shipped
+    # awf audit. Default range origin/main..HEAD; pass <base>..<head> to scope it (the
+    # reviewing-impl override passes the review's session range). Never wired into ./x gate.
+    go run ./cmd/repoaudit "$@"
+    ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac
