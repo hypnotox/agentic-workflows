@@ -128,6 +128,26 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	}
 }
 
+// Stub notes are advisory: they print and never affect the exit code.
+// invariant: stub-advisory-nonfailing
+func TestCheckStubNotesAreNonFailing(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
+		"<!-- awf:stub -->\nstarter notes\n")
+	if err := runSync(root, io.Discard); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	var out bytes.Buffer
+	if err := runCheck(root, &out); err != nil {
+		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
+	}
+	if !strings.Contains(out.String(), "note: ") ||
+		!strings.Contains(out.String(), "has unauthored stub content — stub-marked parts: notes") {
+		t.Errorf("missing stub note, got:\n%s", out.String())
+	}
+}
+
 func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")

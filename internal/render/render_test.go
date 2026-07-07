@@ -88,6 +88,73 @@ func TestEmptyPartRendersEmptyNotDropped(t *testing.T) {
 	}
 }
 
+func TestEditPointerStub(t *testing.T) {
+	stubTmpl := "<!-- awf:section notes stub -->\nNOTE\n<!-- awf:end -->\n"
+	asm, parts := Assemble(ParseSections(stubTmpl), map[string]SectionPlan{"notes": {EditPath: ".awf/x.md"}})
+	out, err := Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit notes — stub; replace by creating .awf/x.md -->") {
+		t.Errorf("stub default must render the stub pointer:\n%s", out)
+	}
+	asm, parts = Assemble(ParseSections(stubTmpl),
+		map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM", EditPath: ".awf/x.md"}})
+	out, err = Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
+		t.Errorf("part-backed stub section must keep the from-pointer:\n%s", out)
+	}
+	// Non-stub default pointer unchanged (also asserted by TestRenderDefault).
+	asm, parts = Assemble(ParseSections(tmpl), nil)
+	out, err = Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit notes — default;") {
+		t.Errorf("non-stub default pointer changed:\n%s", out)
+	}
+}
+
+func TestStubSections(t *testing.T) {
+	src := "<!-- awf:section dropped stub -->\nD\n<!-- awf:end -->\n" +
+		"<!-- awf:section parted -->\nP\n<!-- awf:end -->\n" +
+		"<!-- awf:section stubbed stub -->\nS\n<!-- awf:end -->\n" +
+		"<!-- awf:section plain -->\nN\n<!-- awf:end -->\n"
+	plan := map[string]SectionPlan{
+		"dropped": {Drop: true},
+		"parted":  {HasPart: true, PartBody: "<!-- awf:stub -->\nwip\n", PartStub: true},
+		"stubbed": {},
+		"plain":   {},
+	}
+	defaults, parts := StubSections(ParseSections(src), plan)
+	if len(defaults) != 1 || defaults[0] != "stubbed" {
+		t.Errorf("defaults = %#v, want [stubbed]", defaults)
+	}
+	if len(parts) != 1 || parts[0] != "parted" {
+		t.Errorf("parts = %#v, want [parted]", parts)
+	}
+}
+
+func TestAssembleStubPartRendersVerbatim(t *testing.T) {
+	plan := map[string]SectionPlan{"notes": {
+		HasPart:  true,
+		PartBody: "<!-- awf:stub -->\nstarter prose\n",
+		PartStub: true,
+		EditPath: ".awf/x.md",
+	}}
+	asm, parts := Assemble(ParseSections(tmpl), plan)
+	out, err := Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:stub -->\nstarter prose") {
+		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", out)
+	}
+}
+
 func TestExecuteParseError(t *testing.T) {
 	_, err := Execute("{{ .prefix", sampleData(), nil, "test")
 	if err == nil {

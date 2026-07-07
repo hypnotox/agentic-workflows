@@ -17,15 +17,26 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
-// UnsetVarNotes reports, per rendered artifact, the vars its assembled template
-// references that are unset (missing or empty) in config — the non-failing
-// render-completeness advisory (ADR-0045 item 4). One line per artifact with at
-// least one hit, sorted; adapter duplicates are collapsed by template id.
-func (p *Project) UnsetVarNotes() ([]string, error) {
+// AdvisoryNotes returns the non-failing render advisories in print order — the
+// ADR-0045 unset-var notes, then the ADR-0070 stub notes — computed from one
+// RenderAll pass plus the domain-doc generation, which renders outside it.
+func (p *Project) AdvisoryNotes() ([]string, error) {
 	files, err := p.RenderAll()
 	if err != nil {
 		return nil, err
 	}
+	dds, err := p.generateDomainDocs()
+	if err != nil {
+		return nil, err
+	}
+	return append(p.unsetVarNotes(files), stubNotes(append(files, dds...))...), nil
+}
+
+// unsetVarNotes reports, per rendered artifact, the vars its assembled template
+// references that are unset (missing or empty) in config — the non-failing
+// render-completeness advisory (ADR-0045 item 4). One line per artifact with at
+// least one hit, sorted; adapter duplicates are collapsed by template id.
+func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	seen := map[string]bool{}
 	var notes []string
 	for _, f := range files {
@@ -46,7 +57,33 @@ func (p *Project) UnsetVarNotes() ([]string, error) {
 			artifactLabel(f.TemplateID), strings.Join(unset, ", ")))
 	}
 	sort.Strings(notes)
-	return notes, nil
+	return notes
+}
+
+// stubNotes reports, per rendered artifact, its unauthored stub content —
+// stub-attributed sections still at default and awf:stub-marked parts. One line
+// per output path: artifacts sharing a template id (local artifacts, the domain
+// docs) each report independently, and a multi-target project prints one line
+// per target path by design (ADR-0070).
+// invariant: stub-notes-path-keyed
+func stubNotes(files []RenderedFile) []string {
+	var notes []string
+	for _, f := range files {
+		if len(f.stubDefaults) == 0 && len(f.stubParts) == 0 {
+			continue
+		}
+		var clauses []string
+		if len(f.stubDefaults) > 0 {
+			clauses = append(clauses, "sections at stub default: "+strings.Join(f.stubDefaults, ", "))
+		}
+		if len(f.stubParts) > 0 {
+			clauses = append(clauses, "stub-marked parts: "+strings.Join(f.stubParts, ", "))
+		}
+		notes = append(notes, fmt.Sprintf("%s has unauthored stub content — %s",
+			f.Path, strings.Join(clauses, "; ")))
+	}
+	sort.Strings(notes)
+	return notes
 }
 
 // artifactLabel derives a human label from a template id: catalog kinds get

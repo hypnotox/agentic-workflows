@@ -1,6 +1,9 @@
 package render
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseSectionsSplitsLiteralAndSections(t *testing.T) {
 	src := "# Title\n\n<!-- awf:section surfaces -->\nbody one\n<!-- awf:end -->\n\ntail\n"
@@ -58,6 +61,67 @@ func TestParseSectionsMultiLineBody(t *testing.T) {
 	}
 	if sec.Name != "multi" || sec.Text != "line one\nline two" {
 		t.Errorf("section = %#v", *sec)
+	}
+}
+
+func TestParseSectionsStubAttribute(t *testing.T) {
+	segs := ParseSections("<!-- awf:section a stub -->\nbody\n<!-- awf:end -->\n")
+	if len(segs) < 1 || !segs[0].IsSection {
+		t.Fatalf("want a section segment first, got %#v", segs)
+	}
+	if segs[0].Name != "a" || !segs[0].Stub || segs[0].Text != "body" {
+		t.Errorf("stub section = %#v", segs[0])
+	}
+	plain := ParseSections("<!-- awf:section a -->\nbody\n<!-- awf:end -->\n")
+	if !plain[0].IsSection || plain[0].Stub {
+		t.Errorf("plain section must parse with Stub=false: %#v", plain[0])
+	}
+}
+
+func TestParseSectionsUnknownAttributeDoesNotParse(t *testing.T) {
+	src := "<!-- awf:section a bogus -->\nbody\n<!-- awf:end -->\n"
+	segs := ParseSections(src)
+	for _, s := range segs {
+		if s.IsSection {
+			t.Fatalf("unknown attribute must not parse as a section: %#v", segs)
+		}
+	}
+	err := CheckResidualMarkers(src)
+	if err == nil {
+		t.Fatal("expected residual-marker error for the malformed marker, got nil")
+	}
+	if !strings.Contains(err.Error(), "malformed awf:section/awf:end marker") {
+		t.Errorf("error missing malformed-marker context: %q", err.Error())
+	}
+}
+
+func TestHasStubMarker(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{"exact line", "<!-- awf:stub -->\nprose\n", true},
+		{"surrounding whitespace", "  <!-- awf:stub -->  \nprose\n", true},
+		{"quoted inline", "see `<!-- awf:stub -->` for details\n", false},
+		{"absent", "just prose\n", false},
+	}
+	for _, c := range cases {
+		if got := HasStubMarker(c.body); got != c.want {
+			t.Errorf("%s: HasStubMarker = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestCheckResidualMarkersBareTokenLegal(t *testing.T) {
+	if err := CheckResidualMarkers("A managed doc is a sequence of `awf:section` blocks.\n"); err != nil {
+		t.Errorf("bare backtick-quoted token must be legal, got %v", err)
+	}
+	if err := CheckResidualMarkers("text\n<!-- awf:end -->\n"); err == nil {
+		t.Error("stray awf:end comment must be a residual-marker error")
+	}
+	if err := CheckResidualMarkers("text\n<!--  awf:section x -->\n"); err == nil {
+		t.Error("whitespace-padded awf:section comment must be a residual-marker error")
 	}
 }
 

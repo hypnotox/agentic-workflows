@@ -38,8 +38,13 @@ type RenderedFile struct {
 	TemplateHash string
 	ConfigHash   string
 	// assembled is the executed template source (post section-overlay, pre
-	// execution); UnsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
+	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
+	// stubDefaults / stubParts feed the ADR-0070 unauthored-content advisory:
+	// stub-attributed sections rendered at default, and convention parts
+	// carrying the awf:stub marker. Consumed path-keyed by stubNotes.
+	stubDefaults []string
+	stubParts    []string
 }
 
 // data assembles the template data namespace for a target: the prefix, the
@@ -151,6 +156,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			}
 			sp.HasPart = true
 			sp.PartBody = body
+			sp.PartStub = render.HasStubMarker(body)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
@@ -410,7 +416,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(render.ParseSections(expanded), plan)
+	segs := render.ParseSections(expanded)
+	assembled, parts := render.Assemble(segs, plan)
+	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through RenderAll; its error branch is unit-tested in internal/render
+		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+	}
+	stubDefaults, stubParts := render.StubSections(segs, plan)
 	content, err := render.Execute(assembled, data, parts, tid)
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
@@ -429,7 +440,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// partial flags every including artifact stale (ADR-0052).
 		// invariant: include-in-templatehash
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
-		assembled: assembled,
+		assembled: assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 	}, nil
 }
 
@@ -467,7 +478,8 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		if err != nil { // coverage-ignore: .data.domain/.data.decisions are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}
-		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content})
+		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
+			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts})
 	}
 	return out, nil
 }

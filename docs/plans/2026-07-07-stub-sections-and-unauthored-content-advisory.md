@@ -202,13 +202,12 @@ HEAD as of 4350b54 and may need trivial re-anchoring after the ADR-0069 work lan
     `PartBody` contains the marker line: `Execute` output contains `<!-- awf:stub -->` verbatim
     (backs `inv: stub-part-verbatim` behaviourally).
 
-- [ ] 1.5 Run `go test ./internal/render/`. Expected: `ok`. Run `./x gate`; expected: green,
-  `coverage: 100.0%`.
+- [ ] 1.5 Run `go test ./internal/render/`. Expected: `ok`.
 
-- [ ] 1.6 Commit:
-  `feat(rendering): parse stub section markers and guard residual markers`
-  (body: ADR-0070 Decision items 1-3 and 5 at the render layer; the guard closes the
-  malformed-marker leak in production).
+- [ ] 1.6 **Amended during execution:** Phase 1 cannot commit alone — the ADR-0063 dead-code gate
+  fails on `StubSections`/`HasStubMarker`/`CheckResidualMarkers` having no production caller until
+  Phase 2 wires them (`./x gate` output: `unreachable func`). Phases 1 and 2 therefore land as one
+  commit at task 2.7; there is no Phase 1 commit.
 
 ## Phase 2 — project threading, AdvisoryNotes, CLI printing
 
@@ -382,10 +381,11 @@ HEAD as of 4350b54 and may need trivial re-anchoring after the ADR-0069 work lan
   defaults clause; `TestAdvisoryNotesSurfacesDomainDocError` covers `AdvisoryNotes`'
   domain-doc error branch.
 
-- [ ] 2.7 Commit:
-  `feat(rendering): surface unauthored-stub advisory from check and init`
-  (body: ADR-0070 Decision 4 — path-keyed non-failing notes, one render pass with the unset-var
-  advisory; UnsetVarNotes folds into AdvisoryNotes).
+- [ ] 2.7 Commit Phases 1+2 together (see amended task 1.6):
+  `feat(rendering): add stub markers and unauthored-content advisory`
+  (body: ADR-0070 Decision items 1-5 — marker grammar, stub pointer, residual guard, and the
+  path-keyed non-failing AdvisoryNotes from check/init; UnsetVarNotes folds into AdvisoryNotes;
+  phases merged because the dead-code gate forbids uncalled production functions).
 
 ## Phase 3 — `awf new` starter parts carry the marker
 

@@ -91,14 +91,14 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err := runSync(root, stdout); err != nil {
 		return err
 	}
-	// Post-init orientation: the same unset-var notes awf check prints
-	// (ADR-0045), then a fixed next-steps block.
+	// Post-init orientation: the same advisory notes awf check prints
+	// (ADR-0045, ADR-0070), then a fixed next-steps block.
 	np, err := project.Open(root)
 	if err != nil { // coverage-ignore: the chained runSync just opened this same tree
 		return err
 	}
-	notes, err := np.UnsetVarNotes()
-	if err != nil { // coverage-ignore: RenderAll succeeded moments ago inside runSync
+	notes, err := np.AdvisoryNotes()
+	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs — both AdvisoryNotes inputs succeeded moments ago
 		return err
 	}
 	for _, n := range notes {

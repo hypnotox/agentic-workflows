@@ -21,10 +21,13 @@ func runCheck(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	notes, err := p.UnsetVarNotes()
+	notes, err := p.AdvisoryNotes()
 	if err != nil {
 		return err
 	}
+	// Advisories are printed before drift and never feed the failure count —
+	// unauthored stub content cannot fail a gated command (ADR-0070).
+	// invariant: stub-advisory-nonfailing
 	for _, n := range notes {
 		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
