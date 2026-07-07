@@ -29,6 +29,10 @@ type SkillSpec struct {
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
 	Core          bool     `yaml:"core"`
+	// Chain marks a workflow-chain progression node (ADR-0054). A standard skill
+	// that is not Chain is a task skill; Core covers default scaffolding, not
+	// chain membership — adr-lifecycle is core yet a task skill.
+	Chain bool `yaml:"chain"`
 	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
 	// template id to the shared base template, not the name-derived catalog path.
 	// Standard skills never set it.

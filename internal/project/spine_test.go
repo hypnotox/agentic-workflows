@@ -2,6 +2,8 @@ package project
 
 import (
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -988,19 +990,26 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// Each task skill appears in the AGENTS.md task-skills sentence iff enabled;
-// the sentence renders when any of the four is (ADR-0046 follow-up sweep).
+// The AGENTS.md task-skills sentence derives from the catalog's enabled
+// non-core skills — every catalog task skill appears iff enabled (a hand
+// enumeration could never mention a newer one like refactor-coupling-audit),
+// and disabled ones stay absent (ADR-0046 follow-up sweep).
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
-	data := map[string]any{
-		"prefix": "example",
-		"vars":   map[string]any{"gateCmd": "make gate"},
-		"layout": testLayout(),
-		"data":   map[string]any{},
-		"skills": map[string]bool{"brainstorming": true, "bugfix": true},
+	root := scaffold(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - refactor-coupling-audit\nagents: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
-	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`.") {
-		t.Errorf("expected a bugfix-only task-skills sentence:\n%s", out)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	guide, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := string(guide)
+	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`, `example-refactor-coupling-audit`.") {
+		t.Errorf("expected a catalog-derived task-skills sentence:\n%s", out)
 	}
 	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle"} {
 		if strings.Contains(out, banned) {

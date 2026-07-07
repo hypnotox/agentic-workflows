@@ -9,8 +9,11 @@ import (
 	"slices"
 	"strings"
 
+	"maps"
+
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -57,9 +60,25 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"layout":           p.layout().templateMap(),
 		"version":          Version,
 		"skills":           p.effSkills,
+		"taskSkills":       p.taskSkillsDisplay(),
 		"commitScopes":     p.commitScopesDisplay(),
 		"invariantMarkers": p.invariantMarkersDisplay(),
 	}
+}
+
+// taskSkillsDisplay returns the enabled catalog task skills — standard,
+// non-Chain entries of the effective set — as "`<prefix>-<name>`, …", or ""
+// when none are enabled. Derived from the catalog so a new task skill cannot
+// be dropped from the guide's sentence by a forgotten template edit.
+func (p *Project) taskSkillsDisplay() string {
+	var quoted []string
+	for _, name := range slices.Sorted(maps.Keys(p.effSkills)) {
+		if sp, ok := catalog.Standard.Skills[name]; !ok || sp.Chain {
+			continue
+		}
+		quoted = append(quoted, "`"+p.Cfg.Prefix+"-"+name+"`")
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list

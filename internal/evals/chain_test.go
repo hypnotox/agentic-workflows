@@ -3,8 +3,11 @@ package evals
 import (
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
 // read reads path or fails the test.
@@ -111,6 +114,24 @@ const (
 	chainRoot     = "brainstorming"
 	chainTerminal = "retrospective"
 )
+
+// The catalog's Chain flags and this suite's pinned node set are the same
+// classification — a new chain skill must land in both, or the guide's
+// task-skills derivation and the connectivity graph disagree.
+func TestChainFlagsMatchPinnedNodes(t *testing.T) {
+	var flagged []string
+	for name, sp := range catalog.Standard.Skills {
+		if sp.Chain {
+			flagged = append(flagged, name)
+		}
+	}
+	slices.Sort(flagged)
+	pinned := slices.Clone(chainNodes)
+	slices.Sort(pinned)
+	if !slices.Equal(flagged, pinned) {
+		t.Errorf("catalog Chain flags %v != pinned chain nodes %v", flagged, pinned)
+	}
+}
 
 // chainEdges returns, for each chain node, the set of other chain nodes it names
 // on an invocation-verb line in the full-catalog render.
