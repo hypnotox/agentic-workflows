@@ -60,6 +60,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0066: Advisory mutation-testing command](../decisions/0066-advisory-mutation-testing-command.md)
 - [ADR-0067: Retrospective terminal step and finding-promotion ladder](../decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md)
 
+### Proposed
+
+- [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
