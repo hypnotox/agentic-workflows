@@ -99,6 +99,30 @@ func TestSectionOrphanDetection(t *testing.T) {
 	}
 }
 
+// TestAgentsDocSectionParity asserts the agents-doc template's marker-block set
+// matches its catalog-declared sections, order-exact. The AgentsDoc entry is
+// excluded from both TestDocsSectionParity (Mandatory skip) and
+// TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
+// test a guide section could half-land with a broken override path (ADR-0069).
+// invariant: agents-doc-section-parity
+func TestAgentsDocSectionParity(t *testing.T) {
+	cat := catalog.Standard
+	entry := cat.Docs["agents-doc"]
+	src, err := fs.ReadFile(templates.FS, entry.TID)
+	if err != nil {
+		t.Fatalf("read %s: %v", entry.TID, err)
+	}
+	var markers []string
+	for _, s := range render.ParseSections(string(src)) {
+		if s.IsSection {
+			markers = append(markers, s.Name)
+		}
+	}
+	if strings.Join(markers, ",") != strings.Join(entry.Sections, ",") {
+		t.Errorf("%s markers %v != catalog sections %v", entry.TID, markers, entry.Sections)
+	}
+}
+
 // invariant: adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard

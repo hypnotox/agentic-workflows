@@ -181,7 +181,7 @@ var Standard = &Catalog{
 		// (empty Path/TemplateKey, AgentsDoc true); the four DocumentMap docs are cited
 		// in AGENTS.md's document map via .layout.*.
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
-			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "commands", "document-map",
+			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
 		"adr-readme":   {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "active-md"}},
 		"adr-template": {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},

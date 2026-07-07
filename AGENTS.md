@@ -60,6 +60,7 @@ Hard rules every change must respect:
 - **Full-catalog eval coverage.** The golden-task eval suite (`internal/evals`) renders every catalog skill and agent via a full `Project.SyncReport` and asserts cross-artifact workflow seams; its fixture enabled-set is derived from `catalog.Standard` so it cannot silently stop covering a new chain artifact. (ADR-0053)
 - **Uniform machine-enforced chain handoffs.** Every catalog skill/agent template's `awf:section` markers match its catalog-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`). (ADR-0054)
 - **Unified compile-time doc model.** The catalog is a compile-time Go value (`catalog.Standard`, no embedded YAML), and every doc — toggleable or always-on singleton — is one `DocEntry` from which every projection (`SingletonKinds`, `plainSingletons`, the `.layout` paths, the toggleable pool) derives; adding a mandatory doc is a single entry. Config-tree render units — the bootstrap, the hook payloads, and the working-memory `.gitignore` (ADR-0069) — are deliberately outside the doc collection: dedicated render blocks, no `DocEntry`. (ADR-0060, ADR-0061)
+- **Ephemeral working memory.** `awf sync` always renders the self-ignoring `.awf/memory/.gitignore`; working-memory files are session state — never committed, never cited by an ADR, plan, or commit message, deleted when the chain terminates. (ADR-0069)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
@@ -75,6 +76,16 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 **Chain skills** (invoke in order): `awf-brainstorming`, `awf-proposing-adr`, `awf-reviewing-adr`, `awf-writing-plans`, `awf-reviewing-plan`, `awf-reviewing-plan-resync`, `awf-executing-plans` / `awf-subagent-driven-development`, `awf-reviewing-impl`, `awf-retrospective`. **Task skills** (as needed): `awf-tdd`, `awf-bugfix`, `awf-debugging`, `awf-adr-lifecycle`.
 
 Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
+
+<!-- awf:edit working-memory — default; create .awf/parts/agents-doc/working-memory.md to override -->
+## Working memory
+
+Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
+
+- **On starting work, check `.awf/memory/`.** If an effort file matches the task at hand, resume from its recorded `Phase:`/`Next:` lines instead of restarting. If several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume — never silently resume a stale effort.
+- **While working, prefer just-in-time retrieval.** Hold lightweight identifiers — file paths, ADR numbers, doc names — in the memory file and read the sources on demand rather than preloading them.
+- **File skeleton** (a convention, not a schema — no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
+- **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue — delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
 
 <!-- awf:edit commands — default; create .awf/parts/agents-doc/commands.md to override -->
 ## Commands
