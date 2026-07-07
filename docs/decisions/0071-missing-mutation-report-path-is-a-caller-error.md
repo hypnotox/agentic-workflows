@@ -50,8 +50,16 @@ ADR-0066 is Implemented and append-only.
   trust-nothing stance on timeouts.
 - Any caller that relied on missing-file tolerance must pre-create the file, as `./x mutants`
   always has. No such caller exists in this repository.
-- ADR-0066's prose retains the outdated clause; readers following its `related:` link land
-  here. The living AGENTS.md invariant bullet was updated with the code in commit 867e489.
+- ADR-0066's prose retains the outdated clause, and its frozen body cannot point here; the
+  override is discoverable through this ADR's `related: [66]` back-link and the shared
+  tooling domain index, per the partial-item supersedence convention. The living AGENTS.md
+  invariant bullet was updated with the code in commit 867e489.
+- When this ADR flips to Implemented, the same commit regenerates `docs/decisions/ACTIVE.md`
+  via `./x sync` and updates the mutation-triage bullet's citation in `.awf/agents-doc.yaml`
+  from `(ADR-0066)` to `(ADR-0066, ADR-0071)` — the bullet already states the narrowed
+  behaviour but still cites only the ADR that decided the opposite. The backing test
+  (`// invariant: mutants-missing-report-errors`, `cmd/mutants/main_test.go`) already exists,
+  so the flip needs no code change.
 
 ## Alternatives Considered
 
@@ -60,3 +68,4 @@ ADR-0066 is Implemented and append-only.
 | Keep missing-file tolerance (ADR-0066 as decided) | Its premise is false under the shipped mktemp wrapper; the tolerance only shields caller errors as false-clean runs. |
 | Fully supersede ADR-0066 | Every other clause (deterministic recipe, advisory-only, timeout distrust) stands unchanged; a full rewrite would churn a live decision for one clause. |
 | Update only the living docs (no ADR) | This is a reversal of a decided clause in an Implemented, append-only ADR — precedent (da1dac3) covers extensions, not reversals; the record must show where the contract changed. |
+| Drop the `./x` mktemp pre-creation instead, keeping ADR-0066's no-file-means-empty reading | Repairs only the one wrapper: a typo'd path in a direct `go run ./cmd/mutants` invocation would still print a false clean run. Pre-creation makes file existence a guarantee the tool can enforce for every caller. |
