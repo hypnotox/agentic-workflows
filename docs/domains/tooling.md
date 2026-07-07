@@ -61,9 +61,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0067: Retrospective terminal step and finding-promotion ladder](../decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md)
 - [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
 - [ADR-0070: Stub sections and the unauthored-content advisory](../decisions/0070-stub-sections-and-the-unauthored-content-advisory.md)
-
-### Proposed
-
 - [ADR-0071: Missing mutation-report path is a caller error](../decisions/0071-missing-mutation-report-path-is-a-caller-error.md)
 
 ### Superseded by ADR-0032
