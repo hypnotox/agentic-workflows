@@ -67,30 +67,54 @@ func stripCodeSpans(line string) string {
 	return b.String()
 }
 
-// lineLinks extracts the target of every [text](target) on a single line.
+// lineLinks extracts the target of every [text](target) on a single line. The
+// closing ] is matched with bracket nesting so a link whose text is itself a
+// link — a badge, [![alt](img)](target) — yields both the inner image target
+// and the outer destination, not just the inner one.
 func lineLinks(line string) []string {
 	var out []string
-	for {
-		open := strings.IndexByte(line, '[')
+	for i := 0; i < len(line); {
+		open := strings.IndexByte(line[i:], '[')
 		if open < 0 {
 			return out
 		}
-		rest := line[open+1:]
-		mid := strings.Index(rest, "](")
-		if mid < 0 {
-			return out
-		}
-		dest := rest[mid+2:]
-		end := strings.IndexByte(dest, ')')
-		if end < 0 {
-			line = rest
+		open += i
+		closing := matchingBracket(line, open)
+		if closing < 0 || closing+1 >= len(line) || line[closing+1] != '(' {
+			i = open + 1 // not a link — nested candidates start after this [
 			continue
 		}
-		if t := normalizeTarget(dest[:end]); t != "" {
+		end := strings.IndexByte(line[closing+2:], ')')
+		if end < 0 {
+			i = open + 1
+			continue
+		}
+		end += closing + 2
+		out = append(out, lineLinks(line[open+1:closing])...) // e.g. a badge image
+		if t := normalizeTarget(line[closing+2 : end]); t != "" {
 			out = append(out, t)
 		}
-		line = dest[end+1:]
+		i = end + 1
 	}
+	return out
+}
+
+// matchingBracket returns the index of the ] closing the [ at open, tracking
+// nested bracket pairs; -1 when unclosed.
+func matchingBracket(line string, open int) int {
+	depth := 0
+	for j := open; j < len(line); j++ {
+		switch line[j] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return j
+			}
+		}
+	}
+	return -1
 }
 
 // normalizeTarget strips an optional title and trailing #anchor, unwraps an

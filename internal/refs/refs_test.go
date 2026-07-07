@@ -34,6 +34,9 @@ func TestLinks(t *testing.T) {
 		{"code span dropped", "`[x](y.md)`", nil},
 		{"code span kept real link", "`[x](skip.md)` and [r](keep.md)", []string{"keep.md"}},
 		{"unpaired backtick keeps link", "a `b [r](keep.md)", []string{"keep.md"}},
+		{"badge-wrapped link", "[![CI](ci.svg)](docs/target.md)", []string{"ci.svg", "docs/target.md"}},
+		{"nested brackets in text", "[see [spec] here](b.md)", []string{"b.md"}},
+		{"bracket pair then real link", "[not a link] but [r](keep.md)", []string{"keep.md"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
