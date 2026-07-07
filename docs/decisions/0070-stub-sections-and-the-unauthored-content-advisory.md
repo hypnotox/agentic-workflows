@@ -56,8 +56,9 @@ template ids, so any per-template-id keying collapses distinct local artifacts.
    attribute lives entirely on the templated side of the ADR-0034 raw-vs-templated
    boundary; convention parts are unaffected.
 
-2. **`<!-- awf:stub -->` part marker.** A convention part whose body carries the marker
-   line `<!-- awf:stub -->` counts as unauthored. The part still renders byte-for-byte
+2. **`<!-- awf:stub -->` part marker.** A convention part whose body contains a line
+   that is exactly `<!-- awf:stub -->` (whole-line match — prose quoting the marker
+   inline never counts) is unauthored. The part still renders byte-for-byte
    verbatim per ADR-0034 — the marker is detected, never stripped — and an HTML comment
    is invisible in displayed markdown. Deleting the marker is how an author declares
    the part real. `awf new skill|agent` scaffolds its starter `content` part with this
@@ -81,12 +82,16 @@ template ids, so any per-template-id keying collapses distinct local artifacts.
    one render pass.
 
 5. **Residual-marker guard.** After section assembly and before template execution, any
-   remaining `awf:section` or `awf:end` token in the assembled skeleton is a hard
-   render error. This closes the malformed-marker leak in production, not just in this
+   remaining marker-shaped comment token in the assembled skeleton — `<!--` (optional
+   whitespace) followed by `awf:section` or `awf:end`, the ADR-0057 near-miss shape —
+   is a hard render error. The pattern is comment-anchored, never a bare-identifier
+   scan: a section default may legally quote the bare token in prose (doc-standard's
+   `structure` default does today), and un-overridden defaults survive into the
+   skeleton. This closes the malformed-marker leak in production, not just in this
    repo's tests. Scanning the assembled skeleton — where part bodies are NUL sentinels
-   and data is uninterpolated — keeps legal prose that *quotes* the markers (the agent
-   guide's invariants bullet, the rendering domain narrative) out of scope, per the
-   ADR-0057 near-miss-guard pattern.
+   and data is uninterpolated — keeps part and data prose that quotes even the full
+   comment form (the agent guide's invariants bullet, the rendering domain narrative)
+   out of scope.
 
 6. **Template sweep.** Every section default in the shipped templates is classified:
    authoring prompts get the `stub` attribute; coherent generic prose stays plain. The
@@ -101,9 +106,10 @@ template ids, so any per-template-id keying collapses distinct local artifacts.
 
 - `inv: stub-advisory-nonfailing` — unreplaced stub sections or stub-marked parts never
   by themselves cause `awf check` (or any gated command) to exit non-zero.
-- `inv: no-residual-section-marker` — an assembled skeleton still containing an
-  `awf:section` or `awf:end` token is a hard render error in production code, not only
-  a test-side assertion.
+- `inv: no-residual-section-marker` — an assembled skeleton still containing a
+  marker-shaped `<!-- awf:section` / `<!-- awf:end` comment token is a hard render
+  error in production code, not only a test-side assertion; a bare backtick-quoted
+  identifier in default prose does not trip it.
 - `inv: stub-part-verbatim` — a stub-marked convention part renders byte-for-byte
   verbatim, marker included; detection never mutates part bodies.
 - `inv: stub-notes-path-keyed` — the advisory reports per output path, so artifacts
@@ -122,6 +128,15 @@ template ids, so any per-template-id keying collapses distinct local artifacts.
   is ordinary template-change drift; the changelog entry says so.
 - `awf new` artifacts now self-flag until actually authored, closing the loop that
   motivated the feature.
+- With more than one adapter target enabled, an unauthored skill or agent reports once
+  per target output path. This duplication is accepted: path keying is what keeps local
+  artifacts and domain docs distinct, and each line names exactly the file that would
+  change when the part is authored.
+- Docs travel with the implementation, same commit: `docs/working-with-awf.md`'s
+  override prose gains the `stub` attribute, the `<!-- awf:stub -->` part marker, and
+  the new pointer text; the rendering domain `current-state` part is updated; the
+  agent-guide invariants bullets and the regenerated `docs/decisions/ACTIVE.md`
+  (`./x sync`) land with the status flip to Implemented.
 - The malformed-marker leak is closed for adopters, not just for this repo's test
   suite; the cost is that a genuinely malformed template now fails at render instead of
   producing corrupt output.
