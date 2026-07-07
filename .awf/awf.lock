@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:6de898f3171ec621729c646866806aa4fcf2824bbe3bbf609f6655305e3debbd",
-      "configHash": "sha256:92a77187da9b9b43114d0b8afe067d6b7641addd35a538051b20414f7cc71148",
-      "outputHash": "sha256:7777fb9431fd2907ed7e8590fdf67490c3689b5f230ab2e630a878e37f11089f"
+      "configHash": "sha256:dce69300f69ce207d183d2bed9c6c96bbe28eee0f85ba41e107fc8f4f72edfca",
+      "outputHash": "sha256:12e3e0966a2131f6b9eb7e6644e2778fa5407da60b57a8ba19da643f8a1d4f29"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -318,19 +318,19 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:7b7e51a0558267680a94a5d57dd6113e2e39e3a3825b76753dd86f6ebabcb895"
+      "outputHash": "sha256:541085ce1a7174bc5842ca18a55aa3810479e06dad4111cb09d6813deacc9a92"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:9d2ac41ed04600731a866d4f25df8b25a0091d7aaebd7b0c4b41ebab6aae1131"
+      "outputHash": "sha256:3dcd0f746c2a98e2c741050f557a60d68753492772c6b5120313c893e0e5b6d9"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:b9f3f843ae16449ef2c1e1df1fe10ab5c260a64cd25f82bb41a166fa1d7499e3",
-      "configHash": "sha256:b286c68286a262f2a73378d0a691bd1cd83b84df9690e9c9b1d627be59d322eb",
-      "outputHash": "sha256:61d9070d0506829c136bec81455dda4f90b776c79f174463cf743c4ef0f44cb5"
+      "configHash": "sha256:2b5e259e579fa7d75e0792f934222d3ad925886883d71a790638c0c8aa92fb2d",
+      "outputHash": "sha256:da84179e0311e9f3527c547f8e3ef351caa2c810617c5b9ea8d33ea93cbf930c"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
@@ -358,9 +358,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:9e91774fb4dc732ac61d617754de4c56f77b6161d99022653f8d8b9195e4b566",
+      "templateHash": "sha256:7081b0d19a4857bfb40a186e0576cfde0aae385216ab433f07d8514f4103140f",
       "configHash": "sha256:bdb2fd3d038d018c8a3893b0d4ac477c378710aeb12c66a03182f94a780146ff",
-      "outputHash": "sha256:6911e64abbf9d9057c85faa41bfe1ad11f5c4f737559e0df426dfea61ac4d60d"
+      "outputHash": "sha256:369da38df6a4a9ae26ba58928b4383ced701545477b790d520b07dd1aa6279cc"
     }
   }
 }

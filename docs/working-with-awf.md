@@ -36,6 +36,13 @@ the template default. Convention parts are raw input: their content renders verb
 run through the template engine — see [the documentation standard](doc-standard.md) for the
 authoring rules.
 
+Some section defaults are must-replace authoring prompts rather than shippable prose. Those are
+declared with a `stub` attribute on their `awf:section` marker; the rendered pointer reads
+`— stub; replace by creating <path>`, and `awf check` prints a non-failing note per artifact
+until the part exists. A convention part can itself carry a whole-line `<!-- awf:stub -->`
+marker to declare unauthored starter content — `awf new skill|agent` scaffolds its content part
+that way; delete the marker line once the part is real.
+
 **Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own.
 `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a
 declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a

@@ -13,6 +13,14 @@ query a single version or a range.
   section (per-effort `.awf/memory/<effort-slug>.md` files, resume protocol, JIT-retrieval
   guidance); brainstorming checkpoints its design brief continuously; the chain skills plus
   bugfix/debugging checkpoint phase/handoff state; the retrospective deletes the file.
+- Must-replace template defaults are now declared with a `stub` attribute on their section
+  marker, and `awf new`'s starter parts open with a whole-line `<!-- awf:stub -->` marker.
+  `awf check` and `awf init` print a non-failing note per artifact with unauthored stub
+  content; a stub section's rendered pointer reads `— stub; replace by creating <path>`
+  (ADR-0070). Upgrading re-renders every artifact whose template was swept — expect one large
+  `awf sync` commit.
+- A malformed `awf:section`/`awf:end` marker is now a hard render error instead of leaking
+  verbatim into rendered output (ADR-0070).
 
 ## [0.9.0] - 2026-07-05
 ### Bug fixes
