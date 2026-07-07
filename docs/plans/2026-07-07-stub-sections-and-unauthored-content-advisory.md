@@ -22,8 +22,8 @@ execution only.
 - Modified: `internal/render/section.go`, `internal/render/render.go`,
   `internal/render/section_test.go`, `internal/render/render_test.go`,
   `internal/project/render.go`, `internal/project/check.go`, `internal/project/notes_test.go`,
-  `cmd/awf/check.go`, `cmd/awf/init.go`, `cmd/awf/new.go`, `cmd/awf/new_test.go` (or the file
-  holding `awf new` tests), 12 template files under `templates/` (18 section markers),
+  `cmd/awf/check.go`, `cmd/awf/init.go`, `cmd/awf/new.go`, `cmd/awf/new_test.go`,
+  `cmd/awf/initrender_test.go`, 12 template files under `templates/` (18 section markers),
   `templates/docs/working-with-awf.md.tmpl`, `.awf/agents-doc.yaml`,
   `.awf/docs/parts/glossary/terms.md`, `.awf/domains/parts/rendering/current-state.md`,
   `.awf/domains/parts/tooling/current-state.md`, `changelog/CHANGELOG.md`,
@@ -34,8 +34,13 @@ execution only.
 
 **Conventions for every phase:** run `./x gate` before each commit (the pre-commit hook also runs
 it); after any template or `.awf/` change run `./x sync` and stage rendered files with their
-source; never `--amend`. A concurrent agent may be active in this repo: before every commit run
-`git status --short` and stage only this plan's files.
+source; never `--amend`. A concurrent agent may be active in this repo implementing ADR-0069; it
+touches files this plan also edits (`internal/project/render.go`, `internal/project/check.go`,
+`.awf/agents-doc.yaml`, `.awf/domains/parts/rendering/current-state.md`, the changelog). Before
+every commit run `git status --short` and stage only this plan's files (pathspec-scoped
+`git commit … -- <paths>`); before each phase that edits a shared file, re-verify this plan's
+quoted anchors and diff context against `HEAD` — the exact-string edits here were verified against
+HEAD as of 4350b54 and may need trivial re-anchoring after the ADR-0069 work lands.
 
 ---
 
@@ -63,7 +68,9 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+)( stub)? -->\n(.*?)\n?<!-- awf:end -->`)
   ```
 
-  In `ParseSections`, the submatch indices shift (name m[2:3], attribute m[4:5], body m[6:7]):
+  In `ParseSections`, the submatch indices shift (name m[2:3], attribute m[4:5], body m[6:7]) —
+  update the loop's inline index comment (`// m[0]:m[1] whole match; m[2]:m[3] name; m[4]:m[5]
+  body`) to the new layout alongside the append:
 
   ```go
   		segs = append(segs, Segment{
@@ -332,37 +339,48 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   ```
 
   In `cmd/awf/init.go:100` replace `np.UnsetVarNotes()` with `np.AdvisoryNotes()` (the comment
-  above it becomes "the same advisory notes awf check prints (ADR-0045, ADR-0070)").
+  above it becomes "the same advisory notes awf check prints (ADR-0045, ADR-0070)"). Update the
+  `coverage-ignore` reason on its error branch from "RenderAll succeeded moments ago inside
+  runSync" to note that runSync just rendered this same tree *and* generated its domain docs —
+  both `AdvisoryNotes` inputs succeeded moments ago.
 
 - [ ] 2.4 Update the four tests in `internal/project/notes_test.go` from `p.UnsetVarNotes()` to
   `p.AdvisoryNotes()` (same expectations — the fixtures have no stub content, so the note sets are
   unchanged; `TestUnsetVarNotesSurfacesRenderError` keeps working because `AdvisoryNotes` surfaces
-  the same `RenderAll` error). Then add, in the same file:
-  - `TestStubNotesReportsDefaultsAndParts` — scaffold a fixture project (testsupport) enabling the
-    `development` doc with no parts: `AdvisoryNotes` contains exactly one line
-    `docs/development.md has unauthored stub content — sections at stub default: command-runner, dependencies, setup`
-    (order follows template section order). Write a `<!-- awf:stub -->`-marked part for one section
-    (`.awf/docs/parts/development/setup.md` containing the marker line plus one prose line): the
-    line now reads `… sections at stub default: command-runner, dependencies; stub-marked parts: setup`.
-    NOTE: this test depends on Phase 4's sweep (the attribute on development.md.tmpl); write it in
-    Phase 4 if ordering matters — see task 4.4.
-  - `TestStubNotesDomainDocs` — a fixture with `domains: [config]` and no current-state part:
-    `AdvisoryNotes` contains `docs/domains/config.md has unauthored stub content — sections at stub default: current-state`
-    (also depends on the Phase 4 sweep; see task 4.4).
-  - `TestStubNotesPathKeyedAcrossTargets` — a fixture with `targets: [claude, cursor]` and one
-    local skill scaffolded with a stub-marked part: two lines, one per adapter skill path (backs
-    `inv: stub-notes-path-keyed`; also Phase 4-dependent for the `_base` attribute — see 4.4).
+  the same `RenderAll` error). Then add, in the same file — all three run green in this phase,
+  none needs the Phase 4 attribute sweep:
+  - `TestAdvisoryNotesSurfacesDomainDocError` — a fixture with `domains: [config]` plus a
+    malformed ADR file (`docs/decisions/0001-bad.md` with unparseable frontmatter):
+    `AdvisoryNotes` returns a non-nil error. `RenderAll` never parses ADRs, so this is the only
+    test that can reach the `generateDomainDocs` error branch inside `AdvisoryNotes` — unlike
+    `Check`, where that branch is coverage-ignored because `generateActiveMD` fails first,
+    `AdvisoryNotes` has no earlier ADR parse, so without this test the 100%-coverage gate fails
+    at task 2.6.
+  - `TestStubNotesPathKeyedAcrossTargets` — a fixture with `targets: [claude, cursor]` and a
+    `<!-- awf:stub -->`-marked convention part for one `tdd` skill section: two note lines, one
+    per adapter skill output path (backs `inv: stub-notes-path-keyed`). The stub-part path runs
+    through `HasStubMarker`/`PartStub` and needs no template attribute, so it is Phase-2-viable.
+  - `TestStubNotesDefaultsClauseUnit` — a direct in-package unit test of `stubNotes` over
+    hand-built `RenderedFile` values (`notes_test.go` is `package project`, so the unexported
+    fields are settable): one file with `stubDefaults` only, one with both `stubDefaults` and
+    `stubParts` (asserting the `; `-joined single-line format), one with neither (no note). This
+    covers the defaults clause, which no fixture can reach until the Phase 4 sweep.
+
+  Two further tests need the swept template attributes and land in task 4.2, not here:
+  `TestStubNotesReportsDefaultsAndParts` and `TestStubNotesDomainDocs` (specified in 4.2).
 
 - [ ] 2.5 Add `TestCheckStubNotesAreNonFailing` in `cmd/awf/initrender_test.go` (beside
-  `TestCheckUnsetVarNotesAreNonFailing`): a project with stub content prints the `note: … has
-  unauthored stub content …` line and `runCheck` returns nil. (Phase 4-dependent for template
-  attributes — until then assert with a local artifact's stub-marked part only if `_base` is
-  already swept; otherwise defer this test to task 4.4. Preferred: land it in 4.4.)
+  `TestCheckUnsetVarNotesAreNonFailing`, line 116): scaffold a project, write a
+  `<!-- awf:stub -->`-marked convention part for an enabled artifact's declared section, run
+  `runSync` then `runCheck` into a buffer: the output contains a `note: ` line containing
+  `has unauthored stub content` and `runCheck` returns nil (backs `inv: stub-advisory-nonfailing`
+  behaviourally; no Phase 4 dependency — the stub-part path needs no template attribute).
 
-- [ ] 2.6 Run `./x gate`. Expected: green, 100% coverage (the new `stubNotes`/`AdvisoryNotes`
-  branches are all exercised by 2.4's updated tests; if a stub-specific branch is unreachable
-  before the Phase 4 sweep, cover it with a direct unit test of `stubNotes` over hand-built
-  `RenderedFile` values — that function is package-internal and testable without templates).
+- [ ] 2.6 Run `./x gate`. Expected: green, 100% coverage — 2.4's updated tests keep the unset-var
+  paths covered; `TestStubNotesPathKeyedAcrossTargets` and `TestCheckStubNotesAreNonFailing`
+  cover the parts clause and the CLI print loop; `TestStubNotesDefaultsClauseUnit` covers the
+  defaults clause; `TestAdvisoryNotesSurfacesDomainDocError` covers `AdvisoryNotes`'
+  domain-doc error branch.
 
 - [ ] 2.7 Commit:
   `feat(rendering): surface unauthored-stub advisory from check and init`
@@ -386,10 +404,12 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   	"the placeholder syntax.\n"
   ```
 
-- [ ] 3.2 Extend the existing `awf new skill` test (in `cmd/awf/new_test.go` or wherever
-  `newLocalArtifact` is covered — locate with `grep -rn "localPartStub\|new skill" cmd/awf/*_test.go`):
-  assert the written content part starts with `<!-- awf:stub -->\n`, and that the rendered skill
-  file contains the marker verbatim (stub-part-verbatim, behaviourally).
+- [ ] 3.2 Extend `TestRunNewScaffoldsSkill` in `cmd/awf/new_test.go` (line 62; it already stats
+  the content part at `.awf/skills/parts/deploy-check/content.md` and the rendered
+  `.claude/skills/example-deploy-check/SKILL.md`): assert the written content part starts with
+  `<!-- awf:stub -->\n`, and that the rendered skill file contains the marker verbatim
+  (stub-part-verbatim, behaviourally). Its trailing `runCheck` assertion stays nil — the new stub
+  note is non-failing.
 
 - [ ] 3.3 Run `./x gate`. Expected: green. Commit:
   `feat(awf): mark scaffolded starter parts with the awf:stub marker`
@@ -418,16 +438,28 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   `agents-doc` `you-and-this-project`/`invariants`, the ADR template, empty override slots, and
   data-driven reviewer slots — are deliberately valid; see ADR-0070 Decision 6).
 
-- [ ] 4.2 Land the Phase 2 deferred tests that need the attributes: 2.4's
-  `TestStubNotesReportsDefaultsAndParts`, `TestStubNotesDomainDocs`,
-  `TestStubNotesPathKeyedAcrossTargets`, and 2.5's `TestCheckStubNotesAreNonFailing`.
+- [ ] 4.2 Land the two Phase 2-deferred tests in `internal/project/notes_test.go` (they need
+  4.1's attributes):
+  - `TestStubNotesReportsDefaultsAndParts` — scaffold a fixture project (testsupport) enabling the
+    `development` doc with no parts: `AdvisoryNotes` contains exactly one line
+    `docs/development.md has unauthored stub content — sections at stub default: setup, command-runner, dependencies`
+    (order follows template section order: setup at line 3, command-runner at line 9, dependencies
+    at line 15 of `templates/docs/development.md.tmpl`; `sort.Strings` in `stubNotes` orders the
+    note lines, not the section names within a line). Then write a `<!-- awf:stub -->`-marked part
+    for one section (`.awf/docs/parts/development/setup.md` containing the marker line plus one
+    prose line): the line now reads
+    `… sections at stub default: command-runner, dependencies; stub-marked parts: setup`.
+  - `TestStubNotesDomainDocs` — a fixture with `domains: [config]` and no current-state part:
+    `AdvisoryNotes` contains `docs/domains/config.md has unauthored stub content — sections at stub default: current-state`.
 
 - [ ] 4.3 Run `./x gate` and fix pointer-fragment assertions that now see `— stub;` instead of
-  `— default;` on swept sections. Known candidates (verify by the failures):
-  `internal/render/render_test.go:32-33,66,80`, `internal/project/project_test.go:95`,
-  golden/leak assertions in `internal/project/spine_test.go` and
-  `internal/project/docs_sections_test.go` that quote a swept section's pointer line. Do not relax
-  any assertion — update the expected fragment to the new pointer text.
+  `— default;` on swept sections. `internal/render/render_test.go:32-33,66,80` and
+  `internal/project/project_test.go:95` assert against unswept fixtures (the in-package test
+  template; skill `tdd`) and should stay green; the realistic candidates are fixtures that render
+  a swept template's default — golden/pointer assertions in `internal/project/docs_sections_test.go`,
+  `internal/project/spine_test.go`, agents-doc `identity` renders in project/cmd tests, and the
+  `internal/evals` full-catalog suite. Fix exactly what fails. Do not relax any assertion — update
+  the expected fragment to the new pointer text.
 
 - [ ] 4.4 Run `./x sync && ./x check`. Expected: `awf sync: done`, then `awf check: clean` with
   **no** `unauthored stub content` notes for this repo — every swept surface here is part-backed
@@ -458,7 +490,8 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   ```
 
 - [ ] 5.2 `.awf/agents-doc.yaml` — two edits in the invariants data list:
-  - Add after the ADR-0060/0061 entry:
+  - Add after the last entry, keeping ADR-numeric order (the concurrent ADR-0069 work may have
+    appended its own entry after the ADR-0060/0061 one by the time this executes):
 
     ```yaml
             - ref: ADR-0070
@@ -490,7 +523,8 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
     The scaffolded starter part opens with the whole-line `<!-- awf:stub -->` marker (ADR-0070), so `awf check` reports the artifact as unauthored until the author deletes the line.
     ```
 
-- [ ] 5.5 `changelog/CHANGELOG.md` — under `## [Unreleased]` add:
+- [ ] 5.5 `changelog/CHANGELOG.md` — under `## [Unreleased]` add (merge the bullets into an
+  existing `### Features` block if the ADR-0069 work already created one):
 
   ```markdown
   ### Features
@@ -506,7 +540,9 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
 
 - [ ] 5.6 Run `./x sync && ./x check` (expected: clean; `docs/working-with-awf.md`, `AGENTS.md`,
   glossary, domain docs re-render), then `./x gate`. Commit everything from 5.1-5.5 plus rendered
-  output: `docs(rendering): document stub sections and the unauthored-content advisory`.
+  output (including `.awf/awf.lock`):
+  `docs(rendering): document stub sections and the stub advisory`
+  (72-char subject limit rules out spelling "unauthored-content advisory" here; the body can).
 
 ## Phase 6 — ADR flip
 
@@ -522,5 +558,5 @@ source; never `--amend`. A concurrent agent may be active in this repo: before e
   `docs/domains/rendering.md`, `docs/domains/tooling.md`, `.awf/awf.lock`:
   `docs(adr): mark 0070 implemented`.
 
-- [ ] 6.4 Add the plan-freeze line? No — this plan is ADR-driven; it freezes automatically with
-  the ADR flip (no `# Implementation complete` line needed).
+No plan-freeze line is added: per `docs/plans/README.md` an ADR-driven plan freezes automatically
+once its ADR flips to Implemented.
