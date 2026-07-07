@@ -991,7 +991,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 }
 
 // The AGENTS.md task-skills sentence derives from the catalog's enabled
-// non-core skills — every catalog task skill appears iff enabled (a hand
+// non-Chain skills — every catalog task skill appears iff enabled (a hand
 // enumeration could never mention a newer one like refactor-coupling-audit),
 // and disabled ones stay absent (ADR-0046 follow-up sweep).
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
