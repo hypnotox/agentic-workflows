@@ -15,7 +15,7 @@ Terminal step of the implementation phase, after `awf-reviewing-impl` has conclu
 
 **Skip a trivial session** — a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
 
-<!-- awf:edit procedure — default; create .awf/skills/parts/retrospective/procedure.md to override -->
+<!-- awf:edit procedure — from .awf/skills/parts/retrospective/procedure.md -->
 ## Procedure
 
 1. **Reflect on the session.** Gather its signals: the `awf-reviewing-impl` findings, the pitfalls or friction hit while implementing, and any issue that came up more than once.
@@ -24,9 +24,12 @@ Terminal step of the implementation phase, after `awf-reviewing-impl` has conclu
 
 3. **Promote recurring, codifiable observations** to the strongest rung each can support (see the ladder). Verify a candidate genuinely recurs and is worth the effort before promoting.
 
-4. **Note where each landed** in the session summary, so the loop is visible.
+4. **Update the adopter changelog.** If the effort changed anything adopter-facing — rendered template output, `awf` CLI behavior, or the config/lock schema — confirm it is recorded under the standing `## [Unreleased]` section of `changelog/CHANGELOG.md`, grouped by Breaking changes / Features / Bug fixes / Others (ADR-0041). Entries are supposed to land with the change itself; this step is the catch-net so a release cut never starts from an empty section.
 
-5. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists — the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
+5. **Note where each landed** in the session summary, so the loop is visible.
+
+6. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists — the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
+
 
 <!-- awf:edit recurrence-signal — default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
 ## Recurrence signal
