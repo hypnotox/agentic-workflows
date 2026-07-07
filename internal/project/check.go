@@ -321,8 +321,16 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 // checkLockedFiles compares each lock entry (except the separately-checked
 // generated ACTIVE.md / domain docs) against the freshly-rendered output and the
 // on-disk file: orphaned, stale, missing, hand-edited, or invalid-frontmatter.
+// The reverse direction is checked too: a rendered path with no lock entry — an
+// artifact enabled since the last sync — is flagged unsynced rather than
+// silently skipped.
 func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, activeMdRel, domainsPrefix string) []manifest.Drift {
 	var drift []manifest.Drift
+	for _, path := range slices.Sorted(maps.Keys(rendered)) {
+		if _, ok := lock.Files[path]; !ok {
+			drift = append(drift, manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf sync"})
+		}
+	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {
 			continue // generated artifacts — checked separately

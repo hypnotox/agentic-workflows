@@ -111,6 +111,39 @@ func TestPerTargetDriftProjection(t *testing.T) {
 	}
 }
 
+// An artifact enabled after the last sync has a rendered output but no lock
+// entry; Check must flag it instead of passing clean while the file is absent
+// from disk.
+func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
+	cfg := func(agents string) string {
+		return "prefix: example\nskills:\n  - tdd\nagents:" + agents + "\n"
+	}
+	root := scaffold(t, cfg(" []"))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	// Enable an agent by hand-editing config — the documented flow — without syncing.
+	testsupport.WriteAwfConfig(t, root, cfg("\n  - code-reviewer"))
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p2.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range drift {
+		if d.Path == ".claude/agents/code-reviewer.md" && d.Kind == "unsynced" {
+			return
+		}
+	}
+	t.Errorf("enabled-but-unsynced agent not flagged; drift = %#v", drift)
+}
+
 func sprintfVars(pitfalls string) string {
 	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  docCurrencyTargets: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }
