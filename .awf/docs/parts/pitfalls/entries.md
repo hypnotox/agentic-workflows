@@ -56,3 +56,16 @@ at render with a bare `file does not exist`. `templates/embed.go` therefore uses
 templates. `TestUnsetFallbackRenders` reads both base templates from `templates.FS`, so a
 regression fails the gate — but the failure is a confusing missing-file error, not an obvious embed
 bug, hence this note.
+
+## Concurrent agents in one worktree share the git index
+
+Two agents working in the same checkout share one staging area: `git commit` commits the
+**whole index**, so another agent's `git add` between your `git add` and `git commit` sweeps
+their files into your commit (this bit the ADR-0069 session — a foreign 526-line plan file
+landed in a feat commit). Always pathspec-limit the commit itself — `git add <paths> && git
+commit -m … -- <paths>` — so only your named paths land regardless of index state; note an
+untracked file must still be `git add`-ed first, a bare pathspec commit rejects it. Two more
+shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
+dirty files (a false positive for your session — never commit or discard their work to appease
+it), and a pre-commit drift-gate failure may be their stale generated file — `./x sync`
+freshens the disk, then still commit only your paths.
