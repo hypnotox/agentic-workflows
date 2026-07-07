@@ -52,4 +52,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ### Proposed
 
 - [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
+- [ADR-0070: Stub sections and the unauthored-content advisory](../decisions/0070-stub-sections-and-the-unauthored-content-advisory.md)
 

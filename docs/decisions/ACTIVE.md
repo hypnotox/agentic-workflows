@@ -75,6 +75,7 @@
 ## Proposed
 
 - [ADR-0069: Working-memory convention for chain session continuity](0069-working-memory-convention-for-chain-session-continuity.md) — Proposed
+- [ADR-0070: Stub sections and the unauthored-content advisory](0070-stub-sections-and-the-unauthored-content-advisory.md) — Proposed
 
 ## Superseded by ADR-0032
 
