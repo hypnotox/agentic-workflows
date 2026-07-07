@@ -105,6 +105,11 @@ func Uninstall(root string) (int, error) {
 	removed := 0
 	dirs := map[string]bool{}
 	for path := range lock.Files {
+		// A non-local entry (corrupted or malicious lock) would delete outside
+		// the root and send the ancestor walk below it, never reaching root.
+		if !filepath.IsLocal(filepath.FromSlash(path)) {
+			continue
+		}
 		abs := filepath.Join(root, path)
 		if err := os.Remove(abs); err == nil {
 			removed++

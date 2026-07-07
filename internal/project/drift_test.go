@@ -144,6 +144,40 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	t.Errorf("enabled-but-unsynced agent not flagged; drift = %#v", drift)
 }
 
+// The sync prune walks old lock entries no longer produced; an entry escaping
+// the repo root must be skipped, not deleted out-of-tree (and the ancestor
+// walk must terminate).
+func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	victim := filepath.Join(root, "..", "victim.txt")
+	testsupport.WriteFile(t, victim, "keep me\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Files["../victim.txt"] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p2.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(victim); err != nil {
+		t.Errorf("prune deleted the out-of-tree file: %v", err)
+	}
+}
+
 func sprintfVars(pitfalls string) string {
 	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  docCurrencyTargets: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }

@@ -179,6 +179,11 @@ func (p *Project) SyncReport() ([]Backup, error) {
 			if want[path] {
 				continue
 			}
+			// A non-local entry (corrupted or malicious lock) would delete outside
+			// the root and send the ancestor walk below it, never reaching p.Root.
+			if !filepath.IsLocal(filepath.FromSlash(path)) {
+				continue
+			}
 			file := filepath.Join(p.Root, path)
 			_ = os.Remove(file)
 			for d := filepath.Dir(file); d != p.Root; d = filepath.Dir(d) {
