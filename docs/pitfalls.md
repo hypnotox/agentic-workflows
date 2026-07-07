@@ -85,3 +85,14 @@ entirely (this kept `gateCmd` out of the plans README when the self-contained-ph
 landed) — and if it does, keep the `{{ with }}…{{ else }}` fallback publication-safe and accept
 the advisory as intended signal.
 
+## A `data:` list override replaces the catalog defaults wholesale
+
+Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
+plan-reviewer's `focusItems`) replaces the catalog's default list — it does not append. Adding
+one project-local focus item this way silently dropped the two default items
+(`step-exactness`, `dependency-order`) from this repo's rendered reviewer for a day, and
+nothing flagged it: the render is drift-clean because the config said exactly that. When adding
+a project-local list entry, copy the catalog defaults you still want into the override
+alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
+deleted default lines before committing.
+
