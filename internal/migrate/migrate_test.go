@@ -117,12 +117,12 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 		t.Errorf("GateState(.awf, no lock) = %q, want ok (fresh init/post-upgrade must not gate)", got)
 	}
 
-	// A pre-relocation .claude/awf/ tree with no lock returns Current()-1 and gates
-	// (it still needs the awf-dir-relocation migration).
+	// A pre-relocation .claude/awf/ tree with no lock returns 1 (the tree-layout
+	// port's output) and gates: drop-replacewith and the relocation still apply.
 	preReloc := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(preReloc, ".claude", "awf", "config.yaml"), "prefix: ex\n")
-	if got := Generation(preReloc); got != Current()-1 {
-		t.Errorf("Generation(.claude/awf, no lock) = %d, want Current()-1=%d", got, Current()-1)
+	if got := Generation(preReloc); got != 1 {
+		t.Errorf("Generation(.claude/awf, no lock) = %d, want 1", got)
 	}
 	if got := GateState(preReloc); got != "gate" {
 		t.Errorf("GateState(.claude/awf, no lock) = %q, want gate", got)
@@ -131,6 +131,26 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	// Nothing present at all reports Current() (a bare dir is treated as current).
 	if got := Generation(t.TempDir()); got != Current() {
 		t.Errorf("Generation(empty) = %d, want Current()=%d", got, Current())
+	}
+}
+
+// A lockless pre-relocation .claude/awf/ tree is the tree-layout port's output
+// (the port deletes the legacy lock), so Upgrade must still run every later
+// migration — most importantly the To:3 relocation. The old Current()-1
+// generation drifted upward as later migrations registered, leaving such a
+// tree permanently gated while Upgrade only ran post-relocation no-ops.
+func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "config.yaml"), "prefix: ex\nskills: []\nagents: []\n")
+	applied, err := Upgrade(root)
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+		t.Errorf("relocation did not run (no .awf/config.yaml); applied = %v", applied)
+	}
+	if got := GateState(root); got != "ok" {
+		t.Errorf("GateState after upgrade = %q, want ok", got)
 	}
 }
 

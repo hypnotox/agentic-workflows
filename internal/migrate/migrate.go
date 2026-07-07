@@ -36,8 +36,10 @@ func Current() int { return registry[len(registry)-1].To }
 // Generation reports the project's schema generation. Detection is by layout:
 // a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet —
 // fresh init / just-upgraded); a pre-relocation .claude/awf/ tree reports its
-// lock's schema, or Current()-1 when no lock, so the To:3 relocation gates; the
-// legacy single file reports 0; nothing present reports Current().
+// lock's schema, or 1 when no lock — such a tree is the tree-layout port's
+// output (the port deletes the legacy lock), so every later migration up to and
+// including the To:3 relocation must still apply; the legacy single file
+// reports 0; nothing present reports Current().
 func Generation(root string) int {
 	newTree := config.ConfigPath(root)
 	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
@@ -52,7 +54,7 @@ func Generation(root string) int {
 	if _, err := os.Stat(oldTree); err == nil {
 		l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
 		if err != nil {
-			return Current() - 1
+			return 1
 		}
 		return l.SchemaVersion
 	}
