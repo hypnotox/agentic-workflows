@@ -104,6 +104,7 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	out = append(out, ruleConventionalCommits(commits, in)...)
 	out = append(out, ruleADRStatusCochange(commits, in)...)
+	out = append(out, ruleADRFrontmatter(commits, in)...)
 	out = append(out, ruleDependencyADR(commits, in)...)
 	out = append(out, rulePlanForLargeChange(commits, in)...)
 	out = append(out, ruleDomainDocStaleness(commits, in)...)
@@ -149,6 +150,25 @@ func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	return out
 }
 
+// ruleADRFrontmatter surfaces an ADR change whose new frontmatter does not
+// parse: the status-cochange and staleness rules cannot evaluate such a change,
+// so the breakage is reported instead of silently skipped.
+func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
+	var out []Finding
+	for _, c := range commits {
+		for _, ch := range c.Changes {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+				continue
+			}
+			if _, ok := statusOf(ch.NewText); !ok {
+				out = append(out, finding(Warning, "adr-frontmatter", c,
+					filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
+			}
+		}
+	}
+	return out
+}
+
 // invariant: audit-adr-status-cochange
 func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 	var out []Finding
@@ -165,10 +185,14 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			if statusOf(ch.NewText) == "" {
-				continue
+			st, ok := statusOf(ch.NewText)
+			if !ok || st == "" {
+				continue // unparseable new frontmatter is ruleADRFrontmatter's finding
 			}
-			if ch.Action == Added || statusOf(ch.OldText) != statusOf(ch.NewText) {
+			// An unparseable old side cannot witness a transition — skip rather
+			// than read garbage as a status change.
+			oldSt, oldOK := statusOf(ch.OldText)
+			if ch.Action == Added || (oldOK && oldSt != st) {
 				if !activeTouched {
 					out = append(out, finding(Error, "adr-status-cochange", c,
 						filepath.Base(ch.Path)+" status set/changed without ACTIVE.md in the same commit"))
@@ -262,11 +286,11 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			if statusOf(ch.NewText) != "Implemented" {
+			if st, ok := statusOf(ch.NewText); !ok || st != "Implemented" {
 				continue
 			}
-			if ch.Action != Added && statusOf(ch.OldText) == "Implemented" {
-				continue // already Implemented before this change; not a new transition
+			if oldSt, oldOK := statusOf(ch.OldText); ch.Action != Added && (!oldOK || oldSt == "Implemented") {
+				continue // already Implemented (or unknowable old side); not a witnessed transition
 			}
 			for _, d := range domainsOf(ch.NewText) {
 				if slices.Contains(in.ConfiguredDomains, d) {
@@ -342,17 +366,23 @@ func isADRFile(path, adrDir string) bool {
 	return filepath.Dir(path) == adrDir && adr.FilenameRe.MatchString(filepath.Base(path))
 }
 
-func statusOf(text string) string {
+// statusOf extracts the frontmatter status; ok is false only when frontmatter
+// is present but does not parse — absent frontmatter is a legitimate ("", true).
+func statusOf(text string) (string, bool) {
 	if text == "" {
-		return ""
+		return "", true
 	}
 	var meta struct {
 		Status string `yaml:"status"`
 	}
-	if _, found, err := frontmatter.Parse([]byte(text), &meta); err != nil || !found {
-		return ""
+	_, found, err := frontmatter.Parse([]byte(text), &meta)
+	if err != nil {
+		return "", false
 	}
-	return meta.Status
+	if !found {
+		return "", true
+	}
+	return meta.Status, true
 }
 
 func underDir(path, dir string) bool {

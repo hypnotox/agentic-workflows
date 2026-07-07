@@ -97,6 +97,30 @@ func TestRuleADRStatusCochange(t *testing.T) {
 	}
 }
 
+// Malformed ADR frontmatter must surface as a warning instead of silently
+// disabling the status rules (unparseable new text) or falsely firing them
+// (unparseable old text reading as a status change).
+func TestRuleADRFrontmatterUnparseable(t *testing.T) {
+	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md"}
+	adr := "docs/decisions/0001-x.md"
+	bad := "---\nstatus: [unclosed\n---\n# X\n"
+
+	newBad := Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: proposedADR, NewText: bad}}}
+	fs := evaluate([]Commit{newBad}, in)
+	if got := countRule(fs, "adr-frontmatter", Warning); got != 1 {
+		t.Errorf("unparseable new frontmatter: got %d adr-frontmatter warnings, want 1 (%v)", got, fs)
+	}
+	if got := countRule(fs, "adr-status-cochange", Error); got != 0 {
+		t.Errorf("unparseable new frontmatter must not fire cochange: %v", fs)
+	}
+
+	oldBad := Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: bad, NewText: proposedADR}}}
+	fs = evaluate([]Commit{oldBad}, in)
+	if got := countRule(fs, "adr-status-cochange", Error); got != 0 {
+		t.Errorf("unparseable old frontmatter must not read as a status change: %v", fs)
+	}
+}
+
 // invariant: audit-adr-domain-cochange
 func TestRuleADRDomainCochange(t *testing.T) {
 	active := FileChange{Path: "docs/decisions/ACTIVE.md", Action: Modified}
@@ -202,17 +226,17 @@ func TestEvaluateAggregates(t *testing.T) {
 }
 
 func TestStatusOf(t *testing.T) {
-	if statusOf("") != "" {
-		t.Error("empty text should yield empty status")
+	if st, ok := statusOf(""); st != "" || !ok {
+		t.Error("empty text should yield empty status, ok")
 	}
-	if statusOf("# no frontmatter") != "" {
-		t.Error("no frontmatter should yield empty status")
+	if st, ok := statusOf("# no frontmatter"); st != "" || !ok {
+		t.Error("no frontmatter should yield empty status, ok")
 	}
-	if statusOf("---\nstatus: [bad yaml\n---\nx") != "" {
-		t.Error("malformed frontmatter should yield empty status")
+	if _, ok := statusOf("---\nstatus: [bad yaml\n---\nx"); ok {
+		t.Error("malformed frontmatter should yield ok=false")
 	}
-	if statusOf(acceptedADR) != "Accepted" {
-		t.Errorf("statusOf(acceptedADR) = %q", statusOf(acceptedADR))
+	if st, ok := statusOf(acceptedADR); st != "Accepted" || !ok {
+		t.Errorf("statusOf(acceptedADR) = %q, %v", st, ok)
 	}
 }
 
