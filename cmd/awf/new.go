@@ -101,5 +101,11 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 
 // localPartStub is the starter body for a new local artifact's content part —
 // plain prose only (no live {{=awf:…}} placeholder, which would hard-error if its
-// value were unset this render).
-const localPartStub = "Replace this with the artifact's body. This file is a convention part: edit it to author the content, and see docs/working-with-awf.md for the placeholder syntax.\n"
+// value were unset this render). The leading awf:stub marker line declares the
+// part unauthored (ADR-0070): awf check reports it until the author deletes the
+// line, and the part still renders verbatim, marker included.
+const localPartStub = "<!-- awf:stub -->\n" +
+	"Replace this with the artifact's body, then delete the awf:stub marker line above — " +
+	"awf check flags this part as unauthored while the marker remains. This file is a " +
+	"convention part: edit it to author the content, and see docs/working-with-awf.md for " +
+	"the placeholder syntax.\n"

@@ -71,15 +71,23 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	if !strings.Contains(string(sc), "Verify the deploy is green.") {
 		t.Errorf("sidecar missing description:\n%s", sc)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md")); err != nil {
+	part, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md"))
+	if err != nil {
 		t.Errorf("content part not written: %v", err)
+	}
+	if !strings.HasPrefix(string(part), "<!-- awf:stub -->\n") {
+		t.Errorf("starter part must open with the awf:stub marker (ADR-0070):\n%s", part)
 	}
 	cfg, _ := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if !strings.Contains(string(cfg), "deploy-check") {
 		t.Errorf("skill not enabled in config:\n%s", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "example-deploy-check", "SKILL.md")); err != nil {
+	rendered, err := os.ReadFile(filepath.Join(root, ".claude", "skills", "example-deploy-check", "SKILL.md"))
+	if err != nil {
 		t.Errorf("rendered skill missing: %v", err)
+	}
+	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
+		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
 	}
 	if err := runCheck(root, io.Discard); err != nil {
 		t.Errorf("post-scaffold check not clean: %v", err)
