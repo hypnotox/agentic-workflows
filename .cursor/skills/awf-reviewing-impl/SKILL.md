@@ -45,12 +45,21 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
 5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
 
-<!-- awf:edit run-audit — default; create .awf/skills/parts/reviewing-impl/run-audit.md to override -->
+<!-- awf:edit run-audit — from .awf/skills/parts/reviewing-impl/run-audit.md -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
    `awf audit` (or this project's runner alias for it) over the branch. `Error` findings block
    this review from concluding — resolve them or escalate them as user-decision items before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.
+
+   Then also run the repo-local audit — `./x audit-local ${baseSha}..${headSha}` (the repo's
+   own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
+   contract: an `Error` finding — for example an adopter-facing change in the range with no
+   `changelog/CHANGELOG.md` `[Unreleased]` entry — blocks the review from concluding, so
+   resolve it or escalate it as a user-decision item; `Warning` findings are advisory. It is
+   repo-specific dev tooling, deliberately not a rule in the shipped `awf audit`, and it does
+   not run the gate.
+
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
 7. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
