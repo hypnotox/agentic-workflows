@@ -31,9 +31,9 @@ awf's default entirely.
 The mechanism to close this already exists in shape — the placeholder registry — but no
 key expands to *this section's own default*. During design we confirmed why such a key is
 not a trivial registry entry: the **rendered** default is unavailable at placeholder-
-substitution time. `substitutePlaceholders` runs inside `planSections`, two pipeline
-stages before the default is parsed (`ParseSections`) and three before it is rendered
-(`Execute`); and a section's default source is discarded outright the moment a part
+substitution time. `substitutePlaceholders` runs inside `planSections`, before the default
+is parsed (`ParseSections`) and rendered (`Execute`) later in the same `renderTarget`
+pipeline; and a section's default source is discarded outright the moment a part
 exists (`Assemble` writes the part sentinel instead of `s.Text`). The default is also
 not splice-able raw — non-stub defaults carry live actions like `{{ .layout.workingWithAwf }}`
 and `{{ with .vars.gateCmd }}`, so splicing source into a verbatim-restored part would
@@ -47,7 +47,10 @@ default, and can only do so in the render layer.
    overrides. Text placed before the token becomes a preamble; text after it, an appendix;
    surrounding text on both sides, a wrap. This is **not** a new override mode: a part still
    replaces its section body — `sectionDefault` merely lets the replacement carry its
-   default forward instead of discarding it.
+   default forward instead of discarding it. The marker may appear more than once in a
+   part; each occurrence re-injects the rendered default, splitting the part into N+1
+   verbatim fragments interleaved with N rendered defaults (no special-casing — the
+   split-marker mechanism of Decision 2 generalises directly).
 
 2. **Static split-marker sentinel; the render layer owns positioning.** The registry
    *value* for `sectionDefault` is a fixed, brace-free NUL split-marker sentinel — never the
@@ -92,11 +95,15 @@ default, and can only do so in the render layer.
 
 - **Closes the stale-fork failure mode.** An adopter extends a default without copying it;
   each `sync` re-renders the current default in place, so an awf revision flows through
-  automatically. Drift-check reflags the artifact on a default edit for free — the
-  re-injected default source physically lands in the `assembled` string, which
-  `TemplateHash` already covers, and from which every drift signal (vars, scopes, skills,
-  invariant markers) is derived. **No new confighash plumbing** is required, unlike the
-  explicit scope-placeholder path.
+  automatically. Drift-check reflags the artifact on a default edit for free, along two
+  paths that already exist. A byte edit to a section default changes `expanded` (the
+  default source sits in the template body regardless of any override), and `TemplateHash`
+  hashes `expanded` — so a default-content edit already reflags today. Re-injection adds the
+  dynamic half: the default source now physically lands in the `assembled` string, over which
+  `artifactConfigHash` runs its drift scanners (`ReferencedVars`, `ReferencesScopes`, …), so a
+  var or scope reference living *inside* the default folds into `ConfigHash` and reflags the
+  artifact when it changes. **No new confighash plumbing** is required, unlike the explicit
+  scope-placeholder path.
 - **Small, contained render-layer cost.** `Assemble` (or a `StubSections`-style sibling
   validator) gains an `error` return for the stub hard-error — a minor signature change
   rippling to its one caller. Stub detection scans the part body for the render-layer
@@ -111,7 +118,11 @@ default, and can only do so in the render layer.
   non-stub default yields `pre + "" + post`. This is a deliberate simplification — the
   static-sentinel mechanism gives the project layer no view of default emptiness, and
   erroring would buy a special case with no real-world benefit (the stub hard-error already
-  catches the meaningful mistake).
+  catches the meaningful mistake). This is also why `sectionDefault` does not contradict
+  ADR-0057's "empty-valued key is unavailable → hard error" rule: the registry *value* is
+  the always-non-empty split-marker sentinel, so the key is always available; and an empty
+  splice still yields coherent prose (the part's own text stands, no `<no value>`),
+  preserving publication-safety (ADR-0045).
 - **Trade-off:** a part can now contain a token whose expansion depends on section context
   the author cannot see inline (the upstream default may change). That is precisely the
   intent — tracking the upstream default is the feature — and the rendered output shows the
