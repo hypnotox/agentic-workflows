@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // projectWithScopes opens a scaffolded project with two meaning-bearing scopes
@@ -51,6 +53,24 @@ func TestPlaceholderRegistry(t *testing.T) {
 		if _, ok := bare[k]; ok {
 			t.Errorf("accept-any/no-vars registry should not carry %q", k)
 		}
+	}
+}
+
+func TestSectionDefaultPlaceholder(t *testing.T) {
+	p := projectAcceptAny(t)
+	reg, err := p.placeholderRegistry()
+	if err != nil {
+		t.Fatalf("registry: %v", err)
+	}
+	if reg["sectionDefault"] != render.SectionDefaultSentinel {
+		t.Errorf("sectionDefault = %q, want the split-marker sentinel", reg["sectionDefault"])
+	}
+	out, err := p.substitutePlaceholders("x", "A {{=awf:sectionDefault}} B", reg)
+	if err != nil {
+		t.Fatalf("substitute: %v", err)
+	}
+	if out != "A "+render.SectionDefaultSentinel+" B" {
+		t.Errorf("substitution = %q, want the sentinel spliced in", out)
 	}
 }
 

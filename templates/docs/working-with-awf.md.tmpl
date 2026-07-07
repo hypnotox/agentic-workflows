@@ -33,7 +33,9 @@ audit, invariants), per-artifact sidecar YAMLs, and convention parts. To change 
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
 doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
 `.awf/parts/<kind>/<section>.md`). A part **replaces that section's body** and inherits the rest of
-the template default. Convention parts are raw input: their content renders verbatim and is never
+the template default. To *extend* a default instead of discarding it, re-inject it inside your part
+with the {{ "{{=awf:sectionDefault}}" }} placeholder (below): text before the token becomes a
+preamble, text after it an appendix. Convention parts are raw input: their content renders verbatim and is never
 run through the template engine — see [the documentation standard](doc-standard.md) for the
 authoring rules.
 
@@ -71,6 +73,7 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `prefix` | the project's artifact prefix |
 | `gateCmd` | the configured pre-commit gate command |
 | `checkCmd` | the configured drift-check command |
+| `sectionDefault` | the overridden section's own rendered default — re-inject it to *extend* rather than replace (a `stub` default cannot be re-injected) |
 
 To write the placeholder syntax literally in a part (for documentation), put a backslash before it:
 {{ "\\{{=awf:commitScopeTable}}" }} renders as the literal {{ "{{=awf:commitScopeTable}}" }}.

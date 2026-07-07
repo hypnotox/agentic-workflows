@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // awfPlaceholderRE matches a well-formed sandbox placeholder {{=awf:identifier}}
@@ -47,6 +48,7 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 	put("invariantMarkerSentence", p.invariantMarkerSentence())
 	put("invariantMarkerTable", p.invariantMarkerTable())
 	put("prefix", p.Cfg.Prefix)
+	put("sectionDefault", render.SectionDefaultSentinel)
 	if v, ok := p.Cfg.Vars["gateCmd"].(string); ok {
 		put("gateCmd", v)
 	}
