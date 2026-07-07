@@ -86,6 +86,28 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 }
 
+// A project-local artifact (ADR-0068) lists under its declared kind with the
+// state "local" — not "tuned", which would hide that it is not a catalog skill.
+func TestRunListShowsLocalArtifactAsLocal(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy."}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runList(root, "skill", &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.Contains(line, "deploy-check") {
+			if !strings.Contains(line, "local") {
+				t.Errorf("local skill listed as %q, want state local", strings.TrimSpace(line))
+			}
+			return
+		}
+	}
+	t.Errorf("local skill not listed at all:\n%s", out.String())
+}
+
 // The version gate must refuse add/remove BEFORE the config rewrite: a stale
 // binary must not leave a modified config.yaml with nothing rendered (the
 // half-mutated state the chained sync's gate can only catch after the write).

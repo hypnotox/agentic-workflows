@@ -354,10 +354,15 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 }
 
 // artifactState returns the display state of a catalog-backed artifact: "available"
-// when not enabled, else "local"/"tuned"/"enabled" from its sidecar.
+// when not enabled, else "local"/"tuned"/"enabled" from its sidecar. A name
+// outside the standard catalog is a project-local artifact (ADR-0068) — its
+// synthesized pool entry lists as "local", not as a tuned catalog skill.
 func artifactState(p *project.Project, kind, name string) string {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return "available"
+	}
+	if std, _ := project.CatalogNames(catalog.Standard, kind); !slices.Contains(std, name) {
+		return "local"
 	}
 	// project.Open pre-validated every enabled sidecar, so a read here cannot fail.
 	pl, _ := project.PluralKind(kind)
