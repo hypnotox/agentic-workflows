@@ -2,7 +2,8 @@
 // (LIVED) mutants as an advisory triage list, backing the awf `./x mutants`
 // command (ADR-0066). It exits non-zero when any mutant timed out: a timeout is
 // scored outside efficacy and can hide a real survivor, so the whole run is
-// untrustworthy. A missing or empty report file is treated as an empty run.
+// untrustworthy. An empty report file is an empty run; a missing file is a
+// caller error (./x mutants pre-creates the report via mktemp).
 // Advisory only; never wired into ./x gate.
 package main
 
@@ -37,13 +38,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: mutants <gremlins-json>")
 		return 2
 	}
+	// ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
+	// caller error — never a clean run. Only a present-but-empty file means an
+	// empty run (gremlins wrote nothing into the pre-created file).
 	data, err := os.ReadFile(args[1])
 	if err != nil {
-		if os.IsNotExist(err) {
-			// gremlins writes no -o file when there is nothing to report.
-			fmt.Fprintln(stdout, "no survived mutants")
-			return 0
-		}
 		fmt.Fprintln(stderr, "mutants:", err)
 		return 1
 	}

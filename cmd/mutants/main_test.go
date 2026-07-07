@@ -28,13 +28,16 @@ func TestRunUsage(t *testing.T) {
 	}
 }
 
-func TestRunMissingFile(t *testing.T) {
+// ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
+// caller error (typo, changed script) — it must fail loudly, not read as a
+// clean run. Only a present-but-empty file means "nothing to report".
+func TestRunMissingFileErrors(t *testing.T) {
 	var out, errb bytes.Buffer
-	if code := run([]string{"mutants", filepath.Join(t.TempDir(), "nope.json")}, &out, &errb); code != 0 {
-		t.Fatalf("expected exit 0 for missing file, got %d (%s)", code, errb.String())
+	if code := run([]string{"mutants", filepath.Join(t.TempDir(), "nope.json")}, &out, &errb); code == 0 {
+		t.Fatalf("expected non-zero exit for missing report file, got 0 (%s)", out.String())
 	}
-	if !strings.Contains(out.String(), "no survived mutants") {
-		t.Errorf("expected empty-run message, got %q", out.String())
+	if strings.Contains(out.String(), "no survived mutants") {
+		t.Errorf("missing file must not read as a clean run: %q", out.String())
 	}
 }
 
