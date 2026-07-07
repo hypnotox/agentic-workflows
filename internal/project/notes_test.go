@@ -141,6 +141,56 @@ func TestStubNotesDefaultsClauseUnit(t *testing.T) {
 	}
 }
 
+// A doc whose stub-attributed sections render their defaults reports one note
+// line, sections in template order; a stub-marked part moves its section into
+// the parts clause.
+func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
+	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [development]\n"
+	p, err := Open(scaffold(t, cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "docs/development.md has unauthored stub content — sections at stub default: setup, command-runner, dependencies"
+	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
+		t.Errorf("missing defaults note %q, got:\n%s", want, joined)
+	}
+	p2, err := Open(scaffoldFiles(t, cfg, map[string]string{
+		"docs/parts/development/setup.md": "<!-- awf:stub -->\nstarter setup\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err = p2.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = "docs/development.md has unauthored stub content — sections at stub default: command-runner, dependencies; stub-marked parts: setup"
+	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
+		t.Errorf("missing combined note %q, got:\n%s", want, joined)
+	}
+}
+
+// Domain docs render outside RenderAll; their stub current-state default must
+// still reach the advisory.
+func TestStubNotesDomainDocs(t *testing.T) {
+	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "docs/domains/config.md has unauthored stub content — sections at stub default: current-state"
+	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
+		t.Errorf("missing domain-doc note %q, got:\n%s", want, joined)
+	}
+}
+
 func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 	p, err := Open(scaffold(t, sampleYAML))
 	if err != nil {
