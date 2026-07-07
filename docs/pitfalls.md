@@ -95,6 +95,7 @@ nothing flagged it: the render is drift-clean because the config said exactly th
 a project-local list entry, copy the catalog defaults you still want into the override
 alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
 deleted default lines before committing.
+
 ## Registry-relative constants in migration code drift
 
 `migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree — correct when
