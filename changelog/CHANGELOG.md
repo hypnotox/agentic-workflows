@@ -8,6 +8,14 @@ query a single version or a range.
 
 ## [Unreleased]
 ### Features
+- Review agents are now report-only (ADR-0074): the three reviewer subagents
+  (`adr-reviewer`, `plan-reviewer`, `code-reviewer`) emit findings and a digest but no longer
+  edit, commit, or re-review. The `<prefix>-reviewing-adr`/`-plan`/`-plan-resync`/`-impl`
+  skills now own fix application — routing findings by classification (mechanical directly /
+  reasoned with a one-line rationale / user-decision escalated) — and run exactly one fresh
+  verify-pass dispatch instead of the retired agent-side 3-round soft cap. Restores reviewer
+  independence (a judge that never edits what it judged) and makes fix application visible on
+  the main thread. Backed by the `reviewers-report-only` invariant.
 - Convention parts can re-inject their section's own rendered default via the new
   `{{=awf:sectionDefault}}` sandbox placeholder (ADR-0072). Placing it in a convention part
   splices the overridden section's rendered default at that point, so a part can *extend* a
