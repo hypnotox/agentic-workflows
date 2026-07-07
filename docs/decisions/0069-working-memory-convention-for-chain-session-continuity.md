@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [workflow, memory, context, chain, skills, rendering]
-related: [15, 20, 34, 45, 46, 48, 52, 54, 60, 61, 67]
+related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67]
 domains: [rendering, tooling]
 ---
 # ADR-0069: Working-memory convention for chain session continuity
@@ -24,7 +24,8 @@ nothing on disk says which phase an in-flight effort is in or which skill fires 
 
 This is the deferred second half of "the two loops" from the 2026-07-06 deep-analysis
 gap map (the first half — the review-finding feedback loop — shipped as ADR-0067). The
-field consensus (research doc, Pillar 1) is note-taking/working-memory plus
+field consensus ([the research doc](../research/agentic-workflow-landscape-and-awf-standing-2026-07.md),
+Pillar 1) is note-taking/working-memory plus
 just-in-time retrieval: hold lightweight identifiers, persist working state outside
 the context window, re-read on demand.
 
@@ -117,21 +118,27 @@ Mechanical facts established by a grounding pass against source:
    reviewing-plan-resync `hand-off-to-impl`, executing-plans `terminal-step`,
    subagent-driven-development `terminal-step`, reviewing-impl `hand-off`) and of the
    task skills **bugfix** and **debugging** (multi-step efforts that lose state the
-   same way; roadmap-graduation is self-contained maintenance and excluded). Inside
+   same way; roadmap-graduation is self-contained maintenance and excluded). Bugfix
+   and debugging declare no terminal/hand-off section today (bugfix ends at
+   `oracle-note`, debugging at `red-flags`), so each gains a new declared
+   `memory-checkpoint` section — a catalog `Sections` addition, kept honest by the
+   ADR-0054 `skill-section-parity` test — as its splice target. Inside
    the section means adopter part-overrides replace it knowingly — consistent with
    every other section body. Any skill-name mention in the partial is guarded with
    `{{ if index .skills "…" }}` and gets an unset-degradation test lock (the ADR-0067
    pitfall).
 
 9. **Retrospective deletes.** The retrospective skill — the chain terminal — gains
-   the deletion step for the effort's memory file, the ephemerality endpoint.
+   the deletion step for the effort's memory file, the ephemerality endpoint. It
+   lands as a final numbered step inside the skill's declared `procedure` section,
+   so it is overridable on the same contract as the checkpoints.
 
 10. **Tool boundary.** awf's involvement stops at rendering the gitignore: no memory
     subcommands, no parsing of memory files, no staleness checks. Files orphaned by an
     abandoned session or a disabled retrospective are accepted gitignored residue;
     `awf uninstall` removes the lock-tracked gitignore but leaves a non-empty
-    `.awf/memory/` behind, and both facts are documented rather than engineered
-    around.
+    `.awf/memory/` behind, and both facts are documented in the agent guide's
+    working-memory section (Decision 5) rather than engineered around.
 
 11. **Rollout.** Existing adopters receive the file at their next `awf sync`. No
     config-shape change occurs, so there is no schema bump and no `minVersionBySchema`
@@ -145,9 +152,10 @@ Mechanical facts established by a grounding pass against source:
   in the directory except itself and carries a `#`-comment provenance banner.
 - `inv: agents-doc-section-parity` — the agents-doc template's `awf:section` markers
   match the catalog-declared section list for the `agents-doc` entry.
-- `inv: memory-checkpoint-chain-coverage` — every chain-node skill template plus
-  `bugfix` and `debugging` carries the memory-checkpoint reference in its rendered
-  full-catalog output; `retrospective` carries the deletion step.
+- `inv: memory-checkpoint-chain-coverage` — every non-terminal chain-node skill
+  template (the nine in Decision 8) plus `bugfix` and `debugging` carries the
+  memory-checkpoint reference in its rendered full-catalog output; `retrospective`
+  carries the deletion step.
 - The tool never reads or parses memory files (textual contract — no code may take a
   dependency on memory-file content).
 - Memory files are never cited by an ADR, plan, or commit message (textual contract,
