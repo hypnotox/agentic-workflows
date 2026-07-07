@@ -45,16 +45,19 @@ The code scopes mirror the domain vocabulary in `.awf/config.yaml` — see [the 
 
 Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
 
-<!-- awf:edit composing-the-gate — default; create .awf/parts/workflow/composing-the-gate.md to override -->
+<!-- awf:edit composing-the-gate — from .awf/parts/workflow/composing-the-gate.md -->
 ## Composing the gate
 
-The gate is one command (`./x gate`) that must be green before every commit. Compose it from three layers:
+The gate is one command (`./x gate`) that must be green before every commit. Here it runs the
+profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
+(`cmd/covercheck`, ADR-0012), `go vet`, `golangci-lint`, and the dead-code gate
+(`cmd/deadcodecheck`, ADR-0063). Every step is deterministic: same tree in, same verdict out.
 
-- **Minimum:** the test suite (`go test ./...`), the language's standard linter, and `./x check` — so behaviour, style, and rendered-file drift all block a commit.
-- **As the project grows:** add what your stack makes cheap — a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
-- **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier (`./x gate full`) that runs before merging or releasing rather than on every commit.
+Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
+hook payload (see the local-hooks section below). And there is no slower tier — `./x gate full`
+runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
+(see [docs/testing.md](testing.md)).
 
-A script or task-runner alias makes the gate one word to run and one place to grow.
 
 <!-- awf:edit local-hooks — from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
