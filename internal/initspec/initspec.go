@@ -128,6 +128,17 @@ func (pr *promptReader) line() (string, error) {
 // otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
 // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension.
 func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.CatalogTrim, []string, error) {
+	// An answer key matching no descriptor is a typo that would otherwise
+	// no-op silently, leaving the intended var empty.
+	known := map[string]bool{}
+	for _, d := range descs {
+		known[d.Key] = true
+	}
+	for _, k := range slices.Sorted(maps.Keys(answers)) {
+		if !known[k] {
+			return nil, nil, nil, fmt.Errorf("initspec: unknown answer key %q (see awf init --describe)", k)
+		}
+	}
 	vars := map[string]string{}
 	var scopesRaw string
 	var skillsSel, docsSel *[]string
@@ -161,6 +172,11 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			} else {
 				val = ""
 			}
+		}
+		// Enum values are validated like multiselect options; a typed exact
+		// option (interactive non-numeric input) passes, garbage errors.
+		if d.Kind == "enum" && val != "" && !slices.Contains(d.Options, val) {
+			return nil, nil, nil, fmt.Errorf("initspec: %s: invalid value %q (options: %s)", d.Key, val, strings.Join(d.Options, ", "))
 		}
 		switch d.Target {
 		case "audit-scopes":

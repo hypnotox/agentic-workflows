@@ -75,6 +75,24 @@ func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
 	}
 }
 
+// An answer key matching no descriptor is a typo that would otherwise no-op
+// silently, leaving the intended var empty (publication-degraded prose).
+func TestResolveRejectsUnknownAnswerKey(t *testing.T) {
+	a := map[string]string{"gatecmd": "make"} // typo'd case
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+		t.Fatal("expected error for unknown answer key")
+	}
+}
+
+// An explicit enum answer outside the options must error like multiselect
+// does, not land verbatim in vars.
+func TestResolveRejectsInvalidEnumAnswer(t *testing.T) {
+	a := map[string]string{"flavor": ";;"}
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+		t.Fatal("expected error for enum answer outside options")
+	}
+}
+
 func TestResolvePromptReadError(t *testing.T) {
 	if _, _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
 		t.Fatal("expected error from a failing reader")
