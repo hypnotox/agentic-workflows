@@ -75,10 +75,7 @@
 - [ADR-0070: Stub sections and the unauthored-content advisory](0070-stub-sections-and-the-unauthored-content-advisory.md) — Implemented
 - [ADR-0071: Missing mutation-report path is a caller error](0071-missing-mutation-report-path-is-a-caller-error.md) — Implemented
 - [ADR-0072: Convention parts re-inject their section default via a placeholder](0072-convention-parts-re-inject-their-section-default-via-a-placeholder.md) — Implemented
-
-## Proposed
-
-- [ADR-0073: Repo-local audit for changelog conformance at implementation review](0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md) — Proposed
+- [ADR-0073: Repo-local audit for changelog conformance at implementation review](0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md) — Implemented
 
 ## Superseded by ADR-0032
 

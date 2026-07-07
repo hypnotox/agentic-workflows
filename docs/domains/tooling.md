@@ -62,9 +62,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
 - [ADR-0070: Stub sections and the unauthored-content advisory](../decisions/0070-stub-sections-and-the-unauthored-content-advisory.md)
 - [ADR-0071: Missing mutation-report path is a caller error](../decisions/0071-missing-mutation-report-path-is-a-caller-error.md)
-
-### Proposed
-
 - [ADR-0073: Repo-local audit for changelog conformance at implementation review](../decisions/0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md)
 
 ### Superseded by ADR-0032
