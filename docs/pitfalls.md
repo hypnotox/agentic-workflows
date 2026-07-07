@@ -95,4 +95,14 @@ nothing flagged it: the render is drift-clean because the config said exactly th
 a project-local list entry, copy the catalog defaults you still want into the override
 alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
 deleted default lines before committing.
+## Registry-relative constants in migration code drift
+
+`migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree — correct when
+the To:3 relocation was the newest migration, silently wrong once To:4..6 registered: the tree
+gated forever while `awf upgrade` applied only post-relocation no-ops (fixed 2026-07-07). A
+generation pinned relative to the *growing* registry moves with every new migration, but a
+layout detected by shape sits at a *fixed* point in history — pin the absolute generation (a
+lockless `.claude/awf/` tree is the tree-layout port's output, so 1). Treat any `Current()±k`
+in migration or versioning code as a red flag unless k describes the current head by
+definition.
 
