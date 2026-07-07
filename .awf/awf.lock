@@ -287,8 +287,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e57d88df13ced6a463ed142666ec16ea0fd051ec6fd03a96332a96f6602e57b3",
-      "configHash": "sha256:60729c860d476ba32b1cc9cfd9f2b733da0828994d993157b8cc8bbf2b60dbba",
-      "outputHash": "sha256:524ddfb6d14c07ef3467d5f6ad22a72ed06a0ddfa40b332564b2d799a3e97e12"
+      "configHash": "sha256:a61ae87bc7b3276a0cabc1f273574c4d139a1642f21d093b1ed112cec83fe127",
+      "outputHash": "sha256:90fbcd1cb2c8dc4fc2a8ef7b7003ab7f9bef55d8ab200334a2a57f818bbacdab"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -324,7 +324,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:b5e5abe4adec42a23b72156c57e39eef928449365a9be65dd0369a4d109ad191"
+      "outputHash": "sha256:c254fcaa40811cf2d1d6913bd2c7e334deb007a96b98f16d45615db3286c1026"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
