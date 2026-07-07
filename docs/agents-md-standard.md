@@ -13,8 +13,9 @@ The guide renders a fixed sequence of sections:
 3. **Identity** — adopter-authored; what the project is.
 4. **Invariants** — adopter-authored; the hard rules every change respects.
 5. **Workflow** — awf-given; the canonical chain.
-6. **Commands** — adopter data; the handful of commands an agent runs.
-7. **Document map** — awf-given; the index into the docs, generated from the enabled set.
+6. **Working memory** — awf-given; the session-continuity convention for `.awf/memory/`.
+7. **Commands** — adopter data; the handful of commands an agent runs.
+8. **Document map** — awf-given; the index into the docs, generated from the enabled set.
 
 Override an adopter-authored section with a convention part at `.awf/parts/agents-doc/<section>.md`, or supply `data` (invariants, commands) in `.awf/agents-doc.yaml`.
 
