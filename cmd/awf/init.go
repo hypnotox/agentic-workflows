@@ -50,14 +50,29 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 			return collisionRefusal(collisions)
 		}
 	}
-	vars, trim, scopes, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
-	if err != nil {
-		return err
+	cfgPath := config.ConfigPath(root)
+	_, statErr := os.Stat(cfgPath)
+	configExists := statErr == nil
+	var vars map[string]string
+	var trim *config.CatalogTrim
+	var scopes []string
+	if configExists {
+		// Descriptor answers only feed the scaffold; resolving them here would
+		// prompt for (or silently accept) values init then discards.
+		fmt.Fprintf(stdout, "%s exists — keeping it and re-rendering only\n", cfgPath)
+		if len(answers) > 0 {
+			fmt.Fprintln(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead")
+		}
+	} else {
+		var rerr error
+		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
+		if rerr != nil {
+			return rerr
+		}
 	}
 
-	cfgPath := config.ConfigPath(root)
 	scaffolded := false
-	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+	if !configExists {
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}

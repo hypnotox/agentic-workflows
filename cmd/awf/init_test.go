@@ -179,6 +179,40 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	}
 }
 
+// awf init over an existing config must not prompt for descriptor answers it
+// then discards — the config is kept, init says so, and only the sync runs.
+func TestInitExistingConfigSkipsPrompts(t *testing.T) {
+	root := t.TempDir()
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
+	testsupport.WriteAwfConfig(t, root, "prefix: ex\nskills: []\nagents: []\n")
+	origStdin := stdin
+	stdin = strings.NewReader("answered-one\nanswered-two\nanswered-three\n")
+	t.Cleanup(func() { stdin = origStdin })
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+		t.Fatalf("init over existing config: exit %d (%s)", code, errb.String())
+	}
+	if strings.Contains(out.String(), "gateCmd —") {
+		t.Errorf("init prompted for descriptors it cannot apply:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "keeping it") {
+		t.Errorf("init did not say the existing config is kept:\n%s", out.String())
+	}
+	if cfg := readInitConfig(t, root); strings.Contains(cfg, "answered") {
+		t.Errorf("existing config was modified:\n%s", cfg)
+	}
+	// Explicit answers against an existing config are surfaced as ignored.
+	var out2 bytes.Buffer
+	if code := run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out2, &errb); code != 0 {
+		t.Fatalf("init --set over existing config: exit %d (%s)", code, errb.String())
+	}
+	if !strings.Contains(out2.String(), "ignored") {
+		t.Errorf("init did not note that --set answers were ignored:\n%s", out2.String())
+	}
+}
+
 // TestInitCatalogTrim asserts --set skills=/docs= drive the scaffolded enable
 // arrays verbatim (full-deselectable catalog trim, ADR-0029).
 func TestInitCatalogTrim(t *testing.T) {
