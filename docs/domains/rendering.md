@@ -48,9 +48,9 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0062: Data-driven document map for mandatory docs](../decisions/0062-data-driven-document-map-for-mandatory-docs.md)
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 - [ADR-0067: Retrospective terminal step and finding-promotion ladder](../decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md)
+- [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
 
 ### Proposed
 
-- [ADR-0069: Working-memory convention for chain session continuity](../decisions/0069-working-memory-convention-for-chain-session-continuity.md)
 - [ADR-0070: Stub sections and the unauthored-content advisory](../decisions/0070-stub-sections-and-the-unauthored-content-advisory.md)
 

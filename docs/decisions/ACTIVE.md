@@ -71,10 +71,10 @@
 - [ADR-0066: Advisory mutation-testing command](0066-advisory-mutation-testing-command.md) — Implemented
 - [ADR-0067: Retrospective terminal step and finding-promotion ladder](0067-retrospective-terminal-step-and-finding-promotion-ladder.md) — Implemented
 - [ADR-0068: Project-local skills and agents](0068-project-local-skills-and-agents.md) — Implemented
+- [ADR-0069: Working-memory convention for chain session continuity](0069-working-memory-convention-for-chain-session-continuity.md) — Implemented
 
 ## Proposed
 
-- [ADR-0069: Working-memory convention for chain session continuity](0069-working-memory-convention-for-chain-session-continuity.md) — Proposed
 - [ADR-0070: Stub sections and the unauthored-content advisory](0070-stub-sections-and-the-unauthored-content-advisory.md) — Proposed
 
 ## Superseded by ADR-0032

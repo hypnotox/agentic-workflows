@@ -7,6 +7,12 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+### Features
+- Working-memory convention for chain session continuity (ADR-0069): `awf sync` now always
+  renders a self-ignoring `.awf/memory/.gitignore`; the agent guide gains a working-memory
+  section (per-effort `.awf/memory/<effort-slug>.md` files, resume protocol, JIT-retrieval
+  guidance); brainstorming checkpoints its design brief continuously; the chain skills plus
+  bugfix/debugging checkpoint phase/handoff state; the retrospective deletes the file.
 
 ## [0.9.0] - 2026-07-05
 ### Bug fixes
