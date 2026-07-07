@@ -87,11 +87,14 @@ range, advisory in the same Error-blocks / Warning-informs sense.
 
 ## Invariants
 
-- `inv: repo-audit-not-shipped` — the repo-local audit lives in a `cmd/` package that
-  `./cmd/awf` does not import, so it is absent from the shipped binary and no changelog rule
-  reaches `awf audit`.
 - `inv: repo-audit-error-exit` — the repo-local audit exits non-zero when and only when it
   reports at least one Error finding; Warning-only and clean runs exit zero.
+
+The "repo-audit is never part of the shipped standard" property is **not** a tagged invariant:
+it holds by construction (see Consequences), not by a check. Its auditable logic lives in the
+`cmd/repoaudit` `package main` — which Go cannot import — so `./cmd/awf` *cannot* reach it, and
+GoReleaser builds only `./cmd/awf`. An import-graph test would assert a property the language
+already guarantees; there is nothing meaningful to back.
 
 ## Consequences
 
@@ -100,11 +103,13 @@ range, advisory in the same Error-blocks / Warning-informs sense.
   entry for adopter-facing work becomes an Error the reviewer must resolve or escalate, exactly
   as it treats an `awf audit` Error. The `awf-retrospective` changelog step (ADR-0041/0067)
   stays as the prose backstop for what the heuristic path-allowlist misses.
-- **The scope boundary is now explicit and enforced.** Repo-specific conformance has a home
-  (`cmd/repoaudit` + `./x audit-local`) that is structurally separate from the shipped
-  `awf audit`; a future repo-only rule adds a registry entry rather than tempting a standard
-  edit. The cost is a second audit surface to keep in mind, mitigated by both mirroring the
-  same finding contract.
+- **The scope boundary is structural, not merely conventional.** Repo-specific conformance
+  has a home (`cmd/repoaudit` + `./x audit-local`) separated from the shipped `awf audit` by
+  construction: the audit logic sits in a `package main` that nothing can import and that
+  GoReleaser never builds into the released binary, so no changelog rule can reach `awf audit`
+  or an adopter — no test needed to hold the line. A future repo-only rule adds a registry
+  entry rather than tempting a standard edit. The cost is a second audit surface to keep in
+  mind, mitigated by both mirroring the same finding contract.
 - **A heuristic, not a proof.** The path allowlist can miss adopter-facing changes that touch
   only render logic; the rule logs what it considered so the gap is visible, and does not claim
   completeness. It is a net under a known-recurring miss, not a total guarantee. The section
