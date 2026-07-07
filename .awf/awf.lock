@@ -46,9 +46,9 @@
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
-      "templateHash": "sha256:d2f3d3ad02ac6d19b8661541b2249b7c328e462dc91d0ae48b9065eb5ed360f8",
+      "templateHash": "sha256:49c07fb12e18dba22cba14fdab9551c3cba16d21cecc2cbe87c3c9324a488f7e",
       "configHash": "sha256:773e4a90ba7f8b4e5cc46985a278063a8176ee6508ad4cd8fdae14ab55bdda4a",
-      "outputHash": "sha256:96faf8cef7572278e5dd8a51f08e13cfb8287c4c2848976832f8e2e4f1e806dc"
+      "outputHash": "sha256:1dc3da1376dd7ecaeb63a71ec232f4167e9164a96d98c3f93eeba81c8a56d7c2"
     },
     ".claude/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
@@ -58,15 +58,15 @@
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:eecc2b98dcf11b1bf14b245c6865658777f1c78d99f93e0e82a7ea519db790e5",
+      "templateHash": "sha256:d8ab17c0d7a4162cfe4db2e3914e240794005a1026b851c81e538b517f95eca9",
       "configHash": "sha256:73f8eff9d04bd9e612689e2c54a5e4ee79ad180c96007d5138542fe43bda82dc",
-      "outputHash": "sha256:0827307fc3ce093aaabaf6724b3a3d158036f748ecbfca6746067106dc9e99f5"
+      "outputHash": "sha256:4402bc9bf83648de15ef4402f5f5bda2f43e427e4c73fa290f3021a441d908f3"
     },
     ".claude/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:44a13476a53e3a0743dcae0d28857a0318bae09b3ef37b215656c37766624a51",
+      "templateHash": "sha256:fb80498feea5b08f8e33c2015e3b7c0617852bb660054e3ec1be05166ee7955a",
       "configHash": "sha256:ed3404caa48ef59f6341fa5139579c4a8ff9a2ca400a005585734478c4d9797e",
-      "outputHash": "sha256:15e832cd070cff2ae6395982337dbc043cf72378f93755302c832bfb93d5387c"
+      "outputHash": "sha256:51e14fba4b93abf3d3378e590cb30f8427ed2ecc6ca69b53d8c858b3465b1472"
     },
     ".claude/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
@@ -154,9 +154,9 @@
     },
     ".cursor/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
-      "templateHash": "sha256:d2f3d3ad02ac6d19b8661541b2249b7c328e462dc91d0ae48b9065eb5ed360f8",
+      "templateHash": "sha256:49c07fb12e18dba22cba14fdab9551c3cba16d21cecc2cbe87c3c9324a488f7e",
       "configHash": "sha256:773e4a90ba7f8b4e5cc46985a278063a8176ee6508ad4cd8fdae14ab55bdda4a",
-      "outputHash": "sha256:96faf8cef7572278e5dd8a51f08e13cfb8287c4c2848976832f8e2e4f1e806dc"
+      "outputHash": "sha256:1dc3da1376dd7ecaeb63a71ec232f4167e9164a96d98c3f93eeba81c8a56d7c2"
     },
     ".cursor/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
@@ -166,15 +166,15 @@
     },
     ".cursor/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:eecc2b98dcf11b1bf14b245c6865658777f1c78d99f93e0e82a7ea519db790e5",
+      "templateHash": "sha256:d8ab17c0d7a4162cfe4db2e3914e240794005a1026b851c81e538b517f95eca9",
       "configHash": "sha256:73f8eff9d04bd9e612689e2c54a5e4ee79ad180c96007d5138542fe43bda82dc",
-      "outputHash": "sha256:0827307fc3ce093aaabaf6724b3a3d158036f748ecbfca6746067106dc9e99f5"
+      "outputHash": "sha256:4402bc9bf83648de15ef4402f5f5bda2f43e427e4c73fa290f3021a441d908f3"
     },
     ".cursor/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:44a13476a53e3a0743dcae0d28857a0318bae09b3ef37b215656c37766624a51",
+      "templateHash": "sha256:fb80498feea5b08f8e33c2015e3b7c0617852bb660054e3ec1be05166ee7955a",
       "configHash": "sha256:ed3404caa48ef59f6341fa5139579c4a8ff9a2ca400a005585734478c4d9797e",
-      "outputHash": "sha256:15e832cd070cff2ae6395982337dbc043cf72378f93755302c832bfb93d5387c"
+      "outputHash": "sha256:51e14fba4b93abf3d3378e590cb30f8427ed2ecc6ca69b53d8c858b3465b1472"
     },
     ".cursor/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",

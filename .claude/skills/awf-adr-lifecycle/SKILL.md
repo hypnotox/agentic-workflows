@@ -1,7 +1,7 @@
 ---
 name: awf-adr-lifecycle
 description: >
-  Use when transitioning a awf ADR between lifecycle states.
+  Use when transitioning awf ADRs between lifecycle states.
   Encodes the 4-state lifecycle, supersedence
   flavours, and amendment-while-Proposed scope. Self-contained.
 ---

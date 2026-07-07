@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-bugfix
-description: Use when applying a {{ .prefix }} bug fix with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ if index .skills "reviewing-impl" }}{{ .prefix }}-reviewing-impl{{ else }}the project's review step{{ end }}. Self-contained.
+description: Use when applying a bug fix in {{ .prefix }} with a known root cause. Writes the regression test first, fixes the root cause, verifies via the gate, commits, and runs {{ if index .skills "reviewing-impl" }}{{ .prefix }}-reviewing-impl{{ else }}the project's review step{{ end }}. Self-contained.
 ---
 
 # {{ .prefix }}-bugfix

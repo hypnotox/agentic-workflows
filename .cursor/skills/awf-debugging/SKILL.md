@@ -1,7 +1,7 @@
 ---
 name: awf-debugging
 description: >
-  Use when investigating a awf bug or unexpected behaviour,
+  Use when investigating a bug or unexpected behaviour in awf,
   before proposing a fix. Validates a falsifiable hypothesis against the
   real system before touching code. Self-contained; encodes
   awf-specific debugging surfaces.
