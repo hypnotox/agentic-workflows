@@ -35,7 +35,7 @@ ADR-0069; this plan is the execution record.
 Go 1.26. Packages touched: `internal/project` (render.go, banner.go, check.go + tests),
 `internal/catalog` (standard.go), `internal/evals` (chain_test.go), `templates` (embed.go,
 memory/, partials/, skills/, agents-doc/, docs/). Dogfood config tree: `.awf/agents-doc.yaml`,
-`.awf/domains/parts/rendering/current-state.md`.
+`.awf/domains/parts/rendering/current-state.md`, `.awf/domains/parts/tooling/current-state.md`.
 
 ## File structure
 
@@ -54,7 +54,8 @@ Modified:
   subagent-driven-development,reviewing-impl,bugfix,debugging,retrospective}/SKILL.md.tmpl`
 - `templates/docs/workflow.md.tmpl`, `templates/docs/working-with-awf.md.tmpl`
 - `internal/evals/chain_test.go`
-- `.awf/agents-doc.yaml`, `.awf/domains/parts/rendering/current-state.md`
+- `.awf/agents-doc.yaml`, `.awf/domains/parts/rendering/current-state.md`,
+  `.awf/domains/parts/tooling/current-state.md`
 - `changelog/CHANGELOG.md`, ADR-0069 status flip
 - Rendered outputs via `./x sync` (AGENTS.md, `.claude/`+`.cursor/` skills, docs,
   `.awf/memory/.gitignore`, `.awf/awf.lock`)
@@ -468,8 +469,20 @@ Commit: `test(rendering): lock chain working-memory checkpoint coverage`
 - [ ] Run `go test ./internal/evals/` → pass. Deliberately break once (temporarily delete the
   include line from `templates/skills/bugfix/SKILL.md.tmpl`, expect the test to fail naming
   `bugfix`, restore) to confirm the lock bites.
-- [ ] Run `./x gate` → green. Stage and commit `internal/evals/chain_test.go` (plus the
-  restored-template no-op if git shows nothing else).
+- [ ] In `.awf/domains/parts/tooling/current-state.md`, append to the end of the final
+  (`internal/evals`) paragraph, after `…blank-path provenance pointer.` (same line run —
+  ADR-0069 declares the tooling domain, so its current-state narrative must refresh before
+  the Phase 5 Implemented flip or the `domain-doc-staleness` audit rule fires):
+
+  ```
+  ADR-0069 adds a working-memory coverage lock (`memory-checkpoint-chain-coverage`): the nine non-terminal chain-node skills plus `bugfix` and `debugging` must render the checkpoint instruction in the full-catalog output, and `retrospective` the deletion step.
+  ```
+
+- [ ] Run `./x sync` (`docs/domains/tooling.md` picks up the narrative) then `./x check` →
+  clean.
+- [ ] Run `./x gate` → green. Stage and commit: `internal/evals/chain_test.go`,
+  `.awf/domains/parts/tooling/current-state.md`, `docs/domains/tooling.md`, and
+  `.awf/awf.lock` if changed (plus the restored-template no-op if git shows nothing else).
 
 ## Phase 5 — changelog, ADR flip
 
