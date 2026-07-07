@@ -118,7 +118,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 		"mechanical",
 		"reasoned",
 		"user-decision",
-		"3-round soft cap",
 		"suggested_fix",
 	}
 	for _, phrase := range loadBearing {
@@ -161,7 +160,6 @@ func TestPlanReviewerAgent(t *testing.T) {
 		"mechanical",
 		"reasoned",
 		"user-decision",
-		"3-round soft cap",
 		"suggested_fix",
 	}
 	for _, phrase := range sharedPhrases {
@@ -216,7 +214,6 @@ func TestCodeReviewerAgent(t *testing.T) {
 		"mechanical",
 		"reasoned",
 		"user-decision",
-		"3-round soft cap",
 		"suggested_fix",
 		"~80 words",
 	}
@@ -911,15 +908,15 @@ func TestUnsetFallbackRenders(t *testing.T) {
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},
-			ban:  []string{"For each item below"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 		{
 			tmpl: "agents/plan-reviewer.md.tmpl",
-			ban:  []string{"For each item below"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 		{
 			tmpl: "agents/code-reviewer.md.tmpl",
-			ban:  []string{"For each item below"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 		{
 			tmpl: "agents-doc/AGENTS.md.tmpl",

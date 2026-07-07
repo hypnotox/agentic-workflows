@@ -14,7 +14,7 @@ description: >
 <!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-plan/when-fires.md to override -->
 ## When this skill fires
 
-Terminal step of `awf-writing-plans`. Invoked once the plan file is written and committed under `docs/plans/`. The `plan-reviewer` subagent owns the review discipline: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, applies fixes with a 3-round soft cap, and returns a digest. This skill dispatches that agent, surfaces the digest, gates on user-decision findings, and chains to the next node.
+Terminal step of `awf-writing-plans`. Invoked once the plan file is written and committed under `docs/plans/`. The `plan-reviewer` subagent is a report-only judge: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
 This skill owns the post-write **full** plan review only. The plan↔ADR resync pass after a linked ADR review converges is owned by the separate `awf-reviewing-plan-resync` skill.
 
@@ -31,21 +31,20 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
-   The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
+   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-plan/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — agent applies directly.
-   - **reasoned** — agent applies with one-line rationale.
+   - **mechanical** — this skill applies directly.
+   - **reasoned** — this skill applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. The agent applies the edits; this skill ensures the commit convention is followed. Only the plan file is edited; no other repository files are touched.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan/re-review-loop.md to override -->
-6. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+6. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):

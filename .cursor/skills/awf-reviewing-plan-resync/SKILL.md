@@ -24,23 +24,22 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
-   The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
+   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-plan-resync/classify-route-findings.md to override -->
 2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — agent applies directly.
-   - **reasoned** — agent applies with one-line rationale.
+   - **mechanical** — this skill applies directly.
+   - **reasoned** — this skill applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 
    **Return edge:** when a finding implicates the ADR itself — the plan is right and the still-`Proposed` decision text is wrong — do not bend the plan to stale decision text. Amend the ADR (via `awf-adr-lifecycle`'s amendment-while-Proposed procedure), re-run `awf-reviewing-adr` on the amended ADR, then re-run this resync — looping until plan and ADR(s) converge.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
-3. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. The agent applies the edits; this skill ensures the commit convention is followed. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
+3. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
-4. **Re-review loop.** The `plan-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off-to-impl — default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `awf-executing-plans` (for inline execution) or `awf-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
@@ -52,5 +51,5 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->
 - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
 - The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The other three ran during `awf-reviewing-plan` and need not re-run.
-- The re-review loop (3-round soft cap) is owned by the `plan-reviewer` agent, one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.
+- The `plan-reviewer` is report-only, one lens-diverse subagent; this skill owns fix application and the single verify pass, and does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

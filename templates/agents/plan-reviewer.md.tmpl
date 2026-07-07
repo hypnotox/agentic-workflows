@@ -7,7 +7,7 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`, dispatched in fresh context. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 <!-- awf:include review-spine-head -->
 

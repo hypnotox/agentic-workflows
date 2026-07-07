@@ -6,7 +6,7 @@ description: Independent review step after implementation commits. Dispatches th
 
 # awf-reviewing-impl
 
-Invoked as the independent review step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
+Invoked as the independent review step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
 ## When this skill fires
 
@@ -32,18 +32,17 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
-   The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
+   The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
-   - **mechanical** — agent applies directly.
-   - **reasoned** — agent applies with a one-line rationale.
+   - **mechanical** — this skill applies directly.
+   - **reasoned** — this skill applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit.
 
 <!-- awf:edit run-audit — from .awf/skills/parts/reviewing-impl/run-audit.md -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
@@ -62,7 +61,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-7. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Invoke `awf-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.

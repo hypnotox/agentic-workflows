@@ -13,7 +13,7 @@ description: >
 <!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-adr/when-fires.md to override -->
 ## When this skill fires
 
-Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and committed (status `Proposed`). The `adr-reviewer` subagent owns the review discipline: it reads the ADR, runs its internal lenses, classifies each finding as mechanical / reasoned / user-decision, applies fixes with a 3-round soft cap, and returns a digest. This skill dispatches that agent, surfaces the digest, gates on user-decision findings, and chains to the next node.
+Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and committed (status `Proposed`). The `adr-reviewer` subagent is a report-only judge: it reads the ADR, runs its internal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
 ## Procedure
 
@@ -27,21 +27,20 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
-   The agent handles lens application, finding classification, fix application, and the re-review loop internally. Do not re-describe those steps here.
+   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-adr/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `adr-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — agent applies directly.
-   - **reasoned** — agent applies with one-line rationale.
+   - **mechanical** — this skill applies directly.
+   - **reasoned** — this skill applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
-5. **Commit applied fixes.** Fixes are committed as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
-6. **Re-review loop.** The `adr-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+6. **Verify pass.** After applying fixes, dispatch exactly one fresh `adr-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit status-flip — default; create .awf/skills/parts/reviewing-adr/status-flip.md to override -->
 7. **Do not flip the ADR status here.** The ADR stays `Proposed` through the implementation sequence; the flip to `Accepted`/`Implemented` is owned by the implementation step's final commit (`awf-executing-plans` / `awf-subagent-driven-development`, or `awf-adr-lifecycle` for the no-plan direct-implementation case). "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.

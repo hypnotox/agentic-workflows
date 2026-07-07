@@ -5,7 +5,7 @@ description: Independent review step after implementation commits. Dispatches th
 
 # {{ .prefix }}-reviewing-impl
 
-Invoked as the independent review step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, the re-review loop, and the digest).
+Invoked as the independent review step of the implementation phase. Dispatches the `code-reviewer` subagent against the session's SHA range, then acts on its structured findings. The `code-reviewer` agent owns the review discipline (lenses, classification, and the digest); fix application and the verify pass are this skill's job.
 
 ## When this skill fires
 
@@ -34,20 +34,19 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
-   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
 
-   The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
+   The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
-   - **mechanical** — agent applies directly.
-   - **reasoned** — agent applies with a one-line rationale.
+   - **mechanical** — this skill applies directly.
+   - **reasoned** — this skill applies with a one-line rationale.
    - **user-decision** — present to the user and wait.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit.
 <!-- awf:end -->
 
 <!-- awf:section run-audit -->
@@ -59,7 +58,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-7. **Re-review loop.** The `code-reviewer` agent manages the re-review loop (3-round soft cap) and escalates residual structural findings as `user-decision` items. Do not issue further dispatch without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section hand-off -->

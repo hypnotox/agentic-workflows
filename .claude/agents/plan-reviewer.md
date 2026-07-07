@@ -8,7 +8,7 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings, classifies each as **mechanical / reasoned / user-decision**, applies fixes with a 3-round soft cap, and emits a digest.
+Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -31,11 +31,11 @@ Every finding must cite a **specific location**; "the plan generally" is not a v
 
 Classify by what acting on the finding requires, not by severity:
 
-- **mechanical** — the answer is unambiguous from existing rules, docs, or code; apply the fix directly.
-- **reasoned** — a good answer can be reached by reading the relevant code or docs, but judgment is required; apply with a one-line rationale. For deferred-to-follow-up cases, prefix the rationale with `Deferred to <name>:`.
+- **mechanical** — the answer is unambiguous from existing rules, docs, or code; the fix is direct.
+- **reasoned** — a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
 - **user-decision** — a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
 
-Severity is informational only; route by classification kind.
+Severity is informational only; the dispatching skill routes by classification kind.
 
 ## Universal lenses
 
@@ -92,9 +92,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
-1. Apply mechanical and reasoned fixes directly; note rationale for reasoned fixes.
-1. Re-review the updated artifact. Exit when: (a) no findings, (b) remaining findings are wording-only, or (c) the artifact is clean by inspection. **3-round soft cap**: after three rounds with remaining structural findings, surface the current state as `user-decision` findings and stop looping without explicit direction.
-1. Emit the digest (see format below).
+1. Emit the digest (see format below). Report findings only — do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
 
 ## Digest format
 
@@ -104,11 +102,9 @@ Plan summary:
 - Shape: <phase count, commit count, files created/modified>
 - Headline tasks: <1–2 sentences naming the load-bearing tasks>
 
-Plan review complete (R rounds, N lenses, M findings).
-- Mechanical fixes applied: K
-- Reasoned fixes applied: L
-- User decisions needed: P
-  1. <question>
+Plan review complete (N lenses, M findings).
+- Findings by classification: mechanical K, reasoned L, user-decision P
+  1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50–100 words). When `P = 0`, the summary block is optional and the chain auto-proceeds. When `P > 0`, surface the digest and wait for the user's decisions before continuing.
+Target ~80 words for the Plan summary (range 50–100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
