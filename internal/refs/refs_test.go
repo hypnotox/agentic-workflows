@@ -35,6 +35,8 @@ func TestLinks(t *testing.T) {
 		{"code span kept real link", "`[x](skip.md)` and [r](keep.md)", []string{"keep.md"}},
 		{"unpaired backtick keeps link", "a `b [r](keep.md)", []string{"keep.md"}},
 		{"badge-wrapped link", "[![CI](ci.svg)](docs/target.md)", []string{"ci.svg", "docs/target.md"}},
+		{"angle-bracket dest with space", "[spec](<my file.md>)", []string{"my file.md"}},
+		{"angle-bracket dest with title", "[x](<b.md> \"T\")", []string{"b.md"}},
 		{"nested brackets in text", "[see [spec] here](b.md)", []string{"b.md"}},
 		{"bracket pair then real link", "[not a link] but [r](keep.md)", []string{"keep.md"}},
 	}

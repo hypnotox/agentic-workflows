@@ -121,11 +121,16 @@ func matchingBracket(line string, open int) int {
 // <...> destination, and returns "" for external or anchor-only targets.
 func normalizeTarget(dest string) string {
 	dest = strings.TrimSpace(dest)
-	if i := strings.IndexAny(dest, " \t"); i >= 0 {
+	if strings.HasPrefix(dest, "<") {
+		// A <...> destination is markdown's only way to write a target containing
+		// spaces — unwrap it before the whitespace/title cut, not after.
+		dest = dest[1:]
+		if end := strings.IndexByte(dest, '>'); end >= 0 {
+			dest = dest[:end]
+		}
+	} else if i := strings.IndexAny(dest, " \t"); i >= 0 {
 		dest = dest[:i]
 	}
-	dest = strings.TrimPrefix(dest, "<")
-	dest = strings.TrimSuffix(dest, ">")
 	if i := strings.IndexByte(dest, '#'); i >= 0 {
 		dest = dest[:i]
 	}
