@@ -17,6 +17,8 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 <!-- awf:edit procedure — default; create .awf/skills/parts/brainstorming/procedure.md to override -->
 ## Procedure
 
+Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles — create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
+
 1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Identify which packages and which existing ADRs the work touches.
 
 <!-- awf:edit example-clarifying-questions — default; create .awf/skills/parts/brainstorming/example-clarifying-questions.md to override -->
@@ -31,7 +33,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `docs/decisions/README.md` for when an ADR is warranted.
 
 <!-- awf:edit grounding-check-output-format — default; create .awf/skills/parts/brainstorming/grounding-check-output-format.md to override -->
-6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE fresh-context subagent for exploration (read-only by default; allow it to run a command only when the grounding-check needs to execute one rather than read files). The subagent does NOT see this conversation — it works from a self-contained brief and returns findings. Do NOT write the brief to a file.
+6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE fresh-context subagent for exploration (read-only by default; allow it to run a command only when the grounding-check needs to execute one rather than read files). The subagent does NOT see this conversation — it works from a self-contained brief and returns findings. Synthesise the dispatch brief inline in the subagent prompt — do NOT write it to a file; the only on-disk record of the brainstorm is the evolving design brief in the working-memory file.
 
    Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the files/packages/ADRs touched, the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
 
@@ -55,6 +57,8 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
    - **Load-bearing + simple** → invoke `awf-proposing-adr` only; implement directly after the ADR is committed, then invoke `awf-reviewing-impl`.
    - **Complex but not load-bearing** → invoke `awf-writing-plans` only.
    - **Neither** → implement directly without a plan or ADR, then invoke `awf-reviewing-impl`.
+
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 <!-- awf:edit definitions — default; create .awf/skills/parts/brainstorming/definitions.md to override -->
 ## Definitions

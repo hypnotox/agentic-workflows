@@ -43,7 +43,7 @@ var Standard = &Catalog{
 		},
 		"debugging": {Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
-			"devdb-note", "red-flags",
+			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
 		"proposing-adr": {
 			Core: true,
@@ -79,7 +79,7 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"bugfix": {Sections: []string{"test-tiers", "pitfalls-check", "oracle-note"}},
+		"bugfix": {Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
 		"reviewing-plan": {Core: true, RequiresAgent: "plan-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",

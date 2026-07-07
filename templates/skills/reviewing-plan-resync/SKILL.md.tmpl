@@ -48,6 +48,8 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:section hand-off-to-impl -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `{{ .prefix }}-executing-plans` (for inline execution) or `{{ .prefix }}-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
+
+<!-- awf:include memory-checkpoint -->
 <!-- awf:end -->
 
 ## Notes

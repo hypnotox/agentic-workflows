@@ -57,6 +57,8 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/writing-plans/terminal-step.md to override -->
 4. **Terminal step: invoke `awf-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+
 ## Notes
 
 <!-- awf:edit plan-lifecycle — default; create .awf/skills/parts/writing-plans/plan-lifecycle.md to override -->

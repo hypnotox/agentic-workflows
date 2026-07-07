@@ -66,6 +66,8 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 
 <!-- awf:section terminal-step -->
 4. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
+
+<!-- awf:include memory-checkpoint -->
 <!-- awf:end -->
 
 ## Notes

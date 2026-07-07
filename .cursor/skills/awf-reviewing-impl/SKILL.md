@@ -58,6 +58,8 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 <!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Invoke `awf-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.
 
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+
 ## Notes
 
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-impl/notes.md to override -->

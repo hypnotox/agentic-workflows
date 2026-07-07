@@ -45,6 +45,8 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:edit hand-off-to-impl — default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `awf-executing-plans` (for inline execution) or `awf-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
 
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+
 ## Notes
 
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->

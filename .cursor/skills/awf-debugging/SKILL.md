@@ -77,3 +77,6 @@ These thoughts mean stop — you're rationalizing:
 | "The error's gone, so it's fixed." | Symptom ≠ root cause. Confirm the underlying cause is addressed, not just silenced. |
 | "The expected value looks wrong — I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
 | "It's just a flaky environment — retry." | Infrastructure down is not a bug to code around. Stop and report it. |
+
+<!-- awf:edit memory-checkpoint — default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.

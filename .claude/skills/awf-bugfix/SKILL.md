@@ -45,6 +45,9 @@ The specific test tiers (unit, integration, e2e, etc.) and their locations are p
 The oracle is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
 
 
+<!-- awf:edit memory-checkpoint — default; create .awf/skills/parts/bugfix/memory-checkpoint.md to override -->
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+
 ## Notes
 
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.

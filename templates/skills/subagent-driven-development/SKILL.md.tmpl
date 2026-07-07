@@ -71,6 +71,8 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 
 <!-- awf:section terminal-step -->
 8. **Terminal step: invoke `{{ .prefix }}-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+
+<!-- awf:include memory-checkpoint -->
 <!-- awf:end -->
 
 ## Notes

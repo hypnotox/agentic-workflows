@@ -26,6 +26,8 @@ Terminal step of the implementation phase, after `awf-reviewing-impl` has conclu
 
 4. **Note where each landed** in the session summary, so the loop is visible.
 
+5. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists — the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
+
 <!-- awf:edit recurrence-signal — default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
 ## Recurrence signal
 

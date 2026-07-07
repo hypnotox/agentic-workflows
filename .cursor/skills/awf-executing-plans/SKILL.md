@@ -50,6 +50,8 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
 6. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
 
+**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+
 ## Notes
 
 <!-- awf:edit project-invariants — default; create .awf/skills/parts/executing-plans/project-invariants.md to override -->
