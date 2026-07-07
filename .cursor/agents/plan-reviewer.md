@@ -56,10 +56,7 @@ Apply all five lenses to every plan:
 
 <!-- awf:edit project-focus — default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
-**step-exactness** — every task names exact file paths, exact content or diffs, and exact commands with expected output
-
-
-**dependency-order** — tasks are ordered so each builds only on already-completed work
+**Dead-code-viable phase boundaries** — every planned commit must pass the whole gate in isolation, including the ADR-0063 dead-code check — a phase that introduces a production function whose first production caller lands in a later phase cannot commit; merge the phases or reorder so definition and first caller land together (recurred as an execution-time plan amendment, ADR-0070)
 
 
 

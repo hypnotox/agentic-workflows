@@ -1,4 +1,7 @@
 data:
+    focusItems:
+        - name: Dead-code-viable phase boundaries
+          description: every planned commit must pass the whole gate in isolation, including the ADR-0063 dead-code check — a phase that introduces a production function whose first production caller lands in a later phase cannot commit; merge the phases or reorder so definition and first caller land together (recurred as an execution-time plan amendment, ADR-0070)
     docCurrencyItems:
         - check: docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
         - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain
