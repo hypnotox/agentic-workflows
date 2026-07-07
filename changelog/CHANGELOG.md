@@ -7,6 +7,15 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+### Features
+- Convention parts can re-inject their section's own rendered default via the new
+  `{{=awf:sectionDefault}}` sandbox placeholder (ADR-0072). Placing it in a convention part
+  splices the overridden section's rendered default at that point, so a part can *extend* a
+  shipped default — preamble, appendix, or wrap — instead of copying and forking it (which
+  silently rots when awf revises the default). A part still replaces its section body; the
+  placeholder just carries the default forward. Re-injecting a `stub` section's default (an
+  authoring prompt) is a hard render error. Documented in the working-with-awf overrides
+  section and placeholder key table.
 
 ## [0.10.0] - 2026-07-07
 ### Breaking changes
