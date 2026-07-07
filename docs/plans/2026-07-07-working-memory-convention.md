@@ -132,8 +132,10 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   }
   ```
 
-- [ ] In `internal/project/render.go` (`renderTarget`), update the call site:
-  `content = injectBanner(content)` → `content = injectBanner(content, tid)`.
+- [ ] In `internal/project/render.go`, update both call sites: in `renderTarget`,
+  `content = injectBanner(content)` → `content = injectBanner(content, tid)`; in
+  `generateActiveMD`, `content = injectBanner(content)` → `content = injectBanner(content, "")`
+  (ACTIVE.md is markdown — the empty id keeps its HTML-comment banner unchanged).
 
 - [ ] In `internal/project/banner_test.go`, update every existing `injectBanner(...)` call to
   pass `""` as the second argument, and add:
@@ -150,9 +152,10 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   }
   ```
 
-- [ ] In `internal/project/check.go`, extend `isManagedMarkdown` (and its doc comment's
-  parenthetical to say "the bootstrap, the git-hook payloads, and the memory gitignore —
-  ADR-0048, ADR-0069"):
+- [ ] In `internal/project/check.go`, extend `isManagedMarkdown` (and reword its doc
+  comment's exclusion phrase — a gitignore is not a shell script — to "except the CLAUDE.md
+  bridge and the non-markdown render units (the bootstrap, the git-hook payloads, and the
+  memory gitignore — ADR-0048, ADR-0069)"):
 
   ```go
   func isManagedMarkdown(tid string) bool {
@@ -245,7 +248,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
 
 ## Phase 2 — agent-guide working-memory section + agents-doc parity test
 
-Commit: `feat(rendering): add working-memory guide section with agents-doc parity`
+Commit: `feat(rendering): add working-memory guide section and parity test`
 
 - [ ] In `internal/catalog/standard.go`, add `"working-memory"` to the agents-doc `Sections`
   between `"workflow"` and `"commands"`:
@@ -415,8 +418,10 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
 
 - [ ] Run `./x sync` then `./x check` → clean (all skill renders across `.claude/` and
   `.cursor/` update, plus `docs/workflow.md`, `docs/working-with-awf.md`). Spot-check:
-  `grep -c "Working-memory checkpoint." .claude/skills/awf-*/SKILL.md` shows 11 files with 1
-  hit each, and `grep "Delete the effort's working-memory file" .claude/skills/awf-retrospective/SKILL.md`
+  `grep -c "Working-memory checkpoint." .claude/skills/awf-*/SKILL.md` prints `1` for exactly
+  the eleven carriers (the nine chain nodes plus bugfix and debugging) and `0` for the other
+  four (adr-lifecycle, refactor-coupling-audit, retrospective, tdd), and
+  `grep "Delete the effort's working-memory file" .claude/skills/awf-retrospective/SKILL.md`
   matches.
 - [ ] Run `./x gate` → green. If `skill-section-parity` or golden tests fail, the failure names
   the exact template/section drift — fix the template, not the test (the only legitimate test
@@ -426,7 +431,7 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
 
 ## Phase 4 — eval-suite coverage lock
 
-Commit: `test(rendering): lock working-memory checkpoint coverage across the chain`
+Commit: `test(rendering): lock chain working-memory checkpoint coverage`
 
 - [ ] Append to `internal/evals/chain_test.go`:
 
