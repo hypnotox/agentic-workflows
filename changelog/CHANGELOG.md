@@ -7,7 +7,25 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+### Breaking changes
+- The canonical workflow chain gains a terminal `retrospective` step, and the `reviewing-impl`
+  skill now names `<prefix>-retrospective` unconditionally (ADR-0067). An existing project must
+  enable the new Core skill after upgrading — `awf add skill retrospective` — or the next
+  `awf check` fails with a dead skill reference from `reviewing-impl`.
 ### Features
+- New `retrospective` chain skill (ADR-0067): a main-thread terminal step after `reviewing-impl`
+  that reflects on the finished effort and routes recurring, codifiable findings up a four-rung
+  promotion ladder — project invariant, gate test/lint rule, code-reviewer focus item,
+  pitfalls entry. First-occurrence observations are noted rather than promoted, and promotion
+  is never delegated or auto-applied unverified.
+- Project-local skills and agents (ADR-0068): a project may enable skill/agent names outside
+  the standard catalog by declaring a sidecar (`.awf/skills/<name>.yaml` /
+  `.awf/agents/<name>.yaml`) and authoring a single `content` convention part; awf renders the
+  artifact from an awf-owned base template per kind, with `{{=awf:key}}` placeholders available
+  and publication-safe degradation for unset values. `awf new skill|agent <name> "<description>"`
+  scaffolds the sidecar, starter part, and enable entry in one step; `awf list` shows local
+  artifacts alongside their state. Local names may not shadow catalog names, and `local: true`
+  keeps its existing meaning (fully hand-authored file, no rendering).
 - Working-memory convention for chain session continuity (ADR-0069): `awf sync` now always
   renders a self-ignoring `.awf/memory/.gitignore`; the agent guide gains a working-memory
   section (per-effort `.awf/memory/<effort-slug>.md` files, resume protocol, JIT-retrieval
@@ -21,6 +39,51 @@ query a single version or a range.
   `awf sync` commit.
 - A malformed `awf:section`/`awf:end` marker is now a hard render error instead of leaking
   verbatim into rendered output (ADR-0070).
+- Plans must be phase-standalone: the writing-plans skill and the plans README now require every
+  phase's closing commit to pass the project's gate on its own (each definition lands in the
+  phase that first uses it), and the plan reviewer's executability lens checks the same rule.
+### Bug fixes
+- `awf check` now reports an enabled artifact whose output file was never synced (the drift scan
+  previously iterated only lock entries, so an artifact enabled by hand-editing
+  `.awf/config.yaml` was invisible until the next sync), and flags orphaned singleton convention
+  parts under `.awf/parts/` — a typo'd section name or unknown kind directory was silently
+  ignored.
+- The sync prune and `awf uninstall` now skip lock entries that are not local relative paths; a
+  corrupted or malicious `.awf/awf.lock` entry could previously delete a file outside the repo
+  and then hang walking parent directories.
+- `awf upgrade` no longer loops unrecoverably on a lockless pre-relocation (`.claude/awf/`)
+  tree: generation detection anchors to the relocation migration instead of drifting upward as
+  newer migrations register.
+- `awf add`/`awf remove` enforce the binary-version gate before rewriting `.awf/config.yaml`; a
+  stale binary previously failed only inside the chained sync, leaving a half-mutated config.
+- `awf audit` fixes: a merge commit no longer attributes the merged-in branch's whole diff to
+  the branch under audit; unparseable ADR frontmatter is surfaced as an `adr-frontmatter`
+  finding instead of silently disabling the status-cochange rule; and the commit-subject length
+  limit counts characters, not bytes.
+- Dead-link check fixes: a badge-wrapped link (`[![CI](ci.svg)](docs/x.md)`) now has its outer
+  destination checked; an angle-bracket target containing spaces (`[spec](<my file.md>)`)
+  unwraps before checking; root-relative `/docs/…` targets resolve against the repo root; and a
+  target escaping the repo root is dead by definition instead of depending on host contents.
+- Invariant backing now requires the marker comment to open its line (after indentation), so a
+  marker-shaped string inside a literal — e.g. a test fixture — no longer silently backs a slug;
+  the rendered tagging guidance states the own-line contract.
+- `awf init` with an existing config no longer walks through interactive prompts it then
+  discards — it says it is keeping the config and flags ignored `--set`/`--answers` values —
+  and unknown answer keys or out-of-options enum values are rejected instead of silently
+  no-op'ing.
+- Replayed migrations on a degraded lock no longer strip a modern `hooks:` mapping or overwrite
+  an explicit bootstrap opt-out with the upgrade default.
+- `awf new` refuses to overwrite an existing local artifact's sidecar or content part; a
+  declared-but-disabled name was previously reset to the scaffold stub without warning.
+- Unset-var notes now report each base-shared local artifact independently and are labeled by
+  artifact path; previously all local artifacts collapsed onto one note keyed by the shared
+  base-template id.
+- Three skill descriptions no longer render a hardcoded article before the skill prefix
+  ("a awf ADR" for vowel-initial prefixes).
+### Others
+- The agent guide's task-skill sentence now derives from the catalog via a `Chain` flag on the
+  ten progression nodes, so enabled non-chain skills (e.g. `refactor-coupling-audit`) appear in
+  the rendered guide instead of a hand-enumerated list.
 
 ## [0.9.0] - 2026-07-05
 ### Bug fixes
