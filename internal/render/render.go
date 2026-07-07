@@ -3,6 +3,7 @@ package render
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -45,6 +46,13 @@ func partSentinel(name string) string {
 	return "\x00awf:part:" + name + "\x00"
 }
 
+// SectionDefaultSentinel is the brace-free, NUL-delimited token the project layer
+// substitutes for the {{=awf:sectionDefault}} placeholder (ADR-0072). Assemble splits
+// a part body at each occurrence and splices the section's raw default source between
+// the verbatim fragments, so Execute renders the default in place. Brace-free (inert to
+// the template parser) and NUL-delimited (cannot collide with template or markdown text).
+const SectionDefaultSentinel = "\x00awf:section-default\x00"
+
 // Assemble applies the per-section plan to the parsed segments and returns the
 // template skeleton plus a sentinel→raw-body map. Literal segments pass through
 // verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
@@ -65,14 +73,36 @@ func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]s
 		}
 		b.WriteString(editPointer(s.Name, s.Stub, p))
 		if p.HasPart {
-			sent := partSentinel(s.Name)
-			parts[sent] = p.PartBody
-			b.WriteString(sent)
+			writePartBody(&b, parts, s, p)
 		} else {
 			b.WriteString(s.Text)
 		}
 	}
 	return b.String(), parts
+}
+
+// writePartBody emits a section's part into the skeleton. When the part re-injects its
+// section default via the sectionDefault split marker (ADR-0072), it is split at each
+// marker into verbatim fragments — distinct sentinels restored after Execute —
+// interleaved with the section's raw default source (s.Text), which Execute templates in
+// place. A part without the marker emits a single sentinel for the whole body, the
+// pre-ADR-0072 behaviour.
+// invariant: section-default-splice
+func writePartBody(b *strings.Builder, parts map[string]string, s Segment, p SectionPlan) {
+	if !strings.Contains(p.PartBody, SectionDefaultSentinel) {
+		sent := partSentinel(s.Name)
+		parts[sent] = p.PartBody
+		b.WriteString(sent)
+		return
+	}
+	for i, frag := range strings.Split(p.PartBody, SectionDefaultSentinel) {
+		if i > 0 {
+			b.WriteString(s.Text)
+		}
+		sent := partSentinel(s.Name + "#" + strconv.Itoa(i))
+		parts[sent] = frag
+		b.WriteString(sent)
+	}
 }
 
 // StubSections reports a parsed template's unauthored stub content under a plan
@@ -94,6 +124,26 @@ func StubSections(segs []Segment, plan map[string]SectionPlan) (defaults, parts 
 		}
 	}
 	return defaults, parts
+}
+
+// CheckSectionDefaultStubs hard-errors when a part re-injects the default of a
+// stub-attributed section (ADR-0072 Decision 4): a stub default is an authoring prompt,
+// not shippable prose, so there is nothing valid to re-inject and the section must stay
+// in must-author state. Runs pre-Assemble on the same segs+plan StubSections consumes;
+// it scans the substituted part body for the render-layer sentinel, since planSections
+// has already replaced the {{=awf:sectionDefault}} token.
+// invariant: section-default-stub-error
+func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error {
+	for _, s := range segs {
+		if !s.IsSection {
+			continue
+		}
+		p := plan[s.Name]
+		if s.Stub && p.HasPart && strings.Contains(p.PartBody, SectionDefaultSentinel) {
+			return fmt.Errorf("section %q re-injects a stub default via {{=awf:sectionDefault}}: a stub default is an authoring prompt, not shippable prose — author the part instead", s.Name)
+		}
+	}
+	return nil
 }
 
 // Execute runs text/template over the awf-owned skeleton (part bodies stood in by

@@ -196,3 +196,59 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 		t.Fatalf("part body was interpolated or a sentinel leaked: %q", out)
 	}
 }
+
+func TestSectionDefaultSplice(t *testing.T) {
+	tmpl := "<!-- awf:section body -->\ndefault={{ .v }}\n<!-- awf:end -->\n"
+	segs := ParseSections(tmpl)
+	data := map[string]any{"v": "R"}
+	cases := []struct{ name, part, want string }{
+		{"append", SectionDefaultSentinel + "\nEXTRA", "default=R\nEXTRA"},
+		{"prepend", "PRE\n" + SectionDefaultSentinel, "PRE\ndefault=R"},
+		{"wrap", "PRE\n" + SectionDefaultSentinel + "\nPOST", "PRE\ndefault=R\nPOST"},
+		{"multi", "A" + SectionDefaultSentinel + "B" + SectionDefaultSentinel + "C", "Adefault=RBdefault=RC"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			plan := map[string]SectionPlan{"body": {HasPart: true, PartBody: c.part}}
+			asm, parts := Assemble(segs, plan)
+			out, err := Execute(asm, data, parts, "t")
+			if err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+			if !strings.Contains(out, c.want) {
+				t.Errorf("%s: got %q, want substring %q", c.name, out, c.want)
+			}
+		})
+	}
+}
+
+func TestSectionDefaultSpliceEmptyDefault(t *testing.T) {
+	segs := ParseSections("<!-- awf:section body -->\n<!-- awf:end -->\n")
+	plan := map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}
+	asm, parts := Assemble(segs, plan)
+	out, err := Execute(asm, map[string]any{}, parts, "t")
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out, "PREPOST") {
+		t.Errorf("empty-default re-injection: got %q, want substring %q", out, "PREPOST")
+	}
+}
+
+func TestCheckSectionDefaultStubs(t *testing.T) {
+	stubSegs := ParseSections("<!-- awf:section body stub -->\nprompt\n<!-- awf:end -->\n")
+	// A stub section whose part re-injects the default is an error.
+	err := CheckSectionDefaultStubs(stubSegs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "x" + SectionDefaultSentinel}})
+	if err == nil {
+		t.Fatal("stub default re-injection: want error, got nil")
+	}
+	// A stub section with a plain (non-re-injecting) part is fine.
+	if err := CheckSectionDefaultStubs(stubSegs, map[string]SectionPlan{"body": {HasPart: true, PartBody: "authored"}}); err != nil {
+		t.Errorf("plain stub part: unexpected error %v", err)
+	}
+	// A non-stub section re-injecting its default is fine; a literal (non-section) segment is skipped.
+	okSegs := ParseSections("lead\n<!-- awf:section body -->\ndef\n<!-- awf:end -->\n")
+	if err := CheckSectionDefaultStubs(okSegs, map[string]SectionPlan{"body": {HasPart: true, PartBody: SectionDefaultSentinel}}); err != nil {
+		t.Errorf("non-stub re-injection: unexpected error %v", err)
+	}
+}
