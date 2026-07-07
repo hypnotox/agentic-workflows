@@ -59,7 +59,11 @@ range, advisory in the same Error-blocks / Warning-informs sense.
    not a file-level path check: extract the section body (the lines between `## [Unreleased]`
    and the next `## [` header) from the file at the range base (`git show <base>:…`) and at the
    range head, and compare — a file-level "CHANGELOG.md appears in the diff" test would pass
-   when only an older release section changed.
+   when only an older release section changed. The extractor is a small repo-local helper, not a
+   reuse of the shipped `internal/changelog` parser: that parser's header regex requires a dated
+   `## [X.Y.Z] - YYYY-MM-DD` line and discards the `## [Unreleased]` body outright (ADR-0041), so
+   it cannot supply this check — a deliberate, contained duplication rather than widening the
+   shipped parser to model an unreleased section it has no other reason to understand.
 
 3. **Range: the effort's own SHA range, supplied by the caller.** `./x audit-local` accepts an
    explicit `<base>..<head>` range and defaults to `origin/main..HEAD` (this repo's unpushed
@@ -103,7 +107,14 @@ range, advisory in the same Error-blocks / Warning-informs sense.
   same finding contract.
 - **A heuristic, not a proof.** The path allowlist can miss adopter-facing changes that touch
   only render logic; the rule logs what it considered so the gap is visible, and does not claim
-  completeness. It is a net under a known-recurring miss, not a total guarantee.
+  completeness. It is a net under a known-recurring miss, not a total guarantee. The section
+  comparison also fails **open**: the rule fires only when the `[Unreleased]` body is byte-identical
+  across the range, so anything that changes that body for a non-entry reason — a release-promotion
+  commit that empties `[Unreleased]` into a dated section, or an unrelated concurrent edit inside
+  the range — reads as "an entry was added" and silently suppresses the check. This is acceptable
+  for the push-straight-to-`main`, one-effort-at-a-time flow the range assumes (a release promotion
+  is not normally mid-effort), but the rule does not attempt to distinguish an entry from any other
+  `[Unreleased]` edit; if that assumption ever breaks the retrospective backstop remains.
 - **awf dogfoods ADR-0072 immediately**, validating the re-injection feature on a real
   override and giving the `run-audit` extension a single source of truth (the shipped default).
 - **No gate or CI behavior changes.** `./x gate` stays a pure working-tree analysis; the new
