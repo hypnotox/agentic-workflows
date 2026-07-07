@@ -4,6 +4,9 @@
   unknown keys fail fast.
 - **`text/template`** (standard library) — the rendering engine; ADR-0001 owns its
   publication-safety contract.
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`) — pure-Go git access for `awf audit`'s
+  history and working-tree reads; awf and its tests need no host `git` binary.
+- **`golang.org/x/mod`** — semver comparison for the binary-version gate (ADR-0039).
 - **`golangci-lint`** — pinned as a `go tool` dependency and run by the gate (`./x gate`); this
   repo only, not part of the rendered standard.
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`) — pinned as a `go tool` dependency; the gate

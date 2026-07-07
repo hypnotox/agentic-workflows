@@ -28,6 +28,20 @@
   resolve through it across `list`/`add`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries — the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
+- **`internal/audit/`** — go-git-backed collection of the branch's commits plus the advisory
+  workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
+  (ADR-0017, ADR-0036).
+- **`internal/invariants/`** — verifies every Implemented ADR's `inv:` slugs against
+  `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
+  powers `awf invariants` and the gated check.
+- **`internal/refs/`** — pure, stdlib-only extraction of inline markdown link targets for the
+  dead-reference scan (ADR-0020).
+- **`internal/initspec/`** — `awf init`'s descriptor machinery: the catalog `vars:` descriptors,
+  `--describe` JSON, `--set`/`--answers` merging and validation, and the interactive prompts
+  (ADR-0029).
+- **`internal/coverage/`** — merges the gate's cover profile and enforces the
+  `// coverage-ignore: <reason>` contract for `cmd/covercheck` (ADR-0012). Repo-only, not part
+  of the rendered standard.
 - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their

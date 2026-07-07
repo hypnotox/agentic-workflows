@@ -263,8 +263,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:d673618e25a48d706093dabf93f327678b4d067c668232f6eba2824b9a81129e",
-      "configHash": "sha256:fd0177b43665cd3f6a0744b0f1b5366af781f4ab32fbb2d5920aaee6fc0aa527",
-      "outputHash": "sha256:975e563b1f9178b5d17123c71a831258278951efbd390e6f55960016385434c2"
+      "configHash": "sha256:359ec1c596d6bc0b83bb3e13bca47bebd510f689d69e9348485faf2123d13494",
+      "outputHash": "sha256:5ad79da26c8cbee816631f64446412fae7990ff7b08cdf538fb125a3f0913f3d"
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
