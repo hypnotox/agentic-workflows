@@ -206,6 +206,7 @@ func TestSectionDefaultSplice(t *testing.T) {
 		{"prepend", "PRE\n" + SectionDefaultSentinel, "PRE\ndefault=R"},
 		{"wrap", "PRE\n" + SectionDefaultSentinel + "\nPOST", "PRE\ndefault=R\nPOST"},
 		{"multi", "A" + SectionDefaultSentinel + "B" + SectionDefaultSentinel + "C", "Adefault=RBdefault=RC"},
+		{"fragment-raw", "{{ .v }}" + SectionDefaultSentinel, "{{ .v }}default=R"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
