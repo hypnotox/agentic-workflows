@@ -905,6 +905,7 @@ func TestUnsetFallbackRenders(t *testing.T) {
 			},
 			ban: []string{"<no value>"},
 		},
+		// invariant: reviewers-report-only
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},
