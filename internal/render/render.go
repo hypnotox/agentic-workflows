@@ -99,7 +99,10 @@ func writePartBody(b *strings.Builder, parts map[string]string, s Segment, p Sec
 		if i > 0 {
 			b.WriteString(s.Text)
 		}
-		sent := partSentinel(s.Name + "#" + strconv.Itoa(i))
+		// The index separator is a NUL, which can never occur in a section name
+		// (template source is text): it guarantees a fragment sentinel can never
+		// equal a plain part sentinel of some other section, whatever its name.
+		sent := partSentinel(s.Name + "\x00" + strconv.Itoa(i))
 		parts[sent] = frag
 		b.WriteString(sent)
 	}
