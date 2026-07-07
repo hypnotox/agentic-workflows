@@ -1,4 +1,13 @@
 data:
+    # focusItems replaces the catalog defaults wholesale (see pitfalls) — the
+    # first two entries are the catalog defaults, kept deliberately.
+    focusItems:
+        - name: plan-adherence
+          description: the diff matches the plan's stated file paths and content; unexplained drift is a finding
+        - name: test-coverage
+          description: behaviour changes carry tests in the same commit; no assertion is weakened to pass
+        - name: two-sided-set-checks
+          description: when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
     correctnessTraps:
         - description: error returns must wrap with %w to preserve the error chain
         - description: nil map/pointer dereferences — check before indexing or method calls

@@ -35,8 +35,8 @@
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:a5243e8de5454af58f01b9850b2389fd42cc9390052d5377fd790e2a55569e2c",
-      "configHash": "sha256:5b761a5101a8b2d6056efec62e55c29b8e8d2bd9ff08ccbf233b992893770b0d",
-      "outputHash": "sha256:fba27b0354cce3dc90a162ced12481f77ade22b8a62c185610017f5d4af94dc5"
+      "configHash": "sha256:baa57b0c56832fecf81aba1dbee56e11b83ab9ac201e5281cc3ff55833fafe5f",
+      "outputHash": "sha256:2e039e78c1e24bdb17cda9afd4a9b2eb0eade384949f65037f0a02e7f8f1aee1"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
@@ -143,8 +143,8 @@
     ".cursor/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:a5243e8de5454af58f01b9850b2389fd42cc9390052d5377fd790e2a55569e2c",
-      "configHash": "sha256:5b761a5101a8b2d6056efec62e55c29b8e8d2bd9ff08ccbf233b992893770b0d",
-      "outputHash": "sha256:fba27b0354cce3dc90a162ced12481f77ade22b8a62c185610017f5d4af94dc5"
+      "configHash": "sha256:baa57b0c56832fecf81aba1dbee56e11b83ab9ac201e5281cc3ff55833fafe5f",
+      "outputHash": "sha256:2e039e78c1e24bdb17cda9afd4a9b2eb0eade384949f65037f0a02e7f8f1aee1"
     },
     ".cursor/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
@@ -335,8 +335,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:098957443b3cd307d3cb9f4ec5eee3564e7c726418f24791a8e3fd5217c1f257",
-      "configHash": "sha256:57e697189d7ef5b1895334275fc8a55aff9e30153cf0e1e3311dad1b91609036",
-      "outputHash": "sha256:9a3a5258f102e7dddfb24a2add5d732d3b8a6746090ab1815f2e8e651f74af1e"
+      "configHash": "sha256:238f5b6fe12e9a3ee70c3704bde358b9b2310403bbb58f80de0826be1499f70a",
+      "outputHash": "sha256:21fdf7eb6730516480ada10cdf78c3a00ab6da97f58dbadc52288060a68ba88c"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

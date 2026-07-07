@@ -69,6 +69,9 @@ Apply all five lenses to every implementation diff:
 **test-coverage** — behaviour changes carry tests in the same commit; no assertion is weakened to pass
 
 
+**two-sided-set-checks** — when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
+
+
 
 ## Doc-currency checklist
 
