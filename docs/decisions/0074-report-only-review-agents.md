@@ -34,8 +34,9 @@ spine (`review-spine-tail.md` Review procedure step 5, the re-review loop step 6
 "fixes applied" counts; `review-spine-head.md`'s "apply the fix directly" classification
 imperatives), so a single spine edit changes all three reviewers at once. The per-agent
 `.data.fixesAsCommits` flag — set `true` only for `code-reviewer` (`internal/catalog/standard.go`)
-and read only by the spine's commit clause — is the only per-reviewer variation, and becomes dead
-once the apply clause leaves the spine. ADR-0052's own invariants govern the include *mechanism*,
+and read only by the spine's commit clause — is the spine's only fix-application conditional
+(other per-reviewer data — `readStep`, `digestLabel`, `focusItems` — only vary rendered text), and
+becomes dead once the apply clause leaves the spine. ADR-0052's own invariants govern the include *mechanism*,
 not the spine *content*, so the spine body is free to change; ADR-0050's reviewing-skill/agent
 pairing is about *enablement* (a reviewing skill requires its agent enabled) and is untouched — the
 agent stays enabled, only its role narrows.
@@ -80,9 +81,13 @@ agent stays enabled, only its role narrows.
 ## Invariants
 
 - `inv: reviewers-report-only` — no rendered reviewer agent (the shared spine or any of the three
-  reviewer templates) contains a fix-application imperative: the reviewer is instructed to report
-  findings, never to edit, commit, or re-review. Backed by the `awf:include`-expanded reviewer
-  renders in `internal/project` asserting the apply imperative is absent.
+  reviewer templates) contains a fix-application, commit, or re-review imperative: the reviewer is
+  instructed to report findings, never to edit, commit, or loop. Backed by a golden-render test in
+  `internal/project` over the `awf:include`-expanded reviewer renders asserting the rendered output
+  contains none of the ban phrases — e.g. `Apply mechanical and reasoned fixes directly`, `apply the
+  fix directly`, `as new commits`, `3-round soft cap` — and carrying a `// invariant:
+  reviewers-report-only` marker so the ADR-0008/0031 backing lands in the same commit that flips this
+  ADR to Implemented.
 - The `mechanical / reasoned / user-decision` classification vocabulary remains the single routing
   axis for review findings across the spine and all four `awf-reviewing-*` skills (textual).
 - Every reviewer dispatch by an `awf-reviewing-*` skill is followed by at most one verify-pass
@@ -106,8 +111,8 @@ agent stays enabled, only its role narrows.
   work from the opaque subagent into the visible chain. The `awf-reviewing-*` skills grow their
   `apply-fixes-commit` and (renamed-in-body) verify-pass sections accordingly.
 - **Downstream work (a plan):** edit the two spine partials, the three agent-template headers, the
-  four `awf-reviewing-*` skills (`dispatch-subagent`, `classify-route-findings`,
-  `apply-fixes-commit`, `re-review-loop` bodies — marker names kept stable so
+  four `awf-reviewing-*` skills (`dispatch-subagent` — `dispatch-subagent-narrowed` in the resync
+  skill — `classify-route-findings`, `apply-fixes-commit`, `re-review-loop` bodies — marker names kept stable so
   `skill-section-parity` needs no catalog edit), remove the catalog `fixesAsCommits` key, and update
   the reviewer render assertions (drop the "3-round soft cap" phrase; add the apply-imperative ban)
   — re-rendered across both the `.claude/` and `.cursor/` trees.
