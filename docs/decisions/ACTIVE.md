@@ -74,6 +74,10 @@
 - [ADR-0069: Working-memory convention for chain session continuity](0069-working-memory-convention-for-chain-session-continuity.md) — Implemented
 - [ADR-0070: Stub sections and the unauthored-content advisory](0070-stub-sections-and-the-unauthored-content-advisory.md) — Implemented
 
+## Proposed
+
+- [ADR-0071: Missing mutation-report path is a caller error](0071-missing-mutation-report-path-is-a-caller-error.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
