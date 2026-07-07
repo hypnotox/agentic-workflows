@@ -97,7 +97,7 @@ func (p *Project) invariantMarkerSentence() string {
 	if m == "" {
 		return ""
 	}
-	return "Its marker follows the file's type: " + m + "."
+	return "Its marker follows the file's type: " + m + "; the marker comment must open its line (indentation aside)."
 }
 
 // invariantMarkerTable renders the glob→marker mapping as a markdown table, or ""

@@ -44,7 +44,7 @@ func TestInvariantMarkerSentence(t *testing.T) {
 		t.Errorf("nil sentence = %q, want empty", got)
 	}
 	got := projectWithInvariants([]config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}).invariantMarkerSentence()
-	if got != "Its marker follows the file's type: `*.go` → `//`." {
+	if got != "Its marker follows the file's type: `*.go` → `//`; the marker comment must open its line (indentation aside)." {
 		t.Errorf("sentence = %q", got)
 	}
 }

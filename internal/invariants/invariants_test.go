@@ -63,6 +63,25 @@ func TestCheckUnbackedAndBacked(t *testing.T) {
 	}
 }
 
+// A marker inside a string literal (e.g. a test fixture's source-code string)
+// must not back a slug: only a marker opening its line, after optional
+// indentation, counts as a backing comment.
+func TestCheckMarkerMustOpenLine(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-literal` — x.\n- `inv: fixture-indented` — y.")
+	goSrc(t, root, "package x\n"+
+		"var s = \"src\\n// invariant: fixture-literal\\n\"\n"+ // mid-line, inside a literal
+		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment — still backs
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-literal" {
+		t.Errorf("want only fixture-literal unbacked (literal must not back, indentation must), got %#v", f)
+	}
+}
+
 // invariant: invariants-duplicate-slug
 func TestCheckDuplicateSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()

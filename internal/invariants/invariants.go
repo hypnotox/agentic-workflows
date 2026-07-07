@@ -167,9 +167,13 @@ func scanTags(root string, sources []config.InvariantSource) (map[string]bool, e
 			return err
 		}
 		for _, line := range strings.Split(string(data), "\n") {
+			// Only a marker opening its line (after indentation) backs a slug: a
+			// mid-line match may sit inside a string literal — e.g. a test
+			// fixture's source-code string — and must not count.
+			trimmed := strings.TrimLeft(line, " \t")
 			for _, marker := range markers {
-				if idx := strings.Index(line, marker); idx >= 0 {
-					if m := slugRe.FindStringSubmatch(line[idx+len(marker):]); m != nil {
+				if strings.HasPrefix(trimmed, marker) {
+					if m := slugRe.FindStringSubmatch(trimmed[len(marker):]); m != nil {
 						present[m[1]] = true
 					}
 				}
