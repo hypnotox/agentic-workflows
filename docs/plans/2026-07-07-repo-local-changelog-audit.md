@@ -81,11 +81,13 @@ Per ADR-0073:
   type gitFunc func(args ...string) (string, error)
 
   func realGit(args ...string) (string, error) { // coverage-ignore: os/exec boundary; runWith is tested with a fake gitFunc
+  	// Single-block body: the trailing coverage-ignore drops the block whose start
+  	// line is this signature line. A multi-line body with an `if err` branch would
+  	// leave the branch and final-return blocks (later start lines) UNignored and
+  	// uncovered — realGit runs no test — failing the 100% gate. Callers check err
+  	// before using the string, so returning it unconditionally is equivalent.
   	out, err := exec.Command("git", args...).Output()
-  	if err != nil {
-  		return "", err
-  	}
-  	return string(out), nil
+  	return string(out), err
   }
 
   func main() { os.Exit(runWith(os.Args, os.Stdout, os.Stderr, realGit)) } // coverage-ignore: os.Exit + real-git boundary; runWith is unit-tested
@@ -239,8 +241,10 @@ Per ADR-0073:
   }
 
   func TestCleanNonAdopterFacing(t *testing.T) {
-  	// Default range (no arg) + a change outside the allowlist → clean, exit 0.
-  	g := fakeGit{"diff --name-only origin/main HEAD": {out: "docs/x.md\ninternal/render/render.go\n"}}
+  	// Default range (no arg) + changes outside the allowlist → clean, exit 0. The
+  	// blank line between the two paths also exercises changelogRule's empty-token
+  	// `continue` — the sole branch no other test reaches (100%-coverage gate).
+  	g := fakeGit{"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"}}
   	code, out := runFake([]string{"repoaudit"}, g)
   	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
   		t.Fatalf("code=%d out=%q", code, out)
