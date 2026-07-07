@@ -168,3 +168,31 @@ func TestChainConnectivity(t *testing.T) {
 		}
 	}
 }
+
+// memoryCheckpointSkills are the templates that must carry the working-memory
+// checkpoint (ADR-0069): the nine non-terminal chain nodes plus the bugfix and
+// debugging task skills. The terminal retrospective instead carries the
+// deletion step.
+var memoryCheckpointSkills = []string{
+	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
+	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
+	"subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
+}
+
+// TestMemoryCheckpointCoverage asserts every non-terminal chain node and the
+// multi-step task skills instruct the working-memory checkpoint in the rendered
+// full-catalog output, and the chain terminal instructs the deletion (ADR-0069).
+// invariant: memory-checkpoint-chain-coverage
+func TestMemoryCheckpointCoverage(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalog(t, cat)
+	const token = "**Working-memory checkpoint.**"
+	for _, name := range memoryCheckpointSkills {
+		if body := read(t, skillPath(root, name)); !strings.Contains(body, token) {
+			t.Errorf("skill %q missing the working-memory checkpoint", name)
+		}
+	}
+	if body := read(t, skillPath(root, "retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
+		t.Errorf("retrospective missing the working-memory deletion step")
+	}
+}

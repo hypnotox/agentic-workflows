@@ -324,7 +324,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f755b7aed10e96d37bfe7d6e02558003503742e72d800b2fc79691697988f254"
+      "outputHash": "sha256:7b6f78cb6be5e7b74e72365fb75e4a9e482e41f8eab310823824bf5890afca4f"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
