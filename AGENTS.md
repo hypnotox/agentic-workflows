@@ -48,7 +48,7 @@ Hard rules every change must respect:
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
 - **Advisory mutation triage.** `./x mutants` runs `gremlins` under the deterministic `.gremlins.yaml` config and is never part of `./x gate`; `cmd/mutants` exits non-zero when any mutant times out (the run is untrustworthy) and otherwise reports only survived (`LIVED`) mutants, treating a missing or empty report as no survivors. (ADR-0066)
 - **No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk. (ADR-0020)
-- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
+- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `add`, `remove`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`. (ADR-0039)
 - **Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` pins exactly the rendering binary's `project.Version`. (ADR-0040)
 - **Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing. (ADR-0040)
 - **Inert hook payloads.** With the `hooks` singleton enabled, exactly three payload scripts render under `.awf/hooks/`; awf never activates hooks or touches git config — the `.githooks/` stubs are this repo's own wiring. (ADR-0048)

@@ -105,6 +105,11 @@ func catalogNames(cat *catalog.Catalog, kind string) ([]string, bool) {
 }
 
 func runAdd(root, kind, name string, stdout io.Writer) error {
+	// Gate before any config write (like awf new): the chained sync's gate
+	// would only fire after the rewrite, stranding a half-mutated config.
+	if err := gate(root); err != nil {
+		return err
+	}
 	if kind == "target" {
 		return addRemoveTarget(root, name, true, stdout)
 	}
@@ -186,6 +191,10 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 }
 
 func runRemove(root, kind, name string, stdout io.Writer) error {
+	// Gate before any config write — see runAdd.
+	if err := gate(root); err != nil {
+		return err
+	}
 	if kind == "target" {
 		return addRemoveTarget(root, name, false, stdout)
 	}

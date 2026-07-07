@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -82,6 +83,35 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
 		t.Error("expected already-enabled error")
+	}
+}
+
+// The version gate must refuse add/remove BEFORE the config rewrite: a stale
+// binary must not leave a modified config.yaml with nothing rendered (the
+// half-mutated state the chained sync's gate can only catch after the write).
+func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
+	root := scaffoldedProject(t)
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	lock, err := manifest.Load(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.AWFVersion = "99.0.0" // project rendered by a newer awf → binary is behind
+	if err := lock.Save(lockPath); err != nil {
+		t.Fatal(err)
+	}
+	before := readConfig(t, root)
+	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
+		t.Error("expected gate error from runAdd on a behind binary")
+	}
+	if got := readConfig(t, root); got != before {
+		t.Errorf("runAdd modified config.yaml despite failing the gate:\n%s", got)
+	}
+	if err := runRemove(root, "skill", "brainstorming", io.Discard); err == nil {
+		t.Error("expected gate error from runRemove on a behind binary")
+	}
+	if got := readConfig(t, root); got != before {
+		t.Errorf("runRemove modified config.yaml despite failing the gate:\n%s", got)
 	}
 }
 
