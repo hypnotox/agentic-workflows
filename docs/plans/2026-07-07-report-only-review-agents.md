@@ -200,7 +200,7 @@ Invoked as the independent review step of the implementation phase. Dispatches t
 - [ ] In the same file, in the `dispatch-subagent` section, find:
 
 ```
-   The agent owns lens application, finding classification, fix application, and the re-review loop. Do not re-describe those steps here.
+   The agent owns lens application, finding classification, fix application, the re-review loop, and the digest. Do not re-describe those steps here.
 ```
 
   Replace with:
@@ -208,6 +208,15 @@ Invoked as the independent review step of the implementation phase. Dispatches t
 ```
    The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 ```
+
+- [ ] In the same file, in the `dispatch-subagent` section's dispatch brief, remove the now-contradictory
+  agent-directed commit-convention bullet (the skill, not the agent, commits). Find:
+
+```
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
+```
+
+  Delete the bullet entirely (the `apply-fixes-commit` step below already states the commit convention for the skill).
 
 - [ ] In the `classify-route-findings` section, find:
 
@@ -275,6 +284,15 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
    The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 ```
 
+- [ ] In the same `dispatch-subagent` section's dispatch brief, remove the now-contradictory
+  agent-directed commit-convention bullet. Find:
+
+```
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
+```
+
+  Delete the bullet entirely (the `apply-fixes-commit` step below already states the commit convention for the skill).
+
 - [ ] In the `classify-route-findings` section, find:
 
 ```
@@ -341,6 +359,15 @@ Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is wr
    The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 ```
 
+- [ ] In the same `dispatch-subagent` section's dispatch brief, remove the now-contradictory
+  agent-directed commit-convention bullet. Find:
+
+```
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
+```
+
+  Delete the bullet entirely (the `apply-fixes-commit` step below already states the commit convention for the skill).
+
 - [ ] In the `classify-route-findings` section, find:
 
 ```
@@ -395,6 +422,15 @@ Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is wr
 ```
    The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 ```
+
+- [ ] In the same `dispatch-subagent-narrowed` section's dispatch brief, remove the now-contradictory
+  agent-directed commit-convention bullet. Find:
+
+```
+   - The commit convention: apply fixes as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}.
+```
+
+  Delete the bullet entirely (the `apply-fixes-commit` step below already states the commit convention for the skill).
 
 - [ ] In the `classify-route-findings` section, find:
 
@@ -504,7 +540,7 @@ Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is wr
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 ```
 
@@ -522,7 +558,7 @@ Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is wr
 ```
 		{
 			tmpl: "agents/plan-reviewer.md.tmpl",
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 ```
 
@@ -540,7 +576,7 @@ Terminal step of `{{ .prefix }}-writing-plans`. Invoked once the plan file is wr
 ```
 		{
 			tmpl: "agents/code-reviewer.md.tmpl",
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 ```
 
@@ -586,7 +622,7 @@ One commit. This is the implementation-completion commit: it backs the new invar
 		{
 			tmpl: "agents/adr-reviewer.md.tmpl",
 			want: []string{"Regen command: `awf sync`."},
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap"},
+			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 		},
 ```
 
