@@ -7,6 +7,8 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+
+## [0.10.0] - 2026-07-07
 ### Breaking changes
 - The canonical workflow chain gains a terminal `retrospective` step, and the `reviewing-impl`
   skill now names `<prefix>-retrospective` unconditionally (ADR-0067). An existing project must

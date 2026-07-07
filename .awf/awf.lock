@@ -1,5 +1,5 @@
 {
-  "awfVersion": "0.9.0",
+  "awfVersion": "0.10.0",
   "schemaVersion": 6,
   "files": {
     ".awf/hooks/commit-msg.sh": {
