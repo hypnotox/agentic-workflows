@@ -690,6 +690,23 @@ func TestDropHooksStrips(t *testing.T) {
 	}
 }
 
+// The 3→4 migration targets the legacy hooks *array*; the modern ADR-0048
+// hooks mapping ({enabled: true}) must survive a replay from a degraded lock
+// (schemaVersion 0/absent) instead of being silently stripped.
+func TestDropHooksKeepsModernMapping(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	src := "prefix: ex\nhooks:\n  enabled: true\nskills:\n  - tdd\n"
+	testsupport.WriteFile(t, cfg, src)
+	if err := applyDropHooks(root); err != nil {
+		t.Fatalf("applyDropHooks: %v", err)
+	}
+	out, _ := os.ReadFile(cfg)
+	if string(out) != src {
+		t.Errorf("modern hooks mapping stripped on replay:\n got %q\nwant %q", out, src)
+	}
+}
+
 func TestDropHooksIdempotent(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
@@ -737,16 +754,20 @@ func TestEnableBootstrapAdds(t *testing.T) {
 	}
 }
 
-func TestEnableBootstrapOverwrites(t *testing.T) {
+// A config already carrying a bootstrap key made a choice — a replay from a
+// degraded lock must not override a deliberate opt-out with the upgrade
+// default. The genuine 4→5 path has no bootstrap key and still gets true.
+func TestEnableBootstrapKeepsExplicitOptOut(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
-	testsupport.WriteFile(t, cfg, "prefix: ex\nbootstrap:\n  enabled: false\n")
+	src := "prefix: ex\nbootstrap:\n  enabled: false\n"
+	testsupport.WriteFile(t, cfg, src)
 	if err := applyEnableBootstrap(root); err != nil {
 		t.Fatalf("applyEnableBootstrap: %v", err)
 	}
 	out, _ := os.ReadFile(cfg)
-	if !strings.Contains(string(out), "enabled: true") || strings.Contains(string(out), "enabled: false") {
-		t.Errorf("bootstrap.enabled not overwritten to true:\n%s", out)
+	if string(out) != src {
+		t.Errorf("explicit bootstrap opt-out overridden on replay:\n got %q\nwant %q", out, src)
 	}
 }
 
