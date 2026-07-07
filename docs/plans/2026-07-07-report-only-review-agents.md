@@ -18,7 +18,8 @@ The fix-application instructions are centralised in the ADR-0052 shared spine
 via `awf:include`) plus each reviewing skill. The behavioural change is one coherent edit across the
 spine, the three agent-template headers, the four skill templates, and the catalog `fixesAsCommits`
 key, landed with its render-assertion updates in a single commit (Phase 1). A second commit (Phase 2)
-backs the new invariant, refreshes the `tooling` domain doc, and flips ADR-0074 to `Implemented`.
+backs the new invariant, refreshes the `tooling` domain doc and the now-stale stray-branch pitfall,
+and flips ADR-0074 to `Implemented`.
 
 Marker names (`apply-fixes-commit`, `re-review-loop`) are kept stable — only their bodies change — so
 `skill-section-parity` needs no `internal/catalog/standard.go` `Sections` edit. All templated changes
@@ -48,8 +49,10 @@ re-render across **both** the `.claude/` and `.cursor/` trees via `./x sync`.
 **Modified (Phase 2):**
 - `internal/project/spine_test.go` — add `// invariant: reviewers-report-only` marker.
 - `.awf/domains/parts/tooling/current-state.md` — one sentence on report-only reviewers.
+- `.awf/docs/parts/pitfalls/entries.md` — reframe the stray-branch pitfall (reviewer subagents are
+  now report-only and no longer commit).
 - `docs/decisions/0074-report-only-review-agents.md` — status `Proposed` → `Implemented`.
-- Regenerated `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`, `.awf/awf.lock`.
+- Regenerated `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`, `docs/pitfalls.md`, `.awf/awf.lock`.
 
 **Created / Deleted:** none.
 
@@ -626,13 +629,41 @@ One commit. This is the implementation-completion commit: it backs the new invar
 		},
 ```
 
-### Task 2.2 — Refresh the tooling domain current-state
+### Task 2.2 — Refresh the affected docs (tooling current-state + stray-branch pitfall)
 
 - [ ] Edit `.awf/domains/parts/tooling/current-state.md`. Append to the final paragraph (after the
   ADR-0069 working-memory-coverage-lock sentence) one sentence:
 
 ```
  ADR-0074 makes the three chain review subagents report-only judges: the shared review-discipline spine and their templates instruct the agent to report findings, never to edit, commit, or re-review, and each `<prefix>-reviewing-*` skill owns fix application and a single fresh verify-pass dispatch (invariant `reviewers-report-only`).
+```
+
+- [ ] Edit `.awf/docs/parts/pitfalls/entries.md`. ADR-0074 makes the review subagents report-only,
+  so the "A dispatched review subagent sometimes commits on a new branch" entry's premise
+  (reviewers apply their fixes as commits) is now false. Reframe the entry's title and opening
+  sentence so it no longer claims the review subagents commit, re-scoping the caution to
+  fix-applying subagents that still commit (the implementer subagents in
+  `<prefix>-subagent-driven-development`). Find:
+
+```
+## A dispatched review subagent sometimes commits on a new branch, not `main`
+
+The `plan-reviewer` / `adr-reviewer` / `code-reviewer` subagents apply their fixes as commits;
+occasionally one creates a `resync/…` or `review/…` branch and commits there instead of on the
+working branch (`main`), leaving the main-thread session behind by those commits (seen with the
+resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort).
+```
+
+  Replace with:
+
+```
+## A dispatched fix-applying subagent sometimes commits on a new branch, not `main`
+
+A dispatched subagent that applies fixes as commits — the implementer subagents in
+`<prefix>-subagent-driven-development` (as of ADR-0074 the review subagents are report-only and no
+longer commit) — occasionally creates a `resync/…` or `review/…` branch and commits there instead
+of on the working branch (`main`), leaving the main-thread session behind by those commits (seen
+with a resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort).
 ```
 
 ### Task 2.3 — Flip ADR-0074 to Implemented
@@ -652,8 +683,8 @@ status: Implemented
 ### Task 2.4 — Re-render, verify, commit
 
 - [ ] Run `./x sync`. Expected: `awf sync: done`, regenerating `docs/decisions/ACTIVE.md` (0074 now
-  Implemented), `docs/domains/tooling.md` (refreshed current-state + decision index row), and
-  `.awf/awf.lock`.
+  Implemented), `docs/domains/tooling.md` (refreshed current-state + decision index row),
+  `docs/pitfalls.md` (reframed stray-branch entry), and `.awf/awf.lock`.
 - [ ] Run `./x check`. Expected: `awf check: clean` — the now-Implemented ADR-0074's
   `reviewers-report-only` slug is backed by the `// invariant:` marker from Task 2.1.
 - [ ] Run `./x gate`. Expected: green gate, `coverage: 100.0%`.
@@ -661,13 +692,14 @@ status: Implemented
 
 ```
 git add internal/project/spine_test.go .awf/domains/parts/tooling/current-state.md \
+  .awf/docs/parts/pitfalls/entries.md docs/pitfalls.md \
   docs/decisions/0074-report-only-review-agents.md docs/decisions/ACTIVE.md docs/domains/tooling.md .awf/awf.lock
 git commit -m "docs(adr): mark 0074 implemented"
 ```
 
   Commit body: back the `reviewers-report-only` invariant with the spine_test absence assertion,
-  refresh the tooling current-state, and flip ADR-0074 to Implemented. Expected: green pre-commit
-  hook.
+  refresh the tooling current-state, reframe the stray-branch pitfall (reviewers no longer commit),
+  and flip ADR-0074 to Implemented. Expected: green pre-commit hook.
 
 ---
 
@@ -677,5 +709,7 @@ git commit -m "docs(adr): mark 0074 implemented"
 - [ ] `git grep -n "fixesAsCommits" internal/ templates/` returns nothing.
 - [ ] `git grep -rn "agent applies" .claude/skills/awf-reviewing-* .cursor/skills/awf-reviewing-*`
   returns nothing (skills now say "this skill applies").
+- [ ] `git grep -n "subagents apply their fixes as commits" docs/pitfalls.md .awf/docs/parts/pitfalls/entries.md`
+  returns nothing (the stray-branch pitfall no longer claims reviewers commit).
 - [ ] `./x check` clean and `./x gate` green on the final commit.
 - [ ] Terminal handoff: invoke `awf-reviewing-impl` for the implementation review.
