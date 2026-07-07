@@ -690,6 +690,42 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 	}
 }
 
+// A leading-/ target is repo-root-relative (not joined under the linking
+// file's directory), and a target escaping the repo root is dead by
+// definition — never validated against host paths outside the repo.
+func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
+		// agents-doc renders at the repo root; workflow doc at docs/workflow.md.
+		// /docs/workflow.md from inside docs/ must resolve to the repo root copy,
+		// not docs/docs/workflow.md.
+		"parts/doc-standard/principles.md": "See [w](/docs/workflow.md) and [out](../../outside.md).\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "..", "outside.md"), "outside\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dead := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind == "dead-reference" {
+			dead[d.Detail] = true
+		}
+	}
+	if dead["/docs/workflow.md"] {
+		t.Errorf("root-relative target to an existing file flagged dead: %#v", drift)
+	}
+	if !dead["../../outside.md"] {
+		t.Errorf("root-escaping target not flagged dead (stat'd outside the repo): %#v", drift)
+	}
+}
+
 func TestIsManagedMarkdownExcludesBootstrap(t *testing.T) {
 	if isManagedMarkdown("bootstrap/awf-bootstrap.sh.tmpl") {
 		t.Error("awf-bootstrap.sh template must not be scanned for dead references")

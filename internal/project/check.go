@@ -496,7 +496,17 @@ func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []Re
 	for _, f := range scan {
 		base := filepath.Dir(f.Path)
 		for _, target := range refs.Links(f.Content) {
+			// A leading-/ target is repo-root-relative; everything else resolves
+			// file-relative. A target escaping the root is dead by definition —
+			// a host path outside the repo must never validate it.
 			resolved := filepath.Join(p.Root, base, target)
+			if strings.HasPrefix(target, "/") {
+				resolved = filepath.Join(p.Root, target)
+			}
+			if rel, err := filepath.Rel(p.Root, resolved); err != nil || (rel != "." && !filepath.IsLocal(rel)) {
+				drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-reference", Detail: target})
+				continue
+			}
 			if _, err := os.Stat(resolved); err != nil {
 				drift = append(drift, manifest.Drift{Path: f.Path, Kind: "dead-reference", Detail: target})
 			}
