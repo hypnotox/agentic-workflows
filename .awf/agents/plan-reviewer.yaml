@@ -1,4 +1,16 @@
 data:
+    focusItems:
+        - name: step-exactness
+          description: every task names exact file paths, exact content or diffs, and exact commands with expected output
+        - name: dependency-order
+          description: tasks are ordered so each builds only on already-completed work
+        - name: gate-clean-embedded
+          description: >-
+              plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the
+              gate the executor will run — commit subjects ≤72 chars (commit-gate), constant-string
+              `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned
+              literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide
+              brace guard)
     docCurrencyItems:
         - check: docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
         - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain

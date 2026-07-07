@@ -62,6 +62,9 @@ Apply all five lenses to every plan:
 **dependency-order** — tasks are ordered so each builds only on already-completed work
 
 
+**gate-clean-embedded** — plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run — commit subjects ≤72 chars (commit-gate), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
+
+
 
 ## Doc-currency checklist
 
