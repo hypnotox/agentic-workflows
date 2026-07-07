@@ -172,6 +172,7 @@ func TestPlanReviewerAgent(t *testing.T) {
 	planPhrases := []string{
 		"scope-completeness",
 		"executability",
+		"closing commit passes the project's gate on its own",
 	}
 	for _, phrase := range planPhrases {
 		if !strings.Contains(out, phrase) {
