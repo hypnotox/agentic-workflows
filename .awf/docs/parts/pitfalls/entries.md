@@ -69,3 +69,14 @@ shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *ot
 dirty files (a false positive for your session — never commit or discard their work to appease
 it), and a pre-commit drift-gate failure may be their stale generated file — `./x sync`
 freshens the disk, then still commit only your paths.
+
+## A new var reference in a previously var-free template is adopter-visible
+
+Referencing a `{{ .vars.* }}` value in a template that referenced none before changes more than
+the prose: every adopter without that var set starts seeing an ADR-0045 unset-var advisory for
+the artifact on `awf check`/`awf init`. awf's own repo sets the common vars (`gateCmd` etc.), so
+the edit looks silent here and the new advisory only surfaces downstream. Before adding a var
+reference, decide whether the sentence really needs it — generic wording avoids the advisory
+entirely (this kept `gateCmd` out of the plans README when the self-contained-phases rule
+landed) — and if it does, keep the `{{ with }}…{{ else }}` fallback publication-safe and accept
+the advisory as intended signal.
