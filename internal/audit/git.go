@@ -162,6 +162,13 @@ func toCommit(c *object.Commit) (Commit, error) {
 		Body:    body,
 		IsMerge: c.NumParents() > 1,
 	}
+	if nc.IsMerge {
+		// A merge's first-parent diff is the other side's work (typically main
+		// merged into the branch), not this branch's — attributing it makes every
+		// file-based rule fire on foreign changes. The branch's own work is
+		// carried by its non-merge commits, so a merge contributes no Changes.
+		return nc, nil
+	}
 	curTree, err := c.Tree()
 	if err != nil { // coverage-ignore: a commit's own tree resolves for any valid commit
 		return Commit{}, err

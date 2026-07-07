@@ -113,6 +113,55 @@ func TestCollectNormalRange(t *testing.T) {
 }
 
 // invariant: audit-empty-range-clean
+// A merge commit's first-parent diff is the *other* side's work (typically
+// main merged into the branch); attributing it to the branch makes every
+// file-based rule fire on foreign changes. Merges must carry no Changes.
+func TestCollectMergeCommitCarriesNoChanges(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	c0 := gitfixture.Commit(t, repo, dir, "chore: base\n", map[string]string{"README.md": "base\n"})
+	// Advance the base branch (master) by one commit.
+	m1 := gitfixture.Commit(t, repo, dir, "feat: main-side work\n", map[string]string{"mainside.txt": "big change on main\n"})
+	// Branch from c0 and do the branch's own work.
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wt.Checkout(&git.CheckoutOptions{Hash: c0, Branch: plumbing.NewBranchReferenceName("feature"), Create: true}); err != nil {
+		t.Fatalf("checkout feature: %v", err)
+	}
+	f1 := gitfixture.Commit(t, repo, dir, "feat(awf): branch work\n", map[string]string{"branch.txt": "branch change\n"})
+	// Merge master into the branch: tree carries main's file, parents [f1, m1].
+	if err := os.WriteFile(filepath.Join(dir, "mainside.txt"), []byte("big change on main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("mainside.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Commit("Merge branch 'master' into feature\n", &git.CommitOptions{
+		Author: gitfixture.Sig, Committer: gitfixture.Sig,
+		Parents: []plumbing.Hash{f1, m1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	commits, err := Collect(dir, "master")
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	var sawMerge bool
+	for _, c := range commits {
+		if !c.IsMerge {
+			continue
+		}
+		sawMerge = true
+		if len(c.Changes) != 0 {
+			t.Errorf("merge commit carries %d changes (first-parent diff of the merged-in side); want 0: %+v", len(c.Changes), c.Changes)
+		}
+	}
+	if !sawMerge {
+		t.Fatalf("no merge commit collected; commits = %+v", commits)
+	}
+}
+
 func TestCollectEmptyRangeIsClean(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
