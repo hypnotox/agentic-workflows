@@ -64,6 +64,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0071: Missing mutation-report path is a caller error](../decisions/0071-missing-mutation-report-path-is-a-caller-error.md)
 - [ADR-0073: Repo-local audit for changelog conformance at implementation review](../decisions/0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md)
 
+### Proposed
+
+- [ADR-0074: Report-only review agents](../decisions/0074-report-only-review-agents.md)
+
 ### Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

@@ -77,6 +77,10 @@
 - [ADR-0072: Convention parts re-inject their section default via a placeholder](0072-convention-parts-re-inject-their-section-default-via-a-placeholder.md) — Implemented
 - [ADR-0073: Repo-local audit for changelog conformance at implementation review](0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md) — Implemented
 
+## Proposed
+
+- [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Proposed
+
 ## Superseded by ADR-0032
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
