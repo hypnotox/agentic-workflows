@@ -495,7 +495,7 @@ HEAD as of 4350b54 and may need trivial re-anchoring after the ADR-0069 work lan
 
     ```yaml
             - ref: ADR-0070
-              text: '**Stub advisory, residual-marker guard.** Unauthored stub content — a stub-attributed section at its template default, or a part carrying the whole-line `awf:stub` marker — is a non-failing `awf check`/`awf init` note keyed by output path, never a failure; and a marker-shaped `awf:section`/`awf:end` token surviving section assembly is a hard render error.'
+              text: '**Stub advisory, residual-marker guard.** Unauthored stub content — a stub-attributed section at its template default, or a part carrying the whole-line `awf:stub` marker — is a non-failing `awf check`/`awf init` note keyed by output path, never a failure; a marker-shaped `awf:section`/`awf:end` token surviving section assembly is a hard render error; and every shipped template section default is deliberately classified — authoring prompts carry `stub`, shippable prose stays plain.'
     ```
 
   - Currency fix in the same file (recorded pitfall: hard-coded counts): in the ADR-0054 entry,
