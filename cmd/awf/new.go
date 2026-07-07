@@ -70,19 +70,26 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 	if pool, _ := project.CatalogNames(p.Cat, kind); slices.Contains(pool, name) {
 		return fmt.Errorf("%s %q already exists (catalog or local) — pick another name", kind, name)
 	}
+	// The pool guard misses a name that is declared but not enabled (or opted
+	// out via local: true); never overwrite files an author may have edited.
+	scPath := filepath.Join(config.RootDir(root), pl, name+".yaml")
+	partPath := p.Cfg.PartPath(pl, name, "content")
+	for _, existing := range []string{scPath, partPath} {
+		if _, err := os.Stat(existing); err == nil {
+			return fmt.Errorf("%s %q already has authored files (%s) — remove them first or pick another name", kind, name, existing)
+		}
+	}
 	// Declaring sidecar: data.description feeds the base template's frontmatter.
 	scBytes, err := yaml.Marshal(map[string]any{"data": map[string]any{"description": desc}})
 	if err != nil { // coverage-ignore: a string map always marshals
 		return err
 	}
-	scPath := filepath.Join(config.RootDir(root), pl, name+".yaml")
 	if err := os.MkdirAll(filepath.Dir(scPath), 0o755); err != nil { // coverage-ignore: parent is the just-opened .awf tree; fails only on a permission fault a test cannot trigger
 		return err
 	}
 	if err := os.WriteFile(scPath, scBytes, 0o644); err != nil { // coverage-ignore: post-mkdir write; fails only on a permission fault a test cannot trigger
 		return err
 	}
-	partPath := p.Cfg.PartPath(pl, name, "content")
 	if err := os.MkdirAll(filepath.Dir(partPath), 0o755); err != nil { // coverage-ignore: as above
 		return err
 	}

@@ -94,6 +94,48 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	}
 }
 
+// awf new must refuse when the name already has files under .awf/, even when
+// the name is not in the enable array (an enabled+declared local is caught by
+// the catalog-pool guard; a disabled one left its sidecar and authored part on
+// disk, and a re-run must not silently reset them to the stub).
+func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
+		t.Fatalf("runNew skill: %v", err)
+	}
+	partPath := filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md")
+	const authored = "Authored body — must survive a re-run.\n"
+	if err := os.WriteFile(partPath, []byte(authored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Disable the skill but keep its authored files, as `awf remove skill` would.
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	cfg, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, []byte(strings.ReplaceAll(string(cfg), "  - deploy-check\n", "")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runNew(root, "skill", []string{"deploy-check", "Other description."}, io.Discard); err == nil {
+		t.Fatal("expected error re-running awf new over existing local artifact files")
+	}
+	part, err := os.ReadFile(partPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(part) != authored {
+		t.Errorf("authored content part was overwritten:\n%s", part)
+	}
+	sc, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "deploy-check.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(sc), "Verify the deploy is green.") {
+		t.Errorf("authored sidecar was overwritten:\n%s", sc)
+	}
+}
+
 func TestRunNewScaffoldsAgent(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runNew(root, "agent", []string{"deploy-bot", "Runs the deploy checks."}, io.Discard); err != nil {
