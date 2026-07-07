@@ -115,3 +115,18 @@ deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade a
 output for unchanged config/templates must run `./x sync` *after the final code state* and
 commit the refreshed outputs — verify by grepping the rendered file for the change, not by
 trusting a clean check.
+
+## Documenting a literal `\{{=awf:key}}` token in the agent guide trips the render-guide brace check
+
+`internal/project/guide_scopes_test.go`'s `renderGuide` helper rejects any `{{` or `}}` in the
+rendered agent guide as an unrendered template action. A guide default that documents a literal
+awf placeholder token renders real braces into the guide (e.g. a bullet mentioning
+`\{{=awf:sectionDefault}}`), which trips that guard even though the braces are intentional
+content — and it surfaces as a `TestGuideScopesDerived` failure, not an obvious match for a doc
+edit. This bit ADR-0072, whose plan specified embedding the full token in the override bullet.
+The honest fix is to reference the placeholder by its bare key name in the guide
+(`` `sectionDefault` ``) and leave the full token syntax to `working-with-awf.md`, whose render
+path tolerates it — the guide is a pointer, that doc is the reference. If the guide must show the
+full token, strip `awfPlaceholderRE` matches before the brace check rather than deleting the
+guard. (This very entry backslash-escapes its tokens because the pitfalls doc is itself a raw
+convention part run through the same substitution.)
