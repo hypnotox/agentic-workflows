@@ -39,6 +39,13 @@ below `project.Version`, or the gate fails.
    (its parser only recognises numeric-versioned headers). A changelog entry is required for
    every tag.
 
+   A mid-cycle version bump forces this promotion early: the gate test
+   `TestChangelogLatestMatchesVersion` (`cmd/awf/changelog_test.go`) requires the newest
+   numeric changelog entry to equal `project.Version`, so the commit that bumps the const must
+   promote `[Unreleased]` to the new version in the same change — necessarily with a
+   provisional date. When that has already happened, this step shrinks to confirming the
+   promoted section is complete and correcting its date to the actual tag date before tagging.
+
    ```
    ./x gate && ./x check
    git add internal/project/project.go changelog/CHANGELOG.md .awf/awf.lock
