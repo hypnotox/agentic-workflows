@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [tooling, render]
-related: [0001, 0005]
+related: [1, 5]
 domains: [rendering, adr-system]
 ---
 # ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation

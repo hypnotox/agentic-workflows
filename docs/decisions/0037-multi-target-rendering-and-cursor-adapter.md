@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [target-output-paths]
 superseded_by: ""
 tags: [rendering, adapter, cursor, config]
-related: [0014, 0016, 0024]
+related: [14, 16, 24]
 domains: [rendering, config, tooling]
 ---
 # ADR-0037: Multi-Target Rendering and the Cursor Adapter

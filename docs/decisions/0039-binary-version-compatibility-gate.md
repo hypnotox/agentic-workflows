@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, versioning, gate]
-related: [0030, 0040]
+related: [30, 40]
 domains: [tooling]
 ---
 # ADR-0039: Binary-Version Compatibility Gate

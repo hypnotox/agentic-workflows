@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [invariants, rendering, config, drift, init]
-related: [0008, 0029, 0045, 0051, 0055, 0057]
+related: [8, 29, 45, 51, 55, 57]
 domains: [rendering, config, invariants]
 ---
 # ADR-0064: Config-derived invariant comment markers

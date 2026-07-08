@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [version-ldflags-precedence]
 superseded_by: ""
 tags: [versioning, release, bootstrap]
-related: [0030, 0039, 0040, 0048]
+related: [30, 39, 40, 48]
 domains: [tooling]
 ---
 # ADR-0049: Single version authority

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [testing, evals, verification]
-related: [0017, 0046, 0052, 0012, 0022, 0013]
+related: [12, 13, 17, 22, 46, 52]
 domains: [tooling]
 ---
 # ADR-0053: Deterministic workflow-chain golden-task eval suite

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [cli, adr, tooling]
-related: [0039]
+related: [39]
 domains: [adr-system, tooling]
 ---
 # ADR-0042: `awf new adr` Scaffolding Command

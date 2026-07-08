@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [audit, config, rendering]
-related: [0008, 0017, 0036, 0045, 0051]
+related: [8, 17, 36, 45, 51]
 domains: [config, rendering, tooling]
 ---
 # ADR-0055: Granular domain-aligned commit scopes

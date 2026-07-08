@@ -4,7 +4,7 @@ date: 2026-06-28
 supersedes: []
 superseded_by: ""
 tags: [workflow, documentation, templates]
-related: [0004]
+related: [4]
 domains: [adr-system]
 ---
 # ADR-0028: ADR-first ordering and a visible plan–ADR resync loop in the workflow chain

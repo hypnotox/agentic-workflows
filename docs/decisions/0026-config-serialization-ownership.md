@@ -4,7 +4,7 @@ date: 2026-06-28
 supersedes: []
 superseded_by: ""
 tags: [config, tooling, serialization, yaml]
-related: [0001, 0009, 0010, 0022, 0024]
+related: [1, 9, 10, 22, 24]
 domains: [config, tooling]
 ---
 # ADR-0026: Config Serialization Owned by internal/config

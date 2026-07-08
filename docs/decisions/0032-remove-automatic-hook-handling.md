@@ -1,10 +1,10 @@
 ---
 status: Implemented
 date: 2026-06-29
-supersedes: [0003]
+supersedes: [3]
 superseded_by: ""
 tags: [tooling, hooks, adoption, rendering]
-related: [0023, 0030, 0031]
+related: [23, 30, 31]
 domains: [tooling, rendering]
 retires_invariants: [setup-guards-hookspath]
 ---

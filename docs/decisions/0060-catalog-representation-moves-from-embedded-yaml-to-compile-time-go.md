@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [catalog, rendering, config, refactor]
-related: [0022, 0027, 0043, 0045]
+related: [22, 27, 43, 45]
 domains: [rendering, config]
 ---
 # ADR-0060: Catalog representation moves from embedded YAML to compile-time Go

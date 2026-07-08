@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, distribution, rendering, schema]
-related: [0024, 0027, 0030, 0039]
+related: [24, 27, 30, 39]
 domains: [tooling, rendering, config]
 ---
 # ADR-0040: Self-Pinning Rendered Bootstrap

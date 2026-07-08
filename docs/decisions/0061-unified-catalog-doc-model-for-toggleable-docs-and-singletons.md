@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [mandatory-docs-not-in-docs-catalog, singleton-kind-single-source]
 superseded_by: ""
 tags: [catalog, docs, singleton, rendering, config, refactor]
-related: [0004, 0021, 0022, 0027, 0031, 0037, 0043, 0059, 0060]
+related: [4, 21, 22, 27, 31, 37, 43, 59, 60]
 domains: [rendering, config]
 ---
 # ADR-0061: Unified catalog doc model for toggleable docs and singletons

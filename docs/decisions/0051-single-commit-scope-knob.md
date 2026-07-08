@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [config, init, audit]
-related: [0017, 0029, 0036, 0045, 0046]
+related: [17, 29, 36, 45, 46]
 domains: [config, rendering]
 ---
 # ADR-0051: Single commit-scope knob

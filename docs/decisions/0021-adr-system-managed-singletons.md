@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [rendering, adr-system, singleton]
-related: [0004, 0009, 0011, 0015, 0016, 0020]
+related: [4, 9, 11, 15, 16, 20]
 domains: [rendering, adr-system]
 ---
 # ADR-0021: Scaffold the ADR-System Files as Managed Singletons

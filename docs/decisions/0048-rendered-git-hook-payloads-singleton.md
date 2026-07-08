@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [hooks, rendering, adoption, tooling]
-related: [0023, 0032, 0035, 0036, 0039, 0040, 0045, 0047]
+related: [23, 32, 35, 36, 39, 40, 45, 47]
 domains: [rendering, config, tooling]
 ---
 # ADR-0048: Rendered git-hook payloads singleton

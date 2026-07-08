@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, commit, gate, hooks, audit]
-related: [0017, 0032]
+related: [17, 32]
 domains: [tooling]
 ---
 # ADR-0036: Deterministic Commit-Message Gate

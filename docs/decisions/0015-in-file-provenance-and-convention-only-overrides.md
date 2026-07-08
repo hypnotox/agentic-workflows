@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [tooling, rendering, config]
-related: [0001, 0006, 0009, 0010, 0011]
+related: [1, 6, 9, 10, 11]
 domains: [rendering, config]
 ---
 # ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides

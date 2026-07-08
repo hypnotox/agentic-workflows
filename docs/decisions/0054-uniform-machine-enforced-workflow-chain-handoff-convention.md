@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [testing, evals, workflow, conventions]
-related: [0053, 0046, 0015, 0022, 0012]
+related: [12, 15, 22, 46, 53]
 domains: [tooling]
 ---
 # ADR-0054: Uniform machine-enforced workflow-chain handoff convention

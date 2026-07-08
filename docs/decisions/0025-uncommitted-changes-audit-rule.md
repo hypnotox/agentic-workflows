@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [tooling, audit, workflow]
-related: [0017, 0019]
+related: [17, 19]
 domains: [tooling]
 ---
 # ADR-0025: Uncommitted-Changes Audit Rule

@@ -4,7 +4,7 @@ date: 2026-06-28
 supersedes: []
 superseded_by: ""
 tags: [tooling, release, distribution]
-related: [0003]
+related: [3]
 domains: [tooling]
 ---
 # ADR-0030: Prebuilt Binary Distribution and Release Pipeline

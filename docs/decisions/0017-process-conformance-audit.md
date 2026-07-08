@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [audit, conformance, tooling]
-related: [0008, 0012]
+related: [8, 12]
 domains: [tooling, config]
 ---
 # ADR-0017: Process-conformance audit (`awf audit`)

@@ -4,7 +4,7 @@ date: 2026-06-28
 supersedes: []
 superseded_by: ""
 tags: [tooling, rendering, refactor, dispatch]
-related: [0009, 0016, 0024]
+related: [9, 16, 24]
 domains: [rendering, tooling]
 ---
 # ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [audit, tooling, safety-net]
-related: [0017, 0019]
+related: [17, 19]
 domains: [tooling]
 ---
 # ADR-0033: Audit ADR→Domain-Index Co-change

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [bootstrap, layout, adoption]
-related: [0009, 0023, 0032, 0035, 0040]
+related: [9, 23, 32, 35, 40]
 domains: [rendering, tooling]
 ---
 # ADR-0047: Bootstrap relocation into the config tree

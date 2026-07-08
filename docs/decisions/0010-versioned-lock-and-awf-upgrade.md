@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [tooling, schema]
-related: [0009]
+related: [9]
 domains: [config]
 ---
 # ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism

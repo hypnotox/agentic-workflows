@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [tooling, config, cli, adoption]
-related: [0009, 0014, 0022]
+related: [9, 14, 22]
 domains: [tooling, config]
 ---
 # ADR-0024: CLI Config Management Across Kinds

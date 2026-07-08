@@ -4,7 +4,7 @@ date: 2026-06-24
 supersedes: []
 superseded_by: "0032"
 tags: [tooling]
-related: [0002]
+related: [2]
 domains: [tooling]
 ---
 # ADR-0003: awf Binary Delivery and Hook-Activation Setup

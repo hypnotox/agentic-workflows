@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [config, audit, rendering]
-related: [0008, 0017, 0036, 0039, 0049, 0051, 0055]
+related: [8, 17, 36, 39, 49, 51, 55]
 domains: [config, rendering, tooling]
 ---
 # ADR-0056: Structured commit-scope config with meanings

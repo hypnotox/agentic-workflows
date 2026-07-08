@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [docs, standard, templates, portability]
-related: [0018, 0037]
+related: [18, 37]
 domains: [rendering]
 ---
 # ADR-0038: Tool-Agnostic Skill and Agent Prose

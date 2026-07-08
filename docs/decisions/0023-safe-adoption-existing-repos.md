@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [tooling, adoption, init, setup, uninstall]
-related: [0003, 0016]
+related: [3, 16]
 domains: [tooling]
 ---
 # ADR-0023: Safe Adoption Into Existing Repositories

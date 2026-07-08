@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, adoption, sync, safety]
-related: [0016, 0023]
+related: [16, 23]
 domains: [tooling]
 ---
 # ADR-0035: Brownfield-Safe Sync Writes

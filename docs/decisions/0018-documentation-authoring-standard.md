@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [docs, standard, templates]
-related: [0004, 0011, 0015]
+related: [4, 11, 15]
 domains: [rendering]
 ---
 # ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`

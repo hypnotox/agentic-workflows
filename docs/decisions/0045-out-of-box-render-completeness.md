@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, catalog, publication-safety, adoption]
-related: [0001, 0006, 0011, 0012, 0022, 0029, 0039]
+related: [1, 6, 11, 12, 22, 29, 39]
 domains: [rendering, config]
 ---
 # ADR-0045: Out-of-box render completeness

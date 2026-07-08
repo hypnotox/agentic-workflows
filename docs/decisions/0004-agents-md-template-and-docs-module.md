@@ -4,7 +4,7 @@ date: 2026-06-24
 supersedes: []
 superseded_by: ""
 tags: [tooling, templates]
-related: [0001]
+related: [1]
 domains: [adr-system]
 ---
 # ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module

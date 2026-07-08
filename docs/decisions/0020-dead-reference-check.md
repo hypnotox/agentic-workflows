@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [check, drift, docs]
-related: [0005, 0006, 0011, 0013, 0019, 0021]
+related: [5, 6, 11, 13, 19, 21]
 domains: [rendering, adr-system]
 ---
 # ADR-0020: Dead-Reference Check in `awf check`

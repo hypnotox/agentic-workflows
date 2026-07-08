@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [docs, adr-system, rendering]
-related: [0005, 0011, 0013]
+related: [5, 11, 13]
 domains: [adr-system, rendering]
 ---
 # ADR-0014: Domain Docs with a Generated Per-Domain ADR Index

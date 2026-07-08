@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [workflow, review, agents]
-related: [0050, 0052, 0054, 0017, 0067]
+related: [17, 50, 52, 54, 67]
 domains: [tooling]
 ---
 # ADR-0074: Report-only review agents

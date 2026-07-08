@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, parts]
-related: [0012, 0034, 0045, 0057]
+related: [12, 34, 45, 57]
 domains: [rendering]
 ---
 # ADR-0058: Backslash escape and value-token-free guard for placeholders

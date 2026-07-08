@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [docs, rendering, singleton, config]
-related: [0004, 0011, 0013, 0020, 0034, 0043, 0057, 0058]
+related: [4, 11, 13, 20, 34, 43, 57, 58]
 domains: [rendering, config]
 ---
 # ADR-0059: Mandatory working-with-awf usage doc singleton

@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 superseded_by: ""
 tags: [invariants, adr-system]
-related: [0008]
+related: [8]
 domains: [invariants, adr-system]
 ---
 # ADR-0031: Invariant Retirement via Successor ADR

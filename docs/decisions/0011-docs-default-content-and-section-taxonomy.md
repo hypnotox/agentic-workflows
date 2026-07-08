@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [tooling, templates]
-related: [0004, 0009]
+related: [4, 9]
 domains: [rendering]
 ---
 # ADR-0011: Docs Default Content and Per-Doc Section Taxonomy

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, parts, config]
-related: [0001, 0012, 0015, 0034, 0045, 0051, 0055, 0056]
+related: [1, 12, 15, 34, 45, 51, 55, 56]
 domains: [rendering, config]
 ---
 # ADR-0057: Sandboxed placeholder substitution in convention parts

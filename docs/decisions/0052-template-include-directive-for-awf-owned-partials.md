@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [render, templates, partials, drift]
-related: [0001, 0015, 0027, 0034, 0045, 0046]
+related: [1, 15, 27, 34, 45, 46]
 domains: [rendering]
 ---
 # ADR-0052: Template Include Directive for Awf-Owned Partials

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [workflow-ref-fallback]
 superseded_by: ""
 tags: [docs, rendering, singleton, config]
-related: [0004, 0013, 0018, 0020, 0021, 0022, 0029, 0031, 0037]
+related: [4, 13, 18, 20, 21, 22, 29, 31, 37]
 domains: [rendering, config]
 ---
 # ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards

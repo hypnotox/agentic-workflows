@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [cli, changelog, embed]
-related: [0017, 0030]
+related: [17, 30]
 domains: [tooling]
 ---
 # ADR-0041: Embedded Changelog and the `awf changelog` Command

@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [catalog, validation, agents]
-related: [0013, 0022, 0046]
+related: [13, 22, 46]
 domains: [config, rendering]
 ---
 # ADR-0050: Reviewing-skill and agent pairing

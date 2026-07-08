@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [audit, conformance, staleness]
-related: [0014, 0017]
+related: [14, 17]
 domains: [tooling]
 ---
 # ADR-0019: Domain-Doc Currency Audit Rules

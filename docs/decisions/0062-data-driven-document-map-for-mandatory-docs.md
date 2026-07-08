@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [docs, rendering, catalog, singleton]
-related: [0043, 0059, 0061]
+related: [43, 59, 61]
 domains: [rendering]
 ---
 # ADR-0062: Data-driven document map for mandatory docs

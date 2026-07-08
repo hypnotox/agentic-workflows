@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [testing, tooling]
-related: [0006, 0020]
+related: [6, 20]
 domains: [tooling]
 ---
 # ADR-0044: Shared Test-Support Package

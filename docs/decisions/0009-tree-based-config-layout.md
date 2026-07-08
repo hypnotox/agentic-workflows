@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [tooling, schema]
-related: [0001, 0005, 0006, 0007, 0008, 0010]
+related: [1, 5, 6, 7, 8, 10]
 domains: [config]
 ---
 # ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root

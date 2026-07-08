@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, parts, adoption]
-related: [0001, 0015]
+related: [1, 15]
 domains: [rendering]
 ---
 # ADR-0034: Convention Parts Are Raw Input
