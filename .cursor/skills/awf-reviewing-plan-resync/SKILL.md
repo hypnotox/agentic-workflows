@@ -39,7 +39,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 3. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
-4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items — an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off-to-impl — default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `awf-executing-plans` (for inline execution) or `awf-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.

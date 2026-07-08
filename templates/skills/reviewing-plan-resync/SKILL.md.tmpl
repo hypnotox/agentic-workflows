@@ -42,7 +42,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items — an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-impl -->

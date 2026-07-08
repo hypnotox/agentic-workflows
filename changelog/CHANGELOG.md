@@ -39,6 +39,10 @@ query a single version or a range.
 - The two plan-execution skills' terminal-handoff line now attributes finding
   classification to the report-only review agent (ADR-0074): the reviewing skill routes
   findings by the agent's classification rather than "classifies" them itself.
+- The plan-resync skill's verify-pass step now states which rule wins when the single
+  verify pass surfaces an ADR-implicating residual: the amend-and-re-review return edge
+  applies to initial-dispatch findings only, so verify-pass residuals escalate as
+  `user-decision` items instead of re-entering the loop.
 
 ## [0.10.0] - 2026-07-07
 ### Breaking changes
