@@ -447,7 +447,6 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 	}
 }
 
-// invariant: invariants-glob-basename
 func TestInvariantGlobValidation(t *testing.T) {
 	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
 		Sources: []InvariantSource{{Globs: []string{"**/*.go", "**/*_test.py"}, Marker: "//"}},

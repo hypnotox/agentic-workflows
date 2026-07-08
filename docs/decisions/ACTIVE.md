@@ -79,10 +79,7 @@
 - [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Implemented
 - [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Implemented
 - [ADR-0076: Lock integrity and corrupt-lock failure policy](0076-lock-integrity-and-corrupt-lock-failure-policy.md) — Implemented
-
-## Proposed
-
-- [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md) — Proposed
+- [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md) — Implemented
 
 ## Superseded
 
