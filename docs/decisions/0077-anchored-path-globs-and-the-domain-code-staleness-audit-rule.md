@@ -2,7 +2,7 @@
 status: Proposed
 date: 2026-07-08
 supersedes: []
-retires_invariants: []
+retires_invariants: [invariants-glob-basename]
 superseded_by: ""
 tags: [audit, globs, staleness, migration, config]
 related: [17, 19, 26, 33, 39, 49, 76]
@@ -55,9 +55,9 @@ Grounding facts that shaped the decision (verified against source):
 - The migration machinery fits: migrations are ordered `{To, Name, Apply}` entries (current highest
   generation 6), config rewrites route through `internal/config` editors ending in
   `manifest.WriteFileAtomic` (ADR-0076), and a schema bump requires a `minVersionBySchema` entry
-  plus a `project.Version` bump (ADR-0049), enforced by a gate test. Existing config editors are
-  top-level only, so the migration needs a new nested-edit helper, owned by `internal/config`
-  per ADR-0026.
+  plus a `project.Version` bump (ADR-0049), enforced by a gate test. No existing config editor
+  rewrites nested sequence members (`SetMappingScalar` handles only a nested scalar), so the
+  migration needs a new nested-edit helper, owned by `internal/config` per ADR-0026.
 
 ## Decision
 
@@ -75,11 +75,17 @@ Grounding facts that shaped the decision (verified against source):
    `FileChange.Path` instead of its basename. `defaultDependencyManifests()` rewrites its built-in
    basename patterns to `**/<pattern>` so default behaviour is preserved. Doc-strings and error
    messages that describe "filename pattern matched against a basename" are updated to the anchored
-   semantics. No production matcher retains a basename mode.
+   semantics. No production matcher retains a basename mode. This retires ADR-0008's Implemented
+   invariant `invariants-glob-basename` (which asserts basename matching via `filepath.Match`) via
+   the ADR-0031 mechanism — the `retires_invariants` frontmatter takes effect when this ADR reaches
+   `Implemented`, and the retired slug's backing test is removed in the same change.
 
 3. **One-time config migration, schema generation 7.** A new migration (`To: 7`) rewrites every
    no-slash pattern in `invariants.sources[].globs` and `audit.dependencyManifests` in
-   `.awf/config.yaml` to `**/<pattern>`, preserving behaviour exactly. Patterns already containing
+   `.awf/config.yaml` to `**/<pattern>`, preserving behaviour for every pattern valid under the old
+   validator — with one edge: doublestar is a syntax superset of `filepath.Match`, so a legacy
+   pattern containing `{`/`}` (literal before, alternation after) changes meaning; accepted as a
+   theoretical corner no known config exercises. Patterns already containing
    `/` are untouched, making the migration idempotent. The rewrite goes through a new nested-edit
    helper in `internal/config` (ADR-0026 ownership) and lands atomically (ADR-0076). The bump
    carries a `minVersionBySchema[7]` entry and the matching `project.Version` bump (ADR-0049);
@@ -94,7 +100,10 @@ Grounding facts that shaped the decision (verified against source):
    each configured domain's sidecar, validates every pattern via `pathglob.Validate` (a malformed
    pattern is a hard error), and supplies a new `Inputs.DomainPaths map[string][]string` alongside
    the existing `ConfiguredDomains` — keeping the audit package decoupled from config, mirroring
-   ADR-0019 Decision 4.
+   ADR-0019 Decision 4. Validation is deliberately audit-time only: `paths` is consumed nowhere
+   else, and validating it in sync/check would pull audit-rule semantics into passes that otherwise
+   ignore the field — so a malformed pattern surfaces on the first `awf audit` run rather than at
+   sync time; an accepted deferral for an advisory-only input.
 
 5. **New advisory audit rule `domain-code-staleness`.** Range-scoped, in the shipped `awf audit`,
    mirroring ADR-0019's shape. For each configured domain `X` with non-empty `paths`: if any
@@ -151,13 +160,18 @@ Grounding facts that shaped the decision (verified against source):
   during grounding: `ScaffoldConfig` takes no invariants config, and additive config fields are
   not unconditionally bump-free — this ADR's sidecar extension is the counterexample);
   `docs/architecture.md` (new package); `docs/working-with-awf.md` (glob semantics, domain
-  `paths`); dogfood `paths` for awf's own five domains.
+  `paths`); `docs/development.md` (dependency reference: doublestar entry); `docs/glossary.md`
+  ("anchored glob", domain `paths`); the agent guide's invariants section (add this ADR's
+  invariant bullets, drop the retired basename bullet if present) re-rendered via `./x sync`;
+  and the status-flip commit regenerates `docs/decisions/ACTIVE.md` via `./x sync`. Dogfood
+  `paths` for awf's own five domains.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | Gitignore-style hybrid semantics (no-slash = basename at any depth), no migration | Two matching modes forever and a per-pattern dispatch rule; the user chose one explicit semantic plus a one-time mechanical migration. |
+| New field path-aware, old fields basename-only (no unification) | Two glob dialects side by side in one config file — a standing confusion about which rule applies where. |
 | Hand-rolled `**` matcher instead of doublestar | Glob edge cases are a bug farm; a small battle-tested dependency is exactly what a dependency is for. |
 | `paths` as enriched `config.yaml` domain entries (string \| `{name, paths}` union) | Verified blast radius: custom `UnmarshalYAML`, a names projection for the kind-descriptor `enable` facet, `SetArrayMember` taught to match mappings by `name`, and the union itself forces the backward-parse coupling. The existing domain sidecar surface carries the same information with none of that. |
 | `paths` in a separate `audit.domainPaths` map | Splits a domain's definition across two config sections; the sidecar keeps it colocated with the domain's parts. |
