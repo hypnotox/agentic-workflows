@@ -70,12 +70,19 @@ should exist and fail first before the fix comes in."
    `cmd/awf` `lockVsBinary`, `project.SyncReport` (refuses **before any file write**, so a
    corrupt lock can never produce a backup or skip pruning), `Project.Audit`, `CollisionsAt`,
    `Project.Check`, and `project.Uninstall` (which also wraps the underlying error it drops
-   today). A missing lock keeps each caller's current semantics.
+   today). A missing lock keeps each caller's current semantics. The ninth production
+   `manifest.Load` site, `stampLockSchema`, deliberately stays on bare `manifest.Load`: once
+   `Generation` converts, a corrupt lock fails `Upgrade` upfront and can no longer reach the
+   stamp — which is exactly the corrected justification its coverage-ignore receives in
+   Decision 6.
 
 3. **Partial supersedence.** This ADR supersedes ADR-0039 Decision item 5's *unparseable*
-   clause only: an absent lock (or absent `awfVersion` field) still skips the version
-   sub-check; an unparseable lock is now the Decision-2 hard error. ADR-0039 stays
-   Implemented. It likewise narrows ADR-0016 Decision item 6: `Generation` remains keyed on
+   clause only. The full surviving skip set: an absent lock, an absent or empty `awfVersion`
+   field, and an `awfVersion` that fails semver normalization all still skip the version
+   sub-check; only a present-but-unparseable lock flips to the Decision-2 hard error.
+   ADR-0039's textual-contract invariant ("the version sub-check never errors") is
+   unmodified — the new failure fires upstream at the lock load, before the sub-check runs.
+   ADR-0039 stays Implemented. It likewise narrows ADR-0016 Decision item 6: `Generation` remains keyed on
    directory presence for *which era* a tree belongs to, but a present-and-unreadable lock in
    the detected era is an error rather than a sentinel generation. The
    `docs/pitfalls.md` section documenting `Generation`'s sentinel semantics updates in the
@@ -92,7 +99,9 @@ should exist and fail first before the fix comes in."
 
 5. **No-project hint at the config-load boundary.** Any project-requiring command that finds
    no `.awf/config.yaml` reports "not an awf project (run `awf init`)" alongside the
-   underlying error; `awf init` itself is exempt.
+   underlying error; `awf init` itself is exempt. This rides here deliberately: it is the
+   same principle as Decision 4 — a truthful failure with one named recovery action at the
+   config/lock trust boundary — applied to the last silent state the same audit surfaced.
 
 6. **Failure-path e2e tests, in-process.** The failure matrix lands as scenario tests in
    `cmd/awf` driving the package's `run(args, stdout, stderr)` seam against real scaffolded
@@ -113,8 +122,9 @@ should exist and fail first before the fix comes in."
 ## Invariants
 
 - `inv: lock-atomic-save` — `.awf/awf.lock` and migration rewrites of existing config files
-  are written via the temp-file-plus-rename helper; no truncate-in-place write of a
-  trust-bearing file remains.
+  are written via the temp-file-plus-rename helper; no direct `os.WriteFile` of the lock or
+  of an existing `.awf/config.yaml` remains in `internal/manifest` or `internal/migrate`
+  (fresh-file writes in the 0→1 tree port exempt per Decision 1).
 - `inv: corrupt-lock-refuses` — a present-but-unreadable `.awf/awf.lock` causes a hard error
   in every lock reader (gate, upgrade, sync, check, audit, uninstall, init collisions);
   in particular `SyncReport` refuses before writing any file, so a corrupt lock can never
@@ -140,6 +150,11 @@ should exist and fail first before the fix comes in."
 - **The e2e suite becomes the template for future failure-path coverage** — subsequent
   failure-family efforts (e.g. read-only trees) extend the same matrix rather than inventing
   a harness.
+- **Doc currency at the flip.** The commit that flips this ADR to Implemented regenerates
+  `docs/decisions/ACTIVE.md` via `./x sync`, adds the two invariant bullets (with ADR-0076
+  citations) to the agent guide's invariants source under `.awf/` and re-renders AGENTS.md,
+  refreshes the `docs/pitfalls.md` `Generation`-sentinel section (Decision 3), and records
+  the adopter-visible behavior flip in the changelog.
 - **Not addressed, deliberately:** auto-recovery from git (awf must not read VCS state a
   command didn't ask about); fsync durability; the missing-lock-with-tree ambiguity
   (standing decision); rendered-artifact write atomicity (re-sync heals, drift check
