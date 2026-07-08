@@ -82,6 +82,10 @@
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md) — Implemented
 - [ADR-0078: Release-time changelog pin](0078-release-time-changelog-pin.md) — Implemented
 
+## Proposed
+
+- [ADR-0079: Release and CI supply-chain hygiene](0079-release-and-ci-supply-chain-hygiene.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
