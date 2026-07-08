@@ -73,6 +73,23 @@ func Generation(root string) (int, error) {
 	return Current(), nil
 }
 
+// ProjectPresent reports whether any awf config layout (current tree,
+// pre-relocation tree, or legacy single file) exists under root — the
+// distinction Generation cannot express, since "nothing present" reports
+// Current() (ADR-0076 Decision 4).
+func ProjectPresent(root string) bool {
+	for _, p := range []string{
+		config.ConfigPath(root),
+		filepath.Join(root, ".claude", "awf", "config.yaml"),
+		filepath.Join(root, ".claude", "awf.yaml"),
+	} {
+		if fileExists(p) {
+			return true
+		}
+	}
+	return false
+}
+
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op — Generation's no-lock branch already reports Current().

@@ -114,6 +114,9 @@ type AuditConfig struct {
 func Load(awfDir string) (*Config, error) {
 	b, err := os.ReadFile(filepath.Join(awfDir, "config.yaml"))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("not an awf project (run `awf init`): %w", err)
+		}
 		return nil, fmt.Errorf("read config: %w", err)
 	}
 	var c Config

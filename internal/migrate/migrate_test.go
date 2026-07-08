@@ -987,3 +987,19 @@ func TestGenerationMissingLockSemanticsPreserved(t *testing.T) {
 		t.Fatalf("lockless tree: gen=%d err=%v", gen, err)
 	}
 }
+
+func TestProjectPresent(t *testing.T) {
+	root := t.TempDir()
+	if ProjectPresent(root) {
+		t.Fatal("empty root must not be present")
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !ProjectPresent(root) {
+		t.Fatal("tree root must be present")
+	}
+}

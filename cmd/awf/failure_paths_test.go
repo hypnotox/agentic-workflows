@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -82,5 +84,53 @@ func TestGatedCommandsRefuseCorruptLock(t *testing.T) {
 				assertRefused(t, root, want, code, out.String()+errb.String())
 			})
 		}
+	}
+}
+
+func TestUpgradeCorruptLockRefuses(t *testing.T) {
+	for variant := range corruptions {
+		t.Run(variant, func(t *testing.T) {
+			root, want := corruptLock(t, variant)
+			var out, errb bytes.Buffer
+			code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
+			assertRefused(t, root, want, code, out.String()+errb.String())
+		})
+	}
+}
+
+func TestUpgradeReportsBinaryBehind(t *testing.T) {
+	root := scaffoldProject(t)
+	lockPath := config.LockPath(root)
+	l, err := manifest.Load(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.SchemaVersion = migrate.Current() + 1
+	if err := l.Save(lockPath); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
+	all := out.String() + errb.String()
+	if code != 1 || !strings.Contains(all, "update your pinned awf") || strings.Contains(all, "already current") {
+		t.Fatalf("code=%d output:\n%s", code, all)
+	}
+}
+
+func TestUpgradeOutsideProject(t *testing.T) {
+	var out, errb bytes.Buffer
+	code := runAt(t, t.TempDir(), []string{"awf", "upgrade"}, &out, &errb)
+	all := out.String() + errb.String()
+	if code != 1 || !strings.Contains(all, "not an awf project (run `awf init`)") {
+		t.Fatalf("code=%d output:\n%s", code, all)
+	}
+}
+
+func TestProjectCommandsHintInit(t *testing.T) {
+	var out, errb bytes.Buffer
+	code := runAt(t, t.TempDir(), []string{"awf", "sync"}, &out, &errb)
+	all := out.String() + errb.String()
+	if code != 1 || !strings.Contains(all, "not an awf project (run `awf init`)") {
+		t.Fatalf("code=%d output:\n%s", code, all)
 	}
 }

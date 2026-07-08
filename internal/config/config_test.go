@@ -256,10 +256,16 @@ func TestSidecarRejectsUnknownKey(t *testing.T) {
 
 func TestLoadMissingConfigErrors(t *testing.T) {
 	dir := t.TempDir() // no config.yaml written
-	if _, err := Load(dir); err == nil {
-		t.Fatal("expected error when config.yaml is absent")
-	} else if !strings.Contains(err.Error(), "read config") {
-		t.Errorf("error = %v, want it wrapped with \"read config\"", err)
+	// Missing config.yaml → the no-project hint (ADR-0076 Decision 5).
+	if _, err := Load(dir); err == nil || !strings.Contains(err.Error(), "not an awf project (run `awf init`)") {
+		t.Fatalf("missing: %v", err)
+	}
+	// Present but unreadable (a directory at the path) → the plain read wrap.
+	if err := os.Mkdir(filepath.Join(dir, "config.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(dir); err == nil || !strings.Contains(err.Error(), "read config") || strings.Contains(err.Error(), "awf init") {
+		t.Fatalf("unreadable-but-present: %v", err)
 	}
 }
 
