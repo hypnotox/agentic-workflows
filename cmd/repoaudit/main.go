@@ -141,7 +141,7 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	if len(touched) == 0 {
 		return nil
 	}
-	fmt.Fprintf(log, "repoaudit: adopter-facing paths in %s..%s: %s\n", base, head, strings.Join(touched, ", "))
+	fmt.Fprintf(log, "repoaudit: adopter-facing paths in %s..%s: %s\n", from, head, strings.Join(touched, ", "))
 	baseBody, err := unreleasedSection(git, from)
 	if err != nil {
 		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, from, err)}}

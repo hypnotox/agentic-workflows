@@ -180,6 +180,9 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
+	if !strings.Contains(out, "adopter-facing paths in m..h:") {
+		t.Fatalf("considered-paths log must state the merge-base diff basis: %q", out)
+	}
 }
 
 func TestMergeBaseFails(t *testing.T) {
