@@ -51,18 +51,24 @@ path and asserts step ordering.
 
 ## Decision
 
-1. **Every workflow action is SHA-pinned; the pin is machine-enforced.** All `uses:`
-   references under `.github/workflows/` pin a full 40-hex commit SHA with a trailing
-   `# vX.Y.Z` comment (the format dependabot maintains). The GoReleaser tool version is
-   pinned to one exact version everywhere it appears: the `version:` input of both
-   `goreleaser-action` invocations and the two `go run
+1. **Every workflow action is SHA-pinned; the pin is machine-enforced.** All remote
+   `uses:` references (`owner/repo@ref`) under `.github/workflows/` pin a full 40-hex
+   commit SHA with a trailing `# vX.Y.Z` comment (the format dependabot maintains);
+   repo-local `./` action references are exempt (they are repo code), and `docker://`
+   references must pin a digest. The GoReleaser tool version is pinned to one exact
+   version everywhere it appears: the `version:` input of all three
+   `goreleaser-action` invocations (two in `ci.yml`'s release-config job, one in
+   `release.yml`) and the two `go run
    github.com/goreleaser/goreleaser/v2@<version>` preview commands in
    `docs/releasing.md` (restoring ADR-0030 Decision 2 conformance). A new repo-local
-   `cmd/pincheck` (checker-cmd idiom) parses the workflow files and fails when any
-   `uses:` line's ref is not a full 40-hex SHA; `./x gate` runs it, so an unpinned
-   action added later fails every commit. The gate-composition mentions in the rendered
-   docs (`docs/workflow.md`, `docs/testing.md`, `docs/development.md`) update via their
-   `.awf/` parts.
+   `cmd/pincheck` (checker-cmd idiom) parses the workflow files and fails on any
+   unpinned remote `uses:` ref, any undigested `docker://` ref, and any
+   `goreleaser-action` `version:` input that is not an exact semver version; `./x
+   gate` runs it, so an unpinned action or re-floated tool version added later fails
+   every commit. The gate-composition mentions in the rendered docs
+   (`docs/workflow.md`, `docs/testing.md`, `docs/development.md`) update via their
+   `.awf/` parts, and AGENTS.md's Invariants list gains bullets for the two new
+   contracts via its `.awf/` part, in the implementing commit.
 
 2. **Dependabot is the staleness counterpart to pinning.** `.github/dependabot.yml`
    configures weekly `github-actions` updates (which bump SHA pins and their version
@@ -106,12 +112,15 @@ path and asserts step ordering.
 ## Invariants
 
 - `inv: workflow-actions-sha-pinned` — `cmd/pincheck`, run by `./x gate`, exits non-zero
-  when any `uses:` line under `.github/workflows/` references an action by anything
-  other than a full 40-hex commit SHA.
+  when any remote `uses:` reference under `.github/workflows/` is not pinned to a full
+  40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned), or
+  when a `goreleaser-action` `version:` input is not an exact semver version.
 - `inv: release-gate-on-tag` — a gate test asserts `release.yml` runs the
   ancestry check, `./x gate`, and `./x check` before the GoReleaser step.
 - `.github/dependabot.yml` covers the `github-actions` and `gomod` ecosystems.
-- A missing `CODECOV_TOKEN` skips the Codecov upload steps; it never fails CI.
+- `.github/workflows/ci.yml` maps `secrets.CODECOV_TOKEN` into a job-level env var and
+  both Codecov upload steps carry `if: env.CODECOV_TOKEN != ''`, so a missing token
+  skips them rather than failing CI.
 - `docs/releasing.md` states that checksum verification is integrity-only and names the
   residual publisher-compromise risk.
 
@@ -131,6 +140,9 @@ path and asserts step ordering.
   informational and enforcement is local to the gate.
 - A new repo-local binary (`cmd/pincheck`) joins the 100%-coverage and dead-code gates;
   marginal cost is one tested `run` function, per the established idiom.
+- The two GoReleaser preview commands in `docs/releasing.md` remain convention-pinned —
+  `cmd/pincheck` parses only workflow files. Accepted: drift there affects only local
+  preview, and the workflow-side tool pin is machine-enforced.
 - Adopters get no stronger authenticity guarantee than before; the ADR converts an
   undocumented gap into a documented, deliberately-accepted one with a named
   re-evaluation trigger (1.0 / adopter demand).
