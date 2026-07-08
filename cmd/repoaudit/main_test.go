@@ -50,7 +50,10 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	// Default range (no arg) + changes outside the allowlist → clean, exit 0. The
 	// blank line between the two paths also exercises changelogRule's empty-token
 	// `continue` — the sole branch no other test reaches (100%-coverage gate).
-	g := fakeGit{"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"}}
+	g := fakeGit{
+		"merge-base origin/main HEAD":       {out: "origin/main\n"},
+		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"},
+	}
 	code, out := runFake([]string{"repoaudit"}, g)
 	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
 		t.Fatalf("code=%d out=%q", code, out)
@@ -61,6 +64,7 @@ func TestErrorMissingEntry(t *testing.T) {
 	// Adopter-facing change, [Unreleased] identical across the range → Error, exit 1.
 	same := changelog("\n")
 	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -77,6 +81,7 @@ func TestErrorMissingEntry(t *testing.T) {
 func TestCleanEntryAdded(t *testing.T) {
 	// Adopter-facing change, [Unreleased] differs across the range → clean, exit 0.
 	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
 		"diff --name-only b h":    {out: "cmd/awf/root.go\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {out: changelog("### Features\n- new thing\n")},
@@ -87,8 +92,38 @@ func TestCleanEntryAdded(t *testing.T) {
 	}
 }
 
+func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
+	// Regression: base has moved past the fork point (upstream pushed). The rule must
+	// diff and compare [Unreleased] from the merge base — endpoint semantics would
+	// blame upstream files on the effort and let an upstream changelog entry mask the
+	// effort's own missing one. The fake maps only merge-base-side keys, so any
+	// endpoint-side git call fails the test as an unexpected call.
+	same := changelog("\n")
+	g := fakeGit{
+		"merge-base b h":          {out: "m\n"},
+		"diff --name-only m h":    {out: "templates/x.tmpl\n"},
+		"show m:" + changelogPath: {out: same},
+		"show h:" + changelogPath: {out: same},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+func TestMergeBaseFails(t *testing.T) {
+	g := fakeGit{"merge-base b h": {err: errors.New("boom")}}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 1 || !strings.Contains(out, "git merge-base b h failed") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
 func TestDiffFails(t *testing.T) {
-	g := fakeGit{"diff --name-only b h": {err: errors.New("boom")}}
+	g := fakeGit{
+		"merge-base b h":       {out: "b\n"},
+		"diff --name-only b h": {err: errors.New("boom")},
+	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 1 || !strings.Contains(out, "git diff b..h failed") {
 		t.Fatalf("code=%d out=%q", code, out)
@@ -97,6 +132,7 @@ func TestDiffFails(t *testing.T) {
 
 func TestShowBaseFails(t *testing.T) {
 	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {err: errors.New("no file")},
 	}
@@ -108,6 +144,7 @@ func TestShowBaseFails(t *testing.T) {
 
 func TestShowHeadFails(t *testing.T) {
 	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {err: errors.New("no file")},
@@ -121,6 +158,7 @@ func TestShowHeadFails(t *testing.T) {
 func TestNoUnreleasedSection(t *testing.T) {
 	// Base changelog has no [Unreleased] header → extractor error → Error finding.
 	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: "# Changelog\n\n## [0.1.0] - 2026-01-01\n- x\n"},
 	}

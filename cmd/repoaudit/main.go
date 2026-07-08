@@ -96,9 +96,18 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 // [Unreleased] entry. It logs the adopter-facing files it considered. A git or parse
 // failure becomes an Error finding — it cannot verify conformance, so it fails loud.
 func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
-	diff, err := git("diff", "--name-only", base, head)
+	// Judge from the merge base, not the base tip: once base moves past the fork
+	// point, endpoint semantics would blame upstream files on the effort (false
+	// Error) and an upstream [Unreleased] edit would mask the effort's own missing
+	// entry (false pass). Both the diff and the section comparison must use it.
+	mb, err := git("merge-base", base, head)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("git diff %s..%s failed: %v", base, head, err)}}
+		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
+	}
+	from := strings.TrimSpace(mb)
+	diff, err := git("diff", "--name-only", from, head)
+	if err != nil {
+		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
 	var touched []string
 	for _, f := range strings.Split(strings.TrimSpace(diff), "\n") {
@@ -116,9 +125,9 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 		return nil
 	}
 	fmt.Fprintf(log, "repoaudit: adopter-facing paths in %s..%s: %s\n", base, head, strings.Join(touched, ", "))
-	baseBody, err := unreleasedSection(git, base)
+	baseBody, err := unreleasedSection(git, from)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, base, err)}}
+		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, from, err)}}
 	}
 	headBody, err := unreleasedSection(git, head)
 	if err != nil {
