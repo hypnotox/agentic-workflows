@@ -110,6 +110,32 @@ func TestBootstrapLocalFirstResolution(t *testing.T) {
 	}
 }
 
+// TestBootstrapUnsupportedPlatformPointsAtManualInstall pins the pointer added
+// for Windows/git-bash users: both unsupported-platform failures must name the
+// manual-install path (README → Install) on their stderr line.
+func TestBootstrapUnsupportedPlatformPointsAtManualInstall(t *testing.T) {
+	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
+	}
+	for _, branch := range []string{"unsupported arch", "unsupported os"} {
+		line := ""
+		for _, ln := range strings.Split(rf.Content, "\n") {
+			if strings.Contains(ln, branch) {
+				line = ln
+				break
+			}
+		}
+		if line == "" {
+			t.Errorf("bootstrap missing the %q branch", branch)
+			continue
+		}
+		if !strings.Contains(line, "#install") {
+			t.Errorf("%q failure must point at the manual-install path: %q", branch, line)
+		}
+	}
+}
+
 func TestBootstrapNotRenderedWhenDisabled(t *testing.T) {
 	if rf := bootstrapFile(t, "prefix: example\n"); rf != nil {
 		t.Errorf("expected no bootstrap script when bootstrap absent, got %q", rf.Path)

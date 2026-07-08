@@ -8,6 +8,11 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Others
+- The bootstrap script's unsupported-OS/arch failure now points at the
+  manual-install path (`https://github.com/hypnotox/agentic-workflows#install`),
+  so Windows/git-bash users see the way forward instead of a bare error.
+
 ## [0.11.0] - 2026-07-08
 ### Breaking changes
 - One anchored path-glob dialect everywhere (ADR-0077, schema 7 — run `awf upgrade`). Every
