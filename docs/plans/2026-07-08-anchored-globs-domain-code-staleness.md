@@ -159,8 +159,8 @@ func validatePathGlob(g string) error {
   - Update the `InvariantSource` doc comment to:
     `// InvariantSource pairs anchored path globs (ADR-0077; matched against a file's slash-separated repo-relative path) with`
     (second line unchanged).
-  - In the two `Validate` error messages, change the examples: `(e.g. "*.go")` → `(e.g. "**/*.go")`
-    and `list at least one filename glob (e.g. "*.go")` → `list at least one path glob (e.g. "**/*.go")`.
+  - In the `Validate` error message at `config.go:231` (the only one carrying a glob example):
+    `list at least one filename glob (e.g. "*.go")` → `list at least one path glob (e.g. "**/*.go")`.
 
 - [ ] **1.5 Config validator tests.** In `internal/config/config_test.go`, rewrite
   `TestInvariantGlobValidation` (keep the `// invariant: invariants-glob-basename` comment line
@@ -178,6 +178,11 @@ func validatePathGlob(g string) error {
 ```
 
   The `bad` (malformed `[`), `emptyMarker`, and `emptyGlobs` cases stay as they are.
+
+  Also rewrite `TestAuditDependencyManifestValidation` (`config_test.go:463-476`): its bad case
+  currently asserts `src/go.mod` is rejected as a path-separator glob — under `validatePathGlob`
+  it is accepted, so flip that case to assert acceptance and keep a malformed-pattern rejection
+  case using `[`.
 
 - [ ] **1.6 Invariants matcher swap.** In `internal/invariants/invariants.go`:
   - Import `"github.com/hypnotox/agentic-workflows/internal/pathglob"`.
@@ -243,10 +248,13 @@ func defaultDependencyManifests() []string {
 }
 ```
 
-  - Update `internal/audit/audit_test.go` / `settings_test.go` fixtures: any test feeding
-    `DependencyManifests` with a bare basename pattern (e.g. `go.mod`) either keeps it and asserts
-    it now matches only a **top-level** `go.mod` change, or switches to `**/go.mod`; add one case
-    asserting a nested `sub/go.mod` change triggers `dependency-adr` under the defaults.
+  - Update the tests exactly: in `internal/audit/settings_test.go`, the two default-set
+    assertions `slices.Contains(s.DependencyManifests, "go.mod")` (lines 27-28 region and 41)
+    become `slices.Contains(s.DependencyManifests, "**/go.mod")`. In
+    `internal/audit/audit_test.go`, every fixture feeding `DependencyManifests` a bare basename
+    pattern switches to the `**/`-prefixed form (preserving each test's intent); add one new case
+    asserting a nested `sub/go.mod` change triggers `dependency-adr` under
+    `defaultDependencyManifests()`.
 
 - [ ] **1.8 Nested-sequence editor tests.** Append to `internal/config/edit_test.go`:
 
@@ -378,11 +386,22 @@ func applyAnchoredGlobs(root string) error {
 	{To: 7, Name: "anchored-globs", Apply: applyAnchoredGlobs},
 ```
 
+  Update the registry-pinning tests in `internal/migrate/migrate_test.go`:
+  - `TestCurrentIsSix` (line 609): assert `Current() == 7` and rename to `TestCurrentIsSeven`.
+  - `TestUpgradeAppliesInOrderIdempotent` (line 168) and `TestUpgradeStampsTreeLock` (line 890):
+    append `,anchored-globs` to their exact expected applied-migration list strings.
+
   Run `go test ./internal/migrate/` — expect `ok`.
 
-- [ ] **1.12 Version authority.** In `internal/project/project.go`: `Version = "0.10.0"` →
-  `Version = "0.11.0"`; add `7: "0.11.0",` to `minVersionBySchema`. (The gate test
-  `internal/project/version_test.go` enforces exactly this pairing.)
+- [ ] **1.12 Version authority + changelog.** In `internal/project/project.go`:
+  `Version = "0.10.0"` → `Version = "0.11.0"`; add `7: "0.11.0",` to `minVersionBySchema`. (The
+  gate test `internal/project/version_test.go` enforces exactly this pairing.) In the same task —
+  the gate test `cmd/awf/changelog_test.go` (`TestChangelogLatestMatchesVersion`) pins the newest
+  changelog entry to `project.Version`, so add the `0.11.0` section to `changelog/CHANGELOG.md`
+  now: **Breaking changes:** one anchored path-glob dialect (schema 7 — run `awf upgrade`;
+  `*.go` now means top-level only, migrated configs are rewritten to `**/*.go`); **Features:**
+  domain sidecar `paths` + `domain-code-staleness` audit rule; path globs now legal in
+  `invariants.sources[].globs` and `audit.dependencyManifests`.
 
 - [ ] **1.13 Migrate this repo + re-render.**
 
@@ -400,7 +419,7 @@ go run ./cmd/awf upgrade
 
 ```
 ./x gate && ./x check
-git add go.mod go.sum internal/pathglob internal/config internal/invariants internal/audit internal/migrate internal/project .awf/config.yaml .awf/awf.lock <every file ./x sync re-rendered — take the list from git status>
+git add go.mod go.sum internal/pathglob internal/config internal/invariants internal/audit internal/migrate internal/project changelog/CHANGELOG.md .awf/config.yaml .awf/awf.lock <every file ./x sync re-rendered — take the list from git status>
 git commit -m "feat(config): anchor path globs on doublestar, migrate schema to 7"
 ```
 
@@ -432,6 +451,10 @@ type Sidecar struct {
 ```go
 	DomainCodeStaleness *bool       `yaml:"domainCodeStaleness"`
 ```
+
+  In `internal/audit/audit.go`, extend the `Inputs` doc comment's promoted-knob enumeration:
+  `…DomainDocStaleness, UndocumentedDomain, UncommittedChanges` →
+  `…DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges`.
 
   In `internal/audit/settings.go`: add `DomainCodeStaleness bool` to `Settings` (after
   `DomainDocStaleness`), default it `true` in `Resolve`, and add the override arm:
@@ -533,10 +556,21 @@ func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
 	}
 ```
 
-  and add `DomainPaths: domainPaths,` to the `audit.Inputs` literal. Add tests beside the existing
-  `Project.Audit` input tests: a domain sidecar with `paths: [cmd/**]` reaches
-  `Inputs.DomainPaths`; a sidecar with a malformed pattern (`'['`) makes `Audit` return an error
-  naming the domain; a domain with no sidecar (or no `paths`) is absent from the map.
+  and add `DomainPaths: domainPaths,` to the `audit.Inputs` literal. Tests (no existing
+  `Project.Audit` input suite exists — the closest is the corrupt-lock refusal in
+  `internal/project/drift_test.go:407`; `Audit` runs `Collect`, so the happy path needs a git
+  fixture via `internal/testsupport/gitfixture`):
+  - happy path: a gitfixture repo whose `.awf/domains/tooling.yaml` declares `paths: [cmd/**]`;
+    `Audit("")` succeeds (empty range) — assert no error, proving sidecar reading and validation
+    ran clean; then commit a `cmd/` change on a branch and assert the `domain-code-staleness`
+    Warning appears in the findings, proving `DomainPaths` reached the rule;
+  - malformed pattern: sidecar `paths: ['[']` → `Audit` returns an error containing
+    `domain "tooling" paths` (fails before `Collect`, so no git repo needed beyond the fixture);
+  - sidecar read error: a **directory** squatting at `.awf/domains/tooling.yaml` (mirroring
+    `TestSidecarReadErrorWhenPathIsDir`) → `Audit` returns the read error, covering the
+    `return nil, err` branch for the 100% gate;
+  - a domain with no sidecar (or no `paths`) is absent from the map (assert via the happy-path
+    fixture's second domain).
 
 - [ ] **2.6 Gate and commit.**
 
@@ -588,13 +622,16 @@ paths:
   - x
 ```
 
-  Verify: `go run ./cmd/awf audit` runs clean (exit 0; this branch co-changes the narratives in
-  3.3, so no `domain-code-staleness` warning fires — dogfooding the rule).
+  Verify: `go run ./cmd/awf audit` exits 0 (advisory) and — when run on a branch with commits
+  ahead of the audit base — **fires `domain-code-staleness` warnings** for the territories
+  Phases 1-2 churned (tooling/config/invariants), since their narratives land only in 3.3. The
+  warnings firing here is the dogfood signal that the rule works; 3.4 asserts they clear after
+  3.3. (Run directly on `main` the range is empty and the check is vacuous.)
 
 - [ ] **3.2 Usage-guide template.** In `templates/docs/working-with-awf.md.tmpl`, add a
   subsection at the end of the `## Config and overrides` section:
 
-```markdown
+````markdown
 ### Path globs and domain territories
 
 Every glob in awf — `invariants.sources[].globs`, `audit.dependencyManifests`, and domain
@@ -615,7 +652,7 @@ When files matching a domain's `paths` change on a branch without a co-change to
 `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
 `domain-code-staleness` warning — if anything meaningful changed, document it. Domains without
 `paths` opt out; the rule is disable-able via `audit.domainCodeStaleness: false`.
-```
+````
 
   Run `./x sync` and confirm `docs/working-with-awf.md` renders the subsection.
 
@@ -646,16 +683,13 @@ When files matching a domain's `paths` change on a branch without a co-change to
     matcher; ADR-0077), the `domain-code-staleness` rule contract (advisory Warning, keyed on
     the source part, inert without `paths`), and the schema-7 migration contract (no-slash
     patterns rewritten `**/<pattern>`, idempotent, atomic).
-  - `changelog/CHANGELOG.md` — new `0.11.0` release section: **Breaking changes:** one anchored
-    path-glob dialect (schema 7 — run `awf upgrade`; `*.go` now means top-level only, migrated
-    configs are rewritten to `**/*.go`); **Features:** domain sidecar `paths` +
-    `domain-code-staleness` audit rule; path globs now legal in `invariants.sources[].globs`
-    and `audit.dependencyManifests`.
+  (The `changelog/CHANGELOG.md` `0.11.0` section already landed in task 1.12, gate-pinned to the
+  version bump.)
 
   Run `./x sync && ./x check` — clean; commit:
 
 ```
-git add .awf docs changelog/CHANGELOG.md AGENTS.md CLAUDE.md
+git add .awf docs AGENTS.md CLAUDE.md
 git commit -m "docs(awf): document anchored globs, domain paths, dogfood sidecars"
 ```
 
