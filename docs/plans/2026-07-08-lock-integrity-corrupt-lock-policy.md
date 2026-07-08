@@ -418,11 +418,12 @@ func LoadOptional(path string) (*Lock, error) {
   - `gate()`: `state, gen, err := migrate.GateState(root); if err != nil { return err }`;
     the two `case` messages use `gen` instead of re-calling `migrate.Generation(root)`.
   - `lockVsBinary` converts to `LoadOptional` and gains an error result
-    (`(lockV, binV string, ok bool, err error)`): corrupt → `("", "", false, err)`;
-    missing/empty/non-semver → `("", "", false, nil)` as today. `gate()` and `runCheck`'s
-    ahead-note propagate the error. Update both doc comments to cite ADR-0076's partial
-    supersedence of ADR-0039 Decision 5 (absent/empty/non-semver still skip; unparseable
-    lock now errors upstream).
+    (`(lockV, binV string, ok bool, err error)`): corrupt → `("", "", false, err)`; the
+    surviving skip set → `("", "", false, nil)` as today. Update both doc comments to
+    mirror ADR-0076 Decision 3's enumeration verbatim: "an absent lock; an absent or empty
+    `awfVersion` field; an `awfVersion` failing semver normalization — all still skip; a
+    present-but-unparseable lock now errors upstream (ADR-0076 partially supersedes
+    ADR-0039 Decision 5)". `gate()` and `runCheck`'s ahead-note propagate the error.
   - `cmd/awf/upgrade.go`: `runUpgrade` compiles against the new `Upgrade` unchanged
     (its own UX lands in Phase 5).
 
@@ -815,6 +816,10 @@ func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
 ## Verification (after all phases)
 
 - [ ] `./x gate` green; `./x check` clean; `go run ./cmd/awf invariants` clean.
+- [ ] The greppable `lock-atomic-save` condition holds:
+  `grep -rn 'os.WriteFile' internal/manifest/*.go internal/migrate/*.go | grep -v _test.go`
+  — expect exactly one hit, the exempt fresh-file write in `internal/migrate/treelayout.go`
+  (ADR-0076 Decision 1 exemption).
 - [ ] `./x audit-local origin/main..HEAD` — changelog conformance clean.
 - [ ] Manual smoke: in a scratch dir, `git init`, `awf init` (via `go run ./cmd/awf`), corrupt
   `.awf/awf.lock` with `echo '{broken' > .awf/awf.lock`, then `go run ./cmd/awf sync` — expect
