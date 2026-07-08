@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -333,5 +334,88 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	// The ADR readme references no scopes in template or part — it must not reflag.
 	if flagged["docs/decisions/README.md"] {
 		t.Error("scopes edit reflagged a non-referencing artifact (docs/decisions/README.md)")
+	}
+}
+
+func corruptProjectLock(t *testing.T, root string) {
+	t.Helper()
+	if err := os.WriteFile(lockFile(root), []byte("{corrupt"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// invariant: corrupt-lock-refuses
+func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	syncClean(t, root)
+	agents := filepath.Join(root, "AGENTS.md")
+	before, err := os.ReadFile(agents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corruptProjectLock(t, root)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("want refusal with hint, got %v", err)
+	}
+	after, err := os.ReadFile(agents)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("SyncReport wrote despite refusing (err %v)", err)
+	}
+	if fileExists(filepath.Join(root, "AGENTS.md.awf-bak")) {
+		t.Fatal("backup created despite refusal")
+	}
+}
+
+func TestCheckSplitsMissingVsCorrupt(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	syncClean(t, root)
+	corruptProjectLock(t, root)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Check(); err == nil || strings.Contains(err.Error(), "no lock") || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("corrupt lock misreported: %v", err)
+	}
+	if err := os.Remove(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Check(); err == nil || !strings.Contains(err.Error(), "no lock (run awf sync)") {
+		t.Fatalf("missing lock lost its message: %v", err)
+	}
+}
+
+func TestUninstallSplitsMissingVsCorrupt(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	syncClean(t, root)
+	corruptProjectLock(t, root)
+	if _, err := Uninstall(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("corrupt lock must refuse uninstall with the hint, got %v", err)
+	}
+	if err := os.Remove(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
+		t.Fatalf("missing lock lost its message: %v", err)
+	}
+}
+
+func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	syncClean(t, root)
+	corruptProjectLock(t, root)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Audit(""); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("Audit: %v", err)
+	}
+	if _, err := CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("CollisionsAt: %v", err)
 	}
 }

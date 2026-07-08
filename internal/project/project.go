@@ -86,6 +86,13 @@ type Backup struct {
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
 // it, and returning those backups (ADR-0035).
 func (p *Project) SyncReport() ([]Backup, error) {
+	// Refuse before rendering or writing anything: a corrupt lock must never
+	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
+	// invariant: corrupt-lock-refuses
+	old, _, err := manifest.LoadOptional(p.lockPath())
+	if err != nil {
+		return nil, err
+	}
 	files, err := p.RenderAll()
 	if err != nil {
 		return nil, err
@@ -119,9 +126,8 @@ func (p *Project) SyncReport() ([]Backup, error) {
 	}
 	files = append(files, dds...)
 
-	// Prior lock, read before any write: membership decides foreign (back up) vs
-	// awf-managed (overwrite silently), and drives pruning below.
-	old, _ := manifest.Load(p.lockPath())
+	// Prior lock, read before any write (top of this func): membership decides
+	// foreign (back up) vs awf-managed (overwrite silently), and drives pruning.
 	prior := map[string]bool{}
 	if old != nil {
 		for path := range old.Files {
@@ -226,7 +232,11 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 	}
 	lay := p.layout()
 	generated := map[string]bool{}
-	if lock, err := manifest.Load(p.lockPath()); err == nil {
+	lock, _, err := manifest.LoadOptional(p.lockPath())
+	if err != nil {
+		return nil, err
+	}
+	if lock != nil {
 		for path := range lock.Files {
 			generated[path] = true
 		}

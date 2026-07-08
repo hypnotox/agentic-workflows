@@ -20,7 +20,7 @@ func (p *Project) InitCollisions() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return CollisionsAt(p.Root, planned), nil
+	return CollisionsAt(p.Root, planned)
 }
 
 // CollisionsAt filters planned project-relative paths to those that already
@@ -28,9 +28,13 @@ func (p *Project) InitCollisions() ([]string, error) {
 // Split from InitCollisions so init's pre-prompt probe can plan outputs in a
 // throwaway scaffold and test them against the real root; the ADR-0016
 // collision semantics are unchanged.
-func CollisionsAt(root string, planned []string) []string {
+func CollisionsAt(root string, planned []string) ([]string, error) {
 	managed := map[string]bool{}
-	if lock, err := manifest.Load(config.LockPath(root)); err == nil {
+	lock, _, err := manifest.LoadOptional(config.LockPath(root))
+	if err != nil {
+		return nil, err
+	}
+	if lock != nil {
 		for path := range lock.Files {
 			managed[path] = true
 		}
@@ -45,7 +49,7 @@ func CollisionsAt(root string, planned []string) []string {
 		}
 	}
 	sort.Strings(collisions)
-	return collisions
+	return collisions, nil
 }
 
 // BackupFile copies a colliding project-relative file to a free <path>.awf-bak[.N]
@@ -98,8 +102,11 @@ func copyFile(src, dst string) error {
 // invariant: uninstall-removes-lock-tracked
 func Uninstall(root string) (int, error) {
 	lockPath := config.LockPath(root)
-	lock, err := manifest.Load(lockPath)
+	lock, found, err := manifest.LoadOptional(lockPath)
 	if err != nil {
+		return 0, err
+	}
+	if !found {
 		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
 	removed := 0

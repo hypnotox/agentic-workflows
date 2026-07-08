@@ -166,7 +166,7 @@ func probeCollisions(root string) ([]string, error) {
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}
-	return project.CollisionsAt(root, planned), nil
+	return project.CollisionsAt(root, planned)
 }
 
 // initNextSteps is the fixed orientation block init prints after a

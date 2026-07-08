@@ -327,9 +327,12 @@ func isManagedMarkdown(tid string) bool {
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
-	lock, err := manifest.Load(p.lockPath())
+	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
-		return nil, fmt.Errorf("no lock (run awf sync): %w", err)
+		return nil, err
+	}
+	if !found {
+		return nil, errors.New("no lock (run awf sync)")
 	}
 	files, err := p.RenderAll()
 	if err != nil {
