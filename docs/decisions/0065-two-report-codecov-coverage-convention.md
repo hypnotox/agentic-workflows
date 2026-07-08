@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, testing, coverage]
-related: [12, 63]
+related: [12, 63, 79]
 domains: [tooling]
 ---
 # ADR-0065: Two-Report Codecov Coverage Convention
