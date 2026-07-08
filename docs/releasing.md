@@ -3,8 +3,9 @@
 How to cut a release of the `awf` binary. The distribution model and its rationale are
 [ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md); this is the runbook.
 
-A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which runs
-GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
+A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which
+verifies the tag, `project.Version`, and changelog all pin the same release (see Versioning),
+then runs GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
 generate a Conventional-Commits changelog, and create the GitHub Release. Prebuilt binary download
 is the canonical install path; `go install` is the source fallback.
@@ -15,7 +16,11 @@ awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). `project.Version`
 (`internal/project/project.go`) is the single version authority (ADR-0049): it drives `awf
 version`, the lock's `AWFVersion`, the bootstrap pin, and the binary-version gate. The git tag
 must equal it — the Release workflow hard-fails on a mismatch before building, so the tag can
-never mint a version the binary does not carry. Schema-generation bumps raise the floor
+never mint a version the binary does not carry. The workflow also hard-fails when the changelog
+does not pin the release (`cmd/releasecheck`, ADR-0078): the newest entry must equal
+`project.Version` and the standing `[Unreleased]` section must be present and empty, so a tag
+can neither ship without its own release notes nor strand late entries outside them.
+Schema-generation bumps raise the floor
 mechanically: `minVersionBySchema` must contain an entry for the current generation, at or
 below `project.Version`, or the gate fails.
 
@@ -31,22 +36,20 @@ below `project.Version`, or the gate fails.
 
 2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
-   matches; bump it only when it does not. Changes accumulate under a standing `## [Unreleased]`
-   section at the top of `changelog/CHANGELOG.md` as they land — grouped into Breaking
-   changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041), so the changelog is
-   always release-ready. At release, rename that header to `## [0.2.0] - YYYY-MM-DD` and add a
-   fresh empty `## [Unreleased]` above it. `awf changelog` ignores the `[Unreleased]` section
-   (its parser only recognises numeric-versioned headers). A changelog entry is required for
-   every tag.
-
-   A mid-cycle version bump forces this promotion early: the gate test
-   `TestChangelogLatestMatchesVersion` (`cmd/awf/changelog_test.go`) requires the newest
-   numeric changelog entry to equal `project.Version`, so the commit that bumps the const must
-   promote `[Unreleased]` to the new version in the same change — necessarily with a
-   provisional date. When that has already happened, this step shrinks to confirming the
-   promoted section is complete and correcting its date to the actual tag date before tagging.
+   matches; bump it only when it does not. A mid-cycle bump touches only the const and the
+   lock, never the changelog — the gate holds only ordering (entries strictly descending,
+   newest at or below `project.Version`; ADR-0078). Changes accumulate under a standing
+   `## [Unreleased]` section at the top of `changelog/CHANGELOG.md` as they land — grouped
+   into Breaking changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041), so
+   the changelog is always release-ready. Now, at release, rename that header to
+   `## [0.2.0] - YYYY-MM-DD` (the real date you tag) and add a fresh empty `## [Unreleased]`
+   above it. `awf changelog` ignores the `[Unreleased]` section (its parser only recognises
+   numeric-versioned headers). A changelog entry is required for every tag; rehearse the
+   release gate locally so a pin violation is caught before the tag exists rather than by
+   the workflow after:
 
    ```
+   go run ./cmd/releasecheck
    ./x gate && ./x check
    git add internal/project/project.go changelog/CHANGELOG.md .awf/awf.lock
    git commit -m "chore(awf): bump version to v0.2.0"

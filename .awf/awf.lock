@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:51db28db4a94a4489abc428b108f723a35fae792cf165b3e29e9c2d2640f031b",
-      "configHash": "sha256:123b49db03bd3563adb365fbed7cf64e28061a2f54b548c02c98e0cf682b621b",
-      "outputHash": "sha256:3e8b88b4a5d6b601673aae5afe5e0cc2f65b101f751a5ac2a9ab045572d03d11"
+      "configHash": "sha256:a515f903ebbdbe18d2d61d4549c561e292368856b2c472442d306cac353c9e05",
+      "outputHash": "sha256:722d7ba266bdc68920f5ab7d607872b3e6a42e4cf41a81e488879bb507c39384"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:1470fcbd087d8c7a199d919c5291050592e04ea02157a36f22fb31fa58314c78"
+      "outputHash": "sha256:90af6fd95b94f947c4663505597899ea263a68d2cdea7fed39e7f1b445f77c4e"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -324,7 +324,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:3196fb804732f106687ff0490590f334cc0a30540f6cb8cf21e719b3522b9838"
+      "outputHash": "sha256:56da519f15db41e508f3de4ab99fc2e6667520acbfc0a55d4578a0f1397fc19b"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
@@ -335,8 +335,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:098957443b3cd307d3cb9f4ec5eee3564e7c726418f24791a8e3fd5217c1f257",
-      "configHash": "sha256:3536f770621a35a51b95511310d0af6377c2bd9a0286db5561e93d8643d2e5d8",
-      "outputHash": "sha256:0f64aad998ec41a437712087fcb5a0282712d1d75285dda7910238cfcdf08a83"
+      "configHash": "sha256:bf3e7dfe5d1260ab14c1166ed10e45925fbb27e0f1ffcb4312f2e56401ecfaaf",
+      "outputHash": "sha256:091fdce2669d0af7aa158992569568c651792e8531276c380b0511d9ecb9802a"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

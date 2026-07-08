@@ -9,22 +9,29 @@ import (
 	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"golang.org/x/mod/semver"
 )
 
-// TestChangelogLatestMatchesVersion pins the binary and its changelog together:
-// the newest embedded entry must be project.Version, so a version bump without a
-// matching changelog entry (or vice versa) fails the gate.
-func TestChangelogLatestMatchesVersion(t *testing.T) {
+// TestChangelogMonotonicOrder keeps the changelog ordered without pinning it to the
+// version const (ADR-0078): entries must be strictly descending by semver and the
+// newest entry must not exceed project.Version. Mid-cycle the const may run ahead of
+// the changelog — entries accumulate under [Unreleased] until the release-prep
+// promotion — and the exact match is enforced at release time by cmd/releasecheck.
+// invariant: changelog-monotonic
+func TestChangelogMonotonicOrder(t *testing.T) {
 	entries, err := changelog.Load(changelogfs.FS)
 	if err != nil {
 		t.Fatalf("load embedded changelog: %v", err)
 	}
-	if len(entries) == 0 {
-		t.Fatal("embedded changelog has no entries")
-	}
-	if entries[0].Version != project.Version {
-		t.Errorf("newest changelog entry %q != project.Version %q — bump one to match the other",
+	if semver.Compare("v"+entries[0].Version, "v"+project.Version) > 0 {
+		t.Errorf("newest changelog entry %q is ahead of project.Version %q — the binary cannot carry notes for a version it does not know",
 			entries[0].Version, project.Version)
+	}
+	for i := 0; i+1 < len(entries); i++ {
+		if semver.Compare("v"+entries[i].Version, "v"+entries[i+1].Version) <= 0 {
+			t.Errorf("changelog entries out of order: %q is not strictly newer than %q",
+				entries[i].Version, entries[i+1].Version)
+		}
 	}
 }
 
@@ -85,13 +92,18 @@ func TestRunChangelogSince(t *testing.T) {
 }
 
 func TestRunChangelogSinceLatest(t *testing.T) {
+	entries, err := changelog.Load(changelogfs.FS)
+	if err != nil {
+		t.Fatalf("load embedded changelog: %v", err)
+	}
+	// --since the newest entry yields nothing newer; derived from the changelog
+	// itself, not project.Version, which may run ahead mid-cycle (ADR-0078).
+	latest := entries[0].Version
 	var out bytes.Buffer
-	// --since the latest release (project.Version, per the agreement pinned above)
-	// yields nothing newer; deriving it avoids a hand-updated version literal.
-	if err := runChangelog("", project.Version, "", &out); err != nil {
+	if err := runChangelog("", latest, "", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
 	}
-	want := "no releases since " + project.Version
+	want := "no releases since " + latest
 	if !strings.Contains(out.String(), want) {
 		t.Errorf("expected %q, got:\n%s", want, out.String())
 	}
