@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,6 +50,22 @@ func (l *Lock) Save(path string) error {
 	}
 	b = append(b, '\n')
 	return WriteFileAtomic(path, b)
+}
+
+// LoadOptional is the corrupt-lock policy choke point (ADR-0076 Decision 2): a
+// missing lock reports found=false with no error so callers keep their no-lock
+// semantics; a present-but-unreadable lock is a hard error carrying the one
+// recovery hint.
+// invariant: corrupt-lock-refuses
+func LoadOptional(path string) (*Lock, bool, error) {
+	l, err := Load(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("unreadable .awf/awf.lock (%w) — restore it from version control, or delete it deliberately to re-adopt", err)
+	}
+	return l, true, nil
 }
 
 // WriteFileAtomic writes data to path via a same-directory temp file renamed

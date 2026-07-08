@@ -34,15 +34,22 @@ func normalizeSemver(s string) (string, bool) {
 // tolerance.
 // invariant: version-compat-gate
 func gate(root string) error {
-	switch migrate.GateState(root) {
+	state, gen, err := migrate.GateState(root)
+	if err != nil {
+		return err
+	}
+	switch state {
 	case "gate":
 		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade",
-			migrate.Generation(root), migrate.Current())
+			gen, migrate.Current())
 	case "ahead":
 		return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",
-			awfVersion(), migrate.Generation(root), migrate.Current())
+			awfVersion(), gen, migrate.Current())
 	}
-	lockV, binV, ok := lockVsBinary(root)
+	lockV, binV, ok, err := lockVsBinary(root)
+	if err != nil { // coverage-ignore: TOCTOU-only — GateState's Generation just loaded the same lock cleanly, so a corrupt-lock error here needs a mid-command lock rewrite no single-threaded test can stage; the branch stays so gate never swallows a lock error (ADR-0076)
+		return err
+	}
 	if !ok {
 		return nil // version sub-check not computable; schema check already applied
 	}
@@ -54,18 +61,23 @@ func gate(root string) error {
 }
 
 // lockVsBinary returns the normalized lock awfVersion and binary version for the
-// release-version sub-check, with ok=false whenever the comparison cannot be
-// computed (no/unloadable lock, empty AWFVersion, or a version that fails semver
-// normalization) so the caller skips rather than errors (ADR-0039 Decision 5).
-func lockVsBinary(root string) (lockV, binV string, ok bool) {
-	l, err := manifest.Load(config.LockPath(root))
-	if err != nil || l.AWFVersion == "" {
-		return "", "", false
+// release-version sub-check. The surviving skip set (ok=false, nil error): an
+// absent lock; an absent or empty awfVersion field; an awfVersion failing semver
+// normalization — all still skip rather than error. A present-but-unparseable
+// lock now errors upstream via the LoadOptional choke point (ADR-0076 partially
+// supersedes ADR-0039 Decision 5).
+func lockVsBinary(root string) (lockV, binV string, ok bool, err error) {
+	l, found, err := manifest.LoadOptional(config.LockPath(root))
+	if err != nil {
+		return "", "", false, err
+	}
+	if !found || l.AWFVersion == "" {
+		return "", "", false, nil
 	}
 	lockV, lok := normalizeSemver(l.AWFVersion)
 	binV, bok := normalizeSemver(awfVersion())
 	if !lok || !bok {
-		return "", "", false
+		return "", "", false, nil
 	}
-	return lockV, binV, true
+	return lockV, binV, true, nil
 }

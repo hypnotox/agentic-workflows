@@ -107,6 +107,38 @@ func TestWriteFileAtomicFailureLeavesTargetUntouched(t *testing.T) {
 	}
 }
 
+func TestLoadOptional(t *testing.T) {
+	dir := t.TempDir()
+	// Missing → found=false, no error.
+	l, found, err := LoadOptional(filepath.Join(dir, "absent.lock"))
+	if l != nil || found || err != nil {
+		t.Fatalf("missing: lock=%v found=%v err=%v, want nil/false/nil", l, found, err)
+	}
+	// Corrupt → error carrying the recovery hint; never a lock.
+	p := filepath.Join(dir, "awf.lock")
+	if err := os.WriteFile(p, []byte("{truncated"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	l, found, err = LoadOptional(p)
+	if l != nil || found || err == nil {
+		t.Fatalf("corrupt: lock=%v found=%v err=%v, want nil lock + error", l, found, err)
+	}
+	for _, want := range []string{"unreadable .awf/awf.lock", "restore it from version control", "delete it deliberately"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("hint missing %q in %q", want, err)
+		}
+	}
+	// Valid → the lock.
+	good := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}}
+	if err := good.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	l, found, err = LoadOptional(p)
+	if err != nil || !found || l == nil || l.SchemaVersion != 6 {
+		t.Fatalf("valid: lock=%v found=%v err=%v", l, found, err)
+	}
+}
+
 func TestSaveDirectoryAtPath(t *testing.T) {
 	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
 	dir := t.TempDir()

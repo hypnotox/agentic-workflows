@@ -39,29 +39,38 @@ func Current() int { return registry[len(registry)-1].To }
 // lock's schema, or 1 when no lock — such a tree is the tree-layout port's
 // output (the port deletes the legacy lock), so every later migration up to and
 // including the To:3 relocation must still apply; the legacy single file
-// reports 0; nothing present reports Current().
-func Generation(root string) int {
+// reports 0; nothing present reports Current(). A present-but-unreadable lock
+// in either lock-bearing layout is a hard error, never a sentinel generation
+// (ADR-0076 Decision 2, narrowing ADR-0016 Decision 6's presence keying).
+func Generation(root string) (int, error) {
 	newTree := config.ConfigPath(root)
 	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
 	if _, err := os.Stat(newTree); err == nil {
-		l, err := manifest.Load(config.LockPath(root))
+		// invariant: corrupt-lock-refuses
+		l, found, err := manifest.LoadOptional(config.LockPath(root))
 		if err != nil {
-			return Current()
+			return 0, err
 		}
-		return l.SchemaVersion
+		if !found {
+			return Current(), nil
+		}
+		return l.SchemaVersion, nil
 	}
 	if _, err := os.Stat(oldTree); err == nil {
-		l, err := manifest.Load(filepath.Join(root, ".claude", "awf", "awf.lock"))
+		l, found, err := manifest.LoadOptional(filepath.Join(root, ".claude", "awf", "awf.lock"))
 		if err != nil {
-			return 1
+			return 0, err
 		}
-		return l.SchemaVersion
+		if !found {
+			return 1, nil
+		}
+		return l.SchemaVersion, nil
 	}
 	if _, err := os.Stat(legacy); err == nil {
-		return 0
+		return 0, nil
 	}
-	return Current()
+	return Current(), nil
 }
 
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
@@ -73,7 +82,7 @@ func stampLockSchema(root string) error {
 		return nil // no lock yet; the terminal sync stamps it
 	}
 	l, err := manifest.Load(lockPath)
-	if err != nil { // coverage-ignore: reached only via Upgrade, which calls this after a migration applied, i.e. Generation < Current; Generation returns Current() on an unloadable lock, so when this runs the lock just loaded cleanly
+	if err != nil { // coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly
 		return err
 	}
 	l.SchemaVersion = Current()
@@ -108,9 +117,15 @@ func gateStateFor(gen, current int, tos []int) string {
 	return "autobump"
 }
 
-// GateState classifies a project: "ok" | "gate" | "autobump".
-func GateState(root string) string {
-	return gateStateFor(Generation(root), Current(), registryTos())
+// GateState classifies a project ("ok" | "gate" | "autobump" | "ahead") and
+// returns the generation it classified, so callers need only one Generation
+// call for both the state and their messages.
+func GateState(root string) (string, int, error) {
+	gen, err := Generation(root)
+	if err != nil {
+		return "", 0, err
+	}
+	return gateStateFor(gen, Current(), registryTos()), gen, nil
 }
 
 // Upgrade applies every registered migration with To > Generation(root), in
@@ -120,7 +135,10 @@ func GateState(root string) string {
 // Generation reflects the new state and the terminal sync's schema gate passes
 // (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
 func Upgrade(root string) ([]string, error) {
-	from := Generation(root)
+	from, err := Generation(root)
+	if err != nil {
+		return nil, err
+	}
 	var applied []string
 	for _, m := range registry { // registry is already ascending by To
 		if m.To <= from {

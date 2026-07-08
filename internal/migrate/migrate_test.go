@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"gopkg.in/yaml.v3"
@@ -91,17 +92,17 @@ func writeMonolith(t *testing.T) string {
 func TestGateBlocksWhenBehind(t *testing.T) {
 	// invariant: upgrade-gate
 	root := writeMonolith(t) // legacy layout → generation 0
-	if got := Generation(root); got != 0 {
+	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(legacy) = %d, want 0", got)
 	}
-	if got := GateState(root); got != "gate" {
+	if got := mustGateState(t, root); got != "gate" {
 		t.Errorf("GateState(legacy) = %q, want gate", got)
 	}
 	// A .awf/ tree already at the current schema does not gate.
 	upgraded := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(upgraded, ".awf", "config.yaml"), "prefix: ex\n")
 	stampLockAt(t, filepath.Join(upgraded, ".awf", "awf.lock"), Current())
-	if got := GateState(upgraded); got != "ok" {
+	if got := mustGateState(t, upgraded); got != "ok" {
 		t.Errorf("GateState(current) = %q, want ok", got)
 	}
 
@@ -110,10 +111,10 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	// sync/check would falsely block the very command that stamps the lock.
 	noLock := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(noLock, ".awf", "config.yaml"), "prefix: ex\n")
-	if got := Generation(noLock); got != Current() {
+	if got := mustGeneration(t, noLock); got != Current() {
 		t.Errorf("Generation(.awf, no lock) = %d, want Current()=%d", got, Current())
 	}
-	if got := GateState(noLock); got != "ok" {
+	if got := mustGateState(t, noLock); got != "ok" {
 		t.Errorf("GateState(.awf, no lock) = %q, want ok (fresh init/post-upgrade must not gate)", got)
 	}
 
@@ -121,15 +122,15 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	// port's output) and gates: drop-replacewith and the relocation still apply.
 	preReloc := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(preReloc, ".claude", "awf", "config.yaml"), "prefix: ex\n")
-	if got := Generation(preReloc); got != 1 {
+	if got := mustGeneration(t, preReloc); got != 1 {
 		t.Errorf("Generation(.claude/awf, no lock) = %d, want 1", got)
 	}
-	if got := GateState(preReloc); got != "gate" {
+	if got := mustGateState(t, preReloc); got != "gate" {
 		t.Errorf("GateState(.claude/awf, no lock) = %q, want gate", got)
 	}
 
 	// Nothing present at all reports Current() (a bare dir is treated as current).
-	if got := Generation(t.TempDir()); got != Current() {
+	if got := mustGeneration(t, t.TempDir()); got != Current() {
 		t.Errorf("Generation(empty) = %d, want Current()=%d", got, Current())
 	}
 }
@@ -149,7 +150,7 @@ func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Errorf("relocation did not run (no .awf/config.yaml); applied = %v", applied)
 	}
-	if got := GateState(root); got != "ok" {
+	if got := mustGateState(t, root); got != "ok" {
 		t.Errorf("GateState after upgrade = %q, want ok", got)
 	}
 }
@@ -385,7 +386,7 @@ func TestUpgradePropagatesMigrationError(t *testing.T) {
 	// A malformed legacy file at generation 0 makes the tree-layout migration
 	// fail; Upgrade wraps it with the migration name and returns it.
 	root := writeLegacyRoot(t, "prefix: ex\nbogusUnknownField: 1\n")
-	if got := Generation(root); got != 0 {
+	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(malformed legacy) = %d, want 0", got)
 	}
 	applied, err := Upgrade(root)
@@ -625,11 +626,11 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 		[]byte(`{"awfVersion":"0.1.0","schemaVersion":2,"files":{}}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := Generation(root); got != 2 {
+	if got := mustGeneration(t, root); got != 2 {
 		t.Fatalf("pre-relocation Generation = %d, want 2", got)
 	}
-	if GateState(root) != "gate" {
-		t.Fatalf("expected gate state, got %q", GateState(root))
+	if mustGateState(t, root) != "gate" {
+		t.Fatalf("expected gate state, got %q", mustGateState(t, root))
 	}
 	if _, err := Upgrade(root); err != nil {
 		t.Fatal(err)
@@ -640,7 +641,7 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	if _, err := os.Stat(old); !os.IsNotExist(err) {
 		t.Fatal("old .claude/awf not removed")
 	}
-	if got := Generation(root); got != Current() {
+	if got := mustGeneration(t, root); got != Current() {
 		t.Fatalf("post-relocation Generation = %d, want %d", got, Current())
 	}
 }
@@ -905,5 +906,84 @@ func TestDropReplaceWithMalformedSidecar(t *testing.T) {
 	err := applyDropReplaceWith(root)
 	if err == nil || !strings.Contains(err.Error(), "parse sidecar") {
 		t.Errorf("want parse-sidecar error, got: %v", err)
+	}
+}
+
+// mustGeneration / mustGateState assert the error-free path for fixtures whose
+// locks are readable or absent — the pre-ADR-0076 call shape.
+func mustGeneration(t *testing.T, root string) int {
+	t.Helper()
+	gen, err := Generation(root)
+	if err != nil {
+		t.Fatalf("Generation(%s): %v", root, err)
+	}
+	return gen
+}
+
+func mustGateState(t *testing.T, root string) string {
+	t.Helper()
+	state, _, err := GateState(root)
+	if err != nil {
+		t.Fatalf("GateState(%s): %v", root, err)
+	}
+	return state
+}
+
+func writeCorruptLock(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{\"awfVersion\": \"0.1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGenerationCorruptTreeLockErrors(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeCorruptLock(t, config.LockPath(root))
+	if _, err := Generation(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("want corrupt-lock error, got %v", err)
+	}
+	if _, err := Upgrade(root); err == nil {
+		t.Fatal("Upgrade must refuse a corrupt lock upfront")
+	}
+}
+
+func TestGenerationCorruptLegacyLockErrors(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claude", "awf", "config.yaml"), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeCorruptLock(t, filepath.Join(root, ".claude", "awf", "awf.lock"))
+	if _, err := Generation(root); err == nil {
+		t.Fatal("want corrupt legacy-lock error")
+	}
+}
+
+func TestGenerationMissingLockSemanticsPreserved(t *testing.T) {
+	// Tree + no lock → Current(); nothing present → Current(); both err-free
+	// (the documented standing ambiguity, ADR-0076 Decision 2 last sentence).
+	root := t.TempDir()
+	if gen, err := Generation(root); err != nil || gen != Current() {
+		t.Fatalf("empty root: gen=%d err=%v", gen, err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if gen, err := Generation(root); err != nil || gen != Current() {
+		t.Fatalf("lockless tree: gen=%d err=%v", gen, err)
 	}
 }

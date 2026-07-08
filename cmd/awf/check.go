@@ -13,7 +13,11 @@ func runCheck(root string, stdout io.Writer) error {
 	if err := gate(root); err != nil {
 		return err
 	}
-	if lockV, binV, ok := lockVsBinary(root); ok && semver.Compare(binV, lockV) > 0 {
+	lockV, binV, ok, err := lockVsBinary(root)
+	if err != nil { // coverage-ignore: unreachable via runCheck — gate() above already hard-errored on a corrupt lock (ADR-0076); the branch stays so the ahead-note never silently swallows a lock error
+		return err
+	}
+	if ok && semver.Compare(binV, lockV) > 0 {
 		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf sync to re-pin\n",
 			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
