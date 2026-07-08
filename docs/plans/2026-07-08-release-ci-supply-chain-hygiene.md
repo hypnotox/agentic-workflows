@@ -27,12 +27,13 @@ Packages touched: new `cmd/pincheck`; `cmd/releasecheck` (test only);
   `cmd/releasecheck/main_test.go`, `templates/bootstrap/awf-bootstrap.sh.tmpl`,
   `internal/project/bootstrap_test.go`, `changelog/CHANGELOG.md`,
   `.awf/parts/workflow/composing-the-gate.md`, `.awf/docs/parts/testing/gate.md`,
-  `.awf/docs/parts/development/command-runner.md`, `.awf/agents-doc.yaml`,
+  `.awf/docs/parts/development/command-runner.md`,
+  `.awf/docs/parts/architecture/components.md`, `.awf/agents-doc.yaml`,
   `.awf/domains/parts/rendering/current-state.md`,
   `.awf/domains/parts/tooling/current-state.md`, `docs/releasing.md`,
   `docs/decisions/0079-release-and-ci-supply-chain-hygiene.md` (status flip),
   plus rendered files refreshed by `./x sync` (`AGENTS.md`, `CLAUDE.md` bridge targets,
-  `docs/workflow.md`, `docs/testing.md`, `docs/development.md`,
+  `docs/workflow.md`, `docs/testing.md`, `docs/development.md`, `docs/architecture.md`,
   `docs/domains/rendering.md`, `docs/domains/tooling.md`, `docs/decisions/ACTIVE.md`,
   `.awf/awf.lock`)
 - Deleted: none
@@ -101,11 +102,8 @@ peeled `^{}` object for annotated tags):
 
       ```yaml
           env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       ```
-
-      (indented to match: `env:` at the same level as `runs-on:`, the mapping key one
-      level deeper.)
 
 - [ ] Add `        if: env.CODECOV_TOKEN != ''` as the first line under each of the two
       upload step names (`- name: Upload raw coverage to Codecov` and
@@ -357,6 +355,7 @@ peeled `^{}` object for annotated tags):
       import (
       	"bytes"
       	"errors"
+      	"io/fs"
       	"os"
       	"strings"
       	"testing"
@@ -433,9 +432,9 @@ peeled `^{}` object for annotated tags):
 
       func TestRunSkipsDirectoriesAndNonYAML(t *testing.T) {
       	fsys := wfFS(map[string]string{
-      		"ci.yml":     pinnedWorkflow,
-      		"sub/x.yml":  "      - uses: actions/checkout@v6\n",
-      		"README.md":  "      - uses: actions/checkout@v6\n",
+      		"ci.yml":    pinnedWorkflow,
+      		"sub/x.yml": "      - uses: actions/checkout@v6\n",
+      		"README.md": "      - uses: actions/checkout@v6\n",
       	})
       	if code, _, errb := runOn(t, fsys); code != 0 {
       		t.Fatalf("subdirectories and non-YAML files must be skipped, got %d:\n%s", code, errb)
@@ -481,8 +480,6 @@ peeled `^{}` object for annotated tags):
       }
       ```
 
-      Add `"io/fs"` to the test imports (used by `runOn`, `readDirErrFS`).
-
 - [ ] In `x`, add the pin check to the gate (after the deadcode line, inside `gate)`):
 
       ```
@@ -504,17 +501,33 @@ peeled `^{}` object for annotated tags):
       "the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin
       check (`cmd/pincheck`, ADR-0079)."
 
-- [ ] In `.awf/agents-doc.yaml`, add after the ADR-0078 invariants entry:
+- [ ] In `.awf/docs/parts/architecture/components.md`, replace the repo-only helpers
+      bullet (currently "**`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`,
+      `cmd/repoaudit`**" — it never gained `cmd/releasecheck` from ADR-0078; fix that
+      here too) with:
+
+      ```markdown
+      - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
+        `cmd/releasecheck`, `cmd/repoaudit`** — repo-only gate, release, triage, and audit
+        helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
+        (ADR-0063), the advisory mutation-survivor report (ADR-0066), the workflow-pin
+        check (ADR-0079), the release-time changelog pin (ADR-0078), and the repo-local
+        conformance audit (`./x audit-local`, ADR-0073: changelog-entry Errors plus
+        coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
+      ```
+
+- [ ] In `.awf/agents-doc.yaml`, add after the ADR-0078 invariants entry (two bullets,
+      one per new contract; match the file's existing indentation for `- ref:` entries):
 
       ```yaml
               - ref: ADR-0079
-                text: '**Release and CI supply-chain hygiene.** Every remote `uses:` reference under `.github/workflows/` pins a full 40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned) and every goreleaser-action `version:` input is an exact semver version — `cmd/pincheck`, run by `./x gate`, fails otherwise, and weekly dependabot (actions + gomod) keeps the pins current. `release.yml` refuses a tag whose commit is not on `origin/main` and runs `./x gate` and `./x check` before GoReleaser (a gate test asserts the wiring); Codecov uploads skip without `CODECOV_TOKEN` (enforcement is the local gate); checksum verification is integrity-only — publisher compromise is a documented, deliberately-accepted risk.'
+                text: '**SHA-pinned workflows.** Every remote `uses:` reference under `.github/workflows/` pins a full 40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned) and every goreleaser-action `version:` input is an exact semver version — `cmd/pincheck`, run by `./x gate`, fails otherwise, and weekly dependabot (actions + gomod) keeps the pins current.'
+              - ref: ADR-0079
+                text: '**Gated, integrity-only release.** `release.yml` refuses a tag whose commit is not on `origin/main` and runs `./x gate` and `./x check` before GoReleaser (a gate test asserts the wiring); Codecov uploads skip without `CODECOV_TOKEN` — coverage enforcement is the local gate; checksum verification is integrity-only, publisher compromise being a documented, deliberately-accepted risk.'
       ```
 
-      (match the file's existing indentation for `- ref:` entries.)
-
 - [ ] Run `./x sync` — refreshes `AGENTS.md`, bridge outputs, `docs/workflow.md`,
-      `docs/testing.md`, `docs/development.md`, `.awf/awf.lock`.
+      `docs/testing.md`, `docs/development.md`, `docs/architecture.md`, `.awf/awf.lock`.
 - [ ] Run `go run ./cmd/pincheck` — expect `pincheck: all workflow references pinned`.
 - [ ] Run `./x gate && ./x check` — green / `awf check: clean`.
 - [ ] Commit:
@@ -522,8 +535,9 @@ peeled `^{}` object for annotated tags):
       ```
       git add cmd/pincheck x .awf/parts/workflow/composing-the-gate.md \
         .awf/docs/parts/testing/gate.md .awf/docs/parts/development/command-runner.md \
-        .awf/agents-doc.yaml .awf/awf.lock AGENTS.md CLAUDE.md docs/workflow.md \
-        docs/testing.md docs/development.md
+        .awf/docs/parts/architecture/components.md .awf/agents-doc.yaml .awf/awf.lock \
+        AGENTS.md CLAUDE.md docs/workflow.md docs/testing.md docs/development.md \
+        docs/architecture.md
       git commit -m "feat(tooling): machine-enforce workflow pins via cmd/pincheck (ADR-0079)
 
       ADR-0079 Decision 1: a gate-run checker fails any unpinned remote
@@ -598,7 +612,7 @@ peeled `^{}` object for annotated tags):
       git add templates/bootstrap/awf-bootstrap.sh.tmpl internal/project/bootstrap_test.go \
         changelog/CHANGELOG.md .awf/domains/parts/rendering/current-state.md \
         docs/domains/rendering.md .awf/awf.lock
-      git commit -m "fix(rendering): point unsupported-platform bootstrap failure at manual install
+      git commit -m "fix(rendering): point unsupported-platform failure at manual install
 
       Windows/git-bash users hit the unsupported-os branch with no way
       forward; both failure branches now name the README install section.
