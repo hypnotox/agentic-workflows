@@ -88,6 +88,7 @@ go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 
 The version matches the `version:` input pinned in the workflows; `cmd/pincheck` enforces
 the workflow side — keep these two commands in step by hand (ADR-0079).
+
 `--snapshot` writes artifacts to `dist/` (gitignored) and skips the GitHub Release. The same two
 commands run on every pull request via the `release-config` job in `.github/workflows/ci.yml`, so a
 broken release config fails CI before any tag is pushed.
