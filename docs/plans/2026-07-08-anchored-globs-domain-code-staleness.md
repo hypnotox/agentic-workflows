@@ -22,6 +22,9 @@ backs no invariants; a `**/*.go` config under basename matching backs none eithe
 `Implemented`, so the backing comment at `internal/config/config_test.go:429` must survive until
 the final status-flip commit: Phase 1 rewrites that test's assertions to the anchored semantics but
 keeps the `// invariant: invariants-glob-basename` comment line; Phase 3's flip commit deletes it.
+(ADR-0077 Decision 2's "backing test removed in the same change" is realised as this
+comment-at-flip deletion: the invariants checker keys on the backing comment, not the test body,
+and the basename assertions cannot survive Phase 1's atomic matcher swap.)
 
 **Tech stack:** Go 1.26; new dep `github.com/bmatcuk/doublestar/v4`; packages touched:
 `internal/pathglob` (new), `internal/config`, `internal/invariants`, `internal/audit`,
@@ -372,8 +375,9 @@ import "github.com/hypnotox/agentic-workflows/internal/config"
 
 // applyAnchoredGlobs ports a tree to the anchored path-glob dialect (ADR-0077):
 // every no-slash pattern in invariants.sources[].globs and
-// audit.dependencyManifests becomes `**/<pattern>`, preserving behaviour under
-// the anchored matcher. Serialization stays owned by internal/config
+// audit.dependencyManifests becomes `**/<pattern>`, preserving behaviour for
+// every pattern valid under the old validator (doublestar brace alternation is
+// the accepted edge, ADR-0077). Serialization stays owned by internal/config
 // (ADR-0026); the write is atomic via editConfig (ADR-0076).
 func applyAnchoredGlobs(root string) error {
 	return editConfig(root, config.AnchorNoSlashGlobs)
