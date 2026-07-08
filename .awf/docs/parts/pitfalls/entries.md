@@ -160,3 +160,15 @@ reads naturally (it matches the `NNNN-` filename convention) so an author copyin
 reintroduce it. Write bare ints (`related: [17, 50]`). If a padded list lands again despite this
 note, promote to a gate check that scans `docs/decisions/*.md` frontmatter for `[0`-prefixed list
 ints instead of re-recording it.
+
+## Enabled linters constrain API shape — sketch signatures against them
+
+An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
+forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state
+API must carry a `found bool` (or a sentinel error) instead — discovered mid-execution on
+ADR-0076's `manifest.LoadOptional`, forcing an amendment-while-Proposed after the signature
+had survived two reviews. `errorlint` (wrap with `%w`, no `!=` on errors) and `perfsprint`
+(no zero-arg `fmt.Errorf`) similarly bite embedded plan code at commit time. When a design
+artifact pins an exact signature or error string, check it against `.golangci.yml`'s enabled
+set before the plan freezes; the plan-reviewer's gate-clean-embedded focus covers what it
+enumerates, not novel linter/API interactions.

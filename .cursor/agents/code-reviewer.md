@@ -72,6 +72,9 @@ Apply all five lenses to every implementation diff:
 **two-sided-set-checks** — when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
 
 
+**coverage-ignore-reachability** — a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; three false claims surfaced on 2026-07-08 alone (stampLockSchema, the sectionDefault call site, gate's "TOCTOU-only"), each hiding a reachable branch
+
+
 
 ## Doc-currency checklist
 
