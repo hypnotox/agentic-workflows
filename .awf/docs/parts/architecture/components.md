@@ -6,8 +6,9 @@
   opening the project.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/repoaudit`** — repo-only gate,
   triage, and audit helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
-  (ADR-0063), the advisory mutation-survivor report (ADR-0066), and the repo-local changelog
-  conformance audit (`./x audit-local`, ADR-0073). Not part of the rendered standard.
+  (ADR-0063), the advisory mutation-survivor report (ADR-0066), and the repo-local conformance audit
+  (`./x audit-local`, ADR-0073: changelog-entry Errors plus coverage-ignore re-evaluation
+  Warnings). Not part of the rendered standard.
 - **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.

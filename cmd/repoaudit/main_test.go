@@ -81,6 +81,7 @@ func TestRejectsMalformedRanges(t *testing.T) {
 	}
 	g := fakeGit{
 		"merge-base v0.10.0 HEAD":       {out: "v0.10.0\n"},
+		"diff -U0 v0.10.0 HEAD -- *.go": {out: ""},
 		"diff --name-only v0.10.0 HEAD": {out: "docs/x.md\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "v0.10.0..HEAD"}, g)
@@ -95,6 +96,7 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	// `continue` — the sole branch no other test reaches (100%-coverage gate).
 	g := fakeGit{
 		"merge-base origin/main HEAD":       {out: "origin/main\n"},
+		"diff -U0 origin/main HEAD -- *.go": {out: ""},
 		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"},
 	}
 	code, out := runFake([]string{"repoaudit"}, g)
@@ -108,6 +110,7 @@ func TestErrorMissingEntry(t *testing.T) {
 	same := changelog("\n")
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -125,6 +128,7 @@ func TestCleanEntryAdded(t *testing.T) {
 	// Adopter-facing change, [Unreleased] differs across the range → clean, exit 0.
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "cmd/awf/root.go\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {out: changelog("### Features\n- new thing\n")},
@@ -140,6 +144,7 @@ func TestTestFilesAreNotAdopterFacing(t *testing.T) {
 	// must not demand a changelog entry.
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
+		"diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h": {out: "internal/config/config_test.go\ncmd/awf/root_test.go\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
@@ -154,6 +159,7 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 	same := changelog("\n")
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "internal/catalog/catalog.go\n"},
 		"show b:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -173,6 +179,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 	same := changelog("\n")
 	g := fakeGit{
 		"merge-base b h":          {out: "m\n"},
+		"diff -U0 m h -- *.go":    {out: ""},
 		"diff --name-only m h":    {out: "templates/x.tmpl\n"},
 		"show m:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -197,6 +204,7 @@ func TestMergeBaseFails(t *testing.T) {
 func TestDiffFails(t *testing.T) {
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
+		"diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h": {err: errors.New("boom")},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
@@ -208,6 +216,7 @@ func TestDiffFails(t *testing.T) {
 func TestShowBaseFails(t *testing.T) {
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {err: errors.New("no file")},
 	}
@@ -220,6 +229,7 @@ func TestShowBaseFails(t *testing.T) {
 func TestShowHeadFails(t *testing.T) {
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {err: errors.New("no file")},
@@ -234,11 +244,75 @@ func TestNoUnreleasedSection(t *testing.T) {
 	// Base changelog has no [Unreleased] header → extractor error → Error finding.
 	g := fakeGit{
 		"merge-base b h":          {out: "b\n"},
+		"diff -U0 b h -- *.go":    {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: "# Changelog\n\n## [0.1.0] - 2026-01-01\n- x\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 1 || !strings.Contains(out, "no ## [Unreleased] section") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+// testMarker assembles the directive form without this test file itself
+// carrying a directive-shaped line (mirrors the rule's own split literal).
+const testMarker = "//" + " coverage-ignore"
+
+func TestCoverageIgnoreAddedWarns(t *testing.T) {
+	// An added directive in a production file warns (exit stays 0 — Warning
+	// only); an added directive in a _test.go and a bare prose mention do not.
+	diff := "+++ b/internal/foo/foo.go\n" +
+		"+\tif err != nil { " + testMarker + ": impossible per X\n" +
+		"+// the trailing coverage-ignore drops the block\n" +
+		"+++ b/internal/foo/foo_test.go\n" +
+		"+\tx := 1 " + testMarker + ": fixture\n"
+	g := fakeGit{
+		"merge-base b h":       {out: "b\n"},
+		"diff --name-only b h": {out: "docs/x.md\n"},
+		"diff -U0 b h -- *.go": {out: diff},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 0 {
+		t.Fatalf("warning-only run must exit 0, got %d: %q", code, out)
+	}
+	if !strings.Contains(out, "warning") || !strings.Contains(out, "coverage-ignore-added") || !strings.Contains(out, "internal/foo/foo.go") {
+		t.Fatalf("missing warning finding: %q", out)
+	}
+	if !strings.Contains(out, "genuinely untriggerable") {
+		t.Fatalf("missing re-evaluation prompt: %q", out)
+	}
+	if strings.Contains(out, "foo_test.go") {
+		t.Fatalf("test-file directive must not fire: %q", out)
+	}
+	if strings.Count(out, "coverage-ignore-added") != 1 {
+		t.Fatalf("prose mention or test file fired: %q", out)
+	}
+	if strings.Contains(out, "repoaudit: clean") || !strings.Contains(out, "1 warning(s), no errors") {
+		t.Fatalf("warning-only run must summarize warnings, not claim clean: %q", out)
+	}
+}
+
+func TestCoverageIgnoreDiffFails(t *testing.T) {
+	// The rule cannot verify on a git failure — loud Error, like the changelog rule.
+	g := fakeGit{
+		"merge-base b h":       {out: "b\n"},
+		"diff --name-only b h": {out: "docs/x.md\n"},
+		"diff -U0 b h -- *.go": {err: errors.New("boom")},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 1 || !strings.Contains(out, "coverage-ignore-added") || !strings.Contains(out, "git diff b..h failed") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+func TestCoverageIgnoreCleanRange(t *testing.T) {
+	g := fakeGit{
+		"merge-base b h":       {out: "b\n"},
+		"diff --name-only b h": {out: "docs/x.md\n"},
+		"diff -U0 b h -- *.go": {out: "+++ b/internal/foo/foo.go\n+\tplain := code()\n"},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 }

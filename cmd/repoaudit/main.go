@@ -2,8 +2,10 @@
 // mirroring awf audit's finding contract (Warning/Error severity; non-zero exit only
 // on an Error finding) but deliberately NOT part of the shipped awf standard: it is
 // repo-local dev tooling wired as `./x audit-local` and invoked by awf-reviewing-impl
-// (ADR-0073). It never runs the gate. Its one rule is changelog conformance — an
-// adopter-facing change in the range with no CHANGELOG [Unreleased] entry is an Error.
+// (ADR-0073). It never runs the gate. Two rules: changelog conformance — an
+// adopter-facing change in the range with no CHANGELOG [Unreleased] entry is an
+// Error — and coverage-ignore re-evaluation — an added or touched coverage-ignore
+// directive in a production Go file is a Warning prompting a reachability re-check.
 package main
 
 import (
@@ -73,10 +75,11 @@ const changelogPath = "changelog/CHANGELOG.md"
 var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/", "internal/catalog/"}
 
 // rules is the repo-local audit's rule registry (ADR-0073 Decision 1): each rule
-// reports findings over the range, and a second repo-local rule is a new function
-// appended here plus nothing else. Today it holds the one changelog rule.
+// reports findings over the range, and another repo-local rule is a new function
+// appended here plus nothing else.
 var rules = []func(git gitFunc, base, head string, log io.Writer) []finding{
 	changelogRule,
+	coverageIgnoreRule,
 }
 
 func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
@@ -95,18 +98,24 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 		fmt.Fprintln(stderr, "usage: repoaudit [<base>..<head>]  (default origin/main..HEAD)")
 		return 2
 	}
-	errs := 0
+	errs, warns := 0, 0
 	for _, rule := range rules {
 		for _, f := range rule(git, base, head, stdout) {
 			fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.label(), f.rule, f.detail)
 			if f.sev == errorSev {
 				errs++
+			} else {
+				warns++
 			}
 		}
 	}
 	// invariant: repo-audit-error-exit
 	if errs > 0 {
 		return 1
+	}
+	if warns > 0 {
+		fmt.Fprintf(stdout, "repoaudit: %d warning(s), no errors\n", warns)
+		return 0
 	}
 	fmt.Fprintln(stdout, "repoaudit: clean")
 	return 0
@@ -157,6 +166,48 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged — add an entry", base, head, changelogPath)}}
 	}
 	return nil
+}
+
+// coverageIgnoreMarker is the comment form the rule detects, assembled so this
+// file's own lines never match it (the same split literal internal/coverage
+// uses for its directive constant).
+const coverageIgnoreMarker = "//" + " coverage-ignore"
+
+// coverageIgnoreRule emits one Warning per added-or-touched coverage-ignore
+// directive in a non-test Go file over the range: every ignore states a
+// reachability claim, and three factually false claims surfaced on 2026-07-08
+// alone, so each new one gets a deterministic re-evaluation prompt at review
+// time. Warnings never affect the exit code; a git failure is an Error — the
+// rule cannot verify, so it fails loud like the changelog rule.
+func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding {
+	mb, err := git("merge-base", base, head)
+	if err != nil {
+		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
+	}
+	from := strings.TrimSpace(mb)
+	diff, err := git("diff", "-U0", from, head, "--", "*.go")
+	if err != nil {
+		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
+	}
+	var out []finding
+	file := "" // current +++ target; "" while in a skipped (test/deleted) file
+	for _, ln := range strings.Split(diff, "\n") {
+		if rest, ok := strings.CutPrefix(ln, "+++ "); ok {
+			file = ""
+			if p, ok := strings.CutPrefix(rest, "b/"); ok && !strings.HasSuffix(p, "_test.go") {
+				file = p
+			}
+			continue
+		}
+		if file == "" || !strings.HasPrefix(ln, "+") {
+			continue
+		}
+		if strings.Contains(ln, coverageIgnoreMarker) {
+			out = append(out, finding{warning, "coverage-ignore-added",
+				file + ": added or touched coverage-ignore — re-evaluate: is this branch genuinely untriggerable? Try to stage the state it declares impossible"})
+		}
+	}
+	return out
 }
 
 // unreleasedSection returns the body of the ## [Unreleased] section of the changelog at
