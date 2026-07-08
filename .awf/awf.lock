@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.10.0",
-  "schemaVersion": 6,
+  "awfVersion": "0.11.0",
+  "schemaVersion": 7,
   "files": {
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -275,8 +275,8 @@
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
       "templateHash": "sha256:6853092b41962e6ba8d29a15452617b4da43234babfb2aab52b08b6ab83f10ed",
-      "configHash": "sha256:674b04b48ef0fb7b73a7ed10bd2296cb37d52d8cb2937ff3a4a23be5cf3ed815",
-      "outputHash": "sha256:0f9609305ddb144563a85a694120854e4acc6d4257e878e72dc4f607986212be"
+      "configHash": "sha256:4cb7adacddf462a427b119af110fccbfd0d5661fc02c8febde4774fe6e174031",
+      "outputHash": "sha256:fe8e67e02d3aaa5f5b90d1d2691f92a667467fcb5adee15271fc060b73d5d16e"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",

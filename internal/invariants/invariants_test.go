@@ -38,7 +38,7 @@ func TestCheckImplementedOnly(t *testing.T) {
 	writeADR(t, dir, "0002-b.md", "Proposed", "- `inv: fixture-prop` — x.")
 	writeADR(t, dir, "0003-c.md", "Accepted", "- `inv: fixture-acc` — x.")
 	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `inv: fixture-sup` — x.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -53,13 +53,30 @@ func TestCheckUnbackedAndBacked(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-backed` — x.\n- `inv: fixture-missing` — y.")
 	goSrc(t, root, "package x\n// invariant: fixture-backed\nfunc T() {}\n")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(f) != 1 || f[0].Slug != "fixture-missing" {
 		t.Errorf("expected only fixture-missing unbacked, got %#v", f)
+	}
+}
+
+// Anchored scope (ADR-0077): a slashed glob confines the scan to its subtree —
+// a tag outside it does not back the slug, with no basename fallback.
+func TestCheckAnchoredGlobScope(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-scoped` — x.\n- `inv: fixture-outside` — y.")
+	testsupport.WriteFile(t, filepath.Join(root, "sub", "x.go"), "package x\n// invariant: fixture-scoped\n")
+	goSrc(t, root, "package y\n// invariant: fixture-outside\n") // top-level y.go: outside sub/**
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"sub/**"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-outside" {
+		t.Errorf("expected only fixture-outside unbacked under sub/** scope, got %#v", f)
 	}
 }
 
@@ -72,7 +89,7 @@ func TestCheckMarkerMustOpenLine(t *testing.T) {
 	goSrc(t, root, "package x\n"+
 		"var s = \"src\\n// invariant: fixture-literal\\n\"\n"+ // mid-line, inside a literal
 		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment — still backs
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +104,7 @@ func TestCheckDuplicateSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-dup` — x.")
 	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: fixture-dup` — y.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	if _, err := invariants.Check(dir, root, cfg); err == nil {
 		t.Error("expected error for duplicate slug")
 	}
@@ -97,7 +114,7 @@ func TestCheckDuplicateSlug(t *testing.T) {
 func TestCheckThreeState(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-one` — x.")
-	src := []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}
+	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
 	// nil config -> unchecked
 	f, err := invariants.Check(dir, root, nil)
@@ -132,7 +149,7 @@ func TestCheckMultiLangScan(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "t.py"), []byte("# invariant: fixture-py\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.py"}, Marker: "#"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.py"}, Marker: "#"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +167,7 @@ func TestCheckMarkerLiteral(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "t.txt"), []byte("[x] invariant: fixture-lit\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.txt"}, Marker: "[x]"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.txt"}, Marker: "[x]"}}}
 	f, _ := invariants.Check(dir, root, cfg)
 	if len(f) != 0 {
 		t.Errorf("literal marker should match, got %#v", f)
@@ -163,7 +180,7 @@ func TestCheckMarkerWhitespace(t *testing.T) {
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-a` — x.\n- `inv: fixture-b` — y.")
 	// one with a space after the marker, one without.
 	goSrc(t, root, "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, _ := invariants.Check(dir, root, cfg)
 	if len(f) != 0 {
 		t.Errorf("whitespace-tolerant marker should match both, got %#v", f)
@@ -183,7 +200,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 	// ADR-2 legitimately declares shared-slug.
 	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: shared-slug` — the real declaration.")
 	goSrc(t, root, "package x\n// invariant: real-slug\n// invariant: shared-slug\n")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatalf("a prose cross-reference must not register as a declaration (no duplicate): %v", err)
@@ -200,7 +217,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `inv: dbl-slug` `` — declared with double backticks.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +261,7 @@ func TestCheckParseDirError(t *testing.T) {
 func TestCheckSortsMultipleFindings(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-zeta` — z.\n- `inv: fixture-alpha` — a.")
-	src := []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}
+	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
 	f, err := invariants.Check(dir, root, nil)
 	if err != nil {
@@ -283,7 +300,7 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("// invariant: fixture-skip\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -298,7 +315,7 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 func TestCheckScanWalkError(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-walk` — x.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	if _, err := invariants.Check(dir, filepath.Join(root, "does-not-exist"), cfg); err == nil {
 		t.Error("expected WalkDir error for non-existent root")
 	}
@@ -314,7 +331,7 @@ func TestCheckScanReadError(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "missing-target"), filepath.Join(root, "bad.go")); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	if _, err := invariants.Check(dir, root, cfg); err == nil {
 		t.Error("expected read error for dangling symlink source file")
 	}
@@ -333,7 +350,7 @@ func TestCheckRetirementDropsSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-retired` — x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-retired", "- a textual invariant with no slug.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -348,7 +365,7 @@ func TestCheckRetirementImplementedOnly(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-live` — x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Proposed", "fixture-live", "- a textual invariant with no slug.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -363,7 +380,7 @@ func TestCheckRetirementDangling(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-real` — x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost", "- a textual invariant with no slug.")
-	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
 	if _, err := invariants.Check(dir, root, cfg); err == nil || !strings.Contains(err.Error(), "fixture-ghost") {
 		t.Errorf("a dangling retirement must error mentioning the slug, got %v", err)
 	}
@@ -373,7 +390,7 @@ func TestCheckRetirementDangling(t *testing.T) {
 func TestCheckZeroSlugsClean(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- a textual invariant with no slug.")
-	for _, cfg := range []*config.InvariantConfig{nil, {}, {Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}} {
+	for _, cfg := range []*config.InvariantConfig{nil, {}, {Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}} {
 		f, err := invariants.Check(dir, root, cfg)
 		if err != nil || len(f) != 0 {
 			t.Errorf("zero slugs must be clean (cfg=%#v): got %#v err=%v", cfg, f, err)

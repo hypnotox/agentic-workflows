@@ -15,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
 // Status classifies an invariant finding.
@@ -133,9 +134,9 @@ func sortBySlug(f []Finding) {
 }
 
 // scanTags collects slugs backed by a `<marker> invariant: <slug>` comment in a
-// file whose basename matches one of a source's globs (skipping
-// .git/vendor/node_modules). The marker is matched literally; whitespace between
-// the marker and `invariant:` is tolerated.
+// file whose slash-separated repo-relative path matches one of a source's
+// anchored globs (ADR-0077; skipping .git/vendor/node_modules). The marker is
+// matched literally; whitespace between the marker and `invariant:` is tolerated.
 func scanTags(root string, sources []config.InvariantSource) (map[string]bool, error) {
 	present := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -149,11 +150,15 @@ func scanTags(root string, sources []config.InvariantSource) (map[string]bool, e
 			}
 			return nil
 		}
-		base := filepath.Base(path)
+		rel, rerr := filepath.Rel(root, path)
+		if rerr != nil { // coverage-ignore: WalkDir yields paths under root, so Rel cannot fail
+			return rerr
+		}
+		relSlash := filepath.ToSlash(rel)
 		var markers []string
 		for _, src := range sources {
 			for _, g := range src.Globs {
-				if ok, _ := filepath.Match(g, base); ok {
+				if pathglob.Match(g, relSlash) {
 					markers = append(markers, src.Marker)
 					break
 				}

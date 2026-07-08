@@ -6,8 +6,14 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
-## [Unreleased]
+## [0.11.0] - 2026-07-08
 ### Breaking changes
+- One anchored path-glob dialect everywhere (ADR-0077, schema 7 — run `awf upgrade`). Every
+  glob — `invariants.sources[].globs`, `audit.dependencyManifests`, and the new domain
+  `paths` — now matches a file's full slash-separated repo-relative path: `*.go` means
+  top-level `.go` files only, any-depth is written `**/*.go`, and path patterns like `cmd/**`
+  or `internal/audit/*.go` are now legal. The migration rewrites existing no-slash patterns
+  to `**/<pattern>`, so migrated configs behave exactly as before.
 - A present-but-unreadable `.awf/awf.lock` is now a hard error in every command (ADR-0076),
   with one recovery hint: restore the lock from version control, or delete it deliberately
   to re-adopt. Previously an unparseable lock silently skipped the version sub-check
@@ -16,6 +22,12 @@ query a single version or a range.
   existing semantics everywhere.
 
 ### Features
+- Domain territories and the `domain-code-staleness` audit rule (ADR-0077): a domain sidecar
+  `.awf/domains/<name>.yaml` may declare the domain's file territory as anchored path globs
+  under `paths:`; when a branch changes matching files without refreshing
+  `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory Warning —
+  closing the ADR-less half of the domain-doc currency gap (ADR-0019 covers the ADR-driven
+  half). Opt-in per domain; disable via `audit.domainCodeStaleness: false`.
 - Trust-bearing writes are atomic (ADR-0076): `.awf/awf.lock` and migration rewrites of an
   existing `.awf/config.yaml` go through a same-directory temp-file-plus-rename helper, so
   an interrupted process can no longer leave a truncated lock or config.

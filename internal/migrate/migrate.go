@@ -28,6 +28,7 @@ var registry = []Migration{
 	{To: 4, Name: "drop-hooks", Apply: applyDropHooks},
 	{To: 5, Name: "enable-bootstrap", Apply: applyEnableBootstrap},
 	{To: 6, Name: "singleton-standard-docs", Apply: applySingletonStandardDocs},
+	{To: 7, Name: "anchored-globs", Apply: applyAnchoredGlobs},
 }
 
 // Current is the current schema generation (the highest registered To).

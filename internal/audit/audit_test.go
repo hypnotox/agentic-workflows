@@ -171,7 +171,8 @@ func TestRuleADRDomainCochange(t *testing.T) {
 
 // invariant: audit-dependency-warn
 func TestRuleDependencyADR(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"go.mod", "*.csproj"}}}
+	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"**/go.mod", "**/*.csproj"}}}
+	defaults := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: defaultDependencyManifests()}}
 	adr := FileChange{Path: "docs/decisions/0001-x.md", Action: Added, NewText: proposedADR}
 	gomod := FileChange{Path: "go.mod", Action: Modified}
 	cases := []struct {
@@ -184,6 +185,7 @@ func TestRuleDependencyADR(t *testing.T) {
 		{"manifest with ADR", []Commit{{Changes: []FileChange{gomod, adr}}}, in, 0},
 		{"no manifest", []Commit{{Changes: []FileChange{{Path: "main.go", Action: Modified}}}}, in, 0},
 		{"manifests disabled", []Commit{{Changes: []FileChange{gomod}}}, Inputs{ADRDir: "docs/decisions"}, 0},
+		{"nested manifest under defaults", []Commit{{Changes: []FileChange{{Path: "sub/go.mod", Action: Modified}}}}, defaults, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

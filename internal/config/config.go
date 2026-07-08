@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,7 +67,8 @@ type InvariantConfig struct {
 	Sources  []InvariantSource `yaml:"sources"`
 }
 
-// InvariantSource pairs filename globs (matched against a file's basename) with
+// InvariantSource pairs anchored path globs (ADR-0077; matched against a file's
+// slash-separated repo-relative path) with
 // the literal comment marker that prefixes a backing `invariant: <slug>` tag.
 type InvariantSource struct {
 	Globs  []string `yaml:"globs"`
@@ -228,10 +230,10 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("invariants source %v has an empty marker; set a literal comment marker (e.g. \"//\", \"#\")", src.Globs)
 			}
 			if len(src.Globs) == 0 {
-				return fmt.Errorf("invariants source with marker %q has no globs; list at least one filename glob (e.g. \"*.go\")", src.Marker)
+				return fmt.Errorf("invariants source with marker %q has no globs; list at least one path glob (e.g. \"**/*.go\")", src.Marker)
 			}
 			for _, g := range src.Globs {
-				if err := validateBasenameGlob(g); err != nil {
+				if err := validatePathGlob(g); err != nil {
 					return fmt.Errorf("invariants glob: %w", err)
 				}
 			}
@@ -239,7 +241,7 @@ func (c *Config) Validate() error {
 	}
 	if c.Audit != nil {
 		for _, g := range c.Audit.DependencyManifests {
-			if err := validateBasenameGlob(g); err != nil {
+			if err := validatePathGlob(g); err != nil {
 				return fmt.Errorf("audit.dependencyManifests: %w", err)
 			}
 		}
@@ -298,14 +300,9 @@ func hasPathSep(s string) bool {
 	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")
 }
 
-// validateBasenameGlob rejects a glob that contains a path separator (it must be
-// a filename pattern matched against a basename) or is a malformed pattern.
-func validateBasenameGlob(g string) error {
-	if strings.Contains(g, "/") {
-		return fmt.Errorf("glob %q must be a filename pattern, not a path", g)
-	}
-	if _, err := filepath.Match(g, "x"); err != nil {
-		return fmt.Errorf("glob %q is malformed: %w", g, err)
-	}
-	return nil
+// validatePathGlob rejects a malformed anchored path-glob pattern (ADR-0077).
+// Patterns are matched against slash-separated repo-relative paths; `**/` is
+// the any-depth form.
+func validatePathGlob(g string) error {
+	return pathglob.Validate(g)
 }

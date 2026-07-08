@@ -15,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
 // Severity ranks a finding. Only Error findings make the command exit non-zero.
@@ -236,7 +237,7 @@ func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
 			if isADRFile(ch.Path, in.ADRDir) {
 				adrTouched = true
 			}
-			if manifestCommit == nil && matchesAny(in.DependencyManifests, filepath.Base(ch.Path)) {
+			if manifestCommit == nil && matchesAny(in.DependencyManifests, ch.Path) {
 				manifestCommit = &commits[i]
 			}
 		}
@@ -399,9 +400,10 @@ func containsFold(list []string, v string) bool {
 	return false
 }
 
-func matchesAny(globs []string, base string) bool {
+// matchesAny reports whether the repo-relative path matches any anchored glob.
+func matchesAny(globs []string, path string) bool {
 	for _, g := range globs {
-		if ok, _ := filepath.Match(g, base); ok {
+		if pathglob.Match(g, path) {
 			return true
 		}
 	}

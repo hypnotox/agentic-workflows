@@ -74,9 +74,9 @@ func defaultAllowedTypes() []string {
 
 func defaultDependencyManifests() []string {
 	return []string{
-		"go.mod", "package.json", "pyproject.toml", "setup.py", "requirements*.txt",
-		"Cargo.toml", "Gemfile", "*.gemspec", "composer.json", "pom.xml", "build.gradle",
-		"build.gradle.kts", "*.csproj", "Directory.Packages.props", "mix.exs",
-		"Package.swift", "pubspec.yaml", "*.cabal", "package.yaml",
+		"**/go.mod", "**/package.json", "**/pyproject.toml", "**/setup.py", "**/requirements*.txt",
+		"**/Cargo.toml", "**/Gemfile", "**/*.gemspec", "**/composer.json", "**/pom.xml", "**/build.gradle",
+		"**/build.gradle.kts", "**/*.csproj", "**/Directory.Packages.props", "**/mix.exs",
+		"**/Package.swift", "**/pubspec.yaml", "**/*.cabal", "**/package.yaml",
 	}
 }

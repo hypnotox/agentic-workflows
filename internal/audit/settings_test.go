@@ -24,7 +24,7 @@ func TestResolveDefaultsWhenNil(t *testing.T) {
 	if s.AllowedScopes != nil {
 		t.Errorf("allowedScopes default = %v, want nil (accept any)", s.AllowedScopes)
 	}
-	if !slices.Contains(s.DependencyManifests, "go.mod") {
+	if !slices.Contains(s.DependencyManifests, "**/go.mod") {
 		t.Errorf("dependencyManifests default missing go.mod: %v", s.DependencyManifests)
 	}
 	if s.SubjectMaxLength != 72 || s.DiffThreshold != 400 {
@@ -38,7 +38,7 @@ func TestResolveZeroAuditFallsBackToDefaults(t *testing.T) {
 		t.Errorf("empty AuditConfig should keep toggles on: %v %v", s.DomainDocStaleness, s.UndocumentedDomain)
 	}
 	if s.BaseBranch != "main" || !slices.Contains(s.AllowedTypes, "feat") || s.AllowedScopes != nil ||
-		!slices.Contains(s.DependencyManifests, "go.mod") || s.SubjectMaxLength != 72 || s.DiffThreshold != 400 {
+		!slices.Contains(s.DependencyManifests, "**/go.mod") || s.SubjectMaxLength != 72 || s.DiffThreshold != 400 {
 		t.Errorf("empty AuditConfig did not fall back to defaults: base=%q types=%v scopes=%v max=%d thr=%d",
 			s.BaseBranch, s.AllowedTypes, s.AllowedScopes, s.SubjectMaxLength, s.DiffThreshold)
 	}

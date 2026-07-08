@@ -245,3 +245,62 @@ func TestSetMappingScalarPreservesComments(t *testing.T) {
 		t.Errorf("inline comment lost:\n%s", got)
 	}
 }
+
+func TestAnchorNoSlashGlobs(t *testing.T) {
+	src := []byte(`prefix: x
+invariants:
+  disabled: false
+  sources:
+    - globs:
+        - '*.go'
+        - cmd/**
+      marker: //
+audit:
+  dependencyManifests:
+    - go.mod
+    - '**/package.json'
+`)
+	out, err := AnchorNoSlashGlobs(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{"**/*.go", "cmd/**", "**/go.mod", "**/package.json"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("output missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "**/cmd/**") || strings.Contains(s, "**/**/package.json") {
+		t.Errorf("slashed pattern was rewritten:\n%s", s)
+	}
+	// Idempotent: a second pass changes nothing.
+	again, err := AnchorNoSlashGlobs(out)
+	if err != nil || string(again) != s {
+		t.Errorf("not idempotent (err %v):\n%s", err, again)
+	}
+}
+
+func TestAnchorNoSlashGlobsAbsentKeysNoop(t *testing.T) {
+	src := []byte("prefix: x\nskills:\n  - tdd\n")
+	out, err := AnchorNoSlashGlobs(src)
+	if err != nil || strings.Contains(string(out), "**/") {
+		t.Errorf("expected no-op, got (err %v):\n%s", err, out)
+	}
+}
+
+func TestAnchorNoSlashGlobsParseError(t *testing.T) {
+	if _, err := AnchorNoSlashGlobs([]byte("not: [valid")); err == nil {
+		t.Error("expected parse error for malformed YAML")
+	}
+}
+
+func TestAnchorNoSlashGlobsSkipsNonMappingSourceItem(t *testing.T) {
+	src := []byte("invariants:\n  sources:\n    - just-a-scalar\n    - globs:\n        - '*.py'\n      marker: '#'\n")
+	out, err := AnchorNoSlashGlobs(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "**/*.py") || !strings.Contains(string(out), "just-a-scalar") {
+		t.Errorf("scalar source item must be skipped, mapping one rewritten:\n%s", out)
+	}
+}

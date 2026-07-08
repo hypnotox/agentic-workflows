@@ -429,16 +429,16 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 // invariant: invariants-glob-basename
 func TestInvariantGlobValidation(t *testing.T) {
 	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"*.go", "*_test.py"}, Marker: "//"}},
+		Sources: []InvariantSource{{Globs: []string{"**/*.go", "**/*_test.py"}, Marker: "//"}},
 	}}
 	if err := ok.Validate(); err != nil {
-		t.Errorf("valid basename globs rejected: %v", err)
+		t.Errorf("valid anchored globs rejected: %v", err)
 	}
-	pathGlob := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
+	pathGlob := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
+		Sources: []InvariantSource{{Globs: []string{"**/*.go", "cmd/**"}, Marker: "//"}},
 	}}
-	if err := pathGlob.Validate(); err == nil {
-		t.Error("expected path-separator glob to be rejected")
+	if err := pathGlob.Validate(); err != nil {
+		t.Errorf("path globs must be accepted under ADR-0077: %v", err)
 	}
 	bad := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
 		Sources: []InvariantSource{{Globs: []string{"[", "*.go"}, Marker: "//"}},
@@ -462,16 +462,16 @@ func TestInvariantGlobValidation(t *testing.T) {
 
 func TestAuditDependencyManifestValidation(t *testing.T) {
 	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
-		DependencyManifests: []string{"go.mod", "*.csproj"},
+		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},
 	}}
 	if err := ok.Validate(); err != nil {
-		t.Errorf("valid manifest globs rejected: %v", err)
+		t.Errorf("valid manifest globs (path globs included, ADR-0077) rejected: %v", err)
 	}
 	bad := &Config{Prefix: "x", DocsDir: "docs", Audit: &AuditConfig{
-		DependencyManifests: []string{"src/go.mod"},
+		DependencyManifests: []string{"["},
 	}}
 	if err := bad.Validate(); err == nil {
-		t.Error("expected path-separator manifest glob to be rejected")
+		t.Error("expected malformed manifest glob to be rejected")
 	}
 }
 
