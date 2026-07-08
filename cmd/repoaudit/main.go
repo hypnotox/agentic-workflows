@@ -66,9 +66,11 @@ func main() { os.Exit(runWith(os.Args, os.Stdout, os.Stderr, realGit)) } // cove
 const changelogPath = "changelog/CHANGELOG.md"
 
 // adopterFacingPrefixes are the path roots whose change is adopter-visible (rendered
-// templates, the shipped CLI, the config/lock schema). Conservative and logged — a
-// render-logic-only change under internal/render can slip it (ADR-0073).
-var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/"}
+// templates, the shipped CLI, the config/lock schema, and the artifact catalog — since
+// ADR-0068 a new shipped skill/agent can land as a pure catalog entry). Conservative
+// and logged — a render-logic-only change under internal/render can slip it (ADR-0073).
+// Test files under these roots are excluded: tests are not adopter-visible.
+var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/", "internal/catalog/"}
 
 // rules is the repo-local audit's rule registry (ADR-0073 Decision 1): each rule
 // reports findings over the range, and a second repo-local rule is a new function
@@ -126,7 +128,7 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	}
 	var touched []string
 	for _, f := range strings.Split(strings.TrimSpace(diff), "\n") {
-		if f == "" {
+		if f == "" || strings.HasSuffix(f, "_test.go") {
 			continue
 		}
 		for _, p := range adopterFacingPrefixes {

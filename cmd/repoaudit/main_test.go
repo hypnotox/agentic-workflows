@@ -134,6 +134,35 @@ func TestCleanEntryAdded(t *testing.T) {
 	}
 }
 
+func TestTestFilesAreNotAdopterFacing(t *testing.T) {
+	// A test-only change under an allowlisted root is not adopter-visible; it
+	// must not demand a changelog entry.
+	g := fakeGit{
+		"merge-base b h":       {out: "b\n"},
+		"diff --name-only b h": {out: "internal/config/config_test.go\ncmd/awf/root_test.go\n"},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+func TestCatalogIsAdopterFacing(t *testing.T) {
+	// Since ADR-0068 a new shipped skill/agent can land as a pure catalog entry,
+	// with no diff under templates/ — the allowlist must catch it.
+	same := changelog("\n")
+	g := fakeGit{
+		"merge-base b h":          {out: "b\n"},
+		"diff --name-only b h":    {out: "internal/catalog/catalog.go\n"},
+		"show b:" + changelogPath: {out: same},
+		"show h:" + changelogPath: {out: same},
+	}
+	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
 func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 	// Regression: base has moved past the fork point (upstream pushed). The rule must
 	// diff and compare [Unreleased] from the merge base — endpoint semantics would
