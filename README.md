@@ -37,17 +37,26 @@ invariants with no backing comment in source all fail loudly instead of rotting.
   ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
   styles (inline or subagent-per-task), implementation review, and a closing
   retrospective that promotes recurring findings toward deterministic checks. Task
-  skills (TDD, bugfix, debugging, a refactor coupling audit) are opt-in.
+  skills (TDD, bugfix, debugging, a refactor coupling audit, a roadmap-graduation
+  pass) are opt-in.
 - **Review agents** (`.claude/agents/`) — `adr-reviewer`, `plan-reviewer`,
   `code-reviewer`. Each is dispatched with fresh context, so the author never grades
   its own work.
 - **Docs** — an `AGENTS.md` agent guide (with a `CLAUDE.md` bridge), workflow and
   documentation standards, and opt-in project docs: architecture, testing,
-  development, glossary, pitfalls.
+  development, debugging, glossary, pitfalls, roadmap.
+- **Domain docs** (`docs/domains/<name>.md`) — one page per freeform domain you
+  declare (`awf add domain rendering`): your hand-authored current-state narrative
+  plus a generated index of that domain's ADRs. A domain's sidecar can declare
+  `paths` globs — its code territory — and `awf audit` then warns when code in that
+  territory changes without the narrative being refreshed.
 - **Git-hook payloads** (`.awf/hooks/`) — inert pre-commit / commit-msg / pre-push
   scripts. You wire them up; awf never touches your git config.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`) — an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
+- **A working-memory directory** (`.awf/memory/`) — always rendered with a
+  self-ignoring `.gitignore`; agents keep per-effort session notes there without ever
+  committing them.
 
 Claude Code is the default target. A `cursor` adapter renders the same skills and
 agents into `.cursor/` (`awf add target cursor`); Cursor reads `AGENTS.md` natively.
