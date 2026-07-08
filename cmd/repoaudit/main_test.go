@@ -80,8 +80,8 @@ func TestRejectsMalformedRanges(t *testing.T) {
 		}
 	}
 	g := fakeGit{
-		"merge-base v0.10.0 HEAD":       {out: "v0.10.0\n"},
-		"diff -U0 v0.10.0 HEAD -- *.go": {out: ""},
+		"merge-base v0.10.0 HEAD": {out: "v0.10.0\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 v0.10.0 HEAD -- *.go": {out: ""},
 		"diff --name-only v0.10.0 HEAD": {out: "docs/x.md\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "v0.10.0..HEAD"}, g)
@@ -95,8 +95,8 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	// blank line between the two paths also exercises changelogRule's empty-token
 	// `continue` — the sole branch no other test reaches (100%-coverage gate).
 	g := fakeGit{
-		"merge-base origin/main HEAD":       {out: "origin/main\n"},
-		"diff -U0 origin/main HEAD -- *.go": {out: ""},
+		"merge-base origin/main HEAD": {out: "origin/main\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 origin/main HEAD -- *.go": {out: ""},
 		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"},
 	}
 	code, out := runFake([]string{"repoaudit"}, g)
@@ -109,8 +109,8 @@ func TestErrorMissingEntry(t *testing.T) {
 	// Adopter-facing change, [Unreleased] identical across the range → Error, exit 1.
 	same := changelog("\n")
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -127,8 +127,8 @@ func TestErrorMissingEntry(t *testing.T) {
 func TestCleanEntryAdded(t *testing.T) {
 	// Adopter-facing change, [Unreleased] differs across the range → clean, exit 0.
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "cmd/awf/root.go\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {out: changelog("### Features\n- new thing\n")},
@@ -143,8 +143,8 @@ func TestTestFilesAreNotAdopterFacing(t *testing.T) {
 	// A test-only change under an allowlisted root is not adopter-visible; it
 	// must not demand a changelog entry.
 	g := fakeGit{
-		"merge-base b h":       {out: "b\n"},
-		"diff -U0 b h -- *.go": {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h": {out: "internal/config/config_test.go\ncmd/awf/root_test.go\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
@@ -158,8 +158,8 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 	// with no diff under templates/ — the allowlist must catch it.
 	same := changelog("\n")
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "internal/catalog/catalog.go\n"},
 		"show b:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -178,8 +178,8 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 	// endpoint-side git call fails the test as an unexpected call.
 	same := changelog("\n")
 	g := fakeGit{
-		"merge-base b h":          {out: "m\n"},
-		"diff -U0 m h -- *.go":    {out: ""},
+		"merge-base b h": {out: "m\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 m h -- *.go": {out: ""},
 		"diff --name-only m h":    {out: "templates/x.tmpl\n"},
 		"show m:" + changelogPath: {out: same},
 		"show h:" + changelogPath: {out: same},
@@ -203,8 +203,8 @@ func TestMergeBaseFails(t *testing.T) {
 
 func TestDiffFails(t *testing.T) {
 	g := fakeGit{
-		"merge-base b h":       {out: "b\n"},
-		"diff -U0 b h -- *.go": {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h": {err: errors.New("boom")},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
@@ -215,8 +215,8 @@ func TestDiffFails(t *testing.T) {
 
 func TestShowBaseFails(t *testing.T) {
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {err: errors.New("no file")},
 	}
@@ -228,8 +228,8 @@ func TestShowBaseFails(t *testing.T) {
 
 func TestShowHeadFails(t *testing.T) {
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: changelog("\n")},
 		"show h:" + changelogPath: {err: errors.New("no file")},
@@ -243,8 +243,8 @@ func TestShowHeadFails(t *testing.T) {
 func TestNoUnreleasedSection(t *testing.T) {
 	// Base changelog has no [Unreleased] header → extractor error → Error finding.
 	g := fakeGit{
-		"merge-base b h":          {out: "b\n"},
-		"diff -U0 b h -- *.go":    {out: ""},
+		"merge-base b h": {out: "b\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: ""},
 		"diff --name-only b h":    {out: "templates/x.tmpl\n"},
 		"show b:" + changelogPath: {out: "# Changelog\n\n## [0.1.0] - 2026-01-01\n- x\n"},
 	}
@@ -264,12 +264,14 @@ func TestCoverageIgnoreAddedWarns(t *testing.T) {
 	diff := "+++ b/internal/foo/foo.go\n" +
 		"+\tif err != nil { " + testMarker + ": impossible per X\n" +
 		"+// the trailing coverage-ignore drops the block\n" +
+		"+++ /dev/null\n" +
+		"+\tdeleted := 1 " + testMarker + ": must not attribute to a deleted file\n" +
 		"+++ b/internal/foo/foo_test.go\n" +
 		"+\tx := 1 " + testMarker + ": fixture\n"
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
 		"diff --name-only b h": {out: "docs/x.md\n"},
-		"diff -U0 b h -- *.go": {out: diff},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: diff},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 0 {
@@ -297,7 +299,7 @@ func TestCoverageIgnoreDiffFails(t *testing.T) {
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
 		"diff --name-only b h": {out: "docs/x.md\n"},
-		"diff -U0 b h -- *.go": {err: errors.New("boom")},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {err: errors.New("boom")},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 1 || !strings.Contains(out, "coverage-ignore-added") || !strings.Contains(out, "git diff b..h failed") {
@@ -309,7 +311,7 @@ func TestCoverageIgnoreCleanRange(t *testing.T) {
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
 		"diff --name-only b h": {out: "docs/x.md\n"},
-		"diff -U0 b h -- *.go": {out: "+++ b/internal/foo/foo.go\n+\tplain := code()\n"},
+		"-c diff.noprefix=false -c diff.mnemonicprefix=false diff --no-ext-diff -U0 b h -- *.go": {out: "+++ b/internal/foo/foo.go\n+\tplain := code()\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 0 || !strings.Contains(out, "repoaudit: clean") {

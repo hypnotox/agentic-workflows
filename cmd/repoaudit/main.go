@@ -185,13 +185,21 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
 	}
 	from := strings.TrimSpace(mb)
-	diff, err := git("diff", "-U0", from, head, "--", "*.go")
+	// Pin the header format against user git config: diff.noprefix /
+	// diff.mnemonicprefix would drop or change the "b/" prefix the parser keys
+	// on, and an external diff driver would replace the format entirely.
+	diff, err := git("-c", "diff.noprefix=false", "-c", "diff.mnemonicprefix=false",
+		"diff", "--no-ext-diff", "-U0", from, head, "--", "*.go")
 	if err != nil {
 		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
 	var out []finding
 	file := "" // current +++ target; "" while in a skipped (test/deleted) file
 	for _, ln := range strings.Split(diff, "\n") {
+		// Known limitation: an added content line that itself starts "++ "
+		// (a diff fixture embedded in a raw string in production Go) renders as
+		// "+++ …" and would be misparsed as a header — contrived for *.go
+		// content and warning-only, so tolerated.
 		if rest, ok := strings.CutPrefix(ln, "+++ "); ok {
 			file = ""
 			if p, ok := strings.CutPrefix(rest, "b/"); ok && !strings.HasSuffix(p, "_test.go") {
