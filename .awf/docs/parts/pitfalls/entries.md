@@ -101,7 +101,10 @@ generation pinned relative to the *growing* registry moves with every new migrat
 layout detected by shape sits at a *fixed* point in history — pin the absolute generation (a
 lockless `.claude/awf/` tree is the tree-layout port's output, so 1). Treat any `Current()±k`
 in migration or versioning code as a red flag unless k describes the current head by
-definition.
+definition. Since ADR-0076 the sentinel generations apply only to genuinely *absent* locks:
+a present-but-unreadable lock is a hard error from `Generation` (and every other lock
+reader), never `Current()`/`1` — so a corrupt lock can no longer silently bypass the schema
+gate the way a mispinned sentinel once mis-gated a healthy tree.
 
 ## Binary-side render changes do not reflag rendered outputs
 

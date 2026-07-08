@@ -7,7 +7,18 @@ schema), not by mirroring a commit's Conventional Commits type. Run `awf changel
 query a single version or a range.
 
 ## [Unreleased]
+### Breaking changes
+- A present-but-unreadable `.awf/awf.lock` is now a hard error in every command (ADR-0076),
+  with one recovery hint: restore the lock from version control, or delete it deliberately
+  to re-adopt. Previously an unparseable lock silently skipped the version sub-check
+  (ADR-0039 Decision 5, partially superseded), read as schema-current to `awf upgrade`,
+  and made `awf sync` treat every rendered file as foreign. A *missing* lock keeps its
+  existing semantics everywhere.
+
 ### Features
+- Trust-bearing writes are atomic (ADR-0076): `.awf/awf.lock` and migration rewrites of an
+  existing `.awf/config.yaml` go through a same-directory temp-file-plus-rename helper, so
+  an interrupted process can no longer leave a truncated lock or config.
 - The agent guide's working-memory check is now on-demand (ADR-0075). The rendered guidance
   no longer tells the agent to check `.awf/memory/` on *every* start of work; instead it reads
   memory when the request implies earlier work to continue, or as a safety net when a fresh or
@@ -47,6 +58,15 @@ query a single version or a range.
   `user-decision` items instead of re-entering the loop.
 
 ### Bug fixes
+- A corrupt lock can no longer trigger `awf sync`'s backup storm: sync refuses before
+  rendering or writing anything, so no spurious `.awf-bak` files are created and pruning is
+  never silently skipped (ADR-0076). `awf check` and `awf uninstall` report a corrupt lock
+  truthfully instead of "no lock"; `awf init` reports the lock error instead of listing
+  every rendered path as a collision.
+- `awf upgrade` no longer prints "already current" when the binary is behind the tree's
+  schema (it gives the version-gate guidance) or when run outside any project; any
+  project-requiring command that finds no `.awf/config.yaml` now says
+  "not an awf project (run `awf init`)" instead of a raw file-not-found error (ADR-0076).
 - ACTIVE.md and domain-index generation now group every ADR whose status carries the
   lifecycle convention's suffixed form (`Superseded by ADR-NNNN`) under one `Superseded`
   section, ordered by the status ranking. Previously the suffixed status never matched the

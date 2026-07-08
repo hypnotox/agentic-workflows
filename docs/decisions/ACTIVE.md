@@ -78,10 +78,7 @@
 - [ADR-0073: Repo-local audit for changelog conformance at implementation review](0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md) — Implemented
 - [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Implemented
 - [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Implemented
-
-## Proposed
-
-- [ADR-0076: Lock integrity and corrupt-lock failure policy](0076-lock-integrity-and-corrupt-lock-failure-policy.md) — Proposed
+- [ADR-0076: Lock integrity and corrupt-lock failure policy](0076-lock-integrity-and-corrupt-lock-failure-policy.md) — Implemented
 
 ## Superseded
 

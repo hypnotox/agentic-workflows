@@ -63,3 +63,7 @@ data:
           text: '**Ephemeral working memory.** `awf sync` always renders the self-ignoring `.awf/memory/.gitignore`; working-memory files are session state — never committed, never cited by an ADR, plan, or commit message, deleted when the chain terminates.'
         - ref: ADR-0070
           text: '**Stub advisory, residual-marker guard.** Unauthored stub content — a stub-attributed section at its template default, or a part carrying the whole-line `awf:stub` marker — is a non-failing `awf check`/`awf init` note keyed by output path, never a failure; a marker-shaped `awf:section`/`awf:end` token surviving section assembly is a hard render error; and every shipped template section default is deliberately classified — authoring prompts carry `stub`, shippable prose stays plain.'
+        - ref: ADR-0076
+          text: '**Atomic trust-bearing writes.** `.awf/awf.lock` and migration rewrites of existing config files go through the temp-file-plus-rename helper (`manifest.WriteFileAtomic`); no truncate-in-place write of a trust-bearing file remains.'
+        - ref: ADR-0076
+          text: '**Corrupt lock refuses.** A present-but-unreadable `.awf/awf.lock` is a hard error in every lock reader, with one recovery hint (restore from version control, or delete deliberately to re-adopt); sync refuses before writing anything, so a corrupt lock can never create a backup, skip a prune, or be overwritten. A missing lock keeps each caller''s no-lock semantics.'
