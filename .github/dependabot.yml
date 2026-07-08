@@ -1,0 +1,13 @@
+# Staleness counterpart to the SHA pins (ADR-0079 Decision 2): dependabot
+# bumps the pinned action SHAs (keeping the # vX.Y.Z comments) and Go deps.
+# A red gate on a gomod tool bump is signal about the new tool version.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
