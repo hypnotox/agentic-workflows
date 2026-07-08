@@ -9,8 +9,8 @@ every commit. A red gate blocks the commit: fix the cause or revert.
 
 `./x gate` is the **sole hard coverage gate**, and it measures **statement** coverage. CI
 also uploads to Codecov, which measures **line** coverage — a different metric — so
-Codecov's figure (~94%) does not and cannot equal `go tool cover`'s statement figure
-(~96.5%); the gap is line-vs-statement, not a defect (ADR-0065).
+Codecov's raw figure does not and cannot equal `go tool cover`'s statement figure;
+the gap is line-vs-statement, not a defect (ADR-0065).
 
 CI publishes two Codecov numbers as flags:
 
@@ -32,8 +32,9 @@ add or change logic, spot-check it by hand: flip a condition, negate a compariso
 change a constant in the source, and confirm a test turns red. If nothing fails, the gap is
 a missing assertion, not missing coverage — add the assertion, then revert the edit. This
 is a deliberate manual habit. `./x mutants` (ADR-0066) makes it reproducible: it runs
-`gremlins` mutation testing under a deterministic config (`.gremlins.yaml`: `-i --workers
-1`, `timeout-coefficient: 20`) and prints the survived mutants for you to triage — run it
+`gremlins` mutation testing under a deterministic config (`.gremlins.yaml`:
+`integration: true`, `workers: 1`, `timeout-coefficient: 20`) and prints the survived
+mutants for you to triage — run it
 with no arguments to check your diff against `main`, or pass a package path (e.g. `./x
 mutants ./internal/refs`) for a deep dive. A timed-out mutant makes the whole run
 untrustworthy (it can hide a real survivor), so the command itself exits non-zero when any
