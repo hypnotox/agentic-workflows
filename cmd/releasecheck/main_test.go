@@ -60,6 +60,14 @@ func TestRunFailsStaleNewestEntry(t *testing.T) {
 	}
 }
 
+func TestRunFailsOutOfOrder(t *testing.T) {
+	fsys := changelogFS("# Changelog\n\n## [Unreleased]\n\n## [" + project.Version + "] - 2026-07-08\n- x\n\n## [9.9.9] - 2026-01-01\n- misplaced\n")
+	code, _, errb := runOn(t, fsys)
+	if code != 1 || !strings.Contains(errb, "out of order") {
+		t.Fatalf("want exit 1 with ordering error, got %d:\n%s", code, errb)
+	}
+}
+
 func TestRunFailsMissingUnreleasedHeader(t *testing.T) {
 	code, _, errb := runOn(t, changelogFS("# Changelog\n\n## ["+project.Version+"] - 2026-07-08\n- x\n"))
 	if code != 1 || !strings.Contains(errb, "no ## [Unreleased] section") {
