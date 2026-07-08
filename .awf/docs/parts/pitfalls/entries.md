@@ -145,3 +145,15 @@ branch is normally `main` plus the fix commits, so the fast-forward is clean; if
 subagent also diverged and you must inspect). Prevention is partial — the dispatch brief can say
 "commit on the current branch; never create a branch" — so always verify the branch after a
 fix-applying subagent returns rather than trusting it stayed put.
+
+## Zero-padded ADR numbers in YAML lists are octal to YAML-1.1 parsers
+
+A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which a
+YAML-1.1 parser (PyYAML and kin) resolves as octal — `0017` becomes 15, silently pointing at the
+wrong ADR the moment any tooling starts parsing those fields. Nothing parses them today
+(`internal/adr`'s frontmatter struct has no `related` field), the whole corpus was normalized to
+bare sorted ints on 2026-07-08, and the ADR-README example now models `[1]` — but the padded form
+reads naturally (it matches the `NNNN-` filename convention) so an author copying an old diff can
+reintroduce it. Write bare ints (`related: [17, 50]`). If a padded list lands again despite this
+note, promote to a gate check that scans `docs/decisions/*.md` frontmatter for `[0`-prefixed list
+ints instead of re-recording it.
