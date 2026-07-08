@@ -134,3 +134,20 @@ func TestProjectCommandsHintInit(t *testing.T) {
 		t.Fatalf("code=%d output:\n%s", code, all)
 	}
 }
+
+func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
+	for variant := range corruptions {
+		for _, cmd := range []string{"uninstall", "init"} {
+			t.Run(variant+"/"+cmd, func(t *testing.T) {
+				root, want := corruptLock(t, variant)
+				var out, errb bytes.Buffer
+				code := runAt(t, root, []string{"awf", cmd}, &out, &errb)
+				all := out.String() + errb.String()
+				if cmd == "init" && strings.Contains(all, "collision") {
+					t.Fatalf("init reported collisions instead of the lock error:\n%s", all)
+				}
+				assertRefused(t, root, want, code, all)
+			})
+		}
+	}
+}
