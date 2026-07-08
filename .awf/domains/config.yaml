@@ -1,0 +1,4 @@
+paths:
+  - internal/config/**
+  - internal/migrate/**
+  - internal/manifest/**

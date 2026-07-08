@@ -55,6 +55,27 @@ agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md`
 `.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter
 description.
 
+### Path globs and domain territories
+
+Every glob in awf — `invariants.sources[].globs`, `audit.dependencyManifests`, and domain
+`paths` — uses one anchored dialect: a pattern matches a file's slash-separated repo-relative
+path in full. `*.go` matches only top-level `.go` files; write `**/*.go` for any depth
+(this deliberately differs from gitignore, where a slash-free pattern floats). `cmd/**` covers
+a subtree; `internal/audit/*.go` scopes one directory.
+
+A domain sidecar `.awf/domains/<name>.yaml` may declare the domain's file territory:
+
+```yaml
+paths:
+  - cmd/**
+  - internal/audit/*.go
+```
+
+When files matching a domain's `paths` change on a branch without a co-change to
+`.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
+`domain-code-staleness` warning — if anything meaningful changed, document it. Domains without
+`paths` opt out; the rule is disable-able via `audit.domainCodeStaleness: false`.
+
 <!-- awf:edit placeholders — default; create .awf/parts/working-with-awf/placeholders.md to override -->
 ## Placeholders in overrides
 

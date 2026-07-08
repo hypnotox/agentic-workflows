@@ -1,0 +1,7 @@
+paths:
+  - cmd/**
+  - internal/audit/**
+  - internal/coverage/**
+  - internal/changelog/**
+  - internal/evals/**
+  - x

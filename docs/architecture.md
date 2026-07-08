@@ -74,6 +74,9 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 - **`internal/invariants/`** — verifies every Implemented ADR's `inv:` slugs against
   `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
   powers `awf invariants` and the gated check.
+- **`internal/pathglob/`** — awf's single glob dialect (ADR-0077): anchored full-path doublestar
+  matching against slash-separated repo-relative paths, consumed by config validation, invariant
+  scanning, and the audit's path matching. Leaf package.
 - **`internal/refs/`** — pure, stdlib-only extraction of inline markdown link targets for the
   dead-reference scan (ADR-0020).
 - **`internal/initspec/`** — `awf init`'s descriptor machinery: the catalog `vars:` descriptors,

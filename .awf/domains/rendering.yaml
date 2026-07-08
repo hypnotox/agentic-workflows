@@ -1,0 +1,4 @@
+paths:
+  - internal/render/**
+  - internal/catalog/**
+  - templates/**
