@@ -77,10 +77,7 @@
 - [ADR-0072: Convention parts re-inject their section default via a placeholder](0072-convention-parts-re-inject-their-section-default-via-a-placeholder.md) — Implemented
 - [ADR-0073: Repo-local audit for changelog conformance at implementation review](0073-repo-local-audit-for-changelog-conformance-at-implementation-review.md) — Implemented
 - [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Implemented
-
-## Proposed
-
-- [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Proposed
+- [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Implemented
 
 ## Superseded by ADR-0032
 
