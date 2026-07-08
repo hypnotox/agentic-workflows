@@ -71,6 +71,19 @@ func TestRunFailsFloatedGoreleaserVersion(t *testing.T) {
 	}
 }
 
+func TestRunFailsGoreleaserWithoutVersion(t *testing.T) {
+	goreleaser := "      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3\n        with:\n          args: check\n"
+	for name, wf := range map[string]string{
+		"at EOF":           goreleaser,
+		"before next step": goreleaser + "      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3\n",
+	} {
+		code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": wf}))
+		if code != 1 || !strings.Contains(errb, "no version: input") {
+			t.Fatalf("%s: a goreleaser-action step without version: must fail, got %d:\n%s", name, code, errb)
+		}
+	}
+}
+
 func TestRunIgnoresVersionKeysOfOtherActions(t *testing.T) {
 	wf := "      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0\n        with:\n          version: not-semver-but-not-goreleaser\n"
 	if code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": wf})); code != 0 {

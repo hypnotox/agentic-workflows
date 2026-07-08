@@ -64,6 +64,16 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 func checkFile(name, content string, stderr io.Writer) int {
 	fails := 0
 	lastUses := ""
+	// Line of a goreleaser-action uses: still awaiting its version: key — a step
+	// without one floats the tool to latest, the same hole as a floated range.
+	pendingVersion := 0
+	flushPending := func() {
+		if pendingVersion > 0 {
+			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser-action step has no version: input — the tool would float to latest\n", name, pendingVersion)
+			fails++
+			pendingVersion = 0
+		}
+	}
 	for i, raw := range strings.Split(content, "\n") {
 		ln := strings.TrimSpace(raw)
 		if c := strings.Index(ln, " #"); c >= 0 {
@@ -72,13 +82,18 @@ func checkFile(name, content string, stderr io.Writer) int {
 		ln = strings.TrimPrefix(ln, "- ")
 		switch {
 		case strings.HasPrefix(ln, "uses:"):
+			flushPending()
 			ref := unquote(strings.TrimSpace(strings.TrimPrefix(ln, "uses:")))
 			lastUses = ref
+			if strings.HasPrefix(ref, "goreleaser/goreleaser-action@") {
+				pendingVersion = i + 1
+			}
 			if bad := usesViolation(ref); bad != "" {
 				fmt.Fprintf(stderr, "pincheck: %s:%d: %s: %s\n", name, i+1, bad, ref)
 				fails++
 			}
 		case strings.HasPrefix(ln, "version:") && strings.HasPrefix(lastUses, "goreleaser/goreleaser-action@"):
+			pendingVersion = 0
 			v := unquote(strings.TrimSpace(strings.TrimPrefix(ln, "version:")))
 			if !exactSemver.MatchString(v) {
 				fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser version must be an exact vX.Y.Z, got: %s\n", name, i+1, v)
@@ -86,6 +101,7 @@ func checkFile(name, content string, stderr io.Writer) int {
 			}
 		}
 	}
+	flushPending()
 	return fails
 }
 
