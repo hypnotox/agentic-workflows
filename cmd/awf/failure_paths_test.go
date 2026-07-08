@@ -66,11 +66,28 @@ func assertRefused(t *testing.T, root string, wantBytes []byte, code int, out st
 }
 
 func TestLockVsBinaryCorruptLockErrors(t *testing.T) {
-	// Direct-call coverage of the defense-in-depth branch: via gate() the
-	// GateState check errors first, so only a direct caller reaches it.
+	// Direct-call coverage of the version sub-check's corrupt branch. When a
+	// config layout exists, gate()'s GateState check errors first; without one
+	// (next test) this reader is the first to hit the lock.
 	root, _ := corruptLock(t, "garbage")
 	if _, _, _, err := lockVsBinary(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want corrupt-lock error, got %v", err)
+	}
+}
+
+func TestGateCorruptLockWithoutConfigLayout(t *testing.T) {
+	// A corrupt lock beside NO config layout: Generation stats no config file
+	// and never loads the lock, so gate()'s version sub-check is the first
+	// reader to hit it — the error must propagate, not be swallowed (ADR-0076).
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.LockPath(root), corruptions["garbage"], 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := gate(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+		t.Fatalf("want corrupt-lock error through the version sub-check, got %v", err)
 	}
 }
 

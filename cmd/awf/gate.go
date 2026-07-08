@@ -47,7 +47,10 @@ func gate(root string) error {
 			awfVersion(), gen, migrate.Current())
 	}
 	lockV, binV, ok, err := lockVsBinary(root)
-	if err != nil { // coverage-ignore: TOCTOU-only — GateState's Generation just loaded the same lock cleanly, so a corrupt-lock error here needs a mid-command lock rewrite no single-threaded test can stage; the branch stays so gate never swallows a lock error (ADR-0076)
+	if err != nil {
+		// Reachable without any race: a corrupt lock beside no config layout —
+		// Generation stats no config file and never loads the lock, so this
+		// version sub-check is the first reader to hit it (ADR-0076).
 		return err
 	}
 	if !ok {
