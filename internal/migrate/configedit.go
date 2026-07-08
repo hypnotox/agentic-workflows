@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 // editConfig applies mutate to the project's config.yaml, routing serialization
@@ -22,5 +23,6 @@ func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(cfgPath, out, 0o644)
+	// invariant: lock-atomic-save
+	return manifest.WriteFileAtomic(cfgPath, out)
 }

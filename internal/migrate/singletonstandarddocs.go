@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -88,5 +89,6 @@ func removeFromDocsArray(path, name string) error {
 	if err != nil { // coverage-ignore: the membership check above guarantees name is present under docs:, and yaml.Unmarshal above already validated src parses, so SetArrayMember cannot error here
 		return err
 	}
-	return os.WriteFile(path, updated, 0o644)
+	// invariant: lock-atomic-save
+	return manifest.WriteFileAtomic(path, updated)
 }
