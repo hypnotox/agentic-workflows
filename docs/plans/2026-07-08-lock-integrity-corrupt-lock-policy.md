@@ -30,9 +30,9 @@ ADR-0076 for the reader inventory and supersedence mechanics.
   `cmd/awf/{gate.go,upgrade.go,gate_test.go}` (+ any test naming `migrate.Generation`/`GateState`),
   `internal/project/{project.go,check.go,install.go}` + their tests,
   `internal/config/config.go` + test, `.awf/agents-doc.yaml`,
-  `.awf/docs/parts/pitfalls/entries.md`, `.awf/docs/parts/architecture/data-flow.md` (no),
-  domain-narrative parts for `config`/`tooling`, `changelog/CHANGELOG.md`,
-  `docs/decisions/0076-*.md` (status flip, final commit)
+  `.awf/docs/parts/pitfalls/entries.md`,
+  `.awf/domains/parts/config/current-state.md`, `.awf/domains/parts/tooling/current-state.md`,
+  `changelog/CHANGELOG.md`, `docs/decisions/0076-*.md` (status flip, final commit)
 - Deleted: none
 
 The recovery-hint string, used everywhere via the choke point (Decision 2):
@@ -43,7 +43,10 @@ unreadable .awf/awf.lock (%v) — restore it from version control, or delete it 
 
 ---
 
-## Phase 1 — manifest: `WriteFileAtomic` + `LoadOptional`
+## Phase 1 — manifest: `WriteFileAtomic`
+
+(`LoadOptional` lands in Phase 3, where its first production caller lands — the deadcode gate
+(ADR-0063) fails any phase that defines a production function used only later.)
 
 - [ ] **1.1 Failing tests.** Append to `internal/manifest/manifest_test.go`:
 
@@ -88,60 +91,13 @@ func TestWriteFileAtomicFailureLeavesTargetUntouched(t *testing.T) {
 	}
 }
 
-func TestLoadOptional(t *testing.T) {
-	dir := t.TempDir()
-	// Missing → (nil, nil).
-	l, err := LoadOptional(filepath.Join(dir, "absent.lock"))
-	if l != nil || err != nil {
-		t.Fatalf("missing: lock=%v err=%v, want nil/nil", l, err)
-	}
-	// Corrupt → error carrying the recovery hint; never a lock.
-	p := filepath.Join(dir, "awf.lock")
-	if err := os.WriteFile(p, []byte("{truncated"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	l, err = LoadOptional(p)
-	if l != nil || err == nil {
-		t.Fatalf("corrupt: lock=%v err=%v, want nil lock + error", l, err)
-	}
-	for _, want := range []string{"unreadable .awf/awf.lock", "restore it from version control", "delete it deliberately"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("hint missing %q in %q", want, err)
-		}
-	}
-	// Valid → the lock.
-	good := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}}
-	if err := good.Save(p); err != nil {
-		t.Fatal(err)
-	}
-	l, err = LoadOptional(p)
-	if err != nil || l == nil || l.SchemaVersion != 6 {
-		t.Fatalf("valid: lock=%v err=%v", l, err)
-	}
-}
 ```
 
-  Run `go test ./internal/manifest/` — expect `FAIL` with
-  `undefined: WriteFileAtomic` and `undefined: LoadOptional`.
+  Run `go test ./internal/manifest/` — expect `FAIL` with `undefined: WriteFileAtomic`.
 
 - [ ] **1.2 Implement.** In `internal/manifest/manifest.go`, add after `Load`:
 
 ```go
-// LoadOptional is the corrupt-lock policy choke point (ADR-0076 Decision 2): a
-// missing lock returns (nil, nil) so callers keep their no-lock semantics; a
-// present-but-unreadable lock is a hard error carrying the one recovery hint.
-// invariant: corrupt-lock-refuses
-func LoadOptional(path string) (*Lock, error) {
-	l, err := Load(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unreadable .awf/awf.lock (%v) — restore it from version control, or delete it deliberately to re-adopt", err)
-	}
-	return l, nil
-}
-
 // WriteFileAtomic writes data to path via a same-directory temp file renamed
 // into place, so a crash can never leave a truncated file at path. Mode is
 // 0o644 (CreateTemp's 0o600 is widened before the rename). On error the temp
@@ -176,17 +132,17 @@ func WriteFileAtomic(path string, data []byte) error {
 ```
 
   Change `Save`'s last line from `return os.WriteFile(path, b, 0o644)` to
-  `return WriteFileAtomic(path, b)` and add imports `errors`, `path/filepath`.
-  Note the coverage pre-sort (ADR-0076 Decision 6): `CreateTemp` failure is
-  fault-injectable via an unwritable parent only as root-bypassed — mark the
-  `Write`/`Close`/`Chmod` sub-branches `// coverage-ignore:` only if `./x gate`
-  reports them uncovered; the rename-failure branch IS covered by 1.1's
-  directory-destination test.
+  `return WriteFileAtomic(path, b)` and add the `path/filepath` import.
+  Coverage pre-sort (ADR-0076 Decision 6): the `CreateTemp` error branch and the
+  `Write`/`Close`/`Chmod` sub-branches are untriggerable as root (permission faults
+  root bypasses) — mark whichever `./x gate` reports uncovered with
+  `// coverage-ignore: OS-level fault a root-run test cannot trigger (ADR-0076 Decision 6 pre-sort)`;
+  the rename-failure branch IS covered by 1.1's directory-destination test.
 
   Run `go test ./internal/manifest/` → `ok`. Run `./x gate` → green.
 
-- [ ] **1.3 Commit:** `feat(config): atomic lock save and LoadOptional choke point`
-  (body: cites ADR-0076 Decisions 1–2; markers `lock-atomic-save`, `corrupt-lock-refuses` land here).
+- [ ] **1.3 Commit:** `feat(config): atomic lock save via temp-file rename`
+  (body: cites ADR-0076 Decision 1; marker `lock-atomic-save` lands here).
 
 ---
 
@@ -218,8 +174,48 @@ func WriteFileAtomic(path string, data []byte) error {
 
 ## Phase 3 — corrupt lock errors in `Generation` and blocks every gated command
 
-- [ ] **3.1 Failing migrate tests.** Append to `internal/migrate/migrate_test.go`
-  (package `migrate`; helpers `writeMonolith` etc. already exist):
+- [ ] **3.1 Failing tests.** First, append the choke-point test to
+  `internal/manifest/manifest_test.go` (LoadOptional lands this phase with its first
+  production caller, keeping the deadcode gate green):
+
+```go
+func TestLoadOptional(t *testing.T) {
+	dir := t.TempDir()
+	// Missing → (nil, nil).
+	l, err := LoadOptional(filepath.Join(dir, "absent.lock"))
+	if l != nil || err != nil {
+		t.Fatalf("missing: lock=%v err=%v, want nil/nil", l, err)
+	}
+	// Corrupt → error carrying the recovery hint; never a lock.
+	p := filepath.Join(dir, "awf.lock")
+	if err := os.WriteFile(p, []byte("{truncated"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	l, err = LoadOptional(p)
+	if l != nil || err == nil {
+		t.Fatalf("corrupt: lock=%v err=%v, want nil lock + error", l, err)
+	}
+	for _, want := range []string{"unreadable .awf/awf.lock", "restore it from version control", "delete it deliberately"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("hint missing %q in %q", want, err)
+		}
+	}
+	// Valid → the lock.
+	good := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}}
+	if err := good.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	l, err = LoadOptional(p)
+	if err != nil || l == nil || l.SchemaVersion != 6 {
+		t.Fatalf("valid: lock=%v err=%v", l, err)
+	}
+}
+```
+
+  Then append to `internal/migrate/migrate_test.go` (package `migrate`; helpers
+  `writeMonolith` etc. already exist; **add
+  `"github.com/hypnotox/agentic-workflows/internal/config"` to its imports** — the file
+  does not import it today):
 
 ```go
 func writeCorruptLock(t *testing.T, path string) {
@@ -281,25 +277,10 @@ func TestGenerationMissingLockSemanticsPreserved(t *testing.T) {
 	}
 }
 
-func TestProjectPresent(t *testing.T) {
-	root := t.TempDir()
-	if ProjectPresent(root) {
-		t.Fatal("empty root must not be present")
-	}
-	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if !ProjectPresent(root) {
-		t.Fatal("tree root must be present")
-	}
-}
 ```
 
-  Run `go test ./internal/migrate/` — expect compile FAIL
-  (`Generation(root)` used with two values; `undefined: ProjectPresent`). RED confirmed.
+  Run `go test ./internal/manifest/ ./internal/migrate/` — expect
+  `undefined: LoadOptional` and compile FAIL on two-valued `Generation(root)`. RED confirmed.
 
 - [ ] **3.2 Failing e2e tests.** Create `cmd/awf/failure_paths_test.go`:
 
@@ -396,7 +377,27 @@ func runAt(t *testing.T, root string, args []string, stdout, stderr *bytes.Buffe
   exits 0 with a backup storm. RED confirmed (the failure will report `exit = 0` and/or
   the `.awf-bak` list).
 
-- [ ] **3.3 Implement.** In `internal/migrate/migrate.go`:
+- [ ] **3.3 Implement.** In `internal/manifest/manifest.go`, add after `Load` (imports:
+  add `errors`):
+
+```go
+// LoadOptional is the corrupt-lock policy choke point (ADR-0076 Decision 2): a
+// missing lock returns (nil, nil) so callers keep their no-lock semantics; a
+// present-but-unreadable lock is a hard error carrying the one recovery hint.
+// invariant: corrupt-lock-refuses
+func LoadOptional(path string) (*Lock, error) {
+	l, err := Load(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unreadable .awf/awf.lock (%v) — restore it from version control, or delete it deliberately to re-adopt", err)
+	}
+	return l, nil
+}
+```
+
+  In `internal/migrate/migrate.go`:
   - `Generation(root string) (int, error)`; both lock branches convert to
     `manifest.LoadOptional`: tree branch — `l, err := manifest.LoadOptional(config.LockPath(root))`,
     `err != nil → return 0, err`, `l == nil → return Current(), nil`, else
@@ -404,32 +405,14 @@ func runAt(t *testing.T, root string, args []string, stdout, stderr *bytes.Buffe
     All other returns gain `, nil`. Update the doc comment's sentinel sentences to name the
     corrupt-lock error. Add `// invariant: corrupt-lock-refuses` above the tree-branch
     `LoadOptional` call.
-  - `GateState(root string) (state string, gen int, err error)` — returns the generation so
-    `gate()` stops calling `Generation` three times:
+  - `GateState(root string) (string, int, error)` — unnamed results (named ones would make
+    the `:=` below a redeclaration error) — returning the generation so `gate()` stops
+    calling `Generation` three times:
     `gen, err := Generation(root); if err != nil { return "", 0, err }; return gateStateFor(gen, Current(), registryTos()), gen, nil`.
   - `Upgrade`: `from, err := Generation(root); if err != nil { return nil, err }`.
   - `stampLockSchema`: rewrite the coverage-ignore reason to the ADR-0076 Decision 2 text:
     `// coverage-ignore: reached only via Upgrade, whose upfront Generation now hard-errors on a corrupt lock (ADR-0076), so when this runs the lock loads cleanly`.
-  - Add:
-
-```go
-// ProjectPresent reports whether any awf config layout (current tree,
-// pre-relocation tree, or legacy single file) exists under root — the
-// distinction Generation cannot express, since "nothing present" reports
-// Current() (ADR-0076 Decision 4).
-func ProjectPresent(root string) bool {
-	for _, p := range []string{
-		config.ConfigPath(root),
-		filepath.Join(root, ".claude", "awf", "config.yaml"),
-		filepath.Join(root, ".claude", "awf.yaml"),
-	} {
-		if fileExists(p) {
-			return true
-		}
-	}
-	return false
-}
-```
+  (`ProjectPresent` lands in Phase 5 with its first production caller — deadcode gate.)
 
   In `cmd/awf/gate.go`:
   - `gate()`: `state, gen, err := migrate.GateState(root); if err != nil { return err }`;
@@ -444,9 +427,12 @@ func ProjectPresent(root string) bool {
     (its own UX lands in Phase 5).
 
   Update every remaining compile-affected call site — enumerate with
-  `grep -rln 'migrate\.Generation\|migrate\.GateState\|lockVsBinary' cmd/ internal/` and adjust
-  each test mechanically (two-value `Generation`, three-value `GateState`, four-value
-  `lockVsBinary`), asserting `err == nil` in previously-passing cases.
+  `grep -rn '\bGeneration(\|\bGateState(\|lockVsBinary(' cmd/ internal/` (the word-boundary
+  form also catches `internal/migrate/migrate_test.go`'s ~10 in-package unqualified
+  `Generation(...)`/`GateState(...)` calls around lines 94–133, 152, 388, 628–643, which the
+  package-qualified grep would miss) and adjust each mechanically (two-value `Generation`,
+  three-value `GateState`, four-value `lockVsBinary`), asserting `err == nil` in
+  previously-passing cases.
 
   Run `go test ./internal/migrate/ ./cmd/awf/` → `ok` (all Phase-3 RED tests now green).
   `./x gate` → green.
@@ -460,7 +446,8 @@ func ProjectPresent(root string) bool {
 ## Phase 4 — project package: SyncReport, Audit, CollisionsAt, Check, Uninstall
 
 - [ ] **4.1 Failing tests.** Append to `internal/project/drift_test.go` (package `project`,
-  helpers `scaffold`/`scaffoldFiles`/`syncClean`/`lockFile` exist):
+  helpers `scaffold`/`scaffoldFiles`/`syncClean`/`lockFile` exist; **add `"bytes"` to its
+  imports** — the file does not import it today):
 
 ```go
 func corruptProjectLock(t *testing.T, root string) {
@@ -570,7 +557,9 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
     if lock != nil { … }`.
   - `check.go` `Check`: replace the `manifest.Load` + blanket "no lock" wrap with
     `lock, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
-    if lock == nil { return nil, fmt.Errorf("no lock (run awf sync)") }`.
+    if lock == nil { return nil, errors.New("no lock (run awf sync)") }` —
+    `errors.New`, not a zero-arg `fmt.Errorf`, or the perfsprint linter fails the gate;
+    add the `errors` import to `check.go`.
   - `install.go` `CollisionsAt` → `([]string, error)`: `lock, err := manifest.LoadOptional(...);
     if err != nil { return nil, err }; if lock != nil { … }`. Ripple: `InitCollisions`
     and the init probe call site (`grep -rn 'CollisionsAt(' cmd/ internal/`).
@@ -589,24 +578,25 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 
 ```go
 func TestUpgradeCorruptLockRefuses(t *testing.T) {
-	root, want := corruptLock(t, "truncated")
-	var out, errb bytes.Buffer
-	code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
-	assertRefused(t, root, want, code, out.String()+errb.String())
+	for variant := range corruptions {
+		t.Run(variant, func(t *testing.T) {
+			root, want := corruptLock(t, variant)
+			var out, errb bytes.Buffer
+			code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
+			assertRefused(t, root, want, code, out.String()+errb.String())
+		})
+	}
 }
 
 func TestUpgradeReportsBinaryBehind(t *testing.T) {
 	root := scaffoldProject(t)
 	lockPath := config.LockPath(root)
-	b, err := os.ReadFile(lockPath)
+	l, err := manifest.Load(lockPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ahead := strings.Replace(string(b), `"schemaVersion": `, `"schemaVersion": 9`, 1)
-	if ahead == string(b) {
-		t.Fatal("fixture: schemaVersion not found to bump")
-	}
-	if err := os.WriteFile(lockPath, []byte(ahead), 0o644); err != nil {
+	l.SchemaVersion = migrate.Current() + 1
+	if err := l.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
 	var out, errb bytes.Buffer
@@ -636,20 +626,66 @@ func TestProjectCommandsHintInit(t *testing.T) {
 }
 ```
 
-  Note the bumped-schema fixture edit assumes the lock marshals `"schemaVersion": N` via
-  `MarshalIndent` — verify with `grep '"schemaVersion"' <root>/.awf/awf.lock` shape in the
-  failing run if the Replace guard trips.
+  Imports for these tests: `manifest` and `migrate` join `failure_paths_test.go`'s import
+  block.
 
-  Run `go test ./cmd/awf/ -run 'Upgrade|HintInit'` — expect FAIL
-  ("already current", exit 0, raw ENOENT). RED confirmed.
+  Run `go test ./cmd/awf/ -run 'Upgrade|HintInit'` — expect FAIL on three:
+  `TestUpgradeReportsBinaryBehind` and `TestUpgradeOutsideProject` (today an "ahead" or
+  absent tree makes `Upgrade` apply nothing, so `runUpgrade` prints "already current" and
+  exits 0) and `TestProjectCommandsHintInit` (raw ENOENT, no hint).
+  `TestUpgradeCorruptLockRefuses` is expected GREEN already — that behavior was red-tested
+  in 3.1 and fixed in 3.3; it lands here as e2e closure of the Decision 6 matrix, not as a
+  RED test.
 
 - [ ] **5.2 Implement.**
-  - `cmd/awf/upgrade.go` `runUpgrade` becomes:
+  - `internal/migrate/migrate.go` gains `ProjectPresent` (first production use is below,
+    so it lands in this phase — deadcode gate), plus its test appended to
+    `internal/migrate/migrate_test.go`:
+
+```go
+// ProjectPresent reports whether any awf config layout (current tree,
+// pre-relocation tree, or legacy single file) exists under root — the
+// distinction Generation cannot express, since "nothing present" reports
+// Current() (ADR-0076 Decision 4).
+func ProjectPresent(root string) bool {
+	for _, p := range []string{
+		config.ConfigPath(root),
+		filepath.Join(root, ".claude", "awf", "config.yaml"),
+		filepath.Join(root, ".claude", "awf.yaml"),
+	} {
+		if fileExists(p) {
+			return true
+		}
+	}
+	return false
+}
+```
+
+```go
+func TestProjectPresent(t *testing.T) {
+	root := t.TempDir()
+	if ProjectPresent(root) {
+		t.Fatal("empty root must not be present")
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !ProjectPresent(root) {
+		t.Fatal("tree root must be present")
+	}
+}
+```
+
+  - `cmd/awf/upgrade.go` `runUpgrade` becomes (add the `errors` import — the no-project
+    message is a constant string, and a zero-arg `fmt.Errorf` fails the perfsprint linter):
 
 ```go
 func runUpgrade(root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
-		return fmt.Errorf("not an awf project (run `awf init`)")
+		return errors.New("not an awf project (run `awf init`)")
 	}
 	gen, err := migrate.Generation(root)
 	if err != nil {
@@ -676,8 +712,30 @@ func runUpgrade(root string, stdout io.Writer) error {
 
     `awf init` never calls `config.Load` on the target pre-scaffold (verify:
     `grep -n 'config.Load\|project.Open' cmd/awf/init.go` — its open happens post-scaffold),
-    so the exemption holds structurally. Add a `config` package test locking the two wraps
-    (missing → init hint; unreadable-but-present → `read config`).
+    so the exemption holds structurally.
+  - The existing `internal/config/config_test.go` `TestLoadMissingConfigErrors` (~line 257)
+    asserts the missing-config error contains `"read config"` — update it in the same
+    commit to the new split, replacing its assertion with:
+
+```go
+func TestLoadMissingConfigErrors(t *testing.T) {
+	dir := t.TempDir()
+	// Missing config.yaml → the no-project hint (ADR-0076 Decision 5).
+	if _, err := Load(dir); err == nil || !strings.Contains(err.Error(), "not an awf project (run `awf init`)") {
+		t.Fatalf("missing: %v", err)
+	}
+	// Present but unreadable (a directory at the path) → the plain read wrap.
+	if err := os.Mkdir(filepath.Join(dir, "config.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(dir); err == nil || !strings.Contains(err.Error(), "read config") || strings.Contains(err.Error(), "awf init") {
+		t.Fatalf("unreadable-but-present: %v", err)
+	}
+}
+```
+
+    (Keep the original function's name/location; if its current body asserts other
+    properties, preserve them alongside these two wraps.)
 
   Run `go test ./cmd/awf/ ./internal/config/` → `ok`. `./x gate` → green.
 
@@ -691,35 +749,44 @@ func runUpgrade(root string, stdout io.Writer) error {
 
 ```go
 func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
-	for _, cmd := range []string{"uninstall", "init"} {
-		t.Run(cmd, func(t *testing.T) {
-			root, want := corruptLock(t, "conflict")
-			var out, errb bytes.Buffer
-			code := runAt(t, root, []string{"awf", cmd}, &out, &errb)
-			all := out.String() + errb.String()
-			if cmd == "init" && strings.Contains(all, "collision") {
-				t.Fatalf("init reported collisions instead of the lock error:\n%s", all)
-			}
-			assertRefused(t, root, want, code, all)
-		})
+	for variant := range corruptions {
+		for _, cmd := range []string{"uninstall", "init"} {
+			t.Run(variant+"/"+cmd, func(t *testing.T) {
+				root, want := corruptLock(t, variant)
+				var out, errb bytes.Buffer
+				code := runAt(t, root, []string{"awf", cmd}, &out, &errb)
+				all := out.String() + errb.String()
+				if cmd == "init" && strings.Contains(all, "collision") {
+					t.Fatalf("init reported collisions instead of the lock error:\n%s", all)
+				}
+				assertRefused(t, root, want, code, all)
+			})
+		}
 	}
 }
 ```
 
+  This closes the full ADR-0076 Decision 6 matrix: all three corruption variants now run
+  against every command family (`sync`/`check`/`invariants`/`audit`/`list` in 3.2,
+  `upgrade` in 5.1, `uninstall`/`init` here).
+
   Run — `uninstall` should already pass (Phase 4); if `init` fails on a non-hint path
   (its collision probe may exit differently), that is the RED for the `runInit` ripple:
   make `runInit` propagate the `CollisionsAt` error unchanged. GREEN both, `./x gate`.
+
+- [ ] **6.1b Commit:** `test(config): close the corrupt-lock e2e matrix for uninstall and init`
+  (own commit — the closure tests plus any `runInit` error-propagation ripple are one
+  concern; the docs-and-flip commit below is another).
 
 - [ ] **6.2 Docs travel.**
   - `.awf/docs/parts/pitfalls/entries.md`: in the "Registry-relative constants in migration
     code drift" entry, update the `Generation` sentinel description to note that since
     ADR-0076 a present-but-unreadable lock is a hard error, not a sentinel (`Current()`/`1`);
     sentinels remain only for genuinely-absent locks.
-  - Domain narratives: refresh the `config` domain part (lock handling: atomic save,
-    corrupt-lock hard error, LoadOptional choke point) and the `tooling` domain part
-    (gate refuses corrupt locks; upgrade's behind/no-project states; ADR-0039 D5 narrowed) —
-    the parts live under `.awf/docs/parts/` for `docs/domains/{config,tooling}.md`
-    (`grep -rln 'domain' .awf/docs/parts/ | head` to confirm exact paths).
+  - Domain narratives: refresh `.awf/domains/parts/config/current-state.md` (lock handling:
+    atomic save, corrupt-lock hard error, LoadOptional choke point) and
+    `.awf/domains/parts/tooling/current-state.md` (gate refuses corrupt locks; upgrade's
+    behind/no-project states; ADR-0039 D5 narrowed).
   - `.awf/agents-doc.yaml` `data.invariants`: add two entries —
     `- ref: ADR-0076` / text: `**Atomic trust-bearing writes.** .awf/awf.lock and
     existing-config migration rewrites go through the temp-file-plus-rename helper; no
@@ -736,10 +803,12 @@ func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
 
 - [ ] **6.3 Final commit + flip.** Edit `docs/decisions/0076-*.md` frontmatter
   `status: Proposed` → `status: Implemented`; `./x sync` (ACTIVE.md + domain indexes regen);
-  `./x gate`; commit everything from 6.1–6.3 as
-  `feat(config): implement ADR-0076 corrupt-lock policy docs and flip` — body cites the
-  Doc-currency-at-the-flip Consequences bullet. Run `go run ./cmd/awf invariants` →
-  `awf invariants: clean` (both new slugs backed since Phases 1/4).
+  `./x gate`; commit 6.2 + 6.3 together as
+  `docs(adr): mark 0076 implemented with its doc-currency bundle` — body cites the
+  Doc-currency-at-the-flip Consequences bullet (pitfalls, domain narratives, agent-guide
+  invariant bullets, changelog, ACTIVE.md travel with the flip). Run
+  `go run ./cmd/awf invariants` → `awf invariants: clean` (both new slugs backed since
+  Phases 1/3).
 
 ---
 
