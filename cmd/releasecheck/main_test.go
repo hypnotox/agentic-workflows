@@ -92,6 +92,36 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 	}
 }
 
+// TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) — the
+// Release workflow must run the ancestry check, ./x gate, and ./x check before
+// the GoReleaser step, so an untested or off-main tag cannot publish.
+// invariant: release-gate-on-tag
+func TestReleaseWorkflowGatesOnTag(t *testing.T) {
+	b, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatalf("read release workflow: %v", err)
+	}
+	wf := string(b)
+	build := strings.Index(wf, "goreleaser/goreleaser-action")
+	if build < 0 {
+		t.Fatal("release.yml does not run the GoReleaser action")
+	}
+	for _, step := range []string{
+		"git merge-base --is-ancestor HEAD origin/main",
+		"run: ./x gate",
+		"run: ./x check",
+	} {
+		idx := strings.Index(wf, step)
+		if idx < 0 {
+			t.Errorf("release.yml is missing the %q step", step)
+			continue
+		}
+		if idx > build {
+			t.Errorf("%q must run before the GoReleaser step", step)
+		}
+	}
+}
+
 // TestReleaseWorkflowRunsReleasecheck backs the wiring half of
 // inv: release-changelog-pin — the Release workflow must invoke releasecheck
 // before the GoReleaser step, so unwiring the check fails the gate.

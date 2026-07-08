@@ -28,6 +28,17 @@ jobs:
           fi
       - name: Verify changelog pins the release
         run: go run ./cmd/releasecheck
+      - name: Verify tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "tagged commit $(git rev-parse HEAD) is not on origin/main — push main first" >&2
+            exit 1
+          fi
+      - name: Gate (test + 100% coverage + vet + lint)
+        run: ./x gate
+      - name: Drift check (rendered output matches config)
+        run: ./x check
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: v2.17.0
