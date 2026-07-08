@@ -369,3 +369,58 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 		t.Fatalf("want 1 warning for ghost, got %v", multi)
 	}
 }
+
+// invariant: audit-domain-code-staleness
+func TestRuleDomainCodeStaleness(t *testing.T) {
+	in := Inputs{
+		Settings:        Settings{DomainCodeStaleness: true},
+		DomainsPartsDir: ".awf/domains/parts",
+		GeneratedPaths:  map[string]bool{"docs/domains/tooling.md": true},
+		DomainPaths:     map[string][]string{"tooling": {"cmd/**", "internal/audit/**"}},
+	}
+	churn := FileChange{Path: "cmd/awf/main.go", Action: Modified}
+	part := FileChange{Path: ".awf/domains/parts/tooling/current-state.md", Action: Modified}
+
+	// Territory churned, narrative not refreshed -> one branch-level Warning.
+	got := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, in)
+	if len(got) != 1 || got[0].Rule != "domain-code-staleness" || got[0].Severity != Warning || got[0].Commit != "" {
+		t.Fatalf("want 1 branch-level warning, got %v", got)
+	}
+
+	// Narrative co-changed (any in-range commit) -> silent.
+	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}, {Changes: []FileChange{part}}}, in); len(f) != 0 {
+		t.Errorf("refreshed narrative should be clean, got %v", f)
+	}
+
+	// Only a generated file matched -> silent.
+	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{{Path: "docs/domains/tooling.md", Action: Modified}}}}, in); len(f) != 0 {
+		t.Errorf("generated-path churn should be clean, got %v", f)
+	}
+
+	// Change outside every territory -> silent.
+	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{{Path: "internal/render/render.go", Action: Modified}}}}, in); len(f) != 0 {
+		t.Errorf("non-matching churn should be clean, got %v", f)
+	}
+
+	// Toggle off -> silent.
+	off := in
+	off.DomainCodeStaleness = false
+	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, off); f != nil {
+		t.Errorf("disabled rule returned %v", f)
+	}
+
+	// No paths configured -> inert.
+	none := in
+	none.DomainPaths = nil
+	if f := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, none); f != nil {
+		t.Errorf("pathless config returned %v", f)
+	}
+
+	// Two domains churned, neither refreshed -> two findings sorted by domain.
+	two := in
+	two.DomainPaths = map[string][]string{"tooling": {"cmd/**"}, "adr-system": {"internal/adr/**"}}
+	got = ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn, {Path: "internal/adr/adr.go", Action: Modified}}}}, two)
+	if len(got) != 2 || !strings.Contains(got[0].Detail, `"adr-system"`) || !strings.Contains(got[1].Detail, `"tooling"`) {
+		t.Fatalf("want 2 warnings sorted by domain, got %v", got)
+	}
+}

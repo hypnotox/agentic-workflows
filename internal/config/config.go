@@ -31,6 +31,9 @@ type Sidecar struct {
 	Data     map[string]any             `yaml:"data"`
 	Sections map[string]SectionOverride `yaml:"sections"`
 	Local    bool                       `yaml:"local"`
+	// Paths declares a domain's file territory as anchored path globs
+	// (ADR-0077); read only from domain sidecars, inert on other kinds.
+	Paths []string `yaml:"paths"`
 }
 
 // Config is the skeleton config.yaml: global fields plus flat enable arrays.
@@ -107,6 +110,7 @@ type AuditConfig struct {
 	DependencyManifests []string    `yaml:"dependencyManifests"`
 	DiffThreshold       *int        `yaml:"diffThreshold"`
 	DomainDocStaleness  *bool       `yaml:"domainDocStaleness"`
+	DomainCodeStaleness *bool       `yaml:"domainCodeStaleness"`
 	UndocumentedDomain  *bool       `yaml:"undocumentedDomain"`
 	UncommittedChanges  *bool       `yaml:"uncommittedChanges"`
 }

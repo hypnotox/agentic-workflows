@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
 // Version is the awf release version — the single version authority
@@ -242,6 +243,21 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 			generated[path] = true
 		}
 	}
+	domainPaths := map[string][]string{}
+	for _, d := range p.Cfg.Domains {
+		sc, err := p.Cfg.Sidecar("domains", d)
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range sc.Paths {
+			if err := pathglob.Validate(g); err != nil {
+				return nil, fmt.Errorf("domain %q paths: %w", d, err)
+			}
+		}
+		if len(sc.Paths) > 0 {
+			domainPaths[d] = sc.Paths
+		}
+	}
 	return audit.Run(p.Root, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
@@ -251,6 +267,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		ConfiguredDomains: p.Cfg.Domains,
 		DomainsPartsDir:   config.DirName + "/domains/parts",
 		DomainsIndexDir:   lay.DomainsDir,
+		DomainPaths:       domainPaths,
 	})
 }
 

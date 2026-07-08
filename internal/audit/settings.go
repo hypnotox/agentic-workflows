@@ -11,6 +11,7 @@ type Settings struct {
 	SubjectMaxLength    int
 	DiffThreshold       int
 	DomainDocStaleness  bool
+	DomainCodeStaleness bool
 	UndocumentedDomain  bool
 	UncommittedChanges  bool
 }
@@ -34,6 +35,7 @@ func Resolve(a *config.AuditConfig) Settings {
 		SubjectMaxLength:    72,
 		DiffThreshold:       400,
 		DomainDocStaleness:  true,
+		DomainCodeStaleness: true,
 		UndocumentedDomain:  true,
 		UncommittedChanges:  true,
 	}
@@ -58,6 +60,9 @@ func Resolve(a *config.AuditConfig) Settings {
 	}
 	if a.DomainDocStaleness != nil {
 		s.DomainDocStaleness = *a.DomainDocStaleness
+	}
+	if a.DomainCodeStaleness != nil {
+		s.DomainCodeStaleness = *a.DomainCodeStaleness
 	}
 	if a.UndocumentedDomain != nil {
 		s.UndocumentedDomain = *a.UndocumentedDomain

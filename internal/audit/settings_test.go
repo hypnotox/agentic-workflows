@@ -12,8 +12,8 @@ func boolPtr(b bool) *bool { return &b }
 
 func TestResolveDefaultsWhenNil(t *testing.T) {
 	s := Resolve(nil)
-	if !s.DomainDocStaleness || !s.UndocumentedDomain || !s.UncommittedChanges {
-		t.Errorf("toggles default to on: domStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.UndocumentedDomain, s.UncommittedChanges)
+	if !s.DomainDocStaleness || !s.DomainCodeStaleness || !s.UndocumentedDomain || !s.UncommittedChanges {
+		t.Errorf("toggles default to on: domStale=%v codeStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain, s.UncommittedChanges)
 	}
 	if s.BaseBranch != "main" {
 		t.Errorf("baseBranch = %q, want main", s.BaseBranch)
@@ -34,8 +34,8 @@ func TestResolveDefaultsWhenNil(t *testing.T) {
 
 func TestResolveZeroAuditFallsBackToDefaults(t *testing.T) {
 	s := Resolve(&config.AuditConfig{})
-	if !s.DomainDocStaleness || !s.UndocumentedDomain {
-		t.Errorf("empty AuditConfig should keep toggles on: %v %v", s.DomainDocStaleness, s.UndocumentedDomain)
+	if !s.DomainDocStaleness || !s.DomainCodeStaleness || !s.UndocumentedDomain {
+		t.Errorf("empty AuditConfig should keep toggles on: %v %v %v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain)
 	}
 	if s.BaseBranch != "main" || !slices.Contains(s.AllowedTypes, "feat") || s.AllowedScopes != nil ||
 		!slices.Contains(s.DependencyManifests, "**/go.mod") || s.SubjectMaxLength != 72 || s.DiffThreshold != 400 {
@@ -53,11 +53,12 @@ func TestResolveExplicitOverrides(t *testing.T) {
 		DependencyManifests: []string{}, // explicit empty = disabled
 		DiffThreshold:       intPtr(0),
 		DomainDocStaleness:  boolPtr(false),
+		DomainCodeStaleness: boolPtr(false),
 		UndocumentedDomain:  boolPtr(false),
 		UncommittedChanges:  boolPtr(false),
 	})
-	if s.DomainDocStaleness || s.UndocumentedDomain || s.UncommittedChanges {
-		t.Errorf("explicit false toggles not honored: domStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.UndocumentedDomain, s.UncommittedChanges)
+	if s.DomainDocStaleness || s.DomainCodeStaleness || s.UndocumentedDomain || s.UncommittedChanges {
+		t.Errorf("explicit false toggles not honored: domStale=%v codeStale=%v undoc=%v uncommitted=%v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain, s.UncommittedChanges)
 	}
 	if s.BaseBranch != "develop" {
 		t.Errorf("baseBranch = %q, want develop", s.BaseBranch)

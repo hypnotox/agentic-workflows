@@ -73,8 +73,8 @@ type Finding struct {
 // Inputs are the resolved audit settings plus the project-derived layout the rules
 // need. The embedded Settings carries the resolved knobs (BaseBranch, AllowedTypes,
 // AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
-// DomainDocStaleness, UndocumentedDomain, UncommittedChanges), promoted so the rules
-// read in.AllowedTypes etc. directly.
+// DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges),
+// promoted so the rules read in.AllowedTypes etc. directly.
 type Inputs struct {
 	Settings
 	GeneratedPaths    map[string]bool
@@ -84,6 +84,9 @@ type Inputs struct {
 	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
 	DomainsPartsDir   string   // e.g. ".awf/domains/parts"
 	DomainsIndexDir   string   // e.g. "docs/domains"; rendered per-domain index dir (adr-domain-cochange)
+	// DomainPaths maps a configured domain to its sidecar-declared anchored
+	// path globs (ADR-0077); empty = the domain-code-staleness rule is inert.
+	DomainPaths map[string][]string
 }
 
 // Run collects the branch range and evaluates the rules.
@@ -111,6 +114,7 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 	out = append(out, rulePlanForLargeChange(commits, in)...)
 	out = append(out, ruleDomainDocStaleness(commits, in)...)
 	out = append(out, ruleUndocumentedDomain(commits, in)...)
+	out = append(out, ruleDomainCodeStaleness(commits, in)...)
 	return out
 }
 
@@ -333,6 +337,38 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	for _, d := range slices.Sorted(maps.Keys(flagged)) {
 		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
 			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc — add it to config.Domains and author its current-state narrative, or drop the tag", d)})
+	}
+	return out
+}
+
+// invariant: audit-domain-code-staleness
+func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
+	if !in.DomainCodeStaleness || len(in.DomainPaths) == 0 {
+		return nil
+	}
+	refreshed := map[string]bool{} // domains whose source narrative changed in range
+	churned := map[string]bool{}   // domains whose declared territory changed in range
+	for _, c := range commits {
+		for _, ch := range c.Changes {
+			if d, ok := domainOfPart(ch.Path, in.DomainsPartsDir); ok {
+				refreshed[d] = true
+			}
+			if in.GeneratedPaths[ch.Path] {
+				continue
+			}
+			for d, globs := range in.DomainPaths {
+				if !churned[d] && matchesAny(globs, ch.Path) {
+					churned[d] = true
+				}
+			}
+		}
+	}
+	var out []Finding
+	for _, d := range slices.Sorted(maps.Keys(churned)) {
+		if !refreshed[d] {
+			out = append(out, Finding{Severity: Warning, Rule: "domain-code-staleness",
+				Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range — if anything meaningful changed, document it", d, in.DomainsPartsDir, d)})
+		}
 	}
 	return out
 }

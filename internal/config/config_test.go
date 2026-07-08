@@ -206,6 +206,27 @@ func TestSidecarReadsDataSectionsLocal(t *testing.T) {
 	}
 }
 
+func TestSidecarReadsDomainPaths(t *testing.T) {
+	dir := writeConfig(t, "prefix: example\ndomains:\n  - tooling\n")
+	if err := os.MkdirAll(filepath.Join(dir, "domains"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "domains", "tooling.yaml"), []byte("paths:\n  - cmd/**\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	sc, err := c.Sidecar("domains", "tooling")
+	if err != nil {
+		t.Fatalf("Sidecar: %v", err)
+	}
+	if len(sc.Paths) != 1 || sc.Paths[0] != "cmd/**" {
+		t.Errorf("sidecar paths = %v, want [cmd/**]", sc.Paths)
+	}
+}
+
 // invariant: sidecar-optional
 func TestSidecarAbsentIsEmpty(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
