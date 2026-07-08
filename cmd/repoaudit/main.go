@@ -83,7 +83,10 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 		rng = args[1]
 	}
 	base, head, ok := strings.Cut(rng, "..")
-	if !ok || base == "" || head == "" {
+	// Cut mangles a three-dot range (head "."-prefixed) or a multi-".." input
+	// (head contains ".."); both would reach git as a bogus rev. Dots inside a
+	// rev (v0.10.0) are fine — git forbids "."-leading and ".."-containing refs.
+	if !ok || base == "" || head == "" || strings.HasPrefix(head, ".") || strings.Contains(head, "..") {
 		fmt.Fprintln(stderr, "usage: repoaudit [<base>..<head>]  (default origin/main..HEAD)")
 		return 2
 	}

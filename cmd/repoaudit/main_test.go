@@ -68,6 +68,26 @@ func TestUsageError(t *testing.T) {
 	}
 }
 
+func TestRejectsMalformedRanges(t *testing.T) {
+	// strings.Cut on ".." would silently mangle these (b...h → head ".h";
+	// a..b..c → head "b..c") and hand git a bogus rev; they must hit the
+	// usage path instead. Dots inside a rev (v0.10.0..HEAD) stay legal.
+	for _, rng := range []string{"b...h", "a..b..c"} {
+		code, out := runFake([]string{"repoaudit", rng}, fakeGit{})
+		if code != 2 || !strings.Contains(out, "usage:") {
+			t.Fatalf("%s: code=%d out=%q", rng, code, out)
+		}
+	}
+	g := fakeGit{
+		"merge-base v0.10.0 HEAD":       {out: "v0.10.0\n"},
+		"diff --name-only v0.10.0 HEAD": {out: "docs/x.md\n"},
+	}
+	code, out := runFake([]string{"repoaudit", "v0.10.0..HEAD"}, g)
+	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
+		t.Fatalf("dotted rev: code=%d out=%q", code, out)
+	}
+}
+
 func TestCleanNonAdopterFacing(t *testing.T) {
 	// Default range (no arg) + changes outside the allowlist → clean, exit 0. The
 	// blank line between the two paths also exercises changelogRule's empty-token
