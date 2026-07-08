@@ -67,6 +67,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0075: Working-memory check is on-demand, not a startup step](../decisions/0075-working-memory-check-is-on-demand-not-a-startup-step.md)
 - [ADR-0076: Lock integrity and corrupt-lock failure policy](../decisions/0076-lock-integrity-and-corrupt-lock-failure-policy.md)
 
+### Proposed
+
+- [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
