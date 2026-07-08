@@ -20,3 +20,11 @@ or a malformed near-miss a hard error, and a part using a scope placeholder fold
 hash so a scopes edit reflags it. A backslash escapes the token — `\\{{=awf:key}}` renders the
 literal `\{{=awf:key}}` via a NUL-sentinel pre-pass, which is how this sentence prints one — and a
 registry value may never itself carry the token (ADR-0058).
+
+One registry key steps outside the string-generator mold (ADR-0072): `\{{=awf:sectionDefault}}`
+resolves to a NUL-bounded split marker rather than prose. Assembly splits the part body at the
+marker and splices the section's **rendered default** between the raw fragments — the fragments
+still round-trip verbatim (never templated), but a part carrying the token is deliberately not
+restored byte-for-byte: it *extends* the shipped default instead of copy-forking it. Re-injecting
+a `stub`-classified default is a hard render error — a stub is an authoring prompt, not shippable
+prose (ADR-0070).
