@@ -189,7 +189,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 	// diff.mnemonicprefix would drop or change the "b/" prefix the parser keys
 	// on, and an external diff driver would replace the format entirely.
 	diff, err := git("-c", "diff.noprefix=false", "-c", "diff.mnemonicprefix=false",
-		"diff", "--no-ext-diff", "-U0", from, head, "--", "*.go")
+		"-c", "diff.dstPrefix=b/", "diff", "--no-ext-diff", "-U0", from, head, "--", "*.go")
 	if err != nil {
 		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
