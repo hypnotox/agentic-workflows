@@ -6,6 +6,8 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## [Unreleased]
+
 ## [0.11.0] - 2026-07-08
 ### Breaking changes
 - One anchored path-glob dialect everywhere (ADR-0077, schema 7 — run `awf upgrade`). Every
