@@ -32,10 +32,11 @@ add or change logic, spot-check it by hand: flip a condition, negate a compariso
 change a constant in the source, and confirm a test turns red. If nothing fails, the gap is
 a missing assertion, not missing coverage — add the assertion, then revert the edit. This
 is a deliberate manual habit. `./x mutants` (ADR-0066) makes it reproducible: it runs
-`gremlins` mutation testing under a deterministic config (`.gremlins.yaml`, `-i --workers
-1`) and prints the survived mutants for you to triage — run it with no arguments to check
-your diff against `main`, or pass a package path (e.g. `./x mutants ./internal/refs`) for a
-deep dive. Its numbers are trustworthy only when the run reports `Timed out: 0`; a nonzero
-count can hide a real survivor, so raise the timeout coefficient and rerun. It stays
-advisory — never part of the gate — and every survivor still needs you to judge whether it
-is a real gap or an unkillable equivalent mutant.
+`gremlins` mutation testing under a deterministic config (`.gremlins.yaml`: `-i --workers
+1`, `timeout-coefficient: 20`) and prints the survived mutants for you to triage — run it
+with no arguments to check your diff against `main`, or pass a package path (e.g. `./x
+mutants ./internal/refs`) for a deep dive. A timed-out mutant makes the whole run
+untrustworthy (it can hide a real survivor), so the command itself exits non-zero when any
+mutant times out — raise the timeout coefficient and rerun; you never need to eyeball the
+`Timed out:` count. It stays advisory — never part of the gate — and every survivor still
+needs you to judge whether it is a real gap or an unkillable equivalent mutant.

@@ -347,8 +347,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:837ec0b796c7aacac7acb3c3b0b59077cf0c282869fe354c7064a8e3d622357f",
-      "configHash": "sha256:f8966b6d8813e89bad47e20891d3a8b65918ea6689beafde3b900ecb1bc3be0d",
-      "outputHash": "sha256:bad306fdffc2fc79acf965be4399d774113929078017dfcb11a5cdd8ff991020"
+      "configHash": "sha256:15e94da3ca6959b6a1bc4d595b2a03765404a8d0f16701ebb0dd36e4c4885025",
+      "outputHash": "sha256:5e5f5b3834941cec298d4d5a00e3bdd1f9ea7c1489c59729e472f82e23050a41"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
