@@ -79,6 +79,6 @@
 - [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Implemented
 - [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Implemented
 
-## Superseded by ADR-0032
+## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

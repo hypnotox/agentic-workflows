@@ -97,6 +97,46 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	checkEntry("Proposed", "ADR-0002: A Proposal", "0002-a-proposal.md")
 }
 
+// TestRenderActiveMDGroupsSupersededVariants locks the lifecycle convention's
+// suffixed status ("Superseded by ADR-NNNN") into one Superseded group: a
+// single section header ordered by statusOrder, per-entry full status kept —
+// not one alphabetical section per successor.
+// invariant: render-active-md
+func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"0001-old-one.md": testsupport.ADR("Superseded by ADR-0003",
+			testsupport.WithDate("2026-06-24"), testsupport.WithTitle("0001: Old One")),
+		"0002-old-two.md": testsupport.ADR("Superseded by ADR-0004",
+			testsupport.WithDate("2026-06-24"), testsupport.WithTitle("0002: Old Two")),
+		"0003-current.md": testsupport.ADR("Implemented",
+			testsupport.WithDate("2026-06-24"), testsupport.WithTitle("0003: Current")),
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write fixture %s: %v", name, err)
+		}
+	}
+	got, err := adr.RenderActiveMD(dir)
+	if err != nil {
+		t.Fatalf("RenderActiveMD: %v", err)
+	}
+	if strings.Contains(got, "## Superseded by") {
+		t.Errorf("per-successor section header rendered instead of one Superseded group:\n%s", got)
+	}
+	if !strings.Contains(got, "## Superseded\n") {
+		t.Errorf("missing single ## Superseded section:\n%s", got)
+	}
+	for _, entry := range []string{"— Superseded by ADR-0003", "— Superseded by ADR-0004"} {
+		if !strings.Contains(got, entry) {
+			t.Errorf("entry lost its full status %q:\n%s", entry, got)
+		}
+	}
+	if imp, sup := strings.Index(got, "## Implemented"), strings.Index(got, "## Superseded"); imp > sup {
+		t.Errorf("Superseded (%d) must sort after Implemented (%d) per statusOrder", sup, imp)
+	}
+}
+
 // invariant: render-active-md
 func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()

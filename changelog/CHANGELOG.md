@@ -44,6 +44,13 @@ query a single version or a range.
   applies to initial-dispatch findings only, so verify-pass residuals escalate as
   `user-decision` items instead of re-entering the loop.
 
+### Bug fixes
+- ACTIVE.md and domain-index generation now group every ADR whose status carries the
+  lifecycle convention's suffixed form (`Superseded by ADR-NNNN`) under one `Superseded`
+  section, ordered by the status ranking. Previously the suffixed status never matched the
+  bare `Superseded` ranking entry, so each successor minted its own alphabetical section.
+  Entry lines keep the full status, so the successor stays visible per ADR.
+
 ## [0.10.0] - 2026-07-07
 ### Breaking changes
 - The canonical workflow chain gains a terminal `retrospective` step, and the `reviewing-impl`

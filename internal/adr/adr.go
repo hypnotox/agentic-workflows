@@ -19,6 +19,18 @@ import (
 // statusOrder defines the section order in ACTIVE.md.
 var statusOrder = []string{"Accepted", "Implemented", "Proposed", "Superseded"}
 
+// bucketKey maps a status to its index group. The lifecycle convention mandates
+// the suffixed form "Superseded by ADR-NNNN", so every superseded ADR must fold
+// into the one Superseded group — the bare statusOrder entry would otherwise
+// never match and each successor would mint its own alphabetical section. The
+// per-entry line keeps the full status, so the successor stays visible.
+func bucketKey(status string) string {
+	if strings.HasPrefix(status, "Superseded") {
+		return "Superseded"
+	}
+	return status
+}
+
 // ADR is a parsed ADR record.
 type ADR struct {
 	Number            string            // e.g. "0001"
@@ -126,7 +138,7 @@ func groupByStatus(adrs []ADR, include func(ADR) bool) (map[string][]ADR, []stri
 	groups := make(map[string][]ADR)
 	for _, a := range adrs {
 		if include(a) {
-			groups[a.Status] = append(groups[a.Status], a)
+			groups[bucketKey(a.Status)] = append(groups[bucketKey(a.Status)], a)
 		}
 	}
 	for k := range groups {
