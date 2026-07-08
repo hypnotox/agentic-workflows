@@ -130,7 +130,7 @@ func RenderActiveMD(dir string) (string, error) {
 	return sb.String(), nil
 }
 
-// groupByStatus buckets the ADRs that pass include by Status, sorts each bucket
+// groupByStatus buckets the ADRs that pass include by bucketKey(Status), sorts each bucket
 // by Number, and returns the buckets together with their status keys ordered by
 // statusOrder, with any unknown statuses appended in alphabetical order. Shared
 // by RenderActiveMD and RenderDomainIndex.

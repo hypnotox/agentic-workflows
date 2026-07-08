@@ -287,8 +287,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e57d88df13ced6a463ed142666ec16ea0fd051ec6fd03a96332a96f6602e57b3",
-      "configHash": "sha256:a61ae87bc7b3276a0cabc1f273574c4d139a1642f21d093b1ed112cec83fe127",
-      "outputHash": "sha256:90fbcd1cb2c8dc4fc2a8ef7b7003ab7f9bef55d8ab200334a2a57f818bbacdab"
+      "configHash": "sha256:32d31487a9298a94214052d092c88cd4397c2feac6d1e4a57284a15c5ae1cee3",
+      "outputHash": "sha256:38ee67eb04194f0272da09fe782c20e4b72012cfd1b9fc2b345591c513d33f38"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
