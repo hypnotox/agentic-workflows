@@ -6,7 +6,7 @@ dogfooded render always matches the tree, never a stale installed binary.
 
 | Command | What it does |
 |---|---|
-| `./x gate` | The pre-commit gate: profiled tests, the 100% statement-coverage floor (`cmd/covercheck`), `go vet`, `golangci-lint`, and the whole-program dead-code check (`cmd/deadcodecheck`). `./x gate full` runs the identical steps — the argument exists only for pre-push hook compatibility. |
+| `./x gate` | The pre-commit gate: profiled tests, the 100% statement-coverage floor (`cmd/covercheck`), `go vet`, `golangci-lint`, the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin check (`cmd/pincheck`, ADR-0079). `./x gate full` runs the identical steps — the argument exists only for pre-push hook compatibility. |
 | `./x test [args]` | `go test ./...`, passing extra args through. |
 | `./x lint` / `./x fmt` | `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | The dead-code check on its own (ADR-0063). |

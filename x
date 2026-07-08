@@ -19,6 +19,7 @@ case "$cmd" in
     go vet ./...
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
+    go run ./cmd/pincheck
     ;;
   lint)
     go tool golangci-lint run "$@"

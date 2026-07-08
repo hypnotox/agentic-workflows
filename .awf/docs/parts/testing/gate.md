@@ -2,7 +2,8 @@
 
 `./x gate` runs the project's checks — the test suite with a coverage profile, a 100%
 **statement**-coverage floor over non-`// coverage-ignore` blocks (ADR-0012), `go vet`,
-`golangci-lint`, and a whole-program dead-code check (ADR-0063) — and must be green before
+`golangci-lint`, a whole-program dead-code check (ADR-0063), and the workflow supply-chain
+pin check (`cmd/pincheck`, ADR-0079) — and must be green before
 every commit. A red gate blocks the commit: fix the cause or revert.
 
 ### Coverage: statement gate vs line reporting
