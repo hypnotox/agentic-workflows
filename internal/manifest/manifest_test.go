@@ -63,6 +63,50 @@ func TestLoadMalformedJSON(t *testing.T) {
 	}
 }
 
+func TestWriteFileAtomic(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "awf.lock")
+	if err := os.WriteFile(p, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFileAtomic(p, []byte("new content\n")); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil || string(b) != "new content\n" {
+		t.Fatalf("content = %q, err = %v", b, err)
+	}
+	info, err := os.Stat(p)
+	if err != nil || info.Mode().Perm() != 0o644 {
+		t.Fatalf("perm = %v, err = %v (want 0644 regardless of prior mode)", info.Mode().Perm(), err)
+	}
+	ents, err := os.ReadDir(dir)
+	if err != nil || len(ents) != 1 {
+		t.Fatalf("temp residue left behind: %v (err %v)", ents, err)
+	}
+}
+
+func TestWriteFileAtomicFailureLeavesTargetUntouched(t *testing.T) {
+	// Destination path is a directory: CreateTemp succeeds, the rename fails.
+	// The original path must be untouched and no temp file may remain.
+	dir := t.TempDir()
+	p := filepath.Join(dir, "asdir")
+	if err := os.Mkdir(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFileAtomic(p, []byte("x")); err == nil {
+		t.Fatal("want error renaming onto a directory")
+	}
+	ents, err := os.ReadDir(dir)
+	if err != nil || len(ents) != 1 {
+		t.Fatalf("temp residue after failure: %v (err %v)", ents, err)
+	}
+	// Absent parent directory: CreateTemp itself fails (ENOENT, root-proof).
+	if err := WriteFileAtomic(filepath.Join(dir, "nope", "x"), []byte("x")); err == nil {
+		t.Fatal("want error creating the temp file in an absent directory")
+	}
+}
+
 func TestSaveDirectoryAtPath(t *testing.T) {
 	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
 	dir := t.TempDir()

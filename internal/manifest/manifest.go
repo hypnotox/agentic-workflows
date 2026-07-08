@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type Entry struct {
@@ -47,5 +48,37 @@ func (l *Lock) Save(path string) error {
 		return err
 	}
 	b = append(b, '\n')
-	return os.WriteFile(path, b, 0o644)
+	return WriteFileAtomic(path, b)
+}
+
+// WriteFileAtomic writes data to path via a same-directory temp file renamed
+// into place, so a crash can never leave a truncated file at path. Mode is
+// 0o644 (CreateTemp's 0o600 is widened before the rename). On error the temp
+// file is best-effort removed. Rename-only durability — no fsync — per
+// ADR-0076 Decision 1; Go's os.Rename replaces an existing destination on
+// every supported OS including Windows.
+// invariant: lock-atomic-save
+func WriteFileAtomic(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	_, werr := tmp.Write(data)
+	cerr := tmp.Close()
+	if werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = os.Chmod(name, 0o644)
+	}
+	if werr == nil {
+		werr = os.Rename(name, path)
+	}
+	if werr != nil {
+		_ = os.Remove(name)
+		return werr
+	}
+	return nil
 }
