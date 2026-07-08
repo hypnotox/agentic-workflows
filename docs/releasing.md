@@ -5,6 +5,7 @@ How to cut a release of the `awf` binary. The distribution model and its rationa
 
 A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which
 verifies the tag, `project.Version`, and changelog all pin the same release (see Versioning),
+verifies the tagged commit is on `main`, runs the full gate (`./x gate && ./x check`),
 then runs GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
 generate a Conventional-Commits changelog, and create the GitHub Release. Prebuilt binary download
@@ -71,7 +72,9 @@ below `project.Version`, or the gate fails.
    git push origin v0.2.0
    ```
 
-   The tag push starts the `Release` workflow. Watch it in the GitHub Actions tab; on success the
+   The tag push starts the `Release` workflow. It refuses a tag whose commit is not on
+   `origin/main` and re-runs the gate before building (ADR-0079), so pushing `main` first
+   (step 3) is load-bearing, not just tidy. Watch it in the GitHub Actions tab; on success the
    release appears under Releases with the six archives, `checksums.txt`, and the changelog.
 
 ## Preview locally (no publish)
@@ -79,10 +82,12 @@ below `project.Version`, or the gate fails.
 Validate the GoReleaser config and dry-run the full build without tagging or publishing:
 
 ```
-go run github.com/goreleaser/goreleaser/v2@latest check
-go run github.com/goreleaser/goreleaser/v2@latest release --snapshot --clean
+go run github.com/goreleaser/goreleaser/v2@v2.17.0 check
+go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 ```
 
+The version matches the `version:` input pinned in the workflows; `cmd/pincheck` enforces
+the workflow side — keep these two commands in step by hand (ADR-0079).
 `--snapshot` writes artifacts to `dist/` (gitignored) and skips the GitHub Release. The same two
 commands run on every pull request via the `release-config` job in `.github/workflows/ci.yml`, so a
 broken release config fails CI before any tag is pushed.
@@ -101,6 +106,12 @@ broken release config fails CI before any tag is pushed.
   gh release delete v0.2.0
   ```
 
+- **Tamper posture (ADR-0079).** `checksums.txt` and the bootstrap's SHA-256 check verify
+  download *integrity*, not publisher authenticity — a compromise of the release workflow or
+  its token can rewrite binary and checksums together. The accepted mitigations are the
+  SHA-pinned actions, dependabot currency, and the gate-and-ancestry checks on tag push;
+  artifact attestation and cosign signing are deliberately deferred (revisit at 1.0 or on
+  adopter demand).
 - **Hand-maintained files.** `.goreleaser.yaml` and the workflow files live outside awf's
   render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them — edit them
   directly.
