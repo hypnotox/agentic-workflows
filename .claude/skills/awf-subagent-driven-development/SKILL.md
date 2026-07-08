@@ -61,7 +61,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
-8. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, classifies findings, and applies fixes as new commits on top.
+8. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 

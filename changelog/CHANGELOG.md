@@ -36,6 +36,9 @@ query a single version or a range.
 - The rendered working-with-awf doc's command list now covers `awf uninstall` and
   `awf version`, and its `sectionDefault` key description states the stub re-injection
   failure mode precisely (a hard render error, not a silent skip).
+- The two plan-execution skills' terminal-handoff line now attributes finding
+  classification to the report-only review agent (ADR-0074): the reviewing skill routes
+  findings by the agent's classification rather than "classifies" them itself.
 
 ## [0.10.0] - 2026-07-07
 ### Breaking changes
