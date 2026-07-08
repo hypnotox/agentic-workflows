@@ -59,9 +59,11 @@ should exist and fail first before the fix comes in."
    not exercise it (ubuntu-only).
 
 2. **A present-but-unreadable lock is a hard error in every reader.** New choke point
-   `manifest.LoadOptional(path)`: missing file → `(nil, nil)`; present but unreadable or
-   unparseable → an error carrying the one-place recovery hint (restore `.awf/awf.lock` from
-   version control, or delete it deliberately to re-adopt). `manifest.Load` keeps its
+   `manifest.LoadOptional(path) (*Lock, bool, error)`: missing file → `(nil, false, nil)` —
+   a found flag rather than a bare nil pair, since the repo's `nilnil` linter forbids
+   returning a nil pointer beside a nil error; present but unreadable or unparseable → an
+   error carrying the one-place recovery hint (restore `.awf/awf.lock` from version
+   control, or delete it deliberately to re-adopt). `manifest.Load` keeps its
    signature for hard-require callers, which split missing vs corrupt via
    `errors.Is(err, os.ErrNotExist)` (the `read lock: %w` wrap preserves it; the parse branch
    never carries ENOENT). The full reader inventory converts:

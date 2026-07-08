@@ -181,19 +181,19 @@ func WriteFileAtomic(path string, data []byte) error {
 ```go
 func TestLoadOptional(t *testing.T) {
 	dir := t.TempDir()
-	// Missing → (nil, nil).
-	l, err := LoadOptional(filepath.Join(dir, "absent.lock"))
-	if l != nil || err != nil {
-		t.Fatalf("missing: lock=%v err=%v, want nil/nil", l, err)
+	// Missing → found=false, no error.
+	l, found, err := LoadOptional(filepath.Join(dir, "absent.lock"))
+	if l != nil || found || err != nil {
+		t.Fatalf("missing: lock=%v found=%v err=%v, want nil/false/nil", l, found, err)
 	}
 	// Corrupt → error carrying the recovery hint; never a lock.
 	p := filepath.Join(dir, "awf.lock")
 	if err := os.WriteFile(p, []byte("{truncated"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	l, err = LoadOptional(p)
-	if l != nil || err == nil {
-		t.Fatalf("corrupt: lock=%v err=%v, want nil lock + error", l, err)
+	l, found, err = LoadOptional(p)
+	if l != nil || found || err == nil {
+		t.Fatalf("corrupt: lock=%v found=%v err=%v, want nil lock + error", l, found, err)
 	}
 	for _, want := range []string{"unreadable .awf/awf.lock", "restore it from version control", "delete it deliberately"} {
 		if !strings.Contains(err.Error(), want) {
@@ -205,9 +205,9 @@ func TestLoadOptional(t *testing.T) {
 	if err := good.Save(p); err != nil {
 		t.Fatal(err)
 	}
-	l, err = LoadOptional(p)
-	if err != nil || l == nil || l.SchemaVersion != 6 {
-		t.Fatalf("valid: lock=%v err=%v", l, err)
+	l, found, err = LoadOptional(p)
+	if err != nil || !found || l == nil || l.SchemaVersion != 6 {
+		t.Fatalf("valid: lock=%v found=%v err=%v", l, found, err)
 	}
 }
 ```
@@ -382,26 +382,27 @@ func runAt(t *testing.T, root string, args []string, stdout, stderr *bytes.Buffe
 
 ```go
 // LoadOptional is the corrupt-lock policy choke point (ADR-0076 Decision 2): a
-// missing lock returns (nil, nil) so callers keep their no-lock semantics; a
-// present-but-unreadable lock is a hard error carrying the one recovery hint.
+// missing lock reports found=false with no error so callers keep their no-lock
+// semantics; a present-but-unreadable lock is a hard error carrying the one
+// recovery hint.
 // invariant: corrupt-lock-refuses
-func LoadOptional(path string) (*Lock, error) {
+func LoadOptional(path string) (*Lock, bool, error) {
 	l, err := Load(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, false, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("unreadable .awf/awf.lock (%v) — restore it from version control, or delete it deliberately to re-adopt", err)
+		return nil, false, fmt.Errorf("unreadable .awf/awf.lock (%w) — restore it from version control, or delete it deliberately to re-adopt", err)
 	}
-	return l, nil
+	return l, true, nil
 }
 ```
 
   In `internal/migrate/migrate.go`:
   - `Generation(root string) (int, error)`; both lock branches convert to
-    `manifest.LoadOptional`: tree branch — `l, err := manifest.LoadOptional(config.LockPath(root))`,
-    `err != nil → return 0, err`, `l == nil → return Current(), nil`, else
-    `return l.SchemaVersion, nil`; legacy branch — same shape with `l == nil → return 1, nil`.
+    `manifest.LoadOptional`: tree branch — `l, found, err := manifest.LoadOptional(config.LockPath(root))`,
+    `err != nil → return 0, err`, `!found → return Current(), nil`, else
+    `return l.SchemaVersion, nil`; legacy branch — same shape with `!found → return 1, nil`.
     All other returns gain `, nil`. Update the doc comment's sentinel sentences to name the
     corrupt-lock error. Add `// invariant: corrupt-lock-refuses` above the tree-branch
     `LoadOptional` call.
@@ -545,7 +546,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	// invariant: corrupt-lock-refuses
-	old, err := manifest.LoadOptional(p.lockPath())
+	old, _, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, err
 	}
@@ -554,18 +555,18 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
     and the later `old, _ := manifest.Load(p.lockPath())` line is deleted (the `prior` map
     keeps its `if old != nil` guard).
   - `project.go` `Audit`: `if lock, err := manifest.Load(...); err == nil` becomes
-    `lock, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
+    `lock, _, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
     if lock != nil { … }`.
   - `check.go` `Check`: replace the `manifest.Load` + blanket "no lock" wrap with
-    `lock, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
-    if lock == nil { return nil, errors.New("no lock (run awf sync)") }` —
+    `lock, found, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
+    if !found { return nil, errors.New("no lock (run awf sync)") }` —
     `errors.New`, not a zero-arg `fmt.Errorf`, or the perfsprint linter fails the gate
     (`check.go` already imports `errors`).
-  - `install.go` `CollisionsAt` → `([]string, error)`: `lock, err := manifest.LoadOptional(...);
+  - `install.go` `CollisionsAt` → `([]string, error)`: `lock, _, err := manifest.LoadOptional(...);
     if err != nil { return nil, err }; if lock != nil { … }`. Ripple: `InitCollisions`
     and the init probe call site (`grep -rn 'CollisionsAt(' cmd/ internal/`).
-  - `install.go` `Uninstall`: `lock, err := manifest.LoadOptional(lockPath); if err != nil
-    { return 0, err }; if lock == nil { return 0, fmt.Errorf("no %s — nothing to uninstall", …) }`.
+  - `install.go` `Uninstall`: `lock, found, err := manifest.LoadOptional(lockPath); if err != nil
+    { return 0, err }; if !found { return 0, fmt.Errorf("no %s — nothing to uninstall", …) }`.
 
   Run `go test ./internal/project/ ./cmd/awf/` → `ok`. `./x gate` → green.
 
