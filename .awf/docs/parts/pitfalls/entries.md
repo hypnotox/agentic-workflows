@@ -184,3 +184,15 @@ set, or bumping the version therefore reds the gate in places far from the edit.
 such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
 version const) and enumerate each update as a plan task — the ADR-0077 plan review found four
 of these as blockers precisely because the plan hadn't.
+
+## A milestone-time check must not double as an every-commit test
+
+`cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
+exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a
+non-empty `[Unreleased]`. An early draft of its test suite ran the real check against the live
+embedded changelog in the ordinary gate run, with a skip for only one of the two mid-cycle
+failure modes — which would have silently re-imposed the every-commit pin the ADR exists to
+remove, reddening the gate on the first in-cycle changelog entry (caught before commit,
+2026-07-08). When a check's whole point is to hold only at a milestone (a tag, a release, a
+schema migration), its unit tests belong on synthetic fixtures; the live repo state is input
+for the milestone gate alone.
