@@ -70,9 +70,10 @@ func TestUsageError(t *testing.T) {
 
 func TestRejectsMalformedRanges(t *testing.T) {
 	// strings.Cut on ".." would silently mangle these (b...h → head ".h";
-	// a..b..c → head "b..c") and hand git a bogus rev; they must hit the
+	// a..b..c → head "b..c") and hand git a bogus rev, and a "-"-prefixed
+	// side would reach git as an option-like argument; all must hit the
 	// usage path instead. Dots inside a rev (v0.10.0..HEAD) stay legal.
-	for _, rng := range []string{"b...h", "a..b..c"} {
+	for _, rng := range []string{"b...h", "a..b..c", "-foo..HEAD", "b..--all"} {
 		code, out := runFake([]string{"repoaudit", rng}, fakeGit{})
 		if code != 2 || !strings.Contains(out, "usage:") {
 			t.Fatalf("%s: code=%d out=%q", rng, code, out)
