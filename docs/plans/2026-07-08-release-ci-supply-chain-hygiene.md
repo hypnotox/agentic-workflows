@@ -543,8 +543,9 @@ peeled `^{}` object for annotated tags):
       ADR-0079 Decision 1: a gate-run checker fails any unpinned remote
       uses: ref, undigested docker:// ref, or floated goreleaser-action
       version input; a real-tree test gives the invariant teeth inside
-      go test as well. Gate-composition docs and the AGENTS.md invariants
-      bullet update through their .awf parts."
+      go test as well. Gate-composition docs, the architecture components
+      bullet, and the AGENTS.md invariants bullets update through their
+      .awf parts."
       ```
 
       (If `./x check` lists other rendered targets (e.g. cursor outputs), stage those
