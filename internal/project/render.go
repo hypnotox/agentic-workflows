@@ -435,7 +435,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	segs := render.ParseSections(expanded)
-	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil { // coverage-ignore: awf's own config declares no stub-section part re-injecting its default, so this cannot fire through RenderAll; CheckSectionDefaultStubs is unit-tested in internal/render
+	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	assembled, parts := render.Assemble(segs, plan)
