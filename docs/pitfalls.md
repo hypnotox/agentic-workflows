@@ -177,3 +177,27 @@ artifact pins an exact signature or error string, check it against `.golangci.ym
 set before the plan freezes; the plan-reviewer's gate-clean-embedded focus covers what it
 enumerates, not novel linter/API interactions.
 
+## Growing a pinned set breaks exact-assertion tests the change forgot to enumerate
+
+Several gate tests deliberately pin a *complete current state*: `TestCurrentIsSeven` pins the
+migration registry head, `TestUpgradeAppliesInOrderIdempotent`/`TestUpgradeStampsTreeLock` pin
+the exact applied-migration list (assertion string **and** the `t.Errorf` want-list message —
+the ADR-0077 session fixed the strings and still shipped stale messages),
+`TestChangelogLatestMatchesVersion` pins newest-changelog-entry == `project.Version`, and the
+config validation tests pin what the validators accept. Adding a migration, changing a default
+set, or bumping the version therefore reds the gate in places far from the edit. When planning
+such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
+version const) and enumerate each update as a plan task — the ADR-0077 plan review found four
+of these as blockers precisely because the plan hadn't.
+
+## Mid-cycle version bump forces the changelog promotion — keep a standing `[Unreleased]`
+
+A schema-coupled change bumps `project.Version` mid-cycle (ADR-0049 Decision 4), and
+`TestChangelogLatestMatchesVersion` then requires a matching `## [X.Y.Z]` changelog section —
+so the standing `## [Unreleased]` gets promoted before any release is cut. But the repo-local
+`changelog-unreleased` audit rule (`./x audit-local`, ADR-0073) keys on the `[Unreleased]`
+section existing at HEAD and errors when it is gone (hit 2026-07-08). After promoting, add a
+fresh empty `## [Unreleased]` above the new section in the same change: the changelog parser
+ignores non-numeric headers, so the version-pin test stays green while the audit rule keeps
+its anchor.
+
