@@ -79,6 +79,10 @@
 - [ADR-0074: Report-only review agents](0074-report-only-review-agents.md) — Implemented
 - [ADR-0075: Working-memory check is on-demand, not a startup step](0075-working-memory-check-is-on-demand-not-a-startup-step.md) — Implemented
 
+## Proposed
+
+- [ADR-0076: Lock integrity and corrupt-lock failure policy](0076-lock-integrity-and-corrupt-lock-failure-policy.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

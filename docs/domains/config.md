@@ -37,3 +37,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0061: Unified catalog doc model for toggleable docs and singletons](../decisions/0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md)
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 
+### Proposed
+
+- [ADR-0076: Lock integrity and corrupt-lock failure policy](../decisions/0076-lock-integrity-and-corrupt-lock-failure-policy.md)
+
