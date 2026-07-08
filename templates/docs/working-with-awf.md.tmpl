@@ -23,6 +23,8 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 - `awf invariants` — report Implemented-ADR `inv:` slugs that lack a backing comment in source.
 - `awf commit-gate <file>` — validate one commit message (used by a commit-msg hook).
 - `awf changelog` — query the changelog by version or range.
+- `awf uninstall` — remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
+- `awf version` — print the binary's version.
 <!-- awf:end -->
 
 <!-- awf:section config-and-overrides -->
@@ -73,7 +75,7 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `prefix` | the project's artifact prefix |
 | `gateCmd` | the configured pre-commit gate command |
 | `checkCmd` | the configured drift-check command |
-| `sectionDefault` | the overridden section's own rendered default — re-inject it to *extend* rather than replace (a `stub` default cannot be re-injected) |
+| `sectionDefault` | the overridden section's own rendered default — re-inject it to *extend* rather than replace (re-injecting a `stub` default is a hard render error, not a silent skip) |
 
 To write the placeholder syntax literally in a part (for documentation), put a backslash before it:
 {{ "\\{{=awf:commitScopeTable}}" }} renders as the literal {{ "{{=awf:commitScopeTable}}" }}.

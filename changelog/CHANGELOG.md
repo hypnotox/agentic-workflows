@@ -32,6 +32,11 @@ query a single version or a range.
   authoring prompt) is a hard render error. Documented in the working-with-awf overrides
   section and placeholder key table.
 
+### Others
+- The rendered working-with-awf doc's command list now covers `awf uninstall` and
+  `awf version`, and its `sectionDefault` key description states the stub re-injection
+  failure mode precisely (a hard render error, not a silent skip).
+
 ## [0.10.0] - 2026-07-07
 ### Breaking changes
 - The canonical workflow chain gains a terminal `retrospective` step, and the `reviewing-impl`
