@@ -37,7 +37,7 @@ rationale (its Context and Consequences both turn on it).
 The session-start-check is pure Decision-item-5 prose. It is not a machine-backed
 invariant: ADR-0069's three `inv:` slugs cover the self-ignoring `.gitignore`
 (`memory-gitignore-always-on`), the agents-doc section parity
-(`agents-doc-section-parity`), and the brainstorming checkpoint coverage
+(`agents-doc-section-parity`), and the chain-node checkpoint coverage
 (`memory-checkpoint-chain-coverage`) — none constrains *when* the agent reads memory.
 So the trigger can be refined by prose alone, with no backed invariant to retire.
 
