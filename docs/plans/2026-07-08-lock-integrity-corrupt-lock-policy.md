@@ -558,8 +558,8 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
   - `check.go` `Check`: replace the `manifest.Load` + blanket "no lock" wrap with
     `lock, err := manifest.LoadOptional(p.lockPath()); if err != nil { return nil, err };
     if lock == nil { return nil, errors.New("no lock (run awf sync)") }` —
-    `errors.New`, not a zero-arg `fmt.Errorf`, or the perfsprint linter fails the gate;
-    add the `errors` import to `check.go`.
+    `errors.New`, not a zero-arg `fmt.Errorf`, or the perfsprint linter fails the gate
+    (`check.go` already imports `errors`).
   - `install.go` `CollisionsAt` → `([]string, error)`: `lock, err := manifest.LoadOptional(...);
     if err != nil { return nil, err }; if lock != nil { … }`. Ripple: `InitCollisions`
     and the init probe call site (`grep -rn 'CollisionsAt(' cmd/ internal/`).
