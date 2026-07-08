@@ -189,6 +189,19 @@ such a change, grep for the pinned tests up front (`Current()`, the applied-list
 version const) and enumerate each update as a plan task — the ADR-0077 plan review found four
 of these as blockers precisely because the plan hadn't.
 
+## A partial amendment needs a forward pointer on the amended ADR
+
+ADR-0079 Decision 4 revised one sentence of Implemented ADR-0065's Decision 3 (partial-item
+supersedence: the successor cites the item in prose and carries `related: [65]`, the
+predecessor stays live) — but nothing pointed 0065 → 0079, so 0065's Decision 3 read as
+current guidance with no signal it had been amended; caught only at impl review. The
+lifecycle rules regulate amendment-while-Proposed and full supersedence (predecessor status
+flips) but say nothing about the reverse edge of a partial amendment. Convention: when ADR X
+partially amends ADR Y, add X to Y's `related:` frontmatter in the same commit — a
+metadata-only edit, consistent with the mutable `superseded_by` field; the body stays
+append-only. If this recurs despite the note, promote to an audit or gate check that scans
+ADR prose for "amends ADR-NNNN" and requires the back-pointer.
+
 ## A milestone-time check must not double as an every-commit test
 
 `cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
