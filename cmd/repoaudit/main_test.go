@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -36,6 +37,27 @@ func runFake(args []string, g fakeGit) (int, string) {
 func TestSeverityLabel(t *testing.T) {
 	if warning.label() != "warning" || errorSev.label() != "error" {
 		t.Fatalf("labels: %q %q", warning.label(), errorSev.label())
+	}
+}
+
+func TestGitErrorSurfacesStderr(t *testing.T) {
+	// .Output() captures stderr on *exec.ExitError, but %v prints only
+	// "exit status N" — the decoration is what makes a git-failure finding
+	// diagnosable (e.g. "unknown revision 'origin/main'").
+	_, err := exec.Command("sh", "-c", "echo bad rev >&2; exit 3").Output()
+	if got := gitError(err); got == nil || !strings.Contains(got.Error(), "bad rev") {
+		t.Fatalf("stderr not surfaced: %v", got)
+	}
+	if gitError(nil) != nil {
+		t.Fatal("nil must stay nil")
+	}
+	plain := errors.New("boom")
+	if got := gitError(plain); !errors.Is(got, plain) || got.Error() != plain.Error() {
+		t.Fatalf("non-exec error must pass through undecorated, got %v", got)
+	}
+	_, err = exec.Command("sh", "-c", "exit 3").Output()
+	if got := gitError(err); !errors.Is(got, err) || got.Error() != err.Error() {
+		t.Fatalf("empty stderr must pass through undecorated, got %v", got)
 	}
 }
 

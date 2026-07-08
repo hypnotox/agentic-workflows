@@ -7,6 +7,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -46,7 +47,18 @@ func realGit(args ...string) (string, error) { // coverage-ignore: os/exec bound
 	// uncovered — realGit runs no test — failing the 100% gate. Callers check err
 	// before using the string, so returning it unconditionally is equivalent.
 	out, err := exec.Command("git", args...).Output()
-	return string(out), err
+	return string(out), gitError(err)
+}
+
+// gitError appends git's captured stderr to an *exec.ExitError: .Output() stores
+// it, but %v prints only "exit status N", leaving a git-failure finding
+// undiagnosable (e.g. no hint of "unknown revision 'origin/main'").
+func gitError(err error) error {
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && len(ee.Stderr) > 0 {
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(ee.Stderr)))
+	}
+	return err
 }
 
 func main() { os.Exit(runWith(os.Args, os.Stdout, os.Stderr, realGit)) } // coverage-ignore: os.Exit + real-git boundary; runWith is unit-tested
