@@ -52,3 +52,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0070: Stub sections and the unauthored-content advisory](../decisions/0070-stub-sections-and-the-unauthored-content-advisory.md)
 - [ADR-0072: Convention parts re-inject their section default via a placeholder](../decisions/0072-convention-parts-re-inject-their-section-default-via-a-placeholder.md)
 
+### Proposed
+
+- [ADR-0075: Working-memory check is on-demand, not a startup step](../decisions/0075-working-memory-check-is-on-demand-not-a-startup-step.md)
+
