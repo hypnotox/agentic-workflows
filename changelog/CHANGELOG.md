@@ -36,6 +36,8 @@ query a single version or a range.
 - The rendered working-with-awf doc's command list now covers `awf uninstall` and
   `awf version`, and its `sectionDefault` key description states the stub re-injection
   failure mode precisely (a hard render error, not a silent skip).
+- The rendered ADR-README's `supersedes:` example now models a bare int (`[1]`) instead
+  of a zero-padded one (`[0001]`), which YAML-1.1 parsers read as octal.
 - The two plan-execution skills' terminal-handoff line now attributes finding
   classification to the report-only review agent (ADR-0074): the reviewing skill routes
   findings by the agent's classification rather than "classifies" them itself.
