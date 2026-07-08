@@ -8,6 +8,13 @@ query a single version or a range.
 
 ## [Unreleased]
 ### Features
+- The agent guide's working-memory check is now on-demand (ADR-0075). The rendered guidance
+  no longer tells the agent to check `.awf/memory/` on *every* start of work; instead it reads
+  memory when the request implies earlier work to continue, or as a safety net when a fresh or
+  context-compacted session finds `.awf/memory/` non-empty and unaccounted-for — and skips the
+  check for a self-contained request. The resume-discipline (match → resume; ambiguous → ask;
+  never silently resume a stale effort) is unchanged. Partial-item supersedence of ADR-0069
+  Decision item 5; ADR-0069 stays Implemented.
 - Review agents are now report-only (ADR-0074): the three reviewer subagents
   (`adr-reviewer`, `plan-reviewer`, `code-reviewer`) emit findings and a digest but no longer
   edit, commit, or re-review. The `<prefix>-reviewing-adr`/`-plan`/`-plan-resync`/`-impl`
