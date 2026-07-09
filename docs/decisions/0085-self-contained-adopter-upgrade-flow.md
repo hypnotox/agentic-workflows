@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [bootstrap-pin]
 superseded_by: ""
 tags: [bootstrap, upgrade, rendering]
-related: [40, 49, 76, 79, 82]
+related: [39, 40, 49, 76, 79, 82]
 domains: [rendering, config]
 ---
 # ADR-0085: Self-contained adopter upgrade flow
@@ -29,7 +29,7 @@ Forces and observations shaping the design:
 - The download/verify/cache logic (~40 lines of portable shell: OS/arch detection, checksum
   tool fallback, XDG cache layout) lives in the bootstrap template. A second script that
   duplicates it is a second copy to keep bug-free.
-- `awf upgrade` early-returns "config already at schema N" *without syncing* when no migration
+- `awf upgrade` early-returns "already current" *without syncing* when no migration
   applies (`cmd/awf/upgrade.go`). Same-schema version bumps — the common case for minor
   releases — therefore never re-render, so the bootstrap pin (and any template improvements)
   would not stick even after a successful binary swap. Any single-command upgrade flow breaks
