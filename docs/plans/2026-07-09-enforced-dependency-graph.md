@@ -14,7 +14,7 @@ deliberately its own, so `Closure` lands in Phase 4); the resolver
 (`internal/project/resolve.go`) turns walks into `PlanOp` plans consumed by `runAdd`/
 `runRemove`; validation checks direct edges only (closure by induction). Two hard
 sequencing constraints from the ADR: the suppression code + its
-`doc-gated-skill-suppressed` marker are deleted only in the flip commit (Phase 7), and
+`doc-gated-skill-suppressed` marker are deleted only in the flip commit (Phase 6), and
 every new exported func lands in the same commit as its production consumer (dead-code
 gate). Graph facts (reviewer-verified): two mutually-requiring cores (5-skill planning,
 3-skill execution, edges planning→execution), `brainstorming` a pure source,
@@ -38,7 +38,7 @@ edits), `changelog/`, `.awf/` parts.
   `internal/project/drift_test.go`, `internal/project/skillrefs_test.go`,
   `internal/migrate/migrate.go` (+ the seven existing migration files' `Apply`
   signatures), `cmd/awf/main.go`, `cmd/awf/list_add.go`, `cmd/awf/list_add_test.go`,
-  `cmd/awf/init.go` (if the trim threads through it), `cmd/awf/upgrade.go`,
+  `cmd/awf/init.go`, `cmd/awf/upgrade.go`,
   `templates/agents-doc/AGENTS.md.tmpl` (awf-setup section),
   `templates/docs/working-with-awf.md.tmpl` (commands section),
   `changelog/CHANGELOG.md`, `.awf/agents-doc.yaml`,
@@ -52,8 +52,8 @@ edits), `changelog/`, `.awf/` parts.
 - Deleted: none (the suppression code is removed in place)
 
 **Phase → ADR Decision map:** P1→D1(edges)+D3; P2→D2+D4+D5+D6;
-P3→D8; P4→D1(closure)+D9; P5+P6→prose/fixture obligations the decisions imply;
-P7→D7 + flip obligations.
+P3→D8; P4→D1(closure)+D9; P5→fixture obligations the decisions imply;
+P6→D7 + flip obligations. (Prose obligations ride P2 per the ADR's same-commit rule.)
 
 ---
 
@@ -171,7 +171,7 @@ P7→D7 + flip obligations.
       - `internal/project/skillrefs_test.go:100` — `TestEffectiveSkillsMembership`,
         the behavioral anchor for `skills-context-effective-set` (suppression
         membership; `brainstorming` there carries a `local: true` sidecar). Its
-        suppression coverage must SURVIVE until Phase 7, so do not rework it onto
+        suppression coverage must SURVIVE until Phase 6, so do not rework it onto
         dead references: add `docs: [roadmap]` to the fixture so `Open` passes the
         new validation, then drive `roadmap-graduation`'s suppression via the same
         post-`Open` mutation pattern the test already uses (drop `roadmap` from
@@ -379,8 +379,24 @@ P7→D7 + flip obligations.
         `note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)`.
 - [ ] Add a glossary entry for **plan op** (one line: a single enable-array
       change in a resolver plan, carrying add/remove direction and required-by
-      provenance) to `.awf/docs/parts/glossary/terms.md`, alphabetically placed;
-      `./x sync` refreshes `docs/glossary.md` in this commit.
+      provenance) to `.awf/docs/parts/glossary/terms.md`, alphabetically placed.
+- [ ] Update the prose this behavior obsoletes — same commit per the ADR's
+      Consequences ("Prose this ADR obsoletes updates in the same commits that
+      change the behavior"):
+      - `templates/agents-doc/AGENTS.md.tmpl` (awf-setup section): rewrite "The
+        workflow-chain skills reference one another by name, so disable them as
+        a unit rather than piecemeal, or a handoff will point at a skill that
+        isn't enabled." to "The workflow-chain skills reference one another by
+        name; `awf add` enables a skill's full requirement closure and
+        `awf remove` refuses while enabled skills still require the target
+        (`--with-dependents` removes the unit together)."
+      - `templates/docs/working-with-awf.md.tmpl` (commands section): extend the
+        add/remove descriptions with the closure semantics and the
+        `--with-dependents` / `--dry-run` forms (one sentence each, matching the
+        help text).
+      - Run `./x sync` — this repo's rendered AGENTS.md/CLAUDE.md/
+        working-with-awf/glossary refresh lands in this commit (adopter-facing
+        template change, covered by the Phase-3 Breaking changelog entry).
 - [ ] Tests:
       - `internal/project/resolve_test.go`: seed-dependent cascade sizes pinned to
         the ADR's verified numbers over a full-chain fixture — remove
@@ -533,28 +549,10 @@ P7→D7 + flip obligations.
 - [ ] Run `./x gate` — green. Commit:
       `feat(awf): close the init selection and derive its agents (ADR-0081)`.
 
-## Phase 5 — working-with-awf + agent-guide prose (templates)
-
-- [ ] In `templates/agents-doc/AGENTS.md.tmpl` (awf-setup section), rewrite the
-      sentence "The workflow-chain skills reference one another by name, so
-      disable them as a unit rather than piecemeal, or a handoff will point at a
-      skill that isn't enabled." to: "The workflow-chain skills reference one
-      another by name; `awf add` enables a skill's full requirement closure and
-      `awf remove` refuses while enabled skills still require the target
-      (`--with-dependents` removes the unit together)."
-- [ ] In `templates/docs/working-with-awf.md.tmpl` (commands section), extend the
-      add/remove command descriptions with the closure semantics and the
-      `--with-dependents` / `--dry-run` forms (one sentence each, matching the
-      help text).
-- [ ] Run `./x sync` (this repo's rendered AGENTS.md/CLAUDE.md/working-with-awf
-      refresh) and `./x gate` — green. Commit:
-      `docs(rendering): mechanize the disable-as-a-unit guidance (ADR-0081)`
-      — adopter-facing template change; covered by the Phase-3 Breaking entry.
-
-## Phase 6 — full-suite fixture sweep
+## Phase 5 — full-suite fixture sweep
 
 - [ ] Run `go test ./...` and `./x gate full`; repair any remaining fixture the
-      closure validation or the new CLI signatures broke that Phases 1–5 did not
+      closure validation or the new CLI signatures broke that Phases 1–4 did not
       already touch — the arity/usage assertions live in `cmd/awf/run_test.go`
       and `cmd/awf/list_add_test.go`, and the `awf init` e2e tests cover the new
       `ScaffoldConfig` returns. The repair rule from Phase 1 applies: leaves stay
@@ -562,10 +560,10 @@ P7→D7 + flip obligations.
       dead-ref scenarios use part-introduced references.
 - [ ] Run `./x gate` — green. Commit:
       `test(awf): sweep fixtures for closure validation and flags (ADR-0081)`
-      (skip the commit if Phases 1–5 left nothing — fold any single-file fix into
+      (skip the commit if Phases 1–4 left nothing — fold any single-file fix into
       the nearest phase instead).
 
-## Phase 7 — suppression removal, docs, flip
+## Phase 6 — suppression removal, docs, flip
 
 - [ ] In `internal/project/render.go`: delete `skillDocGateOpen` and simplify
       `effectiveSkills` — the loop keeps the sidecar read and sets
@@ -627,7 +625,7 @@ P7→D7 + flip obligations.
 - Never hand-edit rendered files — change templates or `.awf/` parts and `./x sync`.
 - `./x audit-local` runs at impl review; the Phase-3 Breaking changelog entry
   covers the adopter-facing `internal/catalog`/`internal/config`/`templates/`
-  touches; Phase 5's template edit is also covered by it.
+  touches; Phase 2's template edits are also covered by it.
 - If any pinned cascade count or closure list mismatches at execution time, stop:
   the catalog changed since 2026-07-09 — re-derive the numbers from
   `catalog.Standard` and amend the still-`Proposed` ADR if its examples drifted;
