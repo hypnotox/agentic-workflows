@@ -241,4 +241,9 @@ func TestUpgradeScriptDelegatesFetch(t *testing.T) {
 			t.Errorf("upgrade script must not carry its own fetch/verify logic, found %q", banned)
 		}
 	}
+	// An empty target must fail loudly before the fetch: the bootstrap's
+	// default expansion would otherwise silently re-fetch the current pin.
+	if !strings.Contains(rf.Content, `[ -n "${target}" ] ||`) {
+		t.Errorf("upgrade script missing the empty-target guard:\n%s", rf.Content)
+	}
 }
