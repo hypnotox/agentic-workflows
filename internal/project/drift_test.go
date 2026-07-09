@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -247,16 +249,56 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 // templates reference .commitScopes; non-referencing artifacts stay in sync,
 // and the rendered prose quotes the configured scopes (ADR-0051).
 // invariant: scopes-in-confighash
-func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
-	cfg := func(scope string) string {
-		return "prefix: example\nvars: {}\nskills:\n" +
-			"  - adr-lifecycle\n  - brainstorming\n  - executing-plans\n  - proposing-adr\n" +
-			"  - retrospective\n  - reviewing-adr\n  - reviewing-impl\n  - reviewing-plan\n  - reviewing-plan-resync\n" +
-			"  - subagent-driven-development\n  - tdd\n  - writing-plans\n" +
-			"agents:\n  - adr-reviewer\n  - code-reviewer\n  - plan-reviewer\n" +
-			"audit:\n  allowedScopes:\n    - " + scope + "\n"
+// chainClosureConfig derives the chain-unit enabled set from the catalog:
+// the Chain-flagged skills, their transitive RequiresSkills closure, and the
+// RequiresAgent agents of every skill in that combined set (ADR-0080
+// Decision 5) — never a hand list.
+func chainClosureConfig(scope string) string {
+	set := map[string]bool{}
+	var add func(name string)
+	add = func(name string) {
+		if set[name] {
+			return
+		}
+		set[name] = true
+		for _, r := range catalog.Standard.Skills[name].RequiresSkills {
+			add(r)
+		}
 	}
-	root := scaffold(t, cfg("awf"))
+	for name, spec := range catalog.Standard.Skills {
+		if spec.Chain {
+			add(name)
+		}
+	}
+	agents := map[string]bool{}
+	skills := make([]string, 0, len(set))
+	for name := range set {
+		skills = append(skills, name)
+		if a := catalog.Standard.Skills[name].RequiresAgent; a != "" {
+			agents[a] = true
+		}
+	}
+	sort.Strings(skills)
+	agentList := make([]string, 0, len(agents))
+	for a := range agents {
+		agentList = append(agentList, a)
+	}
+	sort.Strings(agentList)
+	var b strings.Builder
+	b.WriteString("prefix: example\nvars: {}\nskills:\n")
+	for _, s := range skills {
+		b.WriteString("  - " + s + "\n")
+	}
+	b.WriteString("agents:\n")
+	for _, a := range agentList {
+		b.WriteString("  - " + a + "\n")
+	}
+	b.WriteString("audit:\n  allowedScopes:\n    - " + scope + "\n")
+	return b.String()
+}
+
+func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
+	root := scaffold(t, chainClosureConfig("awf"))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -271,7 +313,7 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	if !strings.Contains(string(rendered), "using a Conventional-Commits scope from `awf`") {
 		t.Errorf("rendered prose does not quote audit.allowedScopes:\n%s", rendered)
 	}
-	testsupport.WriteAwfConfig(t, root, cfg("core"))
+	testsupport.WriteAwfConfig(t, root, chainClosureConfig("core"))
 	p2, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -290,8 +332,8 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	if !flagged[".claude/skills/example-reviewing-adr/SKILL.md"] {
 		t.Errorf("scopes edit did not reflag the referencing skill; drift = %v", drift)
 	}
-	if flagged[".claude/skills/example-tdd/SKILL.md"] {
-		t.Error("scopes edit reflagged the non-referencing tdd skill")
+	if flagged[".claude/skills/example-brainstorming/SKILL.md"] {
+		t.Error("scopes edit reflagged the non-referencing brainstorming skill")
 	}
 }
 
