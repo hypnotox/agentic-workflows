@@ -35,7 +35,7 @@ func applySingletonStandardDocs(root string, out io.Writer) error {
 		}
 		for _, r := range relocations {
 			moved, err := relocate(filepath.Join(awfDir, filepath.Join(r.src...)), filepath.Join(awfDir, filepath.Join(r.dst...)))
-			if err != nil { // coverage-ignore: relocate errors here only on the existing-destination guard or a permission fault, neither of which occurs over the fresh trees this migration runs on
+			if err != nil {
 				return err
 			}
 			if moved {
@@ -61,13 +61,13 @@ func applySingletonStandardDocs(root string, out io.Writer) error {
 func relocate(src, dst string) (bool, error) {
 	if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
 		return false, nil
-	} else if err != nil { // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
+	} else if err != nil { // e.g. ENOTDIR: a path component of src is a regular file
 		return false, err
 	}
 	if _, err := os.Stat(dst); err == nil {
 		return false, fmt.Errorf("cannot relocate: %s already exists", dst)
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { // coverage-ignore: dst's parent is under the just-Stat'd .awf dir; fails only on a permission fault a test cannot trigger
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { // e.g. dst's parent exists as a regular file
 		return false, err
 	}
 	if err := os.Rename(src, dst); err != nil { // coverage-ignore: Rename between two just-Stat'd paths under the same .awf dir fails only on a permission/IO fault a test cannot trigger
@@ -85,7 +85,7 @@ func removeFromDocsArray(path, name string) (bool, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
-	if err != nil { // coverage-ignore: ReadFile faults only on a permission error that the test root bypasses
+	if err != nil { // e.g. EISDIR: the config path exists as a directory
 		return false, err
 	}
 	var probe struct {

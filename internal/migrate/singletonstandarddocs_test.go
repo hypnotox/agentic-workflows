@@ -104,3 +104,54 @@ func TestRelocateRefusesExistingDestination(t *testing.T) {
 		t.Errorf("destination was clobbered: %v, %s", err, b)
 	}
 }
+
+// A partial prior migration — old and new sidecar location both present — is a
+// realistic adopter tree; the migration must surface relocate's refusal rather
+// than silently overwrite (the by-design branch its call site propagates).
+func TestSingletonStandardDocsRefusesPartialPriorMigration(t *testing.T) {
+	root := t.TempDir()
+	awf := filepath.Join(root, ".awf")
+	testsupport.WriteFile(t, filepath.Join(awf, "config.yaml"), "prefix: ex\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "docs", "workflow.yaml"), "data: {}\n")
+	testsupport.WriteFile(t, filepath.Join(awf, "workflow.yaml"), "data: {}\n")
+
+	err := applySingletonStandardDocs(root, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("expected the existing-destination refusal, got %v", err)
+	}
+}
+
+// A path component of src that is a regular file makes the initial Stat fail
+// with a non-NotExist error (ENOTDIR), which relocate must surface.
+func TestRelocateSurfacesStatError(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "docs"), "a file, not a dir\n")
+	if _, err := relocate(filepath.Join(dir, "docs", "workflow.yaml"), filepath.Join(dir, "workflow.yaml")); err == nil {
+		t.Fatal("expected the ENOTDIR stat error to surface")
+	}
+}
+
+// A dst parent that exists as a regular file makes MkdirAll fail without any
+// permission fault involved; relocate must surface it.
+func TestRelocateSurfacesMkdirError(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.yaml")
+	testsupport.WriteFile(t, src, "SRC\n")
+	testsupport.WriteFile(t, filepath.Join(dir, "parts"), "a file, not a dir\n")
+	if _, err := relocate(src, filepath.Join(dir, "parts", "workflow", "x.md")); err == nil {
+		t.Fatal("expected the not-a-directory MkdirAll error to surface")
+	}
+}
+
+// A config path that exists as a directory makes ReadFile fail with a
+// non-NotExist error (EISDIR), which removeFromDocsArray must surface.
+func TestRemoveFromDocsArraySurfacesReadError(t *testing.T) {
+	dir := t.TempDir()
+	cfgDir := filepath.Join(dir, "config.yaml")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := removeFromDocsArray(cfgDir, "workflow"); err == nil {
+		t.Fatal("expected the directory read error to surface")
+	}
+}
