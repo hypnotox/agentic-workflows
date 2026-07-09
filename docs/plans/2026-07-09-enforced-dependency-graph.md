@@ -8,7 +8,9 @@
 in the ADR — not duplicated here.
 
 **Architecture summary:** edges are enumerated in exactly one place
-(`catalog.RequiresOf`); `catalog.Closure` is the pure forward walk; the resolver
+(`catalog.RequiresOf`); `catalog.Closure` is the pure forward walk (first production
+consumer: Phase 4's scaffold — the resolver's provenance-carrying walks are
+deliberately its own, so `Closure` lands in Phase 4); the resolver
 (`internal/project/resolve.go`) turns walks into `PlanOp` plans consumed by `runAdd`/
 `runRemove`; validation checks direct edges only (closure by induction). Two hard
 sequencing constraints from the ADR: the suppression code + its
@@ -40,6 +42,7 @@ edits), `changelog/`, `.awf/` parts.
   `templates/agents-doc/AGENTS.md.tmpl` (awf-setup section),
   `templates/docs/working-with-awf.md.tmpl` (commands section),
   `changelog/CHANGELOG.md`, `.awf/agents-doc.yaml`,
+  `.awf/docs/parts/glossary/terms.md`,
   `.awf/domains/parts/config/current-state.md`,
   `.awf/domains/parts/rendering/current-state.md`,
   `.awf/domains/parts/tooling/current-state.md`,
@@ -48,9 +51,9 @@ edits), `changelog/`, `.awf/` parts.
   refreshed by `./x sync`
 - Deleted: none (the suppression code is removed in place)
 
-**Phase → ADR Decision map:** P1→D1(edges)+D3; P2→D1(closure)+D2+D4+D5+D6;
-P3→D8; P4→D9; P5+P6→test/fixture repairs the decisions imply; P7→D7 + flip
-obligations.
+**Phase → ADR Decision map:** P1→D1(edges)+D3; P2→D2+D4+D5+D6;
+P3→D8; P4→D1(closure)+D9; P5+P6→prose/fixture obligations the decisions imply;
+P7→D7 + flip obligations.
 
 ---
 
@@ -96,7 +99,8 @@ obligations.
       ```
 
       (`Closure` deliberately does NOT land here — its first production consumer is
-      the Phase-2 resolver; landing it now fails the dead-code gate.)
+      Phase 4's scaffold; landing it earlier fails the dead-code gate, since the
+      resolver's provenance-carrying walks do not call it.)
 
 - [ ] In `internal/project/validate.go`, replace the ADR-0050 pairing block inside
       `checkKindAgainstCatalog` — the four lines
@@ -164,18 +168,26 @@ obligations.
 - [ ] Repair the fixtures the new validation refuses (audit: `grep -rn "skills:"
       --include="*_test.go" internal/ cmd/ | grep -v "map\["` and fix every fixture
       enabling a non-leaf skill without its closure). Known today:
-      - `internal/project/skillrefs_test.go:100` — the fixture
-        `skills: [tdd, roadmap-graduation, brainstorming]` (no roadmap doc) is
-        doubly refused. This test exercises dead-skill-reference detection, which
-        catalog-edge validation now forecloses for catalog-trimmed chains — rework
-        the scenario onto a **part-introduced** reference: fixture
-        `skills: [tdd]`, plus a convention part for tdd's `notes` section whose
-        body names `example-brainstorming`, asserting the same
-        `dead-skill-reference` drift fires. (ADR-0046's check remains the oracle
-        for part- and local-sourced references.)
-      - Any other fixture surfaced by the audit follows the same rule: leaves stay
-        as-is; a chain skill either gains its closure or the scenario moves to a
-        part-based reference.
+      - `internal/project/skillrefs_test.go:100` — `TestEffectiveSkillsMembership`,
+        the behavioral anchor for `skills-context-effective-set` (suppression
+        membership; `brainstorming` there carries a `local: true` sidecar). Its
+        suppression coverage must SURVIVE until Phase 7, so do not rework it onto
+        dead references: add `docs: [roadmap]` to the fixture so `Open` passes the
+        new validation, then drive `roadmap-graduation`'s suppression via the same
+        post-`Open` mutation pattern the test already uses (drop `roadmap` from
+        `p.Cfg.Docs` after `Open`) and keep the membership assertions unchanged.
+      - Expected-refusal pairing tests update rather than rework:
+        `TestOpenRejectsPairedSkillWithoutAgent` (`internal/project/project_test.go`,
+        fixture `skills: [reviewing-impl]`) pins the old ADR-0050 error string —
+        update its want to the `checkNodeRequirements` message (note
+        `reviewing-impl`'s first failing edge is now a `RequiresSkills` edge, not
+        the agent) or merge it into `TestOpenRefusesUnclosedEnabledSet`;
+        previously-clean pairing fixtures (`TestOpenAllowsPairedSkillWithAgent`)
+        gain their skill closure.
+      - Any other fixture surfaced by the audit: leaves stay as-is; a chain skill
+        gains its closure; a dead-ref scenario that validation forecloses moves to
+        a part-introduced reference (ADR-0046's check remains the oracle for part-
+        and local-sourced references).
 - [ ] Add to `internal/catalog/graph_test.go` a unit test for `RequiresOf` over
       `Standard` (skill with all three edge kinds — none exists today, so assert
       `reviewing-plan` yields exactly `[{skill reviewing-plan-resync} {skill writing-plans} {agent plan-reviewer}]`,
@@ -194,30 +206,7 @@ obligations.
       `feat(config): validate the enabled set closed at open (ADR-0081)` — body
       names Decision 3, the 0050 generalization, and the fixture-repair rule.
 
-## Phase 2 — closure, resolver, graph-aware add/remove CLI
-
-- [ ] Append to `internal/catalog/graph.go`:
-
-      ```go
-      // Closure returns the forward closure of seeds under RequiresOf, seeds
-      // included, breadth-first with edges in declaration order (deterministic).
-      func Closure(cat *Catalog, seeds []Node) []Node {
-      	seen := map[Node]bool{}
-      	var out []Node
-      	queue := append([]Node(nil), seeds...)
-      	for len(queue) > 0 {
-      		n := queue[0]
-      		queue = queue[1:]
-      		if seen[n] {
-      			continue
-      		}
-      		seen[n] = true
-      		out = append(out, n)
-      		queue = append(queue, RequiresOf(cat, n)...)
-      	}
-      	return out
-      }
-      ```
+## Phase 2 — resolver, graph-aware add/remove CLI
 
 - [ ] Create `internal/project/resolve.go`:
 
@@ -352,7 +341,11 @@ obligations.
         singleton check reads `pos[0]`, and the calls become
         `runAdd(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)` and
         `runRemove(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)`
-        (singleton forms pass `false` flags; singletons are not graph nodes).
+        (singleton forms pass `false` flags). One uniform rule for every
+        non-graph path — `domain`, `target`, `bootstrap`, `hooks`: a graph-only
+        flag (`--dry-run`, `--with-dependents`) on them returns a usage error
+        naming the graph kinds (`skill`, `agent`, `doc`), so no flag is ever
+        silently ignored.
       - Help text: `add`'s usage becomes `awf add <kind> <name> [--dry-run]` with a
         Flags block (`--dry-run    print the closure plan without changing the config`);
         `remove`'s becomes `awf remove <kind> <name> [--with-dependents] [--dry-run]`
@@ -372,8 +365,8 @@ obligations.
         This replaces the ADR-0050 `pairedAgent` block (move its
         `// invariant: add-skill-pairs-agent` marker onto the plan-building block)
         and the ADR-0013 RequiresDoc advisory note (delete it — the doc is now a
-        plan op). `domain` keeps its existing bespoke path (not a graph kind;
-        `--dry-run` on a domain returns a usage error naming graph kinds).
+        plan op). `domain` keeps its existing bespoke path (not a graph kind; the
+        uniform graph-only-flag usage error above covers it).
       - Rewire `runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.Writer)`:
         replace the agent-pairing guard with, for catalog-backed kinds,
         `plan := p.ResolveRemove(kind, name)`; print every op
@@ -384,20 +377,11 @@ obligations.
         the `hasSidecarOrParts` orphan note over every removed node, and after a
         cascade print for each still-enabled agent with no requiring skill:
         `note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)`.
-- [ ] Switch `chainClosureConfig` (internal/project/drift_test.go) to build its
-      skill set from `catalog.Closure(catalog.Standard, seeds)` where seeds are the
-      `Chain`-flagged skills as `Node{Kind: "skill"}` values, partitioning the
-      result by `Node.Kind` into the skills and agents lists (drop the inline
-      recursive walk; keep the sorted-YAML assembly).
+- [ ] Add a glossary entry for **plan op** (one line: a single enable-array
+      change in a resolver plan, carrying add/remove direction and required-by
+      provenance) to `.awf/docs/parts/glossary/terms.md`, alphabetically placed;
+      `./x sync` refreshes `docs/glossary.md` in this commit.
 - [ ] Tests:
-      - `internal/catalog/graph_test.go`: `TestClosureIsCycleSafe` on a synthetic
-        two-node mutually-requiring catalog (terminates, returns both, seeds
-        first); `TestClosureChainUnit` on `Standard`: closure of the Chain seeds =
-        exactly 11 skills + 3 agents (assert the sorted name lists verbatim:
-        skills adr-lifecycle, brainstorming, executing-plans, proposing-adr,
-        retrospective, reviewing-adr, reviewing-impl, reviewing-plan,
-        reviewing-plan-resync, subagent-driven-development, writing-plans; agents
-        adr-reviewer, code-reviewer, plan-reviewer).
       - `internal/project/resolve_test.go`: seed-dependent cascade sizes pinned to
         the ADR's verified numbers over a full-chain fixture — remove
         `brainstorming` → plan length 1; remove `reviewing-plan` (planning core) →
@@ -423,10 +407,17 @@ obligations.
 - [ ] Thread an output writer through migrations: `Migration.Apply` becomes
       `func(root string, out io.Writer) error`; update the seven existing `apply*`
       funcs to the new signature (each ignores `out`), `Upgrade(root)` becomes
-      `Upgrade(root string, out io.Writer)`, and `runUpgrade` passes its `stdout`.
-      Reconcile `internal/migrate/migrate.go`'s package doc comment: it gains its
-      first `internal/catalog` import but stays off the render/sync/check load
-      path.
+      `Upgrade(root string, out io.Writer) ([]string, error)` (return values
+      unchanged), and every call site follows — `runUpgrade` passes its `stdout`,
+      and each `Upgrade(root)` call in `internal/migrate/migrate_test.go` gains
+      an `io.Discard` (or a buffer where output is asserted). Reconcile
+      `internal/migrate/migrate.go`'s package doc comment: it gains its first
+      `internal/catalog` import but stays off the render/sync/check load path.
+- [ ] Extend the pinned applied-migration lists (the docs/pitfalls.md
+      registry-drift pitfall): `TestUpgradeAppliesInOrderIdempotent`
+      (`internal/migrate/migrate_test.go:168`) gains `close-enabled-set` in both
+      its want-list and its `t.Errorf` message, and `TestUpgradeStampsTreeLock`'s
+      expectations follow; audit the file for any other exact-list assertion.
 - [ ] Create `internal/migrate/closeenabledset.go` — registry entry
       `{To: 8, Name: "close-enabled-set", Apply: applyCloseEnabledSet}`:
       two ordered steps per ADR-0081 Decision 8, computed from `config.Load(root)`
@@ -466,6 +457,11 @@ obligations.
       dormant skill kept; re-run is a byte-identical no-op (idempotence); e2e in
       `cmd/awf`: a schema-7 config that Phase 1 refuses at open passes
       `awf upgrade` then opens clean.
+- [ ] Add a glossary entry for **dormant doc-gated skill** (one line: a skill
+      enabled while its required doc is disabled — pre-schema-8 it silently
+      rendered nothing; the close-enabled-set migration drops it) to
+      `.awf/docs/parts/glossary/terms.md`, alphabetically placed; `./x sync`
+      refreshes `docs/glossary.md` in this commit.
 - [ ] Run `./x gate` — green. Commit:
       `feat(config): close the enabled set in a schema-8 migration (ADR-0081)`.
 
@@ -476,9 +472,51 @@ obligations.
       `trim != nil && trim.Skills != nil`, run `catalog.Closure` over the trimmed
       skills (as skill Nodes), partition the result — the closure's skills become
       `skillNames` (closure-completing the trim, ADR-0081 Decision 9), its agents
-      become `agentNames`, its docs merge into `docNames` — and note each addition
-      beyond the user's selection on the init output; when `trim` is nil (curated
-      default), keep all agents exactly as today (a default, not a derived set).
+      become `agentNames`, its docs merge into `docNames`; when `trim` is nil
+      (curated default), keep all agents exactly as today (a default, not a
+      derived set). `catalog.Closure` and its tests land HERE (this is its first
+      production consumer — dead-code gate): append the func to
+      `internal/catalog/graph.go`:
+
+      ```go
+      // Closure returns the forward closure of seeds under RequiresOf, seeds
+      // included, breadth-first with edges in declaration order (deterministic).
+      func Closure(cat *Catalog, seeds []Node) []Node {
+      	seen := map[Node]bool{}
+      	var out []Node
+      	queue := append([]Node(nil), seeds...)
+      	for len(queue) > 0 {
+      		n := queue[0]
+      		queue = queue[1:]
+      		if seen[n] {
+      			continue
+      		}
+      		seen[n] = true
+      		out = append(out, n)
+      		queue = append(queue, RequiresOf(cat, n)...)
+      	}
+      	return out
+      }
+      ```
+
+      with `internal/catalog/graph_test.go` gaining `TestClosureIsCycleSafe` (a
+      synthetic two-node mutually-requiring catalog: terminates, returns both,
+      seeds first) and `TestClosureChainUnit` (closure of `Standard`'s Chain
+      seeds = exactly 11 skills + 3 agents, asserting the sorted lists verbatim:
+      skills adr-lifecycle, brainstorming, executing-plans, proposing-adr,
+      retrospective, reviewing-adr, reviewing-impl, reviewing-plan,
+      reviewing-plan-resync, subagent-driven-development, writing-plans; agents
+      adr-reviewer, code-reviewer, plan-reviewer); and `chainClosureConfig`
+      (`internal/project/drift_test.go`) switches to building its lists from
+      `catalog.Closure` (drop the inline recursive walk; keep the sorted-YAML
+      assembly).
+      For the addition notes: `ScaffoldConfig` additionally returns the
+      closure-added names (`(content []byte, added []string, err error)` — names
+      beyond the user's trim selection, kind-prefixed like `skill
+      reviewing-plan-resync`), and `runInit` (`cmd/awf/init.go` — the definite
+      caller, `runInit` passes `trim` straight to `ScaffoldConfig`) prints one
+      `note: also enabled <kind> <name> (required by your selection)` line per
+      entry.
       Update the `invariant: catalog-trim-applied` comment prose to say the trim
       is closure-completed, and add `// invariant: init-set-closed` on the closure
       block.
@@ -490,7 +528,7 @@ obligations.
       exactly `tdd` + zero agents; a trim selecting `roadmap-graduation` gains the
       `roadmap` doc.
 - [ ] Run `./x gate` — green. Commit:
-      `feat(awf): derive init agents from the trim and close the selection (ADR-0081)`.
+      `feat(awf): close the init selection and derive its agents (ADR-0081)`.
 
 ## Phase 5 — working-with-awf + agent-guide prose (templates)
 
@@ -514,13 +552,13 @@ obligations.
 
 - [ ] Run `go test ./...` and `./x gate full`; repair any remaining fixture the
       closure validation or the new CLI signatures broke that Phases 1–5 did not
-      already touch (`awf init` e2e tests, `failure_paths_test.go`'s command
-      matrix — `runAdd`/`runRemove` arity — and `help_test.go` goldens for the new
-      flag text). The repair rule from Phase 1 applies: leaves stay minimal, chain
-      fixtures derive via `chainClosureConfig`/`catalog.Closure`, dead-ref
-      scenarios use part-introduced references.
+      already touch — the arity/usage assertions live in `cmd/awf/run_test.go`
+      and `cmd/awf/list_add_test.go`, and the `awf init` e2e tests cover the new
+      `ScaffoldConfig` returns. The repair rule from Phase 1 applies: leaves stay
+      minimal, chain fixtures derive via `chainClosureConfig`/`catalog.Closure`,
+      dead-ref scenarios use part-introduced references.
 - [ ] Run `./x gate` — green. Commit:
-      `test(awf): sweep fixtures for closure validation and CLI flags (ADR-0081)`
+      `test(awf): sweep fixtures for closure validation and flags (ADR-0081)`
       (skip the commit if Phases 1–5 left nothing — fold any single-file fix into
       the nearest phase instead).
 
@@ -536,6 +574,12 @@ obligations.
       render site (the `skillDocGateOpen` caller at render.go:285) together with
       its `// invariant: doc-gated-skill-suppressed` marker — the retirement
       lands with the flip in this same commit.
+- [ ] Rewrite `TestEffectiveSkillsMembership`
+      (`internal/project/skillrefs_test.go`) as the behavioral anchor for the
+      amended invariant: effective = enabled — the doc-gated skill stays a member
+      with its doc enabled or (post-`Open` mutation) disabled, and the
+      `local: true` skill stays a member; drop the suppression-membership
+      assertions Phase 1 preserved.
 - [ ] `.awf/agents-doc.yaml` `data.invariants` gains five one-per-slug bullets
       (8-space indent before `- ref:`):
 
