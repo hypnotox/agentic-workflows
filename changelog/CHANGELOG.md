@@ -22,6 +22,12 @@ query a single version or a range.
   now always means rendered.
 
 ### Others
+- `awf upgrade` migrations now print one provenance line per config
+  operation: the schema-6 migration reports each relocated sidecar/parts
+  directory and each doc it strips from `docs:`, and the schema-7 migration
+  reports each glob it anchors — matching the schema-8 migration's existing
+  per-op lines, so an upgrade's config changes are readable from the output
+  instead of the diff.
 - Shipped templates no longer cite awf's own decision records: the agent
   guide's commit-scope bullet, the working-with-awf command overview, and
   the bootstrap comments drop their `ADR-NNNN` citations, and the

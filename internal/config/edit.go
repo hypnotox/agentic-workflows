@@ -173,17 +173,27 @@ func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
 }
 
+// A GlobRewrite records one no-slash glob scalar AnchorNoSlashGlobs anchored:
+// Key is the config location, From the original pattern (rewritten to
+// `**/<From>`).
+type GlobRewrite struct {
+	Key  string
+	From string
+}
+
 // AnchorNoSlashGlobs rewrites every no-slash glob scalar under
 // invariants.sources[].globs and audit.dependencyManifests to `**/<pattern>`,
-// preserving comments and untouched keys (ADR-0026). Slashed patterns are left
-// alone, so the rewrite is idempotent; absent keys are a no-op. It is the
-// nested-sequence editor the schema-7 anchored-globs migration (ADR-0077)
-// consumes — the sequence analog of SetMappingScalar.
-func AnchorNoSlashGlobs(src []byte) ([]byte, error) {
+// preserving comments and untouched keys (ADR-0026) and reporting the rewrites
+// performed. Slashed patterns are left alone, so the rewrite is idempotent;
+// absent keys are a no-op. It is the nested-sequence editor the schema-7
+// anchored-globs migration (ADR-0077) consumes — the sequence analog of
+// SetMappingScalar.
+func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	var rewrites []GlobRewrite
 	if inv, _ := mapValue(root, "invariants"); inv != nil && inv.Kind == yaml.MappingNode {
 		if srcs, _ := mapValue(inv, "sources"); srcs != nil && srcs.Kind == yaml.SequenceNode {
 			for _, s := range srcs.Content {
@@ -191,27 +201,32 @@ func AnchorNoSlashGlobs(src []byte) ([]byte, error) {
 					continue
 				}
 				if globs, _ := mapValue(s, "globs"); globs != nil && globs.Kind == yaml.SequenceNode {
-					anchorSeq(globs)
+					rewrites = append(rewrites, anchorSeq(globs, "invariants.sources.globs")...)
 				}
 			}
 		}
 	}
 	if aud, _ := mapValue(root, "audit"); aud != nil && aud.Kind == yaml.MappingNode {
 		if dm, _ := mapValue(aud, "dependencyManifests"); dm != nil && dm.Kind == yaml.SequenceNode {
-			anchorSeq(dm)
+			rewrites = append(rewrites, anchorSeq(dm, "audit.dependencyManifests")...)
 		}
 	}
-	return encode(doc)
+	out, err := encode(doc)
+	return out, rewrites, err
 }
 
-// anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`.
+// anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`
+// and reports the rewrites under key.
 // invariant: glob-migration-anchored
-func anchorSeq(seq *yaml.Node) {
+func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
+	var rewrites []GlobRewrite
 	for _, n := range seq.Content {
 		if n.Kind == yaml.ScalarNode && n.Value != "" && !strings.Contains(n.Value, "/") {
+			rewrites = append(rewrites, GlobRewrite{Key: key, From: n.Value})
 			n.Value = "**/" + n.Value
 		}
 	}
+	return rewrites
 }
 
 // parseMapping decodes src into a YAML document and returns the document plus its

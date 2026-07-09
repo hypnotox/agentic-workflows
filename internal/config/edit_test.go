@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -260,7 +261,7 @@ audit:
     - go.mod
     - '**/package.json'
 `)
-	out, err := AnchorNoSlashGlobs(src)
+	out, rewrites, err := AnchorNoSlashGlobs(src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,30 +274,40 @@ audit:
 	if strings.Contains(s, "**/cmd/**") || strings.Contains(s, "**/**/package.json") {
 		t.Errorf("slashed pattern was rewritten:\n%s", s)
 	}
-	// Idempotent: a second pass changes nothing.
-	again, err := AnchorNoSlashGlobs(out)
+	wantRewrites := []GlobRewrite{
+		{Key: "invariants.sources.globs", From: "*.go"},
+		{Key: "audit.dependencyManifests", From: "go.mod"},
+	}
+	if !slices.Equal(rewrites, wantRewrites) {
+		t.Errorf("rewrites = %v, want %v", rewrites, wantRewrites)
+	}
+	// Idempotent: a second pass changes and reports nothing.
+	again, againRewrites, err := AnchorNoSlashGlobs(out)
 	if err != nil || string(again) != s {
 		t.Errorf("not idempotent (err %v):\n%s", err, again)
+	}
+	if len(againRewrites) != 0 {
+		t.Errorf("idempotent pass must report no rewrites, got %v", againRewrites)
 	}
 }
 
 func TestAnchorNoSlashGlobsAbsentKeysNoop(t *testing.T) {
 	src := []byte("prefix: x\nskills:\n  - tdd\n")
-	out, err := AnchorNoSlashGlobs(src)
-	if err != nil || strings.Contains(string(out), "**/") {
-		t.Errorf("expected no-op, got (err %v):\n%s", err, out)
+	out, rewrites, err := AnchorNoSlashGlobs(src)
+	if err != nil || strings.Contains(string(out), "**/") || len(rewrites) != 0 {
+		t.Errorf("expected no-op, got (err %v, rewrites %v):\n%s", err, rewrites, out)
 	}
 }
 
 func TestAnchorNoSlashGlobsParseError(t *testing.T) {
-	if _, err := AnchorNoSlashGlobs([]byte("not: [valid")); err == nil {
+	if _, _, err := AnchorNoSlashGlobs([]byte("not: [valid")); err == nil {
 		t.Error("expected parse error for malformed YAML")
 	}
 }
 
 func TestAnchorNoSlashGlobsSkipsNonMappingSourceItem(t *testing.T) {
 	src := []byte("invariants:\n  sources:\n    - just-a-scalar\n    - globs:\n        - '*.py'\n      marker: '#'\n")
-	out, err := AnchorNoSlashGlobs(src)
+	out, _, err := AnchorNoSlashGlobs(src)
 	if err != nil {
 		t.Fatal(err)
 	}
