@@ -12,8 +12,9 @@ domains: [config]
 
 ## Context
 
-The catalog's `vars:` descriptor block (ADR-0029) declares thirteen descriptors. Measured by
-template consumption, they fall into two populations. The functional vars are interpolated widely
+The catalog's `vars:` descriptor block (ADR-0029) declares twelve string descriptors (plus two
+catalog-trim multiselects, `skills`/`docs`, outside this ADR's scope). Measured by template
+consumption, the string descriptors fall into two populations. The functional vars are interpolated widely
 and carry values the rendered artifacts or the tooling execute or enforce: `gateCmd` (21
 references across 14 template files), `gateCmdFull` (11), `checkCmd` (9), `activeMdRegenCmd` (7),
 `testCmd` (3), `commitGateCmd` (2, the hook payload's command), `invariantTestPath` (2), and
@@ -67,13 +68,20 @@ anywhere in init, sync, check, upgrade, or audit, so leftover keys in adopter co
 5. **This repo drops the four entries from its own `.awf/config.yaml`** and accepts the promoted
    generic prose — no compensating convention parts. If a concrete pointer proves worth having
    back (e.g. the bugfix skill naming `AGENTS.md`), the fix is a part under
-   `.awf/skills/parts/<skill>/`, not a var.
+   `.awf/skills/parts/<skill>/`, not a var. The implementation commit flips this ADR's status and
+   regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
 
 ## Invariants
 
 - Every catalog var descriptor names a value the rendered artifacts or the awf tooling execute
   or enforce; no descriptor exists solely to tune prose wording. (Textual contract — the
   functional/prose distinction is a judgment ADR review applies, not a machine check.)
+- `inv: var-descriptor-set-pinned` — the catalog's string var descriptor keys are exactly the
+  eight functional keys this ADR enumerates (`gateCmd`, `gateCmdFull`, `checkCmd`,
+  `commitGateCmd`, `testCmd`, `commitScopes`, `activeMdRegenCmd`, `invariantTestPath`), pinned by
+  a test whose set is extended only by a successor ADR (the ADR-0082 pinned-list pattern). The
+  pin makes any descriptor change — reintroducing a prose knob included — a deliberate,
+  ADR-recorded act; the functional/prose judgment itself stays with review.
 - ADR-0029's `inv: var-descriptor-parity` continues to hold unchanged and is what makes a
   half-landed removal (descriptor without template edit, or vice versa) mechanically impossible.
 
@@ -105,4 +113,5 @@ anywhere in init, sync, check, upgrade, or audit, so leftover keys in adopter co
 | Layout-pointer upgrade (cite `.layout.workflowRef` etc. in the promoted prose) | New wording to author and review for marginal concreteness; a project wanting concrete pointers gets them via a convention part. |
 | Keep the template conditionals, remove only the descriptors | Leaves invisible magic keys — undocumented vars that still change rendered output; worse than either a knob or no knob. |
 | Schema migration stripping leftover keys from adopter configs | A generation bump and migration to delete inert map entries is cost without benefit; dead keys are harmless and self-documenting to remove. |
+| Warn on leftover removed-catalog keys at sync/check | Requires the binary to carry a removed-key history, and would false-positive on adopter-invented keys that adopter-authored convention parts legally interpolate (freeform `vars:` stays a feature). |
 | Keep the knobs (status quo) | Each costs an init question and config surface for a sentence's wording; contradicts the simplicity direction and the convention-part mechanism's role. |
