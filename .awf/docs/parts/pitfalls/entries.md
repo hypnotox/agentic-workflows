@@ -292,3 +292,14 @@ permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write th
 propose-commit sentence in decision tense anchored to the status — "ADR-NNNN (Proposed)
 narrows the policy … and will remove …" — and flip it to present tense in the
 implementation commit that makes it true, alongside the status flip.
+
+## Retiring an Implemented ADR's invariant couples the feature to the successor's status flip
+
+The invariant scanner demands every `inv:` slug of an Implemented ADR stay backed until an
+*Implemented* successor retires it — so a commit that removes or renames the backing marker
+cannot land while the successor is still Proposed, and the green-gate-per-commit rule then
+forces the feature and the successor's `Implemented` flip into one commit. The ADR-0085
+implementation (2026-07-10) planned "feature commit, then flip commit" and hit this at the
+first `./x check`: retiring `bootstrap-pin` for `bootstrap-env-override` unbacked an
+Implemented ADR-0040 slug. When an effort carries a `retires_invariants:` entry, plan the
+final implementation commit to include the status flip from the start.
