@@ -513,10 +513,13 @@ P7→D7 + flip obligations.
       For the addition notes: `ScaffoldConfig` additionally returns the
       closure-added names (`(content []byte, added []string, err error)` — names
       beyond the user's trim selection, kind-prefixed like `skill
-      reviewing-plan-resync`), and `runInit` (`cmd/awf/init.go` — the definite
-      caller, `runInit` passes `trim` straight to `ScaffoldConfig`) prints one
+      reviewing-plan-resync`), and `runInit` (`cmd/awf/init.go:79`) prints one
       `note: also enabled <kind> <name> (required by your selection)` line per
-      entry.
+      entry. The signature change also updates the collision-probe call at
+      `cmd/awf/init.go:150` (`ScaffoldConfig(filepath.Base(root), nil, nil, nil)`)
+      and the five direct calls in `internal/project/scaffold_test.go`
+      (:23, :68, :110, :133, :152), each discarding `added` (a nil trim yields
+      no additions).
       Update the `invariant: catalog-trim-applied` comment prose to say the trim
       is closure-completed, and add `// invariant: init-set-closed` on the closure
       block.
