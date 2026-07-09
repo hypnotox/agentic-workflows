@@ -43,8 +43,7 @@ func gate(root string) error {
 		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade",
 			gen, migrate.Current())
 	case "ahead":
-		return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",
-			awfVersion(), gen, migrate.Current())
+		return schemaAheadError(gen)
 	}
 	lockV, binV, ok, err := lockVsBinary(root)
 	if err != nil {
@@ -61,6 +60,14 @@ func gate(root string) error {
 			awfVersion(), strings.TrimPrefix(lockV, "v"))
 	}
 	return nil
+}
+
+// schemaAheadError is the single "config schema ahead of this binary" message,
+// shared by gate() and runUpgrade so the guidance cannot drift between the two
+// entry points that classify the ahead state.
+func schemaAheadError(gen int) error {
+	return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",
+		awfVersion(), gen, migrate.Current())
 }
 
 // lockVsBinary returns the normalized lock awfVersion and binary version for the

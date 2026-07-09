@@ -18,13 +18,12 @@ func runUpgrade(root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
-	gen, err := migrate.Generation(root)
+	state, gen, err := migrate.GateState(root)
 	if err != nil {
 		return err
 	}
-	if gen > migrate.Current() {
-		return fmt.Errorf("awf %s is behind this project's config (schema generation %d > %d); update your pinned awf",
-			awfVersion(), gen, migrate.Current())
+	if state == "ahead" {
+		return schemaAheadError(gen)
 	}
 	applied, err := migrate.Upgrade(root)
 	if err != nil {
