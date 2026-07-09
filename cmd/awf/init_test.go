@@ -216,23 +216,28 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 // TestInitCatalogTrim asserts --set skills=/docs= drive the scaffolded enable
 // arrays verbatim (full-deselectable catalog trim, ADR-0029).
 func TestInitCatalogTrim(t *testing.T) {
+	// The trim deselects brainstorming — the chain's pure source, the one core
+	// skill no enabled artifact requires. Until ADR-0081 Phase 4 derives init's
+	// agents from the trim, the always-enabled plan-reviewer pins
+	// reviewing-plan-resync (and its closure) into every valid selection.
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
+	const trim = "skills=adr-lifecycle,executing-plans,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,writing-plans,tdd"
 	var out, errb bytes.Buffer
-	code := run([]string{"awf", "init", "--set", "skills=tdd,brainstorming", "--set", "docs=testing"}, &out, &errb)
+	code := run([]string{"awf", "init", "--set", trim, "--set", "docs=testing"}, &out, &errb)
 	if code != 0 {
 		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
-	for _, want := range []string{"skills:", "- brainstorming", "- tdd", "docs:", "- testing"} {
+	for _, want := range []string{"skills:", "- tdd", "docs:", "- testing"} {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("config missing %q:\n%s", want, cfg)
 		}
 	}
 	// A core skill not in the selection must be absent (full-deselectable).
-	if strings.Contains(cfg, "- reviewing-impl") {
-		t.Errorf("trim should have deselected reviewing-impl:\n%s", cfg)
+	if strings.Contains(cfg, "- brainstorming") {
+		t.Errorf("trim should have deselected brainstorming:\n%s", cfg)
 	}
 }
 

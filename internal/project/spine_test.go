@@ -1095,7 +1095,18 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 // enumeration could never mention a newer one like refactor-coupling-audit),
 // and disabled ones stay absent (ADR-0046 follow-up sweep).
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - refactor-coupling-audit\nagents: []\n")
+	// brainstorming carries a local sidecar: the guide's chain sentence needs a
+	// chain skill in the effective set, but a non-local one would demand its
+	// ADR-0081 closure (including adr-lifecycle, banned below) at open.
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - refactor-coupling-audit\nagents: []\n",
+		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
+	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localSkill, []byte("---\nname: example-brainstorming\ndescription: local chain skill\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)

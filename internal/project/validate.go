@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
@@ -61,14 +62,16 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		if !slices.Contains(pool, name) {
 			return fmt.Errorf("%s %q is not in the catalog", d.Singular, name)
 		}
-		// Pairing validation (ADR-0050): a reviewing skill may never be enabled
-		// without the agent it dispatches. Unlike requiresDoc suppression, this
-		// is a hard error — a silently-thinner chain is the failure mode the
-		// workflow exists to prevent.
+		// Closure validation (ADR-0081): every enabled, non-local artifact's
+		// direct catalog requirements are enabled — transitive closure follows
+		// by induction. Generalizes the ADR-0050 RequiresAgent pairing (that
+		// edge is now one case of the same loop); a silently-thinner chain is
+		// the failure mode the workflow exists to prevent.
 		// invariant: reviewing-skill-agent-pairing
-		if d.Plural == "skills" {
-			if req := p.Cat.Skills[name].RequiresAgent; req != "" && !slices.Contains(p.Cfg.Agents, req) {
-				return fmt.Errorf("skill %q requires agent %q; enable the agent or disable the skill", name, req)
+		// invariant: enabled-set-closed
+		if d.Plural == "skills" || d.Plural == "agents" {
+			if err := p.checkNodeRequirements(catalog.Node{Kind: d.Singular, Name: name}); err != nil {
+				return err
 			}
 		}
 		if declared, ok := d.sections(p.Cat, name); ok {
@@ -96,6 +99,32 @@ func (p *Project) SkillsRequiringAgent(agent string) []string {
 		}
 	}
 	return out
+}
+
+// checkNodeRequirements fails when any of n's direct catalog requirements is
+// not enabled, with a repair hint naming the exact edit and awf upgrade as
+// the pre-migration recovery path (ADR-0081 Decision 3).
+func (p *Project) checkNodeRequirements(n catalog.Node) error {
+	for _, r := range catalog.RequiresOf(p.Cat, n) {
+		if !p.nodeEnabled(r) {
+			return fmt.Errorf("%s %q requires %s %q; add it to %s: in .awf/config.yaml (or run `awf upgrade` after a binary upgrade), or remove the %s",
+				n.Kind, n.Name, r.Kind, r.Name, r.Kind+"s", n.Kind)
+		}
+	}
+	return nil
+}
+
+// nodeEnabled reports whether n appears in its kind's config enable array.
+func (p *Project) nodeEnabled(n catalog.Node) bool {
+	switch n.Kind {
+	case "skill":
+		return slices.Contains(p.Cfg.Skills, n.Name)
+	case "agent":
+		return slices.Contains(p.Cfg.Agents, n.Name)
+	case "doc":
+		return slices.Contains(p.Cfg.Docs, n.Name)
+	}
+	return false
 }
 
 // checkSectionsAllowed verifies that every key in used appears in declared.

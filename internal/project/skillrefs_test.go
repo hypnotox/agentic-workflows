@@ -93,17 +93,20 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 }
 
 // The effective set is enabled minus doc-gate-suppressed, with local-declared
-// skills always kept.
+// skills always kept. The roadmap doc is enabled at Open (ADR-0081's closure
+// validation refuses the dormant state) and dropped post-Open to exercise the
+// suppression path — effectiveSkills reads p.Cfg.Docs at call time.
 // invariant: skills-context-effective-set
 func TestEffectiveSkillsMembership(t *testing.T) {
 	p, err := Open(scaffoldFiles(t,
-		"prefix: example\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\nagents: []\n",
+		"prefix: example\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\ndocs: [roadmap]\nagents: []\n",
 		map[string]string{
 			"skills/brainstorming.yaml": "local: true\n",
 		}))
 	if err != nil {
 		t.Fatal(err)
 	}
+	p.Cfg.Docs = nil
 	// Make brainstorming BOTH local and doc-gated in the catalog to prove
 	// local wins over the gate.
 	spec := p.Cat.Skills["brainstorming"]

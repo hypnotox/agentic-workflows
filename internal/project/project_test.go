@@ -656,17 +656,15 @@ func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
 	// roadmap-graduation cites .layout.docs.roadmap (populated when the roadmap doc
 	// is enabled); agents-doc is suppressed via a local sidecar so RenderAll renders
 	// only the gated skill (and, when its doc is enabled, the roadmap doc itself).
-	cfg := "prefix: example\nskills: [roadmap-graduation]\nagents: []\n"
+	// The doc is enabled at Open (ADR-0081's closure validation refuses the
+	// dormant state); the suppression path is exercised by dropping the doc
+	// post-Open — effectiveSkills reads p.Cfg.Docs at call time.
+	cfg := "prefix: example\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	// Gate roadmap-graduation on the roadmap doc (the catalog sets requiresDoc in a
-	// later phase; assert the mechanism independently here).
-	sk := p.Cat.Skills["roadmap-graduation"]
-	sk.RequiresDoc = "roadmap"
-	p.Cat.Skills["roadmap-graduation"] = sk
 
 	const rel = ".claude/skills/example-roadmap-graduation/SKILL.md"
 	rendered := func() bool {
@@ -681,14 +679,14 @@ func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
 		}
 		return false
 	}
-	// Doc not enabled → suppressed.
-	if rendered() {
-		t.Error("roadmap-graduation should be suppressed when the roadmap doc is not enabled")
-	}
 	// Doc enabled → rendered.
-	p.Cfg.Docs = []string{"roadmap"}
 	if !rendered() {
 		t.Error("roadmap-graduation should render when the roadmap doc is enabled")
+	}
+	// Doc dropped post-Open → suppressed.
+	p.Cfg.Docs = nil
+	if rendered() {
+		t.Error("roadmap-graduation should be suppressed when the roadmap doc is not enabled")
 	}
 }
 
@@ -965,24 +963,67 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 }
 
 // A reviewing skill enabled without its dispatched agent fails project open —
-// the error names both sides and the fix (ADR-0050).
+// the error names both sides and the fix. The fixture carries reviewing-impl's
+// skill closure so the agent edge is the failing one (ADR-0050, generalized by
+// ADR-0081's closure validation).
 // invariant: reviewing-skill-agent-pairing
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [reviewing-impl]\nagents: []\n")
+	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
 	_, err := Open(root)
 	if err == nil {
 		t.Fatal("expected pairing error for reviewing-impl without code-reviewer")
 	}
-	want := `skill "reviewing-impl" requires agent "code-reviewer"; enable the agent or disable the skill`
+	want := `skill "reviewing-impl" requires agent "code-reviewer"; add it to agents: in .awf/config.yaml (or run ` + "`awf upgrade`" + ` after a binary upgrade), or remove the skill`
 	if err.Error() != want {
 		t.Errorf("error = %q, want %q", err.Error(), want)
 	}
 }
 
 func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [reviewing-impl]\nagents: [code-reviewer]\n")
+	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer]\n")
 	if _, err := Open(root); err != nil {
 		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
+	}
+}
+
+// Every enabled, non-local artifact's direct catalog requirements must be
+// enabled — a violation fails open with a repair hint (ADR-0081 Decision 3).
+// invariant: enabled-set-closed
+func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
+	cases := []struct {
+		name, cfg, wantSub string
+	}{
+		{"missing skill requirement",
+			"prefix: example\nskills: [brainstorming]\nagents: []\n",
+			`skill "brainstorming" requires skill "proposing-adr"`},
+		{"missing doc requirement",
+			"prefix: example\nskills: [roadmap-graduation]\nagents: []\n",
+			`skill "roadmap-graduation" requires doc "roadmap"`},
+		{"agent's skill requirement",
+			"prefix: example\nskills: []\nagents: [plan-reviewer]\n",
+			`agent "plan-reviewer" requires skill "reviewing-plan-resync"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Open(scaffold(t, tc.cfg))
+			if err == nil {
+				t.Fatal("expected closure-validation error")
+			}
+			if !strings.Contains(err.Error(), tc.wantSub) || !strings.Contains(err.Error(), "awf upgrade") {
+				t.Errorf("error = %q, want it to contain %q and the awf upgrade hint", err.Error(), tc.wantSub)
+			}
+		})
+	}
+	// A local sidecar exempts the artifact from the closure check.
+	root := scaffoldFiles(t, "prefix: example\nskills: [brainstorming]\nagents: []\n",
+		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("local-sidecar artifact must skip closure validation, got: %v", err)
+	}
+	// An unknown node kind is never enabled (defensive default arm).
+	if p.nodeEnabled(catalog.Node{Kind: "bogus", Name: "x"}) {
+		t.Error("unknown node kind must report not enabled")
 	}
 }
 

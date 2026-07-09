@@ -640,7 +640,10 @@ func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
 
 // A trim answer can enable a non-core artifact the curated-core probe set does
 // not cover: the probe passes, and the accurate post-answer check still
-// refuses and rolls the scaffolded config back.
+// refuses and rolls the scaffolded config back. The trim carries the full core
+// alongside tdd — until ADR-0081 Phase 4 derives init's agents from the trim,
+// any selection excluding reviewing-plan-resync fails closure validation
+// (the always-enabled plan-reviewer requires it).
 func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
 	root := t.TempDir()
 	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
@@ -652,8 +655,9 @@ func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
+	const coreAndTdd = "skills=adr-lifecycle,brainstorming,executing-plans,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,writing-plans,tdd"
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
+	if code := run([]string{"awf", "init", "--set", coreAndTdd}, &out, &errb); code == 0 {
 		t.Fatal("expected init to refuse on the post-answer collision")
 	}
 	if !strings.Contains(errb.String(), "refusing to overwrite") {

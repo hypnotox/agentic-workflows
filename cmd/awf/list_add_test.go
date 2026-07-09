@@ -423,11 +423,11 @@ func TestDispatchHooks(t *testing.T) {
 
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runAdd(root, "skill", "brainstorming", io.Discard); err != nil {
+	if err := runAdd(root, "skill", "bugfix", io.Discard); err != nil {
 		t.Fatalf("add to flow-style array: %v", err)
 	}
 	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "- brainstorming") || !strings.Contains(cfg, "- tdd") {
+	if !strings.Contains(cfg, "- bugfix") || !strings.Contains(cfg, "- tdd") {
 		t.Errorf("expected block-style skills with both members:\n%s", cfg)
 	}
 	if err := runRemove(root, "skill", "tdd", io.Discard); err != nil {
@@ -438,14 +438,47 @@ func TestRunAddRemoveFlowStyle(t *testing.T) {
 	}
 }
 
-func TestRunAddDocGatedSkillWarns(t *testing.T) {
-	root := scaffoldedProject(t) // roadmap doc is not enabled
+// Interim (ADR-0081 Phase 1→2): adding a skill whose requirement closure is
+// incomplete still pairs its agent / prints the doc advisory before the
+// chained sync refuses the unclosed set. Phase 2 replaces both notes with
+// closure plans; these assertions pin the transitional behavior.
+func TestRunAddUnclosedSkillStrandsAtSync(t *testing.T) {
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	err := runAdd(root, "skill", "reviewing-impl", &out)
+	if err == nil || !strings.Contains(err.Error(), "requires skill") {
+		t.Fatalf("expected closure refusal from the chained sync, got %v", err)
+	}
+	if !strings.Contains(out.String(), `note: also enabled agent "code-reviewer"`) {
+		t.Errorf("pairing note should print before the sync refusal, got %q", out.String())
+	}
+
+	root2 := scaffoldedProject(t)
+	out.Reset()
+	err = runAdd(root2, "skill", "roadmap-graduation", &out)
+	if err == nil || !strings.Contains(err.Error(), `requires doc "roadmap"`) {
+		t.Fatalf("expected doc-closure refusal, got %v", err)
+	}
+	if !strings.Contains(out.String(), "requires the \"roadmap\" doc") {
+		t.Errorf("doc note should print before the sync refusal, got %q", out.String())
+	}
+}
+
+// Adding a doc-gated skill with its doc already enabled succeeds without the
+// advisory note. (ADR-0081 Phase 2 replaces the note with a closure plan op;
+// until then a doc-less add strands the config at the chained sync — pinned
+// above.)
+func TestRunAddDocGatedSkillWithDoc(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := runAdd(root, "doc", "roadmap", io.Discard); err != nil {
+		t.Fatalf("add roadmap doc: %v", err)
+	}
 	var out bytes.Buffer
 	if err := runAdd(root, "skill", "roadmap-graduation", &out); err != nil {
 		t.Fatalf("add roadmap-graduation: %v", err)
 	}
-	if !strings.Contains(out.String(), "requires the \"roadmap\" doc") {
-		t.Errorf("expected doc-gate warning, got %q", out.String())
+	if strings.Contains(out.String(), "requires the \"roadmap\" doc") {
+		t.Errorf("no doc-gate warning expected with the doc enabled, got %q", out.String())
 	}
 }
 
@@ -470,16 +503,18 @@ func TestRunRemove(t *testing.T) {
 
 func TestRunRemoveNotesOrphan(t *testing.T) {
 	root := scaffoldedProject(t)
-	// Give an enabled skill a sidecar, then remove it.
+	// Give an enabled skill a sidecar, then remove it. brainstorming is the
+	// chain's pure source (ADR-0081): nothing requires it, so its removal
+	// leaves the enabled set closed.
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "writing-plans.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "brainstorming.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runRemove(root, "skill", "writing-plans", &out); err != nil {
-		t.Fatalf("remove writing-plans: %v", err)
+	if err := runRemove(root, "skill", "brainstorming", &out); err != nil {
+		t.Fatalf("remove brainstorming: %v", err)
 	}
 	if !strings.Contains(out.String(), "orphaned") {
 		t.Errorf("expected orphan note, got %q", out.String())
@@ -557,50 +592,16 @@ func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-adr", "SKILL.md"),
 		"---\nname: example-reviewing-adr\ndescription: local reviewing skill\n---\nbody\n")
 
-	// Disabling the requiring skill unblocks the removal.
-	if err := runRemove(root, "skill", "reviewing-impl", io.Discard); err != nil {
-		t.Fatalf("remove skill reviewing-impl: %v", err)
+	// Local-declaring the requiring skill unblocks the removal too — removing
+	// the skill outright is impossible one-at-a-time inside the chain's
+	// mutually-requiring core (ADR-0081; Phase 2's cascade flag covers it).
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-impl.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-impl", "SKILL.md"),
+		"---\nname: example-reviewing-impl\ndescription: local reviewing skill\n---\nbody\n")
 	if err := runRemove(root, "agent", "code-reviewer", io.Discard); err != nil {
-		t.Fatalf("remove agent after disabling its skill: %v", err)
-	}
-}
-
-// `awf add skill` enables the skill's required agent in the same config
-// rewrite, announced by a note (ADR-0050).
-// invariant: add-skill-pairs-agent
-func TestRunAddSkillPairsAgent(t *testing.T) {
-	root := scaffoldProject(t) // minimalYAML: skills [tdd], agents []
-	var out bytes.Buffer
-	if err := runAdd(root, "skill", "reviewing-impl", &out); err != nil {
-		t.Fatalf("add skill reviewing-impl: %v", err)
-	}
-	if !strings.Contains(out.String(), `note: also enabled agent "code-reviewer" (required by skill "reviewing-impl")`) {
-		t.Errorf("missing pairing note, got %q", out.String())
-	}
-	cfg := readConfig(t, root)
-	if !strings.Contains(cfg, "- reviewing-impl") || !strings.Contains(cfg, "- code-reviewer") {
-		t.Errorf("expected both skill and agent enabled:\n%s", cfg)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "agents", "code-reviewer.md")); err != nil {
-		t.Errorf("code-reviewer not rendered after paired add: %v", err)
-	}
-
-	// Second paired add enables the shared plan-reviewer once; a skill whose
-	// agent is already enabled adds without a note.
-	out.Reset()
-	if err := runAdd(root, "skill", "reviewing-plan", &out); err != nil {
-		t.Fatalf("add skill reviewing-plan: %v", err)
-	}
-	if !strings.Contains(out.String(), `note: also enabled agent "plan-reviewer"`) {
-		t.Errorf("expected plan-reviewer note, got %q", out.String())
-	}
-	out.Reset()
-	if err := runAdd(root, "skill", "reviewing-plan-resync", &out); err != nil {
-		t.Fatalf("add skill reviewing-plan-resync: %v", err)
-	}
-	if strings.Contains(out.String(), "also enabled agent") {
-		t.Errorf("no note expected when the agent is already enabled, got %q", out.String())
+		t.Fatalf("remove agent after local-declaring its skill: %v", err)
 	}
 }
 
