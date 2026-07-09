@@ -54,6 +54,8 @@ awf never installs or activates git hooks — the wiring is yours. When the `hoo
 - an existing hook manager (husky, lefthook, …) — call the payload from its config.
 
 `awf commit-gate` is the deterministic, blocking commit-message gate: it validates one commit message against the Conventional Commits rules (type, scope, 72-char subject — the same rules `awf audit` reports) and exits non-zero on a violation, so a bad subject is refused at commit time instead of merely flagged later. The `commit-msg.sh` payload runs it with the message file git passes; run `awf commit-gate --help` for details.
+
+**Your stub is the override point.** The rendered payloads are deliberately all-or-nothing — they take no convention parts. To deviate from a payload's policy (say, a docs-only fast path that skips the test gate), put the deviation in the stub you own instead of forking the payload: keep the payload canonical, have the stub carry the project-specific logic, and mark the divergence with a comment naming it a deliberate deviation from the rendered script. The payload then keeps updating through `awf sync` while your deviation stays visible, reviewable, and yours.
 <!-- awf:end -->
 
 <!-- awf:section ci -->

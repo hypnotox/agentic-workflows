@@ -40,6 +40,13 @@ query a single version or a range.
   rendered output stale until the next unrelated sync. The no-op message is
   now `config already at schema N`, followed by normal sync output.
 
+### Others
+- The rendered `docs/workflow.md` local-hooks section now documents the
+  stub-as-override-point pattern: hook payloads are deliberately
+  all-or-nothing, and a project-specific deviation (e.g. a docs-only fast
+  path) belongs in the stub you own, commented as a deliberate deviation,
+  keeping the payload canonical and sync-updated.
+
 ## [0.12.0] - 2026-07-09
 
 ### Breaking changes
