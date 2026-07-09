@@ -254,3 +254,18 @@ until a fresh-context grounding check re-ran the scan and found two hits. Absenc
 is not verified absence: run verification probes as separate invocations (or with an
 explicit sentinel/exit-code check), and treat any scan whose success path you did not
 observe as unrun, not clean.
+
+## A coverage-ignore justification is stale the moment its line is refactored
+
+A `coverage-ignore` comment asserts a reachability claim about the code shape it was written
+against; a refactor that merges call sites, changes a signature, or widens who runs the code
+invalidates the claim silently while the comment rides along verbatim. The schema-6 migration
+rework (2026-07-09) carried three pre-existing ignores through exactly such a refactor — the
+"fresh trees" justification was already false for a partial-prior-migration adopter tree, and
+ENOTDIR/EISDIR reached the "permission fault only" branches with no permissions involved; the
+impl review refuted all three (plus a fourth on a directed probe) by staging the state each
+declared impossible. When an edit touches a line carrying an ignore, the ignore is part of
+the edit: re-probe the claim (try to stage the "impossible" state — a leftover destination
+file, a path component as a regular file, a config path as a directory) or drop it and cover
+the branch; `./x audit-local`'s `coverage-ignore-added` warning flags every touched ignore in
+the range for exactly this re-evaluation.
