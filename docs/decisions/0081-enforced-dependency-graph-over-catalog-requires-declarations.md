@@ -78,10 +78,18 @@ invariant, so folding docs into the graph reaches that ADR too.
    every gated command with a repair hint that names the exact config edit and
    `awf upgrade` as the pre-migration recovery path. This generalizes ADR-0050
    Decision item 2 (its `RequiresAgent` check becomes the skill→agent edge of
-   the same loop) and strengthens ADR-0046 Decision item 4's check-time
-   failure to open time. The self-repair trap is accepted as under ADR-0050: a
-   hand-broken config locks out the CLI (including `awf add` and `awf new`)
-   and is repaired by hand or by `awf upgrade`.
+   the same loop) and supersedes ADR-0046 Decision item 4 in two respects: the
+   check-time failure strengthens to open time, and its documented
+   trim-with-overrides escape hatch (disable a chain skill, override the
+   referencing sections via convention parts) is **deliberately foreclosed** —
+   validation reads catalog edges, not rendered output, so a trimmed config
+   is refused regardless of part overrides and the schema-8 migration
+   re-completes it. The sanctioned escape for a deliberate trim is the
+   `local: true` sidecar: the validator skips local artifacts, so an adopter
+   takes ownership of the referencing skill and trims freely. The self-repair
+   trap is accepted as under ADR-0050: a hand-broken config locks out the CLI
+   (including `awf add` and `awf new`) and is repaired by hand or by
+   `awf upgrade`.
 
 4. **`awf add` applies the closure plan.** Adding any artifact enables its
    full missing forward closure — skills, agents, **and docs** — in one
@@ -137,11 +145,17 @@ invariant, so folding docs into the graph reaches that ADR too.
    `internal/migrate` gains its first `internal/catalog` import (no cycle);
    its package doc comment is reconciled.
 
-9. **`awf init` closes a trimmed selection silently.** A catalog trim
-   (interactive or `--answers`) that violates closure is closure-completed —
-   missing requirements added, each noted — instead of scaffolding a config
-   that init's own chained sync then refuses. Extends ADR-0050 Decision
-   item 6; the untrimmed curated default is already closed and a test locks
+9. **`awf init` derives agents from the trim, then closes the selection
+   silently.** A catalog trim (interactive or `--answers`) first derives its
+   agent set from the trimmed skills' requirements — agents nothing in the
+   selection requires are dropped, superseding ADR-0050 Decision item 6's
+   unconditional all-agents scaffold — and is then closure-completed (missing
+   requirements added, each noted) instead of scaffolding a config that
+   init's own chained sync refuses. Without the agent derivation, the
+   always-enabled `plan-reviewer`'s edge to `reviewing-plan-resync` would
+   silently re-complete any planning-core trim, making the skills trim
+   meaningless for chain members. The untrimmed curated default keeps all
+   agents (a default, not a derived set) and is already closed; a test locks
    that.
 
 ## Invariants
@@ -224,4 +238,6 @@ invariant, so folding docs into the graph reaches that ADR too.
 | Three independent in-place walks (no resolver) | Triplicated graph logic in validate/add/remove — the divergence-prone duplication this project keeps promoting checks against. |
 | Additive migration for dormant doc-gated skills (enable the doc) | Resurrects a skill the adopter effectively didn't have and materializes new docs in their repo on upgrade; dropping the dormant skill preserves observed output (user chose drop). |
 | Init rejects an unclosed trim | Breaks non-interactive `--answers` scripting on any near-miss; silent closure matches add and migration semantics. |
+| Keep the ADR-0046 trim-with-overrides escape hatch | Requires render-aware validation (edges conditioned on part overrides) — complex, fragile, and a second source of truth beside the catalog; `local: true` ownership covers the deliberate-trim case. |
+| Init keeps the all-agents scaffold under a trim | plan-reviewer's skill edge would closure-complete any planning-core trim right back — the trim dimension would be decorative. |
 | Validation-lenient open for add/remove (self-repair) | A second Open mode weakens the single validation choke point for one rare, hand-induced state that `awf upgrade` or a hand edit already repairs. |
