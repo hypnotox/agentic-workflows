@@ -85,10 +85,7 @@
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Implemented
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](0081-enforced-dependency-graph-over-catalog-requires-declarations.md) — Implemented
 - [ADR-0082: Source-level template residue guard](0082-source-level-template-residue-guard.md) — Implemented
-
-## Proposed
-
-- [ADR-0083: Whole-line part-marker advisory](0083-whole-line-part-marker-advisory.md) — Proposed
+- [ADR-0083: Whole-line part-marker advisory](0083-whole-line-part-marker-advisory.md) — Implemented
 
 ## Superseded
 
