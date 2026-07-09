@@ -2,7 +2,7 @@
 status: Proposed
 date: 2026-07-10
 supersedes: []
-retires_invariants: []
+retires_invariants: [bootstrap-pin]
 superseded_by: ""
 tags: [bootstrap, upgrade, rendering]
 related: [40, 49, 76, 79, 82]
@@ -53,9 +53,10 @@ Forces and observations shaping the design:
    becomes `AWF_VERSION="${AWF_VERSION:-<project.Version>}"`: an environment override selects
    which release to fetch and verify; absent the override, behavior is byte-identical to
    today. The pin remains the rendering binary's `project.Version` (ADR-0040's single source
-   of truth is unchanged); ADR-0040's `inv: bootstrap-pin` is reworded from "the literal
-   assignment `AWF_VERSION="<project.Version>"`" to the default-expansion form, and its
-   backing golden-render test updates in the same commit. The override deliberately widens
+   of truth is unchanged); ADR-0040's `inv: bootstrap-pin` — whose text demands the literal
+   assignment `AWF_VERSION="<project.Version>"` — is retired by this ADR and replaced by
+   `inv: bootstrap-env-override` (the ADR-0049 retire-and-replace precedent), with the
+   backing golden-render test updated in the same commit. The override deliberately widens
    determinism: every bootstrap consumer (hook payloads, `./x`-style runners, CI) inherits
    the caller's environment, so an exported `AWF_VERSION` redirects them all — accepted
    because exporting that name plausibly *means* "use this awf version", and the lock-vs-
@@ -69,10 +70,13 @@ Forces and observations shaping the design:
    gate already blocks stale binaries against a newer lock). The script:
    - resolves the repo root from its own location (`cd "$(dirname "$0")/.."`) so it works
      from any CWD, unlike hook payloads which inherit git's CWD guarantee;
-   - resolves the target version: `$1` (normalized with `${1#v}`) when given; otherwise the
-     newest release, by following the GitHub `releases/latest` redirect with plain `curl`
-     and extracting the tag from the effective URL — failing loudly when the resolved URL
-     carries no `/tag/` segment (e.g. a repo with no releases);
+   - resolves the target version: `$1` when given; otherwise the newest release, by
+     following the GitHub `releases/latest` redirect with plain `curl` and extracting the
+     tag from the effective URL — failing loudly when the resolved URL carries no `/tag/`
+     segment (e.g. a repo with no releases). Both forms are normalized to the bare version
+     (`v` prefix stripped): the redirect tag is `vX.Y.Z` and the bootstrap composes
+     `v${AWF_VERSION}` for the URL but the no-`v` form for the asset name, so an unstripped
+     value fetches a nonexistent asset;
    - fetches and verifies via the bootstrap: `binary="$(AWF_VERSION="$target" bash
      .awf/bootstrap.sh)"` — zero duplicated download logic; a bootstrap failure aborts the
      script (plain assignment propagates the substitution's exit status under `set -e`);
@@ -113,21 +117,25 @@ Forces and observations shaping the design:
    together): the single-command flow, the explicit-version form, the env override on its
    own, and the residual manual work a renderer cannot do (adopter-owned call sites, hook
    wiring, prose parts) — the adopter upgrade runbook owed since the fleet rehearsal. The
-   rendered `AGENTS.md` invariant entries for ADR-0040/0049 are reworded via their
-   `.awf/agents-doc.yaml` data entries in the same change.
+   rendered `AGENTS.md` invariant entries for ADR-0040/0049 *and* the ADR-0082 exemption
+   bullet (two entries → three) are reworded via their `.awf/agents-doc.yaml` data entries
+   in the same change, and the commit that flips this ADR's status adds this ADR's
+   invariants to the guide's list and regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
 
 8. **Bash, linux/darwin, downgrades out of scope.** Same platform posture as ADR-0040. A
    downgrade attempt via an explicit older `$1` is not special-cased: the older binary's
-   schema-ahead gate (ADR-0039) refuses it with its standard message.
+   ADR-0039 version gate refuses it with its standard message — the schema-ahead arm when
+   the config's schema generation is newer, the lock-behind arm for a same-schema
+   downgrade.
 
 ## Invariants
 
 - `inv: bootstrap-env-override` — the rendered bootstrap's version assignment is the
   default-expansion form `AWF_VERSION="${AWF_VERSION:-<project.Version>}"`: a pre-set
   environment value wins, and absent one the script resolves exactly the rendering binary's
-  `project.Version`. (Golden-render assertion; rewords ADR-0040 `inv: bootstrap-pin`'s
-  literal-assignment phrasing, which it supersedes textually while keeping its single-source
-  property.)
+  `project.Version`. (Golden-render assertion; replaces the retired ADR-0040
+  `inv: bootstrap-pin` — see `retires_invariants` — keeping its single-source-of-truth
+  property under the new assignment form.)
 - `inv: upgrade-exec-final` — the rendered `.awf/upgrade.sh` triggers the upgrade with
   `exec "$binary" upgrade` and that `exec` line is the script's final statement, so the
   shell process is replaced before `awf upgrade` re-renders the script truncate-in-place.
@@ -138,9 +146,10 @@ Forces and observations shaping the design:
   probe is its only direct network call. (Golden-render assertion.)
 - `inv: upgrade-always-syncs` — `runUpgrade` reaches `runSync` on every successful run,
   including the zero-migrations case.
-- The `bootstrap` singleton renders exactly two files (`.awf/bootstrap.sh`,
-  `.awf/upgrade.sh`), both lock-tracked, pruned on disable, and removed by uninstall
-  (textual contract; enforced structurally by the shared render/lock path).
+- `inv: bootstrap-two-files` — with the `bootstrap` singleton enabled, the render set
+  contains exactly two files under it: `.awf/bootstrap.sh` and `.awf/upgrade.sh`.
+  (Golden-render assertion over the sync output paths; lock tracking, prune-on-disable,
+  and uninstall removal follow structurally from the shared render/lock path.)
 
 ## Consequences
 
@@ -148,6 +157,11 @@ Forces and observations shaping the design:
   `bash .awf/upgrade.sh 0.13.0` — and it closes its own loop: the exec'd binary migrates,
   re-renders, and re-pins the bootstrap. The env override is independently useful (CI
   trialing a release before committing the pin).
+- **One bridging upgrade still starts manually.** `.awf/upgrade.sh` exists in an adopter
+  tree only after the first upgrade to a release that ships it, so that one upgrade (fleet's
+  next, the motivating case) uses the env override by hand:
+  `AWF_VERSION=X bash .awf/bootstrap.sh` then `<path> upgrade`. Every upgrade after that is
+  the single command.
 - **Determinism widening (Decision 1) is real and accepted.** An environment `AWF_VERSION`
   now redirects every bootstrap consumer, including hook payloads on every commit. The
   failure modes are bounded: verification still runs, and the ADR-0039 gates refuse a
@@ -173,5 +187,6 @@ Forces and observations shaping the design:
 | Standalone `upgrade.sh` with its own download logic | Duplicates the bootstrap's ~40 lines of fetch/verify/cache shell; two copies to keep bug-free. Delegation via the env override keeps one implementation. |
 | Env override only, no porcelain (document `AWF_VERSION=X bash .awf/bootstrap.sh` + manual `upgrade`) | Two commands and the adopter must look up the version number first — re-adds the manual step the feedback named; the user explicitly asked for a single command. |
 | Teach the bootstrap itself to resolve "latest" | Breaks bootstrap determinism — CI and hooks must resolve the pin reproducibly. Nondeterminism belongs only in the deliberately-run porcelain. |
+| Resolve latest via the GitHub releases API (JSON) | Needs JSON parsing with no guaranteed `jq` on adopter machines; the redirect probe needs only the `curl` already required, and fails loudly on shape drift. |
 | Collision-proof override name (`AWF_BOOTSTRAP_VERSION`) | An exported `AWF_VERSION` plausibly means "use this awf version" — honoring it is the intuitive contract; the gates bound the risk. |
 | Interactive confirm before upgrading to latest | Breaks unattended use unless flagged around; the resolved target is printed to stderr before anything happens, and `$1` pins explicitly. |
