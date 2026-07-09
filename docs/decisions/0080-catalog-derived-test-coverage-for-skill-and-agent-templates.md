@@ -61,7 +61,10 @@ so catalog-derived fixture builders live at their test call sites, not in
    `catalog.TargetSpec` (agents) gain `RequiresSkills []string`: the catalog
    skills this artifact's template references unconditionally — i.e. names in
    its rendered output even when the referenced skill is not enabled. Catalog
-   validation fails on a `RequiresSkills` entry that is not a catalog skill.
+   validation fails on a `RequiresSkills` entry that is not a catalog skill,
+   and on a non-empty `RequiresSkills` on any `TargetSpec` use outside the
+   agents map (the domain-doc spec shares the type; the field is meaningless
+   there and a silent no-op would invite drift).
    This is the machine-readable form of the agent guide's "disable them as a
    unit" coupling; like `RequiresAgent` (ADR-0050) it is data, but unlike
    `RequiresAgent` it carries **no gated-command validation in this ADR** —
@@ -81,6 +84,11 @@ so catalog-derived fixture builders live at their test call sites, not in
    - a **stale declaration**: a `RequiresSkills` entry (or any other explicit
      exemption, e.g. `proposing-adr`'s legitimate literal double-backticks)
      whose exempted residue no longer appears in the output.
+
+   Sparse non-reference exemptions (the double-backtick case) live as explicit
+   in-test entries under the same fails-when-stale rule — the Alternatives
+   rejection of an "in-test exemption map" concerned the ~10-entry
+   skill-reference graph specifically, which Decision 1 moves into the catalog.
 3. **Conditional-case guard.** The `TestUnsetFallbackRenders` case list is
    hoisted to a package-level var, and a derived guard asserts every catalog
    skill/agent template whose **post-include-expansion** source contains any
@@ -96,9 +104,13 @@ so catalog-derived fixture builders live at their test call sites, not in
    missing `TestTddTemplate` is written as part of the implementation.
 5. **Catalog-derived chain-closure fixtures.** Chain-enabling fixtures derive
    their enabled set at the call site from the catalog: the `Chain`-flagged
-   skills plus the transitive `RequiresSkills` closure plus the closure's
-   `RequiresAgent` agents. `TestScopesEditReflagsReferencingArtifacts` switches
-   to this derivation. Deliberately-minimal gating fixtures (skill-reference
+   skills, their transitive `RequiresSkills` closure, and the `RequiresAgent`
+   agents of every skill in that combined set.
+   `TestScopesEditReflagsReferencingArtifacts` switches to this derivation;
+   the derived set drops `tdd` from its current hand-written list (`tdd` is
+   neither `Chain` nor in any unconditional-reference closure), an acceptable
+   membership delta — the test's assertions are membership-based over
+   reviewing skills. Deliberately-minimal gating fixtures (skill-reference
    gating, doc gating, coverage fixtures) stay hand-written — minimalism is
    their point. `internal/testsupport` is untouched.
 6. **Scope boundary.** The `_base` templates and `AGENTS.md.tmpl` are not
@@ -107,6 +119,11 @@ so catalog-derived fixture builders live at their test call sites, not in
    hand-listed handoff pairs (`TestWorkflowChainHandoffs`) assert direction and
    invocation phrasing — richer than `RequiresSkills` membership — and are out
    of scope.
+7. **Default-inclusion exemption semantics.** Across every guard in this ADR:
+   a new catalog entry is always covered automatically; any exception is an
+   explicit entry (a `RequiresSkills` declaration or an in-test exemption)
+   that itself fails the guard when stale. No guard may grow an implicit or
+   silently-skipped exclusion.
 
 ## Invariants
 
@@ -122,12 +139,13 @@ so catalog-derived fixture builders live at their test call sites, not in
   hand-authored unset-data case in the fallback case list.
 - `inv: golden-test-completeness` — every catalog skill and agent has its
   per-artifact golden test function in `internal/project`.
-- Exceptions across all of the above follow default-inclusion semantics: a new
-  catalog entry is always covered; every exemption is an explicit entry that
-  fails when stale. (Textual contract.)
 
 ## Consequences
 
+- The commit that flips this ADR to Implemented also adds the four new
+  invariant bullets to the agent guide's Invariants section (via the
+  `.awf/agents-doc.yaml` data + `./x sync`) and regenerates
+  `docs/decisions/ACTIVE.md` (`./x sync`), per standing convention.
 - Adding a catalog skill now fails loudly and locally at authoring time —
   pointed test failures name the missing golden, the missing fallback case,
   and any undeclared reference — instead of silently shipping an unlocked
