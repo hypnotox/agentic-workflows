@@ -243,3 +243,14 @@ while an earlier clause still asserted the old behavior. When a change obsoletes
 the repo for the phrase being retired (`templates/`, `.awf/**/parts/`, and the rendered
 outputs will surface every carrier, parts included) and rewrite stale clauses in place —
 an appended correction beside a surviving old claim is worse than either alone.
+
+## An empty scan result only counts once the probe provably ran
+
+A compound shell command that errors mid-sequence silently drops every later segment: a
+`grep A; echo ---; grep B` probe whose separator failed to parse never ran the second grep,
+and its missing output was read as "no matches — templates carry no repo-identity literals"
+(2026-07-09, ADR-0082 brainstorm). The false premise shaped a design decision and survived
+until a fresh-context grounding check re-ran the scan and found two hits. Absence of output
+is not verified absence: run verification probes as separate invocations (or with an
+explicit sentinel/exit-code check), and treat any scan whose success path you did not
+observe as unrun, not clean.
