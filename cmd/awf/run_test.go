@@ -467,14 +467,20 @@ func TestRunListPrintsSkills(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeAlreadyCurrent(t *testing.T) {
+// invariant: upgrade-always-syncs
+func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
 	if err := runUpgrade(root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
-	if !strings.Contains(out.String(), "already current") {
-		t.Errorf("expected already-current, got %q", out.String())
+	if !strings.Contains(out.String(), "already at schema") {
+		t.Errorf("expected already-at-schema report, got %q", out.String())
+	}
+	// The zero-migrations path must still sync: a same-schema binary bump
+	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
+	if !strings.Contains(out.String(), "awf sync: done") {
+		t.Errorf("expected the no-op upgrade to run a sync, got %q", out.String())
 	}
 }
 

@@ -9,11 +9,11 @@ import (
 )
 
 // runUpgrade applies every registered migration past the project's current
-// schema generation, then runs a normal sync to write the lock (stamping the
-// current schema version) and verify the rendered output. A no-op when the
-// project is already current. Truthful edge states (ADR-0076 Decision 4): no
-// config layout at all → the awf init hint; a tree whose schema is ahead of
-// this binary → the version-gate guidance, never "already current".
+// schema generation, then always runs a normal sync — even when no migration
+// applies — so a same-schema binary bump still re-renders every managed file
+// and re-pins the bootstrap (ADR-0085 Decision 4). Truthful edge states
+// (ADR-0076 Decision 4): no config layout at all → the awf init hint; a tree
+// whose schema is ahead of this binary → the version-gate guidance.
 func runUpgrade(root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
@@ -29,9 +29,9 @@ func runUpgrade(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	// invariant: upgrade-always-syncs
 	if len(applied) == 0 {
-		fmt.Fprintln(stdout, "awf upgrade: already current")
-		return nil
+		fmt.Fprintf(stdout, "awf upgrade: config already at schema %d\n", gen)
 	}
 	for _, name := range applied {
 		fmt.Fprintf(stdout, "awf upgrade: applied %s\n", name)

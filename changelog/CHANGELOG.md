@@ -20,6 +20,13 @@ query a single version or a range.
   (or `--set`) carrying a removed key now fails `awf init` on a fresh scaffold
   with an unknown-answer-key error.
 
+### Bug fixes
+- `awf upgrade` now always ends in a sync, even when no schema migration
+  applies (ADR-0085): a same-schema binary bump re-renders every managed file
+  and re-pins the bootstrap. Previously a template-only release left the
+  rendered output stale until the next unrelated sync. The no-op message is
+  now `config already at schema N`, followed by normal sync output.
+
 ## [0.12.0] - 2026-07-09
 
 ### Breaking changes
