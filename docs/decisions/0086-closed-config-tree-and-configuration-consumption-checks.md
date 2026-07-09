@@ -83,19 +83,24 @@ Forces shaping the design:
    `<kind>/parts/<name>/<section>.md` for enabled artifacts' declared sections (declared
    sections resolve against the *effective* catalog, so synthesized local artifacts'
    `content` sections are claimed — ADR-0068) and `parts/<kind>/<section>.md` for singletons.
+   An artifact whose sidecar sets `local: true` renders nothing, so its parts are *not*
+   claimed and report drift — the parts mirror of Decision 4's local data-key rule.
    `memory/**` is wholly exempt (ADR-0069 session scratch). Every other entry is failing
    drift from `awf check`, `Kind: "orphaned"`. The pre-existing orphan cases keep their
    detail strings byte-identical; genuinely new cases report an `unclaimed` detail; reporting
    collapses to the highest fully-unclaimed directory, as the parts sweep does today.
    ADR-0011's backing slugs (`drift-source-set`, `section-orphan-flagged`) move with the
    rewritten sweep in the same commit — the behaviors survive; only the code moves.
-2. **`*.awf-bak` backups are flagged, not exempt.** A sync-written collision backup under
-   `.awf/` reports drift with a distinct self-describing detail ("stale awf-bak backup —
-   review and delete"). The backup is a to-do, not a resident; silent exemption would let
-   the exact residue this ADR targets accumulate invisibly.
+2. **Backup files are flagged, not exempt.** A sync-written collision backup under `.awf/`
+   — both forms awf writes, `<path>.awf-bak` and the numbered `<path>.awf-bak.<N>`
+   (`freeBackupPath`, `internal/project/install.go`) — reports drift with a distinct
+   self-describing detail ("stale awf-bak backup — review and delete"). The backup is a
+   to-do, not a resident; silent exemption would let the exact residue this ADR targets
+   accumulate invisibly.
 3. **Unused vars are drift.** A `vars:` key whose value is **non-empty** and that is
    referenced by no rendered artifact — neither a `.vars.X` reference in any assembled
-   template source (all targets, `RenderAll` output) nor, for `gateCmd`/`checkCmd`, a
+   template source (all targets, `RenderAll` output *and* the generated domain docs, which
+   render outside it) nor, for `gateCmd`/`checkCmd`, a
    `{{=awf:gateCmd}}`/`{{=awf:checkCmd}}` placeholder in any consumed convention part
    *including domain-doc parts* — is failing drift reported by `awf check` against
    `.awf/config.yaml`. Empty-valued keys are exempt: they mirror ADR-0045's unset definition
@@ -129,8 +134,8 @@ Forces shaping the design:
 
 - `inv: closed-config-tree` — every filesystem entry under `.awf/` outside the claimed-path
   model of Decision 1 (with `memory/**` exempt) is reported as failing drift by `awf check`.
-- `inv: awf-bak-flagged` — a `*.awf-bak` file under `.awf/` (outside `memory/**`) reports
-  drift with the stale-backup detail, never passes silently.
+- `inv: awf-bak-flagged` — a `*.awf-bak` or `*.awf-bak.<N>` file under `.awf/` (outside
+  `memory/**`) reports drift with the stale-backup detail, never passes silently.
 - `inv: unused-var-drift` — a non-empty `vars:` key referenced by no assembled template
   source and no `gateCmd`/`checkCmd` part placeholder (domain-doc parts included) is failing
   drift; empty-valued keys never are.
@@ -155,7 +160,10 @@ Forces shaping the design:
 - **Upgrade friction, accepted:** fleet and go-php may go red on their first post-upgrade
   `awf check`. Every error self-describes its repair; the changelog entry flags the
   strictness change. Toggling a render unit off (`awf remove hooks`) can newly strand a var
-  (`commitGateCmd`) and require a same-commit vars edit — intended, documented.
+  (`commitGateCmd`) and require a same-commit vars edit — intended, documented. Likewise a
+  brownfield adopt: init/sync writing `.awf-bak` backups over pre-existing files makes the
+  very next `awf check` red until the backups are reviewed and deleted — intended to-do
+  surfacing, not a bug.
 - Disabling an artifact now surfaces *all* its residue (sidecar, parts, data keys, vars it
   alone consumed) as errors — the enabled-set-relative semantics orphaned parts already had,
   extended uniformly.
@@ -169,9 +177,12 @@ Forces shaping the design:
   that ever changes.
 - Downstream work: rewrite of `orphans()` into the sweep, two new drift producers, two
   open-time validations, an init prompting change, per-producer fixture tests, dogfood
-  proofs (evals fixture + awf's own tree), docs and changelog — sequenced by the
-  implementation plan (small standalone rejections first, then consumption checks, then the
-  sweep).
+  proofs (evals fixture + awf's own tree) — sequenced by the implementation plan (small
+  standalone rejections first, then consumption checks, then the sweep). Docs travel with
+  their commits: the rendered agent guide's Invariants entries for the six new slugs (via
+  `.awf` parts + sync), `docs/working-with-awf.md`'s drift-category and repair guidance,
+  the changelog strictness entry, and the `./x sync` ACTIVE.md regeneration in the
+  status-flip commit.
 
 ## Alternatives Considered
 
@@ -183,3 +194,4 @@ Forces shaping the design:
 | Silently exempt `*.awf-bak` from the sweep | Stale backups accumulate invisibly — the targeted smell. A distinct drift detail keeps them visible and self-repairing. |
 | Seed only the enabled set's vars at init | Weakens ADR-0022's "later `awf add` renders cleanly" property; the non-empty-and-unreferenced definition preserves it at zero cost. |
 | Treat domain sidecar `data:`/`sections:` as all-unused drift | Asymmetric with the `paths:` handling for an identical smell (inert field on the wrong kind); open-time rejection is louder and simpler than special-casing domains inside the consumption check. |
+| Have `awf sync` prune or repair unclaimed entries automatically | Acting on adopter-authored files is destructive; check-only placement (Decision 7) is what keeps awf's own commands usable to repair every state they flag. |
