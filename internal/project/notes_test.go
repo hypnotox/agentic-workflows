@@ -224,6 +224,80 @@ func TestStubNotesDomainDocs(t *testing.T) {
 	}
 }
 
+// The ADR-0083 part-marker advisory is part-keyed and deduplicated: a
+// whole-line marker in a part consumed by two adapter targets notes exactly
+// once, under the part path, with the fencing remedy in the note text.
+func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
+	root := scaffoldFiles(t,
+		"prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n",
+		map[string]string{
+			"skills/parts/tdd/notes.md": "some prose\n<!-- awf:section bogus -->\nmore prose\n",
+		})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, n := range notes {
+		if strings.Contains(n, "marker-shaped line") {
+			count++
+			want := "part .awf/skills/parts/tdd/notes.md contains a marker-shaped line — section markers have no effect inside convention parts; fence the example to silence this note"
+			if n != want {
+				t.Errorf("note = %q, want %q", n, want)
+			}
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly one part-keyed note across two targets, got %d: %v", count, notes)
+	}
+}
+
+// Inline prose quoting the marker form and a fenced whole-line example must
+// stay silent (inv: part-marker-advisory's negative cases).
+func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
+	root := scaffoldFiles(t, sampleYAML, map[string]string{
+		"skills/parts/tdd/notes.md": "the `<!-- awf:section x -->` form opens a section\n```\n<!-- awf:section demo -->\nbody\n<!-- awf:end -->\n```\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range notes {
+		if strings.Contains(n, "marker-shaped line") {
+			t.Errorf("inline quote / fenced example must not note: %q", n)
+		}
+	}
+}
+
+// Domain docs render outside RenderAll; a marker line in a domain part must
+// still reach the advisory (ADR-0083 Decision 4).
+func TestMarkerNotesDomainDocParts(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n",
+		map[string]string{
+			"domains/parts/config/current-state.md": "state prose\n<!-- awf:end -->\n",
+		})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.AdvisoryNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "part .awf/domains/parts/config/current-state.md contains a marker-shaped line"
+	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
+		t.Errorf("missing domain-part marker note %q, got:\n%s", want, joined)
+	}
+}
+
 func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 	p, err := Open(scaffold(t, sampleYAML))
 	if err != nil {

@@ -20,7 +20,13 @@ type SectionPlan struct {
 	// declared-unauthored starter content (ADR-0070). Set by the project layer,
 	// which reads part bodies; consumed by StubSections.
 	PartStub bool
-	EditPath string
+	// PartMarker marks a part whose raw, fence-excluded body carries a
+	// whole-line section-marker residue (ADR-0083). Set by the project layer
+	// over the on-disk bytes — pre placeholder substitution, whose multi-line
+	// values must never create or mask a match; consumed part-keyed by the
+	// marker advisory.
+	PartMarker bool
+	EditPath   string
 }
 
 // editPointer is the awf:edit provenance comment emitted before a section body.

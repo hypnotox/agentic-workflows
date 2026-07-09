@@ -113,6 +113,33 @@ func TestHasStubMarker(t *testing.T) {
 	}
 }
 
+// HasMarkerLine's prefix anchor (ADR-0083): every whole-line residue shape
+// fires, every inline quote stays silent, and awf:stub is out of scope.
+func TestHasMarkerLine(t *testing.T) {
+	cases := map[string]struct {
+		body string
+		want bool
+	}{
+		"closed section marker": {"<!-- awf:section foo -->\n", true},
+		"end marker":            {"prose\n<!-- awf:end -->\n", true},
+		"unclosed opener":       {"<!-- awf:section foo\n", true},
+		"trailing text":         {"<!-- awf:section foo --> trailing\n", true},
+		"indented marker":       {"   <!--  awf:end -->\n", true},
+		"inline quote":          {"the `<!-- awf:section -->` form opens a section\n", false},
+		"bare token":            {"a bare `awf:section` mention\n", false},
+		"stub marker":           {"<!-- awf:stub -->\n", false},
+		"other awf comment":     {"<!-- awf:edit x — default -->\n", false},
+		"empty body":            {"", false},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := HasMarkerLine(c.body); got != c.want {
+				t.Errorf("HasMarkerLine(%q) = %v, want %v", c.body, got, c.want)
+			}
+		})
+	}
+}
+
 func TestCheckResidualMarkersBareTokenLegal(t *testing.T) {
 	if err := CheckResidualMarkers("A managed doc is a sequence of `awf:section` blocks.\n"); err != nil {
 		t.Errorf("bare backtick-quoted token must be legal, got %v", err)

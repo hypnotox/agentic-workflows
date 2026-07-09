@@ -22,6 +22,12 @@ query a single version or a range.
   now always means rendered.
 
 ### Others
+- `awf check` and `awf init` now print a non-failing note when a convention
+  part contains a whole line that is (or begins with) a section marker —
+  `<!-- awf:section … -->` / `<!-- awf:end -->` — which is inert inside a
+  part and previously rendered into output silently. Inline quoting and
+  fenced code examples never trigger the note; fencing is the remedy the
+  note itself suggests.
 - `awf sync` (and every command that ends in a sync: `upgrade`, `init`,
   `add`, `remove`, `new`) now prints `awf sync: pruned <path>` for each
   file its prune actually removes — a disabled artifact, a dropped

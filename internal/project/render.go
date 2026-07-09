@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -47,6 +48,10 @@ type RenderedFile struct {
 	// carrying the awf:stub marker. Consumed path-keyed by stubNotes.
 	stubDefaults []string
 	stubParts    []string
+	// markerParts feeds the ADR-0083 part-marker advisory: the part paths
+	// (EditPath) whose raw bodies carry a whole-line section-marker residue.
+	// Consumed part-keyed and deduplicated by markerNotes.
+	markerParts []string
 }
 
 // data assembles the template data namespace for a target: the prefix, the
@@ -166,6 +171,9 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			sp.HasPart = true
 			sp.PartBody = body
 			sp.PartStub = render.HasStubMarker(body)
+			// Scanned on the raw on-disk bytes, never the substituted body
+			// (ADR-0083 Decision 4), with fenced examples excluded.
+			sp.PartMarker = render.HasMarkerLine(refs.WithoutFences(string(b)))
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
@@ -424,6 +432,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
+	var markerParts []string
+	for _, name := range slices.Sorted(maps.Keys(plan)) {
+		if plan[name].PartMarker {
+			markerParts = append(markerParts, plan[name].EditPath)
+		}
+	}
 	content, err := render.Execute(assembled, data, parts, tid)
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
@@ -443,6 +457,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// invariant: include-in-templatehash
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		assembled: assembled, stubDefaults: stubDefaults, stubParts: stubParts,
+		markerParts: markerParts,
 	}, nil
 }
 
@@ -481,7 +496,8 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 			return nil, err
 		}
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
-			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts})
+			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
+			markerParts: rf.markerParts})
 	}
 	return out, nil
 }

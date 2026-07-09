@@ -19,8 +19,9 @@ import (
 )
 
 // AdvisoryNotes returns the non-failing render advisories in print order — the
-// ADR-0045 unset-var notes, then the ADR-0070 stub notes — computed from one
-// RenderAll pass plus the domain-doc generation, which renders outside it.
+// ADR-0045 unset-var notes, the ADR-0070 stub notes, then the ADR-0083 part-
+// marker notes — computed from one RenderAll pass plus the domain-doc
+// generation, which renders outside it.
 func (p *Project) AdvisoryNotes() ([]string, error) {
 	files, err := p.RenderAll()
 	if err != nil {
@@ -30,7 +31,9 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(p.unsetVarNotes(files), stubNotes(append(files, dds...))...), nil
+	all := slices.Concat(files, dds)
+	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
+	return append(notes, markerNotes(all)...), nil
 }
 
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
@@ -90,6 +93,27 @@ func stubNotes(files []RenderedFile) []string {
 		}
 		notes = append(notes, fmt.Sprintf("%s has unauthored stub content — %s",
 			f.Path, strings.Join(clauses, "; ")))
+	}
+	sort.Strings(notes)
+	return notes
+}
+
+// markerNotes reports each convention part whose raw body carries a whole-line
+// section-marker residue — the ADR-0083 advisory. Keyed by the part path, a
+// deliberate deviation from stubNotes' output-path keying (the actionable file
+// is the part itself), and deduplicated: multi-target rendering consumes the
+// same part once per target and must not repeat its note.
+func markerNotes(files []RenderedFile) []string {
+	seen := map[string]bool{}
+	var notes []string
+	for _, f := range files {
+		for _, part := range f.markerParts {
+			if seen[part] {
+				continue
+			}
+			seen[part] = true
+			notes = append(notes, fmt.Sprintf("part %s contains a marker-shaped line — section markers have no effect inside convention parts; fence the example to silence this note", part))
+		}
 	}
 	sort.Strings(notes)
 	return notes

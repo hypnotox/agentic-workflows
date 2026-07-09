@@ -69,6 +69,28 @@ func HasStubMarker(body string) bool {
 	return false
 }
 
+// markerLineRE anchors HasMarkerLine's detection: a trimmed line beginning with
+// a marker-shaped awf:section/awf:end comment opener.
+var markerLineRE = regexp.MustCompile(`^<!--\s*awf:(section|end)\b`)
+
+// HasMarkerLine reports whether body contains a line that, after trimming,
+// begins with a marker-shaped `awf:section`/`awf:end` comment opener — the
+// ADR-0083 whole-line detection behind the part-marker advisory. The prefix
+// anchor covers the exact closed marker, an unclosed opener, and a marker with
+// trailing text: none has a legitimate quoter, since prose quoting the form
+// always precedes it on the line. Inline quoting never fires; the awf:stub
+// part marker is out of scope by construction (the pattern names only
+// section/end). Callers exclude fenced code before the scan.
+// invariant: part-marker-advisory
+func HasMarkerLine(body string) bool {
+	for _, line := range strings.Split(body, "\n") {
+		if markerLineRE.MatchString(strings.TrimSpace(line)) {
+			return true
+		}
+	}
+	return false
+}
+
 // residualMarkerRE matches a marker-shaped comment opener that survived section
 // assembly: `<!--` + optional whitespace + awf:section/awf:end. Comment-anchored,
 // never a bare-identifier scan — a section default may legally quote the bare

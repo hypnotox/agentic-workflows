@@ -62,7 +62,7 @@ data:
         - ref: ADR-0069
           text: '**Ephemeral working memory.** `awf sync` always renders the self-ignoring `.awf/memory/.gitignore`; working-memory files are session state — never committed, never cited by an ADR, plan, or commit message, deleted when the chain terminates.'
         - ref: ADR-0070
-          text: '**Stub advisory, residual-marker guard.** Unauthored stub content — a stub-attributed section at its template default, or a part carrying the whole-line `awf:stub` marker — is a non-failing `awf check`/`awf init` note keyed by output path, never a failure; a marker-shaped `awf:section`/`awf:end` token surviving section assembly is a hard render error; and every shipped template section default is deliberately classified — authoring prompts carry `stub`, shippable prose stays plain.'
+          text: '**Stub advisory, residual-marker guard.** Unauthored stub content — a stub-attributed section at its template default, or a part carrying the whole-line `awf:stub` marker — is a non-failing `awf check`/`awf init` note keyed by output path, never a failure; a marker-shaped `awf:section`/`awf:end` token surviving section assembly into the skeleton is a hard render error — scoped to awf-owned template source; adopter parts and data are deliberately outside it (their whole-line residue is ADR-0083''s advisory) — and every shipped template section default is deliberately classified: authoring prompts carry `stub`, shippable prose stays plain.'
         - ref: ADR-0076
           text: '**Atomic trust-bearing writes.** `.awf/awf.lock` and migration rewrites of existing config files go through the temp-file-plus-rename helper (`manifest.WriteFileAtomic`); no truncate-in-place write of a trust-bearing file remains.'
         - ref: ADR-0076
@@ -97,3 +97,5 @@ data:
           text: '**Init set closed.** `awf init`''s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant.'
         - ref: ADR-0082
           text: '**Template source residue banned.** Every file in the embedded templates FS is free of concrete `ADR-` citations (four-digit tokens; the `ADR-NNNN` placeholder is legal) and of repo-identity literals outside a pinned two-entry exemption list (bootstrap download slug, agent-guide home link) whose entries fail when stale; extending the list is a successor-ADR act.'
+        - ref: ADR-0083
+          text: '**Part-marker advisory.** A trimmed convention-part line beginning with a marker-shaped `awf:section`/`awf:end` comment opener, outside fenced code, yields a part-path-keyed note from `awf check` and `awf init` — never a failure; inline prose quoting the form mid-line and fenced whole-line examples stay silent.'
