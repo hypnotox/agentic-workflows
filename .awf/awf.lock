@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:29d43e4b7d113360814dd883e1868aa5189efe1ed34b052f5a9892b0dc3c56a0"
+      "outputHash": "sha256:94a77bc43e3673ebaf6a0cec62fadc6c13f0ecabc3797b575cbbe9c87231b327"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:b337b9105f3ac924fabb3e08db00cf29e07b59eb9469d041d76fc4fb4496180e"
+      "outputHash": "sha256:3a232660a60a91ef0ddda1de45d065046d68f00ae852ba772eb1b52db07127e1"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -318,13 +318,13 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:93e9a503fe0e8217beddd9b1deb4ab3ce473e0cc07bd1b71d86817a7c88065ad"
+      "outputHash": "sha256:2c5ecc5bd42b878b12cd57181c61f4fc38552185e643f25894b5e3e739092274"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:0eaeaafc564fe96263c9a6d95b0ea42642d0d7ceede5279755b66e7e6bea46f3"
+      "outputHash": "sha256:4931c5a61df9bea53e245044b36fc526a47ceed66ce11cb44cd9398488197e33"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

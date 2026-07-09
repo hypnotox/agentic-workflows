@@ -54,3 +54,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0075: Working-memory check is on-demand, not a startup step](../decisions/0075-working-memory-check-is-on-demand-not-a-startup-step.md)
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
 
+### Proposed
+
+- [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
+
