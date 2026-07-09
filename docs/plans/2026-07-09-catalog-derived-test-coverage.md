@@ -119,7 +119,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       ```
 
 - [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`, all tests pass.
-- [ ] Commit: `feat(rendering): declare unconditional chain coupling in the catalog (ADR-0080)`
+- [ ] Commit: `feat(rendering): declare chain coupling in the catalog (ADR-0080)`
       — body: names Decision 1, notes declarations are proven exact by the Phase-2 sweep.
 
 ## Phase 2 — derived unset-data sweep
@@ -220,7 +220,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       A failure here means a Phase-1 declaration is wrong: fix the declaration (or the
       template), never the sweep.
 - [ ] Run `./x gate` — green.
-- [ ] Commit: `test(rendering): sweep every catalog template under empty data (ADR-0080)`
+- [ ] Commit: `test(rendering): sweep catalog templates under empty data (ADR-0080)`
       — body: backs `catalog-template-sweep` + `requires-skills-exact`.
 
 ## Phase 3 — hoist the case list, guard conditionals, backfill 11 cases
@@ -244,7 +244,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       var unsetFallbackCases = []fallbackCase{
       ```
 
-      and move the existing 12 case literals into it unchanged (drop the anonymous
+      and move the existing 11 case literals into it unchanged (drop the anonymous
       struct header and its closing `}`; the literals keep their `tmpl`/`want`/`ban`
       fields). The func body becomes:
 
@@ -386,11 +386,11 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       ```
 
 - [ ] Run `go test ./internal/project/ -run 'TestUnsetFallbackRenders|TestConditionalTemplatesHaveFallbackCases' -v`
-      — expect PASS (23 fallback subtests + the guard). A want-phrase failure means the
+      — expect PASS (22 fallback subtests + the guard). A want-phrase failure means the
       2026-07-09 derivation drifted: re-render the template under the case's exact data
       and re-pin the phrase from the actual degraded output.
 - [ ] Run `./x gate` — green.
-- [ ] Commit: `test(rendering): force a fallback case per conditional template (ADR-0080)`
+- [ ] Commit: `test(rendering): force a fallback case per conditional (ADR-0080)`
       — body: backs `conditional-fallback-case-guard`; notes the 11 backfilled cases
       close the live gap found 2026-07-09.
 
@@ -558,7 +558,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 - [ ] Run `go test ./internal/project/ -run TestScopesEditReflagsReferencingArtifacts -v`
       — expect PASS.
 - [ ] Run `./x gate` — green.
-- [ ] Commit: `test(config): derive the chain-closure fixture from the catalog (ADR-0080)`
+- [ ] Commit: `test(config): derive the chain fixture from the catalog (ADR-0080)`
       — body: notes the deliberate tdd membership delta and the re-pointed negative
       control.
 
@@ -590,28 +590,24 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       is an explicit entry that itself fails when stale.
       ```
 
-- [ ] In `.awf/agents-doc.yaml`, append to `data.invariants` (before any trailing
-      entries; match the existing two-space list indent):
+- [ ] In `.awf/agents-doc.yaml`, append to `data.invariants` — one bullet per new
+      invariant slug, per the ADR's "four new invariant bullets" commitment; match
+      the existing entries' indentation (8 spaces before `- ref:`):
 
       ```yaml
               - ref: ADR-0080
-                text: '**Catalog-derived template sweep.** Every catalog skill/agent template renders under empty data in a catalog-derived loop banning leak residue and skill references outside the artifact''s `requiresSkills` declaration — declarations are exact (undeclared reference and stale declaration both fail), and every exemption is an explicit entry that fails when stale.'
+                text: '**Catalog-derived template sweep.** Every catalog skill/agent template renders under empty data in a catalog-derived loop banning leak residue and skill references outside the artifact''s `requiresSkills` declaration; the artifact set derives from the catalog, never a hand list.'
+              - ref: ADR-0080
+                text: '**Exact coupling declarations.** `requiresSkills` declarations are exact: an undeclared unconditional skill reference and a stale declaration both fail the sweep, and every other exemption is an explicit entry that fails when stale.'
               - ref: ADR-0080
                 text: '**Conditional-fallback case guard.** Every catalog template whose post-expansion source carries a conditional action has a hand-authored unset-data case pinning its degraded prose.'
               - ref: ADR-0080
                 text: '**Golden-test completeness.** Every catalog skill and agent has its per-artifact golden test in `internal/project`.'
       ```
 
-      (Three bullets: the sweep and its exactness share the first — adjust to four
-      one-per-slug bullets only if the guide's existing style demands it; the ADR's
-      Consequences commitment is "the four new invariant bullets", so cite
-      `requires-skills-exact` inside the first bullet's text as done above and note
-      the folding in the commit body, or split into four — either satisfies the
-      commitment as long as all four slugs are visibly covered.)
-
-- [ ] In `.awf/domains/parts/rendering/current-state.md`, add to the current-state
-      narrative (end of the catalog paragraph, or as a new sentence where it fits the
-      flow):
+- [ ] In `.awf/domains/parts/rendering/current-state.md`, append as the final
+      sentence of the `## Current state` narrative (after the ADR-0069
+      `.awf/memory/.gitignore` sentence that currently ends the file):
 
       ```markdown
       The catalog also declares each artifact's unconditional chain-skill coupling
