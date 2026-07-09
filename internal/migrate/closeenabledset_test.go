@@ -1,0 +1,110 @@
+package migrate
+
+import (
+	"bytes"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// closeFixture writes an .awf/config.yaml (plus optional sidecars keyed by
+// .awf-relative path) and returns the root.
+func closeFixture(t *testing.T, cfg string, files map[string]string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for rel, body := range files {
+		p := filepath.Join(root, ".awf", rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+// Dormant doc-gated skills are dropped (printed), missing requirements are
+// added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
+// Decision 8).
+// invariant: close-enabled-set-migration
+func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation, tdd]\nagents: []\n", nil)
+	var out bytes.Buffer
+	if err := applyCloseEnabledSet(root, &out); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		`close-enabled-set: dropped dormant skill "roadmap-graduation" (its "roadmap" doc is disabled)`,
+		`close-enabled-set: enabled skill "proposing-adr" (required by "brainstorming")`,
+		`close-enabled-set: enabled agent "plan-reviewer" (required by "reviewing-plan")`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"- reviewing-plan-resync", "- retrospective", "- adr-lifecycle", "- code-reviewer", "- adr-reviewer"} {
+		if !strings.Contains(string(cfg), want) {
+			t.Errorf("closed config missing %q:\n%s", want, cfg)
+		}
+	}
+	if strings.Contains(string(cfg), "- roadmap-graduation") {
+		t.Errorf("dormant skill not dropped:\n%s", cfg)
+	}
+	// Idempotence: a second run changes nothing.
+	if err := applyCloseEnabledSet(root, &out); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	again, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(cfg, again) {
+		t.Errorf("re-run must be a byte-identical no-op:\n%s", again)
+	}
+}
+
+// A local:-owned doc-gated skill renders today even without its doc, so the
+// dormancy drop skips it — symmetric with the validator's local skip.
+func TestCloseEnabledSetKeepsLocalDormantSkill(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\nskills: [roadmap-graduation]\nagents: []\n",
+		map[string]string{"skills/roadmap-graduation.yaml": "local: true\n"})
+	if err := applyCloseEnabledSet(root, io.Discard); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "- roadmap-graduation") && !strings.Contains(string(cfg), "[roadmap-graduation]") {
+		t.Errorf("local dormant skill must be kept:\n%s", cfg)
+	}
+}
+
+// An absent config is a no-op (idempotent re-run safe, the editConfig skeleton).
+func TestCloseEnabledSetNoConfigNoop(t *testing.T) {
+	if err := applyCloseEnabledSet(t.TempDir(), io.Discard); err != nil {
+		t.Fatalf("absent config must be a no-op, got %v", err)
+	}
+}
+
+// A malformed config surfaces the load error rather than mutating anything.
+func TestCloseEnabledSetMalformedConfig(t *testing.T) {
+	root := closeFixture(t, ": : not valid : :\n", nil)
+	if err := applyCloseEnabledSet(root, io.Discard); err == nil {
+		t.Fatal("expected a parse error for a malformed config")
+	}
+}

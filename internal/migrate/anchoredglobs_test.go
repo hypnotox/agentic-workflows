@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,7 @@ audit:
     - go.mod
     - '**/package.json'
 `)
-	if err := applyAnchoredGlobs(root); err != nil {
+	if err := applyAnchoredGlobs(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
@@ -43,7 +44,7 @@ audit:
 }
 
 func TestApplyAnchoredGlobsNoConfigNoop(t *testing.T) {
-	if err := applyAnchoredGlobs(t.TempDir()); err != nil {
+	if err := applyAnchoredGlobs(t.TempDir(), io.Discard); err != nil {
 		t.Fatalf("absent config must be a no-op, got %v", err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -325,6 +326,31 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "applied") {
 		t.Errorf("expected an applied migration, got %q", out.String())
+	}
+}
+
+// A schema-7 config the ADR-0081 closure validation refuses is repaired by
+// awf upgrade: close-enabled-set closes the enabled set, then the terminal
+// sync opens it cleanly.
+func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
+	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runCheck(root, io.Discard); err == nil {
+		t.Fatal("pre-upgrade check should refuse (schema gate)")
+	}
+	var out bytes.Buffer
+	if err := runUpgrade(root, &out); err != nil {
+		t.Fatalf("runUpgrade: %v", err)
+	}
+	if !strings.Contains(out.String(), `close-enabled-set: enabled skill "proposing-adr" (required by "brainstorming")`) {
+		t.Errorf("expected closure additions printed, got %q", out.String())
+	}
+	if err := runCheck(root, io.Discard); err != nil {
+		t.Errorf("post-upgrade check should pass, got %v", err)
 	}
 }
 

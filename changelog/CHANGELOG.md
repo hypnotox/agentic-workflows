@@ -8,6 +8,19 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- The catalog `requires*` declarations are now an enforced dependency graph
+  (schema 8 — run `awf upgrade`). A config enabling an artifact without its
+  required skills/agents/docs is refused by every command; the migration
+  closes your enabled set (adding missing requirements, printing each) and
+  drops dormant doc-gated skills (enabled while their doc was disabled —
+  they rendered nothing before, so your output is unchanged). `awf add`
+  now enables the full requirement closure in one edit, printing a plan;
+  `awf remove` refuses while enabled artifacts still require the target —
+  `--with-dependents` removes them together, `--dry-run` previews either
+  plan. The render-time suppression of doc-gated skills is gone: enabled
+  now always means rendered.
+
 ### Others
 - The bootstrap script's unsupported-OS/arch failure now points at the
   manual-install path (`https://github.com/hypnotox/agentic-workflows#install`),

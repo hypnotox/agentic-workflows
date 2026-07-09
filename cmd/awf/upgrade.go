@@ -25,7 +25,7 @@ func runUpgrade(root string, stdout io.Writer) error {
 	if state == "ahead" {
 		return schemaAheadError(gen)
 	}
-	applied, err := migrate.Upgrade(root)
+	applied, err := migrate.Upgrade(root, stdout)
 	if err != nil {
 		return err
 	}

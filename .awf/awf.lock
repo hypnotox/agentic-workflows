@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.11.0",
-  "schemaVersion": 7,
+  "awfVersion": "0.12.0",
+  "schemaVersion": 8,
   "files": {
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -329,8 +329,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:b9f3f843ae16449ef2c1e1df1fe10ab5c260a64cd25f82bb41a166fa1d7499e3",
-      "configHash": "sha256:af8957f7e13f8d11fc8ef2960fdf18bb2fd6709226e7368ea8c9095214ec20e5",
-      "outputHash": "sha256:c4a5c53f48922576f58d03b706105e5b21683ef866af5b7136a1131b17da3314"
+      "configHash": "sha256:2b466f851f83a5515ebf4a06fea28284c91de1f4dede7525ef6b164c12a02ca2",
+      "outputHash": "sha256:f5829b3ac958e8c33a5ea0b2016a87940d6a3fdd925f830673a42d6556c8255b"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",

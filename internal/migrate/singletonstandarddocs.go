@@ -3,6 +3,7 @@ package migrate
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -23,7 +24,7 @@ var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-
 // convention-part dir from <awfDir>/docs/parts/<name>/ to <awfDir>/parts/<name>/,
 // then <name> is stripped from the docs: array — each step a no-op if its
 // source is already absent, so a repeated run is idempotent.
-func applySingletonStandardDocs(root string) error {
+func applySingletonStandardDocs(root string, _ io.Writer) error {
 	awfDir := config.RootDir(root)
 	for _, name := range singletonStandardDocNames {
 		if err := relocate(filepath.Join(awfDir, "docs", name+".yaml"), filepath.Join(awfDir, name+".yaml")); err != nil { // coverage-ignore: relocate errors here only on the existing-destination guard or a permission fault, neither of which occurs over the fresh trees this migration runs on

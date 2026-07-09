@@ -1,11 +1,14 @@
 // Package migrate ports a project's awf config across schema generations. It is
 // the sole reader of the legacy single-file .claude/awf.yaml (ADR-0010
 // inv: legacy-read-isolation, the named exemption to ADR-0009 inv: config-root)
-// and is imported by nothing on the render/sync/check load path.
+// and is imported by nothing on the render/sync/check load path. It reads the
+// compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
+// migration — a leaf import that keeps this package off the render path.
 package migrate
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -17,7 +20,7 @@ import (
 type Migration struct {
 	To    int
 	Name  string
-	Apply func(root string) error
+	Apply func(root string, out io.Writer) error
 }
 
 // registry is ordered ascending by To; current schema = last To.
@@ -29,6 +32,7 @@ var registry = []Migration{
 	{To: 5, Name: "enable-bootstrap", Apply: applyEnableBootstrap},
 	{To: 6, Name: "singleton-standard-docs", Apply: applySingletonStandardDocs},
 	{To: 7, Name: "anchored-globs", Apply: applyAnchoredGlobs},
+	{To: 8, Name: "close-enabled-set", Apply: applyCloseEnabledSet},
 }
 
 // Current is the current schema generation (the highest registered To).
@@ -152,7 +156,7 @@ func GateState(root string) (string, int, error) {
 // After applying any migration it restamps an existing tree lock to Current() so
 // Generation reflects the new state and the terminal sync's schema gate passes
 // (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
-func Upgrade(root string) ([]string, error) {
+func Upgrade(root string, out io.Writer) ([]string, error) {
 	from, err := Generation(root)
 	if err != nil {
 		return nil, err
@@ -162,7 +166,7 @@ func Upgrade(root string) ([]string, error) {
 		if m.To <= from {
 			continue
 		}
-		if err := m.Apply(root); err != nil {
+		if err := m.Apply(root, out); err != nil {
 			return applied, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)
