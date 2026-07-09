@@ -87,6 +87,10 @@
 - [ADR-0082: Source-level template residue guard](0082-source-level-template-residue-guard.md) — Implemented
 - [ADR-0083: Whole-line part-marker advisory](0083-whole-line-part-marker-advisory.md) — Implemented
 
+## Proposed
+
+- [ADR-0084: Catalog vars carry functional values only](0084-catalog-vars-carry-functional-values-only.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
