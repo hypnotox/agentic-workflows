@@ -74,6 +74,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
 
+### Proposed
+
+- [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

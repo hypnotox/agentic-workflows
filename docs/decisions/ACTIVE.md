@@ -85,6 +85,10 @@
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Implemented
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](0081-enforced-dependency-graph-over-catalog-requires-declarations.md) — Implemented
 
+## Proposed
+
+- [ADR-0082: Source-level template residue guard](0082-source-level-template-residue-guard.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
