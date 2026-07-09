@@ -72,3 +72,30 @@ func TestVarDescriptorParity(t *testing.T) {
 		}
 	}
 }
+
+// functionalVarKeys pins the catalog's string var descriptor set to the eight
+// functional keys ADR-0084 enumerates. Extending this list is a successor-ADR
+// act: a descriptor exists only for a value the rendered artifacts or the
+// tooling execute or enforce, never to tune prose wording.
+var functionalVarKeys = []string{
+	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd",
+	"testCmd", "commitScopes", "activeMdRegenCmd", "invariantTestPath",
+}
+
+// TestVarDescriptorSetPinned asserts the catalog's string var descriptors are
+// exactly the pinned functional set.
+// invariant: var-descriptor-set-pinned
+func TestVarDescriptorSetPinned(t *testing.T) {
+	var got []string
+	for _, d := range catalog.Standard.Vars {
+		if d.Kind == "string" {
+			got = append(got, d.Key)
+		}
+	}
+	want := slices.Clone(functionalVarKeys)
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("string var descriptor keys = %v, want the ADR-0084 pinned set %v", got, want)
+	}
+}

@@ -66,7 +66,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
-7. **Commit everything in one commit.** Format: `{{ with .vars.adrProposeCommitFmt }}{{ . }}{{ else }}docs(adr): propose NNNN <short title>{{ end }}`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section autonomous-rule -->

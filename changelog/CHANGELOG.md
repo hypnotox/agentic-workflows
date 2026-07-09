@@ -8,6 +8,18 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- The four prose-knob catalog vars — `docCurrencyTargets`, `adrProposeCommitFmt`,
+  `gateDuration`, `modulePrefix` — are removed (ADR-0084): catalog vars now carry
+  functional values only (commands, enforced identifiers, structural paths).
+  The consuming templates render their former fallback prose unconditionally, so
+  a project that set one of these sees the affected skill rewritten to the
+  generic wording on its next `awf sync` — no warning is emitted; override the
+  section with a convention part to restore concrete wording. Leftover keys in
+  `vars:` are inert and can be deleted at leisure, but a saved init answers file
+  (or `--set`) carrying a removed key now fails `awf init` on a fresh scaffold
+  with an unknown-answer-key error.
+
 ## [0.12.0] - 2026-07-09
 
 ### Breaking changes

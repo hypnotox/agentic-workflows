@@ -244,8 +244,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"gateCmd":      "./x gate",
-			"gateDuration": "~2 min",
+			"gateCmd": "./x gate",
 		},
 		"layout": map[string]any{"plansDir": "docs/plans"},
 		"data":   map[string]any{},
@@ -279,7 +278,6 @@ func TestExecutingPlansTemplate(t *testing.T) {
 		"vars": map[string]any{
 			"gateCmd":          "./x gate",
 			"gateCmdFull":      "./x gate full",
-			"gateDuration":     "~2 min",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
 		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},
@@ -354,9 +352,8 @@ func TestBugfixTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"gateCmd":            "./x gate",
-			"gateCmdFull":        "./x gate full",
-			"docCurrencyTargets": "docs/ and docs/decisions/",
+			"gateCmd":     "./x gate",
+			"gateCmdFull": "./x gate full",
 		},
 		"data":   map[string]any{},
 		"skills": map[string]bool{"tdd": true, "debugging": true, "reviewing-impl": true},
@@ -450,10 +447,9 @@ func TestProposingAdrTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
 		"vars": map[string]any{
-			"activeMdRegenCmd":    "go test ./internal/adrtools/",
-			"gateCmd":             "./x gate",
-			"checkCmd":            "./x check",
-			"adrProposeCommitFmt": "docs(adr): propose NNNN <short title>",
+			"activeMdRegenCmd": "go test ./internal/adrtools/",
+			"gateCmd":          "./x gate",
+			"checkCmd":         "./x check",
 		},
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
@@ -759,10 +755,8 @@ func TestRetrospectiveTemplate(t *testing.T) {
 func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
-		"vars": map[string]any{
-			"modulePrefix": "github.com/acme/example",
-		},
-		"data": map[string]any{},
+		"vars":   map[string]any{},
+		"data":   map[string]any{},
 	}
 
 	out := renderSkillGolden(t, "refactor-coupling-audit", data)

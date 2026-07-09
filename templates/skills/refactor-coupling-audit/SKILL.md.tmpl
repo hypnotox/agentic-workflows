@@ -67,7 +67,7 @@ Existing subpackages that import the symbol under its current path will need imp
 
 ```bash
 # For languages with import paths, find importers of the original package.
-grep -rn "{{ with .vars.modulePrefix }}{{ . }}{{ else }}<module-prefix>{{ end }}/<original-package-path>" <original-package-path>/
+grep -rn "<module-prefix>/<original-package-path>" <original-package-path>/
 ```
 
 For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).

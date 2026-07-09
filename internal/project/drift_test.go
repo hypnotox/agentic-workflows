@@ -220,7 +220,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 }
 
 func sprintfVars(pitfalls string) string {
-	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  docCurrencyTargets: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
+	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }
 
 // invariant: schema-version-lock
