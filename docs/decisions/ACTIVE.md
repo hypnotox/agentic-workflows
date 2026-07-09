@@ -86,6 +86,10 @@
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](0081-enforced-dependency-graph-over-catalog-requires-declarations.md) — Implemented
 - [ADR-0082: Source-level template residue guard](0082-source-level-template-residue-guard.md) — Implemented
 
+## Proposed
+
+- [ADR-0083: Whole-line part-marker advisory](0083-whole-line-part-marker-advisory.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
