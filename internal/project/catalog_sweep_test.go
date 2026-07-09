@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -120,5 +121,37 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 	}
 	for name := range catalog.Standard.Agents {
 		check(fmt.Sprintf("agents/%s.md.tmpl", name))
+	}
+}
+
+// kebabToCamel converts a kebab-case artifact name to its test-func stem
+// ("subagent-driven-development" → "SubagentDrivenDevelopment").
+func kebabToCamel(name string) string {
+	parts := strings.Split(name, "-")
+	for i, p := range parts {
+		parts[i] = strings.ToUpper(p[:1]) + p[1:]
+	}
+	return strings.Join(parts, "")
+}
+
+// TestEveryCatalogArtifactHasGoldenTest asserts a per-artifact golden test
+// func exists in this package's test source for every catalog skill and
+// agent — the goldens live in spine_test.go by convention (source-scan
+// mechanic, precedent TestArchitectureDocNamesEveryCmd; ADR-0080 Decision 4).
+// invariant: golden-test-completeness
+func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
+	src, err := os.ReadFile("spine_test.go")
+	if err != nil {
+		t.Fatalf("read spine_test.go: %v", err)
+	}
+	for name := range catalog.Standard.Skills {
+		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(string(src), needle) {
+			t.Errorf("no golden test for skill %q — add %s to internal/project/spine_test.go", name, needle)
+		}
+	}
+	for name := range catalog.Standard.Agents {
+		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(string(src), needle) {
+			t.Errorf("no golden test for agent %q — add %s to internal/project/spine_test.go", name, needle)
+		}
 	}
 }

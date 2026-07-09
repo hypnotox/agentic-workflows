@@ -383,6 +383,36 @@ func TestBugfixTemplate(t *testing.T) {
 	}
 }
 
+func TestTddTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"testCmd": "go test ./...",
+			"gateCmd": "./x gate",
+		},
+		"data":   map[string]any{},
+		"skills": map[string]bool{},
+	}
+
+	out := renderSkillGolden(t, "tdd", data)
+
+	if !strings.Contains(out, "name: example-tdd") {
+		t.Errorf("expected 'name: example-tdd' in output:\n%s", out)
+	}
+
+	loadBearing := []string{
+		"confirm it fails for the right reason: `go test ./...`",
+		"Run the gate: `./x gate`",
+		"A test never observed failing proves nothing.",
+		"Fix the code, not the oracle.",
+	}
+	for _, phrase := range loadBearing {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
 func TestDebuggingTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
