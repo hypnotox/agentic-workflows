@@ -20,6 +20,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 `internal/evals` (ADR-0053) is a test-only package that renders the full catalog via `Project.SyncReport` and asserts cross-artifact workflow-chain seams no single-template test covers. ADR-0054 hardens this into a machine-enforced handoff convention: the ten chain-progression skills share the `terminal-step` handoff marker, each forward handoff must name its successor on an invocation-verb line, and the chain graph must stay connected (no orphaned node, every node reachable from `brainstorming`, with `retrospective` the sole terminal since ADR-0067); a companion section-parity guard (`TestSkillAndAgentSectionParity`, invariant `skill-section-parity`) asserts every skill/agent template's `awf:section` markers match its catalog-declared sections, so a section-slug rename cannot half-land with a blank-path provenance pointer. ADR-0069 adds a working-memory coverage lock (`memory-checkpoint-chain-coverage`): the nine non-terminal chain-node skills plus `bugfix` and `debugging` must render the checkpoint instruction in the full-catalog output, and `retrospective` the deletion step. ADR-0074 makes the three chain review subagents report-only judges: the shared review-discipline spine and their templates instruct the agent to report findings, never to edit, commit, or re-review, and each `<prefix>-reviewing-*` skill owns fix application and a single fresh verify-pass dispatch (invariant `reviewers-report-only`).
 
+`awf add`/`awf remove` are dependency-graph-aware (ADR-0081): a resolver computes provenance-carrying plans over the catalog `requires*` edges — add enables the full missing forward closure in one config rewrite, remove prints the dependent plan and refuses while it exceeds the target (`--with-dependents` cascades, `--dry-run` previews either plan) — the CLI's first flags, parsed by a positionals filter over the former len(args) dispatch.
+
 
 ## Decisions
 
@@ -70,9 +72,6 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0078: Release-time changelog pin](../decisions/0078-release-time-changelog-pin.md)
 - [ADR-0079: Release and CI supply-chain hygiene](../decisions/0079-release-and-ci-supply-chain-hygiene.md)
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
-
-### Proposed
-
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
 
 ### Superseded

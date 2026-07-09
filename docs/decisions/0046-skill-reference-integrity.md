@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [check, drift, skills, adoption]
-related: [13, 20, 22, 28, 34, 45]
+related: [13, 20, 22, 28, 34, 45, 81]
 domains: [rendering, config]
 ---
 # ADR-0046: Skill-reference integrity

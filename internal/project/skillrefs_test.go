@@ -92,10 +92,10 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 	}
 }
 
-// The effective set is enabled minus doc-gate-suppressed, with local-declared
-// skills always kept. The roadmap doc is enabled at Open (ADR-0081's closure
-// validation refuses the dormant state) and dropped post-Open to exercise the
-// suppression path — effectiveSkills reads p.Cfg.Docs at call time.
+// The effective set is exactly the enabled set (ADR-0081 amended ADR-0046's
+// semantics: enabled means rendered — the ADR-0013 doc-gate suppression is
+// gone), local-declared skills included. Dropping the doc post-Open no longer
+// changes membership; the invalid state is refused at Open instead.
 // invariant: skills-context-effective-set
 func TestEffectiveSkillsMembership(t *testing.T) {
 	p, err := Open(scaffoldFiles(t,
@@ -107,22 +107,13 @@ func TestEffectiveSkillsMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Cfg.Docs = nil
-	// Make brainstorming BOTH local and doc-gated in the catalog to prove
-	// local wins over the gate.
-	spec := p.Cat.Skills["brainstorming"]
-	spec.RequiresDoc = "roadmap"
-	p.Cat.Skills["brainstorming"] = spec
 	eff, err := p.effectiveSkills()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !eff["tdd"] {
-		t.Error("plain enabled skill missing from effective set")
-	}
-	if eff["roadmap-graduation"] {
-		t.Error("doc-gated skill with disabled doc must be excluded")
-	}
-	if !eff["brainstorming"] {
-		t.Error("local-declared skill must be kept despite the doc gate")
+	for _, name := range []string{"tdd", "roadmap-graduation", "brainstorming"} {
+		if !eff[name] {
+			t.Errorf("enabled skill %q missing from effective set (effective = enabled)", name)
+		}
 	}
 }

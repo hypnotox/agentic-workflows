@@ -85,3 +85,13 @@ data:
           text: '**Conditional-fallback case guard.** Every catalog template whose post-expansion source carries a conditional action has a hand-authored unset-data case pinning its degraded prose.'
         - ref: ADR-0080
           text: '**Golden-test completeness.** Every catalog skill and agent has its per-artifact golden test in `internal/project`.'
+        - ref: ADR-0081
+          text: '**Enabled set closed.** Every enabled, non-`local` artifact''s direct catalog requirements (`requiresSkills`, `requiresAgent`, `requiresDoc`) are enabled; a violation fails every gated command at project open with a repair hint.'
+        - ref: ADR-0081
+          text: '**Add applies the closure plan.** `awf add` enables the requested artifact''s full missing forward closure in a single config rewrite, printing one provenance line per plan op; `--dry-run` prints without applying.'
+        - ref: ADR-0081
+          text: '**Remove refuses dependents.** Without `--with-dependents`, `awf remove` refuses while enabled transitive dependents exist, printing the dependent plan; with it, the full reverse closure lands in a single rewrite.'
+        - ref: ADR-0081
+          text: '**Close-enabled-set migration.** The schema-8 migration closes the enabled set additively for skill, agent, and doc requirements, drops dormant non-`local` doc-gated skills, and is idempotent and atomic.'
+        - ref: ADR-0081
+          text: '**Init set closed.** `awf init`''s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant.'

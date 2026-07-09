@@ -83,10 +83,7 @@
 - [ADR-0078: Release-time changelog pin](0078-release-time-changelog-pin.md) — Implemented
 - [ADR-0079: Release and CI supply-chain hygiene](0079-release-and-ci-supply-chain-hygiene.md) — Implemented
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Implemented
-
-## Proposed
-
-- [ADR-0081: Enforced dependency graph over catalog Requires declarations](0081-enforced-dependency-graph-over-catalog-requires-declarations.md) — Proposed
+- [ADR-0081: Enforced dependency graph over catalog Requires declarations](0081-enforced-dependency-graph-over-catalog-requires-declarations.md) — Implemented
 
 ## Superseded
 

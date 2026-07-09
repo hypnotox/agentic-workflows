@@ -73,6 +73,11 @@ Hard rules every change must respect:
 - **Exact coupling declarations.** `requiresSkills` declarations are exact: an undeclared unconditional skill reference and a stale declaration both fail the sweep, and every other exemption is an explicit entry that fails when stale. (ADR-0080)
 - **Conditional-fallback case guard.** Every catalog template whose post-expansion source carries a conditional action has a hand-authored unset-data case pinning its degraded prose. (ADR-0080)
 - **Golden-test completeness.** Every catalog skill and agent has its per-artifact golden test in `internal/project`. (ADR-0080)
+- **Enabled set closed.** Every enabled, non-`local` artifact's direct catalog requirements (`requiresSkills`, `requiresAgent`, `requiresDoc`) are enabled; a violation fails every gated command at project open with a repair hint. (ADR-0081)
+- **Add applies the closure plan.** `awf add` enables the requested artifact's full missing forward closure in a single config rewrite, printing one provenance line per plan op; `--dry-run` prints without applying. (ADR-0081)
+- **Remove refuses dependents.** Without `--with-dependents`, `awf remove` refuses while enabled transitive dependents exist, printing the dependent plan; with it, the full reverse closure lands in a single rewrite. (ADR-0081)
+- **Close-enabled-set migration.** The schema-8 migration closes the enabled set additively for skill, agent, and doc requirements, drops dormant non-`local` doc-gated skills, and is idempotent and atomic. (ADR-0081)
+- **Init set closed.** `awf init`'s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant. (ADR-0081)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

@@ -114,30 +114,21 @@ func (p *Project) invariantMarkersDisplay() string {
 	return strings.Join(entries, ", ")
 }
 
-// effectiveSkills returns the skill names whose files exist on disk under awf's
-// model: enabled minus doc-gate-suppressed, keeping local-declared ones
-// (hand-maintained but present) even where a doc gate would suppress the render.
+// effectiveSkills returns the skill names whose files exist on disk under
+// awf's model: exactly the enabled set — closure validation (ADR-0081) makes
+// enabled mean rendered, and local-declared names are hand-maintained but
+// present. The sidecar read stays as the validation choke point Open relies
+// on (amended semantics; formerly enabled minus ADR-0013 doc-gate-suppressed).
 // invariant: skills-context-effective-set
 func (p *Project) effectiveSkills() (map[string]bool, error) {
-	enabledDocs := sliceSet(p.Cfg.Docs)
 	eff := map[string]bool{}
 	for _, name := range p.Cfg.Skills {
-		sc, err := p.Cfg.Sidecar("skills", name)
-		if err != nil {
+		if _, err := p.Cfg.Sidecar("skills", name); err != nil {
 			return nil, err
 		}
-		if sc.Local || p.skillDocGateOpen(name, enabledDocs) {
-			eff[name] = true
-		}
+		eff[name] = true
 	}
 	return eff, nil
-}
-
-// skillDocGateOpen reports whether a doc-gated skill's required doc is enabled
-// (inv: doc-gated-skill-suppressed shares this single source of truth).
-func (p *Project) skillDocGateOpen(name string, enabledDocs map[string]bool) bool {
-	req := p.Cat.Skills[name].RequiresDoc
-	return req == "" || enabledDocs[req]
 }
 
 // partRel is the project-relative convention part path the awf:edit pointer names,
@@ -194,8 +185,7 @@ func nonNil(m map[string]any) map[string]any {
 // kinds that share the sort → sidecar → skip-local → render → append shape. tid
 // and sections derive from the artifact name; outPath also takes the adapter
 // target (ignored by neutral kinds like docs); target is the adapter this pass
-// renders for (zero for neutral kinds). gate (optional, nil = always render)
-// suppresses an artifact — used for the skills doc-gate.
+// renders for (zero for neutral kinds).
 type renderKindSpec struct {
 	kind     string
 	names    []string
@@ -203,7 +193,6 @@ type renderKindSpec struct {
 	tid      func(name string) string
 	sections func(name string) []string
 	outPath  func(t Target, name string) string
-	gate     func(name string) bool
 	// defaults returns the artifact's catalog default data (nil = none).
 	defaults func(name string) map[string]any
 }
@@ -236,9 +225,6 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		if sc.Local {
 			continue
 		}
-		if spec.gate != nil && !spec.gate(name) {
-			continue
-		}
 		if spec.defaults != nil {
 			sc = withDefaultData(sc, spec.defaults(name))
 		}
@@ -253,7 +239,6 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 
 func (p *Project) RenderAll() ([]RenderedFile, error) {
 	var out []RenderedFile
-	enabledDocs := sliceSet(p.Cfg.Docs)
 	eff, err := p.effectiveSkills()
 	if err != nil {
 		return nil, err
@@ -279,10 +264,6 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 				tid:      p.skillTID,
 				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
 				outPath:  func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) },
-				// Doc-gated skill: omit from the render set when its required doc is not
-				// enabled (inv: doc-gated-skill-suppressed).
-				// invariant: doc-gated-skill-suppressed
-				gate:     func(n string) bool { return p.skillDocGateOpen(n, enabledDocs) },
 				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			},
 			{

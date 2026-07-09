@@ -651,14 +651,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	}
 }
 
-// invariant: doc-gated-skill-suppressed
-func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
-	// roadmap-graduation cites .layout.docs.roadmap (populated when the roadmap doc
-	// is enabled); agents-doc is suppressed via a local sidecar so RenderAll renders
-	// only the gated skill (and, when its doc is enabled, the roadmap doc itself).
-	// The doc is enabled at Open (ADR-0081's closure validation refuses the
-	// dormant state); the suppression path is exercised by dropping the doc
-	// post-Open — effectiveSkills reads p.Cfg.Docs at call time.
+// A doc-gated skill always renders while enabled: the ADR-0013 render-time
+// suppression is gone (ADR-0081 Decision 7) — the doc-less state is refused
+// at Open instead (TestOpenRefusesUnclosedEnabledSet), so enabled means
+// rendered even when the doc is dropped post-Open.
+func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	cfg := "prefix: example\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
 	p, err := Open(root)
@@ -679,14 +676,14 @@ func TestRenderAllSuppressesDocGatedSkill(t *testing.T) {
 		}
 		return false
 	}
-	// Doc enabled → rendered.
 	if !rendered() {
 		t.Error("roadmap-graduation should render when the roadmap doc is enabled")
 	}
-	// Doc dropped post-Open → suppressed.
+	// The doc-less state (unreachable through Open) no longer silently
+	// suppresses: the publication-safety net fails the render loudly.
 	p.Cfg.Docs = nil
-	if rendered() {
-		t.Error("roadmap-graduation should be suppressed when the roadmap doc is not enabled")
+	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "<no value>") {
+		t.Errorf("fabricated doc-less state should fail the publication-safety net, got %v", err)
 	}
 }
 

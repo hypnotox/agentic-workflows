@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:7664841e25a44b37f493dd699c6e03b4670f08c6268e02fc44f3db3bed3a1881",
-      "configHash": "sha256:09b865b2ada4f1bad39de376499c57c0272c4b4a1402186a6878b53c69e7f8a7",
-      "outputHash": "sha256:deecc8804d6d3513f8342f77abbb47782c8b254c0064cdbfc391feb9fc45e106"
+      "configHash": "sha256:35d498786fb2457a19f6ed49d7666a9c2a54e862475134be5e63d723d53e21c9",
+      "outputHash": "sha256:4e4931cc511f7ee362df50454d4163cde8c7aebab71b7c4a3cac540d98733bff"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:94a77bc43e3673ebaf6a0cec62fadc6c13f0ecabc3797b575cbbe9c87231b327"
+      "outputHash": "sha256:c8cbaee44285df05721f67c8b9333356463b2c10f99762a40e659d16e448f2f7"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:3a232660a60a91ef0ddda1de45d065046d68f00ae852ba772eb1b52db07127e1"
+      "outputHash": "sha256:6a7c6b921bd590dfc9657943a7ba68a1720ac8f0aca590b2ecd0789506e15262"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -318,13 +318,13 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:2c5ecc5bd42b878b12cd57181c61f4fc38552185e643f25894b5e3e739092274"
+      "outputHash": "sha256:7bd35e7038d6fa45f8bd18d49397a9c119e3e6c29d00d2f3a6b16ca7ea88ff97"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:4931c5a61df9bea53e245044b36fc526a47ceed66ce11cb44cd9398488197e33"
+      "outputHash": "sha256:147330335aad0d11a361168236d0706d48b7a205c14691d6a3c9f58ae039d884"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-09
 supersedes: []
 retires_invariants: [doc-gated-skill-suppressed]
