@@ -89,6 +89,10 @@
 - [ADR-0084: Catalog vars carry functional values only](0084-catalog-vars-carry-functional-values-only.md) — Implemented
 - [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Implemented
 
+## Proposed
+
+- [ADR-0086: Closed config tree and configuration-consumption checks](0086-closed-config-tree-and-configuration-consumption-checks.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
