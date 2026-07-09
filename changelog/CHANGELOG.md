@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-09
+
 ### Breaking changes
 - The catalog `requires*` declarations are now an enforced dependency graph
   (schema 8 — run `awf upgrade`). A config enabling an artifact without its
@@ -18,8 +20,11 @@ query a single version or a range.
   now enables the full requirement closure in one edit, printing a plan;
   `awf remove` refuses while enabled artifacts still require the target —
   `--with-dependents` removes them together, `--dry-run` previews either
-  plan. The render-time suppression of doc-gated skills is gone: enabled
-  now always means rendered.
+  plan. `awf init` follows the same rule: a trimmed selection is
+  closure-completed (missing requirements added, each printed) and the
+  scaffolded agent set derives from the trimmed skills instead of always
+  enabling every agent. The render-time suppression of doc-gated skills
+  is gone: enabled now always means rendered.
 
 ### Others
 - `awf check` and `awf init` now print a non-failing note when a convention
