@@ -245,10 +245,6 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 	}
 }
 
-// Editing audit.allowedScopes reflags exactly the artifacts whose assembled
-// templates reference .commitScopes; non-referencing artifacts stay in sync,
-// and the rendered prose quotes the configured scopes (ADR-0051).
-// invariant: scopes-in-confighash
 // chainClosureConfig derives the chain-unit enabled set from the catalog:
 // the Chain-flagged skills, their transitive RequiresSkills closure, and the
 // RequiresAgent agents of every skill in that combined set (ADR-0080
@@ -297,6 +293,10 @@ func chainClosureConfig(scope string) string {
 	return b.String()
 }
 
+// Editing audit.allowedScopes reflags exactly the artifacts whose assembled
+// templates reference .commitScopes; non-referencing artifacts stay in sync,
+// and the rendered prose quotes the configured scopes (ADR-0051).
+// invariant: scopes-in-confighash
 func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	root := scaffold(t, chainClosureConfig("awf"))
 	p, err := Open(root)

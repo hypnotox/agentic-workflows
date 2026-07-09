@@ -20,7 +20,9 @@ import (
 var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 
 // doubleBacktickRe matches a double backtick not adjacent to a third — an
-// empty inline-code span or a literal “…“ quoting span, never a ``` fence.
+// empty inline-code span or a literal double-backtick quoting span, never a
+// triple-backtick code fence. (Spelled out because gofmt rewrites a literal
+// double-backtick pair in a doc comment into a curly quote.)
 var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 
 // doubleBacktickExempt lists templates whose double-backtick spans are
