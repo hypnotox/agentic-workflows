@@ -78,6 +78,7 @@ Hard rules every change must respect:
 - **Remove refuses dependents.** Without `--with-dependents`, `awf remove` refuses while enabled transitive dependents exist, printing the dependent plan; with it, the full reverse closure lands in a single rewrite. (ADR-0081)
 - **Close-enabled-set migration.** The schema-8 migration closes the enabled set additively for skill, agent, and doc requirements, drops dormant non-`local` doc-gated skills, and is idempotent and atomic. (ADR-0081)
 - **Init set closed.** `awf init`'s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant. (ADR-0081)
+- **Template source residue banned.** Every file in the embedded templates FS is free of concrete `ADR-` citations (four-digit tokens; the `ADR-NNNN` placeholder is legal) and of repo-identity literals outside a pinned two-entry exemption list (bootstrap download slug, agent-guide home link) whose entries fail when stale; extending the list is a successor-ADR act. (ADR-0082)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

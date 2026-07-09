@@ -95,3 +95,5 @@ data:
           text: '**Close-enabled-set migration.** The schema-8 migration closes the enabled set additively for skill, agent, and doc requirements, drops dormant non-`local` doc-gated skills, and is idempotent and atomic.'
         - ref: ADR-0081
           text: '**Init set closed.** `awf init`''s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant.'
+        - ref: ADR-0082
+          text: '**Template source residue banned.** Every file in the embedded templates FS is free of concrete `ADR-` citations (four-digit tokens; the `ADR-NNNN` placeholder is legal) and of repo-identity literals outside a pinned two-entry exemption list (bootstrap download slug, agent-guide home link) whose entries fail when stale; extending the list is a successor-ADR act.'
