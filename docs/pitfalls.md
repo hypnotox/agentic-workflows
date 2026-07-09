@@ -216,3 +216,23 @@ remove, reddening the gate on the first in-cycle changelog entry (caught before 
 schema migration), its unit tests belong on synthetic fixtures; the live repo state is input
 for the milestone gate alone.
 
+## gofmt rewrites double backticks in doc comments into curly quotes
+
+Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
+a doc comment as the old quoting convention and rewrites it to a curly quote (`“`) — so a
+comment trying to *depict* markdown double-backtick spans gets silently mangled into wrong
+typography, and restoring the backticks verbatim just re-triggers the rewrite (hit twice on
+2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
+in words ("a double-backtick quoting span"); literal backtick pairs are only safe inside
+non-doc comments or raw strings.
+
+## An ADR's `domains:` list dictates which domain docs a flip commit stages
+
+`./x sync` regenerates the generated ADR index of **every** domain doc named in an ADR's
+`domains:` frontmatter, not just the one whose current-state part the effort edited. The
+ADR-0080 flip commit staged `docs/domains/rendering.md` (its part changed) but missed the
+index-only refresh of `docs/domains/tooling.md` — a gap the plan's file list and three review
+passes also missed, caught only by `git status` after the commit (2026-07-09). After the sync
+in a status-flip commit, stage from `git status`, not from a memorised file list; every
+`domains:` entry implies its rendered doc.
+
