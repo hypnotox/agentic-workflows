@@ -31,9 +31,10 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
   `.awf/docs/parts/pitfalls/entries.md`, `.awf/agents-doc.yaml`,
   `.awf/domains/parts/rendering/current-state.md`,
   `docs/decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md`
-  (status flip), plus rendered files refreshed by `./x sync` (`AGENTS.md`, `CLAUDE.md`
-  bridge targets, `docs/pitfalls.md`, `docs/domains/rendering.md`,
-  `docs/decisions/ACTIVE.md`, `.awf/awf.lock`)
+  (status flip), `.awf/docs/parts/testing/layout.md`, plus rendered files refreshed by
+  `./x sync` (`AGENTS.md`, `CLAUDE.md` bridge targets, `docs/pitfalls.md`,
+  `docs/testing.md`, `docs/domains/rendering.md`, `docs/decisions/ACTIVE.md`,
+  `.awf/awf.lock`)
 - Deleted: none
 
 ---
@@ -81,9 +82,12 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 
       ```go
       // TestRequiresSkillsDeclarationsValid rejects a RequiresSkills entry naming a
-      // non-catalog skill or the artifact itself, and any RequiresSkills outside the
-      // skills and agents maps — the domain-doc spec shares TargetSpec and the field
-      // is meaningless there; a silent no-op would invite drift (ADR-0080 Decision 1).
+      // non-catalog skill or the artifact itself, and any RequiresSkills on the
+      // domain-doc spec — today the only TargetSpec use outside the agents map; the
+      // field is meaningless there and a silent no-op would invite drift (ADR-0080
+      // Decision 1). The self-naming rejection is an exactness corollary of Decision
+      // 7: a self-entry could never fail as stale (the frontmatter name always marks
+      // self as found), so it is refused upfront.
       func TestRequiresSkillsDeclarationsValid(t *testing.T) {
       	cat := Standard
       	for name, spec := range cat.Skills {
@@ -120,7 +124,9 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 
 - [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`, all tests pass.
 - [ ] Commit: `feat(rendering): declare chain coupling in the catalog (ADR-0080)`
-      — body: names Decision 1, notes declarations are proven exact by the Phase-2 sweep.
+      — body: names Decision 1, notes declarations are proven exact by the Phase-2
+      sweep, and notes the self-naming rejection as an exactness corollary of
+      Decision 7 (a self-entry could never fail as stale).
 
 ## Phase 2 — derived unset-data sweep
 
@@ -615,11 +621,24 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       under empty data and holds those declarations exact.
       ```
 
+- [ ] In `.awf/docs/parts/testing/layout.md`, append to the second paragraph (after
+      the sentence ending "…cannot half-land with a blank-path provenance pointer."):
+
+      ```markdown
+      Three further catalog-derived guards live in `internal/project/catalog_sweep_test.go`
+      (ADR-0080): an empty-data sweep rendering every catalog template and holding its
+      `requiresSkills` coupling declaration exact, a conditional-fallback case guard requiring
+      a hand-authored `unsetFallbackCases` entry per conditional template, and a
+      golden-completeness guard machine-enforcing the one-golden-per-artifact convention in
+      `spine_test.go`.
+      ```
+
 - [ ] Flip the ADR: in
       `docs/decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md`
       frontmatter, change `status: Proposed` → `status: Implemented`.
-- [ ] Run `./x sync` — regenerates `docs/pitfalls.md`, `AGENTS.md` (+ bridge targets),
-      `docs/domains/rendering.md`, `docs/decisions/ACTIVE.md`, `.awf/awf.lock`.
+- [ ] Run `./x sync` — regenerates `docs/pitfalls.md`, `docs/testing.md`, `AGENTS.md`
+      (+ bridge targets), `docs/domains/rendering.md`, `docs/decisions/ACTIVE.md`,
+      `.awf/awf.lock`.
 - [ ] Run `./x check` — expect `awf check: clean` (all four new inv slugs are backed by
       the markers landed in Phases 2–4).
 - [ ] Run `./x gate` — green.
