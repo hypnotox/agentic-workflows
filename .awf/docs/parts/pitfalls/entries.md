@@ -269,3 +269,26 @@ the edit: re-probe the claim (try to stage the "impossible" state — a leftover
 file, a path component as a regular file, a config path as a directory) or drop it and cover
 the branch; `./x audit-local`'s `coverage-ignore-added` warning flags every touched ignore in
 the range for exactly this re-evaluation.
+
+## An attribute-filtered pinned-set test exempts every other attribute value
+
+A pinned-list test that selects its population by an attribute (`if d.Kind == "string"`)
+pins only that slice: anything added under a different attribute value bypasses the pin
+entirely while the invariant it backs claims the whole set is closed. The first
+`var-descriptor-set-pinned` backing test (2026-07-09, ADR-0084) filtered descriptors by
+`Kind == "string"`, so a prose knob reintroduced as `Kind: "enum"` would have passed both
+descriptor-parity and the pin without the successor ADR the invariant exists to force; the
+impl review caught it the same day. When a pin means "this set is closed", enumerate the
+partition exhaustively — iterate everything, route each element to an asserted bucket
+(pinned set, known-exempt set), and fail on any element that lands in neither — instead of
+filtering to the bucket you thought of first.
+
+## A Proposed ADR's same-commit state-doc update must not speak in present tense
+
+The proposing step updates the shifted domain's current-state doc in the ADR's own commit,
+but the ADR is still `Proposed` there — writing "the four prose knobs are removed" while the
+catalog still carries all four makes the state doc false until implementation lands, and
+permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write the
+propose-commit sentence in decision tense anchored to the status — "ADR-NNNN (Proposed)
+narrows the policy … and will remove …" — and flip it to present tense in the
+implementation commit that makes it true, alongside the status flip.
