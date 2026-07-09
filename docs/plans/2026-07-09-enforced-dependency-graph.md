@@ -619,7 +619,7 @@ P6→D7 + flip obligations. (Prose obligations ride P2 per the ADR's same-commit
 ## Execution notes
 
 - Phase order is load-bearing: P1 before P2 (validation is the induction premise
-  the resolver's skip-enabled-subtree optimization relies on); P7 last (marker
+  the resolver's skip-enabled-subtree optimization relies on); P6 last (marker
   retirement + flip must coincide); every exported func lands with its production
   consumer in the same commit (dead-code gate).
 - Never hand-edit rendered files — change templates or `.awf/` parts and `./x sync`.
