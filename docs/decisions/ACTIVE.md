@@ -83,6 +83,10 @@
 - [ADR-0078: Release-time changelog pin](0078-release-time-changelog-pin.md) — Implemented
 - [ADR-0079: Release and CI supply-chain hygiene](0079-release-and-ci-supply-chain-hygiene.md) — Implemented
 
+## Proposed
+
+- [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032

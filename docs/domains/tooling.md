@@ -70,6 +70,10 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 - [ADR-0078: Release-time changelog pin](../decisions/0078-release-time-changelog-pin.md)
 - [ADR-0079: Release and CI supply-chain hygiene](../decisions/0079-release-and-ci-supply-chain-hygiene.md)
 
+### Proposed
+
+- [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

@@ -53,3 +53,7 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0072: Convention parts re-inject their section default via a placeholder](../decisions/0072-convention-parts-re-inject-their-section-default-via-a-placeholder.md)
 - [ADR-0075: Working-memory check is on-demand, not a startup step](../decisions/0075-working-memory-check-is-on-demand-not-a-startup-step.md)
 
+### Proposed
+
+- [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
+
