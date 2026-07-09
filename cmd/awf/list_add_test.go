@@ -42,18 +42,18 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	root := scaffoldedProject(t)
 
 	// Catalog skill into a block-with-items array.
-	if err := runAdd(root, "skill", "tdd", io.Discard); err != nil {
+	if err := runAdd(root, "skill", "tdd", false, io.Discard); err != nil {
 		t.Fatalf("add skill tdd: %v", err)
 	}
 	if !strings.Contains(readConfig(t, root), "- tdd") {
 		t.Error("tdd not added")
 	}
 	// Opt-in doc.
-	if err := runAdd(root, "doc", "pitfalls", io.Discard); err != nil {
+	if err := runAdd(root, "doc", "pitfalls", false, io.Discard); err != nil {
 		t.Fatalf("add doc pitfalls: %v", err)
 	}
 	// Freeform domain into an absent array (scaffold omits domains:).
-	if err := runAdd(root, "domain", "payments", io.Discard); err != nil {
+	if err := runAdd(root, "domain", "payments", false, io.Discard); err != nil {
 		t.Fatalf("add domain payments: %v", err)
 	}
 	if !strings.Contains(readConfig(t, root), "domains:") {
@@ -72,16 +72,16 @@ func TestRunAddAcrossKinds(t *testing.T) {
 	}
 
 	// Rejections.
-	if err := runAdd(root, "bogus", "x", io.Discard); err == nil {
+	if err := runAdd(root, "bogus", "x", false, io.Discard); err == nil {
 		t.Error("expected unknown-kind error")
 	}
-	if err := runAdd(root, "skill", "no-such", io.Discard); err == nil {
+	if err := runAdd(root, "skill", "no-such", false, io.Discard); err == nil {
 		t.Error("expected not-in-catalog error")
 	}
-	if err := runAdd(root, "domain", "bad/name", io.Discard); err == nil {
+	if err := runAdd(root, "domain", "bad/name", false, io.Discard); err == nil {
 		t.Error("expected invalid-domain-name error")
 	}
-	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
+	if err := runAdd(root, "skill", "tdd", false, io.Discard); err == nil {
 		t.Error("expected already-enabled error")
 	}
 }
@@ -123,13 +123,13 @@ func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := readConfig(t, root)
-	if err := runAdd(root, "skill", "tdd", io.Discard); err == nil {
+	if err := runAdd(root, "skill", "tdd", false, io.Discard); err == nil {
 		t.Error("expected gate error from runAdd on a behind binary")
 	}
 	if got := readConfig(t, root); got != before {
 		t.Errorf("runAdd modified config.yaml despite failing the gate:\n%s", got)
 	}
-	if err := runRemove(root, "skill", "brainstorming", io.Discard); err == nil {
+	if err := runRemove(root, "skill", "brainstorming", false, false, io.Discard); err == nil {
 		t.Error("expected gate error from runRemove on a behind binary")
 	}
 	if got := readConfig(t, root); got != before {
@@ -154,7 +154,7 @@ func TestRunAddDomainScaffoldIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := runAdd(root, "domain", "billing", io.Discard); err != nil {
+	if err := runAdd(root, "domain", "billing", false, io.Discard); err != nil {
 		t.Fatalf("add domain billing: %v", err)
 	}
 
@@ -186,7 +186,7 @@ func TestRunTargetCLI(t *testing.T) {
 	}
 
 	// add cursor must materialize the full resolved list, not drop the defaulted claude.
-	if err := runAdd(root, "target", "cursor", io.Discard); err != nil {
+	if err := runAdd(root, "target", "cursor", false, io.Discard); err != nil {
 		t.Fatalf("add target cursor: %v", err)
 	}
 	if cfg := readConfig(t, root); !strings.Contains(cfg, "- claude") || !strings.Contains(cfg, "- cursor") {
@@ -197,13 +197,13 @@ func TestRunTargetCLI(t *testing.T) {
 	}
 
 	// Rejections.
-	if err := runAdd(root, "target", "nope", io.Discard); err == nil {
+	if err := runAdd(root, "target", "nope", false, io.Discard); err == nil {
 		t.Error("expected unknown-target error")
 	}
-	if err := runAdd(root, "target", "cursor", io.Discard); err == nil {
+	if err := runAdd(root, "target", "cursor", false, io.Discard); err == nil {
 		t.Error("expected already-enabled error")
 	}
-	if err := runRemove(root, "target", "nope", io.Discard); err == nil {
+	if err := runRemove(root, "target", "nope", false, false, io.Discard); err == nil {
 		t.Error("expected unknown-target error on remove")
 	}
 
@@ -215,21 +215,21 @@ func TestRunTargetCLI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runAdd(broken, "target", "cursor", io.Discard); err == nil {
+	if err := runAdd(broken, "target", "cursor", false, io.Discard); err == nil {
 		t.Error("expected project.Open error to surface from add target")
 	}
 
 	// remove claude → [cursor]; removing the last target is refused.
-	if err := runRemove(root, "target", "claude", io.Discard); err != nil {
+	if err := runRemove(root, "target", "claude", false, false, io.Discard); err != nil {
 		t.Fatalf("remove target claude: %v", err)
 	}
 	if strings.Contains(readConfig(t, root), "- claude") {
 		t.Error("claude not removed")
 	}
-	if err := runRemove(root, "target", "claude", io.Discard); err == nil {
+	if err := runRemove(root, "target", "claude", false, false, io.Discard); err == nil {
 		t.Error("expected not-enabled error")
 	}
-	if err := runRemove(root, "target", "cursor", io.Discard); err == nil {
+	if err := runRemove(root, "target", "cursor", false, false, io.Discard); err == nil {
 		t.Error("expected cannot-remove-last-target error")
 	}
 }
@@ -249,13 +249,13 @@ func TestRunBootstrapCLI(t *testing.T) {
 	}
 
 	// remove when disabled errors.
-	if err := runRemove(root, "bootstrap", "", io.Discard); err == nil ||
+	if err := runRemove(root, "bootstrap", "", false, false, io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "is not enabled") {
 		t.Errorf("expected is-not-enabled error, got %v", err)
 	}
 
 	// add enables it (config gains enabled: true, sync runs).
-	if err := runAdd(root, "bootstrap", "", io.Discard); err != nil {
+	if err := runAdd(root, "bootstrap", "", false, io.Discard); err != nil {
 		t.Fatalf("add bootstrap: %v", err)
 	}
 	cfg := readConfig(t, root)
@@ -276,13 +276,13 @@ func TestRunBootstrapCLI(t *testing.T) {
 	}
 
 	// add when already enabled errors.
-	if err := runAdd(root, "bootstrap", "", io.Discard); err == nil ||
+	if err := runAdd(root, "bootstrap", "", false, io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "already enabled") {
 		t.Errorf("expected already-enabled error, got %v", err)
 	}
 
 	// remove disables it and prunes the rendered file.
-	if err := runRemove(root, "bootstrap", "", io.Discard); err != nil {
+	if err := runRemove(root, "bootstrap", "", false, false, io.Discard); err != nil {
 		t.Fatalf("remove bootstrap: %v", err)
 	}
 	if !strings.Contains(readConfig(t, root), "enabled: false") {
@@ -300,7 +300,7 @@ func TestRunBootstrapCLI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(broken, ".awf", "config.yaml"), []byte("prefix: ["), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runAdd(broken, "bootstrap", "", io.Discard); err == nil {
+	if err := runAdd(broken, "bootstrap", "", false, io.Discard); err == nil {
 		t.Error("expected project.Open error to surface from add bootstrap")
 	}
 }
@@ -352,13 +352,13 @@ func TestRunHooksCLI(t *testing.T) {
 	}
 
 	// remove when disabled errors.
-	if err := runRemove(root, "hooks", "", io.Discard); err == nil ||
+	if err := runRemove(root, "hooks", "", false, false, io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "is not enabled") {
 		t.Errorf("expected is-not-enabled error, got %v", err)
 	}
 
 	// add enables it (config gains enabled: true, sync renders the payloads).
-	if err := runAdd(root, "hooks", "", io.Discard); err != nil {
+	if err := runAdd(root, "hooks", "", false, io.Discard); err != nil {
 		t.Fatalf("add hooks: %v", err)
 	}
 	cfg := readConfig(t, root)
@@ -381,13 +381,13 @@ func TestRunHooksCLI(t *testing.T) {
 	}
 
 	// add when already enabled errors.
-	if err := runAdd(root, "hooks", "", io.Discard); err == nil ||
+	if err := runAdd(root, "hooks", "", false, io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "already enabled") {
 		t.Errorf("expected already-enabled error, got %v", err)
 	}
 
 	// remove disables it and prunes the rendered files and their directory.
-	if err := runRemove(root, "hooks", "", io.Discard); err != nil {
+	if err := runRemove(root, "hooks", "", false, false, io.Discard); err != nil {
 		t.Fatalf("remove hooks: %v", err)
 	}
 	if !strings.Contains(readConfig(t, root), "enabled: false") {
@@ -423,14 +423,14 @@ func TestDispatchHooks(t *testing.T) {
 
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runAdd(root, "skill", "bugfix", io.Discard); err != nil {
+	if err := runAdd(root, "skill", "bugfix", false, io.Discard); err != nil {
 		t.Fatalf("add to flow-style array: %v", err)
 	}
 	cfg := readConfig(t, root)
 	if !strings.Contains(cfg, "- bugfix") || !strings.Contains(cfg, "- tdd") {
 		t.Errorf("expected block-style skills with both members:\n%s", cfg)
 	}
-	if err := runRemove(root, "skill", "tdd", io.Discard); err != nil {
+	if err := runRemove(root, "skill", "tdd", false, false, io.Discard); err != nil {
 		t.Fatalf("remove from (now block) array: %v", err)
 	}
 	if strings.Contains(readConfig(t, root), "- tdd") {
@@ -438,47 +438,162 @@ func TestRunAddRemoveFlowStyle(t *testing.T) {
 	}
 }
 
-// Interim (ADR-0081 Phase 1→2): adding a skill whose requirement closure is
-// incomplete still pairs its agent / prints the doc advisory before the
-// chained sync refuses the unclosed set. Phase 2 replaces both notes with
-// closure plans; these assertions pin the transitional behavior.
-func TestRunAddUnclosedSkillStrandsAtSync(t *testing.T) {
-	root := scaffoldProject(t)
+// Adding an unclosed skill enables its full missing forward closure in one
+// rewrite, printing a provenance plan (ADR-0081 Decision 4). This replaces
+// the ADR-0050 pairing note and the ADR-0013 doc advisory.
+// invariant: add-applies-closure-plan
+func TestRunAddAppliesClosurePlan(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: skills [tdd], agents []
 	var out bytes.Buffer
-	err := runAdd(root, "skill", "reviewing-impl", &out)
-	if err == nil || !strings.Contains(err.Error(), "requires skill") {
-		t.Fatalf("expected closure refusal from the chained sync, got %v", err)
+	if err := runAdd(root, "skill", "reviewing-impl", false, &out); err != nil {
+		t.Fatalf("add skill reviewing-impl: %v", err)
 	}
-	if !strings.Contains(out.String(), `note: also enabled agent "code-reviewer"`) {
-		t.Errorf("pairing note should print before the sync refusal, got %q", out.String())
+	for _, line := range []string{
+		"plan: + skill reviewing-impl\n",
+		"plan: + skill executing-plans (required by reviewing-impl)\n",
+		"plan: + skill retrospective (required by reviewing-impl)\n",
+		"plan: + agent code-reviewer (required by reviewing-impl)\n",
+	} {
+		if !strings.Contains(out.String(), line) {
+			t.Errorf("plan output missing %q, got:\n%s", line, out.String())
+		}
+	}
+	cfg := readConfig(t, root)
+	for _, want := range []string{"- reviewing-impl", "- executing-plans", "- subagent-driven-development", "- retrospective", "- code-reviewer"} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("closure member %q missing from config:\n%s", want, cfg)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "agents", "code-reviewer.md")); err != nil {
+		t.Errorf("code-reviewer not rendered after closure add: %v", err)
 	}
 
-	root2 := scaffoldedProject(t)
+	// Adding a doc-gated skill enables its doc as a plan op.
 	out.Reset()
-	err = runAdd(root2, "skill", "roadmap-graduation", &out)
-	if err == nil || !strings.Contains(err.Error(), `requires doc "roadmap"`) {
-		t.Fatalf("expected doc-closure refusal, got %v", err)
+	if err := runAdd(root, "skill", "roadmap-graduation", false, &out); err != nil {
+		t.Fatalf("add roadmap-graduation: %v", err)
 	}
-	if !strings.Contains(out.String(), "requires the \"roadmap\" doc") {
-		t.Errorf("doc note should print before the sync refusal, got %q", out.String())
+	if !strings.Contains(out.String(), "plan: + doc roadmap (required by roadmap-graduation)") {
+		t.Errorf("expected the doc plan op, got %q", out.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "- roadmap") {
+		t.Errorf("roadmap doc missing from config:\n%s", cfg)
 	}
 }
 
-// Adding a doc-gated skill with its doc already enabled succeeds without the
-// advisory note. (ADR-0081 Phase 2 replaces the note with a closure plan op;
-// until then a doc-less add strands the config at the chained sync — pinned
-// above.)
-func TestRunAddDocGatedSkillWithDoc(t *testing.T) {
+// --dry-run prints the plan and leaves the config byte-identical (ADR-0081
+// Decision 6); a graph-only flag on a non-graph kind is a usage error.
+func TestRunAddRemoveDryRunAndFlagGuard(t *testing.T) {
 	root := scaffoldedProject(t)
-	if err := runAdd(root, "doc", "roadmap", io.Discard); err != nil {
-		t.Fatalf("add roadmap doc: %v", err)
+	before := readConfig(t, root)
+	var out bytes.Buffer
+	if err := runAdd(root, "skill", "roadmap-graduation", true, &out); err != nil {
+		t.Fatalf("add --dry-run: %v", err)
+	}
+	if !strings.Contains(out.String(), "plan: + skill roadmap-graduation") {
+		t.Errorf("dry-run should print the plan, got %q", out.String())
+	}
+	if got := readConfig(t, root); got != before {
+		t.Errorf("dry-run must not touch the config:\n%s", got)
+	}
+	out.Reset()
+	if err := runRemove(root, "skill", "retrospective", false, true, &out); err != nil {
+		t.Fatalf("remove --dry-run: %v", err)
+	}
+	if !strings.Contains(out.String(), "plan: - skill retrospective") {
+		t.Errorf("remove dry-run should print the plan, got %q", out.String())
+	}
+	if got := readConfig(t, root); got != before {
+		t.Errorf("remove dry-run must not touch the config:\n%s", got)
+	}
+	if err := runAdd(root, "domain", "payments", true, io.Discard); err == nil || !strings.Contains(err.Error(), "graph flags") {
+		t.Errorf("expected graph-flag usage error for domain, got %v", err)
+	}
+	if err := runRemove(root, "hooks", "", true, false, io.Discard); err == nil || !strings.Contains(err.Error(), "graph flags") {
+		t.Errorf("expected graph-flag usage error for hooks, got %v", err)
+	}
+}
+
+// A cascade removal prints the plan, notes orphaned sidecars per removed
+// node, and notes still-enabled agents nothing requires anymore (ADR-0081
+// Decision 5); local-sidecar skills are outside the requirement scan.
+func TestRunRemoveCascade(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// adr-lifecycle survives the cascade; its local sidecar exercises the
+	// requirement scan's local skip (its rendered file already exists and
+	// carries valid frontmatter from the scaffold sync).
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "adr-lifecycle.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// writing-plans is cascade-removed; its sidecar triggers the orphan note.
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "writing-plans.yaml"), []byte("data: {x: 1}\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runAdd(root, "skill", "roadmap-graduation", &out); err != nil {
+	if err := runRemove(root, "skill", "executing-plans", true, false, &out); err != nil {
+		t.Fatalf("cascade remove: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		"plan: - skill executing-plans\n",
+		"plan: - agent plan-reviewer (required by reviewing-plan-resync)",
+		`note: skill "writing-plans" still has a sidecar`,
+		`note: agent "adr-reviewer" is no longer required by any enabled skill`,
+		`note: agent "code-reviewer" is no longer required by any enabled skill`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("cascade output missing %q:\n%s", want, got)
+		}
+	}
+	cfg := readConfig(t, root)
+	for _, gone := range []string{"- executing-plans", "- reviewing-impl", "- brainstorming", "- plan-reviewer"} {
+		if strings.Contains(cfg, gone) {
+			t.Errorf("cascade should have removed %q:\n%s", gone, cfg)
+		}
+	}
+	for _, kept := range []string{"- retrospective", "- adr-lifecycle", "- adr-reviewer", "- code-reviewer"} {
+		if !strings.Contains(cfg, kept) {
+			t.Errorf("cascade should have kept %q:\n%s", kept, cfg)
+		}
+	}
+}
+
+// Removing a domain with authored parts prints the orphan note (the domain
+// path is outside the graph plan loop).
+func TestRunRemoveDomainNotesOrphan(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := runAdd(root, "domain", "payments", false, io.Discard); err != nil {
+		t.Fatalf("add domain: %v", err)
+	}
+	var out bytes.Buffer
+	if err := runRemove(root, "domain", "payments", false, false, &out); err != nil {
+		t.Fatalf("remove domain: %v", err)
+	}
+	if !strings.Contains(out.String(), `note: domain "payments" still has a sidecar`) {
+		t.Errorf("expected the domain orphan note, got %q", out.String())
+	}
+}
+
+// Removing a doc refuses while a doc-gated skill requires it (ADR-0081
+// Decision 5 covers docs).
+func TestRunRemoveDocRefusesWithDependentSkill(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := runAdd(root, "skill", "roadmap-graduation", false, io.Discard); err != nil {
 		t.Fatalf("add roadmap-graduation: %v", err)
 	}
-	if strings.Contains(out.String(), "requires the \"roadmap\" doc") {
-		t.Errorf("no doc-gate warning expected with the doc enabled, got %q", out.String())
+	err := runRemove(root, "doc", "roadmap", false, false, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "re-run with --with-dependents") {
+		t.Fatalf("expected dependent refusal removing the doc, got %v", err)
+	}
+	if err := runRemove(root, "doc", "roadmap", true, false, io.Discard); err != nil {
+		t.Fatalf("remove doc --with-dependents: %v", err)
+	}
+	cfg := readConfig(t, root)
+	if strings.Contains(cfg, "- roadmap-graduation") || strings.Contains(cfg, "- roadmap") {
+		t.Errorf("cascade should remove the doc and its dependent skill:\n%s", cfg)
 	}
 }
 
@@ -486,17 +601,17 @@ func TestRunRemove(t *testing.T) {
 	root := scaffoldedProject(t)
 
 	// Remove a core skill.
-	if err := runRemove(root, "skill", "brainstorming", io.Discard); err != nil {
+	if err := runRemove(root, "skill", "brainstorming", false, false, io.Discard); err != nil {
 		t.Fatalf("remove brainstorming: %v", err)
 	}
 	if strings.Contains(readConfig(t, root), "- brainstorming") {
 		t.Error("brainstorming not removed")
 	}
 	// Rejections.
-	if err := runRemove(root, "bogus", "x", io.Discard); err == nil {
+	if err := runRemove(root, "bogus", "x", false, false, io.Discard); err == nil {
 		t.Error("expected unknown-kind error")
 	}
-	if err := runRemove(root, "skill", "brainstorming", io.Discard); err == nil {
+	if err := runRemove(root, "skill", "brainstorming", false, false, io.Discard); err == nil {
 		t.Error("expected not-enabled error")
 	}
 }
@@ -513,7 +628,7 @@ func TestRunRemoveNotesOrphan(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runRemove(root, "skill", "brainstorming", &out); err != nil {
+	if err := runRemove(root, "skill", "brainstorming", false, false, &out); err != nil {
 		t.Fatalf("remove brainstorming: %v", err)
 	}
 	if !strings.Contains(out.String(), "orphaned") {
@@ -534,7 +649,7 @@ func TestRunListStatesAndKinds(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A configured domain exercises the freeform list path.
-	if err := runAdd(root, "domain", "payments", io.Discard); err != nil {
+	if err := runAdd(root, "domain", "payments", false, io.Discard); err != nil {
 		t.Fatalf("add domain: %v", err)
 	}
 
@@ -567,9 +682,14 @@ func TestRunListStatesAndKinds(t *testing.T) {
 func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	root := scaffoldedProject(t) // 10 core skills incl. the reviewing four; all 3 agents
 	before := readConfig(t, root)
-	err := runRemove(root, "agent", "code-reviewer", io.Discard)
-	if err == nil || !strings.Contains(err.Error(), `skill "reviewing-impl" requires agent "code-reviewer"`) {
-		t.Fatalf("expected pairing refusal, got %v", err)
+	var out bytes.Buffer
+	err := runRemove(root, "agent", "code-reviewer", false, false, &out)
+	if err == nil || !strings.Contains(err.Error(), "re-run with --with-dependents") {
+		t.Fatalf("expected dependent-plan refusal, got %v", err)
+	}
+	if !strings.Contains(out.String(), "plan: - agent code-reviewer\n") ||
+		!strings.Contains(out.String(), "plan: - skill reviewing-impl (required by code-reviewer)") {
+		t.Errorf("expected the dependent plan printed before the refusal, got:\n%s", out.String())
 	}
 	if got := readConfig(t, root); got != before {
 		t.Errorf("config must be untouched on refusal:\n%s", got)
@@ -583,7 +703,7 @@ func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-adr.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runRemove(root, "agent", "adr-reviewer", io.Discard); err != nil {
+	if err := runRemove(root, "agent", "adr-reviewer", false, false, io.Discard); err != nil {
 		t.Fatalf("remove agent with only a local requirer: %v", err)
 	}
 	// The sync inside that removal pruned the formerly-managed rendered file
@@ -600,7 +720,7 @@ func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-impl", "SKILL.md"),
 		"---\nname: example-reviewing-impl\ndescription: local reviewing skill\n---\nbody\n")
-	if err := runRemove(root, "agent", "code-reviewer", io.Discard); err != nil {
+	if err := runRemove(root, "agent", "code-reviewer", false, false, io.Discard); err != nil {
 		t.Fatalf("remove agent after local-declaring its skill: %v", err)
 	}
 }

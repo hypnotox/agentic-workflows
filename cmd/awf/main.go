@@ -118,24 +118,28 @@ func run(args []string, stdout, stderr io.Writer) int {
 			cmdErr = runNew(cwd, args[2], args[3:], stdout)
 		}
 	case "add":
+		spec := argSpecs["add"]
+		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
 		switch {
-		case len(args) == 4:
-			cmdErr = runAdd(cwd, args[2], args[3], stdout)
-		case len(args) == 3 && (args[2] == "bootstrap" || args[2] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runAdd(cwd, args[2], "", stdout)
-		case len(args) == 3:
-			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", args[2])}
+		case len(pos) == 2:
+			cmdErr = runAdd(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)
+		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
+			cmdErr = runAdd(cwd, pos[0], "", hasFlag(args, "--dry-run"), stdout)
+		case len(pos) == 1:
+			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", pos[0])}
 		default:
-			cmdErr = &usageErr{"usage: awf add <kind> <name>"}
+			cmdErr = &usageErr{"usage: awf add <kind> <name> [--dry-run]"}
 		}
 	case "remove":
+		spec := argSpecs["remove"]
+		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
 		switch {
-		case len(args) == 4:
-			cmdErr = runRemove(cwd, args[2], args[3], stdout)
-		case len(args) == 3 && (args[2] == "bootstrap" || args[2] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runRemove(cwd, args[2], "", stdout)
+		case len(pos) == 2:
+			cmdErr = runRemove(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
+		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
+			cmdErr = runRemove(cwd, pos[0], "", hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
 		default:
-			cmdErr = &usageErr{"usage: awf remove <kind> <name>"}
+			cmdErr = &usageErr{"usage: awf remove <kind> <name> [--with-dependents] [--dry-run]"}
 		}
 	case "upgrade":
 		cmdErr = runUpgrade(cwd, stdout)
@@ -255,17 +259,30 @@ Scaffold a new artifact. <kind> is adr, skill, or agent.
 `,
 	},
 	"add": {
-		maxPos: -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
-		help: `Usage: awf add <kind> <name>
+		boolFlags: []string{"--dry-run"},
+		maxPos:    -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
+		help: `Usage: awf add <kind> <name> [--dry-run]
 
 Enable a target. <kind> is skill, agent, doc, domain, target, bootstrap, or hooks.
+For skill/agent/doc, the full requirement closure is enabled in one edit,
+printed as a plan (ADR-0081).
+
+Flags:
+  --dry-run    print the closure plan without changing the config
 `,
 	},
 	"remove": {
-		maxPos: -1, summary: "Disable a target (a freeform domain, or a catalog target)",
-		help: `Usage: awf remove <kind> <name>
+		boolFlags: []string{"--with-dependents", "--dry-run"},
+		maxPos:    -1, summary: "Disable a target (a freeform domain, or a catalog target)",
+		help: `Usage: awf remove <kind> <name> [--with-dependents] [--dry-run]
 
 Disable a target — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
+For skill/agent/doc, removal refuses while enabled artifacts still require
+<name>, printing the dependent plan (ADR-0081).
+
+Flags:
+  --with-dependents    also remove every enabled artifact that transitively requires <name>
+  --dry-run            print the removal plan without changing the config
 `,
 	},
 	"upgrade": {
@@ -329,6 +346,24 @@ func checkArgs(cmd string, rest []string, boolFlags, valueFlags []string, minPos
 		return &usageErr{fmt.Sprintf("awf %s: unexpected arguments", cmd)}
 	}
 	return nil
+}
+
+// positionals returns rest's non-flag tokens, skipping each valueFlag's
+// consumed value — the flag-tolerant arity source for add/remove.
+func positionals(rest []string, boolFlags, valueFlags []string) []string {
+	var out []string
+	for i := 0; i < len(rest); i++ {
+		a := rest[i]
+		switch {
+		case slices.Contains(valueFlags, a):
+			i++
+		case slices.Contains(boolFlags, a):
+		case strings.HasPrefix(a, "-"):
+		default:
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // hasFlag reports whether flag appears anywhere in args[2:].

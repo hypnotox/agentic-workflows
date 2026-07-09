@@ -104,10 +104,51 @@ func catalogNames(cat *catalog.Catalog, kind string) ([]string, bool) {
 	return project.CatalogNames(cat, kind)
 }
 
-func runAdd(root, kind, name string, stdout io.Writer) error {
+// isGraphKind reports whether kind is one the ADR-0081 resolver plans over.
+func isGraphKind(kind string) bool { return kind == "skill" || kind == "agent" || kind == "doc" }
+
+// checkGraphFlags rejects a graph-only flag on a non-graph kind, so no flag
+// is ever silently ignored (ADR-0081).
+func checkGraphFlags(kind string, dryRun, withDependents bool) error {
+	if isGraphKind(kind) || (!dryRun && !withDependents) {
+		return nil
+	}
+	return &usageErr{fmt.Sprintf("graph flags (--dry-run, --with-dependents) apply to skill, agent, and doc only, not %q", kind)}
+}
+
+// printPlan prints one provenance line per resolver plan op.
+func printPlan(stdout io.Writer, plan []project.PlanOp) {
+	for _, op := range plan {
+		sign := "+"
+		if !op.Add {
+			sign = "-"
+		}
+		suffix := ""
+		if op.RequiredBy != "" {
+			suffix = fmt.Sprintf(" (required by %s)", op.RequiredBy)
+		}
+		fmt.Fprintf(stdout, "plan: %s %s %s%s\n", sign, op.Node.Kind, op.Node.Name, suffix)
+	}
+}
+
+// planEdits converts a resolver plan into enable-array edits (every op in a
+// plan shares one add/remove direction).
+func planEdits(plan []project.PlanOp) []enableEdit {
+	edits := make([]enableEdit, 0, len(plan))
+	for _, op := range plan {
+		pl, _ := project.PluralKind(op.Node.Kind)
+		edits = append(edits, enableEdit{key: pl, name: op.Node.Name})
+	}
+	return edits
+}
+
+func runAdd(root, kind, name string, dryRun bool, stdout io.Writer) error {
 	// Gate before any config write (like awf new): the chained sync's gate
 	// would only fire after the rewrite, stranding a half-mutated config.
 	if err := gate(root); err != nil {
+		return err
+	}
+	if err := checkGraphFlags(kind, dryRun, false); err != nil {
 		return err
 	}
 	if kind == "target" {
@@ -135,29 +176,21 @@ func runAdd(root, kind, name string, stdout io.Writer) error {
 		return fmt.Errorf("%s %q already enabled", kind, name)
 	}
 	edits := []enableEdit{{key: key, name: name}}
-	// Pairing (ADR-0050): adding a skill that dispatches a reviewer agent
-	// enables the missing agent in the same config rewrite — the additive fix
-	// is safe to apply silently, announced by a note.
-	// invariant: add-skill-pairs-agent
-	var pairedAgent string
-	if kind == "skill" {
-		if req := p.Cat.Skills[name].RequiresAgent; req != "" && !slices.Contains(p.Cfg.Agents, req) {
-			pairedAgent = req
-			edits = append(edits, enableEdit{key: "agents", name: req})
+	if isGraphKind(kind) {
+		// Closure plan (ADR-0081 Decision 4): enabling an artifact enables its
+		// full missing forward closure — skills, agents, and docs — in one
+		// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
+		// and subsumes the ADR-0013 doc advisory note.
+		// invariant: add-skill-pairs-agent
+		plan := p.ResolveAdd(kind, name)
+		printPlan(stdout, plan)
+		if dryRun {
+			return nil
 		}
+		edits = planEdits(plan)
 	}
 	if err := rewriteConfig(root, p.Cfg.Source(), true, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
 		return err
-	}
-	if pairedAgent != "" {
-		fmt.Fprintf(stdout, "note: also enabled agent %q (required by skill %q)\n", pairedAgent, name)
-	}
-	// Doc-gated skill: warn when its required doc is not enabled, since it would
-	// otherwise render nothing (inv: doc-gated-skill-suppressed).
-	if kind == "skill" {
-		if req := p.Cat.Skills[name].RequiresDoc; req != "" && !slices.Contains(p.Cfg.Docs, req) {
-			fmt.Fprintf(stdout, "note: skill %q requires the %q doc, which is not enabled — it will not render until you run `awf add doc %s`\n", name, req, req)
-		}
 	}
 	if kind == "domain" {
 		if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
@@ -190,9 +223,12 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 	return os.WriteFile(path, fmt.Appendf(nil, domainCurrentStateStub, name), 0o644)
 }
 
-func runRemove(root, kind, name string, stdout io.Writer) error {
+func runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
 	// Gate before any config write — see runAdd.
 	if err := gate(root); err != nil {
+		return err
+	}
+	if err := checkGraphFlags(kind, dryRun, withDependents); err != nil {
 		return err
 	}
 	if kind == "target" {
@@ -212,22 +248,73 @@ func runRemove(root, kind, name string, stdout io.Writer) error {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
 		return fmt.Errorf("%s %q is not enabled", kind, name)
 	}
-	// Pairing guard (ADR-0050): refuse BEFORE the config rewrite — the
-	// rewrite-then-sync order would otherwise strand a half-broken tree that
-	// every gated command rejects. The predicate is the validator's exactly.
-	// invariant: remove-agent-pairing-guard
-	if kind == "agent" {
-		if paired := p.SkillsRequiringAgent(name); len(paired) > 0 {
-			return fmt.Errorf("skill %q requires agent %q; enable the agent or disable the skill", paired[0], name)
+	edits := []enableEdit{{key: key, name: name}}
+	var plan []project.PlanOp
+	if isGraphKind(kind) {
+		// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
+		// target plus its enabled transitive dependents, printed before any
+		// change; a longer plan refuses upfront — BEFORE the config rewrite,
+		// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
+		// guard (the reverse walk's length-1 case).
+		// invariant: remove-agent-pairing-guard
+		plan = p.ResolveRemove(kind, name)
+		printPlan(stdout, plan)
+		if dryRun {
+			return nil
 		}
+		if len(plan) > 1 && !withDependents {
+			return fmt.Errorf("removing %s %q also removes the %d artifacts above; re-run with --with-dependents to apply", kind, name, len(plan)-1)
+		}
+		edits = planEdits(plan)
 	}
-	if err := rewriteConfig(root, p.Cfg.Source(), false, enableEdit{key: key, name: name}); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
+	if err := rewriteConfig(root, p.Cfg.Source(), false, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
 		return err
 	}
-	if hasSidecarOrParts(root, key, name) {
+	for _, op := range plan {
+		pl, _ := project.PluralKind(op.Node.Kind)
+		if hasSidecarOrParts(root, pl, op.Node.Name) {
+			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-add to keep them\n", op.Node.Kind, op.Node.Name)
+		}
+	}
+	if kind == "domain" && hasSidecarOrParts(root, key, name) {
 		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-add to keep them\n", kind, name)
 	}
+	noteUnrequiredAgents(p, plan, stdout)
 	return runSync(root, stdout)
+}
+
+// noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
+// agent no remaining enabled, non-local skill requires — agents are legal
+// standalone (ADR-0050 Decision item 3), so they stay enabled (ADR-0081).
+func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.Writer) {
+	if len(plan) < 2 {
+		return
+	}
+	removed := map[catalog.Node]bool{}
+	for _, op := range plan {
+		removed[op.Node] = true
+	}
+	for _, agent := range p.Cfg.Agents {
+		if removed[catalog.Node{Kind: "agent", Name: agent}] {
+			continue
+		}
+		required := false
+		for _, skill := range p.Cfg.Skills {
+			if removed[catalog.Node{Kind: "skill", Name: skill}] {
+				continue
+			}
+			if sc, err := p.Cfg.Sidecar("skills", skill); err != nil || sc.Local {
+				continue
+			}
+			if p.Cat.Skills[skill].RequiresAgent == agent {
+				required = true
+				break
+			}
+		}
+		if !required {
+			fmt.Fprintf(stdout, "note: agent %q is no longer required by any enabled skill; it stays enabled (remove it separately if unwanted)\n", agent)
+		}
+	}
 }
 
 // enableEdit is one enable-array edit for rewriteConfig: the config key and

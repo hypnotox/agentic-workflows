@@ -14,7 +14,7 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 
 - `awf sync` — re-render every artifact from `.awf/` and update `.awf/awf.lock`.
 - `awf check` — fail if any rendered file has drifted from the config (also gates the schema version).
-- `awf add <kind> <name>` / `awf remove <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact.
+- `awf add <kind> <name>` / `awf remove <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact. For a skill/agent/doc, add enables the full requirement closure in one edit and remove refuses while enabled artifacts still require the target — `--with-dependents` removes them together, `--dry-run` previews either plan without changing the config (ADR-0081).
 - `awf list` — show the catalog and what is enabled.
 - `awf new adr "<title>"` — scaffold the next ADR.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` — scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).

@@ -38,3 +38,15 @@ func containsLine(s, line string) bool {
 	}
 	return false
 }
+
+// positionals filters flag tokens (bool flags dropped, value flags consuming
+// their value, unknown dashed tokens dropped — checkArgs already rejected
+// them) so add/remove arity survives flag forms (ADR-0081).
+func TestPositionals(t *testing.T) {
+	got := positionals(
+		[]string{"--val", "x", "skill", "--flag", "-z", "name"},
+		[]string{"--flag"}, []string{"--val"})
+	if len(got) != 2 || got[0] != "skill" || got[1] != "name" {
+		t.Errorf("positionals = %v, want [skill name]", got)
+	}
+}
