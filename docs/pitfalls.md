@@ -14,23 +14,25 @@ the command and fails only on cache-miss runs, which presents as flaky CI. Every
 rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`inv:
 bootstrap-stdout-path-only`, ADR-0049).
 
-## Adding a catalog skill: hand-enumerated test touch points
+## Adding a catalog skill: what the guards force
 
 A new `SkillSpec` in `internal/catalog/standard.go` is covered automatically by the
-catalog-derived eval fixture (`inv: evals-full-catalog-coverage`, ADR-0053), but several sibling
-tests still hand-enumerate their skill set and fail only at `./x gate` time, not at authoring:
+catalog-derived eval fixture (ADR-0053) and by ADR-0080's derived guards, which fail
+loudly and name the missing piece:
 
-- `TestUnsetFallbackRenders` (`internal/project/spine_test.go`) — the publication-safety regression
-  lock that renders each skill under empty data and bans leaks; a skill with conditional
-  (`{{ if … }}`) branches must be added here or its degradation goes unlocked.
-- The per-skill `Test<Skill>Template` golden in the same file — one per skill by convention.
-- Chain-enabling fixtures that hardcode a skills list (e.g. `TestScopesEditReflagsReferencingArtifacts`
-  in `internal/project/drift_test.go`): once a Core chain skill is referenced unconditionally by a
-  sibling — as `reviewing-impl` names `retrospective` and `executing-plans` — every such fixture
-  must enable it too, or trip the no-dead-skill-references gate (ADR-0046).
+- `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data — an
+  unconditional reference to another skill must be declared in `RequiresSkills`
+  (exact both ways: undeclared references and stale declarations each fail).
+- `TestConditionalTemplatesHaveFallbackCases` requires a hand-authored
+  `unsetFallbackCases` entry when the template carries conditional fallback prose —
+  the degraded phrases themselves stay human-authored.
+- `TestEveryCatalogArtifactHasGoldenTest` requires a `Test<Skill>Template` golden in
+  `internal/project/spine_test.go`.
+- Chain-enabling fixtures derive from the catalog (`chainClosureConfig`), so a new
+  chain skill joins them without a hand edit.
 
-The durable fix is to derive these skill sets from `catalog.Standard` the way ADR-0053 did for the
-eval fixture, closing the silent-rot gap; until then, adding a skill means updating these by hand.
+Exemptions follow default-inclusion semantics (ADR-0080 Decision 7): every exception
+is an explicit entry that itself fails when stale.
 
 ## Hard-coded counts in domain narratives drift
 

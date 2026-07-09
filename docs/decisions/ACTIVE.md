@@ -82,10 +82,7 @@
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md) — Implemented
 - [ADR-0078: Release-time changelog pin](0078-release-time-changelog-pin.md) — Implemented
 - [ADR-0079: Release and CI supply-chain hygiene](0079-release-and-ci-supply-chain-hygiene.md) — Implemented
-
-## Proposed
-
-- [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Proposed
+- [ADR-0080: Catalog-derived test coverage for skill and agent templates](0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md) — Implemented
 
 ## Superseded
 

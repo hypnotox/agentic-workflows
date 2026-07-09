@@ -77,3 +77,11 @@ data:
           text: '**SHA-pinned workflows.** Every remote `uses:` reference under `.github/workflows/` pins a full 40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned) and every goreleaser-action `version:` input is an exact semver version — `cmd/pincheck`, run by `./x gate`, fails otherwise, and weekly dependabot (actions + gomod) keeps the pins current.'
         - ref: ADR-0079
           text: '**Gated, integrity-only release.** `release.yml` refuses a tag whose commit is not on `origin/main` and runs `./x gate` and `./x check` before GoReleaser (a gate test asserts the wiring); Codecov uploads skip without `CODECOV_TOKEN` — coverage enforcement is the local gate; checksum verification is integrity-only, publisher compromise being a documented, deliberately-accepted risk.'
+        - ref: ADR-0080
+          text: '**Catalog-derived template sweep.** Every catalog skill/agent template renders under empty data in a catalog-derived loop banning leak residue and skill references outside the artifact''s `requiresSkills` declaration; the artifact set derives from the catalog, never a hand list.'
+        - ref: ADR-0080
+          text: '**Exact coupling declarations.** `requiresSkills` declarations are exact: an undeclared unconditional skill reference and a stale declaration both fail the sweep, and every other exemption is an explicit entry that fails when stale.'
+        - ref: ADR-0080
+          text: '**Conditional-fallback case guard.** Every catalog template whose post-expansion source carries a conditional action has a hand-authored unset-data case pinning its degraded prose.'
+        - ref: ADR-0080
+          text: '**Golden-test completeness.** Every catalog skill and agent has its per-artifact golden test in `internal/project`.'

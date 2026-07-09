@@ -78,6 +78,12 @@ is catalog-derived so it cannot silently stop covering a newly-added chain artif
 section-parity guard in `internal/project` (`TestSkillAndAgentSectionParity`) asserts every skill/agent
 template's `awf:section` markers match its catalog-declared sections, so a section-slug rename
 cannot half-land with a blank-path provenance pointer.
+Three further catalog-derived guards live in `internal/project/catalog_sweep_test.go`
+(ADR-0080): an empty-data sweep rendering every catalog template and holding its
+`requiresSkills` coupling declaration exact, a conditional-fallback case guard requiring
+a hand-authored `unsetFallbackCases` entry per conditional template, and a
+golden-completeness guard machine-enforcing the one-golden-per-artifact convention in
+`spine_test.go`.
 
 Shared test-fixture building — project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures — goes through
