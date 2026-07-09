@@ -133,7 +133,10 @@ invariant, so folding docs into the graph reaches that ADR too.
    every **dormant doc-gated skill** — enabled while its doc is disabled,
    today's valid silent-suppression state — is dropped from the enable array,
    preserving the adopter's observed rendered output (the one non-additive
-   step); **then** the additive fixed point runs over **all three edge
+   step); the drop skips `local:`-owned skills, symmetric with the
+   validator's skip — a local doc-gated skill renders today even without its
+   doc, so dropping it would change output and remove a state validation
+   never refuses; **then** the additive fixed point runs over **all three edge
    kinds**, adding every enabled artifact's missing skill, agent, and doc
    requirements — so a dormant skill that something enabled still requires is
    re-added *with its doc* (the closure demand outranks the dormancy drop),
@@ -171,8 +174,8 @@ invariant, so folding docs into the graph reaches that ADR too.
   plan; with `--with-dependents` it removes the full reverse closure in a
   single rewrite.
 - `inv: close-enabled-set-migration` — the schema-8 migration closes the
-  enabled set additively for skill/agent requirements, drops dormant
-  doc-gated skills, and is idempotent and atomic.
+  enabled set additively for skill, agent, and doc requirements, drops
+  dormant non-`local` doc-gated skills, and is idempotent and atomic.
 - `inv: init-set-closed` — `awf init`'s scaffolded enabled set (curated
   default or closure-completed trim) satisfies `enabled-set-closed`.
 - Re-anchored, not retired: `reviewing-skill-agent-pairing`,
@@ -185,9 +188,9 @@ invariant, so folding docs into the graph reaches that ADR too.
 
 - The three `Requires*` fields get one uniform enforcement model; "disable
   them as a unit" stops being prose and becomes mechanized, including its
-  blunt edge — cascading a core member removes up to 10 closure skills plus
-  `plan-reviewer`, which will surprise users; the printed plan before any
-  change is the mitigation.
+  blunt edge — cascading a closure member removes up to 10 closure skills
+  plus `plan-reviewer` (worst case the `retrospective` sink seed), which will
+  surprise users; the printed plan before any change is the mitigation.
 - **Breaking for adopters** (changelog: Breaking): configs that today pass
   gated commands while failing `awf check` (missing chain siblings), and
   configs using dormant doc-gated skills, refuse at open after upgrading the
@@ -196,9 +199,11 @@ invariant, so folding docs into the graph reaches that ADR too.
   wrote in their config — accepted as the least-surprise reading (their
   rendered output is unchanged). The additive closure conversely
   **materializes new rendered skill/agent files** in an adopter's repo on
-  upgrade — accepted where the doc equivalent was rejected because skills and
-  agents are the workflow machinery the config already claimed to want, while
-  docs are user-facing content the adopter deliberately curates.
+  upgrade (and, in the demanded-dormant edge case only — currently unreachable
+  in the shipped catalog — a doc) — accepted where the blanket doc equivalent
+  was rejected because skills and agents are the workflow machinery the
+  config already claimed to want, while docs are user-facing content the
+  adopter deliberately curates.
 - ADR-0013's suppression machinery is deleted rather than kept as
   defense-in-depth — validation is the single owner of the invalid state; the
   effective-skills simplification ripples into `.skills` context, config
