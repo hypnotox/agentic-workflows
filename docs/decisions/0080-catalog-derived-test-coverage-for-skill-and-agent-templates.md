@@ -109,8 +109,11 @@ so catalog-derived fixture builders live at their test call sites, not in
    `TestScopesEditReflagsReferencingArtifacts` switches to this derivation;
    the derived set drops `tdd` from its current hand-written list (`tdd` is
    neither `Chain` nor in any unconditional-reference closure), an acceptable
-   membership delta — the test's assertions are membership-based over
-   reviewing skills. Deliberately-minimal gating fixtures (skill-reference
+   membership delta — but the test's negative control (a skill without scope
+   references is not reflagged) currently points at the rendered `tdd` skill
+   and would pass vacuously once `tdd` is no longer rendered; it re-points to
+   a derived-set skill that carries no scope references (e.g. `brainstorming`
+   — only the reviewing-* templates reference `commitScopes`). Deliberately-minimal gating fixtures (skill-reference
    gating, doc gating, coverage fixtures) stay hand-written — minimalism is
    their point. `internal/testsupport` is untouched.
 6. **Scope boundary.** The `_base` templates and `AGENTS.md.tmpl` are not
