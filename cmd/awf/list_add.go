@@ -284,18 +284,31 @@ func runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.W
 }
 
 // noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
-// agent no remaining enabled, non-local skill requires — agents are legal
-// standalone (ADR-0050 Decision item 3), so they stay enabled (ADR-0081).
+// agent that a removed skill required and no remaining enabled, non-local
+// skill still requires — agents are legal standalone (ADR-0050 Decision
+// item 3), so they stay enabled (ADR-0081). Restricting to agents a removed
+// skill required keeps "no longer" honest (a pre-existing standalone agent is
+// not this cascade's doing), and local-sidecar agents mirror the resolver's
+// skip.
 func noteUnrequiredAgents(p *project.Project, plan []project.PlanOp, stdout io.Writer) {
 	if len(plan) < 2 {
 		return
 	}
 	removed := map[catalog.Node]bool{}
+	wasRequiredBy := map[string]bool{}
 	for _, op := range plan {
 		removed[op.Node] = true
+		if op.Node.Kind == "skill" {
+			if a := p.Cat.Skills[op.Node.Name].RequiresAgent; a != "" {
+				wasRequiredBy[a] = true
+			}
+		}
 	}
 	for _, agent := range p.Cfg.Agents {
-		if removed[catalog.Node{Kind: "agent", Name: agent}] {
+		if removed[catalog.Node{Kind: "agent", Name: agent}] || !wasRequiredBy[agent] {
+			continue
+		}
+		if sc, err := p.Cfg.Sidecar("agents", agent); err != nil || sc.Local {
 			continue
 		}
 		required := false

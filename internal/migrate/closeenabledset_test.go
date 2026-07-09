@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
 // closeFixture writes an .awf/config.yaml (plus optional sidecars keyed by
@@ -106,5 +108,38 @@ func TestCloseEnabledSetMalformedConfig(t *testing.T) {
 	root := closeFixture(t, ": : not valid : :\n", nil)
 	if err := applyCloseEnabledSet(root, io.Discard); err == nil {
 		t.Fatal("expected a parse error for a malformed config")
+	}
+}
+
+// A dormant doc-gated skill something enabled still requires re-enters WITH
+// its doc — the closure demand outranks the dormancy drop (ADR-0081 Decision
+// 8). Unreachable in the shipped catalog (nothing requires a doc-gated
+// skill), so a synthetic catalog exercises the interplay via the seam.
+func TestCloseEnabledSetReAddsDemandedDormantSkillWithDoc(t *testing.T) {
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{
+		"keeper": {RequiresSkills: []string{"gated"}},
+		"gated":  {RequiresDoc: "roadmap"},
+	}}
+	root := closeFixture(t, "prefix: ex\nskills: [gated, keeper]\nagents: []\n", nil)
+	var out bytes.Buffer
+	if err := closeEnabledSet(root, cat, &out); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		`close-enabled-set: dropped dormant skill "gated" (its "roadmap" doc is disabled)`,
+		`close-enabled-set: enabled skill "gated" (required by "keeper")`,
+		`close-enabled-set: enabled doc "roadmap" (required by "gated")`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "- gated") || !strings.Contains(string(cfg), "- roadmap") {
+		t.Errorf("demanded dormant skill must re-enter with its doc:\n%s", cfg)
 	}
 }

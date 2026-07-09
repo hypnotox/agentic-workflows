@@ -24,6 +24,13 @@ import (
 // every addition and drop is printed; the config write is atomic.
 // invariant: close-enabled-set-migration
 func applyCloseEnabledSet(root string, out io.Writer) error {
+	return closeEnabledSet(root, catalog.Standard, out)
+}
+
+// closeEnabledSet is the catalog-parameterized seam behind applyCloseEnabledSet,
+// so the demanded-dormant re-add interplay (unreachable in the shipped catalog —
+// nothing requires a doc-gated skill today) stays testable synthetically.
+func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to close (idempotent re-run safe)
 	}
@@ -31,7 +38,6 @@ func applyCloseEnabledSet(root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	cat := catalog.Standard
 	local := func(kind, name string) bool {
 		sc, err := cfg.Sidecar(kind, name)
 		return err == nil && sc.Local

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -789,5 +790,36 @@ func TestRunListBareShowsAllKinds(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "targets:") || strings.Contains(out.String(), "hooks:") {
 		t.Errorf("filtered list must not append the singleton kinds:\n%s", out.String())
+	}
+}
+
+// noteUnrequiredAgents edge cases unreachable through the CLI with the
+// shipped catalog (the reviewing-plan/resync pair is mutually requiring, so a
+// real cascade never splits an agent's requirers): an agent still required by
+// a remaining non-local skill gets no note, and a local-sidecar agent is
+// outside the scan, mirroring the resolver's skip.
+func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
+	root := scaffoldedProject(t)
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "agents", "adr-reviewer.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := []project.PlanOp{
+		{Node: catalog.Node{Kind: "skill", Name: "reviewing-adr"}, Add: false},
+		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Add: false, RequiredBy: "reviewing-adr"},
+	}
+	var out bytes.Buffer
+	noteUnrequiredAgents(p, plan, &out)
+	// adr-reviewer: required by the removed reviewing-adr, but local — skipped.
+	// plan-reviewer: required by the removed reviewing-plan, but the remaining
+	// reviewing-plan-resync still requires it — no note.
+	if out.String() != "" {
+		t.Errorf("expected no notes, got %q", out.String())
 	}
 }
