@@ -76,7 +76,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail
 			return err
 		}
-		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
+		scaffold, added, err := project.ScaffoldConfig(filepath.Base(root), vars, trim, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return err
 		}
@@ -85,6 +85,11 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 		scaffolded = true
 		fmt.Fprintf(stdout, "scaffolded %s\n", cfgPath)
+		// A trimmed selection is closure-completed (ADR-0081 Decision 9);
+		// note each artifact enabled beyond the explicit trim.
+		for _, a := range added {
+			fmt.Fprintf(stdout, "note: also enabled %s (required by your selection)\n", a)
+		}
 	}
 	p, err := project.Open(root)
 	if err != nil {
@@ -147,7 +152,7 @@ func probeCollisions(root string) ([]string, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(tmp)
-	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil)
+	scaffold, _, err := project.ScaffoldConfig(filepath.Base(root), nil, nil, nil)
 	if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime
 		return nil, err
 	}

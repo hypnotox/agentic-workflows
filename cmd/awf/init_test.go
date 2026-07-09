@@ -216,28 +216,50 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 // TestInitCatalogTrim asserts --set skills=/docs= drive the scaffolded enable
 // arrays verbatim (full-deselectable catalog trim, ADR-0029).
 func TestInitCatalogTrim(t *testing.T) {
-	// The trim deselects brainstorming — the chain's pure source, the one core
-	// skill no enabled artifact requires. Until ADR-0081 Phase 4 derives init's
-	// agents from the trim, the always-enabled plan-reviewer pins
-	// reviewing-plan-resync (and its closure) into every valid selection.
+	// Leaf-only trim: init derives the agent set from the selection's
+	// requirements (ADR-0081 Decision 9), so nothing pins the chain back in
+	// and core skills are genuinely deselectable.
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
-	const trim = "skills=adr-lifecycle,executing-plans,proposing-adr,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,writing-plans,tdd"
 	var out, errb bytes.Buffer
-	code := run([]string{"awf", "init", "--set", trim, "--set", "docs=testing"}, &out, &errb)
+	code := run([]string{"awf", "init", "--set", "skills=tdd,bugfix", "--set", "docs=testing"}, &out, &errb)
 	if code != 0 {
 		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
-	for _, want := range []string{"skills:", "- tdd", "docs:", "- testing"} {
+	for _, want := range []string{"skills:", "- bugfix", "- tdd", "docs:", "- testing"} {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("config missing %q:\n%s", want, cfg)
 		}
 	}
-	// A core skill not in the selection must be absent (full-deselectable).
-	if strings.Contains(cfg, "- brainstorming") {
-		t.Errorf("trim should have deselected brainstorming:\n%s", cfg)
+	// A core skill not in the selection must be absent (full-deselectable),
+	// and a leaves-only selection derives zero agents.
+	if strings.Contains(cfg, "- reviewing-impl") || strings.Contains(cfg, "- code-reviewer") {
+		t.Errorf("trim should have deselected reviewing-impl and derived no agents:\n%s", cfg)
+	}
+}
+
+// A trim naming a chain skill is closure-completed with a note per addition
+// (ADR-0081 Decision 9).
+func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
+	root := t.TempDir()
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	forceNonInteractive(t)
+	var out, errb bytes.Buffer
+	code := run([]string{"awf", "init", "--set", "skills=brainstorming"}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "note: also enabled skill reviewing-plan-resync (required by your selection)") ||
+		!strings.Contains(out.String(), "note: also enabled agent plan-reviewer (required by your selection)") {
+		t.Errorf("expected closure-addition notes, got:\n%s", out.String())
+	}
+	cfg := readInitConfig(t, root)
+	for _, want := range []string{"- brainstorming", "- retrospective", "- plan-reviewer"} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("closure-completed config missing %q:\n%s", want, cfg)
+		}
 	}
 }
 

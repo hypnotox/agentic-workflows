@@ -20,7 +20,7 @@ import (
 // TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
 // that parses cleanly under the strict config.Load decoder.
 func TestScaffoldParsesCleanly(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil)
+	b, _, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -65,7 +65,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil, nil)
+	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -105,9 +105,11 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 func TestScaffoldCatalogTrim(t *testing.T) {
 	cat := catalog.Standard
 
-	// Skills selected verbatim (incl. deselecting core); Docs nil -> no core docs to keep.
+	// A selected chain skill pulls its closure (ADR-0081 Decision 9): the trim
+	// is closure-completed, its agents derived from the selection, and every
+	// addition beyond the selection returned kind-prefixed.
 	pickSkills := []string{"tdd", "brainstorming"}
-	b, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &pickSkills}, nil)
+	b, added, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &pickSkills}, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -115,11 +117,48 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	if got := sliceSet(cfg.Skills); !maps.Equal(got, map[string]bool{"tdd": true, "brainstorming": true}) {
-		t.Errorf("trim skills = %v, want [brainstorming tdd]", slices.Sorted(maps.Keys(got)))
+	if len(cfg.Skills) != 12 { // the 11-skill chain closure + tdd
+		t.Errorf("closure-completed trim = %d skills, want 12: %v", len(cfg.Skills), cfg.Skills)
+	}
+	if len(cfg.Agents) != 3 {
+		t.Errorf("derived agents = %v, want the three reviewers", cfg.Agents)
+	}
+	if len(added) != 13 { // 10 closure skills + 3 agents beyond the 2-skill selection
+		t.Errorf("added = %d entries, want 13: %v", len(added), added)
+	}
+	if !slices.Contains(added, "skill reviewing-plan-resync") || !slices.Contains(added, "agent plan-reviewer") {
+		t.Errorf("added missing expected kind-prefixed entries: %v", added)
 	}
 	if len(cfg.Docs) != 0 {
 		t.Errorf("nil docs trim should yield no docs (no core docs remain), got %v", cfg.Docs)
+	}
+
+	// A leaves-only trim scaffolds exactly the leaves and zero agents.
+	leafSkills := []string{"tdd"}
+	bl, addedLeaf, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &leafSkills}, nil)
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	cfgLeaf, err := config.Load(writeScaffold(t, bl))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if len(cfgLeaf.Skills) != 1 || cfgLeaf.Skills[0] != "tdd" || len(cfgLeaf.Agents) != 0 || len(addedLeaf) != 0 {
+		t.Errorf("leaves-only trim = skills %v agents %v added %v, want [tdd] [] []", cfgLeaf.Skills, cfgLeaf.Agents, addedLeaf)
+	}
+
+	// A doc-gated selection gains its doc.
+	gatedSkills := []string{"roadmap-graduation"}
+	bg, addedGated, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &gatedSkills}, nil)
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	cfgGated, err := config.Load(writeScaffold(t, bg))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if !slices.Contains(cfgGated.Docs, "roadmap") || !slices.Contains(addedGated, "doc roadmap") {
+		t.Errorf("doc-gated trim = docs %v added %v, want the roadmap doc pulled in", cfgGated.Docs, addedGated)
 	}
 
 	// Docs deselected to empty; Skills nil -> keep core skills.
@@ -130,7 +169,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 			coreSkills[name] = true
 		}
 	}
-	b2, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)
+	b2, _, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Docs: &emptyDocs}, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -149,7 +188,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 // TestScaffoldEnablesAllCatalogAgents asserts that the scaffolded config enables
 // exactly the set of agents declared in the catalog.
 func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
-	b, err := ScaffoldConfig("myproj", nil, nil, nil)
+	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -178,7 +217,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.
 func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil)
+	b, _, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -217,7 +256,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
 // temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
-	b, err := ScaffoldConfig("testproject", nil, nil, nil)
+	b, _, err := ScaffoldConfig("testproject", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -250,7 +289,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 // TestScaffoldYAMLContainsNoPlaceholders verifies that scaffold output contains
 // no "<no value>" tokens or unrendered template actions.
 func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, nil)
+	b, _, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -266,7 +305,7 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 // no audit key at all (ADR-0051).
 // invariant: audit-scopes-descriptor-routed
 func TestScaffoldWritesAuditScopes(t *testing.T) {
-	b, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
+	b, _, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
@@ -275,11 +314,45 @@ func TestScaffoldWritesAuditScopes(t *testing.T) {
 			t.Errorf("scaffold missing %q:\n%s", want, b)
 		}
 	}
-	b2, err := ScaffoldConfig("example", nil, nil, nil)
+	b2, _, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}
 	if strings.Contains(string(b2), "audit:") {
 		t.Errorf("nil scopes must write no audit block:\n%s", b2)
+	}
+}
+
+// The untrimmed curated default satisfies the closure invariant: every
+// scaffolded skill's and agent's direct requirements are themselves in the
+// scaffolded arrays (ADR-0081 Decision 9; backing marker in scaffold.go).
+func TestScaffoldDefaultIsClosed(t *testing.T) {
+	b, added, err := ScaffoldConfig("myproj", nil, nil, nil)
+	if err != nil {
+		t.Fatalf("ScaffoldConfig: %v", err)
+	}
+	if len(added) != 0 {
+		t.Errorf("untrimmed default must report no additions, got %v", added)
+	}
+	cfg, err := config.Load(writeScaffold(t, b))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	enabled := map[catalog.Node]bool{}
+	for _, s := range cfg.Skills {
+		enabled[catalog.Node{Kind: "skill", Name: s}] = true
+	}
+	for _, a := range cfg.Agents {
+		enabled[catalog.Node{Kind: "agent", Name: a}] = true
+	}
+	for _, d := range cfg.Docs {
+		enabled[catalog.Node{Kind: "doc", Name: d}] = true
+	}
+	for n := range enabled {
+		for _, r := range catalog.RequiresOf(catalog.Standard, n) {
+			if !enabled[r] {
+				t.Errorf("default set unclosed: %v requires %v", n, r)
+			}
+		}
 	}
 }

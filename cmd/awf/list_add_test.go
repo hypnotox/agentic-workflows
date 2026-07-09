@@ -18,7 +18,7 @@ import (
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	b, err := project.ScaffoldConfig("example", nil, nil, nil)
+	b, _, err := project.ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

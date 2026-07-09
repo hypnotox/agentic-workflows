@@ -32,3 +32,22 @@ func RequiresOf(cat *Catalog, n Node) []Node {
 	}
 	return out
 }
+
+// Closure returns the forward closure of seeds under RequiresOf, seeds
+// included, breadth-first with edges in declaration order (deterministic).
+func Closure(cat *Catalog, seeds []Node) []Node {
+	seen := map[Node]bool{}
+	var out []Node
+	queue := append([]Node(nil), seeds...)
+	for len(queue) > 0 {
+		n := queue[0]
+		queue = queue[1:]
+		if seen[n] {
+			continue
+		}
+		seen[n] = true
+		out = append(out, n)
+		queue = append(queue, RequiresOf(cat, n)...)
+	}
+	return out
+}

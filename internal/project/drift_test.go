@@ -245,40 +245,27 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 	}
 }
 
-// chainClosureConfig derives the chain-unit enabled set from the catalog:
-// the Chain-flagged skills, their transitive RequiresSkills closure, and the
-// RequiresAgent agents of every skill in that combined set (ADR-0080
-// Decision 5) — never a hand list.
+// chainClosureConfig derives the chain-unit enabled set from the catalog via
+// the production forward walk: the Chain-flagged skills' full closure (ADR-0080
+// Decision 5, walk unified by ADR-0081) — never a hand list.
 func chainClosureConfig(scope string) string {
-	set := map[string]bool{}
-	var add func(name string)
-	add = func(name string) {
-		if set[name] {
-			return
-		}
-		set[name] = true
-		for _, r := range catalog.Standard.Skills[name].RequiresSkills {
-			add(r)
-		}
-	}
+	var seeds []catalog.Node
 	for name, spec := range catalog.Standard.Skills {
 		if spec.Chain {
-			add(name)
+			seeds = append(seeds, catalog.Node{Kind: "skill", Name: name})
 		}
 	}
-	agents := map[string]bool{}
-	skills := make([]string, 0, len(set))
-	for name := range set {
-		skills = append(skills, name)
-		if a := catalog.Standard.Skills[name].RequiresAgent; a != "" {
-			agents[a] = true
+	sort.Slice(seeds, func(i, j int) bool { return seeds[i].Name < seeds[j].Name })
+	var skills, agentList []string
+	for _, n := range catalog.Closure(catalog.Standard, seeds) {
+		switch n.Kind {
+		case "skill":
+			skills = append(skills, n.Name)
+		case "agent":
+			agentList = append(agentList, n.Name)
 		}
 	}
 	sort.Strings(skills)
-	agentList := make([]string, 0, len(agents))
-	for a := range agents {
-		agentList = append(agentList, a)
-	}
 	sort.Strings(agentList)
 	var b strings.Builder
 	b.WriteString("prefix: example\nvars: {}\nskills:\n")
