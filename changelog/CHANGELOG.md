@@ -12,6 +12,10 @@ query a single version or a range.
 - The bootstrap script's unsupported-OS/arch failure now points at the
   manual-install path (`https://github.com/hypnotox/agentic-workflows#install`),
   so Windows/git-bash users see the way forward instead of a bare error.
+- The catalog now declares each skill's and agent's unconditional chain-skill
+  coupling (`requiresSkills`), and the standard's test suite enforces the
+  declarations both ways (undeclared reference and stale declaration each
+  fail). Data only — no CLI or rendering behavior changes.
 
 ## [0.11.0] - 2026-07-08
 ### Breaking changes

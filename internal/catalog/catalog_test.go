@@ -101,6 +101,37 @@ func TestReviewingSkillSpecsArePaired(t *testing.T) {
 	}
 }
 
+// TestRequiresSkillsDeclarationsValid rejects a RequiresSkills entry naming a
+// non-catalog skill or the artifact itself, and any RequiresSkills on the
+// domain-doc spec — today the only TargetSpec use outside the agents map; the
+// field is meaningless there and a silent no-op would invite drift (ADR-0080
+// Decision 1). The self-naming rejection is an exactness corollary of Decision
+// 7: a self-entry could never fail as stale (the frontmatter name always marks
+// self as found), so it is refused upfront.
+func TestRequiresSkillsDeclarationsValid(t *testing.T) {
+	cat := Standard
+	for name, spec := range cat.Skills {
+		for _, r := range spec.RequiresSkills {
+			if _, ok := cat.Skills[r]; !ok {
+				t.Errorf("skill %q: requiresSkills entry %q is not a catalog skill", name, r)
+			}
+			if r == name {
+				t.Errorf("skill %q: requiresSkills must not name itself", name)
+			}
+		}
+	}
+	for name, spec := range cat.Agents {
+		for _, r := range spec.RequiresSkills {
+			if _, ok := cat.Skills[r]; !ok {
+				t.Errorf("agent %q: requiresSkills entry %q is not a catalog skill", name, r)
+			}
+		}
+	}
+	if len(cat.DomainDoc.RequiresSkills) != 0 {
+		t.Error("domainDoc: requiresSkills is only valid on skills and agents (ADR-0080 Decision 1)")
+	}
+}
+
 // invariant: no-single-marker-init-descriptor
 //
 // The catalog exposes no invariants-marker/globs var descriptor; the marker

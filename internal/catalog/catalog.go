@@ -10,8 +10,15 @@ import "slices"
 type TargetSpec struct {
 	Sections []string `yaml:"sections"`
 	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
-	Base bool           `yaml:"base"`
-	Data map[string]any `yaml:"data"`
+	Base bool `yaml:"base"`
+	// RequiresSkills names the catalog skills this artifact's template references
+	// unconditionally — rendered into its output even when the referenced skill is
+	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
+	// unit"). Declarations are exact: the template test sweep fails on an
+	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
+	// not gated validation — promoting it to add/remove pairing UX is deferred.
+	RequiresSkills []string       `yaml:"requiresSkills"`
+	Data           map[string]any `yaml:"data"`
 }
 
 // SkillSpec declares a skill's render sections plus its optional gating fields.
@@ -36,8 +43,10 @@ type SkillSpec struct {
 	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
 	// template id to the shared base template, not the name-derived catalog path.
 	// Standard skills never set it.
-	Base bool           `yaml:"base"`
-	Data map[string]any `yaml:"data"`
+	Base bool `yaml:"base"`
+	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
+	RequiresSkills []string       `yaml:"requiresSkills"`
+	Data           map[string]any `yaml:"data"`
 }
 
 // DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable

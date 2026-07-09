@@ -7,25 +7,25 @@ package catalog
 // produced — so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Core: true, Chain: true, Sections: []string{
+		"brainstorming": {Core: true, Chain: true, RequiresSkills: []string{"proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "grounding-check-output-format",
 			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
 		}},
-		"writing-plans": {Core: true, Chain: true, Sections: []string{
+		"writing-plans": {Core: true, Chain: true, RequiresSkills: []string{"adr-lifecycle", "proposing-adr", "reviewing-plan", "reviewing-plan-resync"}, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
 			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
 			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
-		"executing-plans": {Core: true, Chain: true, Sections: []string{
+		"executing-plans": {Core: true, Chain: true, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Core: true, Chain: true, Sections: []string{
+		"subagent-driven-development": {Core: true, Chain: true, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
@@ -47,6 +47,7 @@ var Standard = &Catalog{
 		}},
 		"proposing-adr": {
 			Core: true, Chain: true,
+			RequiresSkills: []string{"adr-lifecycle", "reviewing-adr"},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
 				"state-doc-update", "procedure-predecessor-flip", "invariants-rule", "procedure-regen",
@@ -80,20 +81,20 @@ var Standard = &Catalog{
 			},
 		},
 		"bugfix": {Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", Sections: []string{
+		"reviewing-plan": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
 		}},
-		"reviewing-plan-resync": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", Sections: []string{
+		"reviewing-plan-resync": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"executing-plans", "reviewing-adr", "reviewing-plan", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "dispatch-subagent-narrowed", "classify-route-findings",
 			"apply-fixes-commit", "re-review-loop", "hand-off-to-impl", "notes",
 		}},
-		"reviewing-adr": {Core: true, Chain: true, RequiresAgent: "adr-reviewer", Sections: []string{
+		"reviewing-adr": {Core: true, Chain: true, RequiresAgent: "adr-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "proposing-adr", "reviewing-plan-resync", "subagent-driven-development", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Core: true, Chain: true, RequiresAgent: "code-reviewer", Sections: []string{
+		"reviewing-impl": {Core: true, Chain: true, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
@@ -130,7 +131,8 @@ var Standard = &Catalog{
 			},
 		},
 		"plan-reviewer": {
-			Sections: []string{"universal-lenses", "project-focus", "doc-currency", "resync-note"},
+			Sections:       []string{"universal-lenses", "project-focus", "doc-currency", "resync-note"},
+			RequiresSkills: []string{"reviewing-plan-resync"},
 			Data: map[string]any{
 				"focusItems": []any{
 					map[string]any{"name": "step-exactness", "description": "every task names exact file paths, exact content or diffs, and exact commands with expected output"},
