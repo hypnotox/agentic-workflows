@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [doc-gated-skill-suppressed]
 superseded_by: ""
 tags: [dependency-graph, cli, catalog, validation, migration]
-related: [13, 24, 31, 46, 50, 68, 76, 80]
+related: [13, 24, 31, 46, 49, 50, 68, 76, 77, 80]
 domains: [config, rendering, tooling]
 ---
 # ADR-0081: Enforced dependency graph over catalog Requires declarations
@@ -27,12 +27,18 @@ ADR-0046 dead-reference drift. The three `Requires*` fields today carry three
   that renders nothing.
 
 The user directed full dependency-graph handling. One structural fact shapes
-the design: **the `RequiresSkills` graph is cyclic** — the 11 chain skills form
-one strongly-connected unit (e.g. `executing-plans → reviewing-impl →
-subagent-driven-development → executing-plans`), which is why the agent guide
-says "disable them as a unit". A per-artifact refusal guard alone would make
-every chain member permanently unremovable one-at-a-time; graph handling must
-answer unit removal explicitly.
+the design: **the `RequiresSkills` closure is cyclic** — the 11-skill closure
+(the 10 `Chain`-flagged skills plus `adr-lifecycle`) condenses to two
+mutually-requiring cores, a 5-skill planning core (`proposing-adr`,
+`reviewing-adr`, `writing-plans`, `reviewing-plan`, `reviewing-plan-resync`)
+and a 3-skill execution core (`executing-plans`,
+`subagent-driven-development`, `reviewing-impl`), with edges only from the
+planning core toward the execution core, plus `brainstorming` as a pure
+source and `retrospective`/`adr-lifecycle` as pure sinks. Most closure
+members are therefore unremovable one-at-a-time — every core member's
+removal is blocked by its co-members — and graph handling must answer unit
+removal explicitly. This is the mechanized form of the agent guide's
+"disable them as a unit".
 
 Grounding facts (verified 2026-07-09): `awf add`/`awf remove` dispatch on raw
 `len(args)` in `cmd/awf/main.go` (a flag needs positional-count rework, though
@@ -90,11 +96,14 @@ invariant, so folding docs into the graph reaches that ADR too.
    applies the whole plan in one rewrite. This generalizes ADR-0050 Decision
    item 4 (the agent guard becomes the reverse walk's length-1 case) and
    covers docs (`awf remove doc roadmap` refuses while `roadmap-graduation` is
-   enabled). Consequence stated plainly: cascading any chain-closure member
-   removes **all 11 chain skills plus `plan-reviewer`**; agents left with no
-   requiring skill (`adr-reviewer`, `code-reviewer`) stay enabled — agents are
-   legal standalone (ADR-0050 Decision item 3 unchanged) — with a note, and
-   the existing orphaned-sidecar note loops over every removed plan node.
+   enabled). Consequence stated plainly: cascade size is **seed-dependent** —
+   up to 10 of the 11 closure skills plus `plan-reviewer`, depending on where
+   the removal starts (a planning-core member pulls the planning core and
+   everything upstream of it; a sink like `retrospective` pulls nearly the
+   whole closure; `brainstorming`, a pure source, cascades nothing). Agents
+   left with no requiring skill stay enabled — agents are legal standalone
+   (ADR-0050 Decision item 3 unchanged) — with a note, and the existing
+   orphaned-sidecar note loops over every removed plan node.
 
 6. **`--dry-run` on add and remove** prints the computed plan without
    touching the config — the resolver's plan/apply split makes it free.
@@ -112,13 +121,16 @@ invariant, so folding docs into the graph reaches that ADR too.
    orthogonal: validation reads the enable array, and a locally-owned doc
    still satisfies the edge.
 
-8. **Schema-8 migration `close-enabled-set`.** For every enabled artifact,
-   missing skill and agent requirements are added to the enable arrays to a
-   fixed point (additive); a **dormant doc-gated skill** — enabled while its
-   doc is disabled, today's valid silent-suppression state — is instead
-   **dropped from the enable array**, preserving the adopter's observed
-   rendered output (the one non-additive step), with every addition and drop
-   printed. The migration is idempotent, edits the config via the atomic
+8. **Schema-8 migration `close-enabled-set`.** Two ordered steps: **first**,
+   every **dormant doc-gated skill** — enabled while its doc is disabled,
+   today's valid silent-suppression state — is dropped from the enable array,
+   preserving the adopter's observed rendered output (the one non-additive
+   step); **then** the additive fixed point runs over **all three edge
+   kinds**, adding every enabled artifact's missing skill, agent, and doc
+   requirements — so a dormant skill that something enabled still requires is
+   re-added *with its doc* (the closure demand outranks the dormancy drop),
+   and a closure-added doc-gated skill can never leave the migrated config in
+   a state Decision 3 refuses. Every addition and drop is printed. The migration is idempotent, edits the config via the atomic
    `editConfig` path (ADR-0076), mirrors the validator's `local:` sidecar
    skip so it never adds an edge validation would not demand, and lands with
    a `minVersionBySchema[8]` entry and `project.Version` bump (ADR-0049).
@@ -159,16 +171,20 @@ invariant, so folding docs into the graph reaches that ADR too.
 
 - The three `Requires*` fields get one uniform enforcement model; "disable
   them as a unit" stops being prose and becomes mechanized, including its
-  blunt edge — cascading any chain member removes the whole 11-skill unit,
-  which will surprise users; the printed plan before any change is the
-  mitigation.
+  blunt edge — cascading a core member removes up to 10 closure skills plus
+  `plan-reviewer`, which will surprise users; the printed plan before any
+  change is the mitigation.
 - **Breaking for adopters** (changelog: Breaking): configs that today pass
   gated commands while failing `awf check` (missing chain siblings), and
   configs using dormant doc-gated skills, refuse at open after upgrading the
   binary; `awf upgrade` is the sanctioned repair, and the schema gate on every
   command points to it. Dropping a dormant skill removes a line the adopter
   wrote in their config — accepted as the least-surprise reading (their
-  rendered output is unchanged).
+  rendered output is unchanged). The additive closure conversely
+  **materializes new rendered skill/agent files** in an adopter's repo on
+  upgrade — accepted where the doc equivalent was rejected because skills and
+  agents are the workflow machinery the config already claimed to want, while
+  docs are user-facing content the adopter deliberately curates.
 - ADR-0013's suppression machinery is deleted rather than kept as
   defense-in-depth — validation is the single owner of the invalid state; the
   effective-skills simplification ripples into `.skills` context, config
@@ -186,8 +202,16 @@ invariant, so folding docs into the graph reaches that ADR too.
   flag forms.
 - The commit that flips this ADR to Implemented also adds the new invariant
   bullets to the agent guide's Invariants section (via `.awf/agents-doc.yaml`
-  + `./x sync`) and regenerates `docs/decisions/ACTIVE.md` (`./x sync`), per
-  standing convention.
+  + `./x sync`), regenerates `docs/decisions/ACTIVE.md` (`./x sync`), and adds
+  81 to the `related:` frontmatter of ADR-0013, ADR-0046, and ADR-0050 — the
+  partial-amendment forward pointers (`docs/pitfalls.md`).
+- Prose this ADR obsoletes updates in the same commits that change the
+  behavior: the agent-guide awf-setup sentence "disable them as a unit rather
+  than piecemeal, or a handoff will point at a skill that isn't enabled"
+  (rendered into every adopter's AGENTS.md) is rewritten for the mechanized
+  world (`awf remove` refuses or cascades for you), and the working-with-awf
+  doc's command section gains the `--with-dependents` and `--dry-run` forms
+  alongside the CLI help text.
 
 ## Alternatives Considered
 
