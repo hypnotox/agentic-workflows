@@ -1,6 +1,7 @@
 package project
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -173,12 +174,26 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 
 // invariant: bootstrap-two-files
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
-	cfg := "prefix: example\nbootstrap:\n  enabled: true\n"
-	if bootstrapFile(t, cfg) == nil {
-		t.Error("expected .awf/bootstrap.sh to render when the bootstrap singleton is enabled")
+	root := scaffold(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if upgradeFile(t, cfg) == nil {
-		t.Error("expected .awf/upgrade.sh to render when the bootstrap singleton is enabled")
+	out, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Exactly two files render under the singleton — both directions: the
+	// pair is present, and no third file joins the unit unnoticed.
+	var unit []string
+	for _, rf := range out {
+		if strings.HasPrefix(rf.TemplateID, "bootstrap/") {
+			unit = append(unit, rf.Path)
+		}
+	}
+	slices.Sort(unit)
+	if want := []string{".awf/bootstrap.sh", ".awf/upgrade.sh"}; !slices.Equal(unit, want) {
+		t.Errorf("bootstrap unit renders %v, want exactly %v", unit, want)
 	}
 }
 
@@ -199,7 +214,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 		}
 		last = trimmed
 	}
-	if last != `exec "${binary}" upgrade` {
+	if last != `exec "$binary" upgrade` {
 		t.Errorf("final statement = %q, want the exec handoff", last)
 	}
 }
@@ -210,7 +225,7 @@ func TestUpgradeScriptDelegatesFetch(t *testing.T) {
 	if rf == nil {
 		t.Fatal("expected .awf/upgrade.sh to render when enabled")
 	}
-	if !strings.Contains(rf.Content, `AWF_VERSION="${target}" bash .awf/bootstrap.sh`) {
+	if !strings.Contains(rf.Content, `AWF_VERSION="$target" bash .awf/bootstrap.sh`) {
 		t.Errorf("upgrade script must fetch via the bootstrap with AWF_VERSION set:\n%s", rf.Content)
 	}
 	// The latest-tag redirect probe is the script's only direct network call:

@@ -19,10 +19,13 @@ else
     *) echo "awf upgrade.sh: could not resolve the latest release from ${latest_url}" >&2; exit 1 ;;
   esac
 fi
+# An empty target (e.g. an unset variable passed as $1) would make the
+# bootstrap's default expansion silently re-fetch the current pin.
+[ -n "${target}" ] || { echo "awf upgrade.sh: empty target version" >&2; exit 1; }
 echo "awf upgrade.sh: upgrading to ${target}" >&2
 
-binary="$(AWF_VERSION="${target}" bash .awf/bootstrap.sh)"
+binary="$(AWF_VERSION="$target" bash .awf/bootstrap.sh)"
 
 # exec is load-bearing, not style: `awf upgrade` rewrites this script in
 # place, and replacing the shell process first makes that rewrite safe.
-exec "${binary}" upgrade
+exec "$binary" upgrade
