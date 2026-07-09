@@ -44,21 +44,27 @@ awf-owned template sources for ADR citations and identity literals.
 ## Decision
 
 1. **Detection rule.** A consumed convention part whose body contains a line that,
-   after trimming surrounding whitespace and excluding fenced code blocks, is a
-   marker-shaped `awf:section`/`awf:end` HTML comment (comment-anchored: `<!--`,
-   optional whitespace, `awf:section` or `awf:end`, through to `-->`) is flagged. The
-   exact whole-line `<!-- awf:stub -->` marker stays legal and exempt (ADR-0070
-   Decision 2). Inline quoting — the marker form appearing mid-line — never fires.
-   Fence exclusion reuses the `refs.WithoutFences` precedent from the dead-skill-
-   reference scan, so a part demonstrating marker syntax in a fenced example stays
-   silent.
+   after trimming surrounding whitespace and excluding fenced code blocks, *begins
+   with* a marker-shaped comment opener — `<!--`, optional whitespace, `awf:section`
+   or `awf:end` at a word boundary — is flagged. Prefix-anchoring on the trimmed
+   line deliberately covers all three residue shapes (the exact closed marker, an
+   unclosed opener missing `-->`, and a marker followed by trailing text): none has
+   a legitimate quoter, since prose that quotes the form always precedes it on the
+   line with a backtick, list bullet, or sentence text. This is exactly the matcher
+   the Context's exploratory grep used, which found zero hits in this repo. The
+   `<!-- awf:stub -->` marker (ADR-0070 Decision 2) is out of scope by construction —
+   the pattern names only `awf:section`/`awf:end`. Inline quoting — the marker form
+   appearing mid-line — never fires. Fence exclusion reuses the `refs.WithoutFences`
+   precedent from the dead-skill-reference scan, so a part demonstrating marker
+   syntax in a fenced example stays silent.
 
 2. **Advisory, never a failure.** The flag is a non-failing note on the existing
    advisory channel (`Project.AdvisoryNotes`), printed by `awf check` and `awf init`
    only — `awf sync`'s advisory silence (ADR-0070 Decision 4) is preserved. The note
-   states the fact and the consequence, e.g.:
+   states the fact, the consequence, and the remedy, e.g.:
    `part .awf/skills/parts/foo/bar.md contains a marker-shaped line — section markers
-   have no effect inside convention parts`.
+   have no effect inside convention parts; fence the example to silence this note`.
+   The note is self-documenting: no separate doc carries the remedy.
 
 3. **Part-keyed, deduplicated.** The note is keyed by the part's config-tree path —
    a deliberate deviation from the output-path keying of stub notes (ADR-0070
@@ -70,7 +76,10 @@ awf-owned template sources for ADR citations and identity literals.
 
 4. **Scan the raw part bytes.** Detection runs over the part body as read from disk,
    before sandbox-placeholder substitution — substituted values can be multi-line and
-   must never create or mask a whole-line match. The domain-doc generation path
+   must never create or mask a whole-line match. The sibling stub detection at the
+   same seam (`HasStubMarker`) scans the *substituted* body today; that divergence is
+   deliberate and out of scope here — its semantics predate this rationale and no
+   registry value carries a marker token. The domain-doc generation path
    participates explicitly, as it rebuilds its rendered-file records outside the main
    render loop.
 
@@ -80,12 +89,11 @@ awf-owned template sources for ADR citations and identity literals.
 
 ## Invariants
 
-- `inv: part-marker-advisory` — a whole-line marker-shaped `awf:section`/`awf:end`
-  comment in a consumed convention part (outside fenced code, excluding the exact
-  `<!-- awf:stub -->` line) yields a part-path-keyed note from `awf check` and
-  `awf init`, and never by itself causes any command to exit non-zero.
-- The detection is whole-line and comment-anchored: inline prose quoting the marker
-  form never produces a note (textual contract).
+- `inv: part-marker-advisory` — a trimmed part line beginning with a marker-shaped
+  `awf:section`/`awf:end` comment opener, outside fenced code, yields a
+  part-path-keyed note from `awf check` and `awf init`, and never by itself causes
+  any command to exit non-zero; inline prose quoting the marker form mid-line and a
+  fenced whole-line example produce no note.
 
 ## Consequences
 
@@ -94,13 +102,21 @@ awf-owned template sources for ADR citations and identity literals.
   inert markup. The false-positive channels (inline prose, fenced demos, the stub
   marker) are all excluded by construction; this repo's tree produces zero notes.
 - The advisory channel gains its second keying scheme (part path, after ADR-0077's
-  part-keyed staleness warning); the guide's `no-residual-section-marker` invariants
-  bullet is sharpened in the same effort to state the skeleton scope explicitly, so
-  the hard-error guard is no longer over-read as covering parts.
+  part-keyed staleness warning).
+- The implementing commit sharpens the guide's existing "Stub advisory,
+  residual-marker guard" invariants bullet (its `.awf/agents-doc.yaml` entry) to
+  state the skeleton scope explicitly — so the hard-error guard is no longer
+  over-read as covering parts — and adds a new bullet for `part-marker-advisory`,
+  both re-rendered via `./x sync` in that same commit. The rendering-domain
+  current-state part (`.awf/domains/parts/rendering/current-state.md`) gains its
+  sentence on the advisory in the same commit, with the regenerated
+  `docs/domains/rendering.md`.
 - A part that deliberately displays a whole-line marker outside a code fence will
-  carry a permanent note; fencing the example is the documented remedy.
+  carry a permanent note; the note text itself names fencing as the remedy.
 - A changelog entry travels with the implementation (adopter-facing `awf check`/`init`
   output change).
+- The commit flipping this ADR to Implemented regenerates `docs/decisions/ACTIVE.md`
+  via `./x sync`, staged in the same commit.
 
 ## Alternatives Considered
 
@@ -110,3 +126,4 @@ awf-owned template sources for ADR citations and identity literals.
 | Post-Execute scan of final rendered output | Fires on the legitimate inline quoters ADR-0070 D5 explicitly protects (the rendering-domain narrative) — breaks the dogfood immediately. |
 | Prose-only clarification of the invariant wording | Leaves the confused adopter with no signal; the wording fix is folded into this ADR's implementation anyway. |
 | Line-numbered notes | Raw-versus-substituted body offsets add bookkeeping for negligible value; parts are short files. |
+| Audit-rule warning (ADR-0077 channel) | `awf audit` scans a commit range, but a marker-shaped part line is standing tree state — it must surface on every `awf check`, not only when the part changed in range. |
