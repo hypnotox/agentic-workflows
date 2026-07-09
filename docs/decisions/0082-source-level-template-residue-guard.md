@@ -96,8 +96,8 @@ reviews that introduced them — human review is demonstrably insufficient for t
 - awf's own rendered `AGENTS.md` loses one accurate citation (Decision 4); its guide entry
   still names `audit.allowedScopes`, so the pointer survives without the number.
 - A future template that legitimately needs a repo-identity mention (e.g. a new
-  install-path doc) must add a stale-failing exemption entry, keeping every identity
-  mention a deliberate, reviewed act.
+  install-path doc) must add a stale-failing exemption entry via a successor ADR amending
+  `residue-exemptions-pinned`, keeping every identity mention a deliberate, reviewed act.
 - The guard is byte-level and dumb by design: it cannot judge whether prose is
   awf-flavoured (the glob-example class). Content neutrality beyond the two banned token
   classes remains a review concern.
