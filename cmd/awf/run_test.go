@@ -32,6 +32,27 @@ func scaffoldProject(t *testing.T) string {
 	return root
 }
 
+func TestRunSyncPrintsPrunedFiles(t *testing.T) {
+	root := scaffoldProject(t)
+	// Disable the only skill; the re-sync prunes its rendered file and says so.
+	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
+	var out bytes.Buffer
+	if err := runSync(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "awf sync: pruned .claude/skills/example-tdd/SKILL.md\n") {
+		t.Errorf("missing prune line:\n%s", out.String())
+	}
+	// A drift-clean re-sync prints no prune lines.
+	out.Reset()
+	if err := runSync(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "pruned") {
+		t.Errorf("routine re-sync must not report prunes:\n%s", out.String())
+	}
+}
+
 func TestRunNoArgs(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {

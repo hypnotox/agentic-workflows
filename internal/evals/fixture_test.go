@@ -71,7 +71,7 @@ func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	if _, err := p.SyncReport(); err != nil {
+	if _, _, err := p.SyncReport(); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	return root

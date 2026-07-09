@@ -22,6 +22,11 @@ query a single version or a range.
   now always means rendered.
 
 ### Others
+- `awf sync` (and every command that ends in a sync: `upgrade`, `init`,
+  `add`, `remove`, `new`) now prints `awf sync: pruned <path>` for each
+  file its prune actually removes — a disabled artifact, a dropped
+  target's tree, or a path relocated across versions no longer disappears
+  silently. A routine re-sync still prints nothing.
 - `awf upgrade` migrations now print one provenance line per config
   operation: the schema-6 migration reports each relocated sidecar/parts
   directory and each doc it strips from `docs:`, and the schema-7 migration

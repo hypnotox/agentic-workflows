@@ -87,23 +87,25 @@ type Backup struct {
 
 // SyncReport renders and writes the project, additionally backing up any
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
-// it, and returning those backups (ADR-0035).
-func (p *Project) SyncReport() ([]Backup, error) {
+// it, and returning those backups (ADR-0035) plus the lock-relative paths of the
+// files its prune actually removed (sorted; a path whose file was already gone
+// is not reported).
+func (p *Project) SyncReport() ([]Backup, []string, error) {
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	// invariant: corrupt-lock-refuses
 	old, _, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	files, err := p.RenderAll()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, f := range files {
 		if isSkillOrAgent(f.TemplateID) {
 			if err := validateFrontmatter([]byte(f.Content)); err != nil { // coverage-ignore: rendered catalog skill/agent frontmatter is template-fixed (non-empty name/description guaranteed by inv templates-valid-frontmatter); it cannot be invalid at sync time
-				return nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
+				return nil, nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
 			}
 		}
 	}
@@ -113,19 +115,19 @@ func (p *Project) SyncReport() ([]Backup, error) {
 			localErr = fmt.Errorf("local target %s: %w", path, e)
 		}
 	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Sync
-		return nil, err
+		return nil, nil, err
 	}
 	if localErr != nil {
-		return nil, localErr
+		return nil, nil, localErr
 	}
 	amd, err := p.generateActiveMD()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
-		return nil, err
+		return nil, nil, err
 	}
 	files = append(files, dds...)
 
@@ -144,22 +146,22 @@ func (p *Project) SyncReport() ([]Backup, error) {
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
 				// invariant: sync-backs-up-foreign
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
-					return nil, fmt.Errorf("back up %s: %w", f.Path, err)
+					return nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
 				}
 				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: p.isGeneratedIndex(f.Path)})
 			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat returns a non-NotExist error only on a permission/IO fault that root bypasses
-				return nil, statErr
+				return nil, nil, statErr
 			}
 		}
 		if err := os.WriteFile(abs, []byte(f.Content), 0o644); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,
@@ -172,7 +174,7 @@ func (p *Project) SyncReport() ([]Backup, error) {
 	// a managed skill/agent to local does not delete its file.
 	localPaths, err := p.localTargetPaths()
 	if err != nil { // coverage-ignore: checkLocalFrontmatter above already surfaced any malformed local sidecar
-		return nil, err
+		return nil, nil, err
 	}
 	for _, rel := range localPaths {
 		want[rel] = true
@@ -182,6 +184,7 @@ func (p *Project) SyncReport() ([]Backup, error) {
 	// immediate parent, so dropping a target clears its whole tree (inv:
 	// target-prune-ancestors; reuses Uninstall's idiom).
 	// invariant: target-prune-ancestors
+	var pruned []string
 	if old != nil {
 		dirs := map[string]bool{}
 		for path := range old.Files {
@@ -194,7 +197,11 @@ func (p *Project) SyncReport() ([]Backup, error) {
 				continue
 			}
 			file := filepath.Join(p.Root, path)
-			_ = os.Remove(file)
+			// Report only an actual removal — a path whose file is already gone
+			// must not be claimed pruned.
+			if os.Remove(file) == nil {
+				pruned = append(pruned, path)
+			}
 			for d := filepath.Dir(file); d != p.Root; d = filepath.Dir(d) {
 				dirs[d] = true
 			}
@@ -205,7 +212,8 @@ func (p *Project) SyncReport() ([]Backup, error) {
 			_ = os.Remove(d) // removes only if now empty
 		}
 	}
-	return backups, lock.Save(p.lockPath())
+	slices.Sort(pruned) // lock-map iteration order is random; output must not be
+	return backups, pruned, lock.Save(p.lockPath())
 }
 
 // isGeneratedIndex reports whether rel is the generated ADR index or a per-domain

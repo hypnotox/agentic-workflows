@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -414,11 +415,39 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(root)
-	if err := p2.Sync(); err != nil {
+	_, pruned, err := p2.SyncReport()
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); !os.IsNotExist(err) {
 		t.Errorf("removed skill should be pruned")
+	}
+	if !slices.Contains(pruned, ".claude/skills/example-tdd/SKILL.md") {
+		t.Errorf("pruned report missing the removed skill: %v", pruned)
+	}
+	if !slices.IsSorted(pruned) {
+		t.Errorf("pruned report must be sorted for deterministic output: %v", pruned)
+	}
+}
+
+func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(root)
+	_ = p.Sync()
+	// Hand-delete the rendered file before the pruning sync: the report must
+	// not claim a removal the prune did not perform.
+	if err := os.Remove(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
+	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
+	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
+	p2, _ := Open(root)
+	_, pruned, err := p2.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(pruned, ".claude/skills/example-tdd/SKILL.md") {
+		t.Errorf("already-gone file must not be reported pruned: %v", pruned)
 	}
 }
 
@@ -877,7 +906,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	backups, err := p.SyncReport()
+	backups, _, err := p.SyncReport()
 	if err != nil {
 		t.Fatalf("SyncReport: %v", err)
 	}
@@ -896,13 +925,17 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(root, got.Bak)); string(b) != "hand index\n" {
 		t.Errorf("backup = %q, want original hand content", b)
 	}
-	// A path recorded in the prior lock is awf-managed: a second sync backs up nothing.
-	again, err := p.SyncReport()
+	// A path recorded in the prior lock is awf-managed: a second sync backs up
+	// nothing and prunes nothing.
+	again, pruned, err := p.SyncReport()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(again) != 0 {
 		t.Errorf("re-sync of awf-managed output must not back up, got %#v", again)
+	}
+	if len(pruned) != 0 {
+		t.Errorf("re-sync of awf-managed output must not prune, got %v", pruned)
 	}
 }
 
