@@ -51,8 +51,8 @@ reviews that introduced them — human review is demonstrably insufficient for t
 
 ## Decision
 
-1. **Residue rule.** Shipped template sources under `templates/` never carry a concrete awf
-   ADR citation — the token `ADR-` followed by four digits. The `ADR-NNNN` placeholder and
+1. **Residue rule.** Shipped template sources — every file in the embedded `templates.FS` —
+   never carry a concrete awf ADR citation — the token `ADR-` followed by four digits. The `ADR-NNNN` placeholder and
    generic prose about ADRs remain legal; the digits-only pattern separates the two exactly.
    Decision rationale belongs in `docs/decisions/`, never in shipped prose — a template
    comment is source too and is equally banned.
@@ -84,8 +84,9 @@ reviews that introduced them — human review is demonstrably insufficient for t
   `ADR-[0-9]{4}` tokens, and free of repo-identity literals (`hypnotox`,
   `agentic-workflows`) outside an explicit exemption list whose entries each fail when the
   named file no longer carries the literal.
-- The exemption list names exactly the bootstrap `REPO` slug and the agent-guide home link
-  unless a future ADR extends it (textual contract).
+- `inv: residue-exemptions-pinned` — the identity-exemption list contains exactly two
+  entries, the bootstrap template and the agents-doc template, asserted by the guard test;
+  extending the list requires a successor ADR amending this item.
 
 ## Consequences
 
@@ -103,12 +104,16 @@ reviews that introduced them — human review is demonstrably insufficient for t
 - Adopter-facing rendered output changes (guide invariants line, working-with-awf command
   overview and glob examples, bootstrap comments) — a changelog entry travels with the
   implementation.
+- The commit that flips this ADR to `Implemented` adds the new invariant bullets to the
+  agent guide's Invariants list (via `.awf/agents-doc.yaml` + `./x sync`) and regenerates
+  `docs/decisions/ACTIVE.md` (`./x sync`), per standing convention.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | Extend the ADR-0080 render sweep with residue regexes and more render units | Empty-data rendering never enters the `{{ with $.commitScopes }}` branch — it structurally misses the worst of the four leaks; widening the render loop to non-catalog units is more machinery for a weaker guarantee |
+| Render sweep under populated data (seed fixtures so conditional branches render) | Guaranteeing branch coverage would require a populating fixture for every conditional in every template — a per-branch fixture matrix that rots exactly like the hand lists ADR-0080 eliminated; a source scan is total over all branches by construction |
 | Narrow identity regex (allow full-slug/URL forms, ban bare mentions) | Fiddlier than two explicit exemptions and weaker — a new full-slug mention anywhere would pass silently instead of failing for review |
 | No guard; rely on review | The four leaks survived every review that touched their templates — this class is exactly what deterministic checks are for |
 | Ban only ADR citations, skip the identity rule | Identity mentions are the same leak class with the same review blindness; the two legitimate sites are cheap to exempt explicitly |
