@@ -22,6 +22,12 @@ query a single version or a range.
   now always means rendered.
 
 ### Others
+- Shipped templates no longer cite awf's own decision records: the agent
+  guide's commit-scope bullet, the working-with-awf command overview, and
+  the bootstrap comments drop their `ADR-NNNN` citations, and the
+  working-with-awf glob examples switch from awf's repo layout to a neutral
+  `src/` project. A source-level scan now bans concrete ADR citations and
+  unexempted repo-identity literals in every template, all branches included.
 - The bootstrap script's unsupported-OS/arch failure now points at the
   manual-install path (`https://github.com/hypnotox/agentic-workflows#install`),
   so Windows/git-bash users see the way forward instead of a bare error.

@@ -35,10 +35,10 @@ func TestGuideScopesDerived(t *testing.T) {
 		}
 	}
 
-	// Scopes configured: the list and the ADR-0051 clause render.
+	// Scopes configured: the list and the allowed-scopes clause render.
 	pop := renderGuide(t, base("`config`, `rendering`"))
 	wantPop := "- **Conventional Commits, scopes `config`, `rendering`.** One concern per commit; " +
-		"stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes` (ADR-0051)."
+		"stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`."
 	if got := conventionalCommitsBullet(t, pop); got != wantPop {
 		t.Errorf("populated scope bullet:\n got: %s\nwant: %s", got, wantPop)
 	}

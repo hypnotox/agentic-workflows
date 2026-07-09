@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Fetches and verifies a pinned awf binary, caches it, and prints its path.
 # Stdout carries exactly one line — the resolved binary path; every
-# diagnostic goes to stderr (ADR-0049).
+# diagnostic goes to stderr.
 set -euo pipefail
 
 AWF_VERSION="{{ .version }}"
 REPO="hypnotox/agentic-workflows"
 
 # Local-first: an awf on PATH reporting exactly the pinned version wins over
-# any download (ADR-0049).
+# any download.
 if command -v awf >/dev/null 2>&1; then
   local_version="$(awf version 2>/dev/null | awk '{print $2}' || true)"
   if [ "${local_version}" = "${AWF_VERSION}" ]; then

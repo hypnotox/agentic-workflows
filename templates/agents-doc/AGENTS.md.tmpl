@@ -40,7 +40,7 @@ Hard rules every change must respect:
 - **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
-- **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes` (ADR-0051){{ end }}.
+- **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
 {{- else }}
 - {{ .text }}{{ with .ref }} ({{ . }}){{ end }}
 {{- end }}
