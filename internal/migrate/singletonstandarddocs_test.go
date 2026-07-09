@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,8 +18,22 @@ func TestSingletonStandardDocsRelocatesSidecarAndParts(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(awf, "docs", "workflow.yaml"), "data:\n  k: v\n")
 	testsupport.WriteFile(t, filepath.Join(awf, "docs", "parts", "workflow", "local-hooks.md"), "LOCAL HOOKS BODY\n")
 
-	if err := applySingletonStandardDocs(root, io.Discard); err != nil {
+	var out bytes.Buffer
+	if err := applySingletonStandardDocs(root, &out); err != nil {
 		t.Fatalf("applySingletonStandardDocs: %v", err)
+	}
+	for _, want := range []string{
+		"singleton-standard-docs: moved .awf/docs/workflow.yaml → .awf/workflow.yaml\n",
+		"singleton-standard-docs: moved .awf/docs/parts/workflow → .awf/parts/workflow\n",
+		`singleton-standard-docs: removed doc "workflow" from docs: (now always-on)` + "\n",
+		`singleton-standard-docs: removed doc "doc-standard" from docs: (now always-on)` + "\n",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing provenance line %q in output:\n%s", want, out.String())
+		}
+	}
+	if strings.Contains(out.String(), `"architecture"`) {
+		t.Errorf("untouched doc must not be reported:\n%s", out.String())
 	}
 
 	if b, err := os.ReadFile(filepath.Join(awf, "workflow.yaml")); err != nil || !strings.Contains(string(b), "k: v") {
@@ -52,8 +67,12 @@ func TestSingletonStandardDocsIdempotent(t *testing.T) {
 	if err := applySingletonStandardDocs(root, io.Discard); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
-	if err := applySingletonStandardDocs(root, io.Discard); err != nil {
+	var out bytes.Buffer
+	if err := applySingletonStandardDocs(root, &out); err != nil {
 		t.Fatalf("second run (no sidecars/parts/docs entries present) should be a no-op: %v", err)
+	}
+	if out.String() != "" {
+		t.Errorf("a no-op run must print nothing, got:\n%s", out.String())
 	}
 }
 
@@ -78,7 +97,7 @@ func TestRelocateRefusesExistingDestination(t *testing.T) {
 	testsupport.WriteFile(t, src, "SRC\n")
 	testsupport.WriteFile(t, dst, "DST\n")
 
-	if err := relocate(src, dst); err == nil {
+	if _, err := relocate(src, dst); err == nil {
 		t.Fatal("relocate should refuse to overwrite an existing destination")
 	}
 	if b, err := os.ReadFile(dst); err != nil || string(b) != "DST\n" {

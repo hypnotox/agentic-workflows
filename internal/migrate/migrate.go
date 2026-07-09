@@ -4,6 +4,11 @@
 // and is imported by nothing on the render/sync/check load path. It reads the
 // compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
 // migration — a leaf import that keeps this package off the render path.
+//
+// Output convention: a migration that mutates the tree prints one line per
+// performed operation to its out writer, prefixed with its registry Name
+// (`<name>: <op>`), so an upgrade's config changes are readable from the
+// command output rather than git archaeology; a no-op run prints nothing.
 package migrate
 
 import (
