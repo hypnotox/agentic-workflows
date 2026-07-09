@@ -9,7 +9,7 @@ data:
         - name: two-sided-set-checks
           description: when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
         - name: coverage-ignore-reachability
-          description: 'a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; three false claims surfaced on 2026-07-08 alone (stampLockSchema, the sectionDefault call site, gate''s "TOCTOU-only"), each hiding a reachable branch'
+          description: 'a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; treat an ignore *inherited through a refactor* (call sites merged, signature changed, callers widened) as unproven by default, since the claim was written against the old shape. Three false claims surfaced on 2026-07-08 (stampLockSchema, the sectionDefault call site, gate''s "TOCTOU-only") and four more on 2026-07-09 (the singleton-standard-docs relocate cluster, all carried through a refactor), each hiding a reachable branch'
     correctnessTraps:
         - description: error returns must wrap with %w to preserve the error chain
         - description: nil map/pointer dereferences — check before indexing or method calls
