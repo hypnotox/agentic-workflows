@@ -831,108 +831,180 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // without these assertions a reverted guard in any of them passes the suite.
 // Every template renders with empty vars, empty data, and an empty skills set;
 // renderGolden's assertNoLeaks supplies the <no value> net.
+// fallbackCase pins one template's hand-authored degraded output: want
+// phrases must render under empty data, ban phrases must not; docs (when
+// set) replaces the layout docs map — used by RequiresDoc-gated templates
+// whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
+// requires an entry per conditional catalog template (ADR-0080).
+type fallbackCase struct {
+	tmpl string
+	docs map[string]any
+	want []string // fallback prose that must render
+	ban  []string // residue that must not render
+}
+
+var unsetFallbackCases = []fallbackCase{
+	{
+		tmpl: "skills/tdd/SKILL.md.tmpl",
+		want: []string{
+			"Pick the smallest surface that can prove the behaviour",
+			"confirm it fails for the right reason.",
+			"Run the gate.",
+		},
+		ban: []string{"``"},
+	},
+	{
+		tmpl: "skills/bugfix/SKILL.md.tmpl",
+		want: []string{
+			"confirm it with a falsifiable check before touching code",
+			"Write the failing test first",
+			"The project's gate (fast tier) is the default",
+			"the project's docs",
+			"Run the project's review step as the terminal step.",
+		},
+		ban: []string{"example-tdd", "example-debugging", "example-reviewing-impl", "``"},
+	},
+	{
+		tmpl: "skills/debugging/SKILL.md.tmpl",
+		want: []string{
+			"fix it directly with a regression test in that case",
+			"Write it test-first.",
+			"the project's gate",
+			"apply the fix with its regression test",
+			"a design discussion before changing behaviour",
+		},
+		ban: []string{"example-bugfix", "example-tdd", "example-brainstorming", "``"},
+	},
+	{
+		tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
+		want: []string{"<module-prefix>/", "the project's decision process"},
+		ban:  []string{"example-proposing-adr"},
+	},
+	{
+		// Every conditional rung/reference degrades to generic prose when its
+		// skill/var/doc is absent — no empty inline code, no dangling reference
+		// (ADR-0045/ADR-0020 publication-safety; ADR-0067 rung-4 pitfalls obligation).
+		tmpl: "skills/retrospective/SKILL.md.tmpl",
+		want: []string{
+			"the project's review step",
+			"the project's pitfalls notes",
+			"the project's decision process",
+			"Record it in the project's pitfalls notes.",
+		},
+		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
+	},
+	// invariant: local-base-publication-safe
+	{
+		tmpl: "skills/_base/SKILL.md.tmpl",
+		want: []string{
+			"example-local-skill",
+			"A project-local example skill.",
+			"Describe when to use this skill",
+		},
+		ban: []string{"<no value>", "``"},
+	},
+	{
+		tmpl: "agents/_base.md.tmpl",
+		want: []string{
+			"name: local-agent",
+			"A project-local example agent.",
+			"Describe this agent's role",
+		},
+		ban: []string{"<no value>"},
+	},
+	// invariant: reviewers-report-only
+	{
+		tmpl: "agents/adr-reviewer.md.tmpl",
+		want: []string{"Regen command: `awf sync`."},
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+	},
+	{
+		tmpl: "agents/plan-reviewer.md.tmpl",
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+	},
+	{
+		tmpl: "agents/code-reviewer.md.tmpl",
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+	},
+	{
+		tmpl: "agents-doc/AGENTS.md.tmpl",
+		want: []string{"Conventional Commits; one concern per commit."},
+		ban:  []string{"Chain skills", "Task skills", "example-brainstorming"},
+	},
+	{
+		tmpl: "skills/adr-lifecycle/SKILL.md.tmpl",
+		want: []string{"the multi-state lifecycle", "Run `awf sync` to regenerate"},
+	},
+	{
+		tmpl: "skills/brainstorming/SKILL.md.tmpl",
+		want: []string{
+			"hard prerequisite for any non-trivial change",
+			"The design lands in the ADR (if load-bearing) or the plan (if not)",
+		},
+	},
+	{
+		tmpl: "skills/executing-plans/SKILL.md.tmpl",
+		want: []string{"the project's gate (fast tier)", "Auto-commit when green"},
+	},
+	{
+		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
+		want: []string{"follow the ADR template's section order", "Run `awf check` to confirm."},
+	},
+	{
+		tmpl: "skills/reviewing-adr/SKILL.md.tmpl",
+		want: []string{
+			"using the project's commit scope conventions",
+			"exactly one fresh `adr-reviewer` verify pass",
+		},
+	},
+	{
+		tmpl: "skills/reviewing-impl/SKILL.md.tmpl",
+		want: []string{
+			"(or this project's runner alias for it)",
+			"using the project's commit scope conventions",
+		},
+	},
+	{
+		tmpl: "skills/reviewing-plan/SKILL.md.tmpl",
+		want: []string{"Only the plan file is edited", "using the project's commit scope conventions"},
+	},
+	{
+		tmpl: "skills/reviewing-plan-resync/SKILL.md.tmpl",
+		want: []string{"an amendment-while-Proposed edit", "using the project's commit scope conventions"},
+		ban:  []string{"example-adr-lifecycle"},
+	},
+	{
+		tmpl: "skills/roadmap-graduation/SKILL.md.tmpl",
+		docs: map[string]any{"roadmap": "docs/roadmap.md"},
+		want: []string{
+			"Write the ADR per the project's decision process.",
+			"moving an item out of `docs/roadmap.md`",
+		},
+		ban: []string{"example-proposing-adr"},
+	},
+	{
+		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
+		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only — never parallel"},
+	},
+	{
+		tmpl: "skills/writing-plans/SKILL.md.tmpl",
+		want: []string{"per the example plan convention", "the project's gate runs before every commit"},
+	},
+}
+
 func TestUnsetFallbackRenders(t *testing.T) {
-	cases := []struct {
-		tmpl string
-		want []string // fallback prose that must render
-		ban  []string // residue that must not render
-	}{
-		{
-			tmpl: "skills/tdd/SKILL.md.tmpl",
-			want: []string{
-				"Pick the smallest surface that can prove the behaviour",
-				"confirm it fails for the right reason.",
-				"Run the gate.",
-			},
-			ban: []string{"``"},
-		},
-		{
-			tmpl: "skills/bugfix/SKILL.md.tmpl",
-			want: []string{
-				"confirm it with a falsifiable check before touching code",
-				"Write the failing test first",
-				"The project's gate (fast tier) is the default",
-				"the project's docs",
-				"Run the project's review step as the terminal step.",
-			},
-			ban: []string{"example-tdd", "example-debugging", "example-reviewing-impl", "``"},
-		},
-		{
-			tmpl: "skills/debugging/SKILL.md.tmpl",
-			want: []string{
-				"fix it directly with a regression test in that case",
-				"Write it test-first.",
-				"the project's gate",
-				"apply the fix with its regression test",
-				"a design discussion before changing behaviour",
-			},
-			ban: []string{"example-bugfix", "example-tdd", "example-brainstorming", "``"},
-		},
-		{
-			tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
-			want: []string{"<module-prefix>/", "the project's decision process"},
-			ban:  []string{"example-proposing-adr"},
-		},
-		{
-			// Every conditional rung/reference degrades to generic prose when its
-			// skill/var/doc is absent — no empty inline code, no dangling reference
-			// (ADR-0045/ADR-0020 publication-safety; ADR-0067 rung-4 pitfalls obligation).
-			tmpl: "skills/retrospective/SKILL.md.tmpl",
-			want: []string{
-				"the project's review step",
-				"the project's pitfalls notes",
-				"the project's decision process",
-				"Record it in the project's pitfalls notes.",
-			},
-			ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
-		},
-		// invariant: local-base-publication-safe
-		{
-			tmpl: "skills/_base/SKILL.md.tmpl",
-			want: []string{
-				"example-local-skill",
-				"A project-local example skill.",
-				"Describe when to use this skill",
-			},
-			ban: []string{"<no value>", "``"},
-		},
-		{
-			tmpl: "agents/_base.md.tmpl",
-			want: []string{
-				"name: local-agent",
-				"A project-local example agent.",
-				"Describe this agent's role",
-			},
-			ban: []string{"<no value>"},
-		},
-		// invariant: reviewers-report-only
-		{
-			tmpl: "agents/adr-reviewer.md.tmpl",
-			want: []string{"Regen command: `awf sync`."},
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
-		},
-		{
-			tmpl: "agents/plan-reviewer.md.tmpl",
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
-		},
-		{
-			tmpl: "agents/code-reviewer.md.tmpl",
-			ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
-		},
-		{
-			tmpl: "agents-doc/AGENTS.md.tmpl",
-			want: []string{"Conventional Commits; one concern per commit."},
-			ban:  []string{"Chain skills", "Task skills", "example-brainstorming"},
-		},
-	}
-	for _, tc := range cases {
+	for _, tc := range unsetFallbackCases {
 		t.Run(tc.tmpl, func(t *testing.T) {
+			layout := testLayout()
+			if tc.docs != nil {
+				layout["docs"] = tc.docs
+			}
 			data := map[string]any{
 				"prefix": "example",
 				"vars":   map[string]any{},
 				"data":   map[string]any{},
 				"skills": map[string]bool{},
-				"layout": testLayout(),
+				"layout": layout,
 			}
 			out := renderGolden(t, tc.tmpl, data)
 			for _, phrase := range tc.want {

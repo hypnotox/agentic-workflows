@@ -2,12 +2,15 @@ package project
 
 import (
 	"fmt"
+	"io/fs"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // skillRefRe matches a rendered example-prefixed skill reference. Greedy, so
@@ -82,5 +85,40 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 	}
 	for name, spec := range cat.Agents {
 		sweep(fmt.Sprintf("agents/%s.md.tmpl", name), "", "", spec.RequiresSkills)
+	}
+}
+
+// conditionalActionRe matches any template conditional carrying fallback
+// prose: if, with, or range actions (with/else is the dominant form).
+var conditionalActionRe = regexp.MustCompile(`\{\{-?\s*(if|with|range)\b`)
+
+// TestConditionalTemplatesHaveFallbackCases requires a hand-authored
+// unset-data case for every catalog template whose post-include-expansion
+// source contains a conditional action — only a human knows what the degraded
+// prose should say, so its presence is machine-forced (ADR-0080 Decision 3).
+// invariant: conditional-fallback-case-guard
+func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
+	covered := map[string]bool{}
+	for _, tc := range unsetFallbackCases {
+		covered[tc.tmpl] = true
+	}
+	check := func(tid string) {
+		src, err := fs.ReadFile(templates.FS, tid)
+		if err != nil {
+			t.Fatalf("read %s: %v", tid, err)
+		}
+		expanded, err := render.ExpandIncludes(string(src), templates.FS)
+		if err != nil {
+			t.Fatalf("expand %s: %v", tid, err)
+		}
+		if conditionalActionRe.MatchString(expanded) && !covered[tid] {
+			t.Errorf("%s has conditional fallback prose but no unsetFallbackCases entry — add a hand-authored case pinning its degraded output", tid)
+		}
+	}
+	for name := range catalog.Standard.Skills {
+		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
+	}
+	for name := range catalog.Standard.Agents {
+		check(fmt.Sprintf("agents/%s.md.tmpl", name))
 	}
 }
