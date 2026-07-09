@@ -32,15 +32,18 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	return found
 }
 
-// invariant: bootstrap-pin
-func TestBootstrapPinsRenderingVersion(t *testing.T) {
+// invariant: bootstrap-env-override
+func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
-	want := `AWF_VERSION="` + Version + `"`
+	// Default-expansion form: a pre-set AWF_VERSION wins; absent one, the
+	// rendering binary's version resolves (replaces the retired bootstrap-pin
+	// literal-assignment form).
+	want := `AWF_VERSION="${AWF_VERSION:-` + Version + `}"`
 	if !strings.Contains(rf.Content, want) {
-		t.Errorf("bootstrap missing pin %q:\n%s", want, rf.Content)
+		t.Errorf("bootstrap missing env-override pin %q:\n%s", want, rf.Content)
 	}
 	// The banner is a #-comment after the shebang, keeping the script executable.
 	lines := strings.Split(rf.Content, "\n")
@@ -137,10 +140,90 @@ func TestBootstrapUnsupportedPlatformPointsAtManualInstall(t *testing.T) {
 }
 
 func TestBootstrapNotRenderedWhenDisabled(t *testing.T) {
-	if rf := bootstrapFile(t, "prefix: example\n"); rf != nil {
-		t.Errorf("expected no bootstrap script when bootstrap absent, got %q", rf.Path)
+	for _, cfg := range []string{"prefix: example\n", "prefix: example\nbootstrap:\n  enabled: false\n"} {
+		if rf := bootstrapFile(t, cfg); rf != nil {
+			t.Errorf("expected no bootstrap script when bootstrap off, got %q", rf.Path)
+		}
+		if rf := upgradeFile(t, cfg); rf != nil {
+			t.Errorf("expected no upgrade script when bootstrap off, got %q", rf.Path)
+		}
 	}
-	if rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: false\n"); rf != nil {
-		t.Errorf("expected no bootstrap script when bootstrap disabled, got %q", rf.Path)
+}
+
+// upgradeFile renders a project with the given config and returns the
+// .awf/upgrade.sh RenderedFile, or nil if none was produced.
+func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
+	t.Helper()
+	root := scaffold(t, configYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range out {
+		if out[i].Path == ".awf/upgrade.sh" {
+			return &out[i]
+		}
+	}
+	return nil
+}
+
+// invariant: bootstrap-two-files
+func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
+	cfg := "prefix: example\nbootstrap:\n  enabled: true\n"
+	if bootstrapFile(t, cfg) == nil {
+		t.Error("expected .awf/bootstrap.sh to render when the bootstrap singleton is enabled")
+	}
+	if upgradeFile(t, cfg) == nil {
+		t.Error("expected .awf/upgrade.sh to render when the bootstrap singleton is enabled")
+	}
+}
+
+// invariant: upgrade-exec-final
+func TestUpgradeScriptExecFinal(t *testing.T) {
+	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/upgrade.sh to render when enabled")
+	}
+	// The exec must be the script's final statement: `awf upgrade` rewrites
+	// this script truncate-in-place while it runs, and replacing the shell
+	// process before the rewrite is what makes self-modification unreachable.
+	last := ""
+	for _, line := range strings.Split(rf.Content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		last = trimmed
+	}
+	if last != `exec "${binary}" upgrade` {
+		t.Errorf("final statement = %q, want the exec handoff", last)
+	}
+}
+
+// invariant: upgrade-delegates-fetch
+func TestUpgradeScriptDelegatesFetch(t *testing.T) {
+	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
+	if rf == nil {
+		t.Fatal("expected .awf/upgrade.sh to render when enabled")
+	}
+	if !strings.Contains(rf.Content, `AWF_VERSION="${target}" bash .awf/bootstrap.sh`) {
+		t.Errorf("upgrade script must fetch via the bootstrap with AWF_VERSION set:\n%s", rf.Content)
+	}
+	// The latest-tag redirect probe is the script's only direct network call:
+	// no release-asset download and no checksum invocation of its own.
+	if n := strings.Count(rf.Content, "curl "); n != 1 {
+		t.Errorf("upgrade script has %d curl invocations, want exactly the latest-tag probe", n)
+	}
+	if !strings.Contains(rf.Content, "releases/latest") {
+		t.Errorf("upgrade script's curl must target releases/latest:\n%s", rf.Content)
+	}
+	for _, banned := range []string{"releases/download", "sha256sum", "shasum"} {
+		if strings.Contains(rf.Content, banned) {
+			t.Errorf("upgrade script must not carry its own fetch/verify logic, found %q", banned)
+		}
 	}
 }

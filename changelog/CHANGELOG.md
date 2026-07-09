@@ -20,6 +20,19 @@ query a single version or a range.
   (or `--set`) carrying a removed key now fails `awf init` on a fresh scaffold
   with an unknown-answer-key error.
 
+### Features
+- Single-command upgrades: the bootstrap singleton now renders `.awf/upgrade.sh`
+  alongside `.awf/bootstrap.sh` (ADR-0085). `bash .awf/upgrade.sh` resolves the
+  newest release (or takes an exact version argument), fetches and verifies it
+  through the bootstrap, and hands off to `awf upgrade` — closing the
+  chicken-and-egg where every upgrade started with a manual binary fetch. The
+  bootstrap itself now honors a pre-set `AWF_VERSION` environment override for
+  which release to fetch; without one it resolves its pin exactly as before.
+  `docs/working-with-awf.md` gains an "Upgrading awf" section covering the flow.
+  (This upgrade is the bridging one: the script only exists in your tree after
+  upgrading to a release that ships it — use
+  `AWF_VERSION=<new> bash .awf/bootstrap.sh`, then `<printed path> upgrade`.)
+
 ### Bug fixes
 - `awf upgrade` now always ends in a sync, even when no schema migration
   applies (ADR-0085): a same-schema binary bump re-renders every managed file

@@ -38,7 +38,7 @@ data:
         - ref: ADR-0039
           text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `add`, `remove`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`.'
         - ref: ADR-0040
-          text: '**Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` pins exactly the rendering binary''s `project.Version`.'
+          text: '**Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` defaults its fetch to exactly the rendering binary''s `project.Version`; a pre-set `AWF_VERSION` environment value overrides the target release, verification unchanged.'
         - ref: ADR-0040
           text: '**Bootstrap checksum.** The rendered bootstrap verifies the download SHA-256 before installing.'
         - ref: ADR-0048
@@ -46,7 +46,7 @@ data:
         - ref: ADR-0049
           text: '**Single version authority.** `awfVersion()` returns `project.Version`; no ldflags var or build info feeds gating, stamping, or pinning, and a schema-generation bump requires a matching `minVersionBySchema` entry and version bump.'
         - ref: ADR-0049
-          text: '**Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`.'
+          text: '**Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`; the contract is `bootstrap.sh`''s alone — the upgrade porcelain''s stdout belongs to the exec''d `awf upgrade`.'
         - ref: ADR-0050
           text: '**Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair.'
         - ref: ADR-0051
@@ -96,6 +96,8 @@ data:
         - ref: ADR-0081
           text: '**Init set closed.** `awf init`''s scaffolded enabled set — curated default or closure-completed trim (agents derived from the trimmed skills) — satisfies the closure invariant.'
         - ref: ADR-0082
-          text: '**Template source residue banned.** Every file in the embedded templates FS is free of concrete `ADR-` citations (four-digit tokens; the `ADR-NNNN` placeholder is legal) and of repo-identity literals outside a pinned two-entry exemption list (bootstrap download slug, agent-guide home link) whose entries fail when stale; extending the list is a successor-ADR act.'
+          text: '**Template source residue banned.** Every file in the embedded templates FS is free of concrete `ADR-` citations (four-digit tokens; the `ADR-NNNN` placeholder is legal) and of repo-identity literals outside a pinned three-entry exemption list (bootstrap and upgrade-script download slugs, agent-guide home link) whose entries fail when stale; extending the list is a successor-ADR act.'
         - ref: ADR-0083
           text: '**Part-marker advisory.** A trimmed convention-part line beginning with a marker-shaped `awf:section`/`awf:end` comment opener, outside fenced code, yields a part-path-keyed note from `awf check` and `awf init` — never a failure; inline prose quoting the form mid-line and fenced whole-line examples stay silent.'
+        - ref: ADR-0085
+          text: '**Self-contained upgrade porcelain.** The `bootstrap` singleton renders exactly two files — the deterministic `.awf/bootstrap.sh` and the `.awf/upgrade.sh` porcelain, which resolves its target (`$1` or the newest release), fetches exclusively by invoking the bootstrap with `AWF_VERSION` set, and hands off with `exec "$binary" upgrade` as its final statement (the `exec` guards against the truncate-in-place self-rewrite); `awf upgrade` always ends in a sync, so even a zero-migration binary bump re-renders and re-pins.'

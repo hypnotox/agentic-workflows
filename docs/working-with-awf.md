@@ -106,3 +106,26 @@ After any edit to `.awf/`, run `awf sync` to re-render, then `awf check` to conf
 commit the rendered files alongside the config change. `awf check` compares each rendered file's
 template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
 gate into CI so drift and rule violations block a merge.
+
+<!-- awf:edit upgrading — default; create .awf/parts/working-with-awf/upgrading.md to override -->
+## Upgrading awf
+
+With the bootstrap singleton enabled, upgrading is one command from the project root:
+
+```sh
+bash .awf/upgrade.sh          # upgrade to the newest release
+bash .awf/upgrade.sh 1.2.3    # upgrade to an exact version
+```
+
+The script resolves the target version, fetches and checksum-verifies the binary through
+`.awf/bootstrap.sh`, and hands off to `awf upgrade`, which applies any pending config migrations,
+re-renders every managed file, and re-pins the bootstrap to the new version. The bootstrap also
+honors a pre-set `AWF_VERSION` environment value on its own — `AWF_VERSION=1.2.3 bash
+.awf/bootstrap.sh` fetches that release instead of the pin, which is useful for trialing a version
+before committing to it.
+
+After the automated pass, sweep for residue the renderer cannot know about: project-owned call
+sites referencing renamed or relocated rendered files, stale version prose in your convention
+parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for example). `awf
+changelog --since <previous version>` lists every adopter-facing change in between. Then run the
+drift check and commit the config and rendered files together.

@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:7176b6f21aff81b345d55a2e8fc58f73eb127a1a56d0f1f3ee66dbf33cbf4593",
-      "configHash": "sha256:511111b330dd78bfb29a871b1a4805a8e73779851ae7aa5468146cae6be09fe4",
-      "outputHash": "sha256:7806e2a3421a9ec62c7b2f501b16d31900431591c64d97dddeed24c56cef0f38"
+      "configHash": "sha256:5d1005c1b22bf297f878ea3b734ab02aecbfccae823f0b78abc88d9ee837169b",
+      "outputHash": "sha256:6898f8093ac22c01d72d3699bdddc78984c9ba4aeacbc9f7f326a30eee6333d3"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:9a71f5e66a0d8d0c7e910ddebfc0fdfbc6d60c080deb8259256217a04df6040e"
+      "outputHash": "sha256:039d10e4417b03f84e64496d6b6ffef1e587be5d883ea707f15b043fb65ea062"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:dcc81730ec4039a8a46e83ca7580f999379816aa2b57df4d14cf27e323c9066e"
+      "outputHash": "sha256:c44dfb255d8c79a2acacaf029bfed3eb12174f466fd5d87b13cdf83ab1fdf9cd"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -318,7 +318,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:a83d0b6448bd1f9118ff7be8d5eaee7e302d68e529ae1d3219bc5548bbe81b5f"
+      "outputHash": "sha256:9b74a488062e3443baa5d3b4cdf412b12850354bee874f07b0d1e00e7528b754"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
@@ -358,9 +358,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:f2166d1e9e805e07d38c60d73fde4103a0348a69274197800dc073cf6236727d",
+      "templateHash": "sha256:c5faf85b5169e61f166181bc1cb1da6c166190f68a61460f5170da7fc615a737",
       "configHash": "sha256:3efe06d0d1511611914bdc3ac1f3b4bdace371d08f8f1f0525a109fd61d16522",
-      "outputHash": "sha256:0bbcbb795d1a48f63a5fc95048bc8f7ac109deba9551d87b291c89a068a6e0ed"
+      "outputHash": "sha256:a4fbf65b770d6ac24ce921e24d73b9c1987c4c63699aea89518df6557b755388"
     }
   }
 }

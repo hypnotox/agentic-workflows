@@ -23,6 +23,7 @@ import (
 const (
 	bridgeTID    = "claude/CLAUDE.md.tmpl"
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
+	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
 	memoryTID    = "memory/gitignore.tmpl"
 )
 
@@ -343,16 +344,23 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rfs...)
 	}
-	// .awf/bootstrap.sh (neutral config-tree singleton; rendered only when enabled —
-	// ADR-0040, relocated by ADR-0047). No catalog spec / no overridable sections,
-	// like the CLAUDE.md bridge.
+	// .awf/bootstrap.sh + .awf/upgrade.sh (neutral config-tree singleton; rendered
+	// as a unit only when enabled — ADR-0040 for the pinned installer, relocated by
+	// ADR-0047; ADR-0085 for the upgrade porcelain). No catalog spec / no
+	// overridable sections, like the CLAUDE.md bridge.
+	// invariant: bootstrap-two-files
 	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
-		brf, err := p.renderTarget("bootstrap", "", bootstrapTID,
-			nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/bootstrap.sh")
-		if err != nil { // coverage-ignore: the bootstrap template references only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
-			return nil, err
+		for _, u := range []struct{ tid, path string }{
+			{bootstrapTID, config.DirName + "/bootstrap.sh"},
+			{upgradeTID, config.DirName + "/upgrade.sh"},
+		} {
+			brf, err := p.renderTarget("bootstrap", "", u.tid,
+				nil, config.Sidecar{}, p.data(config.Sidecar{}), u.path)
+			if err != nil { // coverage-ignore: the bootstrap-unit templates reference only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
+				return nil, err
+			}
+			out = append(out, brf)
 		}
-		out = append(out, brf)
 	}
 	// .awf/hooks/*.sh git-hook payloads (neutral config-tree singleton; rendered
 	// as a unit only when enabled — ADR-0048). No catalog spec / no overridable

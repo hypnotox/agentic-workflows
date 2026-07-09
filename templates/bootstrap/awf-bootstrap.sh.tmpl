@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Fetches and verifies a pinned awf binary, caches it, and prints its path.
-# Stdout carries exactly one line — the resolved binary path; every
-# diagnostic goes to stderr.
+# A pre-set AWF_VERSION overrides which release is fetched (the upgrade
+# porcelain relies on this); absent one, the pin resolves. Stdout carries
+# exactly one line — the resolved binary path; every diagnostic goes to
+# stderr.
 set -euo pipefail
 
-AWF_VERSION="{{ .version }}"
+AWF_VERSION="${AWF_VERSION:-{{ .version }}}"
 REPO="hypnotox/agentic-workflows"
 
 # Local-first: an awf on PATH reporting exactly the pinned version wins over

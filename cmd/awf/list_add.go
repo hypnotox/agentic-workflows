@@ -387,6 +387,7 @@ func listBootstrap(p *project.Project, stdout io.Writer) {
 	}
 	fmt.Fprintln(stdout, "bootstrap:")
 	fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/bootstrap.sh", state)
+	fmt.Fprintf(stdout, "  %-28s %s\n", ".awf/upgrade.sh", state)
 }
 
 func listHooks(p *project.Project, stdout io.Writer) {

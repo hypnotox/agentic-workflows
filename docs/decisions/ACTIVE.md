@@ -87,10 +87,7 @@
 - [ADR-0082: Source-level template residue guard](0082-source-level-template-residue-guard.md) — Implemented
 - [ADR-0083: Whole-line part-marker advisory](0083-whole-line-part-marker-advisory.md) — Implemented
 - [ADR-0084: Catalog vars carry functional values only](0084-catalog-vars-carry-functional-values-only.md) — Implemented
-
-## Proposed
-
-- [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Proposed
+- [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Implemented
 
 ## Superseded
 

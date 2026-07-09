@@ -40,4 +40,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
 - [ADR-0084: Catalog vars carry functional values only](../decisions/0084-catalog-vars-carry-functional-values-only.md)
+- [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
 
