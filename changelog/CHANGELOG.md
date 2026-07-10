@@ -8,6 +8,12 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Others
+- Dependency refresh: `golang.org/x/crypto` v0.51.0 → v0.53.0 (clears 13
+  published SSH-package advisories — none reachable from awf, which only
+  reads local git history), plus `x/mod` and `x/tools` to their
+  current-minus-cooldown versions.
+
 ## [0.13.0] - 2026-07-10
 
 ### Breaking changes
