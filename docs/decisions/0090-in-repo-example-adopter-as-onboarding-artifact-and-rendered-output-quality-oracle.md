@@ -130,7 +130,8 @@ scratch adopter):
 7. **The example is the linked onboarding artifact, and the docs travel with the
    change.** The root `README.md` and `docs/working-with-awf.md` point at
    `examples/sundial/` as the worked example — the latter via a convention part at
-   `.awf/docs/parts/working-with-awf/<section>.md`, never a shipped-template edit
+   `.awf/parts/working-with-awf/<section>.md` (the singleton-doc parts path), never
+   a shipped-template edit
    (the link is this repo's identity; rendering it into every adopter's doc would
    violate publication safety and the ADR-0082 residue guard). The root
    `.gitignore`'s unanchored `.claude` negations already cover the example. The
