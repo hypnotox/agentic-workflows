@@ -23,7 +23,7 @@ import (
 // Version is the awf release version — the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.13.0"
+const Version = "0.14.0"
 
 // minVersionBySchema maps each config-schema generation to the minimum
 // project.Version allowed to render it; adding a migration without an entry

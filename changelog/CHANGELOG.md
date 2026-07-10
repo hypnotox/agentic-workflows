@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-10
+
 ### Breaking changes
 - The glossary doc is data-driven (ADR-0089): terms live in
   `.awf/docs/glossary.yaml` under `data.terms` as a `term: meaning` YAML map,
