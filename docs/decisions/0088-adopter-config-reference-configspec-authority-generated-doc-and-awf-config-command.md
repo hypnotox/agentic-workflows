@@ -103,8 +103,10 @@ Forces and grounding discoveries shaping the design:
      actually references (`.data.K`), of which the catalog-declared defaults are a subset —
      an optional key with no default (the agents-doc's `invariants`, a local base template's
      `description`) is exactly as touchable as a defaulted one. The injected domain-doc keys
-     (`domain`, `decisions`) are exempt: domain sidecars are paths-only (ADR-0086), so no
-     adopter can set them. Descriptions live in configspec; values stay in the catalog.
+     (`domain`, `decisions`) are exempt — domain sidecars are paths-only (ADR-0086), so no
+     adopter can set them — as are the config reference's own injected collections
+     (Decision 3 rejects its sidecar `data:`). Descriptions live in configspec; values stay
+     in the catalog.
    Var descriptions are **derived from `catalog.Vars` at construction** — the catalog
    remains the sole var authority (ADR-0029 parity and ADR-0084 pinning untouched);
    configspec adds no second var-description home. A derived var entry carries the
@@ -116,8 +118,10 @@ Forces and grounding discoveries shaping the design:
    free-form `Vars`/`Data` maps as namespaces, not leaves; recursing into map-of-struct
    values such as `sections`) fails when a key lacks a Spec entry or an
    entry names a dead key; a second check matches data-key description entries one-to-one
-   against the catalog's declared data keys. Adding a config field or a catalog data key
-   without describing it fails the gate.
+   against Decision 1's universe — the keys each template references post include
+   expansion, union the catalog-declared defaults, injected keys exempt. Adding a config
+   field, a catalog data key, or an undescribed template `.data.K` reference fails the
+   gate.
 3. **A new always-on singleton doc, `docs/config-reference.md`, renders the full
    reference per-project.** One `DocEntry` with a static path (ADR-0060's "a single
    entry"). Content is
@@ -158,8 +162,8 @@ Forces and grounding discoveries shaping the design:
    `templates/partials/` file references `.vars` so the raw-source shortcut stays sound.
    The guard is deliberately vars-scoped: the review-spine partials legitimately reference
    per-key `.data` today, and the raw-catalog scan exists solely for var dormancy —
-   data-key consumption is catalog-declared per artifact and checked on include-expanded
-   assembled sources (ADR-0086).
+   the data-key universe is per-artifact (template-referenced union catalog-declared,
+   Decision 1) and checked on include-expanded assembled sources (ADR-0086).
 6. **The residue discipline extends to descriptions.** Every configspec description
    string (including the availability clauses attached to derived var entries and the
    data-key descriptions) is free of concrete `ADR-` citations and repo-identity literals, enforced
@@ -171,7 +175,8 @@ Forces and grounding discoveries shaping the design:
   key has exactly one configspec entry with a non-empty description, and every config-key
   entry names a live field, enforced by a reflection walk over the yaml tags.
 - `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match,
-  one-to-one in both directions, the data keys each catalog artifact's include-expanded
+  one-to-one in both directions, the data keys each catalog artifact's — plus the two
+  local base templates' — include-expanded
   template references (union its catalog-declared defaults), with the injected keys
   exempt: the domain-doc pair and the config reference's own injected collections
   (neither is adopter-settable — domain sidecars are paths-only, the config-reference
