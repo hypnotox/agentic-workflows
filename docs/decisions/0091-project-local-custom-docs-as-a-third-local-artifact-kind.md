@@ -149,9 +149,10 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 - `inv: local-doc-renders-from-base` — a rendered local doc resolves its template id
   through the effective catalog to the shared base doc template, not the
   name-derived or empty path.
-- `inv: local-doc-map-fields` — a synthesized local doc entry carries the `Title`
-  and `Desc` lifted from its declaring sidecar, so the document map lists it with a
-  non-empty title and description.
+- `inv: local-doc-map-fields` — a synthesized local doc entry always carries a
+  non-empty `Title` and `Desc` — lifted from its declaring sidecar, or a name-derived
+  (`Title`) / generic (`Desc`) default when the sidecar omits the key — so the
+  document map lists it with a non-empty title and description.
 - `inv: local-doc-base-publication-safe` — the base doc template renders leak-free
   (no `<no value>`, no marker or leak residue) under empty data and no `content`
   part.
