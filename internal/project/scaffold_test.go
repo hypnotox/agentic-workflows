@@ -19,6 +19,16 @@ import (
 
 // TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
 // that parses cleanly under the strict config.Load decoder.
+// sliceSet builds a membership set from a name slice (test helper; its
+// production twin left with the ADR-0086 sweep rewrite).
+func sliceSet(s []string) map[string]bool {
+	m := make(map[string]bool, len(s))
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
 func TestScaffoldParsesCleanly(t *testing.T) {
 	b, _, err := ScaffoldConfig("example", nil, nil, nil)
 	if err != nil {

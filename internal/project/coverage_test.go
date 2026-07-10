@@ -400,73 +400,6 @@ func TestCheckInvariantsReportsUnbacked(t *testing.T) {
 	}
 }
 
-// --- orphans: non-dir in parts root, and non-md/subdir inside a section dir ---
-
-func TestOrphansSkipsNonDirAndNonMarkdown(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\n"
-	root := scaffoldFiles(t, cfg, map[string]string{
-		// A stray non-directory entry directly under skills/parts/.
-		"skills/parts/stray-file.txt": "not a target dir\n",
-		// Inside an enabled target's parts dir: a non-.md file is skipped...
-		"skills/parts/debugging/notes.txt": "ignored\n",
-		// ...and a valid declared-section part stays clean.
-		"skills/parts/debugging/debugging-surfaces.md": "## Surfaces\n\nbody\n",
-	})
-	// A subdirectory inside the section parts dir is skipped too.
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "debugging", "sub", "x.md"), "nested\n")
-
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drift, err := p.orphans()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, d := range drift {
-		if strings.Contains(d.Path, "stray-file.txt") || strings.Contains(d.Path, "notes.txt") || strings.Contains(d.Path, "/sub") {
-			t.Errorf("non-target/non-markdown entries must not be flagged as orphans: %#v", d)
-		}
-	}
-}
-
-// TestOrphansSurfacesReadDirFault asserts orphans() returns a non-absent
-// ReadDir fault rather than silently treating it as "kind branch absent".
-func TestOrphansSurfacesReadDirFault(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Put a regular file where the .awf/skills directory would be, after Open, so
-	// orphans()' os.ReadDir returns a non-ErrNotExist error (ENOTDIR).
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills"), []byte("not a dir\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.orphans(); err == nil {
-		t.Fatal("expected a ReadDir fault to surface, got nil")
-	}
-}
-
-// TestOrphansSurfacesPartsReadDirFault covers the parts-dir arm: the kind dir is
-// readable but its parts/ path is a regular file, so the second os.ReadDir faults.
-func TestOrphansSurfacesPartsReadDirFault(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "parts"), []byte("not a dir\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.orphans(); err == nil {
-		t.Fatal("expected a parts-dir ReadDir fault to surface, got nil")
-	}
-}
-
 // --- Check error branches ---
 
 func TestCheckFailsWithoutLock(t *testing.T) {
@@ -496,7 +429,7 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 	}
 }
 
-func TestCheckSurfacesOrphanScanError(t *testing.T) {
+func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -505,14 +438,22 @@ func TestCheckSurfacesOrphanScanError(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Place a regular file where the .awf/domains sidecar dir would be. No domains
-	// are enabled, so RenderAll skips it and the fault first surfaces in orphans().
+	// A regular file where the .awf/domains sidecar dir would be. The old orphan
+	// scan surfaced this as a ReadDir error; the closed-tree sweep (ADR-0086)
+	// reports it as unclaimed drift instead — the file is simply not claimable.
 	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil {
-		t.Fatal("expected Check to surface the orphan-scan error")
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
 	}
+	for _, d := range drift {
+		if d.Path == ".awf/domains" && d.Kind == "orphaned" {
+			return
+		}
+	}
+	t.Fatalf("expected unclaimed drift for the .awf/domains file, got %#v", drift)
 }
 
 func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {

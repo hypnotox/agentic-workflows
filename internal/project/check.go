@@ -331,112 +331,6 @@ func (p *Project) localTargetPaths() ([]string, error) {
 	return paths, nil
 }
 
-// orphans reports sidecar and convention-part files whose artifact is not in the
-// matching enable list, plus convention-part files of an enabled artifact whose
-// section is not catalog-declared (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func (p *Project) orphans() ([]manifest.Drift, error) {
-	var drift []manifest.Drift
-	for _, desc := range kindDescriptors {
-		kind := desc.Plural
-		enabledSet := sliceSet(desc.enable(p.Cfg))
-		base := filepath.Join(config.RootDir(p.Root), kind)
-		// Sidecars: <kind>/<name>.yaml.
-		entries, err := os.ReadDir(base)
-		if errors.Is(err, os.ErrNotExist) {
-			continue // kind branch absent → nothing to orphan
-		} else if err != nil {
-			return nil, err
-		}
-		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
-				continue
-			}
-			name := strings.TrimSuffix(e.Name(), ".yaml")
-			if !enabledSet[name] {
-				drift = append(drift, manifest.Drift{
-					Path: filepath.Join(config.DirName, kind, e.Name()),
-					Kind: "orphaned", Detail: "sidecar for an artifact not in the enable list",
-				})
-			}
-		}
-		// Parts: <kind>/parts/<target>/<section>.md.
-		partsDir := filepath.Join(base, "parts")
-		targets, err := os.ReadDir(partsDir)
-		if errors.Is(err, os.ErrNotExist) {
-			continue // no parts dir for this kind → nothing to orphan
-		} else if err != nil {
-			return nil, err
-		}
-		for _, t := range targets {
-			if !t.IsDir() {
-				continue
-			}
-			if !enabledSet[t.Name()] {
-				drift = append(drift, manifest.Drift{
-					Path: filepath.Join(config.DirName, kind, "parts", t.Name()),
-					Kind: "orphaned", Detail: "convention parts for an artifact not in the enable list",
-				})
-				continue
-			}
-			// Enabled target: flag part files whose section is not catalog-declared.
-			declared := sliceSet(p.declaredSections(kind, t.Name()))
-			sections, err := os.ReadDir(filepath.Join(partsDir, t.Name()))
-			if err != nil { // coverage-ignore: os.ReadDir on an enabled target's existing parts directory fails only on a permission fault (a no-op as root)
-				continue
-			}
-			for _, sf := range sections {
-				if sf.IsDir() || !strings.HasSuffix(sf.Name(), ".md") {
-					continue
-				}
-				if section := strings.TrimSuffix(sf.Name(), ".md"); !declared[section] {
-					drift = append(drift, manifest.Drift{
-						Path: filepath.Join(config.DirName, kind, "parts", t.Name(), sf.Name()),
-						Kind: "orphaned", Detail: "convention part for a section not in the target's declared set",
-					})
-				}
-			}
-		}
-	}
-	// Singleton parts: parts/<kind>/<section>.md (ADR-0021, ADR-0043). An unknown
-	// kind directory or an undeclared section file would silently never render.
-	singletonSet := sliceSet(catalog.SingletonKinds())
-	spRoot := filepath.Join(config.RootDir(p.Root), "parts")
-	kinds, err := os.ReadDir(spRoot)
-	if err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: ReadDir on an existing parts dir fails only on a permission fault a test cannot trigger
-		return nil, err
-	}
-	for _, kd := range kinds {
-		if !kd.IsDir() {
-			continue
-		}
-		if !singletonSet[kd.Name()] {
-			drift = append(drift, manifest.Drift{
-				Path: filepath.Join(config.DirName, "parts", kd.Name()),
-				Kind: "orphaned", Detail: "convention parts for an unknown singleton kind",
-			})
-			continue
-		}
-		declared := sliceSet(p.Cat.Docs[kd.Name()].Sections)
-		sections, err := os.ReadDir(filepath.Join(spRoot, kd.Name()))
-		if err != nil { // coverage-ignore: ReadDir on a just-listed subdirectory fails only on a permission fault a test cannot trigger
-			continue
-		}
-		for _, sf := range sections {
-			if sf.IsDir() || !strings.HasSuffix(sf.Name(), ".md") {
-				continue
-			}
-			if section := strings.TrimSuffix(sf.Name(), ".md"); !declared[section] {
-				drift = append(drift, manifest.Drift{
-					Path: filepath.Join(config.DirName, "parts", kd.Name(), sf.Name()),
-					Kind: "orphaned", Detail: "convention part for a section not in the singleton's declared set",
-				})
-			}
-		}
-	}
-	sort.Slice(drift, func(i, j int) bool { return drift[i].Path < drift[j].Path })
-	return drift, nil
-}
-
 // declaredSections returns the catalog-declared section names for a target.
 func (p *Project) declaredSections(kind, name string) []string {
 	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
@@ -485,9 +379,9 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Check
 		return nil, err
 	}
-	// Orphan sidecars/parts (second clause of inv: drift-source-set).
-	od, err := p.orphans()
-	if err != nil {
+	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
+	od, err := p.sweepConfigTree(files)
+	if err != nil { // coverage-ignore: the sweep errors only on faults RenderAll above would have surfaced first (see its coverage-ignores)
 		return nil, err
 	}
 	drift = append(drift, od...)

@@ -9,6 +9,14 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- The `.awf/` tree is now closed (ADR-0086): `awf check` fails on any file or
+  directory it cannot claim — strays like `.awf/notes.md`, files with the wrong
+  extension in kind/parts dirs, parts of a `local: true` artifact — with a
+  repair hint per entry, collapsing to the topmost unclaimed directory.
+  Sync-written `<path>.awf-bak[.N]` collision backups are flagged as stale
+  backups to review and delete (a brownfield adopt is therefore red on its
+  first check until the backups are cleared — intended to-do surfacing).
+  `.awf/memory/` stays exempt session scratch.
 - `awf check` now fails on authored-but-unconsumed configuration (ADR-0086): a
   non-empty `vars:` key no rendered artifact references (`unused-var`), and a
   sidecar `data:` key the artifact's template never reads (`unused-data`) — the

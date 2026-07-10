@@ -70,14 +70,6 @@ func Open(root string) (*Project, error) {
 	return p, nil
 }
 
-func sliceSet(s []string) map[string]bool {
-	m := make(map[string]bool, len(s))
-	for _, v := range s {
-		m[v] = true
-	}
-	return m
-}
-
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {
 	Path  string // project-relative file that was overwritten
