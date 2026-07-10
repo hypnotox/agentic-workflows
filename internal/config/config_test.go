@@ -157,6 +157,11 @@ func scanLegacyRefs(t *testing.T, repo string) []string {
 			return err
 		}
 		if d.IsDir() {
+			// Hidden trees hold no production source; .claude/worktrees/
+			// carries session checkouts with their own internal/migrate.
+			if path != repo && strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
