@@ -78,6 +78,9 @@ Apply all five lenses to every implementation diff:
 **coverage-ignore-reachability** — a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; treat an ignore *inherited through a refactor* (call sites merged, signature changed, callers widened) as unproven by default, since the claim was written against the old shape. Three false claims surfaced on 2026-07-08 (stampLockSchema, the sectionDefault call site, gate's "TOCTOU-only") and four more on 2026-07-09 (the singleton-standard-docs relocate cluster, all carried through a refactor), each hiding a reachable branch
 
 
+**repo-boundary-enumeration** — code or tests that enumerate or open the repo tree must define their repository boundary: a filesystem walk prunes nested checkouts (a subdirectory with its own `.git` entry — directory or gitdir-pointer file) and takes a deliberate stance on hidden dirs; a repo open resolves the gitfile layout. The Go toolchain is immune (dot-dirs and nested modules invisible to `./...`), hand-rolled walkers are not — three independent instances on 2026-07-10 (audit gitfile open, config_test legacy-ref sweep into .claude/worktrees/, invariants scanner backed by nested-checkout markers). Git-history-based enumeration is immune by construction
+
+
 
 ## Doc-currency checklist
 

@@ -409,3 +409,18 @@ runs and succeeds — the block "worked", green output and all, minus the one si
 that mattered (an `invariants:` config append vanished this way in the ADR-0090 session;
 only `tail`-ing the file exposed it). After any compound chain that edits state, verify the
 target's content, not the block's exit status.
+
+## Hand-rolled repo enumeration crosses repository boundaries
+
+Anything that walks or opens the repo tree itself must define its repository boundary;
+the Go toolchain gets this free (dot-dirs and nested modules are invisible to `./...`),
+hand-rolled walkers and repo opens do not. Three independent instances bit on 2026-07-10
+alone: `awf audit` could not open a linked-worktree checkout (`.git` gitfile — the entry
+above), `TestLoadReadsTreeRoot`'s legacy-ref sweep flagged `internal/migrate` copies
+inside `.claude/worktrees/` session checkouts, and the invariants scanner let markers in
+nested checkouts silently back this project's slugs — the worst shape, a false green in
+both directions. The rule: a filesystem walk prunes any subdirectory carrying its own
+`.git` entry (directory in a primary clone, gitdir-pointer file in a worktree or
+submodule) and takes a deliberate stance on hidden directories; a repo open resolves the
+gitfile layout; enumeration derived from git history (commit diffs, `git ls-files`) is
+immune by construction and preferred where it fits.
