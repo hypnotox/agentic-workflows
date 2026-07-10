@@ -32,7 +32,7 @@ slug lands with its backing code: `configspec-key-parity`, `configspec-data-pari
 `internal/project` (new `configreference.go`, plus `singleton.go`, `render.go`,
 `project.go`, `check.go`, `validate.go`), `cmd/awf` (new `config.go`, plus `main.go`),
 `templates/docs/` (new template), `changelog/`, `.awf/` (agents-doc data, domain
-current-state part, glossary part), `docs/decisions` (flip + regen).
+current-state part, glossary sidecar data), `docs/decisions` (flip + regen).
 
 **File structure:**
 
