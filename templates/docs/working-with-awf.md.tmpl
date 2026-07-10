@@ -48,6 +48,17 @@ until the part exists. A convention part can itself carry a whole-line `<!-- awf
 marker to declare unauthored starter content — `awf new skill|agent` scaffolds its content part
 that way; delete the marker line once the part is real.
 
+**Unset-var notes and declining a var.** `awf check` and `awf init` also print a non-failing
+note per artifact that references a `vars:` key whose value is empty (the state `awf init`
+seeds) or null — an open to-do. Each note has two exits: set a value, or **delete the key**
+to accept the artifact's generic fallback prose — an absent key is read as "considered and
+declined" and never notes again, with the decision auditable in the config's git history and
+reversible by re-adding the key. Deleting a key changes the config hash of the artifacts that
+reference it, so expect a one-time stale flag until the next `awf sync`. One caveat: a var a
+convention part consumes through a `{{ "{{=awf:gateCmd}}" }}`-style placeholder is a hard
+render error when deleted, not a silent decline — the placeholder contract requires a value;
+re-add the key to recover.
+
 **Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own.
 `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a
 declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a
