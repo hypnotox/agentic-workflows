@@ -374,3 +374,32 @@ drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-
 — three invented link targets landed in ADR-0087's first draft (2026-07-10) and survived to
 the verify pass because the ADR-0020 dead-link scan covers awf-managed *rendered* docs
 only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
+
+## `awf audit` cannot open a linked git worktree
+
+Gated commands that read git go through `internal/audit`'s `git.PlainOpen(<root>/.git)`,
+which requires `.git` to be a directory — in a linked worktree (`git worktree add`) it is a
+gitfile, so `awf audit` dies with `open repo: … .git/config: not a directory` (hit
+2026-07-10 running the ADR-0090 impl review in a session worktree). With the
+parallel-sessions-get-worktrees rule this now bites every parallel session, and any adopter
+working in a worktree. Workaround: run `awf audit` from the primary checkout. The real fix
+— gitfile-aware opening (e.g. `PlainOpenWithOptions`) — is an open follow-up; `cmd/repoaudit`
+is unaffected (it shells out to `git`).
+
+## Section parts carry their own heading
+
+A convention part replaces its section's *body*, and for most doc/guide sections the
+`## Heading` line lives inside that body — a part written without it renders a headless
+section (ADR-0090's identity part landed headingless on first sync; only comparing the
+rendered file against this repo's own parts caught it). When authoring a part, check the
+section's default (or an existing adopter's part) for whether the heading is yours to write.
+No note fires: the stub advisory clears the moment the part exists, whatever its shape.
+
+## Verify compound-chain side effects by reading the target back
+
+A `cd <dir> && <edit>` chain silently skips the edit when the `cd` fails (wrong cwd
+assumption across tool calls), while an unchained command later in the same block still
+runs and succeeds — the block "worked", green output and all, minus the one side effect
+that mattered (an `invariants:` config append vanished this way in the ADR-0090 session;
+only `tail`-ing the file exposed it). After any compound chain that edits state, verify the
+target's content, not the block's exit status.
