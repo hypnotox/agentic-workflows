@@ -318,7 +318,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:12b357990cd8f111fc4dce44d8be780e928ab37fc95af937392f30a5ee2298f1"
+      "outputHash": "sha256:44f2a8e62f963452769bcffafcf08a25452db474ed8455ecb0686932c9ca1e12"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
@@ -329,8 +329,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:b9f3f843ae16449ef2c1e1df1fe10ab5c260a64cd25f82bb41a166fa1d7499e3",
-      "configHash": "sha256:6a82a308438457729e1fda3121f61d0b9efda8d270339aad48b559807a3f7edd",
-      "outputHash": "sha256:3f9114ae660f17818c3da543ba7e6aa15ca763cc381e93228ede23a20433da9d"
+      "configHash": "sha256:cdadf94be2ca03fed8b1978dc5dde253908e106526af74b8651a0563526fb175",
+      "outputHash": "sha256:168326293af7d7d6ba739cb8f6f12b5bab81a013ed72df55e99a140121b7d827"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",

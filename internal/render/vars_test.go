@@ -52,6 +52,9 @@ func TestPlaceholderVarRefs(t *testing.T) {
 	if got := render.PlaceholderVarRefs("uses {{=awf:prefix}} only"); len(got) != 0 {
 		t.Fatalf("non-var placeholders must not count, got %v", got)
 	}
+	if got := render.PlaceholderVarRefs(`documents \{{=awf:gateCmd}} literally`); len(got) != 0 {
+		t.Fatalf("an ADR-0058-escaped token renders literally and reads no var, got %v", got)
+	}
 }
 
 func TestReferencedVars(t *testing.T) {

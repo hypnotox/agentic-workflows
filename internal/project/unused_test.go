@@ -147,3 +147,18 @@ func TestCheckFlagsUnusedSingletonDataKey(t *testing.T) {
 		t.Fatalf("want one unused-data entry at .awf/agents-doc.yaml naming deadKey, got %#v", hits)
 	}
 }
+
+// The domain-doc placeholder channel: domain docs render outside RenderAll and
+// their RenderedFile copy is hand-built (generateDomainDocs), so this pins the
+// assembled/partVarRefs field preservation — re-stripping either would silently
+// reintroduce false unused-var drift with every other test green.
+func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars:\n  gateCmd: ./x gate\nskills: []\nagents: []\ndomains:\n  - config\n", map[string]string{
+		"domains/parts/config/current-state.md": "Run {{=awf:gateCmd}} before committing.\n",
+		"agents-doc.yaml":                       "local: true\n",
+		"workflow.yaml":                         "local: true\n",
+	})
+	if hits := driftOfKind(checkDrift(t, root), "unused-var"); len(hits) != 0 {
+		t.Fatalf("gateCmd is consumed via the domain part placeholder and must not flag, got %#v", hits)
+	}
+}

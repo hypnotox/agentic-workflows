@@ -91,12 +91,16 @@ func ReferencesBareVars(src string) bool { return bareVarsRE.MatchString(src) }
 
 var varPlaceholderRefRE = regexp.MustCompile(`\{\{=awf:(gateCmd|checkCmd)\}\}`)
 
+var escapedVarPlaceholderRE = regexp.MustCompile(`\\\{\{=awf:(?:gateCmd|checkCmd)\}\}`)
+
 // PlaceholderVarRefs returns the config vars a raw convention-part body
 // consumes through {{=awf:key}} placeholders — gateCmd and checkCmd are the
 // only registry keys that read vars (see project.placeholderRegistry).
 // Scanned on the on-disk bytes: substitution has already replaced the
 // tokens in the assembled output, so this is the one consumption channel
-// the assembled-source scan cannot see (ADR-0086 Decision 3).
+// the assembled-source scan cannot see (ADR-0086 Decision 3). A
+// backslash-escaped token (ADR-0058) renders literally and reads no var,
+// so it is stripped before matching.
 func PlaceholderVarRefs(body string) []string {
-	return capturedNames(varPlaceholderRefRE, body)
+	return capturedNames(varPlaceholderRefRE, escapedVarPlaceholderRE.ReplaceAllString(body, ""))
 }
