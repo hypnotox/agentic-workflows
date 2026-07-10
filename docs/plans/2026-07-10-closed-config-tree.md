@@ -389,9 +389,16 @@ fixture were verified clean during design.
       `Check` and filtering drift by Kind:
       - a non-empty var nothing references → one `unused-var` entry at
         `.awf/config.yaml` naming the key; the same var empty → no entry;
-      - a var consumed only via a part placeholder: enable `hooks` off, part
-        `skills/parts/tdd/notes.md` containing `{{=awf:gateCmd}}` with `gateCmd` set →
-        no `unused-var` entry for `gateCmd`;
+      - a var consumed ONLY via a part placeholder — the fixture must isolate the
+        `PartVarRefs` channel or the test passes even with the plumbing unwired
+        (`gateCmd` is referenced via `.vars.gateCmd` by tdd's own template and the
+        always-on agents-doc/workflow templates): enable only
+        `refactor-coupling-audit` (its template has no `.vars.gateCmd`), set
+        `agents-doc.yaml` and `workflow.yaml` to `local: true`, keep hooks/bootstrap
+        off, add a part under `skills/parts/refactor-coupling-audit/` for one of its
+        declared sections containing `{{=awf:gateCmd}}`, set `gateCmd` non-empty →
+        no `unused-var` entry for `gateCmd`; negative control: the same fixture
+        without the part → `unused-var` entry for `gateCmd` (proves the channel);
       - sidecar `data:` key the template never reads (`skills/tdd.yaml` with
         `data: {testSurfaces: […valid…], dead: v}`) → one `unused-data` entry at
         `.awf/skills/tdd.yaml` naming only `dead`;
@@ -419,7 +426,8 @@ fixture were verified clean during design.
       ```
 
 - [ ] Run `./x gate` — green (this also proves awf's own tree clean under the new
-      checks). Commit: `feat(awf): flag unused vars and sidecar data keys in awf check (ADR-0086)`.
+      checks). Commit: `feat(awf): flag unused vars and data keys in awf check (ADR-0086)`
+      (subject kept under the 72-char commit-gate limit).
 
 ## Phase 3 — the closed-tree sweep (Decisions 1, 2, 7)
 
@@ -445,14 +453,15 @@ fixture were verified clean during design.
       // claimedModel is the ADR-0086 Decision 1 allowlist: every path under .awf/
       // is either claimed here or drift. files holds claimed file paths
       // (project-relative, slash-separated); dirs holds structural directories
-      // legal even when empty; enabled/local/singletonLocal index the artifact
-      // facts the classifier needs to keep the pre-ADR-0086 detail strings.
+      // legal even when empty; enabled/singletons index the artifact facts the
+      // classifier needs to keep the pre-ADR-0086 detail strings — locality is
+      // never stored, because an enabled-but-unclaimed parts dir already implies
+      // local: true (buildClaimedModel claims every non-local artifact's parts).
       type claimedModel struct {
-      	files          map[string]bool
-      	dirs           map[string]bool
-      	enabled        map[string]map[string]bool // kind → name → enabled
-      	local          map[string]map[string]bool // kind → name → sidecar local flag
-      	singletonLocal map[string]bool            // singleton kind → local flag
+      	files      map[string]bool
+      	dirs       map[string]bool
+      	enabled    map[string]map[string]bool // kind → name → enabled
+      	singletons map[string]bool            // known singleton kinds
       }
 
       // claimedDir reports whether dir may exist: a structural dir or an ancestor
@@ -485,9 +494,8 @@ fixture were verified clean during design.
       			config.DirName + "/parts":  true,
       			config.DirName + "/memory": true,
       		},
-      		enabled:        map[string]map[string]bool{},
-      		local:          map[string]map[string]bool{},
-      		singletonLocal: map[string]bool{},
+      		enabled:    map[string]map[string]bool{},
+      		singletons: map[string]bool{},
       	}
       	for _, f := range files {
       		if strings.HasPrefix(f.Path, config.DirName+"/") {
@@ -499,7 +507,6 @@ fixture were verified clean during design.
       		m.dirs[config.DirName+"/"+kind] = true
       		m.dirs[config.DirName+"/"+kind+"/parts"] = true
       		m.enabled[kind] = map[string]bool{}
-      		m.local[kind] = map[string]bool{}
       		for _, name := range d.enable(p.Cfg) {
       			m.enabled[kind][name] = true
       			m.files[config.DirName+"/"+kind+"/"+name+".yaml"] = true
@@ -507,7 +514,6 @@ fixture were verified clean during design.
       			if err != nil { // coverage-ignore: RenderAll read this sidecar earlier in the same Check pass
       				return nil, err
       			}
-      			m.local[kind][name] = sc.Local
       			// A local: true artifact renders nothing, so its parts are
       			// dead weight — deliberately unclaimed (ADR-0086 Decision 1).
       			// Domains render regardless of the flag and keep theirs.
@@ -522,11 +528,11 @@ fixture were verified clean during design.
       	}
       	for _, kind := range catalog.SingletonKinds() {
       		m.files[config.DirName+"/"+kind+".yaml"] = true
+      		m.singletons[kind] = true
       		sc, err := p.Cfg.Sidecar(kind, "")
       		if err != nil { // coverage-ignore: RenderAll read the singleton sidecars earlier in the same Check pass
       			return nil, err
       		}
-      		m.singletonLocal[kind] = sc.Local
       		if sc.Local {
       			continue
       		}
@@ -553,7 +559,7 @@ fixture were verified clean during design.
       	case !isDir && awfBakRE.MatchString(rel):
       		d.Detail = "stale awf-bak backup — review and delete"
       	// Singleton parts tree: .awf/parts/<kind>[/<section>.md].
-      	case len(segs) == 3 && segs[1] == "parts" && isDir && !m.singletonKnown(segs[2]):
+      	case len(segs) == 3 && segs[1] == "parts" && isDir && !m.singletons[segs[2]]:
       		d.Detail = "convention parts for an unknown singleton kind"
       	case len(segs) == 3 && segs[1] == "parts" && isDir:
       		d.Detail = localDetail // known singleton, unclaimed dir ⇒ local: true
@@ -572,11 +578,6 @@ fixture were verified clean during design.
       		d.Detail = "unclaimed file or directory — not part of the .awf config tree; delete it or move it out"
       	}
       	return d
-      }
-
-      func (m *claimedModel) singletonKnown(kind string) bool {
-      	_, ok := m.singletonLocal[kind]
-      	return ok
       }
 
       // sweepConfigTree walks .awf/ and reports every entry outside the
@@ -652,8 +653,8 @@ fixture were verified clean during design.
 
       Remove imports `check.go` no longer needs if the compiler flags any (it still uses
       `os`/`filepath` elsewhere; verify with `go build ./...`).
-- [ ] Run the two pinned existing tests unchanged — they lock the preserved detail
-      strings and paths:
+- [ ] Run the two pinned existing tests unchanged — they lock the preserved drift
+      *paths* (Detail preservation is pinned by sweep_test.go below):
       `go test ./internal/project/ -run 'TestPerTargetDriftProjection|TestCheckFlagsOrphanedSingletonParts' -v`
       — both PASS without edits.
 - [ ] Create `internal/project/sweep_test.go` covering, via `scaffoldFiles` + `Sync` +
@@ -674,6 +675,16 @@ fixture were verified clean during design.
         `.awf/skills/parts/<name>` flagged with the local-managed detail;
       - a local `workflow.yaml` singleton (`local: true`) with `.awf/parts/workflow/x.md`
         → `.awf/parts/workflow` flagged with the local-managed detail;
+      - the four remaining preserved ADR-0011 detail strings, each asserted with
+        exact Path+Detail (the ADR's byte-identical textual invariant):
+        `.awf/skills/debugging.yaml` (not enabled) →
+        `sidecar for an artifact not in the enable list`;
+        `.awf/skills/parts/orphan-target` (not enabled) →
+        `convention parts for an artifact not in the enable list`;
+        `.awf/parts/bogus-kind` →
+        `convention parts for an unknown singleton kind`;
+        `.awf/parts/workflow/bogus.md` →
+        `convention part for a section not in the singleton's declared set`;
       - baseline hygiene: a scaffold with hooks+bootstrap enabled and no strays →
         zero `orphaned` entries (proves the render units, `memory/.gitignore`, and
         structural dirs are all claimed).
@@ -822,8 +833,11 @@ fixture were verified clean during design.
         and `needed` returning `{"a": true}`: the transcript contains a prompt for `a`
         and none for `b`, and resolved `vars["b"] == ""`; a second case passes
         `answers: {"b": "x"}` and asserts `vars["b"] == "x"` (explicit answers
-        honored); a third asserts a `needed` error propagates. Also assert multiselect
-        prompts now precede var prompts in the transcript.
+        honored); a third asserts a `needed` error propagates. The
+        multiselect-before-vars ordering assertion is a separate case using
+        trimDescs-style descriptors (mirror the existing multiselect fixture in the
+        initspec tests): one multiselect + one string descriptor, with the string
+        listed FIRST — the transcript still shows the multiselect prompt first.
       - `internal/project`: `TestNeededVars` — `NeededVars(nil)` (untrimmed default)
         contains `commitGateCmd` (hook payloads) and `gateCmd` (agents-doc/workflow);
         with `trim = &config.CatalogTrim{Skills: &[]string{"tdd"}, Docs: &[]string{}}`
