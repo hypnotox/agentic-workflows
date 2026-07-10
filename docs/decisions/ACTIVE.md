@@ -89,10 +89,10 @@
 - [ADR-0084: Catalog vars carry functional values only](0084-catalog-vars-carry-functional-values-only.md) — Implemented
 - [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Implemented
 - [ADR-0086: Closed config tree and configuration-consumption checks](0086-closed-config-tree-and-configuration-consumption-checks.md) — Implemented
+- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Implemented
 
 ## Proposed
 
-- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Proposed
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Proposed
 
 ## Superseded

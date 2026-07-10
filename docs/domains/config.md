@@ -42,9 +42,9 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0084: Catalog vars carry functional values only](../decisions/0084-catalog-vars-carry-functional-values-only.md)
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
+- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
 
 ### Proposed
 
-- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 
