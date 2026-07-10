@@ -150,8 +150,10 @@ func TestCheckFlagsUnusedSingletonDataKey(t *testing.T) {
 
 // The domain-doc placeholder channel: domain docs render outside RenderAll and
 // their RenderedFile copy is hand-built (generateDomainDocs), so this pins the
-// assembled/partVarRefs field preservation — re-stripping either would silently
-// reintroduce false unused-var drift with every other test green.
+// partVarRefs field preservation — re-stripping it would silently reintroduce
+// false unused-var drift with every other test green. (assembled is retained
+// for the var-consumption union too, but is unexercisable here: the domain
+// template reads no vars.)
 func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars:\n  gateCmd: ./x gate\nskills: []\nagents: []\ndomains:\n  - config\n", map[string]string{
 		"domains/parts/config/current-state.md": "Run {{=awf:gateCmd}} before committing.\n",
