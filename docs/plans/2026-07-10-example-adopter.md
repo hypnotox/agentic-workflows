@@ -813,33 +813,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   - The repository now carries a committed example adopter (`examples/sundial/`) — a full-surface worked example of an awf adoption, browsable in the repo and kept render-synced from awf's source by the repo's own checks (its ADR-0090).
   ```
 
-- [ ] Verify: `./x sync` (runs both renders, ends quiet), then `./x check` — expected tail: the repo's `awf check: clean`, the example's `awf check: clean`, the example's invariants clean, and `ok  	example.com/sundial/...` test lines. `go test ./internal/project -run TestExampleAdopterWiring` passes.
-- [ ] `./x gate` green; commit: `feat(tooling): gate the example adopter through x sync and check` (body: ADR-0090 Decisions 3-4 — determinism wiring, zero-notes bar, wiring test backing the three invariant slugs).
-
-## Phase 5 — repo docs, then the flip
-
-- [ ] `README.md`: insert after the `## Quickstart` section (before `## Commands`):
-
-  ```markdown
-  ## Worked example
-
-  A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-  a small fictional Go CLI with every catalog artifact enabled — authored parts,
-  domains, ADRs, a plan — and every rendered file committed, kept in sync by this
-  repository's own checks. Browse it to see exactly what an adoption looks like on
-  disk.
-  ```
-
-- [ ] Create `.awf/parts/working-with-awf/overview.md` (singleton-doc parts live under `.awf/parts/`, per the rendered doc's own edit marker):
-
-  ```markdown
-  {{=awf:sectionDefault}}
-
-  A complete worked example lives at
-  [`examples/sundial/`](../examples/sundial/README.md): a fictional adopter with the
-  full catalog enabled and every rendered file committed, kept in sync from source
-  by this repository's own checks (ADR-0090).
-  ```
+The behavior-documenting parts land in this phase's commit — docs travel with the change (ADR-0090 Decision 7).
 
 - [ ] `.awf/agents-doc.yaml`: append to `data.invariants`:
 
@@ -891,8 +865,36 @@ Every part below carries its own `##` heading where the section renders one (mir
   The rendered-output quality bar has a deterministic review surface (ADR-0090): the committed full-surface example adopter `examples/sundial/` re-renders on every `./x sync`, so a template change lands as a reviewable rendered diff over a realistic adoption in the same commit, and a schema bump must run `awf upgrade` there before `./x check` goes green — an in-repo migration rehearsal ahead of any external adopter.
   ```
 
+- [ ] Verify: `./x sync` (both renders plus the repo-doc re-render, ends quiet), then `./x check` — expected tail: the repo's `awf check: clean`, the example's `awf check: clean`, the example's invariants clean, and `ok  	example.com/sundial/...` test lines. `go test ./internal/project -run TestExampleAdopterWiring` passes.
+- [ ] `./x gate` green; commit: `feat(tooling): gate the example adopter through x sync and check` (body: ADR-0090 Decisions 3-4 — determinism wiring, zero-notes bar, wiring test backing the three invariant slugs; the behavior docs — guide invariants, testing/development/architecture parts, domain narratives — travel in this commit).
+
+## Phase 5 — onboarding links, then the flip
+
+- [ ] `README.md`: insert after the `## Quickstart` section (before `## Commands`):
+
+  ```markdown
+  ## Worked example
+
+  A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
+  a small fictional Go CLI with every catalog artifact enabled — authored parts,
+  domains, ADRs, a plan — and every rendered file committed, kept in sync by this
+  repository's own checks. Browse it to see exactly what an adoption looks like on
+  disk.
+  ```
+
+- [ ] Create `.awf/parts/working-with-awf/overview.md` (singleton-doc parts live under `.awf/parts/`, per the rendered doc's own edit marker):
+
+  ```markdown
+  {{=awf:sectionDefault}}
+
+  A complete worked example lives at
+  [`examples/sundial/`](../examples/sundial/README.md): a fictional adopter with the
+  full catalog enabled and every rendered file committed, kept in sync from source
+  by this repository's own checks (ADR-0090).
+  ```
+
 - [ ] `./x sync && ./x check` — both trees clean; the dead-link scan accepts the two new example links.
-- [ ] `./x gate` green; commit: `docs(tooling): link and document the example adopter` (body: ADR-0090 Decision 7 doc currency — README, working-with-awf part, guide invariants, testing/development/architecture parts, domain narratives).
+- [ ] `./x gate` green; commit: `docs(tooling): link the example adopter from the repo docs` (body: ADR-0090 Decision 7 onboarding pointers — README worked-example section, working-with-awf overview part).
 - [ ] Flip `docs/decisions/0090-*.md` frontmatter `status: Proposed` → `status: Implemented`; run `./x sync` (regenerates `ACTIVE.md` and the tooling/rendering domain docs); `./x invariants` clean (the three slugs are backed by `internal/project/example_wiring_test.go` since Phase 4).
 - [ ] `./x gate` green; commit: `docs(adr): flip 0090 to Implemented — example adopter shipped`.
 - [ ] Terminal step: invoke `awf-reviewing-impl` over the branch's commits.
