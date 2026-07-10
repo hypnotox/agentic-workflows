@@ -4,8 +4,11 @@
 (the `internal/configspec` description authority with bidirectional parity; the always-on
 generated-index doc `docs/config-reference.md`; the `awf config [<key-or-var>]` command with
 a static pre-adoption fallback). Design rationale lives in the ADR — not duplicated here.
-The ADR was amended while Proposed (2f296a9): the data-key universe is template-referenced
-keys, and the config-reference sidecar rejects `data:` at open.
+The ADR was amended while Proposed (2f296a9, cd3c15a, f1cdafe): the data-key universe is
+per-artifact template-referenced keys union catalog-declared defaults (catalog artifacts
+plus the two local base templates), injected keys exempt (the domain-doc pair and the
+config reference's own collections), and the config-reference sidecar rejects `data:`
+at open.
 
 **Architecture summary:** two feature phases, shaped by the dead-code gate (a production
 function must be reachable from `main` in the phase that lands it — `internal/configspec`
@@ -476,8 +479,11 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       - **No-bare-vars** (`// invariant: config-reference-no-bare-vars`): assert
         `!render.ReferencesBareVars(cref.assembled)` and
         `!render.ReferencesBareData(cref.assembled)` on the generated file, plus a
-        guard: no file under `templates/partials/` matches `\.vars\.` (the
-        include-expansion guard ADR-0088 D5 requires).
+        guard over every file under `templates/partials/`: assert
+        `!render.ReferencesBareVars(content)` AND
+        `len(render.ReferencedVars(content)) == 0` — any `.vars` reference, dotted or
+        bare, breaks the raw-scan soundness (the include-expansion guard ADR-0088 D5
+        requires).
       - **Data rejection** (`config-reference-data-rejected` backing): sidecar with
         `data:\n  k: v\n` → `Open` fails naming `.awf/config-reference.yaml`; with
         `paths:` → the paths message; with an unknown section name

@@ -182,7 +182,9 @@ Forces and grounding discoveries shaping the design:
   (neither is adopter-settable — domain sidecars are paths-only, the config-reference
   sidecar rejects `data:`).
 - `inv: configspec-var-derivation` — configspec's var entries are derived from
-  `catalog.Vars` and cover exactly that set, carrying the descriptor description text
+  `catalog.Vars` and cover exactly its config-var descriptors (empty or `"var"`
+  `Target`; the init-routing descriptors — the multiselects and the audit-scopes
+  writer — are not `vars:` keys), carrying the descriptor description text
   verbatim; configspec attaches only availability clauses — no second var-description
   authority exists.
 - `inv: config-reference-regen-drift` — `docs/config-reference.md` is drift-checked by
