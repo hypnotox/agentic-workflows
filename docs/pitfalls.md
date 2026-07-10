@@ -347,6 +347,15 @@ pathspec (tracked files only — stage a brand-new file first) or move one effor
 worktree; also prefer targeted reverts over `git checkout <file>` while your own edits are
 uncommitted, which is how a verify-mutation revert erased a just-written test the same day.
 
+**This recurred within hours of being recorded** (same day, opposite direction: the
+ADR-0088 session's feature commit swept the ADR-0089 effort's `render.go` hunks, leaving a
+commit that does not compile standalone — green-gate-per-commit is unenforceable across a
+shared tree because the hook validates the *tree*, not the commit). Pathspec discipline
+cannot separate two efforts' hunks inside one file, and prose did not prevent the second
+occurrence. The real rule: **parallel sessions get separate git worktrees, full stop.** A
+shared checkout is single-writer; the moment a second effort starts, move it
+(`git worktree add`) or serialize.
+
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
 An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
