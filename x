@@ -57,7 +57,7 @@ case "$cmd" in
       exit 1
     fi
     printf '%s\n' "$out"
-    if printf '%s\n' "$out" | grep -q '^note: '; then
+    if grep -q '^note: ' <<<"$out"; then
       echo "check: the example adopter has advisory notes — author the missing content or clear the smell (ADR-0090)" >&2
       exit 1
     fi
