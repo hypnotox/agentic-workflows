@@ -157,3 +157,52 @@ func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
 		}
 	}
 }
+
+// goldenFuncRe matches a golden-shaped test declaration in spine_test.go:
+// Test<Stem>Template or Test<Stem>Agent with the suffix directly before the
+// parenthesis (TestAgentsDocTemplateConfigDriven is not golden-shaped).
+var goldenFuncRe = regexp.MustCompile(`func Test([A-Za-z0-9]+)(Template|Agent)\(`)
+
+// nonArtifactGoldens lists the golden-shaped Template test stems in
+// spine_test.go that test non-catalog artifacts (doc singletons); entries
+// fail when stale (ADR-0080 Decision 7).
+var nonArtifactGoldens = map[string]bool{
+	"AgentsDoc":         true,
+	"DocArchitecture":   true,
+	"RoadmapGraduation": true,
+}
+
+// TestNoOrphanGoldenTest is the reverse of TestEveryCatalogArtifactHasGoldenTest:
+// every golden-shaped test func in spine_test.go must name a current catalog
+// artifact, so a golden orphaned by a catalog removal fails here even while
+// its lingering .tmpl file keeps it rendering.
+func TestNoOrphanGoldenTest(t *testing.T) {
+	src, err := os.ReadFile("spine_test.go")
+	if err != nil {
+		t.Fatalf("read spine_test.go: %v", err)
+	}
+	skills, agents := map[string]bool{}, map[string]bool{}
+	for name := range catalog.Standard.Skills {
+		skills[kebabToCamel(name)] = true
+	}
+	for name := range catalog.Standard.Agents {
+		agents[kebabToCamel(name)] = true
+	}
+	seenExempt := map[string]bool{}
+	for _, m := range goldenFuncRe.FindAllStringSubmatch(string(src), -1) {
+		stem, kind := m[1], m[2]
+		switch {
+		case kind == "Template" && nonArtifactGoldens[stem]:
+			seenExempt[stem] = true
+		case kind == "Template" && !skills[stem]:
+			t.Errorf("orphan golden Test%sTemplate: no catalog skill matches — remove it or list it in nonArtifactGoldens", stem)
+		case kind == "Agent" && !agents[stem]:
+			t.Errorf("orphan golden Test%sAgent: no catalog agent matches — remove it", stem)
+		}
+	}
+	for stem := range nonArtifactGoldens {
+		if !seenExempt[stem] {
+			t.Errorf("stale nonArtifactGoldens entry %q: no such golden-shaped func in spine_test.go", stem)
+		}
+	}
+}
