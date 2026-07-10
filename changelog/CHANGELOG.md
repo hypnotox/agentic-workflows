@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-10
+
 ### Breaking changes
 - The `.awf/` tree is now closed (ADR-0086): `awf check` fails on any file or
   directory it cannot claim — strays like `.awf/notes.md`, files with the wrong
