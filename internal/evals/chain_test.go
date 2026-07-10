@@ -52,19 +52,60 @@ func assertHandoff(t *testing.T, root, from, to string) {
 	}
 }
 
+// nonHandoffRequires pins the catalog requiresSkills pairs that are
+// deliberately not handoffs — the reference is real (ADR-0080's sweep demands
+// the declaration) but sits in companion mentions, lifecycle citations, or
+// arrival-context prose rather than on an invocation-verb line. Entries fail
+// when stale: a pair that starts holding as a handoff must be removed so the
+// derivation covers it.
+var nonHandoffRequires = map[string]bool{
+	"executing-plans->subagent-driven-development": true,
+	"proposing-adr->adr-lifecycle":                 true,
+	"reviewing-adr->adr-lifecycle":                 true,
+	"reviewing-adr->executing-plans":               true,
+	"reviewing-adr->subagent-driven-development":   true,
+	"reviewing-impl->executing-plans":              true,
+	"reviewing-impl->subagent-driven-development":  true,
+	"reviewing-plan-resync->reviewing-plan":        true,
+}
+
+// conditionalHandoffs are handoffs present in the full-catalog render whose
+// template reference is conditional, so requiresSkills cannot declare it
+// (ADR-0080 declares unconditional references only) and the derivation below
+// cannot see it.
+var conditionalHandoffs = []struct{ from, to string }{
+	{"bugfix", "reviewing-impl"},
+}
+
 // TestWorkflowChainHandoffs asserts each load-bearing chain handoff names its
-// successor in an actual invocation instruction in the same full-catalog render.
+// successor in an actual invocation instruction in the same full-catalog
+// render. The pair set derives from the catalog's requiresSkills declarations
+// (minus the pinned non-handoff references), never a hand list, so a new
+// skill's declared couplings are handoff-checked automatically.
 func TestWorkflowChainHandoffs(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)
-	for _, tc := range []struct{ from, to string }{
-		{"brainstorming", "proposing-adr"},
-		{"brainstorming", "writing-plans"},
-		{"proposing-adr", "reviewing-adr"},
-		{"writing-plans", "reviewing-plan"},
-		{"bugfix", "reviewing-impl"},
-		{"reviewing-impl", "retrospective"},
-	} {
+	declared := map[string]bool{}
+	for name, sp := range catalog.Standard.Skills {
+		body := read(t, skillPath(root, name))
+		for _, req := range sp.RequiresSkills {
+			pair := name + "->" + req
+			declared[pair] = true
+			holds := namesOnInvocationLine(body, evalPrefix+"-"+req)
+			switch {
+			case nonHandoffRequires[pair] && holds:
+				t.Errorf("stale nonHandoffRequires entry %q: the reference now sits on an invocation line — remove the entry", pair)
+			case !nonHandoffRequires[pair] && !holds:
+				t.Errorf("skill %q does not hand off to %q on an invocation line", name, evalPrefix+"-"+req)
+			}
+		}
+	}
+	for pair := range nonHandoffRequires {
+		if !declared[pair] {
+			t.Errorf("stale nonHandoffRequires entry %q: no such requiresSkills declaration", pair)
+		}
+	}
+	for _, tc := range conditionalHandoffs {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
 			assertHandoff(t, root, tc.from, tc.to)
 		})
