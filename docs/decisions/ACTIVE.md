@@ -90,11 +90,11 @@
 - [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Implemented
 - [ADR-0086: Closed config tree and configuration-consumption checks](0086-closed-config-tree-and-configuration-consumption-checks.md) — Implemented
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Implemented
+- [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Implemented
 
 ## Proposed
 
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Proposed
-- [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Proposed
 
 ## Superseded
 

@@ -43,9 +43,9 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
+- [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
 
 ### Proposed
 
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
-- [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
 

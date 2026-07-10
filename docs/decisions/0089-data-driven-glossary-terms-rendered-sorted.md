@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-10
 supersedes: []
 retires_invariants: []
@@ -80,8 +80,9 @@ Grounding discoveries shaping the design:
    so no convention part can override it. A transform in the docs render path validates
    the authored map and replaces the `terms` value with the finished table markdown
    *upstream of both* `renderTarget` and `artifactConfigHash` (the ADR-0045
-   both-consumers pattern): rows sort by `strings.ToLower(term)` with a byte-order
-   tiebreak, and `|` is escaped in terms and meanings. The doc remains in the ordinary
+   both-consumers pattern): rows sort by `strings.ToLower(term)` — no tiebreak exists
+   because Decision 3 rejects case-insensitive duplicates, so lowered terms are unique —
+   and `|` is escaped in terms and meanings. The doc remains in the ordinary
    `RenderAll`/lock model — this is sidecar-derived content, distinct from the
    regeneration model used for repo-state-derived docs (domain indexes, ADR-0088).
 
@@ -122,8 +123,8 @@ Grounding discoveries shaping the design:
 ## Invariants
 
 - `inv: glossary-terms-sorted` — the rendered glossary table's rows are ordered by
-  case-insensitive term (byte-order tiebreak) regardless of authored map order; equal
-  entry sets render byte-identically.
+  case-insensitive term regardless of authored map order (ties cannot arise: duplicate
+  lowered terms are rejected); equal entry sets render byte-identically.
 - `inv: glossary-terms-validated` — an empty term, an empty/null/non-string meaning, an
   interior newline in a term or meaning, a non-string map key, or a case-insensitive
   duplicate term in `data.terms` fails the render with the sidecar path and offending
