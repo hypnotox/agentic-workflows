@@ -429,7 +429,7 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 		paths = append(paths, dd.Path)
 	}
 	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
-	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
 		return nil, err
 	}
 	if ok {

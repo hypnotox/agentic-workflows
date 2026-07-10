@@ -139,7 +139,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	}
 	files = append(files, dds...)
 	cref, ok, err := p.generateConfigReference(slices.Concat(rfs, dds))
-	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
 		return nil, nil, nil, err
 	}
 	if ok {

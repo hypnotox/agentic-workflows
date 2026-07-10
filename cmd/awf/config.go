@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -16,6 +18,12 @@ import (
 // outside one (pre-adoption discovery is a supported audience).
 func runConfig(cwd, key string, stdout io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
+		// Only a genuinely absent config means pre-adoption; any other stat
+		// fault (permissions, a file where .awf should be) is an error state,
+		// not a reason to silently print the static reference.
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
 		// invariant: config-command-static-fallback
 		return printConfigReference(stdout, key, nil, "config reference (static — not inside an awf project; live state appears inside one)")
 	}
@@ -66,8 +74,11 @@ func staticModel() (map[string]any, error) {
 	var dataKeys []map[string]any
 	for _, d := range configspec.DataKeys() {
 		artifact := strings.TrimSuffix(d.Kind, "s") + " " + d.Artifact
-		if d.Artifact == "agents-doc" {
+		switch d.Artifact {
+		case "agents-doc":
 			artifact = "agents-doc"
+		case "_base": // internal token — adopters know these as their local artifacts
+			artifact = "local " + d.Kind
 		}
 		dataKeys = append(dataKeys, map[string]any{
 			"artifact": artifact, "key": d.Key, "description": d.Description,

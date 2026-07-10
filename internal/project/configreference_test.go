@@ -262,6 +262,28 @@ func TestConfigReferenceCurrentValues(t *testing.T) {
 	}
 }
 
+// A part-read fault at the reference's intro (a directory where the part file
+// may sit) surfaces from every generation call site — the reference renders
+// outside RenderAll, so these branches are reachable, not theoretical.
+func TestConfigReferencePartReadFault(t *testing.T) {
+	root, p := syncedProject(t, crefYAML, nil)
+	if err := os.MkdirAll(filepath.Join(root, ".awf/parts/config-reference/intro.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Check(); err == nil {
+		t.Error("Check should surface the part-read fault")
+	}
+	if err := p.Sync(); err == nil {
+		t.Error("Sync should surface the part-read fault")
+	}
+	if _, err := p.AdvisoryNotes(); err == nil {
+		t.Error("AdvisoryNotes should surface the part-read fault")
+	}
+	if _, err := p.PlannedOutputs(); err == nil {
+		t.Error("PlannedOutputs should surface the part-read fault")
+	}
+}
+
 // A malformed config-reference sidecar fails at open like any other sidecar.
 func TestConfigReferenceSidecarParseError(t *testing.T) {
 	root := scaffoldFiles(t, crefYAML, map[string]string{"config-reference.yaml": "data: [unclosed\n"})

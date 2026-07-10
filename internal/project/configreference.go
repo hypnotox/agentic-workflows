@@ -338,7 +338,7 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 	data["data"] = collections
 	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
 		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel())
-	if err != nil { // coverage-ignore: the embedded reference template with fully-injected data cannot produce <no value>, and its one non-stub section cannot trip the stub guard
+	if err != nil { // reachable: an unreadable intro part fails the read here — this is its first render
 		return nil, false, err
 	}
 	return &RenderedFile{Path: rf.Path, Content: rf.Content,

@@ -34,7 +34,7 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 	all := slices.Concat(files, dds)
 	// The generated config reference joins the stub/marker scan: its intro
 	// part is authored like any other and can carry residue (ADR-0088).
-	if cref, ok, err := p.generateConfigReference(all); err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+	if cref, ok, err := p.generateConfigReference(all); err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
 		return nil, err
 	} else if ok {
 		all = append(all, *cref)
@@ -411,7 +411,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
 
 	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
-	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
 		return nil, err
 	}
 	drift = append(drift, p.checkConfigReference(lock, crefRel, cref)...)
@@ -421,7 +421,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 
 	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds, crefFiles))...)
-	ud, err := p.unusedDataDrift(files)
+	ud, err := p.unusedDataDrift(slices.Concat(files, dds, crefFiles))
 	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars RenderAll already read
 		return nil, err
 	}

@@ -114,6 +114,18 @@ func TestRunConfigDispatch(t *testing.T) {
 	}
 }
 
+// A stat fault that is not absence (a file where .awf should be) is an error,
+// never silently treated as pre-adoption.
+func TestRunConfigStatFault(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runConfig(root, "", io.Discard); err == nil {
+		t.Error("a non-absence stat fault must surface, not print the static reference")
+	}
+}
+
 // An invalid config fails project open like every gated command.
 func TestRunConfigOpenError(t *testing.T) {
 	root := t.TempDir()
