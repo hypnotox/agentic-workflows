@@ -283,7 +283,11 @@ heuristic: an ignore claiming "X already exercised this, so it cannot fail here"
 whenever the guarded call consumes an input X never touched — five "cannot fail after
 RenderAll succeeded" ignores guarded the generated config reference, whose intro convention
 part RenderAll never reads because the reference renders outside it; a directory staged at
-the part path reached every one.
+the part path reached every one. A fifth recurrence (the 2026-07-10 worktree fix) refuted an
+"only a delete race loses it" claim on a read-after-stat: file *permissions* are the standard
+refuting move for any "stat just succeeded, so the read cannot fail" shape — a `chmod 0o000`
+file stats fine and fails the read deterministically (guard the test with a
+`os.Geteuid() == 0` skip, since root bypasses it).
 
 ## An attribute-filtered pinned-set test exempts every other attribute value
 
