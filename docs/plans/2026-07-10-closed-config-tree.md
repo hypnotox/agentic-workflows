@@ -891,7 +891,8 @@ fixture were verified clean during design.
       (`.awf/memory/` is exempt session scratch). Configuration must be consumed, too: a non-empty
       `vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
       typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
-      `data:`/`sections:` on a domain sidecar, refuses at project open with the fix named.
+      `data:`/`sections:`/`local: true` on a domain sidecar, refuses at project open with the fix
+      named.
       ```
 
 - [ ] In `.awf/agents-doc.yaml`, append to `data: → invariants:` (matching the existing
@@ -901,7 +902,7 @@ fixture were verified clean during design.
               - ref: ADR-0086
                 text: '**Closed config tree.** Every `.awf/` entry outside the claimed-path model — enabled artifacts'' sidecars and declared-section parts, the rendered units, the skeleton — is failing `awf check` drift, collapsed to the topmost unclaimed directory (`memory/**` exempt; `*.awf-bak` backups flagged for review; a `local: true` artifact''s parts unclaimed), and authored-but-unconsumed configuration fails too: non-empty `vars:` keys and sidecar `data:` keys no rendered artifact references.'
               - ref: ADR-0086
-                text: '**Inert sidecar fields refuse at open.** `paths:` on a non-domain sidecar and `data:`/`sections:` on a domain sidecar fail every gated command at project open; interactive `awf init` prompts only for vars the scaffolded enabled set''s templates reference.'
+                text: '**Inert sidecar fields refuse at open.** `paths:` on a non-domain sidecar and any non-`paths:` field on a domain sidecar (`data:`, `sections:`, `local: true`) fail every gated command at project open; interactive `awf init` prompts only for vars the scaffolded enabled set''s templates reference.'
       ```
 
 - [ ] Append one sentence to `.awf/domains/parts/config/current-state.md` (the config
