@@ -52,7 +52,7 @@ current-state part, glossary part), `docs/decisions` (flip + regen).
   `.awf/domains/parts/config/current-state.md`,
   `.awf/domains/parts/rendering/current-state.md` (P1),
   `.awf/domains/parts/tooling/current-state.md` (P2),
-  `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/terms.md`,
+  `.awf/docs/parts/architecture/components.md`, `.awf/docs/glossary.yaml`,
   `changelog/CHANGELOG.md`, `docs/decisions/0088-*.md` (status flip), plus rendered files
   refreshed by `./x sync`
 - Deleted: none
@@ -639,11 +639,12 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       always-on generated index, regeneration-checked, its sidecar sections/local-only
       (data: refuses at open); awf config prints the reference — gated inside an
       adopted tree, degrading to a static catalog reference outside one.`
-- [ ] `.awf/docs/parts/glossary/terms.md`: add two table rows (alphabetical position):
+- [ ] `.awf/docs/glossary.yaml`: add two `data.terms` entries (any position — the
+      renderer sorts; ADR-0089 replaced the terms part with sidecar data):
 
-      ```markdown
-      | config reference | The always-on generated doc `config-reference.md`: every config key, var, sidecar field, and per-artifact data key with descriptions, defaults, availability, and the project's live state (var set/empty/absent, consumers, dormant hints). A generated index — regeneration-checked, tables not part-overridable, sidecar `data:` refused at open. Queryable ad hoc via `awf config`. |
-      | configspec | The compile-time, adopter-facing description authority (`internal/configspec`): one entry per adopter-settable config key, sidecar field, and data key, var entries derived verbatim from the catalog descriptors. Bidirectional parity with the config structs and templates is test-enforced, as is description residue (no ADR citations, no repo identity). |
+      ```yaml
+      "config reference": "The always-on generated doc `config-reference.md`: every config key, var, sidecar field, and per-artifact data key with descriptions, defaults, availability, and the project's live state (var set/empty/absent, consumers, dormant hints). A generated index — regeneration-checked, tables not part-overridable, sidecar `data:` refused at open. Queryable ad hoc via `awf config`."
+      "configspec": "The compile-time, adopter-facing description authority (`internal/configspec`): one entry per adopter-settable config key, sidecar field, and data key, var entries derived verbatim from the catalog descriptors. Bidirectional parity with the config structs and templates is test-enforced, as is description residue (no ADR citations, no repo identity)."
       ```
 
 - [ ] Run `go run ./cmd/awf sync` (regenerates AGENTS.md, architecture, the domain
