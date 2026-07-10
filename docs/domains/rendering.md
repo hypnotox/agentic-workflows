@@ -62,4 +62,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ### Proposed
 
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
+- [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 
