@@ -1,13 +1,19 @@
 # Staleness counterpart to the SHA pins (ADR-0079 Decision 2): dependabot
 # bumps the pinned action SHAs (keeping the # vX.Y.Z comments) and Go deps.
 # A red gate on a gomod tool bump is signal about the new tool version.
+# The cooldown holds routine version bumps back 14 days after a release as
+# supply-chain damping; security updates bypass it by design.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
