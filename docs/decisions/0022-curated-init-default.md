@@ -4,7 +4,7 @@ date: 2026-06-27
 supersedes: []
 superseded_by: ""
 tags: [config, tooling, adoption, scaffold]
-related: [4, 11]
+related: [4, 11, 86]
 domains: [config, tooling]
 ---
 # ADR-0022: Curated Init Default — Workflow-Core Targets

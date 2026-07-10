@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: [invariants-glob-basename]
 superseded_by: ""
 tags: [audit, globs, staleness, migration, config]
-related: [17, 19, 26, 33, 39, 49, 76]
+related: [17, 19, 26, 33, 39, 49, 76, 86]
 domains: [tooling, config, invariants]
 ---
 # ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule

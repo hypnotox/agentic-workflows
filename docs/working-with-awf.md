@@ -107,6 +107,16 @@ commit the rendered files alongside the config change. `awf check` compares each
 template and config against `.awf/awf.lock`; a mismatch is `stale` drift. Wire `awf check` and your
 gate into CI so drift and rule violations block a merge.
 
+`awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed —
+an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton —
+and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
+collision backups (review and delete them) and the parts of a `local: true` artifact
+(`.awf/memory/` is exempt session scratch). Configuration must be consumed, too: a non-empty
+`vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
+typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
+`data:`/`sections:`/`local: true` on a domain sidecar, refuses at project open with the fix
+named.
+
 <!-- awf:edit upgrading — default; create .awf/parts/working-with-awf/upgrading.md to override -->
 ## Upgrading awf
 

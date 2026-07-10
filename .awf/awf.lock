@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:7176b6f21aff81b345d55a2e8fc58f73eb127a1a56d0f1f3ee66dbf33cbf4593",
-      "configHash": "sha256:5d1005c1b22bf297f878ea3b734ab02aecbfccae823f0b78abc88d9ee837169b",
-      "outputHash": "sha256:6898f8093ac22c01d72d3699bdddc78984c9ba4aeacbc9f7f326a30eee6333d3"
+      "configHash": "sha256:b7b70404af4fb7c911a8a4d4c8711a6b7eeec28e4f975cb51cebe4fcba1f3338",
+      "outputHash": "sha256:9d8836203aa2c44e4743da1aade4d68a312bea7a7d8ca874b2a1d09647977cb1"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -306,7 +306,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:8f48b032ce79f226e0cad148812df871efb391783ebd882e76a3f0b13c78470d"
+      "outputHash": "sha256:1adf09db5480823ad4d144677045f3063ca5914694d220ca9544b6a24d51bd10"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
@@ -318,7 +318,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:95874e7247c7bdb1a217f910fe58121b815d1d12aeb067c70c1c6b2b74ccfce4"
+      "outputHash": "sha256:946fda23426fe98134855f48d1ac38b49631b6e000889313a9934ca15a9e1271"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
@@ -358,9 +358,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:c5faf85b5169e61f166181bc1cb1da6c166190f68a61460f5170da7fc615a737",
+      "templateHash": "sha256:475a91fbdad58b77e0874bf1768cace453c08ccd400d5affafeaa7b13420f845",
       "configHash": "sha256:3efe06d0d1511611914bdc3ac1f3b4bdace371d08f8f1f0525a109fd61d16522",
-      "outputHash": "sha256:a4fbf65b770d6ac24ce921e24d73b9c1987c4c63699aea89518df6557b755388"
+      "outputHash": "sha256:4322f874764cd67f15a31484eb21a9102762218252b7d88a2f945167732ca04a"
     }
   }
 }
