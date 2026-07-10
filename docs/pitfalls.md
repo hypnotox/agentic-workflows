@@ -74,7 +74,17 @@ untracked file must still be `git add`-ed first, a bare pathspec commit rejects 
 shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
 dirty files (a false positive for your session — never commit or discard their work to appease
 it), and a pre-commit drift-gate failure may be their stale generated file — `./x sync`
-freshens the disk, then still commit only your paths.
+freshens the disk, then still commit only your paths. Recurred harder in the ADR-0088/0089
+dual session: pathspec discipline alone cannot make a commit *hermetic* — the gate validates
+the worktree, but the commit is a slice of the index, so a foreign hunk staged in a shared
+file (or a slice cut while the other session's symbol is unstaged) can land a commit that does
+not build on its own, breaking bisect (4ef80e0 carries a call to a function a later commit
+defines). The deterministic backstop is the `.githooks/pre-commit` staged-slice build: it
+checks out the index into a throwaway directory and runs `go build ./...` there, so a
+non-building slice refuses at commit time. The real prevention is one git worktree per
+concurrent session; when a shared tree is unavoidable, stage HEAD-plus-only-your-hunks
+versions of mixed files (write the merged file back to the worktree after `git add`) and
+verify the staged slice deliberately.
 
 ## A new var reference in a previously var-free template is adopter-visible
 
@@ -272,7 +282,12 @@ declared impossible. When an edit touches a line carrying an ignore, the ignore 
 the edit: re-probe the claim (try to stage the "impossible" state — a leftover destination
 file, a path component as a regular file, a config path as a directory) or drop it and cover
 the branch; `./x audit-local`'s `coverage-ignore-added` warning flags every touched ignore in
-the range for exactly this re-evaluation.
+the range for exactly this re-evaluation. A fourth recurrence (ADR-0088) sharpened the
+heuristic: an ignore claiming "X already exercised this, so it cannot fail here" is false
+whenever the guarded call consumes an input X never touched — five "cannot fail after
+RenderAll succeeded" ignores guarded the generated config reference, whose intro convention
+part RenderAll never reads because the reference renders outside it; a directory staged at
+the part path reached every one.
 
 ## An attribute-filtered pinned-set test exempts every other attribute value
 
