@@ -125,6 +125,14 @@ Windows, put `awf` on `PATH` and call it directly.
 review agents, and the workflow docs. Everything else in the catalog is opt-in via
 `awf add <kind> <name>`, and `awf remove` opts back out.
 
+## Worked example
+
+A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
+a small fictional Go CLI with every catalog artifact enabled — authored parts,
+domains, ADRs, a plan — and every rendered file committed, kept in sync by this
+repository's own checks. Browse it to see exactly what an adoption looks like on
+disk.
+
 ## Commands
 
 | Command | Purpose |
