@@ -33,7 +33,7 @@ Grounding discoveries that shape the design:
 - `Cfg.Vars` is `map[string]any`; YAML `key:` (explicit null) parses to a *present* key
   with a nil value, distinguishable from an absent key only via the map `ok` flag —
   mechanically verified. A present-null var is unrepresentable by awf's own tooling
-  (`Skeleton.Vars` is `map[string]string`, [ADR-0026](0026-config-scaffold-serialization.md)
+  (`Skeleton.Vars` is `map[string]string`, [ADR-0026](0026-config-serialization-ownership.md)
   Decision 3); it arises only from hand-editing.
 - The notes pipeline has exactly two consumers: `awf check` (`cmd/awf/check.go:28`) and
   `awf init`'s post-scaffold orientation (`cmd/awf/init.go:120`). No other command prints
@@ -99,11 +99,11 @@ Grounding discoveries that shape the design:
    templates this is a no-op; it makes future scaffolds correct by construction.
 
 5. **Parts have no var channel, so Decision 4 closes the local surface.** Convention
-   parts are raw input ([ADR-0034](0034-convention-parts-raw-not-templated.md)): a part
+   parts are raw input ([ADR-0034](0034-convention-parts-are-raw-input.md)): a part
    body is never variable-interpolated and is sentinel-substituted out of the assembled
    source the advisory scans, so a part cannot create an unset-var note. The only
    part-side var mechanism is the closed `{{=awf:gateCmd}}`/`{{=awf:checkCmd}}`
-   placeholder sandbox ([ADR-0057](0057-template-scoped-render-placeholders.md)), which
+   placeholder sandbox ([ADR-0057](0057-sandboxed-placeholder-substitution-in-convention-parts.md)), which
    hard-errors when its var is unset rather than noting. Creation-time seeding
    (Decision 4) therefore covers everything a local artifact can reference.
    `docs/working-with-awf.md` documents the deletion-as-acknowledgement exit and the
