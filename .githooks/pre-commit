@@ -1,2 +1,16 @@
 #!/usr/bin/env bash
+# Repo wiring for the rendered pre-commit payload, plus a repo-local
+# staged-slice build: concurrent sessions share this worktree's index, and a
+# commit is a slice of the index while the gate below validates the worktree —
+# a cross-session staging accident can therefore land a commit that does not
+# build on its own (bit the ADR-0088 session). Build the exact staged slice in
+# a throwaway checkout so a non-hermetic commit refuses here.
+set -euo pipefail
+tmp=$(mktemp -d)
+if ! git checkout-index --prefix="$tmp/" -a || ! (cd "$tmp" && go build ./... >/dev/null); then
+  rm -rf "$tmp"
+  echo "pre-commit: the staged slice does not build on its own — a foreign or missing hunk is staged" >&2
+  exit 1
+fi
+rm -rf "$tmp"
 exec bash .awf/hooks/pre-commit.sh "$@"
