@@ -87,7 +87,8 @@ Forces shaping the design:
    claimed and report drift — the parts mirror of Decision 4's local data-key rule.
    Domains are exempt from that sentence: domain rendering never reads the domain
    sidecar (`generateDomainDocs` passes an empty one), so `local:` cannot stop it and
-   domain parts stay claimed regardless of the flag.
+   domain parts stay claimed — and a domain sidecar carrying `local: true` at all is
+   rejected at open (Decision 5), so the sweep never sees one.
    `memory/**` is wholly exempt (ADR-0069 session scratch). Every other entry is failing
    drift from `awf check`, `Kind: "orphaned"`. The pre-existing orphan cases keep their
    detail strings byte-identical; genuinely new cases report an `unclaimed` detail; reporting
@@ -118,7 +119,9 @@ Forces shaping the design:
    so all its data keys report unused — deliberate: such a sidecar legitimately carries only
    the flag.
 5. **Inert sidecar fields are rejected at project open.** A non-domain sidecar with
-   non-empty `paths:`, and a domain sidecar with non-empty `data:` or `sections:`, fail every
+   non-empty `paths:`, and a domain sidecar carrying anything but `paths:` (non-empty
+   `data:` or `sections:`, or `local: true` — a domain sidecar is paths-only; no code
+   path reads any other field on it), fail every
    gated command at project open with a message naming the file and the fix — placed
    *before* the `local:` skip in the validation loop so `local: true` sidecars cannot carry
    inert fields either. This matches the corrupt-lock and closure-violation precedents
@@ -144,9 +147,10 @@ Forces shaping the design:
   drift; empty-valued keys never are.
 - `inv: unused-data-drift` — a sidecar `data:` key unreferenced by its artifact's assembled
   sources across all enabled targets is failing drift keyed to the sidecar path.
-- `inv: inert-sidecar-field-rejected` — non-empty `paths:` on a non-domain sidecar and
-  non-empty `data:`/`sections:` on a domain sidecar fail every gated command at project
-  open, regardless of the sidecar's `local:` flag.
+- `inv: inert-sidecar-field-rejected` — non-empty `paths:` on a non-domain sidecar
+  (regardless of its `local:` flag) and any non-`paths:` field on a domain sidecar
+  (non-empty `data:`/`sections:`, or `local: true`) fail every gated command at
+  project open.
 - `inv: init-prompts-enabled-vars` — interactive `awf init` prompts only for vars referenced
   by the scaffolded enabled set's templates.
 - Textual: the advisory tier is untouched — ADR-0070 stub notes and ADR-0083 marker notes
