@@ -675,6 +675,12 @@ fixture were verified clean during design.
         `.awf/skills/parts/<name>` flagged with the local-managed detail;
       - a local `workflow.yaml` singleton (`local: true`) with `.awf/parts/workflow/x.md`
         → `.awf/parts/workflow` flagged with the local-managed detail;
+      - the ADR-0068 effective-catalog claim, pinned so a future declaredSections
+        change to `catalog.Standard` cannot silently flag every synthesized local
+        artifact's parts: an enabled skill name absent from `catalog.Standard` with a
+        non-local declaring sidecar and `.awf/skills/parts/<name>/content.md` → zero
+        `orphaned` entries; plus `.awf/skills/parts/<name>/bogus.md` → the
+        declared-set detail;
       - the four remaining preserved ADR-0011 detail strings, each asserted with
         exact Path+Detail (the ADR's byte-identical textual invariant):
         `.awf/skills/debugging.yaml` (not enabled) →
