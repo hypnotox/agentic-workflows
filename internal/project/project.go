@@ -77,27 +77,42 @@ type Backup struct {
 	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
 }
 
+// Change records a sync-written file whose rendered output differs from the
+// prior lock's, with the cause the lock's hashes can attribute: "template"
+// (the upstream template source moved), "config" (the project's effective
+// inputs — vars, sidecar, parts — moved), "template+config" (both),
+// "internal" (hashes unmoved: a non-hashed input such as the binary's version
+// stamp), "regenerated" (a generated index, which carries no hashes to
+// attribute), or "added" (no prior entry). The provenance triage signal for
+// reviewing a large sync diff — upstream churn vs the project's own inputs.
+type Change struct {
+	Path  string
+	Cause string
+}
+
 // SyncReport renders and writes the project, additionally backing up any
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
-// it, and returning those backups (ADR-0035) plus the lock-relative paths of the
-// files its prune actually removed (sorted; a path whose file was already gone
-// is not reported).
-func (p *Project) SyncReport() ([]Backup, []string, error) {
+// it, and returning those backups (ADR-0035) plus the per-file provenance of
+// output that changed against the prior lock and the lock-relative paths of the
+// files its prune actually removed (both path-sorted; a file whose output is
+// byte-identical, and a first sync with no prior lock, report no change — a
+// routine re-sync stays silent).
+func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	// invariant: corrupt-lock-refuses
 	old, _, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	files, err := p.RenderAll()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, f := range files {
 		if isSkillOrAgent(f.TemplateID) {
 			if err := validateFrontmatter([]byte(f.Content)); err != nil { // coverage-ignore: rendered catalog skill/agent frontmatter is template-fixed (non-empty name/description guaranteed by inv templates-valid-frontmatter); it cannot be invalid at sync time
-				return nil, nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
+				return nil, nil, nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
 			}
 		}
 	}
@@ -107,19 +122,19 @@ func (p *Project) SyncReport() ([]Backup, []string, error) {
 			localErr = fmt.Errorf("local target %s: %w", path, e)
 		}
 	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Sync
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if localErr != nil {
-		return nil, nil, localErr
+		return nil, nil, nil, localErr
 	}
 	amd, err := p.generateActiveMD()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	files = append(files, dds...)
 
@@ -138,22 +153,22 @@ func (p *Project) SyncReport() ([]Backup, []string, error) {
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
 				// invariant: sync-backs-up-foreign
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
-					return nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
+					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
 				}
 				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: p.isGeneratedIndex(f.Path)})
 			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat returns a non-NotExist error only on a permission/IO fault that root bypasses
-				return nil, nil, statErr
+				return nil, nil, nil, statErr
 			}
 		}
 		if err := os.WriteFile(abs, []byte(f.Content), 0o644); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,
@@ -166,7 +181,7 @@ func (p *Project) SyncReport() ([]Backup, []string, error) {
 	// a managed skill/agent to local does not delete its file.
 	localPaths, err := p.localTargetPaths()
 	if err != nil { // coverage-ignore: checkLocalFrontmatter above already surfaced any malformed local sidecar
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, rel := range localPaths {
 		want[rel] = true
@@ -205,7 +220,44 @@ func (p *Project) SyncReport() ([]Backup, []string, error) {
 		}
 	}
 	slices.Sort(pruned) // lock-map iteration order is random; output must not be
-	return backups, pruned, lock.Save(p.lockPath())
+	// Provenance: classify each written file whose output moved against the
+	// prior lock, from the final lock state (one entry per path by
+	// construction). A first sync has no baseline — report nothing rather
+	// than flood a fresh adoption with "added" lines.
+	var changes []Change
+	if old != nil {
+		for path, e := range lock.Files {
+			oldE, ok := old.Files[path]
+			if !ok {
+				changes = append(changes, Change{Path: path, Cause: "added"})
+				continue
+			}
+			if e.OutputHash == oldE.OutputHash {
+				continue
+			}
+			tMoved, cMoved := e.TemplateHash != oldE.TemplateHash, e.ConfigHash != oldE.ConfigHash
+			var cause string
+			switch {
+			case tMoved && cMoved:
+				cause = "template+config"
+			case tMoved:
+				cause = "template"
+			case cMoved:
+				cause = "config"
+			case e.TemplateHash == "":
+				// Generated indexes carry no hashes to attribute; their
+				// inputs are the scanned decision records.
+				cause = "regenerated"
+			default:
+				// Real hashes, neither moved: a non-hashed input such as
+				// the binary's version stamp.
+				cause = "internal"
+			}
+			changes = append(changes, Change{Path: path, Cause: cause})
+		}
+		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
+	}
+	return backups, changes, pruned, lock.Save(p.lockPath())
 }
 
 // isGeneratedIndex reports whether rel is the generated ADR index or a per-domain

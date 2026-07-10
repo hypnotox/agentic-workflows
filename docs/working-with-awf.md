@@ -134,6 +134,14 @@ honors a pre-set `AWF_VERSION` environment value on its own — `AWF_VERSION=1.2
 .awf/bootstrap.sh` fetches that release instead of the pin, which is useful for trialing a version
 before committing to it.
 
+The sync prints one provenance line per file whose rendered content actually changed, so a large
+upgrade diff comes with its own triage: `changed <path> (template)` is upstream template churn —
+already pinned by the standard's own per-artifact golden tests, safe to skim; `(config)` means
+your own vars, sidecars, or parts caused it — review these closely; `(template+config)` is both;
+`(internal)` and `(regenerated)` mark files driven by non-hashed inputs (the pinned binary
+version; the generated decision indexes); `added <path>` is a newly shipped file worth a look. A
+byte-identical re-render prints nothing, and a first sync into a fresh project reports no lines.
+
 After the automated pass, sweep for residue the renderer cannot know about: project-owned call
 sites referencing renamed or relocated rendered files, stale version prose in your convention
 parts, and newly rendered surfaces worth wiring up (fresh hook payloads, for example). `awf

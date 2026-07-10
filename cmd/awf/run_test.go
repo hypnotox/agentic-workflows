@@ -53,6 +53,37 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	}
 }
 
+func TestRunSyncPrintsChangedFiles(t *testing.T) {
+	root := scaffoldProject(t)
+	// A var edit moves the config hash of every artifact referencing it; the
+	// re-sync attributes the changed output to the project's own inputs.
+	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1))
+	var out bytes.Buffer
+	if err := runSync(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "awf sync: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
+		t.Errorf("missing config-cause change line:\n%s", out.String())
+	}
+	// A drift-clean re-sync prints no change lines.
+	out.Reset()
+	if err := runSync(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "changed") || strings.Contains(out.String(), "added") {
+		t.Errorf("routine re-sync must not report changes:\n%s", out.String())
+	}
+	// Enabling an artifact reports its files as added.
+	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
+	out.Reset()
+	if err := runSync(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "awf sync: added docs/pitfalls.md\n") {
+		t.Errorf("missing added line:\n%s", out.String())
+	}
+}
+
 func TestRunNoArgs(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -415,7 +416,7 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(root)
-	_, pruned, err := p2.SyncReport()
+	_, _, pruned, err := p2.SyncReport()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,12 +443,73 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(root)
-	_, pruned, err := p2.SyncReport()
+	_, _, pruned, err := p2.SyncReport()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if slices.Contains(pruned, ".claude/skills/example-tdd/SKILL.md") {
 		t.Errorf("already-gone file must not be reported pruned: %v", pruned)
+	}
+}
+
+// TestSyncReportClassifiesChangedOutput stages every provenance cause by
+// authoring the prior lock directly — the classification compares the old
+// entry against the fresh render, so a tweaked stored hash simulates the
+// corresponding real change (an upstream template edit, a config edit, a
+// non-hashed input) without mutating the embedded templates.
+func TestSyncReportClassifiesChangedOutput(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, _ := Open(root)
+	_, changes, _, err := p.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes) != 0 {
+		t.Errorf("first sync has no baseline and must report no changes, got %v", changes)
+	}
+	lock, err := manifest.Load(p.lockPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutate := func(path string, f func(e *manifest.Entry)) {
+		t.Helper()
+		e, ok := lock.Files[path]
+		if !ok {
+			t.Fatalf("no lock entry for %s; have %v", path, slices.Sorted(maps.Keys(lock.Files)))
+		}
+		f(&e)
+		lock.Files[path] = e
+	}
+	// Output moved + template hash moved → upstream churn.
+	mutate("AGENTS.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x" })
+	// Output moved + config hash moved → the project's own inputs.
+	mutate(".claude/skills/example-tdd/SKILL.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.ConfigHash = "x" })
+	// Both hashes moved.
+	mutate("CLAUDE.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x"; e.ConfigHash = "x" })
+	// Output moved, real hashes unmoved → a non-hashed input.
+	mutate(".awf/memory/.gitignore", func(e *manifest.Entry) { e.OutputHash = "x" })
+	// Output moved on a generated index (no hashes by design) → regenerated.
+	mutate("docs/decisions/ACTIVE.md", func(e *manifest.Entry) { e.OutputHash = "x" })
+	// No prior entry → added.
+	delete(lock.Files, "docs/workflow.md")
+	if err := lock.Save(p.lockPath()); err != nil {
+		t.Fatal(err)
+	}
+	p2, _ := Open(root)
+	_, changes, _, err = p2.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Change{
+		{Path: ".awf/memory/.gitignore", Cause: "internal"},
+		{Path: ".claude/skills/example-tdd/SKILL.md", Cause: "config"},
+		{Path: "AGENTS.md", Cause: "template"},
+		{Path: "CLAUDE.md", Cause: "template+config"},
+		{Path: "docs/decisions/ACTIVE.md", Cause: "regenerated"},
+		{Path: "docs/workflow.md", Cause: "added"},
+	}
+	if !slices.Equal(changes, want) {
+		t.Errorf("changes = %v\nwant %v (path-sorted; untouched files silent)", changes, want)
 	}
 }
 
@@ -906,7 +968,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	backups, _, err := p.SyncReport()
+	backups, _, _, err := p.SyncReport()
 	if err != nil {
 		t.Fatalf("SyncReport: %v", err)
 	}
@@ -927,7 +989,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	}
 	// A path recorded in the prior lock is awf-managed: a second sync backs up
 	// nothing and prunes nothing.
-	again, pruned, err := p.SyncReport()
+	again, _, pruned, err := p.SyncReport()
 	if err != nil {
 		t.Fatal(err)
 	}

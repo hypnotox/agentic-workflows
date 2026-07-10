@@ -67,6 +67,15 @@ query a single version or a range.
   now `config already at schema N`, followed by normal sync output.
 
 ### Others
+- `awf sync` (and every command ending in a sync) now prints one provenance
+  line per file whose rendered output actually changed, classifying the cause
+  from the lock's hashes: `changed <path> (template)` for upstream template
+  churn, `(config)` when your own vars/sidecars/parts caused it,
+  `(template+config)` for both, `(internal)`/`(regenerated)` for non-hashed
+  inputs (the pinned binary version; the generated decision indexes), and
+  `added <path>` for newly shipped files — the triage signal for reviewing a
+  large upgrade diff. A byte-identical re-render stays silent, and a first
+  sync into a fresh project reports nothing.
 - The rendered `docs/workflow.md` local-hooks section now documents the
   stub-as-override-point pattern: hook payloads are deliberately
   all-or-nothing, and a project-specific deviation (e.g. a docs-only fast
