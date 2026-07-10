@@ -2,10 +2,12 @@ package audit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	gitconfig "github.com/go-git/go-git/v5/config"
@@ -15,6 +17,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/filesystem"
+	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
 )
 
 // openRepo opens the repo at repoRoot like git.PlainOpen, but hides its
@@ -28,15 +31,65 @@ import (
 // Neither Collect nor ruleUncommittedChanges reads repo extensions, so hiding
 // the section is safe.
 //
-// Unlike git.PlainOpen, this assumes repoRoot/.git is a directory: it does not
-// resolve a `.git` file (the pointer left by `git worktree add` in a linked
-// worktree) to its real gitdir. That is an existing limitation, not a
-// regression — git.PlainOpen(repoRoot) with default options (as used here
-// previously) already failed to resolve refs for a linked worktree's own root,
-// since it doesn't opt into EnableDotGitCommonDir either.
+// Unlike git.PlainOpen with default options, this also resolves a `.git`
+// *file* — the `gitdir:` pointer `git worktree add` leaves at a linked
+// worktree's root (and the submodule layout) — mirroring what
+// PlainOpenWithOptions' EnableDotGitCommonDir does, so awf's git-reading
+// commands work from a linked worktree. The manual storage construction (over
+// PlainOpenWithOptions) exists solely so the storer wrapper above can be
+// injected.
 func openRepo(repoRoot string) (*git.Repository, error) {
-	st := filesystem.NewStorage(osfs.New(filepath.Join(repoRoot, ".git")), cache.NewObjectLRUDefault())
+	dotFs, err := dotGitFs(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	st := filesystem.NewStorage(dotFs, cache.NewObjectLRUDefault())
 	return git.Open(noExtensionsStorer{st}, osfs.New(repoRoot))
+}
+
+// dotGitFs resolves repoRoot's .git — a directory in a primary checkout, a
+// `gitdir:` pointer file in a linked worktree or submodule — to the filesystem
+// go-git should treat as the repository's dotgit. For a gitdir carrying a
+// `commondir` file (the linked-worktree layout), the returned filesystem
+// routes worktree-private files (HEAD, index) to the worktree's own gitdir and
+// everything shared (objects, refs, config) to the common dir. A missing or
+// unreadable .git falls through to the plain path so go-git reports its
+// canonical not-a-repository error.
+func dotGitFs(repoRoot string) (billy.Filesystem, error) {
+	dotPath := filepath.Join(repoRoot, ".git")
+	if fi, err := os.Stat(dotPath); err == nil && !fi.IsDir() {
+		return gitfileFs(repoRoot, dotPath)
+	}
+	// A directory (primary checkout) or missing entirely — go-git reports its
+	// canonical not-a-repository error downstream.
+	return osfs.New(dotPath), nil
+}
+
+// gitfileFs resolves a `.git` pointer file to its gitdir's filesystem.
+func gitfileFs(repoRoot, dotPath string) (billy.Filesystem, error) {
+	raw, err := os.ReadFile(dotPath)
+	if err != nil { // coverage-ignore: .git stat'd as a regular file just above; only a delete race loses it
+		return nil, err
+	}
+	gitdirPath, ok := strings.CutPrefix(strings.TrimSpace(string(raw)), "gitdir: ")
+	if !ok {
+		return nil, fmt.Errorf("parse %s: expected a `gitdir:` pointer (the linked-worktree/submodule layout)", dotPath)
+	}
+	if !filepath.IsAbs(gitdirPath) {
+		gitdirPath = filepath.Join(repoRoot, gitdirPath)
+	}
+	dot := osfs.New(gitdirPath)
+	if commonRaw, cerr := os.ReadFile(filepath.Join(gitdirPath, "commondir")); cerr == nil {
+		common := strings.TrimSpace(string(commonRaw))
+		if !filepath.IsAbs(common) {
+			common = filepath.Join(gitdirPath, common)
+		}
+		return dotgit.NewRepositoryFilesystem(dot, osfs.New(common)), nil
+	}
+	// No commondir: the gitdir is self-contained (submodule layout). An
+	// unreadable one degrades the same way — go-git then errors canonically on
+	// the refs it cannot find.
+	return dot, nil
 }
 
 type noExtensionsStorer struct {

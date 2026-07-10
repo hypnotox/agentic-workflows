@@ -375,16 +375,18 @@ drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-
 the verify pass because the ADR-0020 dead-link scan covers awf-managed *rendered* docs
 only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
 
-## `awf audit` cannot open a linked git worktree
+## Repo opens in `internal/audit` must resolve the `.git` gitfile
 
-Gated commands that read git go through `internal/audit`'s `git.PlainOpen(<root>/.git)`,
-which requires `.git` to be a directory — in a linked worktree (`git worktree add`) it is a
-gitfile, so `awf audit` dies with `open repo: … .git/config: not a directory` (hit
-2026-07-10 running the ADR-0090 impl review in a session worktree). With the
-parallel-sessions-get-worktrees rule this now bites every parallel session, and any adopter
-working in a worktree. Workaround: run `awf audit` from the primary checkout. The real fix
-— gitfile-aware opening (e.g. `PlainOpenWithOptions`) — is an open follow-up; `cmd/repoaudit`
-is unaffected (it shells out to `git`).
+In a linked worktree (`git worktree add`) — and the submodule layout — `.git` is a
+`gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
+`open repo: … .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
+ADR-0090 impl review in a session worktree — every parallel session uses one). Fixed the
+same day: `openRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
+`commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
+`EnableDotGitCommonDir`; regression tests hand-craft the worktree layout (go-git cannot
+create one). The standing rule from the first entry above still governs: any future
+`internal/audit` code opening a repo goes through `openRepo` — `git.PlainOpen` gets neither
+the extensions workaround nor the gitfile resolution.
 
 ## Section parts carry their own heading
 

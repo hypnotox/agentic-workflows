@@ -44,6 +44,13 @@ query a single version or a range.
   placeholder contract is unchanged). Rendering is untouched: absent, null,
   and empty all degrade to the same generic prose as before.
 
+### Bug fixes
+- `awf audit` (and every git-reading path) now works from a linked git
+  worktree or submodule checkout, where `.git` is a `gitdir:` pointer file
+  rather than a directory: the repo open resolves the pointer and routes
+  shared state (objects, refs, config) through the worktree's `commondir`.
+  Previously it failed with `open repo: … .git/config: not a directory`.
+
 ### Others
 - The repository now carries a committed example adopter (`examples/sundial/`) —
   a full-surface worked example of an awf adoption, browsable in the repo and

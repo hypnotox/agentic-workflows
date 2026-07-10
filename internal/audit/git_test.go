@@ -3,6 +3,7 @@ package audit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -359,5 +360,105 @@ func TestOpenRepoMalformedConfig(t *testing.T) {
 
 	if _, err := Collect(dir, "HEAD"); err == nil {
 		t.Fatal("expected Collect to error on a malformed .git/config")
+	}
+}
+
+// linkedWorktree hand-crafts the on-disk layout `git worktree add` produces for
+// repo rooted at mainDir: a worktree-private gitdir under .git/worktrees/<name>
+// holding HEAD/commondir/gitdir plus a copy of the index, and a `gitdir:`
+// pointer file at the new root. go-git cannot create linked worktrees, so the
+// fixture writes exactly the files git itself would.
+func linkedWorktree(t *testing.T, mainDir, name, head, commondir string, files map[string]string) string {
+	t.Helper()
+	wtRoot := t.TempDir()
+	gitdir := filepath.Join(mainDir, ".git", "worktrees", name)
+	if err := os.MkdirAll(gitdir, 0o755); err != nil {
+		t.Fatalf("mkdir gitdir: %v", err)
+	}
+	idx, err := os.ReadFile(filepath.Join(mainDir, ".git", "index"))
+	if err != nil {
+		t.Fatalf("read index: %v", err)
+	}
+	for path, content := range map[string][]byte{
+		filepath.Join(wtRoot, ".git"):      []byte("gitdir: " + gitdir + "\n"),
+		filepath.Join(gitdir, "commondir"): []byte(commondir + "\n"),
+		filepath.Join(gitdir, "gitdir"):    []byte(filepath.Join(wtRoot, ".git") + "\n"),
+		filepath.Join(gitdir, "HEAD"):      []byte(head + "\n"),
+		filepath.Join(gitdir, "index"):     idx,
+	} {
+		if werr := os.WriteFile(path, content, 0o644); werr != nil {
+			t.Fatalf("write %s: %v", path, werr)
+		}
+	}
+	for name, content := range files {
+		if werr := os.WriteFile(filepath.Join(wtRoot, name), []byte(content), 0o644); werr != nil {
+			t.Fatalf("write %s: %v", name, werr)
+		}
+	}
+	return wtRoot
+}
+
+// awf's git-reading commands must work from a linked worktree root, where .git
+// is a `gitdir:` pointer file rather than a directory. Regression: openRepo
+// treated <root>/.git as a directory and died with
+// "….git/config: not a directory" (2026-07-10, this repo's own session
+// worktrees). Covers both commondir spellings git may write.
+func TestCollectLinkedWorktree(t *testing.T) {
+	repo, mainDir := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, mainDir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	head := gitfixture.Commit(t, repo, mainDir, "feat(awf): branch work", map[string]string{"b.md": "body\n"})
+
+	for name, commondir := range map[string]string{
+		"relative-commondir": "../..",
+		"absolute-commondir": filepath.Join(mainDir, ".git"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			wtRoot := linkedWorktree(t, mainDir, name, head.String(), commondir,
+				map[string]string{"go.mod": "module x\n", "b.md": "body\n"})
+			commits, err := Collect(wtRoot, base.String())
+			if err != nil {
+				t.Fatalf("Collect from linked worktree: %v", err)
+			}
+			if len(commits) != 1 || commits[0].Subject != "feat(awf): branch work" {
+				t.Fatalf("unexpected commits: %+v", commits)
+			}
+			if f := ruleUncommittedChanges(wtRoot, Inputs{Settings: Settings{UncommittedChanges: true}}); f != nil {
+				t.Fatalf("clean linked worktree flagged: %+v", f)
+			}
+		})
+	}
+}
+
+// A `gitdir:` pointer may be relative (the submodule layout), and a pointed-to
+// gitdir without a commondir file is self-contained — both must open.
+func TestCollectRelativeGitfileWithoutCommondir(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
+	gitfixture.Commit(t, repo, dir, "feat(awf): work", map[string]string{"b.md": "b\n"})
+	if err := os.Rename(filepath.Join(dir, ".git"), filepath.Join(dir, ".realgit")); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: .realgit\n"), 0o644); err != nil {
+		t.Fatalf("write pointer: %v", err)
+	}
+	commits, err := Collect(dir, base.String())
+	if err != nil {
+		t.Fatalf("Collect via relative gitdir pointer: %v", err)
+	}
+	if len(commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(commits))
+	}
+}
+
+// A .git file that is not a gitdir pointer is a hard, named error — not a
+// silent misopen.
+func TestCollectMalformedDotGitFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("not a pointer\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_, err := Collect(dir, "main")
+	if err == nil || !strings.Contains(err.Error(), "gitdir:") {
+		t.Fatalf("want a gitdir-pointer parse error, got: %v", err)
 	}
 }
