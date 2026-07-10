@@ -172,8 +172,10 @@ Forces and grounding discoveries shaping the design:
   entry names a live field, enforced by a reflection walk over the yaml tags.
 - `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match,
   one-to-one in both directions, the data keys each catalog artifact's include-expanded
-  template references (union its catalog-declared defaults), with the injected domain-doc
-  keys exempt.
+  template references (union its catalog-declared defaults), with the injected keys
+  exempt: the domain-doc pair and the config reference's own injected collections
+  (neither is adopter-settable — domain sidecars are paths-only, the config-reference
+  sidecar rejects `data:`).
 - `inv: configspec-var-derivation` — configspec's var entries are derived from
   `catalog.Vars` and cover exactly that set, carrying the descriptor description text
   verbatim; configspec attaches only availability clauses — no second var-description
