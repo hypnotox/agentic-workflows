@@ -94,6 +94,7 @@
 ## Proposed
 
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Proposed
+- [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Proposed
 
 ## Superseded
 
