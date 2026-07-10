@@ -85,6 +85,9 @@ Forces shaping the design:
    `content` sections are claimed — ADR-0068) and `parts/<kind>/<section>.md` for singletons.
    An artifact whose sidecar sets `local: true` renders nothing, so its parts are *not*
    claimed and report drift — the parts mirror of Decision 4's local data-key rule.
+   Domains are exempt from that sentence: domain rendering never reads the domain
+   sidecar (`generateDomainDocs` passes an empty one), so `local:` cannot stop it and
+   domain parts stay claimed regardless of the flag.
    `memory/**` is wholly exempt (ADR-0069 session scratch). Every other entry is failing
    drift from `awf check`, `Kind: "orphaned"`. The pre-existing orphan cases keep their
    detail strings byte-identical; genuinely new cases report an `unclaimed` detail; reporting
