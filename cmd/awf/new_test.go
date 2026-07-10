@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -184,5 +185,39 @@ func TestRunNewSkillOpenError(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
 	if err := runNew(root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
+	}
+}
+
+// seedScaffoldVars: an absent referenced var is seeded empty, a present one is
+// untouched, and a malformed source surfaces the editor's error.
+// invariant: new-seeds-scaffold-vars
+func TestSeedScaffoldVars(t *testing.T) {
+	src := []byte("prefix: x\nvars:\n  kept: value\n")
+	got, err := seedScaffoldVars(src, []string{"kept", "added"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"kept: value", "added: \"\""} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	if _, err := seedScaffoldVars([]byte(":\n:"), []string{"x"}); err == nil {
+		t.Fatal("expected error on malformed config source")
+	}
+}
+
+// The shipped base templates reference no vars, so awf new seeds nothing today
+// — this pins the no-op so a future var-bearing base template consciously
+// changes it (ADR-0087 Decision 4).
+func TestRunNewSeedsNoVarsToday(t *testing.T) {
+	for _, kind := range []string{"skill", "agent"} {
+		refs, err := project.ScaffoldVarRefs(kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(refs) != 0 {
+			t.Errorf("base %s template gained var refs %v — confirm awf new seeding and update this pin", kind, refs)
+		}
 	}
 }

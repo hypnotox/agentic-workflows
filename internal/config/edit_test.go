@@ -247,6 +247,59 @@ func TestSetMappingScalarPreservesComments(t *testing.T) {
 	}
 }
 
+// invariant backing lives at the cmd/awf call site (new-seeds-scaffold-vars);
+// this pins the editor's presence/absence contract (ADR-0087).
+func TestSeedVarKey(t *testing.T) {
+	cases := []struct {
+		name      string
+		src       string
+		want      string // substring that must be present in the result
+		unchanged bool   // result must be byte-identical to src
+		wantErr   bool
+	}{
+		{name: "absent key seeded empty", src: "prefix: x\nvars:\n  other: set\n", want: "gateCmd: \"\""},
+		{name: "present valued untouched", src: "prefix: x\nvars:\n  gateCmd: make gate\n", unchanged: true},
+		{name: "present empty untouched", src: "prefix: x\nvars:\n  gateCmd: \"\"\n", unchanged: true},
+		{name: "present null untouched", src: "prefix: x\nvars:\n  gateCmd:\n", unchanged: true},
+		{name: "vars mapping absent created", src: "prefix: x\n", want: "vars:\n  gateCmd: \"\""},
+		{name: "vars null replaced", src: "prefix: x\nvars:\n", want: "vars:\n  gateCmd: \"\""},
+		{name: "malformed source errors", src: ":\n:", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SeedVarKey([]byte(tc.src), "gateCmd")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got:\n%s", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.unchanged && string(got) != tc.src {
+				t.Errorf("present key must leave source byte-identical, got:\n%s", got)
+			}
+			if tc.want != "" && !strings.Contains(string(got), tc.want) {
+				t.Errorf("missing %q in:\n%s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestSeedVarKeyPreservesComments(t *testing.T) {
+	src := "# top comment\nprefix: x # inline\nvars:\n  other: set\n"
+	got, err := SeedVarKey([]byte(src), "gateCmd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# top comment", "# inline", "other: set"} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("%q lost:\n%s", want, got)
+		}
+	}
+}
+
 func TestAnchorNoSlashGlobs(t *testing.T) {
 	src := []byte(`prefix: x
 invariants:

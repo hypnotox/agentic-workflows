@@ -100,10 +100,31 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot fail here
 		return err
 	}
+	refs, err := project.ScaffoldVarRefs(kind)
+	if err != nil { // coverage-ignore: embedded base templates always read and expand
+		return err
+	}
+	if updated, err = seedScaffoldVars(updated, refs); err != nil { // coverage-ignore: config.Load already parsed this config, so re-parsing cannot fail here
+		return err
+	}
 	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault a test cannot trigger
 		return err
 	}
 	return runSync(root, stdout)
+}
+
+// seedScaffoldVars seeds each of the scaffolded template's referenced vars as
+// an empty key when absent from cfgSrc — the creation-time open to-do
+// (ADR-0087 Decision 4). A present key, and a deleted one, are never touched.
+// invariant: new-seeds-scaffold-vars
+func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
+	for _, r := range refs {
+		var err error
+		if cfgSrc, err = config.SeedVarKey(cfgSrc, r); err != nil {
+			return nil, err
+		}
+	}
+	return cfgSrc, nil
 }
 
 // localPartStub is the starter body for a new local artifact's content part —

@@ -86,6 +86,10 @@ var functionalVarKeys = []string{
 // (every kind but the catalog-trim multiselects) are exactly the pinned
 // functional set, and the multiselects are exactly the two catalog trims — so
 // a prose knob cannot re-enter under any kind without a successor ADR.
+// Extending this pin is also where ADR-0087's seed-on-introduction contract
+// bites: the release adding a catalog var must ship a one-time schema-migration
+// seed (`<key>: ""` where absent), or absent-key acknowledgement silently
+// swallows the new var's advisory for every existing adopter.
 // invariant: var-descriptor-set-pinned
 func TestVarDescriptorSetPinned(t *testing.T) {
 	var got, multiselects []string

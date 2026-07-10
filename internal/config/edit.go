@@ -173,6 +173,43 @@ func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
 }
 
+// SeedVarKey adds `name: ""` under the top-level vars: mapping when the key is
+// absent, creating the mapping if needed, via the same comment-preserving
+// yaml.Node round-trip as SetArrayMember (ADR-0026). A present key — set,
+// empty, or null — is left untouched and src is returned unchanged: presence
+// is the open-to-do signal and absence the deliberate decline (ADR-0087), so
+// seeding must never overwrite either state.
+func SeedVarKey(src []byte, name string) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	val, _ := mapValue(root, "vars")
+	if val != nil && val.Kind == yaml.MappingNode {
+		if existing, _ := mapValue(val, name); existing != nil {
+			return src, nil
+		}
+		val.Content = append(val.Content, strScalar(name), emptyStrScalar())
+		return encode(doc)
+	}
+	m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+		strScalar(name), emptyStrScalar(),
+	}}
+	if val == nil {
+		root.Content = append(root.Content, strScalar("vars"), m)
+	} else {
+		_, vi := mapValue(root, "vars")
+		root.Content[vi] = m
+	}
+	return encode(doc)
+}
+
+// emptyStrScalar marshals as `""` — the seeded open-to-do value; a bare scalar
+// would decode as null and violate ADR-0026 Decision 3.
+func emptyStrScalar() *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "", Style: yaml.DoubleQuotedStyle}
+}
+
 // A GlobRewrite records one no-slash glob scalar AnchorNoSlashGlobs anchored:
 // Key is the config location, From the original pattern (rewritten to
 // `**/<From>`).
