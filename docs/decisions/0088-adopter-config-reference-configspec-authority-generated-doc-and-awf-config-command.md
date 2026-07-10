@@ -98,8 +98,13 @@ Forces and grounding discoveries shaping the design:
      per-kind placement rules (ADR-0086 Decision 5) stated as availability. The walk
      recurses into map-of-struct values, so `sections.<name>.drop` is its own described
      leaf — adopters write it, so parity covers it.
-   - **Per-artifact data keys:** one description per catalog-declared sidecar `data:` key,
-     keyed by artifact. Descriptions live in configspec; values stay in the catalog.
+   - **Per-artifact data keys:** one description per adopter-settable sidecar `data:` key,
+     keyed by artifact. The key universe is what the artifact's include-expanded template
+     actually references (`.data.K`), of which the catalog-declared defaults are a subset —
+     an optional key with no default (the agents-doc's `invariants`, a local base template's
+     `description`) is exactly as touchable as a defaulted one. The injected domain-doc keys
+     (`domain`, `decisions`) are exempt: domain sidecars are paths-only (ADR-0086), so no
+     adopter can set them. Descriptions live in configspec; values stay in the catalog.
    Var descriptions are **derived from `catalog.Vars` at construction** — the catalog
    remains the sole var authority (ADR-0029 parity and ADR-0084 pinning untouched);
    configspec adds no second var-description home. A derived var entry carries the
@@ -128,6 +133,11 @@ Forces and grounding discoveries shaping the design:
    ADR-0001/0045), pinned by the doc's hand-added golden. The doc is drift-checked by
    **full regeneration** (the generated-index class), not content hashing. Prose framing
    sections remain convention-part overridable; the generated reference tables are not.
+   The config-reference sidecar is accordingly sections/local-only: a non-empty `data:`
+   on it fails every gated command at project open (the ADR-0086 Decision 5 pattern) —
+   the reference's data namespace is injected at generation, so authored `data:` would be
+   silently overwritten while the injected key names make it look consumed, defeating the
+   unused-data check.
 4. **A new CLI command, `awf config [<key-or-var>]`.** Bare, it prints the same reference
    with live state; with an argument, the one matching entry (description, current value,
    consumers or dormancy hint). Inside an adopted tree it is a gated command
@@ -160,8 +170,10 @@ Forces and grounding discoveries shaping the design:
 - `inv: configspec-key-parity` — every adopter-writable `config.Config`/`Sidecar` leaf
   key has exactly one configspec entry with a non-empty description, and every config-key
   entry names a live field, enforced by a reflection walk over the yaml tags.
-- `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match
-  the catalog's declared sidecar data keys one-to-one, both directions.
+- `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match,
+  one-to-one in both directions, the data keys each catalog artifact's include-expanded
+  template references (union its catalog-declared defaults), with the injected domain-doc
+  keys exempt.
 - `inv: configspec-var-derivation` — configspec's var entries are derived from
   `catalog.Vars` and cover exactly that set, carrying the descriptor description text
   verbatim; configspec attaches only availability clauses — no second var-description
@@ -175,6 +187,8 @@ Forces and grounding discoveries shaping the design:
 - `inv: config-reference-no-bare-vars` — the reference-doc template's assembled source
   contains no bare `.vars` or `.data` reference (all computed state arrives via dedicated
   data keys), so it never widens ADR-0086's conservative consumption escapes.
+- `inv: config-reference-data-rejected` — a non-empty `data:` block on the
+  config-reference sidecar fails every gated command at project open.
 - Textual: descriptions are adopter-voiced — they explain effect and availability in the
   adopter's terms, and availability claims match the real consumption channels (only
   `gateCmd`/`checkCmd` flow through part placeholders).
