@@ -31,6 +31,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 		"Catalog consumers:",
 		"sidecar.local (bool)",
 		"data.testSurfaces",
+		"local skills · data.description",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("static reference missing %q", want)
@@ -38,6 +39,9 @@ func TestRunConfigStaticFallback(t *testing.T) {
 	}
 	if strings.Contains(got, "current:") || strings.Contains(got, "state:") {
 		t.Error("static reference must carry no live state")
+	}
+	if strings.Contains(got, "_base") {
+		t.Error("the internal _base token must not leak into adopter-facing output")
 	}
 }
 
