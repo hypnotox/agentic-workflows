@@ -85,16 +85,16 @@ fixture were verified clean during design.
       ```go
       	// Domain sidecars are paths-only (ADR-0086 Decision 5): domain rendering
       	// passes an empty sidecar and injects its own data map, so an authored
-      	// data: or sections: block silently does nothing — and the domain
-      	// template's own .data.domain reference would mask it from the
-      	// consumption check.
+      	// data:, sections:, or local: entry silently does nothing — and the
+      	// domain template's own .data.domain reference would mask a data: block
+      	// from the consumption check.
       	for _, name := range p.Cfg.Domains {
       		sc, err := p.Cfg.Sidecar("domains", name)
       		if err != nil {
       			return err
       		}
-      		if len(sc.Data) > 0 || len(sc.Sections) > 0 {
-      			return fmt.Errorf("domain %q: data: and sections: are never consumed by domain rendering (only paths: is read); remove them from .awf/domains/%s.yaml", name, name)
+      		if len(sc.Data) > 0 || len(sc.Sections) > 0 || sc.Local {
+      			return fmt.Errorf("domain %q: a domain sidecar is paths-only — nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
       		}
       	}
       ```
@@ -125,8 +125,10 @@ fixture were verified clean during design.
       - the same sidecar with `local: true` added → still errors (the check precedes the
         local skip);
       - config with `domains:\n  - config\n` and `domains/config.yaml` carrying
-        `data:\n  k: v\n` → error containing `never consumed by domain rendering`;
+        `data:\n  k: v\n` → error containing `a domain sidecar is paths-only`;
       - same with `sections:\n  current-state:\n    drop: true\n` instead → same error;
+      - same with `local: true` instead → same error (nothing reads `local:` on a
+        domain sidecar — ADR-0086 Decision 5 as amended);
       - `domains/config.yaml` carrying only `paths:\n  - internal/config/**\n` → `Open`
         succeeds;
       - `agents-doc.yaml` with `paths:` → error naming `.awf/agents-doc.yaml`;
@@ -136,9 +138,10 @@ fixture were verified clean during design.
 
       ```markdown
       - Inert sidecar fields now refuse at project open (ADR-0086): `paths:` on a
-        non-domain sidecar, and `data:`/`sections:` on a domain sidecar, fail every
-        gated command with the exact file and fix named. These fields were silently
-        ignored before — delete them (or move `paths:` to a domain sidecar) and re-run.
+        non-domain sidecar, and anything but `paths:` on a domain sidecar (`data:`,
+        `sections:`, `local: true`), fail every gated command with the exact file
+        and fix named. These fields were silently ignored before — delete them (or
+        move `paths:` to a domain sidecar) and re-run.
       ```
 
 - [ ] Run `go test ./internal/project/` then `./x gate` — green. Commit:
@@ -516,8 +519,9 @@ fixture were verified clean during design.
       			}
       			// A local: true artifact renders nothing, so its parts are
       			// dead weight — deliberately unclaimed (ADR-0086 Decision 1).
-      			// Domains render regardless of the flag and keep theirs.
-      			if sc.Local && kind != "domains" {
+      			// A local: true domain sidecar cannot reach here: open-time
+      			// validation rejects any non-paths: domain field (Decision 5).
+      			if sc.Local {
       				continue
       			}
       			m.dirs[config.DirName+"/"+kind+"/parts/"+name] = true
