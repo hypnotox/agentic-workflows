@@ -26,7 +26,12 @@ type SectionPlan struct {
 	// values must never create or mask a match; consumed part-keyed by the
 	// marker advisory.
 	PartMarker bool
-	EditPath   string
+	// PartVarRefs lists the config vars the raw part body consumes via
+	// {{=awf:key}} placeholders (ADR-0086). Set by the project layer over
+	// the on-disk bytes; consumed by the unused-var union, which cannot see
+	// part bodies in the assembled source (they are sentinel-substituted raw).
+	PartVarRefs []string
+	EditPath    string
 }
 
 // editPointer is the awf:edit provenance comment emitted before a section body.

@@ -9,6 +9,14 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- `awf check` now fails on authored-but-unconsumed configuration (ADR-0086): a
+  non-empty `vars:` key no rendered artifact references (`unused-var`), and a
+  sidecar `data:` key the artifact's template never reads (`unused-data`) — the
+  typo that publication-safe degradation used to hide. Empty vars stay legal
+  (the init scaffold is unchanged), but note that leftover keys from removed
+  catalog vars (e.g. ADR-0084's) are now flagged when non-empty, and disabling
+  a render unit (`awf remove hooks`) can strand the var only it consumed —
+  delete the key in the same change.
 - Inert sidecar fields now refuse at project open (ADR-0086): `paths:` on a
   non-domain sidecar, and anything but `paths:` on a domain sidecar (`data:`,
   `sections:`, `local: true`), fail every gated command with the exact file

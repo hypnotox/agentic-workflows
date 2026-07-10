@@ -119,6 +119,112 @@ func markerNotes(files []RenderedFile) []string {
 	return notes
 }
 
+// unusedVarDrift reports each non-empty vars: key referenced by no rendered
+// artifact — neither a .vars.X reference in any assembled source (RenderAll
+// output and the generated domain docs, passed concatenated) nor a
+// gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
+// exempt: they mirror the ADR-0045 unset definition, keeping the ADR-0022
+// seed-all-vars scaffold legal. A bare .vars reference conservatively
+// consumes every key.
+// invariant: unused-var-drift
+func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
+	used := map[string]bool{}
+	for _, f := range files {
+		if render.ReferencesBareVars(f.assembled) {
+			return nil
+		}
+		for _, r := range render.ReferencedVars(f.assembled) {
+			used[r] = true
+		}
+		for _, r := range f.partVarRefs {
+			used[r] = true
+		}
+	}
+	var drift []manifest.Drift
+	for _, k := range slices.Sorted(maps.Keys(p.Cfg.Vars)) {
+		if v := p.Cfg.Vars[k]; v == nil || v == "" || used[k] {
+			continue
+		}
+		drift = append(drift, manifest.Drift{
+			Path: config.DirName + "/config.yaml", Kind: "unused-var",
+			Detail: fmt.Sprintf("var %q is set but referenced by no rendered artifact; delete it from vars: or enable an artifact that consumes it", k),
+		})
+	}
+	return drift
+}
+
+// unusedDataDrift reports, per enabled artifact, the sidecar data: keys its
+// assembled sources reference nowhere, unioned across enabled targets
+// (ADR-0086 Decision 4). Domains are excluded — their sidecars are rejected
+// as paths-only at open. A local: true sidecar renders nothing, so every
+// key reports. A key referenced only inside a dropped section counts as
+// unused: the drop makes it configuration that does nothing.
+// invariant: unused-data-drift
+func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error) {
+	type refset struct {
+		keys map[string]bool
+		bare bool
+	}
+	refs := map[string]*refset{}
+	for _, f := range files {
+		key := f.kind + "\x00" + f.artifact
+		rs := refs[key]
+		if rs == nil {
+			rs = &refset{keys: map[string]bool{}}
+			refs[key] = rs
+		}
+		for _, k := range render.ReferencedDataKeys(f.assembled) {
+			rs.keys[k] = true
+		}
+		rs.bare = rs.bare || render.ReferencesBareData(f.assembled)
+	}
+	var drift []manifest.Drift
+	check := func(kind, name, sidecarRel string) error {
+		sc, err := p.Cfg.Sidecar(kind, name)
+		if err != nil { // coverage-ignore: this sidecar was already read by RenderAll (or validation) in the same Check pass
+			return err
+		}
+		if len(sc.Data) == 0 {
+			return nil
+		}
+		rs := refs[kind+"\x00"+name]
+		if rs != nil && rs.bare {
+			return nil
+		}
+		var unused []string
+		for _, k := range slices.Sorted(maps.Keys(sc.Data)) {
+			if rs == nil || !rs.keys[k] {
+				unused = append(unused, k)
+			}
+		}
+		if len(unused) == 0 {
+			return nil
+		}
+		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + " — a key referenced only inside a dropped section counts as unused; remove the key or the drop"
+		if sc.Local {
+			detail = "local: true renders nothing, so no data key is consumed; remove the data block: " + strings.Join(unused, ", ")
+		}
+		drift = append(drift, manifest.Drift{Path: sidecarRel, Kind: "unused-data", Detail: detail})
+		return nil
+	}
+	for _, d := range kindDescriptors {
+		if d.Plural == "domains" {
+			continue
+		}
+		for _, name := range d.enable(p.Cfg) {
+			if err := check(d.Plural, name, config.DirName+"/"+d.Plural+"/"+name+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
+				return nil, err
+			}
+		}
+	}
+	for _, kind := range catalog.SingletonKinds() {
+		if err := check(kind, "", config.DirName+"/"+kind+".yaml"); err != nil { // coverage-ignore: see check's coverage-ignore
+			return nil, err
+		}
+	}
+	return drift, nil
+}
+
 // artifactLabel derives a human label from a template id: catalog kinds get
 // "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"), hook
 // payloads their script ("hooks pre-commit" — ADR-0048); the singletons read
@@ -397,6 +503,13 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
+
+	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds))...)
+	ud, err := p.unusedDataDrift(files)
+	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars RenderAll already read
+		return nil, err
+	}
+	drift = append(drift, ud...)
 
 	drift = append(drift, p.checkDeadRefs(files, amd, dds)...)
 	drift = append(drift, p.checkDeadSkillRefs(files, amd, dds, p.effSkills)...)

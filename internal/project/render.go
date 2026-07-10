@@ -53,6 +53,11 @@ type RenderedFile struct {
 	// (EditPath) whose raw bodies carry a whole-line section-marker residue.
 	// Consumed part-keyed and deduplicated by markerNotes.
 	markerParts []string
+	// kind/artifact identify the rendered artifact for the per-artifact
+	// unused-data check; partVarRefs carries the part-placeholder var
+	// consumption the assembled source cannot show (both ADR-0086).
+	kind, artifact string
+	partVarRefs    []string
 }
 
 // data assembles the template data namespace for a target: the prefix, the
@@ -175,6 +180,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// Scanned on the raw on-disk bytes, never the substituted body
 			// (ADR-0083 Decision 4), with fenced examples excluded.
 			sp.PartMarker = render.HasMarkerLine(refs.WithoutFences(string(b)))
+			sp.PartVarRefs = render.PlaceholderVarRefs(string(b))
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
@@ -440,11 +446,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
-	var markerParts []string
+	var markerParts, partVarRefs []string
 	for _, name := range slices.Sorted(maps.Keys(plan)) {
 		if plan[name].PartMarker {
 			markerParts = append(markerParts, plan[name].EditPath)
 		}
+		partVarRefs = append(partVarRefs, plan[name].PartVarRefs...)
 	}
 	content, err := render.Execute(assembled, data, parts, tid)
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
@@ -465,7 +472,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// invariant: include-in-templatehash
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		assembled: assembled, stubDefaults: stubDefaults, stubParts: stubParts,
-		markerParts: markerParts,
+		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 	}, nil
 }
 
@@ -505,7 +512,8 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		}
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
-			markerParts: rf.markerParts})
+			markerParts: rf.markerParts, assembled: rf.assembled,
+			partVarRefs: rf.partVarRefs})
 	}
 	return out, nil
 }

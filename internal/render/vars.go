@@ -48,9 +48,13 @@ func ReferencesInvariantMarkerPlaceholder(body string) bool {
 // ReferencedVars returns the sorted, de-duplicated list of variable names
 // referenced via {{ .vars.X }} patterns in src.
 func ReferencedVars(src string) []string {
-	matches := varsRE.FindAllStringSubmatch(src, -1)
+	return capturedNames(varsRE, src)
+}
+
+// capturedNames returns the sorted, de-duplicated first-group captures of re in src.
+func capturedNames(re *regexp.Regexp, src string) []string {
 	seen := map[string]bool{}
-	for _, m := range matches {
+	for _, m := range re.FindAllStringSubmatch(src, -1) {
 		seen[m[1]] = true
 	}
 	out := make([]string, 0, len(seen))
@@ -59,4 +63,40 @@ func ReferencedVars(src string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+var dataRE = regexp.MustCompile(`\.data\.([A-Za-z_][A-Za-z0-9_]*)`)
+
+// ReferencedDataKeys returns the sorted, de-duplicated list of top-level
+// sidecar data keys referenced via {{ .data.K }} patterns in src (ADR-0086).
+// Nested access (.data.a.b) claims its top-level key.
+func ReferencedDataKeys(src string) []string {
+	return capturedNames(dataRE, src)
+}
+
+var bareDataRE = regexp.MustCompile(`\.data(?:[^.A-Za-z0-9_]|$)`)
+
+// ReferencesBareData reports whether src reads .data without a key selector
+// (range/with/index or a whole-map reference). Key-level extraction cannot
+// see through such access, so it conservatively marks every data key
+// consumed (ADR-0086 Decision 4). No shipped template uses the form; this
+// is the future-proofing escape.
+func ReferencesBareData(src string) bool { return bareDataRE.MatchString(src) }
+
+var bareVarsRE = regexp.MustCompile(`\.vars(?:[^.A-Za-z0-9_]|$)`)
+
+// ReferencesBareVars mirrors ReferencesBareData for the vars namespace
+// (ADR-0086 Decision 3).
+func ReferencesBareVars(src string) bool { return bareVarsRE.MatchString(src) }
+
+var varPlaceholderRefRE = regexp.MustCompile(`\{\{=awf:(gateCmd|checkCmd)\}\}`)
+
+// PlaceholderVarRefs returns the config vars a raw convention-part body
+// consumes through {{=awf:key}} placeholders — gateCmd and checkCmd are the
+// only registry keys that read vars (see project.placeholderRegistry).
+// Scanned on the on-disk bytes: substitution has already replaced the
+// tokens in the assembled output, so this is the one consumption channel
+// the assembled-source scan cannot see (ADR-0086 Decision 3).
+func PlaceholderVarRefs(body string) []string {
+	return capturedNames(varPlaceholderRefRE, body)
 }

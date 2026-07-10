@@ -7,6 +7,53 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
+func TestReferencedDataKeys(t *testing.T) {
+	src := "{{ .data.a }} {{ with .data.b }}{{ .data.a.c }}{{ end }}"
+	got := render.ReferencedDataKeys(src)
+	want := []string{"a", "b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestReferencesBareData(t *testing.T) {
+	for src, want := range map[string]bool{
+		"{{ range .data }}{{ . }}{{ end }}": true,
+		"{{ index .data \"k\" }}":           true,
+		"{{ .data }}":                       true,
+		"{{ .data.a }}":                     false,
+		"{{ .database }}":                   false,
+	} {
+		if got := render.ReferencesBareData(src); got != want {
+			t.Errorf("ReferencesBareData(%q) = %v, want %v", src, got, want)
+		}
+	}
+}
+
+func TestReferencesBareVars(t *testing.T) {
+	for src, want := range map[string]bool{
+		"{{ range .vars }}{{ . }}{{ end }}": true,
+		"{{ .vars.gateCmd }}":               false,
+		"{{ .variant }}":                    false,
+	} {
+		if got := render.ReferencesBareVars(src); got != want {
+			t.Errorf("ReferencesBareVars(%q) = %v, want %v", src, got, want)
+		}
+	}
+}
+
+func TestPlaceholderVarRefs(t *testing.T) {
+	body := "run {{=awf:gateCmd}} then {{=awf:checkCmd}} and {{=awf:gateCmd}}"
+	got := render.PlaceholderVarRefs(body)
+	want := []string{"checkCmd", "gateCmd"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got := render.PlaceholderVarRefs("uses {{=awf:prefix}} only"); len(got) != 0 {
+		t.Fatalf("non-var placeholders must not count, got %v", got)
+	}
+}
+
 func TestReferencedVars(t *testing.T) {
 	src := "{{ .vars.gateCmd }} {{ if .vars.adrDir }} {{ .vars.gateCmd }}"
 	got := render.ReferencedVars(src)
