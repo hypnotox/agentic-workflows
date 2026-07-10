@@ -105,6 +105,10 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
   because `go:embed` cannot embed a file outside its own package directory.
 - **`internal/changelog/`** — parses the embedded changelog into filterable entries; powers `awf
   changelog`.
+- **`examples/sundial/`** — the committed example adopter (ADR-0090): a fictional Go
+  module (own `go.mod`, invisible to the repo's `./...` sweeps) whose full rendered
+  surface is the rendered-output quality oracle — re-rendered by `./x sync`, gated
+  by `./x check`. Not part of the rendered standard.
 
 
 <!-- awf:edit data-flow — from .awf/docs/parts/architecture/data-flow.md -->

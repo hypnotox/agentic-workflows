@@ -10,7 +10,7 @@ dogfooded render always matches the tree, never a stale installed binary.
 | `./x test [args]` | `go test ./...`, passing extra args through. |
 | `./x lint` / `./x fmt` | `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | The dead-code check on its own (ADR-0063). |
-| `./x sync` / `./x check` / `./x invariants` / `./x audit` / `./x commit-gate` / `./x new` | The matching `awf` subcommand, run from source. |
+| `./x sync` / `./x check` / `./x invariants` / `./x audit` / `./x commit-gate` / `./x new` | The matching `awf` subcommand, run from source. `sync` additionally re-renders the example adopter `examples/sundial` with a source-built binary; `check` additionally gates it — drift, invariants, zero advisory notes, and its module's `go test ./...` (ADR-0090). |
 | `./x mutants [pkg]` | Advisory mutation triage (ADR-0066): the production diff vs `main` by default, or one package with a path argument. Never part of the gate. |
 | `./x audit-local [range]` | Repo-local conformance audit (ADR-0073) via `cmd/repoaudit`: over `<base>..<head>` (default `origin/main..HEAD`), judged from the range's merge base — a moved base neither blames upstream files nor masks a missing entry — it flags an adopter-facing change with no CHANGELOG `[Unreleased]` entry (Error) and each added-or-touched `coverage-ignore` directive in a production Go file (Warning: re-evaluate the reachability claim). Repo-specific, not rules in the shipped `awf audit`; never gated. |
 | `./x build` / `./x install` | `go build -o awf ./cmd/awf` / `go install ./cmd/awf`. |

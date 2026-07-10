@@ -38,9 +38,31 @@ case "$cmd" in
   sync)
     # Run awf from source so the dogfooded render always matches the tree.
     go run ./cmd/awf sync "$@"
+    # ADR-0090: re-render the example adopter with the same source. The example
+    # is its own Go module, so build once and run with the example as cwd.
+    bindir="$(mktemp -d)"
+    trap 'rm -rf "$bindir"' EXIT
+    go build -o "$bindir/awf" ./cmd/awf
+    (cd examples/sundial && "$bindir/awf" sync)
     ;;
   check)
     go run ./cmd/awf check "$@"
+    # ADR-0090: the example adopter must be drift-free, invariant-clean, free of
+    # advisory notes (the model adopter has zero smells), and its scenery green.
+    bindir="$(mktemp -d)"
+    trap 'rm -rf "$bindir"' EXIT
+    go build -o "$bindir/awf" ./cmd/awf
+    if ! out="$(cd examples/sundial && "$bindir/awf" check)"; then
+      printf '%s\n' "$out"
+      exit 1
+    fi
+    printf '%s\n' "$out"
+    if printf '%s\n' "$out" | grep -q '^note: '; then
+      echo "check: the example adopter has advisory notes — author the missing content or clear the smell (ADR-0090)" >&2
+      exit 1
+    fi
+    (cd examples/sundial && "$bindir/awf" invariants)
+    (cd examples/sundial && go test ./...)
     ;;
   invariants)
     go run ./cmd/awf invariants "$@"

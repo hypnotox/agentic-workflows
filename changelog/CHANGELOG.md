@@ -45,6 +45,9 @@ query a single version or a range.
   and empty all degrade to the same generic prose as before.
 
 ### Others
+- The repository now carries a committed example adopter (`examples/sundial/`) —
+  a full-surface worked example of an awf adoption, browsable in the repo and
+  kept render-synced from awf's source by the repo's own checks (its ADR-0090).
 - Dependency refresh: `golang.org/x/crypto` v0.51.0 → v0.53.0 (clears 13
   published SSH-package advisories — none reachable from awf, which only
   reads local git history), plus `x/mod` and `x/tools` to their

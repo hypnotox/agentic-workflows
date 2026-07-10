@@ -109,3 +109,9 @@ data:
           text: '**Deleting a var key acknowledges its note.** The unset-var advisory fires only for a `vars:` key present with an empty or null value; an absent key is the deliberate, git-auditable decline and never notes. A release adding a catalog var ships a one-time schema-migration seed, and `awf new` seeds its scaffold''s referenced vars, so absence stays a deletion signal. Rendering is unchanged — absent, null, and empty degrade identically.'
         - ref: ADR-0088
           text: '**Adopter config reference.** `internal/configspec` is the single adopter-facing description authority — every config key and sidecar field (reflection-parity-enforced), every template-referenced per-artifact data key (injected keys exempt), var entries derived verbatim from the catalog descriptors with configspec-owned availability clauses, descriptions residue-free (no ADR citations, no repo identity). `docs/config-reference.md` is an always-on generated index projecting it with live state — regeneration-checked, tables not part-overridable, its sidecar sections/local-only (`data:` refuses at open). `awf config [<key-or-var>]` serves the same model from the CLI, static outside an adopted tree.'
+        - ref: ADR-0090
+          text: '**Example adopter checked.** `./x sync` re-renders the committed example adopter `examples/sundial` with a source-built awf, and `./x check` fails on its drift or invariant findings.'
+        - ref: ADR-0090
+          text: '**Example zero-notes.** The example check step fails on any `note: ` line in the example''s `awf check` output — the model adopter has no smells.'
+        - ref: ADR-0090
+          text: '**Example module isolated.** `examples/sundial` is its own Go module; no enclosing `./...` sweep (test, coverage, vet, lint, deadcode) includes it.'
