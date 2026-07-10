@@ -54,6 +54,13 @@
 - **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
   frontmatter, and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
   `awf sync` (`./x sync`) and `awf new adr`.
+- **`internal/configspec/`** — the compile-time, adopter-facing description authority (ADR-0088):
+  every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
+  availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
+  reflection/template parity and description-residue rules are test-enforced. Projected into the
+  generated `docs/config-reference.md` (rendered by `internal/project` outside `RenderAll`,
+  regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
+  fallback).
 - **`templates/`** — embedded skill, agent, doc, and agent-guide template bodies the catalog names
   (the catalog itself is the compile-time `catalog.Standard` value in `internal/catalog`).
 - **`changelog/`** — embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
