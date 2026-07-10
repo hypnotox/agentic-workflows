@@ -63,6 +63,26 @@ func (p *Project) validateAgainstCatalog() error {
 			}
 		}
 	}
+	// The config reference's data namespace is injected at generation
+	// (ADR-0088): authored data: would be silently overwritten while its key
+	// names look consumed, so it is rejected like the domain paths-only rule.
+	// The Generated entry left plainSingletons, so its sidecar checks live here.
+	// invariant: config-reference-data-rejected
+	cr, err := p.Cfg.Sidecar("config-reference", "")
+	if err != nil {
+		return err
+	}
+	if len(cr.Data) > 0 {
+		return errors.New("config-reference: the reference tables are generated — data: has no effect; remove it from .awf/config-reference.yaml (sections:/local: remain available)")
+	}
+	if len(cr.Paths) > 0 {
+		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")
+	}
+	if !cr.Local {
+		if err := checkSectionsAllowed("config-reference", "", p.Cat.Docs["config-reference"].Sections, cr.Sections); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

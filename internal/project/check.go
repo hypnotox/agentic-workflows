@@ -32,6 +32,13 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 		return nil, err
 	}
 	all := slices.Concat(files, dds)
+	// The generated config reference joins the stub/marker scan: its intro
+	// part is authored like any other and can carry residue (ADR-0088).
+	if cref, ok, err := p.generateConfigReference(all); err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+		return nil, err
+	} else if ok {
+		all = append(all, *cref)
+	}
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
 	return append(notes, markerNotes(all)...), nil
 }
@@ -373,9 +380,10 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	lay := p.layout()
 	activeMdRel := lay.ActiveMd
 	domainsPrefix := lay.DomainsDir + "/"
+	crefRel := p.crefRel()
 
 	var drift []manifest.Drift
-	drift = append(drift, p.checkLockedFiles(lock, rendered, activeMdRel, domainsPrefix)...)
+	drift = append(drift, p.checkLockedFiles(lock, rendered, activeMdRel, domainsPrefix, crefRel)...)
 	// Local skills/agents are not rendered, so their hand-authored frontmatter is
 	// validated directly on disk.
 	if err := p.checkLocalFrontmatter(func(path string, e error) {
@@ -402,16 +410,42 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
 
-	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds))...)
+	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
+	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+		return nil, err
+	}
+	drift = append(drift, p.checkConfigReference(lock, crefRel, cref)...)
+	var crefFiles []RenderedFile
+	if ok {
+		crefFiles = []RenderedFile{*cref}
+	}
+
+	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds, crefFiles))...)
 	ud, err := p.unusedDataDrift(files)
 	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars RenderAll already read
 		return nil, err
 	}
 	drift = append(drift, ud...)
 
-	drift = append(drift, p.checkDeadRefs(files, amd, dds)...)
-	drift = append(drift, p.checkDeadSkillRefs(files, amd, dds, p.effSkills)...)
+	drift = append(drift, p.checkDeadRefs(slices.Concat(files, crefFiles), amd, dds)...)
+	drift = append(drift, p.checkDeadSkillRefs(slices.Concat(files, crefFiles), amd, dds, p.effSkills)...)
 	return drift, nil
+}
+
+// checkConfigReference regeneration-checks the generated config reference:
+// like ACTIVE.md and the domain docs, its content depends on config state the
+// lock hashes cannot see. A local: sidecar produces nothing, so a leftover
+// lock entry reports orphaned.
+// invariant: config-reference-regen-drift
+func (p *Project) checkConfigReference(lock *manifest.Lock, crefRel string, cref *RenderedFile) []manifest.Drift {
+	if cref == nil {
+		if _, ok := lock.Files[crefRel]; ok {
+			return []manifest.Drift{{Path: crefRel, Kind: "orphaned", Detail: "config reference is local:; run awf sync"}}
+		}
+		return nil
+	}
+	return p.regenDrift(crefRel, cref.Content,
+		"config reference absent; run awf sync", "config reference out of date; run awf sync")
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
@@ -420,7 +454,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 // The reverse direction is checked too: a rendered path with no lock entry — an
 // artifact enabled since the last sync — is flagged unsynced rather than
 // silently skipped.
-func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, activeMdRel, domainsPrefix string) []manifest.Drift {
+func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, activeMdRel, domainsPrefix, crefRel string) []manifest.Drift {
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
 		if _, ok := lock.Files[path]; !ok {
@@ -428,7 +462,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
-		if path == activeMdRel || strings.HasPrefix(path, domainsPrefix) {
+		if path == activeMdRel || path == crefRel || strings.HasPrefix(path, domainsPrefix) {
 			continue // generated artifacts — checked separately
 		}
 		e := lock.Files[path]

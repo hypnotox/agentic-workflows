@@ -26,7 +26,7 @@ func buildPlainSingletons() []singletonSpec {
 	var out []singletonSpec
 	for _, k := range catalog.SingletonKinds() {
 		e := catalog.Standard.Docs[k]
-		if e.AgentsDoc {
+		if e.AgentsDoc || e.Generated {
 			continue
 		}
 		out = append(out, singletonSpec{

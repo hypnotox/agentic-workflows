@@ -40,6 +40,7 @@ func testLayout() map[string]any {
 		"docStandard":      "docs/doc-standard.md",
 		"agentsMdStandard": "docs/agents-md-standard.md",
 		"workingWithAwf":   "docs/working-with-awf.md",
+		"configReference":  "docs/config-reference.md",
 		"domainsDir":       "docs/domains",
 	}
 }
@@ -732,10 +733,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 7 mandatory-singleton keys = 13, byte-for-byte the
-	// historical key set (agents-doc has no TemplateKey and is excluded).
-	if len(tm) != 13 {
-		t.Errorf("templateMap has %d keys, want 13", len(tm))
+	// 5 fixed dir keys + docs + 8 mandatory-singleton keys = 14 (agents-doc has
+	// no TemplateKey and is excluded; the generated config reference is
+	// layout-exposed like its hash-checked siblings).
+	if len(tm) != 14 {
+		t.Errorf("templateMap has %d keys, want 14", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -1049,8 +1051,8 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			t.Errorf("Document map should unconditionally cite %q (%s; docs: array is empty):\n%s", line, name, got)
 		}
 	}
-	if mapped != 4 {
-		t.Errorf("expected 4 DocumentMap entries, iterated %d", mapped)
+	if mapped != 5 {
+		t.Errorf("expected 5 DocumentMap entries, iterated %d", mapped)
 	}
 }
 

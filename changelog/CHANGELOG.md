@@ -9,6 +9,13 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Features
+- `docs/config-reference.md`: a generated, always-on configuration reference
+  (ADR-0088) — every config key, var, sidecar field, and per-artifact data key
+  with full descriptions, defaults, availability, and the project's live state
+  (which vars are set/empty/absent, what consumes them, what enabling would
+  activate). Regeneration-checked like the domain docs; the intro section is
+  overridable, the generated tables are not, and `data:` on its sidecar
+  refuses at open.
 - Deleting a `vars:` key now acknowledges its unset-var note (ADR-0087): the
   advisory fires only for a key that is present with an empty (or null) value —
   the seeded open-to-do state — and an absent key is read as "considered and

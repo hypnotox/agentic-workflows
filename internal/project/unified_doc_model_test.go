@@ -25,7 +25,8 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 		t.Errorf("SingletonKinds()=%v, want Mandatory entries %v", sk, wantSK)
 	}
 
-	// (b) plainSingletons == exactly Mandatory && !AgentsDoc, and no other kind.
+	// (b) plainSingletons == exactly Mandatory && !AgentsDoc && !Generated, and
+	// no other kind (the generated config reference renders outside RenderAll).
 	var got []string
 	for _, s := range plainSingletons {
 		got = append(got, s.kind)
@@ -33,7 +34,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 	slices.Sort(got)
 	var wantPS []string
 	for k, e := range catalog.Standard.Docs {
-		if e.Mandatory && !e.AgentsDoc {
+		if e.Mandatory && !e.AgentsDoc && !e.Generated {
 			wantPS = append(wantPS, k)
 		}
 	}

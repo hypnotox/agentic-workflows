@@ -31,7 +31,10 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 ## Config and overrides
 
 Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable arrays, targets,
-audit, invariants), per-artifact sidecar YAMLs, and convention parts. To change one section of a
+audit, invariants), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
+field, and per-artifact data key is described in the generated
+[configuration reference](config-reference.md), including this project's live state — which
+vars are set, what consumes them, and what enabling would activate. To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
 doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
 `.awf/parts/<kind>/<section>.md`). A part **replaces that section's body** and inherits the rest of

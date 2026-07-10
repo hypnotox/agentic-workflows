@@ -131,12 +131,20 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	rfs := files // the RenderAll set — the consumption input for the config reference
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
 	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
 		return nil, nil, nil, err
 	}
 	files = append(files, dds...)
+	cref, ok, err := p.generateConfigReference(slices.Concat(rfs, dds))
+	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+		return nil, nil, nil, err
+	}
+	if ok {
+		files = append(files, *cref)
+	}
 
 	// Prior lock, read before any write (top of this func): membership decides
 	// foreign (back up) vs awf-managed (overwrite silently), and drives pruning.
@@ -260,11 +268,12 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	return backups, changes, pruned, lock.Save(p.lockPath())
 }
 
-// isGeneratedIndex reports whether rel is the generated ADR index or a per-domain
-// index — the awf-owned generated docs whose first-time takeover warrants a note.
+// isGeneratedIndex reports whether rel is the generated ADR index, a per-domain
+// index, or the generated config reference — the awf-owned generated docs whose
+// first-time takeover warrants a note.
 func (p *Project) isGeneratedIndex(rel string) bool {
 	lay := p.layout()
-	return rel == lay.ActiveMd || strings.HasPrefix(rel, lay.DomainsDir+"/")
+	return rel == lay.ActiveMd || strings.HasPrefix(rel, lay.DomainsDir+"/") || rel == p.crefRel()
 }
 
 func (p *Project) lockPath() string {

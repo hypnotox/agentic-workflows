@@ -128,6 +128,7 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **Active ADRs:** [docs/decisions/ACTIVE.md](docs/decisions/ACTIVE.md) — generated status index; do not hand-edit.
 - **Plans:** [docs/plans](docs/plans) — implementation plans for complex work.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md) — layout, content, and rules for the agent guide
+- **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md) — every .awf config key, var, sidecar field, and data key — descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md) — how-to-write rules for all awf-managed prose
 - **Workflow:** [docs/workflow.md](docs/workflow.md) — principles, the brainstorm/ADR/plan chain, commit discipline
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md) — day-to-day usage: commands, overrides, placeholders, and the sync/check loop

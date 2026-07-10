@@ -210,6 +210,10 @@ type renderKindSpec struct {
 	outPath  func(t Target, name string) string
 	// defaults returns the artifact's catalog default data (nil = none).
 	defaults func(name string) map[string]any
+	// transform computes sidecar data into rendered content after the defaults
+	// merge, upstream of BOTH renderTarget and artifactConfigHash so the
+	// computation participates in the drift signal (ADR-0089; nil = none).
+	transform func(name string, sc config.Sidecar) (config.Sidecar, error)
 }
 
 // skillTID resolves a skill's template id: the shared base template for a
@@ -243,6 +247,11 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		if spec.defaults != nil {
 			sc = withDefaultData(sc, spec.defaults(name))
 		}
+		if spec.transform != nil {
+			if sc, err = spec.transform(name, sc); err != nil {
+				return nil, err
+			}
+		}
 		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(spec.target, name))
 		if err != nil {
 			return nil, err
@@ -262,9 +271,10 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
-		tid:      mustDescriptor("docs").tid,
-		sections: func(n string) []string { return p.Cat.Docs[n].Sections },
-		outPath:  func(_ Target, n string) string { return p.docOutPath(n) },
+		tid:       mustDescriptor("docs").tid,
+		sections:  func(n string) []string { return p.Cat.Docs[n].Sections },
+		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
+		transform: docDataTransform,
 	})
 	if err != nil {
 		return nil, err
@@ -395,8 +405,8 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 }
 
 // PlannedOutputs returns the project-relative paths Sync would write: every
-// RenderAll output plus the generated ACTIVE.md and domain docs. Used by
-// awf init to detect collisions before writing (ADR-0016).
+// RenderAll output plus the generated ACTIVE.md, domain docs, and config
+// reference. Used by awf init to detect collisions before writing (ADR-0016).
 func (p *Project) PlannedOutputs() ([]string, error) {
 	files, err := p.RenderAll()
 	if err != nil {
@@ -417,6 +427,13 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 	}
 	for _, dd := range dds {
 		paths = append(paths, dd.Path)
+	}
+	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
+	if err != nil { // coverage-ignore: renderTarget over the embedded reference template cannot fail after RenderAll succeeded
+		return nil, err
+	}
+	if ok {
+		paths = append(paths, cref.Path)
 	}
 	return paths, nil
 }

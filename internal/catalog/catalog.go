@@ -67,6 +67,10 @@ type DocEntry struct {
 	TID         string
 	DocumentMap bool
 	AgentsDoc   bool
+	// Generated marks a Mandatory doc rendered outside RenderAll from computed
+	// project state (the config reference): excluded from plainSingletons and
+	// hash checking, regeneration-checked like ACTIVE.md and the domain docs.
+	Generated bool
 }
 
 // SingletonKinds returns every always-on singleton kind (the Mandatory doc
