@@ -506,7 +506,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       and stage the newly rendered `docs/config-reference.md`, the refreshed
       `AGENTS.md`/`.awf/awf.lock`/`docs/working-with-awf.md`/domain docs, and any doc
       the document-map line changed.
-- [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]` / `### Added`:
+- [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]` / `### Features`:
 
       ```markdown
       - `docs/config-reference.md`: a generated, always-on configuration reference —
@@ -603,7 +603,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         co-change.
       - Run `go run ./cmd/awf sync`; stage AGENTS.md + lock + the refreshed
         working-with-awf, config reference, and tooling domain doc.
-- [ ] Add to `changelog/CHANGELOG.md` under `### Added`:
+- [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]` / `### Features`:
 
       ```markdown
       - `awf config [<key-or-var>]`: print the configuration reference from the CLI —
@@ -647,7 +647,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       Implemented`; run `./x sync` to regenerate ACTIVE.md; confirm
       `go run ./cmd/awf invariants` reports no unbacked slug (all eight ADR-0088 slugs
       must have their backing comments from P1/P2).
-- [ ] Add to `changelog/CHANGELOG.md` under `### Changed` (docs-travel bullet only if
+- [ ] Add to `changelog/CHANGELOG.md` under `### Others` (docs-travel bullet only if
       the working-with-awf/AGENTS.md wording changes warrant one; otherwise skip).
 - [ ] Run `./x gate` — green. Commit:
       `docs(adr): flip 0088 to Implemented — config reference shipped`
