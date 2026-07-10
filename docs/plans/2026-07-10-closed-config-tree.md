@@ -827,6 +827,13 @@ fixture were verified clean during design.
 - [ ] Update every `Resolve` call site (compiler-guided): `cmd/awf/init.go` passes
       `project.NeededVars`; every test call site in `internal/initspec` passes `nil`
       (existing behavior: prompt for everything).
+- [ ] Fix the one caller the compiler cannot surface: `TestInitInteractivePromptWiring`
+      (`cmd/awf/init_test.go`) scripts stdin as `"make gate\n"` assuming `gateCmd` is
+      the first prompt — with multiselects now prompting first, the skills multiselect
+      would consume `make gate` and error on the non-numeric token. Change the stdin to
+      `"\n\nmake gate\n"` (two empty lines keep both multiselects' core defaults, then
+      `gateCmd` reads `make gate`) and update the comment calling `gateCmd` "the first
+      descriptor" to note multiselects prompt first.
 - [ ] Tests:
       - `internal/initspec`: a new test drives `Resolve` interactively (bytes.Buffer
         in/out) with descs `[{Key: "a", Kind: "string"}, {Key: "b", Kind: "string"}]`
