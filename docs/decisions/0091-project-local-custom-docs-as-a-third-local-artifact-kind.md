@@ -212,12 +212,14 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   generic. Accepted, not fixed.
 - **No schema migration.** Toggleable docs are opt-in (`awf add doc`), so shipping
   `releasing` needs no seed; adopters gain it by enabling it.
-- **Doc-currency obligations land in the implementing/status-flip commit.** Like
-  ADR-0086, the commit that flips this ADR to `Implemented` must, in the same
-  commit: add the seven new `inv:` slugs to the agent guide's Invariants section
-  (via the `.awf/agents-doc.yaml` invariants data and `./x sync`), regenerate
-  `docs/decisions/ACTIVE.md` via `./x sync`, and add the ADR-0091 index row to
-  `docs/decisions/README.md`.
+- **Doc-currency obligations land in the implementing/status-flip commit.** The
+  commit that flips this ADR to `Implemented` must, in the same commit: add the
+  seven new `inv:` slugs to the agent guide's Invariants section (via the
+  `.awf/agents-doc.yaml` invariants data and `./x sync`), add `awf new doc` to the
+  usage docs the agent guide and `working-with-awf` list alongside `awf new
+  skill|agent`, and regenerate `docs/decisions/ACTIVE.md` via `./x sync` (the
+  generated per-ADR index — `docs/decisions/README.md` is the static explainer and
+  carries no per-ADR row).
 
 ## Alternatives Considered
 
