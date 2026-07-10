@@ -49,7 +49,7 @@ func TestCheckFlagsUnusedVar(t *testing.T) {
 func TestCheckIgnoresEmptyVar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: \"\"\nskills:\n  - tdd\nagents: []\n", nil)
 	if hits := driftOfKind(checkDrift(t, root), "unused-var"); len(hits) != 0 {
-		t.Fatalf("an empty var mirrors the ADR-0045 unset definition and must not flag, got %#v", hits)
+		t.Fatalf("an empty var is the seeded open-to-do state (ADR-0022; unset-var-note territory per ADR-0087) and must not flag, got %#v", hits)
 	}
 }
 

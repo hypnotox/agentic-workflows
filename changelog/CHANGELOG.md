@@ -8,6 +8,18 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- Deleting a `vars:` key now acknowledges its unset-var note (ADR-0087): the
+  advisory fires only for a key that is present with an empty (or null) value —
+  the seeded open-to-do state — and an absent key is read as "considered and
+  declined", permanently silencing the note for that var. The note text names
+  both exits ("set a value, or delete the key to accept the generic prose").
+  Deleting a key changes the referenced-var config hash, so expect a one-time
+  stale flag until the next `awf sync`; and a var consumed by a part's
+  `{{=awf:gateCmd}}`-style placeholder still hard-errors when deleted (the
+  placeholder contract is unchanged). Rendering is untouched: absent, null,
+  and empty all degrade to the same generic prose as before.
+
 ### Others
 - Dependency refresh: `golang.org/x/crypto` v0.51.0 → v0.53.0 (clears 13
   published SSH-package advisories — none reachable from awf, which only

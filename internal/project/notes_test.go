@@ -8,15 +8,23 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// Missing vars and empty-string vars are equivalent for the completeness
-// advisory: both count as unset (ADR-0045 item 4).
-func TestUnsetVarNotesEmptyAndMissingEquivalent(t *testing.T) {
-	for name, yaml := range map[string]string{
-		"missing": "prefix: example\nvars: {testCmd: go test ./...}\nskills: [tdd]\nagents: []\n",
-		"empty":   "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n",
+// The completeness advisory keys on key presence, not value emptiness
+// (ADR-0045 item 4 narrowed by ADR-0087): a present-but-empty or explicit-null
+// key is an open to-do and notes; an absent key is the deliberate, deleted
+// acknowledgement and stays silent — the standing-note regression this exists
+// for.
+// invariant: absent-var-acknowledged
+func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
+	for name, tc := range map[string]struct {
+		yaml     string
+		wantNote bool
+	}{
+		"present-empty": {"prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n", true},
+		"present-null":  {"prefix: example\nvars: {testCmd: go test ./..., gateCmd: null}\nskills: [tdd]\nagents: []\n", true},
+		"absent":        {"prefix: example\nvars: {testCmd: go test ./...}\nskills: [tdd]\nagents: []\n", false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p, err := Open(scaffold(t, yaml))
+			p, err := Open(scaffold(t, tc.yaml))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -25,8 +33,11 @@ func TestUnsetVarNotesEmptyAndMissingEquivalent(t *testing.T) {
 				t.Fatal(err)
 			}
 			joined := strings.Join(notes, "\n")
-			if !strings.Contains(joined, "skill tdd references unset vars: gateCmd") {
-				t.Errorf("expected a gateCmd note, got: %q", joined)
+			if got := strings.Contains(joined, "skill tdd references unset vars: gateCmd"); got != tc.wantNote {
+				t.Errorf("gateCmd note presence = %v, want %v; notes: %q", got, tc.wantNote, joined)
+			}
+			if tc.wantNote && !strings.Contains(joined, "delete the key to accept the generic prose") {
+				t.Errorf("note must advertise the deletion exit, got: %q", joined)
 			}
 			if strings.Contains(joined, "testCmd") {
 				t.Errorf("testCmd is set and must not be reported: %q", joined)
@@ -38,7 +49,7 @@ func TestUnsetVarNotesEmptyAndMissingEquivalent(t *testing.T) {
 // Adapter duplicates collapse: with two targets the same skill renders twice
 // under one template id and must produce a single note.
 func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
+	p, err := Open(scaffold(t, "prefix: example\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +73,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 // note itself, not the template id, or the second local artifact is silently
 // skipped.
 func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n"))
+	p, err := Open(scaffold(t, "prefix: example\nvars: {alpha: \"\", beta: \"\", gamma: \"\"}\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

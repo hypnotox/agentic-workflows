@@ -37,9 +37,11 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 }
 
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
-// references that are unset (missing or empty) in config — the non-failing
-// render-completeness advisory (ADR-0045 item 4). One line per artifact with at
-// least one hit, sorted. Duplicates collapse by the note itself: adapter
+// references whose key is present in config with an empty or null value — the
+// non-failing render-completeness advisory (ADR-0045 item 4, narrowed by
+// ADR-0087: an absent key is the deliberate, git-auditable decline and produces
+// no note; deleting the key is the acknowledgement). One line per artifact with
+// at least one hit, sorted. Duplicates collapse by the note itself: adapter
 // duplicates produce identical notes, while base-shared artifacts (project-local
 // skills all render from one base template id) each report their own vars under
 // a path-derived label (see localLabel).
@@ -49,7 +51,8 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	for _, f := range files {
 		var unset []string
 		for _, r := range render.ReferencedVars(f.assembled) {
-			if v := p.Cfg.Vars[r]; v == nil || v == "" {
+			// invariant: absent-var-acknowledged
+			if v, ok := p.Cfg.Vars[r]; ok && (v == nil || v == "") {
 				unset = append(unset, r)
 			}
 		}
@@ -60,7 +63,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
 			label = localLabel(f.TemplateID, f.Path)
 		}
-		note := fmt.Sprintf("%s references unset vars: %s",
+		note := fmt.Sprintf("%s references unset vars: %s — set a value, or delete the key to accept the generic prose",
 			label, strings.Join(unset, ", "))
 		if seen[note] {
 			continue
@@ -123,9 +126,10 @@ func markerNotes(files []RenderedFile) []string {
 // artifact — neither a .vars.X reference in any assembled source (RenderAll
 // output and the generated domain docs, passed concatenated) nor a
 // gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
-// exempt: they mirror the ADR-0045 unset definition, keeping the ADR-0022
-// seed-all-vars scaffold legal. A bare .vars reference conservatively
-// consumes every key.
+// exempt: they are the ADR-0022 seeded open-to-do state, which the unset-var
+// note owns nudging (ADR-0087 — presence, not emptiness, is that note's
+// trigger; this exemption keeps the seed-all-vars scaffold legal). A bare
+// .vars reference conservatively consumes every key.
 // invariant: unused-var-drift
 func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 	used := map[string]bool{}
