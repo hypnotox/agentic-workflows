@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, advisory, config, adoption]
-related: [22, 26, 29, 45, 49, 84, 86]
+related: [22, 26, 29, 34, 45, 49, 57, 84, 86]
 domains: [rendering, config]
 ---
 # ADR-0087: Deletion-as-acknowledgement for unset-var notes
@@ -43,8 +43,9 @@ Grounding discoveries that shape the design:
   [ADR-0029](0029-interactive-agent-prefillable-init.md)), so on a scaffolded tree a
   catalog var can never be absent-at-init — absence is always a post-init edit. The
   premise "absence means someone deleted it" fails only for vars introduced *after* the
-  adopter's init: a future release adding a catalog var, or a local artifact referencing
-  a custom var.
+  adopter's init: a future release adding a catalog var, or a future local-artifact base
+  template gaining a var reference (parts are raw and cannot reference vars, ADR-0034 —
+  the base templates are the local artifacts' only var channel, varless today).
 - Referenced vars fold into the artifact config hash (`internal/project/confighash.go:38`);
   an absent key marshals `null`, an empty one `""` — different hashes, mechanically
   verified. Deleting a key therefore flags every referencing artifact as failing stale
@@ -97,10 +98,17 @@ Grounding discoveries that shape the design:
    history, so creation-time seeding is inherently one-time. With today's varless base
    templates this is a no-op; it makes future scaffolds correct by construction.
 
-5. **Local parts are the author's territory.** A var referenced by a hand-authored part
-   *after* `awf new` is never seeded; if its author wants the note as a reminder they add
-   the empty key themselves. `docs/working-with-awf.md` documents this and the
-   deletion-as-acknowledgement exit.
+5. **Parts have no var channel, so Decision 4 closes the local surface.** Convention
+   parts are raw input ([ADR-0034](0034-convention-parts-raw-not-templated.md)): a part
+   body is never variable-interpolated and is sentinel-substituted out of the assembled
+   source the advisory scans, so a part cannot create an unset-var note. The only
+   part-side var mechanism is the closed `{{=awf:gateCmd}}`/`{{=awf:checkCmd}}`
+   placeholder sandbox ([ADR-0057](0057-template-scoped-render-placeholders.md)), which
+   hard-errors when its var is unset rather than noting. Creation-time seeding
+   (Decision 4) therefore covers everything a local artifact can reference.
+   `docs/working-with-awf.md` documents the deletion-as-acknowledgement exit and the
+   placeholder deletion hazard. The implementing change flips this ADR's status and
+   regenerates `docs/decisions/ACTIVE.md` via `./x sync` in its final commit.
 
 ## Invariants
 
@@ -111,7 +119,10 @@ Grounding discoveries that shape the design:
 - Notes remain non-failing (`inv: completeness-advisory-nonfailing`, ADR-0045 — unchanged
   and still backed).
 - Textual: a release introducing a new catalog var descriptor ships a one-time seed step
-  for that key in a schema migration.
+  for that key in a schema migration. Anchored where every var introduction must tread:
+  the `inv: var-descriptor-set-pinned` test (ADR-0084) carries a comment citing this
+  obligation, so extending the pinned set surfaces it; the AGENTS.md invariants entry for
+  the new note semantics travels with the implementation per the standing pattern.
 
 ## Consequences
 
@@ -146,8 +157,10 @@ Harder / accepted trade-offs:
   the "present = open to-do" reading is kept uniform rather than special-cased.
 - Same-change updates owed: the `unusedVarDrift` comment and test rationale that cite
   "mirrors the ADR-0045 unset definition"; the rendering-domain current-state part that
-  narrates the note; three `notes_test.go` fixtures that rely on absent keys to trigger
-  notes.
+  narrates the note; the config-domain current-state part, which states "empty seeds
+  stay legal per the ADR-0045 unset definition" and describes `awf new` scaffolding
+  (Decisions 1 and 4 both touch it); three `notes_test.go` fixtures that rely on absent
+  keys to trigger notes.
 
 ## Alternatives Considered
 
@@ -159,3 +172,5 @@ Harder / accepted trade-offs:
 | Lock-recorded referenced-var union as that memory | Machinery solving a problem only the generic scan creates; per-release seed steps get run-once semantics free from the generation gate. |
 | One-time seed of the existing eight vars at this release | Re-materializes the exact keys adopters like fleet want gone; contradicts the goal. |
 | Suppression severity model on notes | ADR-0045 already rejected a severity model for one consumer; notes remain uniformly informational. |
+| Present-null-means-acknowledged (data-namespace symmetry) | Unrepresentable by awf's own tooling (`Skeleton.Vars` is `map[string]string`, ADR-0026 Decision 3), contradicts the recorded user direction, and breaks the uniform "present = open to-do" reading. |
+| No seed for future catalog vars (changelog-only announcement) | Silences the advisory for exactly the var nobody has considered yet, gutting the discovery premise; the migration cost is rare and already ADR-gated. |

@@ -93,6 +93,7 @@
 ## Proposed
 
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Proposed
+- [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Proposed
 
 ## Superseded
 
