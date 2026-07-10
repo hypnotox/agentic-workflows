@@ -68,7 +68,7 @@ func dotGitFs(repoRoot string) (billy.Filesystem, error) {
 // gitfileFs resolves a `.git` pointer file to its gitdir's filesystem.
 func gitfileFs(repoRoot, dotPath string) (billy.Filesystem, error) {
 	raw, err := os.ReadFile(dotPath)
-	if err != nil { // coverage-ignore: .git stat'd as a regular file just above; only a delete race loses it
+	if err != nil {
 		return nil, err
 	}
 	gitdirPath, ok := strings.CutPrefix(strings.TrimSpace(string(raw)), "gitdir: ")

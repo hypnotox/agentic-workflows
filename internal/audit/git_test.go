@@ -402,18 +402,20 @@ func linkedWorktree(t *testing.T, mainDir, name, head, commondir string, files m
 // is a `gitdir:` pointer file rather than a directory. Regression: openRepo
 // treated <root>/.git as a directory and died with
 // "….git/config: not a directory" (2026-07-10, this repo's own session
-// worktrees). Covers both commondir spellings git may write.
+// worktrees). Covers both commondir spellings git may write and both HEAD
+// forms: the symbolic ref `git worktree add <path> <branch>` writes (resolved
+// through the commondir's shared refs) and the detached hash of `--detach`.
 func TestCollectLinkedWorktree(t *testing.T) {
 	repo, mainDir := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, mainDir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
 	head := gitfixture.Commit(t, repo, mainDir, "feat(awf): branch work", map[string]string{"b.md": "body\n"})
 
-	for name, commondir := range map[string]string{
-		"relative-commondir": "../..",
-		"absolute-commondir": filepath.Join(mainDir, ".git"),
+	for name, tc := range map[string]struct{ head, commondir string }{
+		"relative-commondir-symbolic-head": {"ref: refs/heads/master", "../.."},
+		"absolute-commondir-detached-head": {head.String(), filepath.Join(mainDir, ".git")},
 	} {
 		t.Run(name, func(t *testing.T) {
-			wtRoot := linkedWorktree(t, mainDir, name, head.String(), commondir,
+			wtRoot := linkedWorktree(t, mainDir, name, tc.head, tc.commondir,
 				map[string]string{"go.mod": "module x\n", "b.md": "body\n"})
 			commits, err := Collect(wtRoot, base.String())
 			if err != nil {
@@ -460,5 +462,21 @@ func TestCollectMalformedDotGitFile(t *testing.T) {
 	_, err := Collect(dir, "main")
 	if err == nil || !strings.Contains(err.Error(), "gitdir:") {
 		t.Fatalf("want a gitdir-pointer parse error, got: %v", err)
+	}
+}
+
+// An unreadable .git pointer file is a propagated error, not a silent
+// fallthrough: stat classifies it as a regular file, so the pointer read
+// itself is the failing step.
+func TestCollectUnreadableDotGitFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses file permissions")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: nowhere\n"), 0o000); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if _, err := Collect(dir, "main"); err == nil {
+		t.Fatal("expected a read error on an unreadable .git pointer file")
 	}
 }
