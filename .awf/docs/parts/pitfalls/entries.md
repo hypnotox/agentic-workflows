@@ -329,3 +329,24 @@ domain-sidecar validation did this to `TestAuditPropagatesDomainSidecarReadError
 tree. The repair pattern: corrupt *after* the earlier stage has run (post-`Open`
 mutation), so each stage's own error branch keeps a test that reaches it; and when adding
 an earlier check, grep the tests for fixtures corrupting the state it newly reads.
+
+## Parallel sessions share one git index
+
+Two agent sessions (or an agent and a human) working in the same checkout share the staging
+area: a bare `git commit` after `git add <own files>` commits the *whole index*, silently
+sweeping whatever the other session had staged — it happened between the ADR-0087 and
+ADR-0088 efforts (2026-07-10), folding one effort's staged review fixes into the other's
+feature commit. Repair: `git reset --soft HEAD~1`, then re-commit with an explicit pathspec
+(`git commit -m … -- <paths>`), which also leaves the foreign entries staged exactly as
+found. Prevention: when a `git status` shows staged entries you did not stage, commit with a
+pathspec (tracked files only — stage a brand-new file first) or move one effort to a
+worktree; also prefer targeted reverts over `git checkout <file>` while your own edits are
+uncommitted, which is how a verify-mutation revert erased a just-written test the same day.
+
+## Link ADRs by their on-disk filename, never by constructing one from the title
+
+An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
+drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input")
+— three invented link targets landed in ADR-0087's first draft (2026-07-10) and survived to
+the verify pass because the ADR-0020 dead-link scan covers awf-managed *rendered* docs
+only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
