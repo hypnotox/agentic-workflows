@@ -87,10 +87,11 @@ Grounding discoveries shaping the design:
 
 3. **Content violations are hard render errors naming the sidecar.** After trimming
    surrounding whitespace: an empty term, an empty/null/non-string meaning, an interior
-   newline in a meaning, a non-string map key (the `map[interface{}]interface{}` shape),
-   and two terms equal case-insensitively all fail the render with the offending key and
-   `.awf/docs/glossary.yaml` named. Config smell is an error state, never a silent
-   repair.
+   newline in a term or meaning (YAML's quoted and explicit-key syntaxes permit
+   newlines in map keys, and either breaks a GFM table row), a non-string map key (the
+   `map[interface{}]interface{}` shape), and two terms equal case-insensitively all
+   fail the render with the offending key and `.awf/docs/glossary.yaml` named. Config
+   smell is an error state, never a silent repair.
 
 4. **Framing is two empty-default sections; absent data degrades coherently.** The
    glossary's catalog sections become `prepend` and `append` — plain (non-stub), empty
@@ -101,6 +102,10 @@ Grounding discoveries shaping the design:
    never a zero-row table — since the stub-note channel disappears with the stub
    section. This supersedes ADR-0011's `glossary | terms` taxonomy row and its
    skeleton-prompt reasoning for this doc (partial item; ADR-0011 stays Implemented).
+   ADR-0011's rule that doc *section defaults* interpolate no data tokens is
+   deliberately not overridden: the `{{ with .data.terms }}` reference sits in plain
+   non-section template text, and the `with/else` guard preserves the
+   publication-safety that rule protects.
 
 5. **Coverage travels with the change.** The new conditional gets a hand-authored
    `unsetFallbackCases` entry pinning the degraded prose, and a `TestGlossaryTemplate`
@@ -110,8 +115,9 @@ Grounding discoveries shaping the design:
    converts its own entries to `data.terms`, deletes its `terms.md` part and the
    now-obsolete `TestGlossaryTermsSorted` gate test (enforcement moved into the
    renderer), and re-adds its intro line as a `prepend` part. The implementing change
-   flips this ADR's status and regenerates `docs/decisions/ACTIVE.md` via `./x sync` in
-   its final commit.
+   updates the rendering-domain (and, where its narration shifts, the config-domain)
+   current-state part in the same change, and flips this ADR's status and regenerates
+   `docs/decisions/ACTIVE.md` via `./x sync` in its final commit.
 
 ## Invariants
 
@@ -119,8 +125,9 @@ Grounding discoveries shaping the design:
   case-insensitive term (byte-order tiebreak) regardless of authored map order; equal
   entry sets render byte-identically.
 - `inv: glossary-terms-validated` — an empty term, an empty/null/non-string meaning, an
-  interior newline in a meaning, a non-string map key, or a case-insensitive duplicate
-  term in `data.terms` fails the render with the sidecar path and offending key named.
+  interior newline in a term or meaning, a non-string map key, or a case-insensitive
+  duplicate term in `data.terms` fails the render with the sidecar path and offending
+  key named.
 - `inv: glossary-table-forced` — no convention part can replace the rendered terms
   table; the only part-override surfaces on the glossary doc are the `prepend` and
   `append` sections.
@@ -153,7 +160,10 @@ Harder / accepted trade-offs:
   are empty — two comment lines of cosmetic noise in the published doc, consistent with
   every other managed doc.
 - The unexecuted ADR-0088 plan edits the deleted part; its resync owes a one-line task
-  rewrite (two `data.terms` entries instead of two table rows).
+  rewrite (two `data.terms` entries instead of two table rows) — and, once both land,
+  ADR-0088's configspec data-parity check will demand a description entry for the
+  glossary's `terms` data key; whichever effort lands second inherits that obligation
+  (caught mechanically by that gate, named here so the resync scope is complete).
 
 ## Alternatives Considered
 
@@ -165,3 +175,4 @@ Harder / accepted trade-offs:
 | Template-native map range (Go templates iterate maps key-sorted) | Byte-order collation only, no cell escaping, no validation — and the engine has no FuncMap to add them template-side; a Go-side transform does all three. |
 | Entries as a YAML sequence of `{term, meaning}` objects | Loses native duplicate-key rejection; order-independence must then be asserted instead of being structurally meaningless. |
 | Rejecting `\|` in meanings instead of escaping | This repo's own entries legitimately contain pipes inside code spans; rejection would ban real content. |
+| Schema migration converting an authored `terms.md` part into `data.terms` | Parsing hand-authored markdown tables with arbitrary framing prose is unreliable; exactly one adopter is affected and the user explicitly accepted the break — a changelog recipe beats a fragile rewriter. |
