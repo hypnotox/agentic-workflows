@@ -92,10 +92,7 @@
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Implemented
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Implemented
 - [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Implemented
-
-## Proposed
-
-- [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md) — Proposed
+- [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md) — Implemented
 
 ## Superseded
 

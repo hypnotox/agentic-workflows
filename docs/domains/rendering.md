@@ -63,8 +63,5 @@ The rendered-output quality bar has a deterministic review surface (ADR-0090): t
 - [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 - [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
-
-### Proposed
-
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
 

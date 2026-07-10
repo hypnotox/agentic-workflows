@@ -77,9 +77,6 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
 - [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md)
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
-
-### Proposed
-
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
 
 ### Superseded
