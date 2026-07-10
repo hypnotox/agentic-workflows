@@ -59,8 +59,11 @@ Forces and grounding discoveries shaping the design:
   keys (the agents-doc precedent: `data["docs"]`, `internal/project/render.go`).
 - **Dormancy needs a full-catalog scan; the precedent is raw-source.** Only `NeededVars`
   reads templates outside the enabled set, via raw `templates.FS` bytes without
-  `awf:include` expansion — currently correct because no partial references `.vars`
-  (verified), but any new scan built the same way inherits that latent blind spot.
+  `awf:include` expansion — currently correct for vars because no partial references
+  `.vars` (verified; partials *do* reference per-key `.data` — the review-spine
+  partials — so any include-blind scan must stay vars-scoped), but a scan built the
+  same way inherits that latent blind spot the moment a partial gains a `.vars`
+  reference.
 - **Sidecar `data:` keys have defaults but no descriptions.** The catalog declares
   per-artifact data defaults (`SkillSpec.Data` etc., `internal/catalog/catalog.go`);
   no description text exists anywhere. "Each thing they touch" includes these.
@@ -92,29 +95,37 @@ Forces and grounding discoveries shaping the design:
      rendered prose), full adopter-voiced description, and an availability clause stating
      when the key has effect.
    - **Sidecar fields:** the four fields (`data`, `sections`, `local`, `paths`) with their
-     per-kind placement rules (ADR-0086 Decision 5) stated as availability.
+     per-kind placement rules (ADR-0086 Decision 5) stated as availability. The walk
+     recurses into map-of-struct values, so `sections.<name>.drop` is its own described
+     leaf — adopters write it, so parity covers it.
    - **Per-artifact data keys:** one description per catalog-declared sidecar `data:` key,
      keyed by artifact. Descriptions live in configspec; values stay in the catalog.
    Var descriptions are **derived from `catalog.Vars` at construction** — the catalog
    remains the sole var authority (ADR-0029 parity and ADR-0084 pinning untouched);
-   configspec adds no second var-description home. `awf init --describe` output is
-   behaviorally unchanged.
+   configspec adds no second var-description home. A derived var entry carries the
+   `catalog.VarDescriptor` description text verbatim; the only content configspec may
+   attach to it is the availability clause (structural metadata, per key). `awf init
+   --describe` output is behaviorally unchanged.
 2. **Parity is machine-enforced in both directions.** A reflection walk over
    `config.Config` and `Sidecar` yaml tags (skipping unexported fields; treating the
-   `Vars`/`Data` maps as namespaces, not leaves) fails when a key lacks a Spec entry or an
+   free-form `Vars`/`Data` maps as namespaces, not leaves; recursing into map-of-struct
+   values such as `sections`) fails when a key lacks a Spec entry or an
    entry names a dead key; a second check matches data-key description entries one-to-one
    against the catalog's declared data keys. Adding a config field or a catalog data key
    without describing it fails the gate.
 3. **A new always-on singleton doc, `docs/config-reference.md`, renders the full
    reference per-project.** One `DocEntry` with a static path (ADR-0060's "a single
-   entry"; the prefix-derived-name idea was dropped with the user). Content is
+   entry"). Content is
    project-aware, rendered from configspec plus the live tree: each config key with its
    current effective value; each var with its three-way ADR-0087 state, its consumers
    (enabled artifacts whose assembled sources or `gateCmd`/`checkCmd` part placeholders
    reference it — the ADR-0086 Decision 3 union), and, when dormant, which catalog
    artifacts would consume it if enabled; each artifact's data keys with defaults,
    overrides, and descriptions. All computed state reaches the template as dedicated data
-   keys — the template never ranges `.vars` or `.data` bare. The doc is drift-checked by
+   keys — the template never ranges `.vars` or `.data` bare. Each generated section
+   degrades to a coherent "none configured" line when its data is empty (a repo with no
+   vars set, no domains, no data overrides renders prose, never an empty table skeleton —
+   ADR-0001/0045), pinned by the doc's hand-added golden. The doc is drift-checked by
    **full regeneration** (the generated-index class), not content hashing. Prose framing
    sections remain convention-part overridable; the generated reference tables are not.
 4. **A new CLI command, `awf config [<key-or-var>]`.** Bare, it prints the same reference
@@ -124,18 +135,24 @@ Forces and grounding discoveries shaping the design:
    it degrades to the **static catalog-wide reference** — descriptions, defaults, and
    availability only, no live state — serving pre-adoption discovery instead of erroring.
    An unknown argument is an exit-1 error naming the token and pointing at the bare form.
-   The gated-command enumeration in the rendered agent guide and the working-with-awf
-   command list update in the same change.
+   The gated-command enumeration in the rendered agent guide, the working-with-awf
+   command list, `docs/architecture.md` (the new package and command), and the config
+   domain's current-state part update in the same change. The implementing change flips
+   this ADR's status and regenerates `docs/decisions/ACTIVE.md` via `./x sync` in its
+   final commit.
 5. **One shared describe-model builder in `internal/project`** computes entries, live
    values, consumers, and dormancy once, feeding both the doc renderer and the command.
    Enabled-set consumption reuses the ADR-0086 union (assembled sources across targets,
    domain docs, part placeholders); potential consumers come from a raw-template scan over
    the full catalog (the `NeededVars` precedent), with a guard test asserting no
-   `templates/partials/` file references `.vars`/`.data` so the raw-source shortcut stays
-   sound.
+   `templates/partials/` file references `.vars` so the raw-source shortcut stays sound.
+   The guard is deliberately vars-scoped: the review-spine partials legitimately reference
+   per-key `.data` today, and the raw-catalog scan exists solely for var dormancy —
+   data-key consumption is catalog-declared per artifact and checked on include-expanded
+   assembled sources (ADR-0086).
 6. **The residue discipline extends to descriptions.** Every configspec description
-   string (including the derived var descriptions' new prose and the data-key
-   descriptions) is free of concrete `ADR-` citations and repo-identity literals, enforced
+   string (including the availability clauses attached to derived var entries and the
+   data-key descriptions) is free of concrete `ADR-` citations and repo-identity literals, enforced
    by a test alongside the ADR-0082 scan, which keeps its templates-FS scope.
 
 ## Invariants
@@ -146,15 +163,18 @@ Forces and grounding discoveries shaping the design:
 - `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match
   the catalog's declared sidecar data keys one-to-one, both directions.
 - `inv: configspec-var-derivation` — configspec's var entries are derived from
-  `catalog.Vars` and cover exactly that set; no second var-description authority exists.
+  `catalog.Vars` and cover exactly that set, carrying the descriptor description text
+  verbatim; configspec attaches only availability clauses — no second var-description
+  authority exists.
 - `inv: config-reference-regen-drift` — `docs/config-reference.md` is drift-checked by
   full regeneration, never by content hash alone.
 - `inv: config-command-static-fallback` — `awf config` outside an adopted tree prints the
   static catalog reference and exits zero; inside one it runs gated at open.
 - `inv: configspec-description-residue` — no configspec description string carries a
   concrete `ADR-` citation or a repo-identity literal.
-- Textual: the reference-doc template receives all computed state via dedicated data keys
-  and never references `.vars` or `.data` bare (preserving ADR-0086's consumption checks).
+- `inv: config-reference-no-bare-vars` — the reference-doc template's assembled source
+  contains no bare `.vars` or `.data` reference (all computed state arrives via dedicated
+  data keys), so it never widens ADR-0086's conservative consumption escapes.
 - Textual: descriptions are adopter-voiced — they explain effect and availability in the
   adopter's terms, and availability claims match the real consumption channels (only
   `gateCmd`/`checkCmd` flow through part placeholders).
@@ -178,8 +198,12 @@ Forces and grounding discoveries shaping the design:
   silent to failing.
 - `awf config` joins the gated set — the AGENTS.md invariant line enumerating gated
   commands, the ADR-0039 lineage prose, and awf's own `.awf` parts update in the same
-  change. The name occupies a plausible future subcommand slot (config *editing*); if
-  editing porcelain ever arrives it extends this command rather than replacing it.
+  change. Accepted friction: inside an adopted tree a version-behind binary refuses
+  `awf config` like every gated command, making the discovery tool unavailable exactly
+  mid-upgrade — consistent with ADR-0039, mitigated by the refusal's upgrade hint, and
+  the ungated pre-adoption static output is unaffected. The name occupies a plausible
+  future subcommand slot (config *editing*); if editing porcelain ever arrives it
+  extends this command rather than replacing it.
 - Upper end of one effort: configspec + parity, the doc, the command, docs travel. The
   CLI command is the most separable slice if trimming proves necessary. Backlog recorded:
   man page and JSON Schema as further projections; folding `awf init --describe` into
