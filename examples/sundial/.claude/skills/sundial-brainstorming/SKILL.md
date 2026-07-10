@@ -21,8 +21,13 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 
 1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Identify which packages and which existing ADRs the work touches.
 
-<!-- awf:edit example-clarifying-questions — default; create .awf/skills/parts/brainstorming/example-clarifying-questions.md to override -->
-2. **Ask clarifying questions, one at a time.** Prefer multiple-choice questions where your runtime supports them. Each question narrows scope. Avoid asking for everything in one mega-question.
+<!-- awf:edit example-clarifying-questions — from .awf/skills/parts/brainstorming/example-clarifying-questions.md -->
+2. **Ask clarifying questions, one at a time.** For sundial that usually means:
+   which surface moves (model, schedule, CLI), does accuracy change (ADR-0001 caps
+   it at minutes), and would a new dependency arrive (ADR-0001's zero-dependency
+   stance says no). Prefer multiple-choice questions where your runtime supports
+   them.
+
 
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 

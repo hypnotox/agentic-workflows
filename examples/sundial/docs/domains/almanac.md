@@ -2,10 +2,20 @@
 # almanac
 
 <!-- awf:edit current-state — from .awf/domains/parts/almanac/current-state.md -->
-Describe where the "almanac" domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.
+The almanac domain is one package, `internal/almanac`, implementing the cosine
+day-length model ADR-0001 adopted: clamped latitude, polar-safe collapse, solar
+noon shifted four minutes per degree of longitude. Accuracy is minutes, not
+seconds — a deliberate ceiling. Anything touching the declination term or the
+clamp must keep `almanac-clamped-latitude` backed.
 
 
 ## Decisions
 
-_No decisions recorded for this domain yet._
+### Implemented
+
+- [ADR-0001: Approximate sun events with the cosine day-length model](../decisions/0001-approximate-sun-events-with-the-cosine-day-length-model.md)
+
+### Proposed
+
+- [ADR-0003: Cache almanac tables per location](../decisions/0003-cache-almanac-tables-per-location.md)
 

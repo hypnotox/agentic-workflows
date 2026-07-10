@@ -2,10 +2,18 @@
 # cli
 
 <!-- awf:edit current-state — from .awf/domains/parts/cli/current-state.md -->
-Describe where the "cli" domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.
+The cli domain is `cmd/sundial`: decimal-degrees argument parsing (ADR-0002) and
+the week-table print. It owns every exit code (2 for usage) and no model logic;
+ADR-0003's proposed cache would slot between it and the almanac.
 
 
 ## Decisions
 
-_No decisions recorded for this domain yet._
+### Implemented
+
+- [ADR-0002: CLI accepts coordinates as decimal degrees only](../decisions/0002-cli-accepts-coordinates-as-decimal-degrees-only.md)
+
+### Proposed
+
+- [ADR-0003: Cache almanac tables per location](../decisions/0003-cache-almanac-tables-per-location.md)
 

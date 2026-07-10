@@ -11,7 +11,11 @@ A single gate command runs the project's checks — tests, vet/lint, and any dri
 
 The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating.
 
-<!-- awf:edit layout — stub; replace by creating .awf/docs/parts/testing/layout.md -->
-## Test layout
+<!-- awf:edit layout — from .awf/docs/parts/testing/layout.md -->
+## Layout
 
-_Describe where tests live and how they map to the code: the directory convention, how unit, integration, and regression tests are named and separated, and where a new test for a given change belongs._
+Tests live beside their package (`internal/almanac`, `internal/schedule`): model
+tests pin clamping and the polar collapse; schedule tests pin table shape.
+`./x gate` runs them all with `go vet`; the invariant-backing comments under
+`./internal/...` are checked by `./x invariants`.
+

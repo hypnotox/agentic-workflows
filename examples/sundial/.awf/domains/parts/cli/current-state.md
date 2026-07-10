@@ -1,1 +1,3 @@
-Describe where the "cli" domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.
+The cli domain is `cmd/sundial`: decimal-degrees argument parsing (ADR-0002) and
+the week-table print. It owns every exit code (2 for usage) and no model logic;
+ADR-0003's proposed cache would slot between it and the almanac.

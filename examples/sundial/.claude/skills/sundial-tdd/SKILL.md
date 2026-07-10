@@ -22,9 +22,13 @@ The test-first discipline as a project-owned task skill.
 3. Implement the minimal change to pass.
 4. Run the gate: `./x gate`.
 
-<!-- awf:edit notes — default; create .awf/skills/parts/tdd/notes.md to override -->
+<!-- awf:edit notes — from .awf/skills/parts/tdd/notes.md -->
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
+
+Sundial-specific: the almanac model is pure — every model change starts with a
+failing table-driven case in `internal/almanac`, no exceptions.
+
 
 <!-- awf:edit red-flags — default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags
