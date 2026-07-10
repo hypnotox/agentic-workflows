@@ -22,6 +22,10 @@ query a single version or a range.
   authoring surface.
 
 ### Features
+- `awf config [<key-or-var>]` (ADR-0088): print the configuration reference
+  from the CLI — the full reference or a single entry, with live state inside
+  a project (current values, consumers, dormant hints) and a static
+  catalog-wide fallback outside one for pre-adoption discovery.
 - `docs/config-reference.md`: a generated, always-on configuration reference
   (ADR-0088) — every config key, var, sidecar field, and per-artifact data key
   with full descriptions, defaults, availability, and the project's live state

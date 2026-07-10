@@ -27,7 +27,7 @@ var isInteractive = func() bool {
 // commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
 var commandOrder = []string{
 	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "new", "add", "remove", "upgrade", "uninstall", "changelog", "version",
+	"list", "config", "new", "add", "remove", "upgrade", "uninstall", "changelog", "version",
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -56,7 +56,7 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|new|add|remove|upgrade|uninstall|changelog|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|new|add|remove|upgrade|uninstall|changelog|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -111,6 +111,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			kindFilter = args[2]
 		}
 		cmdErr = runList(cwd, kindFilter, stdout)
+	case "config":
+		key := ""
+		if len(args) >= 3 {
+			key = args[2]
+		}
+		cmdErr = runConfig(cwd, key, stdout)
 	case "new":
 		if len(args) < 4 {
 			cmdErr = &usageErr{"usage: awf new <kind> <title>"}
@@ -245,6 +251,19 @@ payload runs it when the hooks artifact is enabled).
 		help: `Usage: awf list [<kind>]
 
 Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap|hooks).
+`,
+	},
+	"config": {
+		maxPos: 1, summary: "Describe config keys and vars (live state inside a project)",
+		help: `Usage: awf config [<key-or-var>]
+
+Print the configuration reference: every config key, var, sidecar field, and
+data key with descriptions, defaults, and availability. Inside an awf project
+the output adds live state (current values; which enabled artifacts consume
+each var; dormant hints). Outside one, a static catalog-wide reference prints.
+With an argument, print just that entry (a config key path like
+audit.diffThreshold, a var name like gateCmd, a sidecar field like
+sidecar.local, or a data key name).
 `,
 	},
 	"new": {

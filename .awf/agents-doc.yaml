@@ -36,7 +36,7 @@ data:
         - ref: ADR-0020
           text: '**No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk.'
         - ref: ADR-0039
-          text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `add`, `remove`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`.'
+          text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `add`, `remove`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` degrades to a static catalog reference outside an adopted tree instead of refusing.'
         - ref: ADR-0040
           text: '**Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` defaults its fetch to exactly the rendering binary''s `project.Version`; a pre-set `AWF_VERSION` environment value overrides the target release, verification unchanged.'
         - ref: ADR-0040

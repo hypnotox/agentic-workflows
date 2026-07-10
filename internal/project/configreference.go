@@ -346,3 +346,18 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 		markerParts: rf.markerParts, assembled: rf.assembled,
 		partVarRefs: rf.partVarRefs}, true, nil
 }
+
+// ConfigReferenceModel computes the reference's four collections
+// (configKeys, varEntries, sidecarFields, dataKeys) with live project state —
+// the `awf config` command's data source, sharing the doc's builder.
+func (p *Project) ConfigReferenceModel() (map[string]any, error) {
+	files, err := p.RenderAll()
+	if err != nil {
+		return nil, err
+	}
+	dds, err := p.generateDomainDocs()
+	if err != nil { // coverage-ignore: RenderAll above already surfaced any malformed-ADR fault via project state
+		return nil, err
+	}
+	return p.configReferenceData(slices.Concat(files, dds))
+}

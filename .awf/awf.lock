@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:7176b6f21aff81b345d55a2e8fc58f73eb127a1a56d0f1f3ee66dbf33cbf4593",
-      "configHash": "sha256:55088a95d2c1fee868e7ef0d02a9d347579444cf1990d7c4849882a4198ae858",
-      "outputHash": "sha256:e8bff6bf7648f2720b0d4204278d75f7c8df913ee5ccaf08a9121842ca17bc31"
+      "configHash": "sha256:e79c24a0b70604b01a23157de56e5482710926d714ad698be01934b8972c1ec0",
+      "outputHash": "sha256:462b8c1f1784f6bead48379672dbbcb9172bb22fc386d20f96dfbf2ccd03eb1e"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -330,7 +330,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:a395cccff2be50f2476c25020663e61577072f94ede933d698df8bfbd3a774b4"
+      "outputHash": "sha256:27ad40da5a32ff31b0473322b03af95ca09f00a6116ca250061aea1d48e6202d"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
@@ -364,9 +364,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:5d0e70a0aa841d094c76d69cb8bd98f7091bc7aff1608342d63d42f9487b3764",
+      "templateHash": "sha256:d4ebd884dbf1f1b620ed696e5d84e3afdd53d2eefdeee285a5ba525f489e97ae",
       "configHash": "sha256:ea2e912df6e5bff36f49a5b8e37bc553b48637116c73c4f89eda9fc3a0e6f5cb",
-      "outputHash": "sha256:48abb9f45278f3f42f0cd649d79b9133eeaae3ada8723dae6542cb4735849b06"
+      "outputHash": "sha256:dc236952226d061d154eccb4fc9f051e20977b37700a1620127298e53eb9200e"
     }
   }
 }
