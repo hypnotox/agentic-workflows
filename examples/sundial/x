@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Command runner for sundial — the single entry point for repo tasks.
+# The awf verbs run the pinned release: .awf/bootstrap.sh resolves (or
+# fetches and verifies) it and prints the binary path on stdout.
+set -euo pipefail
+
+cmd="${1:-}"
+shift || true
+
+awf_bin() { bash .awf/bootstrap.sh; }
+
+case "$cmd" in
+  gate)
+    # `full` is accepted for pre-push hook compatibility; no slower tier exists.
+    go test ./...
+    go vet ./...
+    ;;
+  test)
+    go test ./... "$@"
+    ;;
+  sync | check | invariants | audit | commit-gate | new)
+    "$(awf_bin)" "$cmd" "$@"
+    ;;
+  *)
+    echo "usage: ./x <gate [full]|test|sync|check|invariants|audit|commit-gate|new>" >&2
+    exit 2
+    ;;
+esac

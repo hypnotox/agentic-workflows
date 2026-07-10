@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Illustrative wiring: in a real adoption, activate with
+#   git config core.hooksPath .githooks
+# This example directory is not a git repository, so this stub never fires here.
+exec bash .awf/hooks/pre-push.sh "$@"
