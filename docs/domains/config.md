@@ -43,3 +43,7 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
 
+### Proposed
+
+- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
+

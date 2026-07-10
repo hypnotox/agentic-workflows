@@ -90,6 +90,10 @@
 - [ADR-0085: Self-contained adopter upgrade flow](0085-self-contained-adopter-upgrade-flow.md) — Implemented
 - [ADR-0086: Closed config tree and configuration-consumption checks](0086-closed-config-tree-and-configuration-consumption-checks.md) — Implemented
 
+## Proposed
+
+- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](0087-deletion-as-acknowledgement-for-unset-var-notes.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
