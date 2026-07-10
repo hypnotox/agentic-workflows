@@ -8,7 +8,7 @@
 
 **File structure:**
 
-- Created: `examples/sundial/{go.mod, x, README.md, cmd/sundial/main.go, internal/almanac/{almanac.go,almanac_test.go}, internal/schedule/{schedule.go,schedule_test.go}, .githooks/{pre-commit,commit-msg,pre-push}}`; the example's `.awf/` tree (init-scaffolded + hand-authored sidecars/parts listed per task) and all rendered output; `examples/sundial/docs/decisions/000{1,2,3}-*.md`, `examples/sundial/docs/plans/2026-07-07-decimal-degrees-cli.md`; `internal/project/example_wiring_test.go`; `.awf/docs/parts/working-with-awf/overview.md`.
+- Created: `examples/sundial/{go.mod, x, README.md, cmd/sundial/main.go, internal/almanac/{almanac.go,almanac_test.go}, internal/schedule/{schedule.go,schedule_test.go}, .githooks/{pre-commit,commit-msg,pre-push}}`; the example's `.awf/` tree (init-scaffolded + hand-authored sidecars/parts listed per task) and all rendered output; `examples/sundial/docs/decisions/000{1,2,3}-*.md`, `examples/sundial/docs/plans/2026-07-07-decimal-degrees-cli.md`; `internal/project/example_wiring_test.go`; `.awf/parts/working-with-awf/overview.md`.
 - Modified: `x`, `README.md`, `changelog/CHANGELOG.md`, `.awf/agents-doc.yaml`, `.awf/docs/parts/testing/tiers.md`, `.awf/docs/parts/development/command-runner.md`, `.awf/docs/parts/architecture/components.md`, `.awf/domains/parts/{tooling,rendering}/current-state.md`, `docs/decisions/0090-*.md` (status flip), plus re-rendered repo docs via `./x sync`.
 - Deleted: none.
 
@@ -286,7 +286,7 @@
 
   `commit-msg` and `pre-push`: identical apart from the payload name (`.awf/hooks/commit-msg.sh`, `.awf/hooks/pre-push.sh`).
 
-- [ ] Verify: `(cd examples/sundial && go test ./... && go vet ./... && gofmt -l .)` — tests pass, vet clean, gofmt prints nothing. `go build ./...` at the repo root still succeeds and `go list ./... | grep -c sundial` prints `0` (module isolation).
+- [ ] Verify: `(cd examples/sundial && go test ./... && go vet ./... && gofmt -l .)` — tests pass, vet clean, gofmt prints nothing. `go build ./...` at the repo root still succeeds and `! go list ./... | grep -q sundial` exits 0 (module isolation).
 - [ ] `./x gate` green; commit: `feat(tooling): add the sundial example scenery` (body: first slice of ADR-0090 — the fictional module the example adoption wraps; adoption follows).
 
 ## Phase 2 — adopt awf in the example
@@ -363,11 +363,14 @@
   ```
 
 - [ ] `(cd examples/sundial && /tmp/awf-0090 sync && /tmp/awf-0090 check)` — check exits 0; the remaining notes are exactly the seven stub-content lines (AGENTS.md identity; architecture overview/components/data-flow/dependencies; debugging surfaces/recipes; development setup/command-runner/dependencies; pitfalls entries; roadmap ideas/deferred; testing layout).
-- [ ] Stage the whole example (`git add examples/sundial`), `./x gate` green; commit: `feat(tooling): adopt awf in the sundial example` (body: full-surface enabled set per ADR-0090 Decision 2; stub sections authored next).
+- [ ] Verify the rendered adapter tree is not gitignored (the root `.gitignore` negations must reach the example): `git check-ignore examples/sundial/CLAUDE.md examples/sundial/.claude/skills/sundial-tdd/SKILL.md` prints nothing and exits 1.
+- [ ] Stage the whole example (`git add examples/sundial`), `./x gate` green; commit: `feat(tooling): adopt awf in the sundial example` (body: full-surface enabled set per ADR-0090 Decision 2; stub sections authored next). After the commit, `git ls-files examples/sundial/.claude | head -3` is non-empty.
 
 ## Phase 3 — author the full surface (zero notes)
 
 Every part below carries its own `##` heading where the section renders one (mirror the enclosing repo's doc parts).
+
+- [ ] Rebuild the source binary so the phase is self-sufficient: `go build -o /tmp/awf-0090 ./cmd/awf` (idempotent; mirrors Phase 2).
 
 - [ ] Create `examples/sundial/.awf/parts/agents-doc/identity.md`:
 
@@ -827,7 +830,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   disk.
   ```
 
-- [ ] Create `.awf/docs/parts/working-with-awf/overview.md`:
+- [ ] Create `.awf/parts/working-with-awf/overview.md` (singleton-doc parts live under `.awf/parts/`, per the rendered doc's own edit marker):
 
   ```markdown
   {{=awf:sectionDefault}}
