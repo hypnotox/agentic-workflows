@@ -72,6 +72,9 @@ Apply all five lenses to every implementation diff:
 **two-sided-set-checks** — when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
 
 
+**part-placeholder-escaping** — a convention part that quotes a `\\{{=awf:key}}` token as documentation must backslash-escape it — an unescaped consumable token is silently substituted into the published output (the value where the token name belongs) with `awf check` clean, so only reading the rendered file catches it. Bit the ADR-0086 docs commit (rendering current-state part); the intent is ambiguous to a machine (substituting inside backticks is also legitimate), so this stays a judgment check: quoted-as-syntax means escaped, meant-to-resolve means bare
+
+
 **coverage-ignore-reachability** — a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; treat an ignore *inherited through a refactor* (call sites merged, signature changed, callers widened) as unproven by default, since the claim was written against the old shape. Three false claims surfaced on 2026-07-08 (stampLockSchema, the sectionDefault call site, gate's "TOCTOU-only") and four more on 2026-07-09 (the singleton-standard-docs relocate cluster, all carried through a refactor), each hiding a reachable branch
 
 
