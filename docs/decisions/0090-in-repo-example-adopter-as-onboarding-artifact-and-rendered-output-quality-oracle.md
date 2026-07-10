@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [examples, onboarding, quality, tooling]
-related: [8, 20, 39, 48, 49, 53, 70, 77, 80, 81, 83, 86, 87, 89]
+related: [8, 20, 39, 48, 49, 53, 70, 77, 80, 81, 82, 83, 86, 87, 89]
 domains: [tooling, rendering]
 ---
 # ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle
@@ -102,7 +102,7 @@ scratch adopter):
    example scenery only changes at sync time, and the pre-commit payload and CI
    enforce check beside the gate anyway. Template changes thus surface
    as reviewable rendered diffs in the same commit, and forgetting the re-sync fails
-   `./x check` — enforced beside the gate by the pre-commit payload and CI. A gate test
+   `./x check`. A gate test
    in the repo module asserts the `./x` example steps exist (the
    `cmd/releasecheck/main_test.go` wiring-test pattern), so the mechanism cannot be
    silently dropped.
