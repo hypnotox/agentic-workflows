@@ -1,0 +1,56 @@
+prefix: sundial
+vars:
+  activeMdRegenCmd: ./x sync
+  checkCmd: ./x check
+  commitGateCmd: ./x commit-gate
+  gateCmd: ./x gate
+  gateCmdFull: ./x gate full
+  invariantTestPath: ./internal/...
+  testCmd: ./x test
+skills:
+  - adr-lifecycle
+  - brainstorming
+  - bugfix
+  - debugging
+  - executing-plans
+  - proposing-adr
+  - refactor-coupling-audit
+  - retrospective
+  - reviewing-adr
+  - reviewing-impl
+  - reviewing-plan
+  - reviewing-plan-resync
+  - roadmap-graduation
+  - subagent-driven-development
+  - tdd
+  - writing-plans
+agents:
+  - adr-reviewer
+  - code-reviewer
+  - plan-reviewer
+docs:
+  - architecture
+  - debugging
+  - development
+  - glossary
+  - pitfalls
+  - roadmap
+  - testing
+audit:
+  allowedScopes:
+    - almanac
+    - schedule
+    - cli
+    - docs
+bootstrap:
+  enabled: true
+hooks:
+  enabled: true
+domains:
+  - almanac
+  - cli
+invariants:
+  sources:
+    - globs:
+        - "**/*.go"
+      marker: //
