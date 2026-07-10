@@ -176,8 +176,10 @@ var Standard = &Catalog{
 		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}, TID: "docs/development.md.tmpl"},
 		"debugging":    {Title: "Debugging", Desc: "recipes for common failure modes", Sections: []string{"surfaces", "recipes"}, TID: "docs/debugging.md.tmpl"},
 		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"entries"}, TID: "docs/pitfalls.md.tmpl"},
-		"glossary":     {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"terms"}, TID: "docs/glossary.md.tmpl"},
-		"roadmap":      {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},
+		// The glossary's table is computed from sidecar data.terms, always
+		// sorted (ADR-0089); prepend/append are empty-default framing slots.
+		"glossary": {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl"},
+		"roadmap":  {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},
 		// Always-on singletons (Mandatory true). agents-doc renders to root AGENTS.md
 		// (empty Path/TemplateKey, AgentsDoc true); the four DocumentMap docs are cited
 		// in AGENTS.md's document map via .layout.*.

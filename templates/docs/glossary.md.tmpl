@@ -1,9 +1,11 @@
 # Glossary
 
-<!-- awf:section terms stub -->
-Project jargon and what each term means; start here when a term is unfamiliar. _Fill in the table and keep it sorted._
+<!-- awf:section prepend -->
+<!-- awf:end -->
 
-| Term | Meaning |
+{{ with .data.terms }}| Term | Meaning |
 |---|---|
-| _term_ | _what it means in this project, and who owns it_ |
+{{ . }}{{ else }}_No terms recorded yet — add `term: meaning` entries under `data.terms` in `.awf/docs/glossary.yaml`._
+{{ end }}
+<!-- awf:section append -->
 <!-- awf:end -->

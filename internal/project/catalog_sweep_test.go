@@ -169,6 +169,7 @@ var goldenFuncRe = regexp.MustCompile(`func Test([A-Za-z0-9]+)(Template|Agent)\(
 var nonArtifactGoldens = map[string]bool{
 	"AgentsDoc":         true,
 	"DocArchitecture":   true,
+	"Glossary":          true,
 	"RoadmapGraduation": true,
 }
 

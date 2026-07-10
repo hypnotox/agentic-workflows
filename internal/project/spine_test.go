@@ -1014,6 +1014,13 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",
 		want: []string{"per the example plan convention", "the project's gate runs before every commit"},
 	},
+	// Voluntary doc entry (ADR-0089): the ADR-0080 guard covers skills and
+	// agents only, so the glossary's conditional is pinned by hand.
+	{
+		tmpl: "docs/glossary.md.tmpl",
+		want: []string{"No terms recorded yet", "`data.terms` in `.awf/docs/glossary.yaml`"},
+		ban:  []string{"| Term | Meaning |"},
+	},
 }
 
 func TestUnsetFallbackRenders(t *testing.T) {
@@ -1120,5 +1127,28 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 		if strings.Contains(out, banned) {
 			t.Errorf("disabled task skill %q must not render:\n%s", banned, out)
 		}
+	}
+}
+
+// TestGlossaryTemplate is the glossary doc's golden (nonArtifactGoldens-listed:
+// docs sit outside the ADR-0080 skills/agents completeness walk). The terms
+// value arrives pre-transformed — renderGolden bypasses the project-layer
+// transform, whose behavior glossary_test.go owns.
+func TestGlossaryTemplate(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data":   map[string]any{"terms": "| alpha | first |\n| beta | second |\n"},
+		"skills": map[string]bool{},
+		"layout": testLayout(),
+	}
+	out := renderGolden(t, "docs/glossary.md.tmpl", data)
+	for _, want := range []string{"# Glossary", "| Term | Meaning |", "| alpha | first |", "| beta | second |"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "No terms recorded yet") {
+		t.Errorf("placeholder must not render alongside a populated table:\n%s", out)
 	}
 }

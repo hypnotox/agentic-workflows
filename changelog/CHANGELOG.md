@@ -8,6 +8,19 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- The glossary doc is data-driven (ADR-0089): terms live in
+  `.awf/docs/glossary.yaml` under `data.terms` as a `term: meaning` YAML map,
+  and awf renders the table always sorted (case-insensitive), with `|`
+  escaped in cells and content violations — empty terms or meanings, interior
+  newlines, non-string values, case-insensitive duplicate terms — failing the
+  render with the offending key named. The old `terms` section is gone: an
+  authored `.awf/docs/parts/glossary/terms.md` part flags as orphaned drift
+  after upgrading — move each table row into `data.terms` and delete the part.
+  Framing prose goes in the new empty-by-default `prepend`/`append` sections.
+  With no terms configured, the doc renders a placeholder line naming the
+  authoring surface.
+
 ### Features
 - `docs/config-reference.md`: a generated, always-on configuration reference
   (ADR-0088) — every config key, var, sidecar field, and per-artifact data key
