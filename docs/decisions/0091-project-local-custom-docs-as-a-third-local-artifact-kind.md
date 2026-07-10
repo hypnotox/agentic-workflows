@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [catalog, rendering, cli, docs, adopter-extensibility]
-related: [20, 60, 61, 68, 70, 77, 86, 88]
+related: [20, 45, 60, 61, 68, 70, 77, 82, 86, 88, 90]
 domains: [config, rendering, tooling]
 ---
 # ADR-0091: Project-local custom docs as a third local artifact kind
@@ -83,9 +83,14 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 3. **`effectiveCatalog` clones `catalog.Standard.Docs` and synthesizes local doc
    entries into the clone.** A synthesized `DocEntry` sets `Sections: ["content"]`,
    `TID` = the base doc template, `Mandatory: false`, and `Title`/`Desc` lifted from
-   the declaring sidecar's `data.title`/`data.description`. `catalog.Standard` is
-   **never mutated**; the `Docs` map is `maps.Clone`d before any insert, exactly as
-   `Skills`/`Agents` are.
+   the declaring sidecar's `data.title`/`data.description`. When the sidecar omits a
+   key, synthesis applies a default — `Title` derived from the last name segment,
+   `Desc` a generic managed-doc summary — so the synthesized entry always carries a
+   non-empty `Title`/`Desc` and `inv: local-doc-map-fields` holds regardless of
+   whether the sidecar was hand-edited. This default is applied at synthesis (in the
+   `DocEntry` the document map reads), not only in the template render.
+   `catalog.Standard` is **never mutated**; the `Docs` map is `maps.Clone`d before
+   any insert, exactly as `Skills`/`Agents` are.
 
 4. **Template-id resolution for docs reads the effective catalog.** A `docTID` hook
    returns `p.Cat.Docs[n].TID`, and the docs render pass uses it instead of the
@@ -97,9 +102,13 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 5. **The author surface is the `content` part plus the sidecar.** A local doc's
    body is the convention part `.awf/docs/parts/<name>/content.md`, spliced verbatim
    with `{{=awf:key}}` substitution (never Go-template-executed, `inv: parts-raw`).
-   The base template sources `title` (defaulting to a value derived from the last
-   name segment) and the body's `content`, each guarded so an unset value degrades
-   to publication-safe generic prose, never `<no value>` (ADR-0045).
+   The base template renders `title` (defaulting to a value derived from the last
+   name segment), a lede rendering `description`, and the body's `content`, each
+   guarded so an unset value degrades to publication-safe generic prose, never
+   `<no value>` (ADR-0045). The base template **must** reference `.data.description`
+   (the lede) so the sidecar's `data.description` is template-consumed and does not
+   trip ADR-0086's unused-data-drift check — mirroring how the base skill/agent
+   templates reference `.data.description` in their frontmatter.
 
 6. **Doc names are path-aware; skills and agents stay flat.** A doc-name validator
    accepts one or more `/`-separated segments, each lowercase kebab-case, rejecting
@@ -143,12 +152,13 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 - `inv: local-doc-map-fields` — a synthesized local doc entry carries the `Title`
   and `Desc` lifted from its declaring sidecar, so the document map lists it with a
   non-empty title and description.
-- `inv: doc-base-publication-safe` — the base doc template renders leak-free (no
-  `<no value>`, no marker or leak residue) under empty data and no `content` part.
-- `inv: doc-name-path-validated` — a local doc name is accepted only as one or more
-  lowercase-kebab `/`-separated segments and is rejected for a path-escape (`..`), a
-  leading/trailing/empty segment, or a `.md` suffix; skill and agent names remain
-  flat.
+- `inv: local-doc-base-publication-safe` — the base doc template renders leak-free
+  (no `<no value>`, no marker or leak residue) under empty data and no `content`
+  part.
+- `inv: local-doc-name-path-validated` — a local doc name is accepted only as one or
+  more lowercase-kebab `/`-separated segments and is rejected for a path-escape
+  (`..`), a leading/trailing/empty segment, a `.md` suffix, or the reserved
+  base-template stem `_base`; skill and agent names remain flat.
 
 ## Consequences
 
@@ -156,22 +166,31 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   part.** awf owns the structure, the document-map listing, the dead-link check, and
   publication-safety; the adopter writes prose. This is the capability the `docMap`
   escape hatch only approximated.
-- **The releasing gap closes by dogfooding.** A new toggleable catalog doc
-  `releasing` — a single freeform `content` section whose default is a
-  stub-classified authoring prompt (ADR-0070), imposing no release structure — lets
-  any adopter run `awf add doc releasing`. awf enables it, ports its current
-  `docs/releasing.md` prose into the `.awf/docs/parts/releasing/content.md` override
-  part, and drops the `docMap` entry. The ported prose must live in the override
-  part, not the template default: `docs/releasing.md` carries ADR and repo-identity
-  literals the template-source residue scan (ADR-0082) would reject, and parts are
-  outside the scanned templates FS. Adding a catalog doc is routine content, not a
-  load-bearing decision — it rides this ADR as its motivating application.
+- **The releasing gap closes by dogfooding, via a distinct (catalog) mechanism.**
+  The motivating application is a new toggleable *Standard catalog* doc `releasing`
+  — a single freeform `content` section whose default is a stub-classified authoring
+  prompt (ADR-0070), imposing no release structure — that any adopter enables with
+  `awf add doc releasing`. This is *not* the local-doc path this ADR defines: it is a
+  compile-time `DocEntry` in `catalog.Standard.Docs` rendering from its own embedded
+  `templates/docs/releasing.md.tmpl`, and it adds a bounded but real surface — the
+  new catalog entry and template, its ADR-0070 stub classification, the
+  config-reference regeneration (ADR-0088), and automatic full-catalog eval coverage
+  (ADR-0053, which renders it under empty data, so its stub default must be
+  publication-safe). It rides this ADR as the feature's motivating application rather
+  than a separate decision because adding one catalog doc is below the load-bearing
+  bar (like `architecture`/`testing`), but its surface is enumerated here so the
+  bundling is deliberate, not hidden. awf itself enables `releasing`, ports its
+  current `docs/releasing.md` prose into the `.awf/docs/parts/releasing/content.md`
+  override part, and drops the `docMap` entry. The ported prose must live in the
+  override part, not the template default: `docs/releasing.md` carries ADR and
+  repo-identity literals the template-source residue scan (ADR-0082) would reject,
+  and parts are outside the scanned templates FS.
 - **Doc synthesis does one thing skill/agent synthesis does not:** it reads the
   sidecar's `data` into the synthesized spec's `Title`/`Desc`. The skill/agent path
   never needed this because the document map does not list them. It is a small,
   doc-specific addition, captured by `inv: local-doc-map-fields`.
 - **The base doc template sits outside the Standard parity/eval machinery** and
-  needs its own publication-safety lock (`inv: doc-base-publication-safe`), like the
+  needs its own publication-safety lock (`inv: local-doc-base-publication-safe`), like the
   base skill/agent templates (ADR-0068). It is residue-scanned by ADR-0082 (which
   walks the whole templates FS) but is *not* auto-covered by the catalog-derived
   golden-test and leak sweeps, which range only skills and agents; a dedicated
@@ -192,6 +211,12 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   generic. Accepted, not fixed.
 - **No schema migration.** Toggleable docs are opt-in (`awf add doc`), so shipping
   `releasing` needs no seed; adopters gain it by enabling it.
+- **Doc-currency obligations land in the implementing/status-flip commit.** Like
+  ADR-0086, the commit that flips this ADR to `Implemented` must, in the same
+  commit: add the seven new `inv:` slugs to the agent guide's Invariants section
+  (via the `.awf/agents-doc.yaml` invariants data and `./x sync`), regenerate
+  `docs/decisions/ACTIVE.md` via `./x sync`, and add the ADR-0091 index row to
+  `docs/decisions/README.md`.
 
 ## Alternatives Considered
 
