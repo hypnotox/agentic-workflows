@@ -329,8 +329,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:b9f3f843ae16449ef2c1e1df1fe10ab5c260a64cd25f82bb41a166fa1d7499e3",
-      "configHash": "sha256:4cd9ddb11fc421201e4acb41789e7bfb78f90df389b8012c3ff5a39b92702b27",
-      "outputHash": "sha256:5c32a00bd8f572fa3a38bb54997878961cc393b51004b040ba73a32e0b2e9cf5"
+      "configHash": "sha256:c9501bf89a5c0b90666019abaa4b6eec6d7f586c19d92780716e72f3e8bd06a7",
+      "outputHash": "sha256:308223d9ecbd5bb061dc0f8e45cb12f3a9c66b83aace43d6b022b2c9cc0d8db9"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
