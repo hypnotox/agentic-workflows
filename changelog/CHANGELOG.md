@@ -9,6 +9,11 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Inert sidecar fields now refuse at project open (ADR-0086): `paths:` on a
+  non-domain sidecar, and anything but `paths:` on a domain sidecar (`data:`,
+  `sections:`, `local: true`), fail every gated command with the exact file
+  and fix named. These fields were silently ignored before — delete them (or
+  move `paths:` to a domain sidecar) and re-run.
 - The four prose-knob catalog vars — `docCurrencyTargets`, `adrProposeCommitFmt`,
   `gateDuration`, `modulePrefix` — are removed (ADR-0084): catalog vars now carry
   functional values only (commands, enforced identifiers, structural paths).

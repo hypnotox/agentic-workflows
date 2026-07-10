@@ -71,11 +71,14 @@ func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
 
 func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n")
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	p, err := Open(root)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Created after Open: the ADR-0086 open-time validation reads domain
+	// sidecars too, so a pre-existing unreadable sidecar would fail there —
+	// this test pins Audit's own read-error propagation.
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := p.Audit(""); err == nil || !strings.Contains(err.Error(), "sidecar") {

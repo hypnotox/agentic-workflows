@@ -22,10 +22,27 @@ func (p *Project) validateAgainstCatalog() error {
 			return err
 		}
 	}
+	// Domain sidecars are paths-only (ADR-0086 Decision 5): domain rendering
+	// passes an empty sidecar and injects its own data map, so an authored
+	// data:, sections:, or local: entry silently does nothing — and the
+	// domain template's own .data.domain reference would mask a data: block
+	// from the consumption check.
+	for _, name := range p.Cfg.Domains {
+		sc, err := p.Cfg.Sidecar("domains", name)
+		if err != nil {
+			return err
+		}
+		if len(sc.Data) > 0 || len(sc.Sections) > 0 || sc.Local {
+			return fmt.Errorf("domain %q: a domain sidecar is paths-only — nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
+		}
+	}
 	// agents-doc section overrides against catalog (always-on singleton).
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
 	if err != nil {
 		return err
+	}
+	if len(ad.Paths) > 0 {
+		return errors.New("agents-doc: paths: is read only from domain sidecars; remove it from .awf/agents-doc.yaml")
 	}
 	if !ad.Local {
 		if err := checkSectionsAllowed("agents-doc", "", p.Cat.Docs["agents-doc"].Sections, ad.Sections); err != nil {
@@ -36,6 +53,9 @@ func (p *Project) validateAgainstCatalog() error {
 		sc, err := p.Cfg.Sidecar(sg.kind, "")
 		if err != nil {
 			return err
+		}
+		if len(sc.Paths) > 0 {
+			return fmt.Errorf("%s: paths: is read only from domain sidecars; remove it from .awf/%s.yaml", sg.kind, sg.kind)
 		}
 		if !sc.Local {
 			if err := checkSectionsAllowed(sg.kind, "", sg.sections(p.Cat), sc.Sections); err != nil {
@@ -55,6 +75,14 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		sc, err := p.Cfg.Sidecar(d.Plural, name)
 		if err != nil {
 			return err
+		}
+		// Inert-field rejection (ADR-0086 Decision 5): paths: is read only from
+		// domain sidecars (ADR-0077), so on any other kind it is configuration
+		// that silently does nothing. Checked before the local: skip — a local
+		// sidecar cannot carry it either.
+		// invariant: inert-sidecar-field-rejected
+		if len(sc.Paths) > 0 {
+			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
 		}
 		if sc.Local {
 			continue
