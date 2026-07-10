@@ -123,11 +123,15 @@ func (pr *promptReader) line() (string, error) {
 }
 
 // Resolve maps descriptors + answers to a vars map, an optional catalog trim, and
-// the resolved commit-scope list. For a string/enum descriptor the value is: the
-// explicit answer if present; otherwise an interactive prompt (when interactive);
-// otherwise empty. A multiselect descriptor resolves to a verbatim selection (see
+// the resolved commit-scope list. Multiselect descriptors resolve first — the
+// trim decides which var prompts are worth asking (ADR-0086 Decision 6), so
+// artifact selection precedes var entry. For a string/enum descriptor the value
+// is: the explicit answer if present; otherwise an interactive prompt (when
+// interactive and, given a needed filter, the var is one the selection's
+// templates reference); otherwise empty. A nil needed prompts for everything.
+// A multiselect descriptor resolves to a verbatim selection (see
 // resolveMultiselect) routed to the catalog-skills/catalog-docs trim dimension.
-func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool) (map[string]string, *config.CatalogTrim, []string, error) {
+func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool, needed func(*config.CatalogTrim) (map[string]bool, error)) (map[string]string, *config.CatalogTrim, []string, error) {
 	// An answer key matching no descriptor is a typo that would otherwise
 	// no-op silently, leaving the intended var empty.
 	known := map[string]bool{}
@@ -144,26 +148,49 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 	var skillsSel, docsSel *[]string
 	r := &promptReader{r: bufio.NewReader(in)}
 	for _, d := range descs {
+		if d.Kind != "multiselect" {
+			continue
+		}
+		sel, selected, err := resolveMultiselect(r, out, d, answers, interactive && !r.eof)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if selected {
+			switch d.Target {
+			case "catalog-skills":
+				chosen := sel
+				skillsSel = &chosen
+			case "catalog-docs":
+				chosen := sel
+				docsSel = &chosen
+			}
+		}
+	}
+	var trim *config.CatalogTrim
+	if skillsSel != nil || docsSel != nil {
+		trim = &config.CatalogTrim{Skills: skillsSel, Docs: docsSel}
+	}
+	var neededVars map[string]bool
+	if needed != nil {
+		nv, err := needed(trim)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		neededVars = nv
+	}
+	for _, d := range descs {
 		if d.Kind == "multiselect" {
-			sel, selected, err := resolveMultiselect(r, out, d, answers, interactive && !r.eof)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			if selected {
-				switch d.Target {
-				case "catalog-skills":
-					chosen := sel
-					skillsSel = &chosen
-				case "catalog-docs":
-					chosen := sel
-					docsSel = &chosen
-				}
-			}
 			continue
 		}
 		val, ok := answers[d.Key]
 		if !ok {
-			if interactive && !r.eof {
+			// A var no template of the scaffolded enabled set references is
+			// seeded empty, never prompted (ADR-0086 Decision 6): a typed
+			// answer for it could only become unused-var drift. Explicit
+			// answers (the ok branch above) stay honored.
+			// invariant: init-prompts-enabled-vars
+			skip := neededVars != nil && d.Target == "" && !neededVars[d.Key]
+			if interactive && !r.eof && !skip {
 				p, err := prompt(r, out, d)
 				if err != nil {
 					return nil, nil, nil, err
@@ -184,11 +211,6 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		default:
 			vars[d.Key] = val
 		}
-	}
-
-	var trim *config.CatalogTrim
-	if skillsSel != nil || docsSel != nil {
-		trim = &config.CatalogTrim{Skills: skillsSel, Docs: docsSel}
 	}
 	return vars, trim, splitNames(scopesRaw), nil
 }

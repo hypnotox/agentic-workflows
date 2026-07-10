@@ -55,18 +55,52 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	}
 	varNames := slices.Sorted(maps.Keys(varSet))
 
+	skillNames, agentNames, docNames, added := scaffoldSelection(cat, trim)
+
+	seeded := make(map[string]string, len(varNames))
+	for _, v := range varNames {
+		seeded[v] = vars[v] // resolved value, or "" for an absent/unresolved var
+	}
+	// A non-empty resolved commitScopes answer becomes the audit block; an empty
+	// answer writes nothing — nil audit.allowedScopes = accept any (ADR-0017,
+	// ADR-0051 Decision 2).
+	// invariant: audit-scopes-descriptor-routed
+	var auditBlk *config.SkeletonAudit
+	if len(scopes) > 0 {
+		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
+	}
+	out, err := config.MarshalSkeleton(config.Skeleton{
+		Prefix:    prefix,
+		Vars:      seeded,
+		Skills:    skillNames,
+		Agents:    agentNames,
+		Docs:      docNames,
+		Audit:     auditBlk,
+		Bootstrap: &config.BootstrapConfig{Enabled: true},
+		Hooks:     &config.HooksConfig{Enabled: true},
+	})
+	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
+		return nil, nil, err
+	}
+	return out, added, nil
+}
+
+// scaffoldSelection derives the scaffolded enable arrays from an optional
+// trim: the curated-core default, or the closure-completed trim with agents
+// derived from the selection's requirements (ADR-0081 Decision 9). added
+// lists closure additions beyond the explicit selection.
+func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNames, agentNames, docNames, added []string) {
 	// Enable the core skills; under the untrimmed default agents are all
 	// enabled (every one is workflow-essential). No core docs remain —
 	// workflow/doc-standard/agents-md-standard are mandatory singletons
 	// (ADR-0043), not toggleable.
 	// invariant: scaffold-core-only
-	var skillNames, docNames []string
 	for name, spec := range cat.Skills {
 		if spec.Core {
 			skillNames = append(skillNames, name)
 		}
 	}
-	agentNames := slices.Sorted(maps.Keys(cat.Agents))
+	agentNames = slices.Sorted(maps.Keys(cat.Agents))
 	// A non-nil trim dimension (ADR-0029 full-deselectable catalog trim) replaces
 	// the curated-core default, then is closure-completed and its agents derived
 	// from the selection's requirements (ADR-0081 Decision 9) — without the
@@ -75,7 +109,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	// returned so init can note each one.
 	// invariant: catalog-trim-applied
 	// invariant: init-set-closed
-	var added []string
 	if trim != nil && trim.Docs != nil {
 		docNames = slices.Clone(*trim.Docs)
 	}
@@ -111,33 +144,45 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	slices.Sort(docNames)
 	slices.Sort(agentNames)
 	slices.Sort(added)
+	return skillNames, agentNames, docNames, added
+}
 
-	seeded := make(map[string]string, len(varNames))
-	for _, v := range varNames {
-		seeded[v] = vars[v] // resolved value, or "" for an absent/unresolved var
+// NeededVars returns the var names referenced by the templates the
+// scaffolded enabled set will render: the enable arrays scaffoldSelection
+// derives, the always-on singletons (agents-doc + plain), and the
+// default-enabled hook payloads. Init's interactive path prompts only for
+// these (ADR-0086 Decision 6); the scaffold still seeds the full catalog
+// union as empty keys (ADR-0022 unchanged), and an explicit --set/answers
+// value is honored regardless.
+func NeededVars(trim *config.CatalogTrim) (map[string]bool, error) {
+	cat := catalog.Standard
+	skills, agents, docs, _ := scaffoldSelection(cat, trim)
+	varSet := map[string]bool{}
+	for _, c := range []struct {
+		kind  string
+		names []string
+	}{{"skills", skills}, {"agents", agents}, {"docs", docs}} {
+		d, _ := descriptorByPlural(c.kind)
+		for _, n := range c.names {
+			if err := collectVars(templates.FS, d.tid(n), varSet); err != nil { // coverage-ignore: every scaffoldSelection name has a backing embedded template
+				return nil, err
+			}
+		}
 	}
-	// A non-empty resolved commitScopes answer becomes the audit block; an empty
-	// answer writes nothing — nil audit.allowedScopes = accept any (ADR-0017,
-	// ADR-0051 Decision 2).
-	// invariant: audit-scopes-descriptor-routed
-	var auditBlk *config.SkeletonAudit
-	if len(scopes) > 0 {
-		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
+	if err := collectVars(templates.FS, "agents-doc/AGENTS.md.tmpl", varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
+		return nil, err
 	}
-	out, err := config.MarshalSkeleton(config.Skeleton{
-		Prefix:    prefix,
-		Vars:      seeded,
-		Skills:    skillNames,
-		Agents:    agentNames,
-		Docs:      docNames,
-		Audit:     auditBlk,
-		Bootstrap: &config.BootstrapConfig{Enabled: true},
-		Hooks:     &config.HooksConfig{Enabled: true},
-	})
-	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
-		return nil, nil, err
+	for _, sg := range plainSingletons {
+		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
+			return nil, err
+		}
 	}
-	return out, added, nil
+	for _, name := range hookNames {
+		if err := collectVars(templates.FS, "hooks/"+name+".sh.tmpl", varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+			return nil, err
+		}
+	}
+	return varSet, nil
 }
 
 // collectVars reads the template at path and adds all .vars.X names to varSet.

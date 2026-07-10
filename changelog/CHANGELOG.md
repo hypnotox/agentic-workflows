@@ -42,6 +42,11 @@ query a single version or a range.
   with an unknown-answer-key error.
 
 ### Features
+- Interactive `awf init` now asks for the skill/doc selection first and then
+  prompts only for the vars that selection's templates (plus the always-on
+  singletons and hook payloads) actually reference (ADR-0086); every other
+  catalog var is seeded empty as before. `--set`/answers-file values are
+  honored for any var either way.
 - Single-command upgrades: the bootstrap singleton now renders `.awf/upgrade.sh`
   alongside `.awf/bootstrap.sh` (ADR-0085). `bash .awf/upgrade.sh` resolves the
   newest release (or takes an exact version argument), fetches and verifies it

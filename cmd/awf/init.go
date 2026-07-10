@@ -65,7 +65,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 	} else {
 		var rerr error
-		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
+		vars, trim, scopes, rerr = initspec.Resolve(descs, answers, stdin, stdout, isInteractive(), project.NeededVars)
 		if rerr != nil {
 			return rerr
 		}

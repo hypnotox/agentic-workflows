@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 func descs() []catalog.VarDescriptor {
@@ -22,7 +23,7 @@ type errReader struct{}
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
 
 func TestResolveSilentSeedsEmpty(t *testing.T) {
-	vars, _, _, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false)
+	vars, _, _, err := Resolve(descs(), nil, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestResolveSilentSeedsEmpty(t *testing.T) {
 
 func TestResolveExplicitAnswersWin(t *testing.T) {
 	a := map[string]string{"gateCmd": "make test", "flavor": "//"}
-	vars, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false)
+	vars, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func TestResolveExplicitAnswersWin(t *testing.T) {
 func TestResolveInteractiveDefaultAndEnumIndex(t *testing.T) {
 	// gateCmd: empty line → default; flavor: "2" → second enum option.
 	in := strings.NewReader("\n2\n")
-	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestResolveInteractiveDefaultAndEnumIndex(t *testing.T) {
 func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
 	// gateCmd: literal; flavor: non-numeric literal → literal value.
 	in := strings.NewReader("custom\n//\n")
-	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true)
+	vars, _, _, err := Resolve(descs(), nil, in, &strings.Builder{}, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestResolveInteractiveLiteralAndEnumNonNumeric(t *testing.T) {
 // silently, leaving the intended var empty (publication-degraded prose).
 func TestResolveRejectsUnknownAnswerKey(t *testing.T) {
 	a := map[string]string{"gatecmd": "make"} // typo'd case
-	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false, nil); err == nil {
 		t.Fatal("expected error for unknown answer key")
 	}
 }
@@ -88,13 +89,13 @@ func TestResolveRejectsUnknownAnswerKey(t *testing.T) {
 // does, not land verbatim in vars.
 func TestResolveRejectsInvalidEnumAnswer(t *testing.T) {
 	a := map[string]string{"flavor": ";;"}
-	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+	if _, _, _, err := Resolve(descs(), a, strings.NewReader(""), &strings.Builder{}, false, nil); err == nil {
 		t.Fatal("expected error for enum answer outside options")
 	}
 }
 
 func TestResolvePromptReadError(t *testing.T) {
-	if _, _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
+	if _, _, _, err := Resolve(descs(), nil, errReader{}, &strings.Builder{}, true, nil); err == nil {
 		t.Fatal("expected error from a failing reader")
 	}
 }
@@ -167,7 +168,7 @@ func TestCatalogVarsComputesTrimOptions(t *testing.T) {
 }
 
 func TestResolveMultiselectSilentKeepsCore(t *testing.T) {
-	_, trim, _, err := Resolve(trimDescs(), nil, strings.NewReader(""), &strings.Builder{}, false)
+	_, trim, _, err := Resolve(trimDescs(), nil, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +181,7 @@ func TestResolveMultiselectExplicit(t *testing.T) {
 	// Trailing comma on skills exercises splitNames' empty-segment skip; docs is
 	// answered too so the catalog-docs trim dimension is populated.
 	a := map[string]string{"skills": "tdd,brainstorming,", "docs": "testing"}
-	_, trim, _, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false)
+	_, trim, _, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +195,7 @@ func TestResolveMultiselectExplicit(t *testing.T) {
 
 func TestResolveMultiselectExplicitUnknownName(t *testing.T) {
 	a := map[string]string{"skills": "nope"}
-	if _, _, _, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false); err == nil {
+	if _, _, _, err := Resolve(trimDescs(), a, strings.NewReader(""), &strings.Builder{}, false, nil); err == nil {
 		t.Fatal("expected error for unknown option name")
 	}
 }
@@ -203,7 +204,7 @@ func TestResolveMultiselectInteractive(t *testing.T) {
 	// skills: "1,3," -> brainstorming,tdd (trailing comma exercises the empty-token
 	// skip); docs: empty -> keep core (nil dimension).
 	in := strings.NewReader("1,3,\n\n")
-	_, trim, _, err := Resolve(trimDescs(), nil, in, &strings.Builder{}, true)
+	_, trim, _, err := Resolve(trimDescs(), nil, in, &strings.Builder{}, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,14 +218,14 @@ func TestResolveMultiselectInteractive(t *testing.T) {
 
 func TestResolveMultiselectInteractiveInvalidToken(t *testing.T) {
 	for _, line := range []string{"9\n", "x\n"} { // out-of-range, non-numeric
-		if _, _, _, err := Resolve(trimDescs(), nil, strings.NewReader(line), &strings.Builder{}, true); err == nil {
+		if _, _, _, err := Resolve(trimDescs(), nil, strings.NewReader(line), &strings.Builder{}, true, nil); err == nil {
 			t.Errorf("expected error for input %q", line)
 		}
 	}
 }
 
 func TestResolveMultiselectPromptReadError(t *testing.T) {
-	if _, _, _, err := Resolve(trimDescs(), nil, errReader{}, &strings.Builder{}, true); err == nil {
+	if _, _, _, err := Resolve(trimDescs(), nil, errReader{}, &strings.Builder{}, true, nil); err == nil {
 		t.Fatal("expected read error from multiselect prompt")
 	}
 }
@@ -233,7 +234,7 @@ func TestResolveMultiselectPromptReadError(t *testing.T) {
 // out of the vars map (ADR-0051).
 func TestResolveAuditScopes(t *testing.T) {
 	ds := []catalog.VarDescriptor{{Key: "commitScopes", Kind: "string", Target: "audit-scopes"}}
-	vars, _, scopes, err := Resolve(ds, map[string]string{"commitScopes": " adr, awf ,,plans "}, strings.NewReader(""), &strings.Builder{}, false)
+	vars, _, scopes, err := Resolve(ds, map[string]string{"commitScopes": " adr, awf ,,plans "}, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +250,7 @@ func TestResolveAuditScopes(t *testing.T) {
 // audit semantics, nothing written (ADR-0051, ADR-0017).
 func TestResolveAuditScopesEmptyIsNil(t *testing.T) {
 	ds := []catalog.VarDescriptor{{Key: "commitScopes", Kind: "string", Target: "audit-scopes"}}
-	_, _, scopes, err := Resolve(ds, nil, strings.NewReader(""), &strings.Builder{}, false)
+	_, _, scopes, err := Resolve(ds, nil, strings.NewReader(""), &strings.Builder{}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +269,7 @@ func TestResolveEOFFallsSilent(t *testing.T) {
 		{Key: "second", Kind: "string", Default: "d2"},
 	}
 	var out strings.Builder
-	vars, _, _, err := Resolve(ds, nil, strings.NewReader(""), &out, true)
+	vars, _, _, err := Resolve(ds, nil, strings.NewReader(""), &out, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,5 +284,78 @@ func TestResolveEOFFallsSilent(t *testing.T) {
 	}
 	if vars["second"] != "" {
 		t.Errorf(`vars["second"] = %q, want "" (silent path)`, vars["second"])
+	}
+}
+
+// The needed filter (ADR-0086 Decision 6): vars outside the selection's
+// referenced set are seeded empty without a prompt; explicit answers stay
+// honored; a filter error propagates.
+// invariant: init-prompts-enabled-vars
+func TestResolveSkipsUnneededVarPrompts(t *testing.T) {
+	ds := []catalog.VarDescriptor{
+		{Key: "a", Kind: "string"},
+		{Key: "b", Kind: "string"},
+	}
+	needed := func(*config.CatalogTrim) (map[string]bool, error) {
+		return map[string]bool{"a": true}, nil
+	}
+	var out strings.Builder
+	vars, _, _, err := Resolve(ds, nil, strings.NewReader("va\n"), &out, true, needed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vars["a"] != "va" || vars["b"] != "" {
+		t.Fatalf("want a prompted, b seeded empty; got %v", vars)
+	}
+	if !strings.Contains(out.String(), "a") || strings.Contains(out.String(), "b (") {
+		t.Fatalf("transcript must prompt a and not b:\n%s", out.String())
+	}
+}
+
+func TestResolveHonorsExplicitAnswerForUnneededVar(t *testing.T) {
+	ds := []catalog.VarDescriptor{{Key: "b", Kind: "string"}}
+	needed := func(*config.CatalogTrim) (map[string]bool, error) {
+		return map[string]bool{}, nil
+	}
+	vars, _, _, err := Resolve(ds, map[string]string{"b": "x"}, strings.NewReader(""), &strings.Builder{}, true, needed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vars["b"] != "x" {
+		t.Fatalf("explicit answers are honored regardless of the filter, got %v", vars)
+	}
+}
+
+func TestResolvePropagatesNeededError(t *testing.T) {
+	ds := []catalog.VarDescriptor{{Key: "a", Kind: "string"}}
+	needed := func(*config.CatalogTrim) (map[string]bool, error) {
+		return nil, errors.New("boom")
+	}
+	if _, _, _, err := Resolve(ds, nil, strings.NewReader(""), &strings.Builder{}, false, needed); err == nil {
+		t.Fatal("a needed-filter error must propagate")
+	}
+}
+
+// Multiselects prompt before vars regardless of descriptor order, so the
+// needed filter always has the trim in hand.
+func TestResolveMultiselectsPromptFirst(t *testing.T) {
+	ds := []catalog.VarDescriptor{
+		{Key: "gateCmd", Kind: "string"},
+		{Key: "skills", Kind: "multiselect", Target: "catalog-skills",
+			Options: []string{"brainstorming", "tdd"}, Default: "brainstorming"},
+	}
+	var out strings.Builder
+	// First line answers the skills multiselect (empty keeps the default),
+	// second the gateCmd prompt — the reverse of descriptor order.
+	_, _, _, err := Resolve(ds, nil, strings.NewReader("\nmake gate\n"), &out, true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transcript := out.String()
+	if !strings.Contains(transcript, "skills") || !strings.Contains(transcript, "gateCmd") {
+		t.Fatalf("both prompts expected:\n%s", transcript)
+	}
+	if strings.Index(transcript, "skills") > strings.Index(transcript, "gateCmd") {
+		t.Fatalf("the multiselect must prompt before the var:\n%s", transcript)
 	}
 }

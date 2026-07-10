@@ -161,9 +161,10 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	isInteractive = func() bool { return true }
 	t.Cleanup(func() { isInteractive = origInteractive })
 	origStdin := stdin
-	// gateCmd (the first descriptor) gets a value; every later prompt hits EOF and
-	// takes its empty default, so the invariants marker/globs stay unset (nil).
-	stdin = strings.NewReader("make gate\n")
+	// Multiselects prompt first (ADR-0086): two empty lines keep the skills and
+	// docs core defaults, then gateCmd reads its value; every later prompt hits
+	// EOF and takes its empty default, so the invariants marker/globs stay unset.
+	stdin = strings.NewReader("\n\nmake gate\n")
 	t.Cleanup(func() { stdin = origStdin })
 
 	var out, errb bytes.Buffer

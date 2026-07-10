@@ -366,3 +366,32 @@ func TestScaffoldDefaultIsClosed(t *testing.T) {
 		}
 	}
 }
+
+// NeededVars (ADR-0086 Decision 6): the untrimmed default needs the hook
+// payloads' var; a trim to tdd-only drops invariantTestPath, which only the
+// adr-reviewer agent and retrospective skill reference (both outside tdd's
+// closure), while agents-doc/workflow keep gateCmd needed.
+func TestNeededVars(t *testing.T) {
+	full, err := NeededVars(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range []string{"commitGateCmd", "gateCmd", "invariantTestPath"} {
+		if !full[v] {
+			t.Errorf("untrimmed default must need %s", v)
+		}
+	}
+	trim := &config.CatalogTrim{Skills: &[]string{"tdd"}, Docs: &[]string{}}
+	trimmed, err := NeededVars(trim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trimmed["invariantTestPath"] {
+		t.Error("a tdd-only trim must not need invariantTestPath")
+	}
+	for _, v := range []string{"commitGateCmd", "gateCmd"} {
+		if !trimmed[v] {
+			t.Errorf("hook payloads and always-on singletons keep %s needed", v)
+		}
+	}
+}
