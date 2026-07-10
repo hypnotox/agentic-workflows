@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [examples, onboarding, quality, tooling]
-related: [8, 20, 39, 48, 53, 70, 80, 86]
+related: [8, 20, 39, 48, 49, 53, 70, 77, 80, 81, 83, 86, 87, 89]
 domains: [tooling, rendering]
 ---
 # ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle
@@ -49,8 +49,10 @@ scratch adopter):
   collides with a real awf slug would falsely back it.
 - The full-surface enabled set is closed and legal: `targets: [claude]` alone is the init
   default; all 16 skills + 3 agents + 7 docs satisfy the ADR-0081 closure
-  (`roadmap-graduation` pulls the `roadmap` doc); all 7 string var descriptors are
-  consumed by that set, so setting them all is unused-var-clean (ADR-0086). The planned
+  (`roadmap-graduation` pulls the `roadmap` doc); all seven vars-map string descriptors
+  are consumed by that set, so setting them all is unused-var-clean (ADR-0086) —
+  `commitScopes`, the eighth string-kind descriptor, lands in `audit.allowedScopes`,
+  not `vars:`. The planned
   `.awf/` inventory — glossary `data.terms` sidecar (ADR-0089), domain sidecars with
   `paths:` plus parts, agents-doc sidecar `data:`, enabled bootstrap and hooks render
   units — is fully claimed under the ADR-0086 model. Every agents-doc `docMap` entry
@@ -81,12 +83,13 @@ scratch adopter):
    (cursor output is near-byte-identical and would double the diff for no review
    signal); every catalog artifact enabled — all skills including opt-in
    `roadmap-graduation`, all agents, all docs including `debugging` and `roadmap`,
-   `bootstrap`, `hooks`; all seven string vars set to commands that exist in the
-   example tree, `commitScopes` populating `audit.allowedScopes`; two domains with
+   `bootstrap`, `hooks`; all seven vars-map string descriptors set to commands and
+   paths that exist in the example tree, `commitScopes` populating
+   `audit.allowedScopes`; two domains with
    `paths:` (`internal/almanac/**`, `cmd/**`) and current-state parts; convention parts
    covering each override flavor (plain body replacement, `{{=awf:sectionDefault}}`
-   extension, doc parts, agents-doc sidecar `data:` plus parts); a `docs/glossary.yaml`
-   `data.terms` sidecar. Every stub-classified section in the enabled set gets authored
+   extension, doc parts, agents-doc sidecar `data:` plus parts); a
+   `.awf/docs/glossary.yaml` `data.terms` sidecar. Every stub-classified section in the enabled set gets authored
    content — the example models a finished adoption, not a fresh scaffold.
 
 3. **`./x sync` and `./x check` own the determinism.** `./x sync` renders this repo's own
@@ -94,7 +97,10 @@ scratch adopter):
    `examples/sundial` as cwd (`go run` cannot cross the module boundary; the binary is
    invoked by absolute path). `./x check` likewise runs `awf check` and `awf invariants`
    there, plus `go test ./...` inside the example module (its token tests keep
-   `invariantTestPath` honest and its scenery compiling). Template changes thus surface
+   `invariantTestPath` honest and its scenery compiling). The example tests ride
+   `./x check`, not the gate, deliberately: the gate stays module-scoped and fast,
+   example scenery only changes at sync time, and the pre-commit payload and CI
+   enforce check beside the gate anyway. Template changes thus surface
    as reviewable rendered diffs in the same commit, and forgetting the re-sync fails
    `./x check` — enforced beside the gate by the pre-commit payload and CI. A gate test
    in the repo module asserts the `./x` example steps exist (the
@@ -121,10 +127,19 @@ scratch adopter):
    prefix distinguishing it from real awf slugs; a collision would falsely back a real
    invariant.
 
-7. **The example is the linked onboarding artifact.** The root `README.md` and
-   `docs/working-with-awf.md` point at `examples/sundial/` as the worked example; the
-   root `.gitignore`'s unanchored `.claude` negations already cover it. A standalone
-   mirror repository is deferred until onboarding demand exists.
+7. **The example is the linked onboarding artifact, and the docs travel with the
+   change.** The root `README.md` and `docs/working-with-awf.md` point at
+   `examples/sundial/` as the worked example — the latter via a convention part at
+   `.awf/docs/parts/working-with-awf/<section>.md`, never a shipped-template edit
+   (the link is this repo's identity; rendering it into every adopter's doc would
+   violate publication safety and the ADR-0082 residue guard). The root
+   `.gitignore`'s unanchored `.claude` negations already cover the example. The
+   implementing change also updates, in the same change and via their source parts:
+   the `.awf/agents-doc.yaml` invariants list (the three new slugs),
+   `docs/testing.md` (the check tier gains the example steps),
+   `docs/development.md` (command-runner behavior), and `docs/architecture.md` (the
+   new top-level tree). A standalone mirror repository is deferred until onboarding
+   demand exists.
 
 ## Invariants
 
