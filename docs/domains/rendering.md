@@ -57,8 +57,5 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 - [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md)
 - [ADR-0083: Whole-line part-marker advisory](../decisions/0083-whole-line-part-marker-advisory.md)
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
-
-### Proposed
-
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
 

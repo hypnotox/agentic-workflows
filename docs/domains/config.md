@@ -41,8 +41,5 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
 - [ADR-0084: Catalog vars carry functional values only](../decisions/0084-catalog-vars-carry-functional-values-only.md)
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
-
-### Proposed
-
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
 
