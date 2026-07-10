@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-07-10
+
 ### Bug fixes
 - The invariant-backing scan no longer descends into nested checkouts: a
   subdirectory carrying its own `.git` entry (a directory in a primary clone,
