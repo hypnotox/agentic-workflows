@@ -135,8 +135,9 @@ func sortBySlug(f []Finding) {
 
 // scanTags collects slugs backed by a `<marker> invariant: <slug>` comment in a
 // file whose slash-separated repo-relative path matches one of a source's
-// anchored globs (ADR-0077; skipping .git/vendor/node_modules). The marker is
-// matched literally; whitespace between the marker and `invariant:` is tolerated.
+// anchored globs (ADR-0077; skipping .git/vendor/node_modules and nested
+// checkouts). The marker is matched literally; whitespace between the marker
+// and `invariant:` is tolerated.
 func scanTags(root string, sources []config.InvariantSource) (map[string]bool, error) {
 	present := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -147,6 +148,15 @@ func scanTags(root string, sources []config.InvariantSource) (map[string]bool, e
 			switch d.Name() {
 			case ".git", "vendor", "node_modules":
 				return fs.SkipDir
+			}
+			// A subdirectory with its own .git entry — a directory in a
+			// primary clone, a gitdir-pointer file in a linked worktree or
+			// submodule — is another repository's working tree: its markers
+			// must not back this project's invariants.
+			if path != root {
+				if _, lerr := os.Lstat(filepath.Join(path, ".git")); lerr == nil {
+					return fs.SkipDir
+				}
 			}
 			return nil
 		}

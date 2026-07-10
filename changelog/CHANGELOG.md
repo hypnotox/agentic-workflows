@@ -8,6 +8,15 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+- The invariant-backing scan no longer descends into nested checkouts: a
+  subdirectory carrying its own `.git` entry (a directory in a primary clone,
+  a gitdir-pointer file in a linked worktree or submodule) is another
+  repository's working tree, so a marker inside it can no longer silently
+  keep this project's invariant "backed" — previously a stale session
+  worktree under `.claude/worktrees/` could preserve a deleted marker and
+  hide an unbacked invariant from `awf check`.
+
 ## [0.14.0] - 2026-07-10
 
 ### Breaking changes

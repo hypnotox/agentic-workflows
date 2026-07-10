@@ -310,6 +310,34 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 	}
 }
 
+// A nested checkout — a subdirectory carrying its own .git entry, a directory
+// in a primary clone or a gitdir-pointer file in a linked worktree/submodule —
+// is another repository's working tree: a marker inside it must not back this
+// project's invariants (stale session worktrees under .claude/worktrees/ were
+// silently keeping deleted markers "backed"). The root's own .git entry must
+// not suppress the scan.
+func TestCheckSkipsNestedCheckouts(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-nested` — x.\n- `inv: fixture-own` — y.")
+	// The scanned project is itself a checkout; its root must still scan.
+	testsupport.WriteFile(t, filepath.Join(root, ".git", "HEAD"), "ref: refs/heads/main\n")
+	goSrc(t, root, "package x\n// invariant: fixture-own\n")
+	// A nested primary clone: .git is a directory.
+	testsupport.WriteFile(t, filepath.Join(root, "clone", ".git", "HEAD"), "ref: refs/heads/main\n")
+	testsupport.WriteFile(t, filepath.Join(root, "clone", "x.go"), "// invariant: fixture-nested\n")
+	// A linked worktree or submodule: .git is a gitdir-pointer file.
+	testsupport.WriteFile(t, filepath.Join(root, "wt", ".git"), "gitdir: /elsewhere/.git/worktrees/wt\n")
+	testsupport.WriteFile(t, filepath.Join(root, "wt", "x.go"), "// invariant: fixture-nested\n")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}
+	f, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-nested" || f[0].Status != invariants.Unbacked {
+		t.Fatalf("markers in nested checkouts must not back, want only fixture-nested unbacked, got %#v", f)
+	}
+}
+
 // TestCheckScanWalkError pins that a WalkDir error during the source scan (here,
 // a non-existent root) propagates out of Check rather than being swallowed.
 func TestCheckScanWalkError(t *testing.T) {
