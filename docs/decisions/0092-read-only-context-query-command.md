@@ -117,7 +117,7 @@ Grounding the design against the code surfaced facts that shape it:
    opens the project. `context` joins the gated command set; the authoritative
    current-state enumeration is the AGENTS.md "Binary-version gate" invariant line,
    which gains `context` in the commit that lands the command. ADR-0039's own text
-   is left frozen — config/add/remove/new set the precedent of extending only the
+   is left frozen — config/enable/disable/new set the precedent of extending only the
    live AGENTS.md line, keeping the append-only-ADR invariant intact (no mechanical
    test fails otherwise).
 
@@ -180,7 +180,7 @@ Grounding the design against the code surfaced facts that shape it:
   authoritative AGENTS.md "Binary-version gate" invariant line — both its
   gated-command enumeration and its outside-tree degrade clause, since `context`
   degrades to a static/empty answer like `config` rather than refusing (ADR-0039's
-  own text stays frozen, per the config/add/remove/new precedent); add `context` to
+  own text stays frozen, per the config/enable/disable/new precedent); add `context` to
   the CLI help and `working-with-awf`; and regenerate `docs/decisions/ACTIVE.md` via
   `./x sync`.
 
