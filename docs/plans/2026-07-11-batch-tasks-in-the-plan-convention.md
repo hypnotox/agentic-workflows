@@ -97,7 +97,10 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   ```
 
 - [ ] **1.4 Lock the new skill prose with a golden assertion.** In `internal/project/spine_test.go`,
-  in `TestWritingPlansTemplate`, add `"batch task"` to the `loadBearing` slice. Exact diff:
+  in `TestWritingPlansTemplate`, add `"batch task"` and `"affected-site set"` to the `loadBearing`
+  slice. The second phrase is unique to the four-field definition in the 1.1 bullet, so it locks the
+  batch-task *substance* (not just the two-word name, which also appears in the 1.2 bullet). Exact
+  diff:
 
   ```diff
    	loadBearing := []string{
@@ -107,6 +110,7 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
    		"whose first production use lands in a later phase",
    		"example-reviewing-plan",
   +		"batch task",
+  +		"affected-site set",
    	}
   ```
 
@@ -124,7 +128,7 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   ```
   git add templates/skills/writing-plans/SKILL.md.tmpl templates/plans-readme/README.md.tmpl \
     internal/project/spine_test.go .claude/skills/awf-writing-plans/SKILL.md docs/plans/README.md \
-    examples/sundial/.claude/skills/awf-writing-plans/SKILL.md examples/sundial/docs/plans/README.md \
+    examples/sundial/.claude/skills/sundial-writing-plans/SKILL.md examples/sundial/docs/plans/README.md \
     .awf/awf.lock
   git commit -m "feat(rendering): add the batch task to the plan-writing convention"
   ```
@@ -162,8 +166,10 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
              description: tasks are ordered so each builds only on already-completed work
   ```
 
-- [ ] **2.3 Lock the catalog default with a unit test.** Create `internal/catalog/batch_test.go`
-  with exactly this content:
+- [ ] **2.3 Lock the catalog default with a unit test.** This test locks the catalog *default*
+  (2.1). The sidecar refinement (2.2) is guarded by `./x check` rendered-vs-sidecar drift, not a
+  unit assertion — the intended mechanism for hand-authored config, mirroring every other sidecar in
+  the repo. Create `internal/catalog/batch_test.go` with exactly this content:
 
   ```go
   package catalog
