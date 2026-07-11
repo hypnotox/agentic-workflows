@@ -27,11 +27,12 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 
 <!-- awf:section conventions-tasks -->
 - **Tasks:** bite-sized (~2-5 min each), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
+- **Batch tasks for repeated work:** when one transformation applies across multiple sites — 3+ sites whose change is identical modulo the site, or sites sharing one rationale with only mechanical variation — a task may take the *batch* form instead of repeating N near-identical diffs. A batch task names four things: a **representative** site shown as an exact diff, with the instruction to apply the identical shape to every affected site; an **edge** site shown as an exact diff (omit only when the shape is identical at every site, and say so); the **affected-site set**, given either as an exhaustive list of paths or symbols or as a command whose output is exactly that set; and a **post-check** — a deterministic command that fails if any site is unconverted or wrong (a drift check, a test target, or a search whose match count must reach zero). Genuinely distinct per-site edits stay exact-diff tasks.
 - **Self-contained phases:** every phase's closing commit must pass {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} on its own. Never introduce a function, type, or file whose first production use lands in a later phase — place each definition in the phase that first uses it, merging or reordering phases as needed.
 <!-- awf:end -->
 
 <!-- awf:section conventions-no-placeholders -->
-- **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.
+- **No placeholders:** no "TBD", "implement later", or vague "similar to task N" deferral. If a step changes a file, the step shows the change verbatim — or, for a batch task, shows the representative and edge diffs, the affected-site set, and the post-check (see Tasks). If a verify step runs a command, the expected output is exact.
 <!-- awf:end -->
 
 <!-- awf:section gate-tier-note -->

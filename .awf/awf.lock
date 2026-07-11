@@ -130,9 +130,9 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:ffe0a5150a1b29019b1f1125007ce2f72fabef70d45ab39d25322b883ad67404",
+      "templateHash": "sha256:a70524ea1dacfd1ead61647e4349c92014480378e75f24423f76fedc57f8cb9d",
       "configHash": "sha256:94f5a1ab26ba1fa71ffcfd1d9cec5b0d1ab3461c3ebfd3d4acb061286405d0de",
-      "outputHash": "sha256:c845d173242d04be151bc0cf54bb25f4ccf3bd268fcfb3e0608e31d0850a30b0"
+      "outputHash": "sha256:740a1a6adb6f27ff005eda4c47fc03cd933b4ec422c1d149bb70b72b972dd4d0"
     },
     ".cursor/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -238,9 +238,9 @@
     },
     ".cursor/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:ffe0a5150a1b29019b1f1125007ce2f72fabef70d45ab39d25322b883ad67404",
+      "templateHash": "sha256:a70524ea1dacfd1ead61647e4349c92014480378e75f24423f76fedc57f8cb9d",
       "configHash": "sha256:94f5a1ab26ba1fa71ffcfd1d9cec5b0d1ab3461c3ebfd3d4acb061286405d0de",
-      "outputHash": "sha256:c845d173242d04be151bc0cf54bb25f4ccf3bd268fcfb3e0608e31d0850a30b0"
+      "outputHash": "sha256:740a1a6adb6f27ff005eda4c47fc03cd933b4ec422c1d149bb70b72b972dd4d0"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -346,9 +346,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:a11d3c0229ef603121e185995ddc398f30fd2ab93ee31b399f77aacbadacbf76",
+      "templateHash": "sha256:387b9b6b21f9573515799a5490a7b9e146b8ee17a29565ebf72a2cc853619186",
       "configHash": "sha256:e01f5001acf7797ed9178baacf1a56691d2bbd1730b7db263914fb6540ac0290",
-      "outputHash": "sha256:e827e0a2fee1b2fff29e7a9527060f59c595d9a8b9c0b62f8da1ca887da9ff03"
+      "outputHash": "sha256:4301af1cb84ebac2eb1f58d1d4c8658d85b17ea994e66cca9d97dc0198c30696"
     },
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",

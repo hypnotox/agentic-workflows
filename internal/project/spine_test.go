@@ -264,6 +264,8 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"No placeholders",
 		"whose first production use lands in a later phase",
 		"example-reviewing-plan",
+		"batch task",
+		"affected-site set",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
