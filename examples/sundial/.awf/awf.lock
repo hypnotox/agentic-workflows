@@ -1,12 +1,12 @@
 {
-  "awfVersion": "0.14.1",
+  "awfVersion": "0.15.0",
   "schemaVersion": 8,
   "files": {
     ".awf/bootstrap.sh": {
       "templateId": "bootstrap/awf-bootstrap.sh.tmpl",
       "templateHash": "sha256:c5df4dc4a091840a91e89bde5c600396e602dd7872a7e807105f0915578e396c",
       "configHash": "sha256:65fca19aeb2cfccb0649a5ac1854e3cead6db38b7a92149f0da00a929400bb8c",
-      "outputHash": "sha256:9661f37ffc2b79e1daf6a38e508bf7bb5750255200e45b3359f01e6e2510922f"
+      "outputHash": "sha256:43bf5459454e201f134cef5ef181a9cb829cb0fa64fc5fce208432434fd9dd51"
     },
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",

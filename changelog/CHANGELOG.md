@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-11
+
 ### Features
 - Project-local custom docs (ADR-0091): `awf new doc <name> "<description>"`
   scaffolds a managed doc — a declaring sidecar plus a `content` convention
