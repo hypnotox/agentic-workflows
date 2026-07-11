@@ -136,7 +136,9 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - Update tests carrying hard-coded `add`/`remove` tokens or `runAdd`/`runRemove` calls
   (`run_test.go`, `list_add_test.go`, the `new_test.go` comment); the help-parity tests
   iterate `argSpecs`/`commandOrder` dynamically and need no change.
-- The ADR stays `Proposed`; `docs/decisions/ACTIVE.md` regenerates via `./x sync`.
+- This is the no-plan direct-implementation case: the implementing commit flips the
+  ADR to `Implemented` (`awf-adr-lifecycle`) and regenerates `docs/decisions/ACTIVE.md`
+  via `./x sync`.
 
 ## Alternatives Considered
 
