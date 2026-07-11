@@ -9,7 +9,7 @@ func TestValidateDocName(t *testing.T) {
 			t.Errorf("ValidateDocName(%q) = %v, want nil", n, err)
 		}
 	}
-	invalid := []string{"", "Foo", "guides/Foo", "a.md", "../x", "a..b", "/x", "x/", "a//b", "_base", "guides/_base", "under_score"}
+	invalid := []string{"", "Foo", "guides/Foo", "a.md", "../x", "a..b", "/x", "x/", "a//b", "_base", "guides/_base", "under_score", "-", "--", "guides/---"}
 	for _, n := range invalid {
 		if err := ValidateDocName(n); err == nil {
 			t.Errorf("ValidateDocName(%q) = nil, want error", n)

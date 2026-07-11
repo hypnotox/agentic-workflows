@@ -320,12 +320,20 @@ func ValidateDocName(name string) error {
 		if seg == "" {
 			return fmt.Errorf("doc %q must not have an empty path segment", name)
 		}
+		alnum := false
 		for _, r := range seg {
 			switch {
-			case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
+			case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+				alnum = true
+			case r == '-':
 			default:
 				return fmt.Errorf("doc %q segment %q must be lowercase kebab-case (the reserved _base stem is rejected here)", name, seg)
 			}
+		}
+		// An all-hyphen segment derives an empty title, which would breach
+		// inv: local-doc-map-fields (a non-empty document-map label).
+		if !alnum {
+			return fmt.Errorf("doc %q segment %q must contain a letter or digit", name, seg)
 		}
 	}
 	return nil
