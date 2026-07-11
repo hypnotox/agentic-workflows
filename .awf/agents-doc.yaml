@@ -32,8 +32,10 @@ data:
           text: '**Advisory mutation triage.** `./x mutants` runs `gremlins` under the deterministic `.gremlins.yaml` config and is never part of `./x gate`; `cmd/mutants` exits non-zero when any mutant times out (the run is untrustworthy) and otherwise reports only survived (`LIVED`) mutants, treating an empty report as no survivors and a missing report path as an error.'
         - ref: ADR-0020
           text: '**No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk.'
-        - ref: ADR-0039
-          text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `context`, `enable`, `disable`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` and `context` degrade to a static reference outside an adopted tree instead of refusing.'
+        # `kind == "gated-commands"` renders the list from clispec via the
+        # $.gatedCommands render key, so it cannot drift from the code (ADR-0094).
+        - kind: gated-commands
+          ref: ADR-0039
         - ref: ADR-0040
           text: '**Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` defaults its fetch to exactly the rendering binary''s `project.Version`; a pre-set `AWF_VERSION` environment value overrides the target release, verification unchanged.'
         - ref: ADR-0040

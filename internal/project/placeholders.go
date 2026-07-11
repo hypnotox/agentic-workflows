@@ -47,6 +47,7 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 	put("commitScopeSentence", p.commitScopeSentence())
 	put("invariantMarkerSentence", p.invariantMarkerSentence())
 	put("invariantMarkerTable", p.invariantMarkerTable())
+	put("gatedCommands", gatedCommandsDisplay())
 	put("prefix", p.Cfg.Prefix)
 	put("sectionDefault", render.SectionDefaultSentinel)
 	if v, ok := p.Cfg.Vars["gateCmd"].(string); ok {

@@ -73,6 +73,7 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"taskSkills":       p.taskSkillsDisplay(),
 		"commitScopes":     p.commitScopesDisplay(),
 		"invariantMarkers": p.invariantMarkersDisplay(),
+		"gatedCommands":    gatedCommandsDisplay(),
 	}
 }
 

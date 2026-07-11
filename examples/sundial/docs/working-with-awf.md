@@ -110,6 +110,7 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
 | `invariantMarkerSentence` | a sentence naming the invariant comment markers by file type |
 | `invariantMarkerTable` | a markdown table of file globs and their invariant comment markers |
+| `gatedCommands` | the backticked, comma-separated list of binary-version-gated commands |
 | `prefix` | the project's artifact prefix |
 | `gateCmd` | the configured pre-commit gate command |
 | `checkCmd` | the configured drift-check command |

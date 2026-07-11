@@ -290,3 +290,18 @@ func Names() []string {
 
 // UsageLine renders the `awf <a|b|...>` usage token list from the table.
 func UsageLine() string { return "awf <" + strings.Join(Names(), "|") + ">" }
+
+// GatedCommandNames returns, in table order, every top-level command that runs
+// the binary-version gate — the driver-gated commands plus the ones that gate
+// in-handler (config/context after their static fallback, new after name
+// validation). Ungated commands are excluded; a group contributes only its own
+// token. This is the single source of the doc-published gated-command list.
+func GatedCommandNames() []string {
+	var out []string
+	for _, c := range Commands {
+		if c.Gating != Ungated {
+			out = append(out, c.Name)
+		}
+	}
+	return out
+}

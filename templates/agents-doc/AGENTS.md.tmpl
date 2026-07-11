@@ -41,6 +41,8 @@ Hard rules every change must respect:
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
 - **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
+{{- else if eq .kind "gated-commands" }}
+- **Binary-version gate.** Every gated command ({{ $.gatedCommands }}) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` and `context` degrade to a static reference outside an adopted tree instead of refusing.{{ with .ref }} ({{ . }}){{ end }}
 {{- else }}
 - {{ .text }}{{ with .ref }} ({{ . }}){{ end }}
 {{- end }}

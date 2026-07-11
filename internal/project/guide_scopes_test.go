@@ -26,12 +26,13 @@ func TestGuideScopesDerived(t *testing.T) {
 
 	base := func(scopes string) map[string]any {
 		return map[string]any{
-			"prefix":       "awf",
-			"vars":         map[string]any{"gateCmd": "./x gate"},
-			"layout":       testLayout(),
-			"data":         map[string]any{"invariants": invs},
-			"commitScopes": scopes,
-			"skills":       map[string]bool{},
+			"prefix":        "awf",
+			"vars":          map[string]any{"gateCmd": "./x gate"},
+			"layout":        testLayout(),
+			"data":          map[string]any{"invariants": invs},
+			"commitScopes":  scopes,
+			"gatedCommands": gatedCommandsDisplay(),
+			"skills":        map[string]bool{},
 		}
 	}
 
