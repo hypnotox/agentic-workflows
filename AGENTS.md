@@ -88,6 +88,10 @@ Hard rules every change must respect:
 - **Example adopter checked.** `./x sync` re-renders the committed example adopter `examples/sundial` with a source-built awf, and `./x check` fails on its drift or invariant findings. (ADR-0090)
 - **Example zero-notes.** The example check step fails on any `note: ` line in the example's `awf check` output — the model adopter has no smells. (ADR-0090)
 - **Example module isolated.** `examples/sundial` is its own Go module; no enclosing `./...` sweep (test, coverage, vet, lint, deadcode) includes it. (ADR-0090)
+- **Local-doc catalog clone.** `effectiveCatalog` synthesizes local doc entries into a clone of `catalog.Standard.Docs`; the package global's `Docs` map is never mutated by opening a project (`inv: local-doc-catalog-clone`). (ADR-0091)
+- **Local-doc declaration + no-shadow.** A non-Standard, non-`local:true` enabled doc name without a declaring sidecar is a hard error at project open (`inv: local-doc-requires-declaration`), and a local doc name equal to a `catalog.Standard.Docs` name is rejected (`inv: local-doc-no-shadow`). (ADR-0091)
+- **Local-doc render + map fields.** A rendered local doc resolves its template id through the effective catalog to the shared base doc template (`inv: local-doc-renders-from-base`) and its synthesized entry always carries a non-empty Title/Desc — sidecar or default — so the document map lists it (`inv: local-doc-map-fields`). (ADR-0091)
+- **Local-doc base + name.** The base doc template renders leak-free under empty data and no `content` part (`inv: local-doc-base-publication-safe`), and a local doc name is accepted only as one or more lowercase-kebab `/`-separated segments — rejecting a path escape, a leading/trailing/empty segment, a `.md` suffix, or the reserved `_base` stem; skill and agent names stay flat (`inv: local-doc-name-path-validated`). (ADR-0091)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

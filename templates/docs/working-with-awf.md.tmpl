@@ -19,6 +19,7 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 - `awf config [<key-or-var>]` — describe config keys and vars: the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf new adr "<title>"` — scaffold the next ADR.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` — scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
+- `awf new doc <name> "<description>"` — scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
 - `awf upgrade` — migrate the config tree after upgrading the awf binary.
 - `awf audit` — report Conventional-Commits / workflow-conformance findings over the branch (advisory).
 - `awf invariants` — report Implemented-ADR `inv:` slugs that lack a backing comment in source.
@@ -63,13 +64,15 @@ convention part consumes through a `{{ "{{=awf:gateCmd}}" }}`-style placeholder 
 render error when deleted, not a silent decline — the placeholder contract requires a value;
 re-add the key to recover.
 
-**Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own.
+**Project-local skills, agents, and docs.** Beyond overriding catalog artifacts, you can define your own.
 `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a
 declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a
 built-in base template — once per enabled target — so a skill you define once is emitted for every
 agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md` (agents:
 `.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter
-description.
+description. `awf new doc <name> "<description>"` works the same way for a managed doc — the name
+may be nested (`guides/ci`), the body lives at `.awf/docs/parts/<name>/content.md`, and the doc
+joins the document map and dead-link checks like any catalog doc.
 
 ### Path globs and domain territories
 

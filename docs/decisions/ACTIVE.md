@@ -93,10 +93,7 @@
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md) — Implemented
 - [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Implemented
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md) — Implemented
-
-## Proposed
-
-- [ADR-0091: Project-local custom docs as a third local artifact kind](0091-project-local-custom-docs-as-a-third-local-artifact-kind.md) — Proposed
+- [ADR-0091: Project-local custom docs as a third local artifact kind](0091-project-local-custom-docs-as-a-third-local-artifact-kind.md) — Implemented
 
 ## Superseded
 

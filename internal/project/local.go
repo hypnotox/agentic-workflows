@@ -54,7 +54,8 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	clone := *catalog.Standard
 	clone.Skills = maps.Clone(catalog.Standard.Skills)
 	clone.Agents = maps.Clone(catalog.Standard.Agents)
-	clone.Docs = maps.Clone(catalog.Standard.Docs) // invariant: local-doc-catalog-clone
+	// invariant: local-doc-catalog-clone
+	clone.Docs = maps.Clone(catalog.Standard.Docs)
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
 		return catalog.SkillSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}

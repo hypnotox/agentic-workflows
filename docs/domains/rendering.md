@@ -64,8 +64,5 @@ The rendered-output quality bar has a deterministic review surface (ADR-0090): t
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 - [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
-
-### Proposed
-
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 
