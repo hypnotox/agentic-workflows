@@ -717,8 +717,11 @@ Goal: `awf new doc <name> "<description>"` scaffolds a local doc end to end.
   	}
   }
   ```
-  (`cmd/awf/new_test.go` already imports `io`, `os`, `strings`, `path/filepath`, and
-  `bytes` — no import changes needed. The `config` import is present via other tests.)
+  Add `"github.com/hypnotox/agentic-workflows/internal/config"` to the import block
+  of `cmd/awf/new_test.go` — the file does not currently import it, and
+  `TestRunNewDocRefusesExisting` above references `config.ConfigPath` /
+  `config.SetArrayMember`. Its other imports (`io`, `os`, `strings`,
+  `path/filepath`, `bytes`) are already present.
 
 - [ ] **Task 2.4 — Gate and commit.**
   ```
