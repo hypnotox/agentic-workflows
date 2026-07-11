@@ -196,9 +196,9 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   walks the whole templates FS) but is *not* auto-covered by the catalog-derived
   golden-test and leak sweeps, which range only skills and agents; a dedicated
   golden and empty-data render test cover it.
-- **configspec parity extends by one entry.** The base doc template's `title`/
-  `description` data keys must be described in `internal/configspec` and collected by
-  the data-parity test (ADR-0088), mirroring the skills/agents `_base` `description`
+- **configspec parity extends by two entries.** The base doc template's `title`/
+  `description` data keys must both be described in `internal/configspec` and collected by
+  the data-parity test (ADR-0088), mirroring the skills/agents `_base`
   entries; otherwise the reflection-parity check fails as orphaned or undescribed.
 - **`local-doc-no-shadow` is a live collision risk for generic names.** A future
   release adding a catalog doc named identically to an adopter's existing local doc
@@ -215,11 +215,12 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 - **Doc-currency obligations land in the implementing/status-flip commit.** The
   commit that flips this ADR to `Implemented` must, in the same commit: add the
   seven new `inv:` slugs to the agent guide's Invariants section (via the
-  `.awf/agents-doc.yaml` invariants data and `./x sync`), add `awf new doc` to the
-  usage docs the agent guide and `working-with-awf` list alongside `awf new
-  skill|agent`, and regenerate `docs/decisions/ACTIVE.md` via `./x sync` (the
-  generated per-ADR index — `docs/decisions/README.md` is the static explainer and
-  carries no per-ADR row).
+  `.awf/agents-doc.yaml` invariants data and `./x sync`), add `awf new doc` to
+  `working-with-awf` alongside its `awf new skill|agent` list (the agent guide does
+  not enumerate the `awf new` scaffolding commands, so it gets no `new doc` line),
+  and regenerate `docs/decisions/ACTIVE.md` via `./x sync` (the generated per-ADR
+  index — `docs/decisions/README.md` is the static explainer and carries no per-ADR
+  row).
 
 ## Alternatives Considered
 
