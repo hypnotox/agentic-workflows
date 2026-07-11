@@ -92,7 +92,7 @@ var Commands = []Command{
 
 - [ ] Fill `Commands` with all sixteen top-level entries in `commandOrder` order (`init, sync, check, invariants, audit, commit-gate, list, config, context, new, enable, disable, upgrade, uninstall, changelog, version`), each carrying its verbatim `Summary`/`HelpBody`/flags/bounds/`Gating` per the mapping above. `new` keeps its own `HelpBody` (the current `new` help verbatim, its group overview) and `Gating: GatedInHandler`. `new`'s `Children` are four leaves `adr`/`skill`/`agent`/`doc`, each with its own `HelpBody` split out from the current `new` help bullets (`main.go:317-320`) so `awf new <child> --help` prints child-specific help — a **new capability**. **Child arity stays loose (`MinPos: 0, MaxPos: -1`)** so `parseArgs` does not pre-empt the handlers' existing exact usage messages (`runNew`/`newADR`/`newLocal` own the "usage: awf new …" / empty-description errors); the children carry help/flags metadata only, not arity enforcement. Children are not separately gated — the single `new` handler (`runNew`) gates after name validation, so `adr-new-version-gated` stays backed on `runNew`.
 
-- [ ] Add the pure helpers below to `clispec.go`:
+- [ ] Add ONLY the helpers with a Phase-1 production consumer (the dead-code gate rejects a production func unreachable from a non-test main, so `Child` and `GatedCommandNames` land in the phases that first use them — `Child` in Phase 2's `resolve`, `GatedCommandNames` in Phase 5's `gatedCommandsDisplay`):
 
 ```go
 // Lookup returns the top-level command named name.
@@ -103,29 +103,6 @@ func Lookup(name string) (Command, bool) {
 		}
 	}
 	return Command{}, false
-}
-
-// Child returns group command c's child named name.
-func (c Command) Child(name string) (Command, bool) {
-	for _, ch := range c.Children {
-		if ch.Name == name {
-			return ch, true
-		}
-	}
-	return Command{}, false
-}
-
-// GatedCommandNames returns the top-level command names whose gating is not
-// Ungated, in table order — a group contributes only its own name. This is the
-// single source for the doc gated-command list (ADR-0094 Decision 6).
-func GatedCommandNames() []string {
-	var out []string
-	for _, c := range Commands {
-		if c.Gating != Ungated {
-			out = append(out, c.Name)
-		}
-	}
-	return out
 }
 
 // Names returns every top-level command name in table order.
@@ -255,7 +232,7 @@ var handlers = map[string]handler{
 
   A parity test (Task 2.4) asserts `handlers` keys exactly match the top-level `clispec` command names (both directions) — leaves and the `new` group.
 
-- [ ] Add `resolve(args []string) (cmd clispec.Command, sub string, rest []string, ok bool)`: look up `args[0]` via `clispec.Lookup`; if it is a group and `args[1]` names a child (via `cmd.Child`), return the **child** as `cmd` (so `parseArgs` validates against the child's flag spec and `--help` prints the child `HelpBody`), `sub = args[1]`, `rest = args[2:]`; else a leaf/group returns itself, `sub = ""`, `rest = args[1:]`. For a group invoked with no child or an unknown child, `resolve` returns the **group** with `sub = ""` and `rest = args[1:]`; the driver still routes to the group's handler (`runNew`), whose existing empty/`default` cases emit the current `usage: awf new <kind> <title>` and unknown-kind messages verbatim. `enable`/`disable`'s kind-specific messages stay inside their handlers, reading `c.inv.positionals`.
+- [ ] First add the `Command.Child(name string) (Command, bool)` helper to `internal/clispec/clispec.go` (deferred from Phase 1 — `resolve` is its first production consumer) with a `clispec_test.go` case, then add `resolve(args []string) (cmd clispec.Command, sub string, rest []string, ok bool)`: look up `args[0]` via `clispec.Lookup`; if it is a group and `args[1]` names a child (via `cmd.Child`), return the **child** as `cmd` (so `parseArgs` validates against the child's flag spec and `--help` prints the child `HelpBody`), `sub = args[1]`, `rest = args[2:]`; else a leaf/group returns itself, `sub = ""`, `rest = args[1:]`. For a group invoked with no child or an unknown child, `resolve` returns the **group** with `sub = ""` and `rest = args[1:]`; the driver still routes to the group's handler (`runNew`), whose existing empty/`default` cases emit the current `usage: awf new <kind> <title>` and unknown-kind messages verbatim. `enable`/`disable`'s kind-specific messages stay inside their handlers, reading `c.inv.positionals`.
 
 ### Task 2.3 — rewrite `run` as the driver
 
@@ -330,6 +307,7 @@ Goal: single-source the gated list from `clispec`; expose it as a placeholder an
 
 ### Task 5.1 — the generated value
 
+- [ ] First add the `GatedCommandNames() []string` helper to `internal/clispec/clispec.go` (deferred from Phase 1 — `gatedCommandsDisplay` is its first production consumer): returns the non-`Ungated` top-level command names in table order (a group contributes only its own token), with a `clispec_test.go` case asserting the exact ten-name slice `sync, check, invariants, audit, list, config, context, new, enable, disable`.
 - [ ] Create `internal/project/gatedcommands.go`:
 
 ```go
