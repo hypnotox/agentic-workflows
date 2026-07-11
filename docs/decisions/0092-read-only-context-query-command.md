@@ -177,9 +177,11 @@ Grounding the design against the code surfaced facts that shape it:
   commitment of this ADR.
 - **Doc-currency obligations land in the implementing/status-flip commit(s):** back
   the three new `inv:` slugs with source markers + tests; add `context` to the
-  authoritative AGENTS.md "Binary-version gate" invariant line (ADR-0039's own text
-  stays frozen, per the config/add/remove/new precedent); add `context` to the CLI
-  help and `working-with-awf`; and regenerate `docs/decisions/ACTIVE.md` via
+  authoritative AGENTS.md "Binary-version gate" invariant line — both its
+  gated-command enumeration and its outside-tree degrade clause, since `context`
+  degrades to a static/empty answer like `config` rather than refusing (ADR-0039's
+  own text stays frozen, per the config/add/remove/new precedent); add `context` to
+  the CLI help and `working-with-awf`; and regenerate `docs/decisions/ACTIVE.md` via
   `./x sync`.
 
 ## Alternatives Considered
