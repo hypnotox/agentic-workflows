@@ -429,3 +429,15 @@ submodule) and takes a deliberate stance on hidden directories; a repo open reso
 gitfile layout; enumeration derived from git history (commit diffs, `git ls-files`) is
 immune by construction and preferred where it fits.
 
+## An `inv:` backing marker must open its own line, not trail a statement
+
+The invariant-backing scanner (`internal/invariants`) matches a slug only when the marker
+opens its line after indentation — `strings.TrimLeft(line, " \t")` must start with the
+configured marker, then `^\s*invariant:\s*<slug>`. This is deliberate: a mid-line match
+could sit inside a string literal (a test fixture's source-code string) and falsely back a
+slug. The consequence is a natural-looking backing that silently does not count: a trailing
+`clone.Docs = maps.Clone(...) // invariant: local-doc-catalog-clone` reads as *unbacked*,
+and because `awf check` only enforces backing once the ADR is `Implemented`, the gap hides
+until the status flip — exactly when the effort is trying to conclude. Put the
+`// invariant: <slug>` on its own line directly above the statement it describes.
+
