@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, cli, adoption, docs]
-related: [24, 37, 39, 92]
+related: [24, 37, 39, 92, 94]
 domains: [tooling, config]
 ---
 # ADR-0093: Rename config-toggle commands to `enable`/`disable`

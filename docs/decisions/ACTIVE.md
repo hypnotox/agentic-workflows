@@ -97,6 +97,10 @@
 - [ADR-0092: Read-Only Context Query Command](0092-read-only-context-query-command.md) — Implemented
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](0093-rename-config-toggle-commands-to-enable-disable.md) — Implemented
 
+## Proposed
+
+- [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
