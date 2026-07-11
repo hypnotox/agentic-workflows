@@ -121,12 +121,21 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
    tails remain distinct by design, and the ADR does not overstate it as one function.
 
 6. **Generate the gated-command list from one source.** The list is derived once from
-   `clispec` — every command whose gating classification is not `ungated`, in spec order
-   — and exposed through two render surfaces fed by that single value, with no
-   hand-maintained enumeration surviving in either doc (`inv: gated-commands-generated`):
+   `clispec` — every **top-level** command whose gating classification is not `ungated`,
+   in spec order. A group command (Decision 4) contributes only its single top-level
+   token: the gating classification attaches to the group node (`new`) and its child
+   subcommands are not enumerated separately, so the generated list reproduces the
+   existing single `new` token rather than expanding to `new adr` / `new skill` / … The
+   generator yields an ordered list of bare command tokens, not a pre-formatted string;
+   each consuming surface applies its own formatting (backticks and separator). The value
+   is exposed through two render surfaces fed by that single list, with no hand-maintained
+   enumeration surviving in either doc (`inv: gated-commands-generated`):
    - a new `{{=awf:gatedCommands}}` placeholder in the render placeholder registry
      (`internal/project/placeholders.go`), consumed by the `tooling` current-state
-     convention part; and
+     convention part (which already passes such tokens through `substitutePlaceholders`);
+     the current-state sentence that today slash-joins a hand-typed subset (omitting
+     `config`/`context`) is **reworded** to consume the generated value, not
+     token-substituted in place; and
    - a mirrored `gatedCommands` render value made available to the `AGENTS.md` template,
      which the binary-version-gate invariant line consumes. Because the invariant text
      is template *data* today (and the render is single-pass), delivering the value into
@@ -134,8 +143,10 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
      `data.invariants` text: the bullet references the shared value rather than spelling
      the list by hand. The exact assembly seam (a template-source reference to the render
      value versus splicing the value into the invariant data during data assembly, on the
-     ADR-0089 doc-data-transform precedent) is an implementation detail the plan fixes;
-     the contract is that both surfaces trace to the one `clispec`-derived value.
+     ADR-0089 doc-data-transform precedent) and the value's precise format (bare tokens
+     versus a backticked list) are implementation details the plan fixes; the contract is
+     that both surfaces trace to the one `clispec`-derived list and neither carries a
+     hand-maintained enumeration.
 
 7. **Complete the ADR-0093-deferred resolver rename.** Rename the plan/resolver
    set-vocabulary to the Enable/Disable surface vocabulary: `ResolveAdd`→`ResolveEnable`,
@@ -162,17 +173,19 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
 
 ## Invariants
 
-- `inv: cli-command-spec-single-source` — the runtime command set, the `awf help`
-  overview order, the top-level usage line, and the gated-command list all derive from
-  the ordered command table in `internal/clispec`; no parallel command enumeration
-  (a second order slice, a hardcoded usage list, or a hand-written gated-command list)
-  exists in `cmd/awf`.
+- `inv: cli-command-spec-single-source` — stated as a positive derivation the backing
+  test asserts by equality: the top-level usage line, the `awf help` overview (its
+  command set and order), and the generated gated-command list are each byte-equal to
+  their `internal/clispec`-derived rendering, and the gated set is anchored to its known
+  membership so a misclassification (e.g. marking `upgrade` gated, or dropping `context`)
+  fails the test. There is no second command-order slice, hardcoded usage enumeration, or
+  hand-written gated list in `cmd/awf` for these to diverge from.
 - `inv: gated-commands-generated` — the gated-command list rendered into awf-managed
-  docs is generated from `internal/clispec` — exactly the commands whose gating
-  classification is not `ungated` — through a single generator feeding both the
-  `{{=awf:gatedCommands}}` placeholder and the `AGENTS.md` render value; neither the
-  `agents-doc` binary-version-gate line nor the `tooling` current-state part carries a
-  hand-maintained enumeration of the set.
+  docs is generated from `internal/clispec` — exactly the top-level commands whose gating
+  classification is not `ungated`, a group command contributing only its single token —
+  through one generator feeding both the `{{=awf:gatedCommands}}` placeholder and the
+  `AGENTS.md` render value; neither the `agents-doc` binary-version-gate line nor the
+  `tooling` current-state part carries a hand-maintained enumeration of the set.
 - The `config` and `context` static-fallback contracts (`config-command-static-fallback`,
   `context-static-fallback`) continue to hold — the three-valued gating classification
   keeps both commands `gated-in-tree`, gating inside the handler after the
@@ -210,9 +223,13 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
   command list carries no `{{=awf` token, so `placeholder-value-token-free` cannot
   trip). Its empty-degradation path is effectively unreachable because the value is a
   non-empty compile-time constant; the publication-safety contract holds vacuously.
-- **No user-facing behaviour change and no adopter migration** — the command surface,
-  flags, and gating behaviour are unchanged; the resolver rename is internal; the new
-  placeholder is additive. No schema bump, no `awf upgrade` owed.
+- **No behaviour or adopter-migration change; help *text* does shift** — the command
+  surface, accepted flags, and gating behaviour are unchanged, the resolver rename is
+  internal, and the new placeholder is additive, so there is no schema bump and no `awf
+  upgrade`. But two output *texts* change: `awf <cmd> --help` `Usage:`/`Flags:` blocks
+  are now generated from the spec, and restructuring `new` into subcommands shifts its
+  malformed-invocation error messages. The existing help-parity tests (which iterate
+  `argSpecs`/`commandOrder`) move to iterate `clispec` and update accordingly.
 - **Coordination with ADR-0093:** this completes 0093's deferred item 4; the two do not
   conflict (0093 renamed the commands and top-level handlers, 0094 renames the resolver
   internals and restructures dispatch).
