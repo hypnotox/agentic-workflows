@@ -294,8 +294,10 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte("prefix: x\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := runCheck(root, io.Discard); err == nil {
-			t.Error("expected gate error on stale schema")
+		// check is Gated: the driver refuses a stale schema before the handler.
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code != 1 {
+			t.Errorf("expected the driver to refuse check on stale schema, got %d", code)
 		}
 	})
 	t.Run("check-error-malformed-adr", func(t *testing.T) {
@@ -462,9 +464,10 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	if err := gate(root); err == nil {
 		t.Fatal("expected gate to reject stale schema")
 	}
-	// runSync surfaces the same gate error.
-	if err := runSync(root, io.Discard); err == nil {
-		t.Error("expected runSync to fail on stale schema")
+	// sync is Gated: the driver surfaces the same gate error before the handler.
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "sync"}, &out, &errb); code != 1 {
+		t.Errorf("expected the driver to fail sync on stale schema, got %d", code)
 	}
 }
 

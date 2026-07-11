@@ -143,11 +143,9 @@ func planEdits(plan []project.PlanOp) []enableEdit {
 }
 
 func runEnable(root, kind, name string, dryRun bool, stdout io.Writer) error {
-	// Gate before any config write (like awf new): the chained sync's gate
-	// would only fire after the rewrite, stranding a half-mutated config.
-	if err := gate(root); err != nil {
-		return err
-	}
+	// The driver pre-gates enable (Gated) before any config write, so a stale
+	// binary never strands a half-mutated config (the chained sync's gate would
+	// only fire after the rewrite).
 	if err := checkGraphFlags(kind, dryRun, false); err != nil {
 		return err
 	}
@@ -224,10 +222,7 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 }
 
 func runDisable(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
-	// Gate before any config write — see runEnable.
-	if err := gate(root); err != nil {
-		return err
-	}
+	// The driver pre-gates disable before any config write — see runEnable.
 	if err := checkGraphFlags(kind, dryRun, withDependents); err != nil {
 		return err
 	}
@@ -402,9 +397,6 @@ func listHooks(p *project.Project, stdout io.Writer) {
 }
 
 func runList(root, kindFilter string, stdout io.Writer) error {
-	if err := gate(root); err != nil {
-		return err
-	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err

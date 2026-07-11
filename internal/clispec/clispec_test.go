@@ -42,6 +42,12 @@ func TestLookup(t *testing.T) {
 	if len(newCmd.Children) != 4 {
 		t.Errorf("new has %d children, want 4", len(newCmd.Children))
 	}
+	if _, ok := newCmd.Child("adr"); !ok {
+		t.Error("new.Child(adr) missing")
+	}
+	if _, ok := newCmd.Child("nope"); ok {
+		t.Error("new.Child(nope) should miss")
+	}
 }
 
 func TestNamesAndUsageLine(t *testing.T) {

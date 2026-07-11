@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
 func TestRunInitScaffoldsAndSyncs(t *testing.T) {
@@ -39,14 +41,57 @@ func containsLine(s, line string) bool {
 	return false
 }
 
-// positionals filters flag tokens (bool flags dropped, value flags consuming
-// their value, unknown dashed tokens dropped — checkArgs already rejected
-// them) so add/remove arity survives flag forms (ADR-0081).
-func TestPositionals(t *testing.T) {
-	got := positionals(
-		[]string{"--val", "x", "skill", "--flag", "-z", "name"},
-		[]string{"--flag"}, []string{"--val"})
-	if len(got) != 2 || got[0] != "skill" || got[1] != "name" {
-		t.Errorf("positionals = %v, want [skill name]", got)
+// TestHandlerRegistryParity asserts the handler registry and the clispec table
+// name exactly the same top-level commands — no command without a handler, no
+// handler without a command. Group children (new/adr…) are not separate keys.
+func TestHandlerRegistryParity(t *testing.T) {
+	for _, c := range clispec.Commands {
+		if _, ok := handlers[c.Name]; !ok {
+			t.Errorf("clispec command %q has no handler", c.Name)
+		}
+	}
+	for name := range handlers {
+		if _, ok := clispec.Lookup(name); !ok {
+			t.Errorf("handler %q has no clispec command", name)
+		}
+	}
+}
+
+// parseArgs folds flag/value/repeatable/positional parsing and arity validation
+// into one pass: bool flags set bools, value flags consume their token, a
+// repeatable flag collects into multi, non-flag tokens are positionals, and an
+// unknown flag / missing value / out-of-range arity is a usage error.
+func TestParseArgs(t *testing.T) {
+	cmd := clispec.Command{
+		Name: "x", BoolFlags: []string{"--flag"}, ValueFlags: []string{"--val", "--set"},
+		Repeatable: []string{"--set"}, MinPos: 1, MaxPos: 2,
+	}
+	inv, err := parseArgs(cmd, []string{"--val", "v", "a", "--flag", "--set", "s1", "--set", "s2", "b"})
+	if err != nil {
+		t.Fatalf("parseArgs: %v", err)
+	}
+	if inv.values["--val"] != "v" || !inv.bools["--flag"] {
+		t.Errorf("value/bool: %+v", inv)
+	}
+	if len(inv.multi["--set"]) != 2 || inv.multi["--set"][0] != "s1" || inv.multi["--set"][1] != "s2" {
+		t.Errorf("repeatable: %v", inv.multi["--set"])
+	}
+	if len(inv.positionals) != 2 || inv.positionals[0] != "a" || inv.positionals[1] != "b" {
+		t.Errorf("positionals: %v", inv.positionals)
+	}
+	for _, tc := range []struct {
+		name string
+		rest []string
+	}{
+		{"missing value", []string{"a", "--val"}},
+		{"unknown flag", []string{"a", "--bogus"}},
+		{"under min", nil},
+		{"over max", []string{"a", "b", "c"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := parseArgs(cmd, tc.rest); err == nil {
+				t.Errorf("parseArgs(%v) = nil, want usage error", tc.rest)
+			}
+		})
 	}
 }

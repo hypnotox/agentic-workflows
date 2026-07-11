@@ -269,6 +269,16 @@ func Lookup(name string) (Command, bool) {
 	return Command{}, false
 }
 
+// Child returns c's subcommand named name (for a group command like new).
+func (c Command) Child(name string) (Command, bool) {
+	for _, ch := range c.Children {
+		if ch.Name == name {
+			return ch, true
+		}
+	}
+	return Command{}, false
+}
+
 // Names returns every top-level command name in table order.
 func Names() []string {
 	out := make([]string, len(Commands))

@@ -109,9 +109,10 @@ func TestRunListShowsLocalArtifactAsLocal(t *testing.T) {
 	t.Errorf("local skill not listed at all:\n%s", out.String())
 }
 
-// The version gate must refuse add/remove BEFORE the config rewrite: a stale
-// binary must not leave a modified config.yaml with nothing rendered (the
-// half-mutated state the chained sync's gate can only catch after the write).
+// The driver must refuse add/remove BEFORE the config rewrite: a stale binary
+// must not leave a modified config.yaml with nothing rendered (the half-mutated
+// state the chained sync's gate could only catch after the write). Driven
+// through run() because the gate now lives in the driver, ahead of the handler.
 func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
 	root := scaffoldedProject(t)
 	lockPath := filepath.Join(root, ".awf", "awf.lock")
@@ -124,17 +125,18 @@ func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := readConfig(t, root)
-	if err := runEnable(root, "skill", "tdd", false, io.Discard); err == nil {
-		t.Error("expected gate error from runEnable on a behind binary")
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 1 {
+		t.Errorf("expected exit 1 from enable on a behind binary, got %d (%s)", code, errb.String())
 	}
 	if got := readConfig(t, root); got != before {
-		t.Errorf("runEnable modified config.yaml despite failing the gate:\n%s", got)
+		t.Errorf("enable modified config.yaml despite failing the gate:\n%s", got)
 	}
-	if err := runDisable(root, "skill", "brainstorming", false, false, io.Discard); err == nil {
-		t.Error("expected gate error from runDisable on a behind binary")
+	if code := runAt(t, root, []string{"awf", "disable", "skill", "brainstorming"}, &out, &errb); code != 1 {
+		t.Errorf("expected exit 1 from disable on a behind binary, got %d (%s)", code, errb.String())
 	}
 	if got := readConfig(t, root); got != before {
-		t.Errorf("runDisable modified config.yaml despite failing the gate:\n%s", got)
+		t.Errorf("disable modified config.yaml despite failing the gate:\n%s", got)
 	}
 }
 

@@ -10,11 +10,8 @@ import (
 )
 
 func runCheck(root string, stdout io.Writer) error {
-	if err := gate(root); err != nil {
-		return err
-	}
 	lockV, binV, ok, err := lockVsBinary(root)
-	if err != nil { // coverage-ignore: unreachable via runCheck — gate() above already hard-errored on a corrupt lock (ADR-0076); the branch stays so the ahead-note never silently swallows a lock error
+	if err != nil { // coverage-ignore: the driver pre-gates check (Gated) so a corrupt lock hard-errors before runCheck (ADR-0076), and no direct caller passes one; the branch stays so the ahead-note never silently swallows a lock error
 		return err
 	}
 	if ok && semver.Compare(binV, lockV) > 0 {

@@ -9,17 +9,35 @@ import (
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 // runContext prints the read-only context for the given repo-relative paths:
 // owning domains, backed invariants, related ADRs, and each domain's rendered
-// current-state pointer. It mirrors runConfig's gate + static-fallback shape: a
-// genuinely absent config prints the pre-adoption notice; any other stat fault
-// is an error; inside a tree the binary-version gate runs before Open. The
-// command entry point holds no writer dependency — it only reads.
+// current-state pointer. When no explicit paths are given, --staged/--range
+// resolve them from git first (a bad selector still errors, an empty selector is
+// a usage error) — placed before the static-fallback stat so the resolved paths
+// carry into the outside-a-tree output. It then mirrors runConfig's gate +
+// static-fallback shape: a genuinely absent config prints the pre-adoption
+// notice; any other stat fault is an error; inside a tree the binary-version
+// gate runs before Open. The command entry point holds no writer dependency —
+// it only reads.
 // invariant: context-read-only
-func runContext(cwd string, paths []string, asJSON bool, stdout io.Writer) error {
+func runContext(cwd string, paths []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
+	if len(paths) == 0 {
+		if !staged && rng == "" {
+			return &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
+		}
+		resolved, err := awfgit.ChangedPaths(cwd, staged, rng)
+		if err != nil {
+			return err
+		}
+		if len(resolved) == 0 {
+			return &usageErr{"awf context: no changed paths for the given selector"}
+		}
+		paths = resolved
+	}
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err

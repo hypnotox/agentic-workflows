@@ -31,6 +31,9 @@ func runNew(root, kind string, args []string, stdout io.Writer) error {
 }
 
 func newADR(root string, titleWords []string, stdout io.Writer) error {
+	if len(titleWords) == 0 {
+		return &usageErr{"usage: awf new adr <title>"}
+	}
 	if err := gate(root); err != nil {
 		return err
 	}

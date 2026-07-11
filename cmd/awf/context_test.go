@@ -62,7 +62,7 @@ func ctxFixture(t *testing.T) string {
 func TestRunContextHuman(t *testing.T) {
 	root := ctxFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go", "README.md"}, false, &out); err != nil {
+	if err := runContext(root, []string{"cmd/x.go", "README.md"}, false, "", false, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
@@ -87,7 +87,7 @@ func TestRunContextHuman(t *testing.T) {
 func TestRunContextJSONParity(t *testing.T) {
 	root := ctxFixture(t)
 	var jsonOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, true, &jsonOut); err != nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", true, &jsonOut); err != nil {
 		t.Fatal(err)
 	}
 	var res project.ContextResult
@@ -105,7 +105,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, false, &humanOut); err != nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug"} {
@@ -120,14 +120,14 @@ func TestRunContextJSONParity(t *testing.T) {
 // emits the paths-only result.
 func TestRunContextStaticFallback(t *testing.T) {
 	var human bytes.Buffer
-	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, &human); err != nil {
+	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, &human); err != nil {
 		t.Fatalf("static human errored: %v", err)
 	}
 	if !strings.Contains(human.String(), "not inside an awf project") {
 		t.Errorf("static human: %s", human.String())
 	}
 	var j bytes.Buffer
-	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, true, &j); err != nil {
+	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", true, &j); err != nil {
 		t.Fatalf("static json errored: %v", err)
 	}
 	var res project.ContextResult
@@ -143,7 +143,7 @@ func TestRunContextStatFault(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"cmd/x.go"}, false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
 		t.Error("a non-absence stat fault must surface")
 	}
 }
@@ -152,7 +152,7 @@ func TestRunContextStatFault(t *testing.T) {
 // refuses like every gated command.
 func TestRunContextGated(t *testing.T) {
 	root := gateFixture(t, "99.0.0", migrate.Current())
-	if err := runContext(root, []string{"cmd/x.go"}, false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
 		t.Error("expected the version gate to refuse a behind binary")
 	}
 }
@@ -165,7 +165,7 @@ func TestRunContextOpenError(t *testing.T) {
 	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"cmd/x.go"}, false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
 		t.Error("expected the open-time validation error")
 	}
 }
@@ -175,7 +175,7 @@ func TestRunContextOpenError(t *testing.T) {
 func TestRunContextAssembleFault(t *testing.T) {
 	root := ctxFixture(t)
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0009-bad.md"), "---\nstatus: \"unterminated\n---\n# ADR-X: T\n")
-	if err := runContext(root, []string{"cmd/x.go"}, false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
 		t.Error("expected the assemble fault to surface")
 	}
 }
@@ -218,7 +218,7 @@ func TestRunContextReadOnly(t *testing.T) {
 		{[]string{"cmd/x.go"}, true},
 		{[]string{"README.md"}, false},
 	} {
-		if err := runContext(root, tc.paths, tc.asJSON, io.Discard); err != nil {
+		if err := runContext(root, tc.paths, false, "", tc.asJSON, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -137,6 +137,21 @@ func TestRunNewMissingArgs(t *testing.T) {
 	}
 }
 
+// An unrecognized `new` subcommand is not a clispec child, so resolve leaves it
+// in the positionals; the new handler reunites it as the kind and runNew reports
+// the unknown-kind usage error (exit 2).
+func TestRunNewUnknownKindDispatch(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "new", "widget", "x"}, &out, &errb); code != 2 {
+		t.Fatalf("expected exit 2 for unknown kind, got %d (%s)", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "unknown kind") {
+		t.Errorf("missing unknown-kind message: %q", errb.String())
+	}
+}
+
 func TestRunNewScaffoldsSkill(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {

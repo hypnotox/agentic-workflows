@@ -137,18 +137,6 @@ func out(t *testing.T) *bytes.Buffer {
 	return &bytes.Buffer{}
 }
 
-func TestBaseFlag(t *testing.T) {
-	if v := baseFlag([]string{"awf", "audit", "--base", "main"}); v != "main" {
-		t.Errorf("present: got %q, want main", v)
-	}
-	if v := baseFlag([]string{"awf", "audit"}); v != "" {
-		t.Errorf("absent: got %q, want empty", v)
-	}
-	if v := baseFlag([]string{"awf", "audit", "--base"}); v != "" {
-		t.Errorf("flag without value: got %q, want empty", v)
-	}
-}
-
 // TestRunAuditDispatch drives the `audit` switch arm through run(), covering the
 // dispatch statement and the --base flag plumbing.
 func TestRunAuditDispatch(t *testing.T) {

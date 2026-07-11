@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
@@ -40,16 +38,9 @@ func globalHelp() string {
 	return b.String()
 }
 
-// hasHelpFlag reports whether a --help or -h token appears among a command's args.
-func hasHelpFlag(rest []string) bool {
-	for _, a := range rest {
-		if a == "--help" || a == "-h" {
-			return true
-		}
-	}
-	return false
-}
-
+// run is the CLI driver: it resolves args to a clispec command, prints help,
+// parses the arguments once, applies the gating classification, and dispatches
+// to the command's handler — a single parse-once path shared by every command.
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage:", clispec.UsageLine(), "[args]")
@@ -71,118 +62,43 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
-	if spec, ok := clispec.Lookup(args[1]); ok {
-		if hasHelpFlag(args[2:]) { // `awf <cmd> --help`/`-h` — intercept before checkArgs rejects it
-			fmt.Fprint(stdout, spec.HelpBody)
-			return 0
-		}
-		if err := checkArgs(spec, args[2:]); err != nil {
-			fmt.Fprintln(stderr, "awf:", err)
-			return 2
+	cmd, sub, rest, ok := resolve(args[1:])
+	if !ok {
+		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
+	}
+	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` — intercept before parseArgs rejects it
+		fmt.Fprint(stdout, cmd.HelpBody)
+		return 0
+	}
+	inv, err := parseArgs(cmd, rest)
+	if err != nil {
+		return dispatchErr(stderr, err) // parseArgs only returns usageErr → exit 2
+	}
+	// The driver gates every Gated command before its handler; config/context/new
+	// self-gate in-handler after their static-fallback / name-validation checks.
+	if cmd.Gating == clispec.Gated {
+		if err := gate(cwd); err != nil {
+			return dispatchErr(stderr, err)
 		}
 	}
-	var cmdErr error
-	switch args[1] {
-	case "init":
-		cmdErr = runInit(cwd, hasFlag(args, "--force"),
-			hasFlag(args, "--describe"), setFlags(args), valueFlag(args, "--answers"),
-			stdout)
-	case "sync":
-		cmdErr = runSync(cwd, stdout)
-	case "check":
-		cmdErr = runCheck(cwd, stdout)
-	case "invariants":
-		cmdErr = runInvariants(cwd, stdout)
-	case "audit":
-		cmdErr = runAudit(cwd, baseFlag(args), stdout)
-	case "commit-gate":
-		msgPath := ""
-		if len(args) >= 3 {
-			msgPath = args[2]
-		}
-		cmdErr = runCommitGate(cwd, msgPath, stdin, stdout)
-	case "list":
-		kindFilter := ""
-		if len(args) >= 3 {
-			kindFilter = args[2]
-		}
-		cmdErr = runList(cwd, kindFilter, stdout)
-	case "config":
-		key := ""
-		if len(args) >= 3 {
-			key = args[2]
-		}
-		cmdErr = runConfig(cwd, key, stdout)
-	case "context":
-		spec, _ := clispec.Lookup("context")
-		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
-		if len(pos) == 0 {
-			staged, rng := hasFlag(args, "--staged"), valueFlag(args, "--range")
-			if !staged && rng == "" {
-				cmdErr = &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
-				break
-			}
-			var gerr error
-			if pos, gerr = awfgit.ChangedPaths(cwd, staged, rng); gerr != nil {
-				cmdErr = gerr
-				break
-			}
-			if len(pos) == 0 {
-				cmdErr = &usageErr{"awf context: no changed paths for the given selector"}
-				break
-			}
-		}
-		cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
-	case "new":
-		if len(args) < 4 {
-			cmdErr = &usageErr{"usage: awf new <kind> <title>"}
-		} else {
-			cmdErr = runNew(cwd, args[2], args[3:], stdout)
-		}
-	case "enable":
-		spec, _ := clispec.Lookup("enable")
-		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
-		switch {
-		case len(pos) == 2:
-			cmdErr = runEnable(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)
-		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runEnable(cwd, pos[0], "", hasFlag(args, "--dry-run"), stdout)
-		case len(pos) == 1:
-			cmdErr = &usageErr{fmt.Sprintf("awf enable requires a kind: awf enable <kind> <name> (e.g. awf enable skill %s)", pos[0])}
-		default:
-			cmdErr = &usageErr{"usage: awf enable <kind> <name> [--dry-run]"}
-		}
-	case "disable":
-		spec, _ := clispec.Lookup("disable")
-		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
-		switch {
-		case len(pos) == 2:
-			cmdErr = runDisable(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
-		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runDisable(cwd, pos[0], "", hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
-		default:
-			cmdErr = &usageErr{"usage: awf disable <kind> <name> [--with-dependents] [--dry-run]"}
-		}
-	case "upgrade":
-		cmdErr = runUpgrade(cwd, stdout)
-	case "uninstall":
-		cmdErr = runUninstall(cwd, stdout)
-	case "changelog":
-		cmdErr = runChangelog(valueFlag(args, "--version"), valueFlag(args, "--since"), valueFlag(args, "--range"), stdout)
-	case "version":
-		runVersion(stdout)
-	default:
-		cmdErr = &usageErr{fmt.Sprintf("unknown command %q", args[1])}
-	}
-	if cmdErr != nil {
-		fmt.Fprintln(stderr, "awf:", cmdErr)
-		var ue *usageErr
-		if errors.As(cmdErr, &ue) {
-			return 2
-		}
-		return 1
+	// The registry key is the top-level command name (args[1]) even when resolve
+	// returned a child spec — the child drives parse/help, the group's handler
+	// drives dispatch via sub.
+	if err := handlers[args[1]](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
+		return dispatchErr(stderr, err)
 	}
 	return 0
+}
+
+// dispatchErr prints err and maps it to an exit code: a usageErr (CLI misuse)
+// is exit 2, any other failure is exit 1.
+func dispatchErr(stderr io.Writer, err error) int {
+	fmt.Fprintln(stderr, "awf:", err)
+	var ue *usageErr
+	if errors.As(err, &ue) {
+		return 2
+	}
+	return 1
 }
 
 // usageErr marks a CLI-misuse error (unknown flag, bad arity, unknown command),
@@ -190,88 +106,3 @@ func run(args []string, stdout, stderr io.Writer) int {
 type usageErr struct{ msg string }
 
 func (e *usageErr) Error() string { return e.msg }
-
-// checkArgs rejects unrecognized --flags and enforces the positional count for a
-// subcommand against its clispec spec. rest is args[2:]; a valueFlag consumes its
-// following token.
-func checkArgs(cmd clispec.Command, rest []string) error {
-	pos := 0
-	for i := 0; i < len(rest); i++ {
-		a := rest[i]
-		switch {
-		case slices.Contains(cmd.ValueFlags, a):
-			if i+1 >= len(rest) {
-				return &usageErr{fmt.Sprintf("awf %s: flag %s needs a value", cmd.Name, a)}
-			}
-			i++ // consume the flag's value
-		case slices.Contains(cmd.BoolFlags, a):
-			// recognized boolean flag
-		case strings.HasPrefix(a, "-"):
-			return &usageErr{fmt.Sprintf("awf %s: unknown flag %q", cmd.Name, a)}
-		default:
-			pos++
-		}
-	}
-	if pos < cmd.MinPos || (cmd.MaxPos >= 0 && pos > cmd.MaxPos) {
-		return &usageErr{fmt.Sprintf("awf %s: unexpected arguments", cmd.Name)}
-	}
-	return nil
-}
-
-// positionals returns rest's non-flag tokens, skipping each valueFlag's
-// consumed value — the flag-tolerant arity source for enable/disable.
-func positionals(rest []string, boolFlags, valueFlags []string) []string {
-	var out []string
-	for i := 0; i < len(rest); i++ {
-		a := rest[i]
-		switch {
-		case slices.Contains(valueFlags, a):
-			i++
-		case slices.Contains(boolFlags, a):
-		case strings.HasPrefix(a, "-"):
-		default:
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
-// hasFlag reports whether flag appears anywhere in args[2:].
-func hasFlag(args []string, flag string) bool {
-	for _, a := range args[2:] {
-		if a == flag {
-			return true
-		}
-	}
-	return false
-}
-
-// baseFlag returns the value after --base in args[2:], or "" if it is absent or
-// has no following value.
-func baseFlag(args []string) string {
-	return valueFlag(args, "--base")
-}
-
-// valueFlag returns the value after the first occurrence of flag in args[2:], or
-// "" if it is absent or has no following value.
-func valueFlag(args []string, flag string) string {
-	rest := args[2:]
-	for i, a := range rest {
-		if a == flag && i+1 < len(rest) {
-			return rest[i+1]
-		}
-	}
-	return ""
-}
-
-// setFlags returns every value following a --set occurrence in args[2:].
-func setFlags(args []string) []string {
-	var out []string
-	rest := args[2:]
-	for i, a := range rest {
-		if a == "--set" && i+1 < len(rest) {
-			out = append(out, rest[i+1])
-		}
-	}
-	return out
-}

@@ -95,20 +95,11 @@ func TestNormalizeSemver(t *testing.T) {
 	}
 }
 
-// TestGatedCommandsRejectAheadSchema confirms runInvariants/runAudit/runList each
-// surface the gate error on an ahead-schema project (the inserted gate guard).
-func TestGatedCommandsRejectAheadSchema(t *testing.T) {
+// TestNewGatesInHandler confirms runNew (GatedInHandler) surfaces the gate error
+// itself — after name validation, not via the driver — on an ahead-schema project.
+func TestNewGatesInHandler(t *testing.T) {
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer
-	if err := runInvariants(root, &out); err == nil {
-		t.Error("runInvariants: expected gate error on ahead schema")
-	}
-	if err := runAudit(root, "", &out); err == nil {
-		t.Error("runAudit: expected gate error on ahead schema")
-	}
-	if err := runList(root, "", &out); err == nil {
-		t.Error("runList: expected gate error on ahead schema")
-	}
 	if err := runNew(root, "adr", []string{"x"}, &out); err == nil {
 		t.Error("runNew: expected gate error on ahead schema")
 	}
@@ -117,5 +108,33 @@ func TestGatedCommandsRejectAheadSchema(t *testing.T) {
 	}
 	if err := runNew(root, "doc", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew doc: expected gate error on ahead schema")
+	}
+}
+
+// TestDriverGatesGatedCommands confirms the driver refuses every Gated command
+// before its handler on an ahead-schema project. For enable/disable this also
+// pins the gate-before-config-write guarantee: the handler never runs, so no
+// half-mutated config is stranded.
+func TestDriverGatesGatedCommands(t *testing.T) {
+	for _, tc := range []struct {
+		cmd  string
+		args []string
+	}{
+		{"sync", []string{"awf", "sync"}},
+		{"check", []string{"awf", "check"}},
+		{"invariants", []string{"awf", "invariants"}},
+		{"audit", []string{"awf", "audit"}},
+		{"list", []string{"awf", "list"}},
+		{"enable", []string{"awf", "enable", "skill", "tdd"}},
+		{"disable", []string{"awf", "disable", "skill", "tdd"}},
+	} {
+		t.Run(tc.cmd, func(t *testing.T) {
+			root := gateFixture(t, "0.4.0", migrate.Current()+1)
+			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+			var out, errb bytes.Buffer
+			if code := run(tc.args, &out, &errb); code != 1 {
+				t.Errorf("%s: expected exit 1 on ahead schema, got %d (%s)", tc.cmd, code, errb.String())
+			}
+		})
 	}
 }
