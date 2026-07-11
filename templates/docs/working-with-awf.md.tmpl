@@ -17,6 +17,7 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 - `awf enable <kind> <name>` / `awf disable <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact. For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it — `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list` — show the catalog and what is enabled.
 - `awf config [<key-or-var>]` — describe config keys and vars: the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
+- `awf context <path>...` — report the committed context awf holds for a set of repo-relative paths: owning domain(s), the invariant slugs backed under those paths, related ADRs, and each domain's current-state doc. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git.
 - `awf new adr "<title>"` — scaffold the next ADR.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` — scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
 - `awf new doc <name> "<description>"` — scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.

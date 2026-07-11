@@ -26,8 +26,14 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 
 `awf new doc <name> "<description>"` (ADR-0091) rounds out the `awf new` scaffolder — its kind set is now `{adr, skill, agent, doc}` — scaffolding a project-local doc the way `awf new skill|agent` scaffold their kinds: a declaring `.awf/docs/<name>.yaml` sidecar carrying a name-derived title and the description, a stub `content` convention part (its doc-standard pointer prose, not a dead-linkable relative link), the `docs:` enable, and a re-render. The name may be path-aware (nested, e.g. `guides/ci`), validated through `config.ValidateDocName`, and a collision with a catalog doc name is refused upfront.
 
+`awf context <path>...` (ADR-0092) is a read-only query oracle: for a set of repo-relative paths it composes four committed-state readers — path→domain (anchored `paths` globs), domain→related ADRs (frontmatter `domains:`), ADR→declared `inv:` slugs (`invariants.DeclaredSlugs`), and path→backing markers (`invariants.MarkersUnder`, a new path-filtered scan) — into owning domains (each with its rendered `docs/domains/<name>.md` pointer, derived by convention, never a sidecar field), the invariant slugs backed under those paths, and the related ADRs with their own declared invariants. Assembly is a `*Project` method (`ContextFor`); the command prints human or `--json` output from one struct (`context-output-parity`), writes nothing (`context-read-only`), and is gated inside a tree while degrading to a static notice outside one (`context-static-fallback`), mirroring `awf config`. `--staged` / `--range <a>..<b>` resolve the paths from git via the shared `internal/git` package, which now centralises the tolerant go-git repo-open handling (linked worktrees, submodules, the `worktreeConfig`-extension workaround) that `awf audit` previously held privately.
+
 
 ## Decisions
+
+### Accepted
+
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 
 ### Implemented
 
@@ -82,10 +88,6 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
-
-### Proposed
-
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 
 ### Superseded
 

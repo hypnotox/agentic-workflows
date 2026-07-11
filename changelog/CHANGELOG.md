@@ -8,6 +8,15 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- Read-only `awf context <path>...` query command (ADR-0092): for a set of
+  repo-relative paths it reports their owning domain(s), the invariant slugs
+  backed by markers under those paths, and the related ADRs (with each ADR's
+  own declared invariants) — the deterministic context awf already holds,
+  surfaced instead of reconstructed by grep. Human and `--json` output;
+  `--staged`/`--range <a>..<b>` resolve the paths from git. Gated and degrading
+  to a static notice outside an adopted tree, like `awf config`.
+
 ### Breaking changes
 - The config-toggle commands are renamed `awf add`/`awf remove` →
   `awf enable`/`awf disable` (ADR-0093), with no backward-compat alias. The

@@ -11,6 +11,10 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 
 ## Decisions
 
+### Accepted
+
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
+
 ### Implemented
 
 - [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md)
@@ -49,8 +53,4 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 - [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
-
-### Proposed
-
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 
