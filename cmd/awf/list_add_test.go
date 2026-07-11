@@ -744,10 +744,25 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	if code := run([]string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 0 {
 		t.Fatalf("add dispatch: %s", errb.String())
 	}
-	// add with a single arg → targeted migration message.
+	// add with a single non-kind arg → "requires a kind" (pos[0] is the name).
 	errb.Reset()
 	if code := run([]string{"awf", "enable", "tdd"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a kind") {
 		t.Fatalf("expected migration hint, code=%d err=%q", code, errb.String())
+	}
+	// add with a lone kind token → "requires a name", not "requires a kind".
+	errb.Reset()
+	if code := run([]string{"awf", "enable", "skill"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
+		t.Fatalf("expected enable-kind name hint, code=%d err=%q", code, errb.String())
+	}
+	// add a singleton with an extra name → rejected, not silently dropped.
+	errb.Reset()
+	if code := run([]string{"awf", "enable", "bootstrap", "extra"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "takes no name") {
+		t.Fatalf("expected singleton-name rejection, code=%d err=%q", code, errb.String())
+	}
+	// lone `target` (the non-descriptor kind) → "requires a name" too.
+	errb.Reset()
+	if code := run([]string{"awf", "enable", "target"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
+		t.Fatalf("expected enable-target name hint, code=%d err=%q", code, errb.String())
 	}
 	// add with no args → usage.
 	errb.Reset()
@@ -759,10 +774,15 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	if code := run([]string{"awf", "disable", "skill", "tdd"}, &out, &errb); code != 0 {
 		t.Fatalf("remove dispatch: %s", errb.String())
 	}
-	// remove missing args → usage.
+	// remove with a lone kind token → "requires a name" (mirrors enable).
 	errb.Reset()
-	if code := run([]string{"awf", "disable", "skill"}, &out, &errb); code != 2 {
-		t.Fatalf("expected remove usage error, code=%d", code)
+	if code := run([]string{"awf", "disable", "skill"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "requires a name") {
+		t.Fatalf("expected remove name hint, code=%d err=%q", code, errb.String())
+	}
+	// remove a non-kind single token → generic disable usage.
+	errb.Reset()
+	if code := run([]string{"awf", "disable", "tdd"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "usage: awf disable") {
+		t.Fatalf("expected disable usage, code=%d err=%q", code, errb.String())
 	}
 	// remove with extra positionals → usage (Phase 3: not silently ignored).
 	errb.Reset()

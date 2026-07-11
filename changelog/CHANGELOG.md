@@ -43,6 +43,12 @@ query a single version or a range.
 - `awf <cmd>` now rejects a repeated single-value flag (e.g. `awf audit --base a
   --base b`) with a usage error, instead of silently taking the last value.
   Repeatable flags like `awf init --set` are unaffected.
+- `awf enable`/`awf disable` now reject a nameless singleton given a name (e.g.
+  `awf enable bootstrap foo`) with a usage error, instead of silently ignoring
+  the extra argument.
+- `awf enable <kind>`/`awf disable <kind>` with the kind but no name (e.g. `awf
+  enable target`) now say "requires a name" instead of the misleading "requires
+  a kind" hint that treated the kind as if it were a name.
 
 ### Others
 - CLI dispatch is restructured onto a declarative command table
