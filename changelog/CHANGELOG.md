@@ -39,6 +39,11 @@ query a single version or a range.
   rendered `AGENTS.md` and docs switch to the new verbs on their next
   `awf sync`.
 
+### Bug fixes
+- `awf <cmd>` now rejects a repeated single-value flag (e.g. `awf audit --base a
+  --base b`) with a usage error, instead of silently taking the last value.
+  Repeatable flags like `awf init --set` are unaffected.
+
 ### Others
 - CLI dispatch is restructured onto a declarative command table
   (`internal/clispec`) driven by a generic parse-once dispatcher (ADR-0094):

@@ -87,6 +87,7 @@ func TestParseArgs(t *testing.T) {
 		{"unknown flag", []string{"a", "--bogus"}},
 		{"under min", nil},
 		{"over max", []string{"a", "b", "c"}},
+		{"duplicate value flag", []string{"a", "--val", "v1", "--val", "v2"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := parseArgs(cmd, tc.rest); err == nil {

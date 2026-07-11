@@ -14,7 +14,7 @@ import (
 type invocation struct {
 	positionals []string
 	bools       map[string]bool     // every declared BoolFlag → present
-	values      map[string]string   // every declared ValueFlag → value ("" if absent)
+	values      map[string]string   // a present value flag → its value; an absent flag is not keyed (handlers read the "" zero value)
 	multi       map[string][]string // every declared Repeatable flag → all values
 }
 
@@ -149,6 +149,8 @@ func parseArgs(cmd clispec.Command, rest []string) (invocation, error) {
 			i++
 			if slices.Contains(cmd.Repeatable, a) {
 				inv.multi[a] = append(inv.multi[a], rest[i])
+			} else if _, dup := inv.values[a]; dup {
+				return invocation{}, &usageErr{fmt.Sprintf("awf %s: flag %s given more than once", cmd.Name, a)}
 			} else {
 				inv.values[a] = rest[i]
 			}
