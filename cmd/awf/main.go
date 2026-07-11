@@ -8,6 +8,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
@@ -121,10 +123,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 		spec := argSpecs["context"]
 		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
 		if len(pos) == 0 {
-			cmdErr = &usageErr{"usage: awf context <path>... [--json]"}
-		} else {
-			cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
+			staged, rng := hasFlag(args, "--staged"), valueFlag(args, "--range")
+			if !staged && rng == "" {
+				cmdErr = &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
+				break
+			}
+			var gerr error
+			if pos, gerr = awfgit.ChangedPaths(cwd, staged, rng); gerr != nil {
+				cmdErr = gerr
+				break
+			}
+			if len(pos) == 0 {
+				cmdErr = &usageErr{"awf context: no changed paths for the given selector"}
+				break
+			}
 		}
+		cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
 	case "new":
 		if len(args) < 4 {
 			cmdErr = &usageErr{"usage: awf new <kind> <title>"}
@@ -275,17 +289,23 @@ sidecar.local, or a data key name).
 `,
 	},
 	"context": {
-		boolFlags: []string{"--json"}, maxPos: -1,
+		boolFlags: []string{"--json", "--staged"}, valueFlags: []string{"--range"}, maxPos: -1,
 		summary: "Report owning domains, invariants, and ADRs for paths",
-		help: `Usage: awf context <path>... [--json]
+		help: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]
 
 Report the committed context awf holds for a set of repo-relative paths: owning
 domain(s), the invariant slugs backed under those paths, related ADRs, and each
 domain's current-state doc. Read-only. Inside an awf project the output reflects
 live config; outside one, a static pre-adoption notice prints.
 
+Provide paths explicitly, or resolve them from git with --staged (the staged
+changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
+take precedence over the git selectors.
+
 Flags:
-  --json    emit the context as JSON
+  --json               emit the context as JSON
+  --staged             use the staged changed paths
+  --range <a>..<b>     use the paths changed between revisions a and b
 `,
 	},
 	"new": {

@@ -8,17 +8,92 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
 	gogit "github.com/go-git/go-git/v5"
 	gitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
 )
+
+// ChangedPaths returns the sorted, unique repo-relative paths changed either in
+// the staged index (staged) or between the two revisions of rangeSpec ("a..b").
+// staged takes precedence; with neither selector the caller should not call
+// this. A malformed range or an unresolvable revision is a clear error. It
+// reads the repository only.
+func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	set := map[string]bool{}
+	if staged {
+		wt, err := repo.Worktree()
+		if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf's intended use
+			return nil, err
+		}
+		status, err := wt.Status()
+		if err != nil { // coverage-ignore: Status on a healthy worktree we just opened does not fail
+			return nil, err
+		}
+		for path, st := range status {
+			if st.Staging != gogit.Unmodified && st.Staging != gogit.Untracked {
+				set[path] = true
+			}
+		}
+	} else {
+		from, to, ok := strings.Cut(rangeSpec, "..")
+		if !ok {
+			return nil, fmt.Errorf("range %q must be <a>..<b>", rangeSpec)
+		}
+		fromTree, err := treeAt(repo, from)
+		if err != nil {
+			return nil, err
+		}
+		toTree, err := treeAt(repo, to)
+		if err != nil {
+			return nil, err
+		}
+		changes, err := object.DiffTree(fromTree, toTree)
+		if err != nil { // coverage-ignore: diffing two resolved trees does not fail
+			return nil, err
+		}
+		for _, ch := range changes {
+			if ch.From.Name != "" {
+				set[ch.From.Name] = true
+			}
+			if ch.To.Name != "" {
+				set[ch.To.Name] = true
+			}
+		}
+	}
+	out := make([]string, 0, len(set))
+	for p := range set {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// treeAt resolves a revision to its commit tree.
+func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
+	h, err := repo.ResolveRevision(plumbing.Revision(rev))
+	if err != nil {
+		return nil, fmt.Errorf("resolve %q: %w", rev, err)
+	}
+	c, err := repo.CommitObject(*h)
+	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
+		return nil, fmt.Errorf("commit %q: %w", rev, err)
+	}
+	return c.Tree()
+}
 
 // OpenRepo opens the repo at repoRoot like git.PlainOpen, but hides its
 // [extensions] config section from go-git's own extension-support check

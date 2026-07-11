@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 const ctxCmdYAML = `prefix: example
@@ -227,6 +228,43 @@ func TestRunContextReadOnly(t *testing.T) {
 	if lockAfter := readFile(t, filepath.Join(root, ".awf", "awf.lock")); lockAfter != lockBefore {
 		t.Error("awf context mutated the lock")
 	}
+}
+
+// The --staged/--range selectors resolve paths from git when none are given.
+func TestRunContextGitSelectors(t *testing.T) {
+	// A git fault (here a non-repo cwd) surfaces as exit 1.
+	t.Run("git error", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		var out, errBuf bytes.Buffer
+		if code := run([]string{"awf", "context", "--range", "a..b"}, &out, &errBuf); code != 1 {
+			t.Errorf("git error exit: got %d want 1 (%s)", code, errBuf.String())
+		}
+	})
+	// A selector resolving to no paths is a usage error (exit 2).
+	t.Run("empty selector", func(t *testing.T) {
+		repo, dir := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+		t.Chdir(dir)
+		var out, errBuf bytes.Buffer
+		if code := run([]string{"awf", "context", "--staged"}, &out, &errBuf); code != 2 {
+			t.Errorf("empty-selector exit: got %d want 2 (%s)", code, errBuf.String())
+		}
+	})
+	// A selector resolving to paths dispatches to runContext; the fixture cwd is
+	// a git repo but not an awf tree, so the static fallback prints (exit 0).
+	t.Run("range dispatches", func(t *testing.T) {
+		repo, dir := gitfixture.InitRepo(t)
+		gitfixture.Commit(t, repo, dir, "one", map[string]string{"a.txt": "a"})
+		gitfixture.Commit(t, repo, dir, "two", map[string]string{"b.txt": "b"})
+		t.Chdir(dir)
+		var out, errBuf bytes.Buffer
+		if code := run([]string{"awf", "context", "--range", "HEAD~1..HEAD"}, &out, &errBuf); code != 0 {
+			t.Errorf("range-dispatch exit: got %d want 0 (%s)", code, errBuf.String())
+		}
+		if !strings.Contains(out.String(), "not inside an awf project") {
+			t.Errorf("expected static fallback: %s", out.String())
+		}
+	})
 }
 
 func snapshotTree(t *testing.T, root string) string {
