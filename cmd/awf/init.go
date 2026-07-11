@@ -106,6 +106,15 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 		return collisionRefusal(collisions)
 	}
+	// Gate before the chained sync: init is Ungated at the driver, but re-rendering
+	// an existing schema- or version-behind tree must still refuse rather than
+	// re-stamp the current schema over an unmigrated config (ADR-0039). runSync no
+	// longer gates itself, so the two Ungated commands that chain it (init, upgrade)
+	// re-assert the gate here. A fresh scaffold is current-schema with no lock, so
+	// this passes.
+	if err := gate(root); err != nil {
+		return err
+	}
 	// Under --force, the chained runSync backs up every foreign file via the shared
 	// BackupFile mechanism (ADR-0035) — one backup path for init and sync alike.
 	if err := runSync(root, stdout); err != nil {

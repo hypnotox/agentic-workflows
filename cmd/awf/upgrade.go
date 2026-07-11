@@ -36,5 +36,12 @@ func runUpgrade(root string, stdout io.Writer) error {
 	for _, name := range applied {
 		fmt.Fprintf(stdout, "awf upgrade: applied %s\n", name)
 	}
+	// Gate before the terminal sync: migration brings the schema current, but a
+	// binary behind the lock's awfVersion (version axis, schema equal) must still
+	// refuse rather than re-stamp a downgraded version. runSync no longer self-gates,
+	// so upgrade re-asserts it here (schema-ahead is already refused above).
+	if err := gate(root); err != nil {
+		return err
+	}
 	return runSync(root, stdout)
 }

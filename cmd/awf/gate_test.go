@@ -111,6 +111,41 @@ func TestNewGatesInHandler(t *testing.T) {
 	}
 }
 
+// TestInitAndUpgradeGateBehindVersion pins that init and upgrade re-assert the
+// binary-version gate their chained sync used to provide (removed from runSync in
+// the parse-once refactor): a tree whose lock awfVersion is newer than the binary
+// refuses rather than silently re-stamping a downgraded version.
+func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
+	for _, cmd := range []string{"init", "upgrade"} {
+		t.Run(cmd, func(t *testing.T) {
+			root := scaffoldProject(t)
+			lockPath := filepath.Join(root, ".awf", "awf.lock")
+			l, err := manifest.Load(lockPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			l.AWFVersion = "99.0.0" // rendered by a newer awf → binary is behind
+			if err := l.Save(lockPath); err != nil {
+				t.Fatal(err)
+			}
+			var out, errb bytes.Buffer
+			if code := runAt(t, root, []string{"awf", cmd}, &out, &errb); code != 1 {
+				t.Fatalf("%s: expected exit 1 on a version-behind lock, got %d (%s)", cmd, code, errb.String())
+			}
+			if all := out.String() + errb.String(); !strings.Contains(all, "update your pinned awf") {
+				t.Errorf("%s: expected the version-gate message, got: %s", cmd, all)
+			}
+			l2, err := manifest.Load(lockPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if l2.AWFVersion != "99.0.0" {
+				t.Errorf("%s: lock awfVersion re-stamped to %q despite the gate", cmd, l2.AWFVersion)
+			}
+		})
+	}
+}
+
 // TestDriverGatesGatedCommands confirms the driver refuses every Gated command
 // before its handler on an ahead-schema project. For enable/disable this also
 // pins the gate-before-config-write guarantee: the handler never runs, so no
