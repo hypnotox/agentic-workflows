@@ -4,20 +4,22 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
 // Every command answers --help and -h with exit 0 and its own usage line —
 // guaranteeing no command is missing structured help.
 func TestPerCommandHelp(t *testing.T) {
-	for name := range argSpecs {
+	for _, c := range clispec.Commands {
 		for _, flag := range []string{"--help", "-h"} {
-			t.Run(name+" "+flag, func(t *testing.T) {
+			t.Run(c.Name+" "+flag, func(t *testing.T) {
 				var out, errb bytes.Buffer
-				if code := run([]string{"awf", name, flag}, &out, &errb); code != 0 {
-					t.Fatalf("`awf %s %s` should exit 0, got %d (err=%s)", name, flag, code, errb.String())
+				if code := run([]string{"awf", c.Name, flag}, &out, &errb); code != 0 {
+					t.Fatalf("`awf %s %s` should exit 0, got %d (err=%s)", c.Name, flag, code, errb.String())
 				}
-				if !strings.Contains(out.String(), "Usage: awf "+name) {
-					t.Errorf("`awf %s %s` help missing usage line; got:\n%s", name, flag, out.String())
+				if !strings.Contains(out.String(), "Usage: awf "+c.Name) {
+					t.Errorf("`awf %s %s` help missing usage line; got:\n%s", c.Name, flag, out.String())
 				}
 			})
 		}
@@ -34,36 +36,43 @@ func TestGlobalHelpListsAllCommands(t *testing.T) {
 	if !strings.Contains(got, "Commands:") {
 		t.Errorf("global help missing Commands header:\n%s", got)
 	}
-	for name, spec := range argSpecs {
+	for _, c := range clispec.Commands {
 		// Line-anchored: "  <name> " at a line start, so a command name that is a
 		// substring of another's summary cannot mask a real omission.
-		if !strings.Contains(got, "\n  "+name+" ") {
-			t.Errorf("global help omits command line for %q:\n%s", name, got)
+		if !strings.Contains(got, "\n  "+c.Name+" ") {
+			t.Errorf("global help omits command line for %q:\n%s", c.Name, got)
 		}
-		if spec.summary == "" || spec.help == "" {
-			t.Errorf("command %q has empty summary/help", name)
+		if c.Summary == "" || c.HelpBody == "" {
+			t.Errorf("command %q has empty summary/help", c.Name)
 		}
 	}
 }
 
-// commandOrder and argSpecs must stay in exact set parity: the global overview
-// iterates commandOrder, so a command in one but not the other would silently
-// drop from `awf help` (or print an empty summary line).
-func TestCommandOrderMatchesArgSpecs(t *testing.T) {
-	inOrder := map[string]bool{}
-	for _, name := range commandOrder {
-		if inOrder[name] {
-			t.Errorf("commandOrder lists %q twice", name)
+// The top-level usage line, `awf help` overview order, and the command set all
+// derive from clispec — no parallel enumeration in cmd/awf.
+// (inv: cli-command-spec-single-source, backed in internal/clispec.)
+func TestCliCommandSpecSingleSource(t *testing.T) {
+	// globalHelp lists commands in clispec order; assert each name appears and in
+	// the same relative order as clispec.Commands.
+	var out, errb bytes.Buffer
+	run([]string{"awf", "help"}, &out, &errb)
+	got := out.String()
+	last := -1
+	for _, c := range clispec.Commands {
+		idx := strings.Index(got, "\n  "+c.Name+" ")
+		if idx < 0 {
+			t.Fatalf("globalHelp omits %q", c.Name)
 		}
-		inOrder[name] = true
-		if _, ok := argSpecs[name]; !ok {
-			t.Errorf("commandOrder lists %q, absent from argSpecs", name)
+		if idx < last {
+			t.Errorf("globalHelp lists %q out of clispec order", c.Name)
 		}
+		last = idx
 	}
-	for name := range argSpecs {
-		if !inOrder[name] {
-			t.Errorf("argSpecs has %q, missing from commandOrder", name)
-		}
+	// The bare-usage line is the clispec usage token list.
+	errb.Reset()
+	run([]string{"awf"}, &out, &errb)
+	if !strings.Contains(errb.String(), clispec.UsageLine()) {
+		t.Errorf("bare usage line does not derive from clispec.UsageLine():\n%s", errb.String())
 	}
 }
 
@@ -74,7 +83,8 @@ func TestHelpSubcommandDispatch(t *testing.T) {
 	if code := run([]string{"awf", "help", "sync"}, &out, &errb); code != 0 {
 		t.Fatalf("help sync: exit %d (%s)", code, errb.String())
 	}
-	if out.String() != argSpecs["sync"].help {
+	sync, _ := clispec.Lookup("sync")
+	if out.String() != sync.HelpBody {
 		t.Errorf("awf help sync = %q, want the sync --help text", out.String())
 	}
 	out.Reset()

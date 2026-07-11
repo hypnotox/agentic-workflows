@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -24,23 +25,16 @@ var isInteractive = func() bool {
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
-// run dispatches a subcommand and returns a process exit code. All user-facing
-// output goes to the injected writers so the dispatch is unit-testable.
-// commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
-var commandOrder = []string{
-	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "config", "context", "new", "enable", "disable", "upgrade", "uninstall", "changelog", "version",
-}
-
 // globalHelp renders the top-level `awf help` overview from each command's summary,
-// so the overview and the per-command `awf <cmd> --help` texts share one source.
+// so the overview and the per-command `awf <cmd> --help` texts share one source —
+// the internal/clispec table (inv: cli-command-spec-single-source).
 func globalHelp() string {
 	var b strings.Builder
 	b.WriteString("awf — render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
 	b.WriteString("Usage: awf <command> [flags]\n\n")
 	b.WriteString("Commands:\n")
-	for _, name := range commandOrder {
-		fmt.Fprintf(&b, "  %-12s %s\n", name, argSpecs[name].summary)
+	for _, c := range clispec.Commands {
+		fmt.Fprintf(&b, "  %-12s %s\n", c.Name, c.Summary)
 	}
 	b.WriteString("\nRun `awf <command> --help` for details on a command.\n")
 	return b.String()
@@ -58,14 +52,14 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|context|new|enable|disable|upgrade|uninstall|changelog|version> [args]")
+		fmt.Fprintln(stderr, "usage:", clispec.UsageLine(), "[args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
 		if a == "help" && len(args) >= 3 {
-			if spec, ok := argSpecs[args[2]]; ok {
-				fmt.Fprint(stdout, spec.help)
+			if spec, ok := clispec.Lookup(args[2]); ok {
+				fmt.Fprint(stdout, spec.HelpBody)
 				return 0
 			}
 		}
@@ -77,12 +71,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
-	if spec, ok := argSpecs[args[1]]; ok {
+	if spec, ok := clispec.Lookup(args[1]); ok {
 		if hasHelpFlag(args[2:]) { // `awf <cmd> --help`/`-h` — intercept before checkArgs rejects it
-			fmt.Fprint(stdout, spec.help)
+			fmt.Fprint(stdout, spec.HelpBody)
 			return 0
 		}
-		if err := checkArgs(args[1], args[2:], spec.boolFlags, spec.valueFlags, spec.minPos, spec.maxPos); err != nil {
+		if err := checkArgs(spec, args[2:]); err != nil {
 			fmt.Fprintln(stderr, "awf:", err)
 			return 2
 		}
@@ -120,8 +114,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		cmdErr = runConfig(cwd, key, stdout)
 	case "context":
-		spec := argSpecs["context"]
-		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
+		spec, _ := clispec.Lookup("context")
+		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
 		if len(pos) == 0 {
 			staged, rng := hasFlag(args, "--staged"), valueFlag(args, "--range")
 			if !staged && rng == "" {
@@ -146,8 +140,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			cmdErr = runNew(cwd, args[2], args[3:], stdout)
 		}
 	case "enable":
-		spec := argSpecs["enable"]
-		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
+		spec, _ := clispec.Lookup("enable")
+		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
 		switch {
 		case len(pos) == 2:
 			cmdErr = runEnable(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)
@@ -159,8 +153,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			cmdErr = &usageErr{"usage: awf enable <kind> <name> [--dry-run]"}
 		}
 	case "disable":
-		spec := argSpecs["disable"]
-		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
+		spec, _ := clispec.Lookup("disable")
+		pos := positionals(args[2:], spec.BoolFlags, spec.ValueFlags)
 		switch {
 		case len(pos) == 2:
 			cmdErr = runDisable(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
@@ -197,215 +191,29 @@ type usageErr struct{ msg string }
 
 func (e *usageErr) Error() string { return e.msg }
 
-// argSpec declares a subcommand's accepted flags and positional bounds. boolFlags
-// take no value; valueFlags consume the following token; maxPos < 0 is unbounded
-// (new/enable/disable refine their arity in the switch to keep their specific messages).
-type argSpec struct {
-	boolFlags, valueFlags []string
-	minPos, maxPos        int
-	summary               string // one-line description for `awf help`
-	help                  string // full `awf <cmd> --help` text (usage + description + flags)
-}
-
-var argSpecs = map[string]argSpec{
-	"init": {
-		boolFlags: []string{"--force", "--describe"}, valueFlags: []string{"--set", "--answers"}, maxPos: 0,
-		summary: "Scaffold .awf/ and render the workflow-core set",
-		help: `Usage: awf init [flags]
-
-Scaffold a .awf/ config tree and render the workflow-core set into the project.
-
-Flags:
-  --force        overwrite colliding files, backing each up to <path>.awf-bak
-  --describe     print the fillable value descriptors as JSON and exit
-  --set k=v      set a value non-interactively (repeatable)
-  --answers FILE read values from a JSON/YAML answers file: a flat key→value map
-                 of descriptor keys (see --describe); multiselect answers
-                 (skills, docs) are comma-joined name lists
-`,
-	},
-	"sync": {
-		maxPos: 0, summary: "Re-render after a template or config change",
-		help: `Usage: awf sync
-
-Re-render every enabled target after a template or config change and update .awf/awf.lock.
-`,
-	},
-	"check": {
-		maxPos: 0, summary: "Fail on stale or hand-edited rendered output",
-		help: `Usage: awf check
-
-Re-render in memory and fail if any rendered file is stale or hand-edited (drift).
-`,
-	},
-	"invariants": {
-		maxPos: 0, summary: "Report Implemented-ADR invariant slugs lacking a backing comment",
-		help: `Usage: awf invariants
-
-Report each Implemented-ADR ` + "`inv:`" + ` slug lacking a backing ` + "`<marker> invariant:`" + ` comment.
-`,
-	},
-	"audit": {
-		valueFlags: []string{"--base"}, maxPos: 0,
-		summary: "Report workflow-conformance findings over the branch (advisory)",
-		help: `Usage: awf audit [--base <ref>]
-
-Report advisory workflow-conformance findings over the branch's commits; never gates.
-
-Flags:
-  --base <ref>   compare against <ref> instead of the configured base branch
-`,
-	},
-	"commit-gate": {
-		maxPos: 1, summary: "Validate one commit message (Conventional Commits), blocking",
-		help: `Usage: awf commit-gate [FILE]
-
-Validate one commit message against the Conventional Commits rules (type, scope,
-72-char subject) and exit non-zero on a violation — the commit-side analog of the
-gate. Reads FILE (the path a commit-msg hook passes as $1) or stdin; cleans the
-message git-style and exempts merge/autosquash subjects. awf installs no hook —
-wire this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh
-payload runs it when the hooks artifact is enabled).
-`,
-	},
-	"list": {
-		maxPos: 1, summary: "Show targets and their per-project state (all kinds, or one)",
-		help: `Usage: awf list [<kind>]
-
-Show targets and their per-project enabled state, for all kinds or one (skill|agent|doc|domain|target|bootstrap|hooks).
-`,
-	},
-	"config": {
-		maxPos: 1, summary: "Describe config keys and vars (live state inside a project)",
-		help: `Usage: awf config [<key-or-var>]
-
-Print the configuration reference: every config key, var, sidecar field, and
-data key with descriptions, defaults, and availability. Inside an awf project
-the output adds live state (current values; which enabled artifacts consume
-each var; dormant hints). Outside one, a static catalog-wide reference prints.
-With an argument, print just that entry (a config key path like
-audit.diffThreshold, a var name like gateCmd, a sidecar field like
-sidecar.local, or a data key name).
-`,
-	},
-	"context": {
-		boolFlags: []string{"--json", "--staged"}, valueFlags: []string{"--range"}, maxPos: -1,
-		summary: "Report owning domains, invariants, and ADRs for paths",
-		help: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]
-
-Report the committed context awf holds for a set of repo-relative paths: owning
-domain(s), the invariant slugs backed under those paths, related ADRs, and each
-domain's current-state doc. Read-only. Inside an awf project the output reflects
-live config; outside one, a static pre-adoption notice prints.
-
-Provide paths explicitly, or resolve them from git with --staged (the staged
-changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
-take precedence over the git selectors.
-
-Flags:
-  --json               emit the context as JSON
-  --staged             use the staged changed paths
-  --range <a>..<b>     use the paths changed between revisions a and b
-`,
-	},
-	"new": {
-		maxPos: -1, summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent, doc}",
-		help: `Usage: awf new <kind> <args>
-
-Scaffold a new artifact. <kind> is adr, skill, agent, or doc.
-
-- awf new adr "Some Decision Title"
-- awf new skill <name> "<description>"   (a project-local skill)
-- awf new agent <name> "<description>"   (a project-local agent)
-- awf new doc <name> "<description>"     (a project-local doc; name may be nested, e.g. guides/ci)
-`,
-	},
-	"enable": {
-		boolFlags: []string{"--dry-run"},
-		maxPos:    -1, summary: "Enable an artifact — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
-		help: `Usage: awf enable <kind> <name> [--dry-run]
-
-Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,
-bootstrap, or hooks. For skill/agent/doc, the full requirement closure is enabled
-in one edit, printed as a plan (ADR-0081).
-
-Flags:
-  --dry-run    print the closure plan without changing the config
-`,
-	},
-	"disable": {
-		boolFlags: []string{"--with-dependents", "--dry-run"},
-		maxPos:    -1, summary: "Disable an artifact (a catalog skill/agent/doc, a freeform domain, or a target)",
-		help: `Usage: awf disable <kind> <name> [--with-dependents] [--dry-run]
-
-Disable an artifact — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
-For skill/agent/doc, disabling refuses while enabled artifacts still require
-<name>, printing the dependent plan (ADR-0081).
-
-Flags:
-  --with-dependents    also disable every enabled artifact that transitively requires <name>
-  --dry-run            print the plan without changing the config
-`,
-	},
-	"upgrade": {
-		maxPos: 0, summary: "Migrate the .awf/ config tree to the current schema",
-		help: `Usage: awf upgrade
-
-Migrate the .awf/ config tree to the current schema version.
-`,
-	},
-	"uninstall": {
-		maxPos: 0, summary: "Remove awf's generated files (keeps .awf/)",
-		help: `Usage: awf uninstall
-
-Remove every awf-generated file recorded in the lock (keeps your authored .awf/ config).
-`,
-	},
-	"changelog": {
-		valueFlags: []string{"--version", "--since", "--range"}, maxPos: 0,
-		summary: "Print the embedded changelog, or one version/range of it",
-		help: `Usage: awf changelog [--version <v> | --since <v> | --range <from>..<to>]
-
-Print the embedded awf changelog. With no flags, print the whole file. The three
-flags are mutually exclusive.
-
-Flags:
-  --version <v>          print only version v's entry
-  --since <v>            print every version released after v (exclusive)
-  --range <from>..<to>   print every version in [from, to] (inclusive both ends)
-`,
-	},
-	"version": {
-		maxPos: 0, summary: "Print the awf version",
-		help: `Usage: awf version
-
-Print the awf version.
-`,
-	},
-}
-
 // checkArgs rejects unrecognized --flags and enforces the positional count for a
-// subcommand. rest is args[2:]; a valueFlag consumes its following token.
-func checkArgs(cmd string, rest []string, boolFlags, valueFlags []string, minPos, maxPos int) error {
+// subcommand against its clispec spec. rest is args[2:]; a valueFlag consumes its
+// following token.
+func checkArgs(cmd clispec.Command, rest []string) error {
 	pos := 0
 	for i := 0; i < len(rest); i++ {
 		a := rest[i]
 		switch {
-		case slices.Contains(valueFlags, a):
+		case slices.Contains(cmd.ValueFlags, a):
 			if i+1 >= len(rest) {
-				return &usageErr{fmt.Sprintf("awf %s: flag %s needs a value", cmd, a)}
+				return &usageErr{fmt.Sprintf("awf %s: flag %s needs a value", cmd.Name, a)}
 			}
 			i++ // consume the flag's value
-		case slices.Contains(boolFlags, a):
+		case slices.Contains(cmd.BoolFlags, a):
 			// recognized boolean flag
 		case strings.HasPrefix(a, "-"):
-			return &usageErr{fmt.Sprintf("awf %s: unknown flag %q", cmd, a)}
+			return &usageErr{fmt.Sprintf("awf %s: unknown flag %q", cmd.Name, a)}
 		default:
 			pos++
 		}
 	}
-	if pos < minPos || (maxPos >= 0 && pos > maxPos) {
-		return &usageErr{fmt.Sprintf("awf %s: unexpected arguments", cmd)}
+	if pos < cmd.MinPos || (cmd.MaxPos >= 0 && pos > cmd.MaxPos) {
+		return &usageErr{fmt.Sprintf("awf %s: unexpected arguments", cmd.Name)}
 	}
 	return nil
 }
