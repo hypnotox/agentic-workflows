@@ -24,6 +24,8 @@ awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (
 
 ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go module, invisible to every `./...` sweep — as the repo's worked example and rendered-output quality oracle: `./x sync` re-renders it with a source-built binary after the repo's own sync, and `./x check` additionally runs the example's `awf check` (failing on drift or any `note: ` line — the model adopter is smell-free), `awf invariants`, and `go test ./...`. `internal/project/example_wiring_test.go` pins the wiring; `awf audit` deliberately never runs there (no `.git` at the example root).
 
+`awf new doc <name> "<description>"` (ADR-0091) rounds out the `awf new` scaffolder — its kind set is now `{adr, skill, agent, doc}` — scaffolding a project-local doc the way `awf new skill|agent` scaffold their kinds: a declaring `.awf/docs/<name>.yaml` sidecar carrying a name-derived title and the description, a stub `content` convention part (its doc-standard pointer prose, not a dead-linkable relative link), the `docs:` enable, and a re-render. The name may be path-aware (nested, e.g. `guides/ci`), validated through `config.ValidateDocName`, and a collision with a catalog doc name is refused upfront.
+
 
 ## Decisions
 

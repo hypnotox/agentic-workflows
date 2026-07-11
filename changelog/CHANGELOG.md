@@ -8,6 +8,21 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- Project-local custom docs (ADR-0091): `awf new doc <name> "<description>"`
+  scaffolds a managed doc — a declaring sidecar plus a `content` convention
+  part rendered from awf's base doc template — that joins the AGENTS.md
+  document map and the dead-link check like any catalog doc. Names may be
+  nested (e.g. `guides/ci`). A new toggleable `releasing` catalog doc
+  (`awf add doc releasing`) ships a stub-default release runbook that imposes
+  no structure.
+
+### Bug fixes
+- `awf sync` now fails loudly when two artifacts resolve to the same output
+  path, so a path-aware local doc name colliding with awf's reserved
+  `decisions/`, `plans/`, or `domains/` output is caught rather than silently
+  overwriting the other file.
+
 ## [0.14.1] - 2026-07-10
 
 ### Bug fixes
