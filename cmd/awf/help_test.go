@@ -94,4 +94,22 @@ func TestHelpSubcommandDispatch(t *testing.T) {
 	if !strings.Contains(out.String(), "Commands:") {
 		t.Errorf("unknown command should fall back to the overview:\n%s", out.String())
 	}
+	// `awf help <group> <child>` prints the child's body.
+	out.Reset()
+	if code := run([]string{"awf", "help", "new", "adr"}, &out, &errb); code != 0 {
+		t.Fatalf("help new adr: exit %d (%s)", code, errb.String())
+	}
+	newCmd, _ := clispec.Lookup("new")
+	adr, _ := newCmd.Child("adr")
+	if out.String() != adr.HelpBody {
+		t.Errorf("awf help new adr = %q, want the new-adr child help", out.String())
+	}
+	// An unknown child falls back to the group's own body.
+	out.Reset()
+	if code := run([]string{"awf", "help", "new", "bogus"}, &out, &errb); code != 0 {
+		t.Fatalf("help new bogus: exit %d (%s)", code, errb.String())
+	}
+	if out.String() != newCmd.HelpBody {
+		t.Errorf("awf help new bogus = %q, want the new group help", out.String())
+	}
 }

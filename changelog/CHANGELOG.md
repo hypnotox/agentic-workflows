@@ -49,6 +49,9 @@ query a single version or a range.
 - `awf enable <kind>`/`awf disable <kind>` with the kind but no name (e.g. `awf
   enable target`) now say "requires a name" instead of the misleading "requires
   a kind" hint that treated the kind as if it were a name.
+- `awf help new <kind>` (e.g. `awf help new adr`) now prints the subcommand's
+  help; previously only `awf new adr --help` reached it and `awf help new adr`
+  printed the group help.
 
 ### Others
 - CLI dispatch is restructured onto a declarative command table
