@@ -14,9 +14,14 @@ separate later effort.
 `internal/project/context.go`, not a standalone package — this reuses `p.Cfg`, `p.layout()`,
 `p.Cfg.Sidecar`, and `p.decisionsDir()` directly and, critically, keeps every new production
 function reachable from `main` through the command in the same commit (the dead-code gate,
-ADR-0063, fails on any production function unreachable from a `main`). The one genuinely new
-join — invariant markers *under a path set* — is a new exported `invariants.MarkersUnder` helper
-reusing the existing `slugRe` and marker-scan logic. `cmd/awf/context.go` mirrors `runConfig`
+ADR-0063, fails on any production function unreachable from a `main`). The assembler composes the
+**four** readers ADR-0092 D4 mandates — path→domain, domain→ADRs, ADR→declared-`inv:`-slugs, and
+path→markers — three reusing existing code and only the last being new: a new exported
+`invariants.MarkersUnder` helper (reusing `slugRe` and the marker-scan logic) for the slugs backed
+*under the queried paths*, plus the existing `declRe` (exposed as `invariants.DeclaredSlugs`) for
+the `inv:` slugs each *related ADR declares*. The path-backed slugs populate `res.Invariants`; the
+per-ADR declared slugs populate `ADRRef.Invariants`, keeping the two sources distinct with clear
+provenance rather than flooding one list. `cmd/awf/context.go` mirrors `runConfig`
 line-for-line for the gate + static-fallback branch, and (because `unparam` is enabled in
 `.golangci.yml`) prints human **and** JSON in the same phase, so its `asJSON` parameter is read.
 The `--staged`/`--range` git sugar reuses go-git handling extracted from `internal/audit` into a
@@ -164,6 +169,24 @@ edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
       Add `"sort"` to the import block if absent. (`os`, `io/fs`, `path/filepath`, `strings`, and
       `internal/pathglob` are already imported by `scanTags`.)
 
+- [ ] In the same file, expose the existing `declRe` ADR-declared-slug scan (already used by
+      `Check` at `invariants.go:75`) as an exported helper so the assembler reuses it verbatim:
+
+      ```go
+      // DeclaredSlugs returns the invariant slugs declared via `inv: <slug>`
+      // bullets in an ADR Invariants-section body, in source order.
+      func DeclaredSlugs(section string) []string {
+      	var out []string
+      	for _, m := range declRe.FindAllStringSubmatch(section, -1) {
+      		out = append(out, m[1])
+      	}
+      	return out
+      }
+      ```
+
+      Add an `invariants_test.go` case: a section with two `inv:` bullets → both slugs in order;
+      an empty section → nil.
+
 - [ ] In `internal/invariants/invariants_test.go`, add table cases for `MarkersUnder`:
       (1) a marker file under a queried dir → slug returned; (2) a marker file *outside* the
       queried paths → excluded; (3) a queried file path exactly matching a marker file → returned;
@@ -211,11 +234,14 @@ edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
 
       // ADRRef is an ADR related to the query via an owning domain. Title is the
       // human title with the "ADR-NNNN: " prefix stripped (Number carries it).
+      // Invariants are the inv: slugs this ADR declares (its Invariants section),
+      // the ADR-side half of the backing-invariants join (ADR-0092 D4).
       type ADRRef struct {
-      	Number string `json:"number"`
-      	Title  string `json:"title"`
-      	Status string `json:"status"`
-      	Path   string `json:"path"`
+      	Number     string   `json:"number"`
+      	Title      string   `json:"title"`
+      	Status     string   `json:"status"`
+      	Path       string   `json:"path"`
+      	Invariants []string `json:"invariants"`
       }
 
       // ContextFor assembles the read-only context for paths. It reads only
@@ -272,10 +298,11 @@ edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
       		for _, dm := range a.Domains {
       			if owners[dm] {
       				res.ADRs = append(res.ADRs, ADRRef{
-      					Number: a.Number,
-      					Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
-      					Status: a.Status,
-      					Path:   lay.DocsDir + "/decisions/" + a.Filename,
+      					Number:     a.Number,
+      					Title:      strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
+      					Status:     a.Status,
+      					Path:       lay.DocsDir + "/decisions/" + a.Filename,
+      					Invariants: invariants.DeclaredSlugs(a.Sections["Invariants"]),
       				})
       				break
       			}
@@ -312,7 +339,11 @@ edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
       - a path under no domain → in `Unowned`, absent from `Domains`;
       - a marker file under the queried path → its slug in `Invariants`;
       - an ADR whose `domains:` includes an owning domain → in `ADRs` with `Title` **stripped** of
-        the `ADR-NNNN: ` prefix; an ADR touching no owning domain → excluded;
+        the `ADR-NNNN: ` prefix, and its declared `inv:` slugs in `ADRRef.Invariants`; an ADR
+        touching no owning domain → excluded;
+      - an `inv:` slug declared in a related ADR but backed by a marker **outside** the queried
+        paths → surfaced under that ADR's `Invariants`, and **absent** from `res.Invariants` (the
+        two-source join keeps path-backed and ADR-declared slugs distinct — D4);
       - a domain configured **without** `paths:` → never appears (D5 unreachable-by-path);
       - `Invariants` disabled (`invariants.disabled: true`) → empty `Invariants`, no error;
       - duplicate + unclean input paths (`./cmd/`, `cmd`, `.`) collapse to one cleaned entry.
@@ -388,6 +419,9 @@ edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
       	fmt.Fprintln(stdout, "\n## Related ADRs")
       	for _, a := range res.ADRs {
       		fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+      		if len(a.Invariants) > 0 {
+      			fmt.Fprintf(stdout, "    invariants: %v\n", a.Invariants)
+      		}
       	}
       	if len(res.Unowned) > 0 {
       		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")
