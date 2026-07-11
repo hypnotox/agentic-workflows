@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Implemented
 date: 2026-07-11
 supersedes: []
 retires_invariants: []

@@ -30,6 +30,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
+   - The affected context — collect the created/modified paths from the plan's file-structure header and paste the output of `awf context <those paths>` — so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.

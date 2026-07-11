@@ -15,7 +15,10 @@ query a single version or a range.
   own declared invariants) — the deterministic context awf already holds,
   surfaced instead of reconstructed by grep. Human and `--json` output;
   `--staged`/`--range <a>..<b>` resolve the paths from git. Gated and degrading
-  to a static notice outside an adopted tree, like `awf config`.
+  to a static notice outside an adopted tree, like `awf config`. The workflow
+  skills (`awf-brainstorming`, `awf-reviewing-impl`, `awf-reviewing-plan`) now
+  call `awf context` to ground their domain/invariant/ADR context instead of
+  reconstructing it by grep.
 
 ### Breaking changes
 - The config-toggle commands are renamed `awf add`/`awf remove` →

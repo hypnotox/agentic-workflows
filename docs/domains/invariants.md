@@ -9,10 +9,6 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 
 ## Decisions
 
-### Accepted
-
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
-
 ### Implemented
 
 - [ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker](../decisions/0007-invariant-backing-tooling.md)
@@ -20,4 +16,5 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 

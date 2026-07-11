@@ -9,10 +9,6 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 
 ## Decisions
 
-### Accepted
-
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
-
 ### Implemented
 
 - [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](../decisions/0004-agents-md-template-and-docs-module.md)
@@ -24,4 +20,5 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0028: ADR-first ordering and a visible plan–ADR resync loop in the workflow chain](../decisions/0028-workflow-chain-adr-first-visible-resync.md)
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 

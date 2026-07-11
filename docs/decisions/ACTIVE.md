@@ -2,7 +2,6 @@
 ## Accepted
 
 - [ADR-0001: Template Overlay Rendering Engine](0001-template-overlay-rendering-engine.md) — Accepted
-- [ADR-0092: Read-Only Context Query Command](0092-read-only-context-query-command.md) — Accepted
 
 ## Implemented
 
@@ -95,6 +94,7 @@
 - [ADR-0089: Data-driven glossary terms rendered sorted](0089-data-driven-glossary-terms-rendered-sorted.md) — Implemented
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md) — Implemented
 - [ADR-0091: Project-local custom docs as a third local artifact kind](0091-project-local-custom-docs-as-a-third-local-artifact-kind.md) — Implemented
+- [ADR-0092: Read-Only Context Query Command](0092-read-only-context-query-command.md) — Implemented
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](0093-rename-config-toggle-commands-to-enable-disable.md) — Implemented
 
 ## Superseded

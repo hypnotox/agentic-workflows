@@ -19,7 +19,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 
 Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles — create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
 
-1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Identify which packages and which existing ADRs the work touches.
+1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
 
 <!-- awf:edit example-clarifying-questions — default; create .awf/skills/parts/brainstorming/example-clarifying-questions.md to override -->
 2. **Ask clarifying questions, one at a time.** Prefer multiple-choice questions where your runtime supports them. Each question narrows scope. Avoid asking for everything in one mega-question.
@@ -35,7 +35,7 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 <!-- awf:edit grounding-check-output-format — default; create .awf/skills/parts/brainstorming/grounding-check-output-format.md to override -->
 6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE fresh-context subagent for exploration (read-only by default; allow it to run a command only when the grounding-check needs to execute one rather than read files). The subagent does NOT see this conversation — it works from a self-contained brief and returns findings. Synthesise the dispatch brief inline in the subagent prompt — do NOT write it to a file; the only on-disk record of the brainstorm is the evolving design brief in the working-memory file.
 
-   Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the files/packages/ADRs touched, the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
+   Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the touched files/packages plus their owning domains, backed invariants, and related ADRs (paste the output of `awf context <touched paths>` rather than reconstructing it), the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
 
    Ask the subagent specifically to:
    - Verify the brainstorm's factual premises against the codebase: do the named types/functions/packages exist? does the approach fit the project's architecture as described?
