@@ -98,6 +98,7 @@
 ## Proposed
 
 - [ADR-0092: Read-Only Context Query Command](0092-read-only-context-query-command.md) — Proposed
+- [ADR-0093: Rename config-toggle commands to `enable`/`disable`](0093-rename-config-toggle-commands-to-enable-disable.md) — Proposed
 
 ## Superseded
 

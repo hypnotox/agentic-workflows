@@ -85,6 +85,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 ### Proposed
 
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
+- [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
 
 ### Superseded
 
