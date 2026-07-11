@@ -11,15 +11,15 @@ import (
 // node the user named).
 type PlanOp struct {
 	Node       catalog.Node
-	Add        bool
+	Enable     bool
 	RequiredBy string
 }
 
-// ResolveAdd plans enabling (kind, name): the node plus its missing forward
+// ResolveEnable plans enabling (kind, name): the node plus its missing forward
 // closure. An already-enabled dependency is skipped along with its subtree —
 // the open-time validation invariant guarantees enabled implies closed.
 // invariant: add-applies-closure-plan
-func (p *Project) ResolveAdd(kind, name string) []PlanOp {
+func (p *Project) ResolveEnable(kind, name string) []PlanOp {
 	type item struct {
 		n  catalog.Node
 		by string
@@ -34,7 +34,7 @@ func (p *Project) ResolveAdd(kind, name string) []PlanOp {
 		if it.n != seed && p.nodeEnabled(it.n) {
 			continue
 		}
-		plan = append(plan, PlanOp{Node: it.n, Add: true, RequiredBy: it.by})
+		plan = append(plan, PlanOp{Node: it.n, Enable: true, RequiredBy: it.by})
 		for _, r := range catalog.RequiresOf(p.Cat, it.n) {
 			if !seen[r] {
 				seen[r] = true
@@ -45,15 +45,15 @@ func (p *Project) ResolveAdd(kind, name string) []PlanOp {
 	return plan
 }
 
-// ResolveRemove plans disabling (kind, name): the node plus every enabled,
+// ResolveDisable plans disabling (kind, name): the node plus every enabled,
 // non-local artifact that transitively requires it (reverse closure, fixed
 // point over direct edges). Local-sidecar artifacts have no catalog edges
 // demanded of them, mirroring the validator's skip.
 // invariant: remove-refuses-dependents
-func (p *Project) ResolveRemove(kind, name string) []PlanOp {
+func (p *Project) ResolveDisable(kind, name string) []PlanOp {
 	target := catalog.Node{Kind: kind, Name: name}
 	removed := map[catalog.Node]bool{target: true}
-	plan := []PlanOp{{Node: target, Add: false}}
+	plan := []PlanOp{{Node: target, Enable: false}}
 	for changed := true; changed; {
 		changed = false
 		for _, n := range p.enabledGraphNodes() {
@@ -63,7 +63,7 @@ func (p *Project) ResolveRemove(kind, name string) []PlanOp {
 			for _, r := range catalog.RequiresOf(p.Cat, n) {
 				if removed[r] {
 					removed[n] = true
-					plan = append(plan, PlanOp{Node: n, Add: false, RequiredBy: r.Name})
+					plan = append(plan, PlanOp{Node: n, Enable: false, RequiredBy: r.Name})
 					changed = true
 					break
 				}

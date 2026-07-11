@@ -821,8 +821,8 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := []project.PlanOp{
-		{Node: catalog.Node{Kind: "skill", Name: "reviewing-adr"}, Add: false},
-		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Add: false, RequiredBy: "reviewing-adr"},
+		{Node: catalog.Node{Kind: "skill", Name: "reviewing-adr"}, Enable: false},
+		{Node: catalog.Node{Kind: "skill", Name: "reviewing-plan"}, Enable: false, RequiredBy: "reviewing-adr"},
 	}
 	var out bytes.Buffer
 	noteUnrequiredAgents(p, plan, &out)

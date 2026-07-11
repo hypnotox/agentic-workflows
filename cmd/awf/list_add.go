@@ -17,13 +17,13 @@ func unknownKind(kind string) error {
 	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap, hooks)", kind)}
 }
 
-// addRemoveSingleton enables or disables a nested <key>.enabled singleton toggle
+// enableDisableSingleton enables or disables a nested <key>.enabled singleton toggle
 // in the config — the bootstrap (ADR-0040) or the git-hook payloads (ADR-0048).
 // It is the bespoke path (singletons are not kindDescriptors — no catalog pool /
 // sections / plural enable array, so they stay out of the single dispatch table
 // that inv: kind-dispatch-single-table guards): a nested <key>.enabled scalar,
 // written via config.SetMappingScalar.
-func addRemoveSingleton(root, key string, add bool, stdout io.Writer) error {
+func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
@@ -51,12 +51,12 @@ func addRemoveSingleton(root, key string, add bool, stdout io.Writer) error {
 	return runSync(root, stdout)
 }
 
-// addRemoveTarget enables or disables an adapter in the config targets array. It
+// enableDisableTarget enables or disables an adapter in the config targets array. It
 // is the bespoke path (targets is not a kindDescriptor — ADR-0037): it validates
 // against the known-adapter set and writes the full resolved list, since the
 // targets array carries a Load default that an absent on-disk key would drop.
 // invariant: target-cli
-func addRemoveTarget(root, name string, add bool, stdout io.Writer) error {
+func enableDisableTarget(root, name string, add bool, stdout io.Writer) error {
 	if !slices.Contains(project.KnownTargets(), name) {
 		return fmt.Errorf("%q is not a known target (known: %s)", name, strings.Join(project.KnownTargets(), ", "))
 	}
@@ -120,7 +120,7 @@ func checkGraphFlags(kind string, dryRun, withDependents bool) error {
 func printPlan(stdout io.Writer, plan []project.PlanOp) {
 	for _, op := range plan {
 		sign := "+"
-		if !op.Add {
+		if !op.Enable {
 			sign = "-"
 		}
 		suffix := ""
@@ -172,10 +172,10 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 		return err
 	}
 	if kind == "target" {
-		return addRemoveTarget(root, name, add, stdout)
+		return enableDisableTarget(root, name, add, stdout)
 	}
 	if kind == "bootstrap" || kind == "hooks" {
-		return addRemoveSingleton(root, kind, add, stdout)
+		return enableDisableSingleton(root, kind, add, stdout)
 	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
@@ -208,7 +208,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 			// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
 			// and subsumes the ADR-0013 doc advisory note.
 			// invariant: add-skill-pairs-agent
-			plan = p.ResolveAdd(kind, name)
+			plan = p.ResolveEnable(kind, name)
 		} else {
 			// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
 			// target plus its enabled transitive dependents, printed before any
@@ -216,7 +216,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 			// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
 			// guard (the reverse walk's length-1 case).
 			// invariant: remove-agent-pairing-guard
-			plan = p.ResolveRemove(kind, name)
+			plan = p.ResolveDisable(kind, name)
 		}
 		printPlan(stdout, plan)
 		if flags.dryRun {
