@@ -418,7 +418,7 @@ live config; outside one, a static pre-adoption notice prints.
 
 Flags:
   --json    emit the context as JSON
-` ,
+`,
         },
         ```
 
