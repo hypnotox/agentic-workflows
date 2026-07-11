@@ -9,6 +9,15 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Features
+- The plan convention sanctions a second task form, the **batch task**
+  (ADR-0095): for a transformation repeated across many sites, a plan task may
+  show one representative diff (plus an edge case, unless the shape is identical
+  everywhere), name the affected-site set as an exhaustive list or a reproducing
+  command, and a deterministic post-check that fails if any site is missed —
+  instead of N near-identical diffs. The `awf-writing-plans` skill, the plans
+  README, and the `plan-reviewer` `step-exactness` lens are reconciled so a
+  well-formed batch task is not flagged as under-specified. Adopters get it on
+  their next `awf sync`.
 - Read-only `awf context <path>...` query command (ADR-0092): for a set of
   repo-relative paths it reports their owning domain(s), the invariant slugs
   backed by markers under those paths, and the related ADRs (with each ADR's
