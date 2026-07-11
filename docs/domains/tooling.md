@@ -85,9 +85,6 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
-
-### Proposed
-
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 
 ### Superseded

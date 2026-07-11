@@ -96,10 +96,7 @@
 - [ADR-0091: Project-local custom docs as a third local artifact kind](0091-project-local-custom-docs-as-a-third-local-artifact-kind.md) — Implemented
 - [ADR-0092: Read-Only Context Query Command](0092-read-only-context-query-command.md) — Implemented
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](0093-rename-config-toggle-commands-to-enable-disable.md) — Implemented
-
-## Proposed
-
-- [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md) — Proposed
+- [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md) — Implemented
 
 ## Superseded
 

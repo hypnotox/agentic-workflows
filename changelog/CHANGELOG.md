@@ -30,6 +30,18 @@ query a single version or a range.
   rendered `AGENTS.md` and docs switch to the new verbs on their next
   `awf sync`.
 
+### Others
+- CLI dispatch is restructured onto a declarative command table
+  (`internal/clispec`) driven by a generic parse-once dispatcher (ADR-0094):
+  one path parses arguments, applies the gating classification, and calls the
+  handler, replacing the hand-rolled per-command `switch`. `awf new <kind>
+  --help` now prints kind-specific help. The resolver's internal
+  `Add`/`Remove` vocabulary is renamed to `Enable`/`Disable`, completing
+  ADR-0093's deferred rename. The rendered `AGENTS.md` binary-version-gate line
+  and the gated-command list in the docs are now generated from the command
+  table, so they list every gated command (adding `config`/`context`) and
+  cannot drift.
+
 ## [0.15.0] - 2026-07-11
 
 ### Features
