@@ -21,10 +21,8 @@ func runNew(root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":
 		return newADR(root, args, stdout)
-	case "skill", "agent":
-		return newLocalArtifact(root, kind, args, stdout)
-	case "doc":
-		return newLocalDoc(root, args, stdout)
+	case "skill", "agent", "doc":
+		return newLocal(root, kind, args, stdout)
 	default:
 		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, skill, agent, doc)", kind)}
 	}
@@ -49,10 +47,13 @@ func newADR(root string, titleWords []string, stdout io.Writer) error {
 	return nil
 }
 
-// newLocalArtifact scaffolds a project-local skill/agent: validates the name,
-// writes a declaring sidecar carrying the description and a starter content part,
-// enables the name in config, and re-renders (ADR-0068).
-func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error {
+// newLocal scaffolds a project-local artifact (ADR-0068, ADR-0091): a skill,
+// agent, or doc. It validates the name (path-aware for doc), writes a declaring
+// sidecar carrying the description — plus a derived title for a doc — and a
+// starter content part, enables the name in config (seeding a skill/agent's
+// referenced vars), and re-renders. The kind parameterizes the two differences:
+// the name validator + stub, and the doc-only title / no var-seeding.
+func newLocal(root, kind string, args []string, stdout io.Writer) error {
 	if len(args) < 2 {
 		return &usageErr{fmt.Sprintf("usage: awf new %s <name> \"<description>\"", kind)}
 	}
@@ -61,7 +62,12 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 	if desc == "" {
 		return &usageErr{"description must not be empty"}
 	}
-	if err := config.ValidateArtifactName(kind, name); err != nil {
+	isDoc := kind == "doc"
+	if isDoc {
+		if err := config.ValidateDocName(name); err != nil {
+			return err
+		}
+	} else if err := config.ValidateArtifactName(kind, name); err != nil {
 		return err
 	}
 	if err := gate(root); err != nil {
@@ -71,7 +77,7 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 	if err != nil {
 		return err
 	}
-	pl, _ := project.PluralKind(kind) // "skills" / "agents"
+	pl, _ := project.PluralKind(kind) // "skills" / "agents" / "docs"
 	if pool, _ := project.CatalogNames(p.Cat, kind); slices.Contains(pool, name) {
 		return fmt.Errorf("%s %q already exists (catalog or local) — pick another name", kind, name)
 	}
@@ -84,8 +90,15 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 			return fmt.Errorf("%s %q already has authored files (%s) — remove them first or pick another name", kind, name, existing)
 		}
 	}
-	// Declaring sidecar: data.description feeds the base template's frontmatter.
-	scBytes, err := yaml.Marshal(map[string]any{"data": map[string]any{"description": desc}})
+	// Declaring sidecar: data.description feeds the base template's frontmatter;
+	// a doc also carries a derived title.
+	data := map[string]any{"description": desc}
+	stub := localPartStub
+	if isDoc {
+		data["title"] = project.DeriveDocTitle(name)
+		stub = localDocPartStub
+	}
+	scBytes, err := yaml.Marshal(map[string]any{"data": data})
 	if err != nil { // coverage-ignore: a string map always marshals
 		return err
 	}
@@ -98,19 +111,21 @@ func newLocalArtifact(root, kind string, args []string, stdout io.Writer) error 
 	if err := os.MkdirAll(filepath.Dir(partPath), 0o755); err != nil { // coverage-ignore: as above
 		return err
 	}
-	if err := os.WriteFile(partPath, []byte(localPartStub), 0o644); err != nil { // coverage-ignore: as above
+	if err := os.WriteFile(partPath, []byte(stub), 0o644); err != nil { // coverage-ignore: as above
 		return err
 	}
 	updated, err := config.SetArrayMember(p.Cfg.Source(), pl, name, true)
 	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot fail here
 		return err
 	}
-	refs, err := project.ScaffoldVarRefs(kind)
-	if err != nil { // coverage-ignore: embedded base templates always read and expand
-		return err
-	}
-	if updated, err = seedScaffoldVars(updated, refs); err != nil { // coverage-ignore: config.Load already parsed this config, so re-parsing cannot fail here
-		return err
+	if !isDoc {
+		refs, err := project.ScaffoldVarRefs(kind)
+		if err != nil { // coverage-ignore: embedded base templates always read and expand
+			return err
+		}
+		if updated, err = seedScaffoldVars(updated, refs); err != nil { // coverage-ignore: config.Load already parsed this config, so re-parsing cannot fail here
+			return err
+		}
 	}
 	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault a test cannot trigger
 		return err
@@ -142,67 +157,6 @@ const localPartStub = "<!-- awf:stub -->\n" +
 	"awf check flags this part as unauthored while the marker remains. This file is a " +
 	"convention part: edit it to author the content, and see docs/working-with-awf.md for " +
 	"the placeholder syntax.\n"
-
-// newLocalDoc scaffolds a project-local custom doc (ADR-0091): a path-aware name,
-// a declaring sidecar carrying the derived title and description, a starter
-// content part, the enable, and a re-render.
-func newLocalDoc(root string, args []string, stdout io.Writer) error {
-	if len(args) < 2 {
-		return &usageErr{"usage: awf new doc <name> \"<description>\""}
-	}
-	name := args[0]
-	desc := strings.Join(strings.Fields(strings.Join(args[1:], " ")), " ")
-	if desc == "" {
-		return &usageErr{"description must not be empty"}
-	}
-	if err := config.ValidateDocName(name); err != nil {
-		return err
-	}
-	if err := gate(root); err != nil {
-		return err
-	}
-	p, err := project.Open(root)
-	if err != nil {
-		return err
-	}
-	if pool, _ := project.CatalogNames(p.Cat, "doc"); slices.Contains(pool, name) {
-		return fmt.Errorf("doc %q already exists (catalog or local) — pick another name", name)
-	}
-	scPath := filepath.Join(config.RootDir(root), "docs", name+".yaml")
-	partPath := p.Cfg.PartPath("docs", name, "content")
-	for _, existing := range []string{scPath, partPath} {
-		if _, err := os.Stat(existing); err == nil {
-			return fmt.Errorf("doc %q already has authored files (%s) — remove them first or pick another name", name, existing)
-		}
-	}
-	scBytes, err := yaml.Marshal(map[string]any{"data": map[string]any{
-		"title":       project.DeriveDocTitle(name),
-		"description": desc,
-	}})
-	if err != nil { // coverage-ignore: a string map always marshals
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(scPath), 0o755); err != nil { // coverage-ignore: parent is the just-opened .awf tree; fails only on a permission fault a test cannot trigger
-		return err
-	}
-	if err := os.WriteFile(scPath, scBytes, 0o644); err != nil { // coverage-ignore: post-mkdir write; fails only on a permission fault a test cannot trigger
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(partPath), 0o755); err != nil { // coverage-ignore: as above
-		return err
-	}
-	if err := os.WriteFile(partPath, []byte(localDocPartStub), 0o644); err != nil { // coverage-ignore: as above
-		return err
-	}
-	updated, err := config.SetArrayMember(p.Cfg.Source(), "docs", name, true)
-	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot fail here
-		return err
-	}
-	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault a test cannot trigger
-		return err
-	}
-	return runSync(root, stdout)
-}
 
 // localDocPartStub is the starter body for a new local doc's content part. The
 // doc-standard pointer is prose, not a markdown link — a file-relative link would

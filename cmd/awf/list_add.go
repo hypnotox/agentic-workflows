@@ -142,18 +142,40 @@ func planEdits(plan []project.PlanOp) []enableEdit {
 	return edits
 }
 
+// direction is the enable/disable axis of the shared toggle helper.
+type direction int
+
+const (
+	enableDir direction = iota
+	disableDir
+)
+
+// toggleFlags bundles the graph-plan flags shared by enable and disable
+// (--with-dependents is disable-only, always false for enable).
+type toggleFlags struct {
+	dryRun         bool
+	withDependents bool
+}
+
+// runEnable and runDisable are the two directions of the same spine: gate (by
+// the driver) → checkGraphFlags → the target/bootstrap/hooks bespoke arms →
+// PluralKind lookup → Open → per-direction validation → per-direction graph plan
+// → rewrite → per-direction post-notes → sync. toggle holds the spine; the two
+// entry points select the direction.
 func runEnable(root, kind, name string, dryRun bool, stdout io.Writer) error {
-	// The driver pre-gates enable (Gated) before any config write, so a stale
-	// binary never strands a half-mutated config (the chained sync's gate would
-	// only fire after the rewrite).
-	if err := checkGraphFlags(kind, dryRun, false); err != nil {
+	return toggle(root, kind, name, enableDir, toggleFlags{dryRun: dryRun}, stdout)
+}
+
+func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error {
+	add := dir == enableDir
+	if err := checkGraphFlags(kind, flags.dryRun, flags.withDependents); err != nil {
 		return err
 	}
 	if kind == "target" {
-		return addRemoveTarget(root, name, true, stdout)
+		return addRemoveTarget(root, name, add, stdout)
 	}
 	if kind == "bootstrap" || kind == "hooks" {
-		return addRemoveSingleton(root, kind, true, stdout)
+		return addRemoveSingleton(root, kind, add, stdout)
 	}
 	key, ok := project.PluralKind(kind)
 	if !ok {
@@ -163,38 +185,69 @@ func runEnable(root, kind, name string, dryRun bool, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if pool, catalogBacked := catalogNames(p.Cat, kind); catalogBacked {
-		if !slices.Contains(pool, name) {
-			return fmt.Errorf("%q is not a catalog %s (run: awf list %s)", name, kind, kind)
+	if add {
+		if pool, catalogBacked := catalogNames(p.Cat, kind); catalogBacked {
+			if !slices.Contains(pool, name) {
+				return fmt.Errorf("%q is not a catalog %s (run: awf list %s)", name, kind, kind)
+			}
+		} else if err := config.ValidateDomainName(name); err != nil {
+			return err
 		}
-	} else if err := config.ValidateDomainName(name); err != nil {
-		return err
-	}
-	if slices.Contains(enabledNames(p.Cfg, kind), name) {
-		return fmt.Errorf("%s %q already enabled", kind, name)
+		if slices.Contains(enabledNames(p.Cfg, kind), name) {
+			return fmt.Errorf("%s %q already enabled", kind, name)
+		}
+	} else if !slices.Contains(enabledNames(p.Cfg, kind), name) {
+		return fmt.Errorf("%s %q is not enabled", kind, name)
 	}
 	edits := []enableEdit{{key: key, name: name}}
+	var plan []project.PlanOp
 	if isGraphKind(kind) {
-		// Closure plan (ADR-0081 Decision 4): enabling an artifact enables its
-		// full missing forward closure — skills, agents, and docs — in one
-		// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
-		// and subsumes the ADR-0013 doc advisory note.
-		// invariant: add-skill-pairs-agent
-		plan := p.ResolveAdd(kind, name)
+		if add {
+			// Closure plan (ADR-0081 Decision 4): enabling an artifact enables its
+			// full missing forward closure — skills, agents, and docs — in one
+			// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
+			// and subsumes the ADR-0013 doc advisory note.
+			// invariant: add-skill-pairs-agent
+			plan = p.ResolveAdd(kind, name)
+		} else {
+			// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
+			// target plus its enabled transitive dependents, printed before any
+			// change; a longer plan refuses upfront — BEFORE the config rewrite,
+			// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
+			// guard (the reverse walk's length-1 case).
+			// invariant: remove-agent-pairing-guard
+			plan = p.ResolveRemove(kind, name)
+		}
 		printPlan(stdout, plan)
-		if dryRun {
+		if flags.dryRun {
 			return nil
+		}
+		if !add && len(plan) > 1 && !flags.withDependents {
+			return fmt.Errorf("disabling %s %q also disables the %d artifacts above; re-run with --with-dependents to apply", kind, name, len(plan)-1)
 		}
 		edits = planEdits(plan)
 	}
-	if err := rewriteConfig(root, p.Cfg.Source(), true, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the already-enabled guard and config.Load preclude it)
+	if err := rewriteConfig(root, p.Cfg.Source(), add, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the enabled/not-enabled guards and config.Load preclude it)
 		return err
 	}
-	if kind == "domain" {
-		if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
-			return err
+	if add {
+		if kind == "domain" {
+			if err := scaffoldDomainCurrentState(p, name); err != nil { // coverage-ignore: scaffoldDomainCurrentState only errors on an unreachable filesystem fault a test cannot trigger
+				return err
+			}
+		}
+		return runSync(root, stdout)
+	}
+	for _, op := range plan {
+		pl, _ := project.PluralKind(op.Node.Kind)
+		if hasSidecarOrParts(root, pl, op.Node.Name) {
+			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
 		}
 	}
+	if kind == "domain" && hasSidecarOrParts(root, key, name) {
+		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
+	}
+	noteUnrequiredAgents(p, plan, stdout)
 	return runSync(root, stdout)
 }
 
@@ -222,60 +275,7 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 }
 
 func runDisable(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
-	// The driver pre-gates disable before any config write — see runEnable.
-	if err := checkGraphFlags(kind, dryRun, withDependents); err != nil {
-		return err
-	}
-	if kind == "target" {
-		return addRemoveTarget(root, name, false, stdout)
-	}
-	if kind == "bootstrap" || kind == "hooks" {
-		return addRemoveSingleton(root, kind, false, stdout)
-	}
-	key, ok := project.PluralKind(kind)
-	if !ok {
-		return unknownKind(kind)
-	}
-	p, err := project.Open(root)
-	if err != nil {
-		return err
-	}
-	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
-		return fmt.Errorf("%s %q is not enabled", kind, name)
-	}
-	edits := []enableEdit{{key: key, name: name}}
-	var plan []project.PlanOp
-	if isGraphKind(kind) {
-		// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
-		// target plus its enabled transitive dependents, printed before any
-		// change; a longer plan refuses upfront — BEFORE the config rewrite,
-		// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
-		// guard (the reverse walk's length-1 case).
-		// invariant: remove-agent-pairing-guard
-		plan = p.ResolveRemove(kind, name)
-		printPlan(stdout, plan)
-		if dryRun {
-			return nil
-		}
-		if len(plan) > 1 && !withDependents {
-			return fmt.Errorf("disabling %s %q also disables the %d artifacts above; re-run with --with-dependents to apply", kind, name, len(plan)-1)
-		}
-		edits = planEdits(plan)
-	}
-	if err := rewriteConfig(root, p.Cfg.Source(), false, edits...); err != nil { // coverage-ignore: rewriteConfig only errors on an unreachable SetArrayMember/write failure (the not-enabled guard and config.Load preclude it)
-		return err
-	}
-	for _, op := range plan {
-		pl, _ := project.PluralKind(op.Node.Kind)
-		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
-		}
-	}
-	if kind == "domain" && hasSidecarOrParts(root, key, name) {
-		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
-	}
-	noteUnrequiredAgents(p, plan, stdout)
-	return runSync(root, stdout)
+	return toggle(root, kind, name, disableDir, toggleFlags{dryRun: dryRun, withDependents: withDependents}, stdout)
 }
 
 // noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
