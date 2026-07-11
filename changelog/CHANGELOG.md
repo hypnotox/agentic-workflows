@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-11
+
 ### Features
 - The plan convention sanctions a second task form, the **batch task**
   (ADR-0095): for a transformation repeated across many sites, a plan task may
