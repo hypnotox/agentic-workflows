@@ -234,6 +234,15 @@ func (p *Project) agentTID(n string) string {
 	return mustDescriptor("agents").tid(n)
 }
 
+// docTID resolves a doc's template id through the effective catalog: the base
+// doc template for a synthesized local doc (its DocEntry.TID), else the Standard
+// doc's own template. Reading p.Cat (not the package global) is what lets a
+// synthesized local doc render at all (ADR-0091).
+// invariant: local-doc-renders-from-base
+func (p *Project) docTID(n string) string {
+	return p.Cat.Docs[n].TID
+}
+
 func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
@@ -271,9 +280,10 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
-		tid:       mustDescriptor("docs").tid,
+		tid:       p.docTID,
 		sections:  func(n string) []string { return p.Cat.Docs[n].Sections },
 		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
+		defaults:  func(n string) map[string]any { return p.Cat.Docs[n].Data },
 		transform: docDataTransform,
 	})
 	if err != nil {

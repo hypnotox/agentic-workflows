@@ -3,6 +3,7 @@ package project
 import (
 	"io/fs"
 	"maps"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -14,6 +15,7 @@ import (
 const (
 	baseSkillTID = "skills/_base/SKILL.md.tmpl"
 	baseAgentTID = "agents/_base.md.tmpl"
+	baseDocTID   = "docs/_base.md.tmpl"
 )
 
 // ScaffoldVarRefs returns the vars referenced by the base template a new local
@@ -52,6 +54,7 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	clone := *catalog.Standard
 	clone.Skills = maps.Clone(catalog.Standard.Skills)
 	clone.Agents = maps.Clone(catalog.Standard.Agents)
+	clone.Docs = maps.Clone(catalog.Standard.Docs) // invariant: local-doc-catalog-clone
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
 		return catalog.SkillSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}
@@ -61,6 +64,9 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	if err := synthesizeLocals(p, cat.Agents, p.Cfg.Agents, "agents", func(n string) catalog.TargetSpec {
 		return catalog.TargetSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}
 	}); err != nil {
+		return nil, err
+	}
+	if err := synthesizeLocalDocs(p, cat.Docs, p.Cfg.Docs); err != nil {
 		return nil, err
 	}
 	return cat, nil
@@ -105,4 +111,94 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 // by the base template.
 func localData(name string) map[string]any {
 	return map[string]any{"slug": name}
+}
+
+// defaultLocalDocDesc is the document-map summary for a local doc whose sidecar
+// omits data.description (ADR-0091).
+const defaultLocalDocDesc = "Project-local documentation."
+
+// DeriveDocTitle turns a local doc name into a display title: the last path
+// segment, hyphens to spaces, each word capitalized, empty words (from a
+// trailing or double hyphen) dropped. "guides/release-steps" → "Release Steps".
+// awf new doc seeds the sidecar with it, and synthesis falls back to it when the
+// sidecar omits data.title.
+func DeriveDocTitle(name string) string {
+	seg := name
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		seg = name[i+1:]
+	}
+	var words []string
+	for _, w := range strings.Split(seg, "-") {
+		if w == "" {
+			continue
+		}
+		words = append(words, strings.ToUpper(w[:1])+w[1:])
+	}
+	return strings.Join(words, " ")
+}
+
+// localDocData is a synthesized local doc's render fallback data: the derived
+// title and generic description the base template falls back to when the sidecar
+// omits the key (a sidecar value overrides via withDefaultData).
+func localDocData(name string) map[string]any {
+	return map[string]any{"title": DeriveDocTitle(name), "description": defaultLocalDocDesc}
+}
+
+// docStringData returns sc.Data[key] as a trimmed string, or "" when absent or
+// not a string.
+func docStringData(sc config.Sidecar, key string) string {
+	if v, ok := sc.Data[key].(string); ok {
+		return strings.TrimSpace(v)
+	}
+	return ""
+}
+
+// synthesizeLocalDocs inserts a base-rendered DocEntry into pool for each enabled
+// doc name absent from the standard pool that carries a non-local declaring
+// sidecar, lifting the sidecar's title/description (with defaults) into the entry
+// so the document map lists it (ADR-0091).
+func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled []string) error {
+	for _, name := range enabled {
+		if _, ok := pool[name]; ok {
+			// A standard doc is never overwritten by a local synthesis.
+			// invariant: local-doc-no-shadow
+			continue
+		}
+		has, err := p.Cfg.HasSidecar("docs", name)
+		if err != nil { // coverage-ignore: HasSidecar only errors on a permission fault a test cannot trigger
+			return err
+		}
+		if !has {
+			// Undeclared non-standard name: leave it absent so validateAgainstCatalog rejects it.
+			// invariant: local-doc-requires-declaration
+			continue
+		}
+		sc, err := p.Cfg.Sidecar("docs", name)
+		if err != nil {
+			return err
+		}
+		if sc.Local {
+			continue // hand-authored opt-out — render and validate already skip it.
+		}
+		if err := config.ValidateDocName(name); err != nil {
+			return err
+		}
+		title := docStringData(sc, "title")
+		if title == "" {
+			title = DeriveDocTitle(name)
+		}
+		desc := docStringData(sc, "description")
+		if desc == "" {
+			desc = defaultLocalDocDesc
+		}
+		// invariant: local-doc-map-fields
+		pool[name] = catalog.DocEntry{
+			Title:    title,
+			Desc:     desc,
+			Sections: []string{"content"},
+			TID:      baseDocTID,
+			Data:     localDocData(name),
+		}
+	}
+	return nil
 }

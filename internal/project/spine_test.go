@@ -936,6 +936,12 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"<no value>"},
 	},
+	// invariant: local-doc-base-publication-safe
+	{
+		tmpl: "docs/_base.md.tmpl",
+		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
+		ban:  []string{"<no value>"},
+	},
 	// invariant: reviewers-report-only
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",

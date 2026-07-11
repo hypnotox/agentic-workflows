@@ -246,6 +246,8 @@ var dataKeys = []DataKey{
 	{Kind: "skills", Artifact: "_base", Key: "description", Description: "The local skill's frontmatter description — the when-to-use line agent runtimes surface. `awf new skill` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "_base", Key: "slug", Description: "The local agent's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration — override only to diverge the rendered name token."},
 	{Kind: "agents", Artifact: "_base", Key: "description", Description: "The local agent's frontmatter description — the dispatch-time summary agent runtimes surface. `awf new agent` seeds it; keep it current."},
+	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title — its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
+	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary — the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},

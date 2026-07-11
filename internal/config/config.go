@@ -298,6 +298,39 @@ func ValidateArtifactName(kind, name string) error {
 	return nil
 }
 
+// ValidateDocName validates a path-aware local doc name (ADR-0091): one or more
+// lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
+// leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
+// "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
+// invariant: local-doc-name-path-validated
+func ValidateDocName(name string) error {
+	if name == "" {
+		return errors.New("doc name must not be empty")
+	}
+	if strings.HasSuffix(name, ".md") {
+		return fmt.Errorf("doc %q must not end in .md", name)
+	}
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("doc %q must not contain a .. path escape", name)
+	}
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+		return fmt.Errorf("doc %q must not have a leading or trailing slash", name)
+	}
+	for _, seg := range strings.Split(name, "/") {
+		if seg == "" {
+			return fmt.Errorf("doc %q must not have an empty path segment", name)
+		}
+		for _, r := range seg {
+			switch {
+			case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
+			default:
+				return fmt.Errorf("doc %q segment %q must be lowercase kebab-case (the reserved _base stem is rejected here)", name, seg)
+			}
+		}
+	}
+	return nil
+}
+
 // hasPathSep reports whether s contains a path separator or a ".." segment — the
 // shared reject condition for prefix/target/domain names.
 func hasPathSep(s string) bool {
