@@ -79,23 +79,28 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
    Decision 4); intercept `--help` / `-h`; parse and validate the arguments **once** into
    an `invocation{positionals, bools, values, multi}` value — folding today's
    `checkArgs`, `positionals`, `hasFlag`, `valueFlag`, `setFlags`, and `baseFlag` into a
-   single pass; apply the gating classification (Decision 3); run a declared
-   handler-specific pre-gate hook where present (Decision 5); and call the handler with
+   single pass; apply the gating classification (Decision 3); and call the handler with
    the parsed `invocation`. Handlers read the parsed `invocation`, never the raw `args`
-   slice. The per-command `Usage:` / `Flags:` help block generates from the flag and
+   slice. A handler that needs work before its own gate (e.g. `context` resolving
+   `--staged`/`--range` to paths) does it at the top of its handler — no generic
+   driver-level pre-gate hook is introduced. The per-command `Usage:` / `Flags:` help block generates from the flag and
    positional spec, leaving only the descriptive paragraph hand-written. Adding a command
    becomes one `clispec` entry plus one handler — no `switch` arm, no `commandOrder`
    edit, no usage-string edit, no separate `gate()` call.
 
 3. **Model gating as a three-valued classification, not a boolean.** Each command
-   declares one of `ungated`, `gated`, or `gated-in-tree`. The driver applies `gate(root)`
-   before the handler only for `gated` commands. `gated-in-tree` commands — `config` and
-   `context` — gate *inside* their handler, after the project-presence check that lets
-   them degrade to a static answer, so `config-command-static-fallback` and
-   `context-static-fallback` are preserved unchanged. The gate machinery itself
-   (`gate()`, `version-compat-gate`, ADR-0039) is unchanged; only the call site moves
-   from hand-written per-handler calls to the driver (for `gated`) or stays in the
-   handler (for `gated-in-tree`).
+   declares one of `ungated`, `gated`, or `gated-in-handler`. The driver applies
+   `gate(root)` before the handler only for `gated` commands. `gated-in-handler`
+   commands — `config`, `context`, and `new` — gate *inside* their handler rather than
+   in the driver: `config`/`context` gate after the project-presence check that lets them
+   degrade to a static answer (so `config-command-static-fallback` and
+   `context-static-fallback` are preserved unchanged), and `new` gates after its name
+   validation. (The name is `gated-in-handler`, not `gated-in-tree`, because `new` gates
+   in its handler without any adopted-tree fallback — the classification is about *where*
+   the gate runs, not about a tree.) The gate machinery itself (`gate()`,
+   `version-compat-gate`, ADR-0039) is unchanged; only the call site moves from
+   hand-written per-handler calls to the driver (for `gated`) or stays in the handler
+   (for `gated-in-handler`).
 
 4. **Subcommand nesting for `new`; kind-generic data dispatch for `enable` / `disable` /
    `list`.** A `clispec` command is either a leaf (has a handler) or a group (has named
@@ -188,7 +193,7 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
   `tooling` current-state part carries a hand-maintained enumeration of the set.
 - The `config` and `context` static-fallback contracts (`config-command-static-fallback`,
   `context-static-fallback`) continue to hold — the three-valued gating classification
-  keeps both commands `gated-in-tree`, gating inside the handler after the
+  keeps both commands `gated-in-handler`, gating inside the handler after the
   project-presence check, so neither refuses outside an adopted tree (textual; backed by
   the existing ADR-0088/ADR-0092 slugs).
 - ADR-0027's `kind-dispatch-single-table` and `cli-config-kinds` continue to hold — the
