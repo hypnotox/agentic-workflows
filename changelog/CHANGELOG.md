@@ -8,6 +8,16 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- The config-toggle commands are renamed `awf add`/`awf remove` →
+  `awf enable`/`awf disable` (ADR-0093), with no backward-compat alias. The
+  verb now matches the operation — toggling an artifact's membership in the
+  config enable arrays — instead of implying it creates or deletes something
+  (which `awf new` does). Kinds, flags (`--dry-run`, `--with-dependents`), the
+  closure/dependent behavior, and `awf list` are unchanged. An adopter's
+  rendered `AGENTS.md` and docs switch to the new verbs on their next
+  `awf sync`.
+
 ## [0.15.0] - 2026-07-11
 
 ### Features

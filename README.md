@@ -46,7 +46,7 @@ invariants with no backing comment in source all fail loudly instead of rotting.
   documentation standards, and opt-in project docs: architecture, testing,
   development, debugging, glossary, pitfalls, roadmap.
 - **Domain docs** (`docs/domains/<name>.md`) — one page per freeform domain you
-  declare (`awf add domain rendering`): your hand-authored current-state narrative
+  declare (`awf enable domain rendering`): your hand-authored current-state narrative
   plus a generated index of that domain's ADRs. A domain's sidecar can declare
   `paths` globs — its code territory — and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
@@ -59,7 +59,7 @@ invariants with no backing comment in source all fail loudly instead of rotting.
   committing them.
 
 Claude Code is the default target. A `cursor` adapter renders the same skills and
-agents into `.cursor/` (`awf add target cursor`); Cursor reads `AGENTS.md` natively.
+agents into `.cursor/` (`awf enable target cursor`); Cursor reads `AGENTS.md` natively.
 
 ## How it works
 
@@ -99,7 +99,7 @@ Requires Go 1.26+.
 ### Pinning with `.awf/bootstrap.sh`
 
 Projects that enable the `bootstrap` artifact (on by default from `awf init`, or
-`awf add bootstrap`) get a small rendered shell script that resolves the exact awf
+`awf enable bootstrap`) get a small rendered shell script that resolves the exact awf
 version the repo was rendered with: it uses an
 already-matching `awf` from `PATH` when one exists, otherwise downloads the release
 archive, verifies its SHA-256 against the release checksums, caches the binary under
@@ -108,7 +108,7 @@ and CI can then run the pinned version without anyone installing awf by hand:
 
     "$(bash .awf/bootstrap.sh)" check
 
-It touches nothing outside its cache directory, and `awf remove bootstrap` deletes it.
+It touches nothing outside its cache directory, and `awf disable bootstrap` deletes it.
 The bootstrap and hook payloads are bash scripts targeting the linux/darwin archives; on
 Windows, put `awf` on `PATH` and call it directly.
 
@@ -118,12 +118,12 @@ Windows, put `awf` on `PATH` and call it directly.
     awf init             # scaffold .awf/, render the workflow core
     awf check            # verify rendered output is in sync
     awf list             # see what's enabled vs available
-    awf add skill tdd    # opt a skill in
-    awf add doc pitfalls # opt a doc in
+    awf enable skill tdd    # opt a skill in
+    awf enable doc pitfalls # opt a doc in
 
 `awf init` enables a curated core by default: the workflow-chain skills, the three
 review agents, and the workflow docs. Everything else in the catalog is opt-in via
-`awf add <kind> <name>`, and `awf remove` opts back out.
+`awf enable <kind> <name>`, and `awf disable` opts back out.
 
 ## Worked example
 
@@ -141,7 +141,7 @@ disk.
 | `awf sync` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
-| `awf add` / `awf remove <kind> <name>` | Toggle an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`. Adding a reviewing skill pulls in the agent it dispatches. |
+| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
 | `awf new skill\|agent <name> "<desc>"` | Scaffold a project-local skill or agent and enable it. |
 | `awf audit [--base <ref>]` | Report workflow-conformance findings over the branch's commits. Not part of any gate, but exits non-zero on error-severity findings. |

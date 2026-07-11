@@ -186,7 +186,7 @@ func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
 	if err := os.WriteFile(partPath, []byte(authored), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Disable the skill but keep its authored files, as `awf remove skill` would.
+	// Disable the skill but keep its authored files, as `awf disable skill` would.
 	cfgPath := filepath.Join(root, ".awf", "config.yaml")
 	cfg, err := os.ReadFile(cfgPath)
 	if err != nil {

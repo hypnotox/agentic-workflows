@@ -17,7 +17,7 @@ import (
 // catalog (as flat name arrays), and pre-populates the vars block with
 // the union of all {{ .vars.X }} names referenced by every catalog template. Each
 // var is seeded with an empty string so that strict render (missingkey=zero +
-// <no value> check) does not fail on sync, and so a later `awf add` of an opt-in
+// <no value> check) does not fail on sync, and so a later `awf enable` of an opt-in
 // skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040)
 // and the git-hook payloads (ADR-0048) enabled by default, and writes a resolved
 // commit-scope list to audit.allowedScopes (ADR-0051).

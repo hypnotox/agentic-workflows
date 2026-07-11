@@ -20,7 +20,7 @@ by this repository's own checks (ADR-0090).
 
 - `awf sync` — re-render every artifact from `.awf/` and update `.awf/awf.lock`.
 - `awf check` — fail if any rendered file has drifted from the config (also gates the schema version).
-- `awf add <kind> <name>` / `awf remove <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact. For a skill/agent/doc, add enables the full requirement closure in one edit and remove refuses while enabled artifacts still require the target — `--with-dependents` removes them together, `--dry-run` previews either plan without changing the config.
+- `awf enable <kind> <name>` / `awf disable <kind> <name>` — toggle a skill, agent, doc, domain, target, bootstrap, or hooks artifact. For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it — `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list` — show the catalog and what is enabled.
 - `awf config [<key-or-var>]` — describe config keys and vars: the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf new adr "<title>"` — scaffold the next ADR.

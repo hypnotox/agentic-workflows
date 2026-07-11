@@ -154,9 +154,9 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:7176b6f21aff81b345d55a2e8fc58f73eb127a1a56d0f1f3ee66dbf33cbf4593",
+      "templateHash": "sha256:99ec19f21a97baecd901462aa75b81899f0c51d5a6acd6d077a7222033d60546",
       "configHash": "sha256:24308d3bf0e0267c9c6e3a323365f44d3bc149c861ad44631ce4956da400a2c8",
-      "outputHash": "sha256:958568930e10b3b7776d220ef1a7ef3553ce69302e9356870911b18a668ca62c"
+      "outputHash": "sha256:57857c94c594c21843982b8702d2580878a763536234b58b206526e74bc85835"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:d00f65bbc564c6473d70bca7cb8ebc60f64edb81e315f35026a18a6f777d31be"
+      "outputHash": "sha256:edf9f496431c1e762601dde316348e5e05af5e37194394d20be60f58b4816e8b"
     },
     "docs/debugging.md": {
       "templateId": "docs/debugging.md.tmpl",
@@ -262,15 +262,15 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:9ee9358b62d66114027bc1dd20edf48f21b3f05059f637572d31e0ef2b0058f6",
+      "templateHash": "sha256:ab036dbe6b1176ece3cd4079f7aeb390ed01f3dbc86ef3eeb36d72268c89e25a",
       "configHash": "sha256:d64098ab7132c9914c80cb36f81e55454ab03840bf5f72e3f66d3a9e1615d03e",
-      "outputHash": "sha256:f2a074f7dd4afe829446fa1e228f52e431a5e815bc60957f2e9889d419cdc4f0"
+      "outputHash": "sha256:27f95668d921b25ebbaf62efdc08426846d532b8f365b412b6436894a2904b16"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:78deeba64d4a3107b9d6f699d452fe082a45f8dcb237ccfc80edea9686bcfbca",
+      "templateHash": "sha256:e65bb548f81f2a5831b8fcfea51b27751bed66cb720770237ac191ee73c5c2a4",
       "configHash": "sha256:65fca19aeb2cfccb0649a5ac1854e3cead6db38b7a92149f0da00a929400bb8c",
-      "outputHash": "sha256:acae71238ddec419df9abe993e6e38fd168913b26bd7daea87e934be447b283f"
+      "outputHash": "sha256:70ee123046f4bd2d70f25223fb5fc7b1dd994962e2041ae844c2c59591c77362"
     }
   }
 }

@@ -78,7 +78,7 @@ func addRemoveTarget(root, name string, add bool, stdout io.Writer) error {
 		desired = slices.DeleteFunc(slices.Clone(p.Cfg.Targets), func(s string) bool { return s == name })
 	}
 	if len(desired) == 0 {
-		return fmt.Errorf("cannot remove the last target %q (a project must render to at least one)", name)
+		return fmt.Errorf("cannot disable the last target %q (a project must render to at least one)", name)
 	}
 	cfgPath := config.ConfigPath(root)
 	updated, err := config.SetArray(p.Cfg.Source(), "targets", desired)
@@ -142,7 +142,7 @@ func planEdits(plan []project.PlanOp) []enableEdit {
 	return edits
 }
 
-func runAdd(root, kind, name string, dryRun bool, stdout io.Writer) error {
+func runEnable(root, kind, name string, dryRun bool, stdout io.Writer) error {
 	// Gate before any config write (like awf new): the chained sync's gate
 	// would only fire after the rewrite, stranding a half-mutated config.
 	if err := gate(root); err != nil {
@@ -209,7 +209,7 @@ const domainCurrentStateStub = "Describe where the %q domain stands today: its c
 
 // scaffoldDomainCurrentState writes name's current-state convention part with a
 // starter prompt, unless one already exists — idempotent, so it never clobbers
-// hand-authored content from a prior add or a manual file.
+// hand-authored content from a prior enable or a manual file.
 func scaffoldDomainCurrentState(p *project.Project, name string) error {
 	path := p.Cfg.PartPath("domains", name, "current-state")
 	if _, err := os.Stat(path); err == nil {
@@ -223,8 +223,8 @@ func scaffoldDomainCurrentState(p *project.Project, name string) error {
 	return os.WriteFile(path, fmt.Appendf(nil, domainCurrentStateStub, name), 0o644)
 }
 
-func runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
-	// Gate before any config write — see runAdd.
+func runDisable(root, kind, name string, withDependents, dryRun bool, stdout io.Writer) error {
+	// Gate before any config write — see runEnable.
 	if err := gate(root); err != nil {
 		return err
 	}
@@ -263,7 +263,7 @@ func runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.W
 			return nil
 		}
 		if len(plan) > 1 && !withDependents {
-			return fmt.Errorf("removing %s %q also removes the %d artifacts above; re-run with --with-dependents to apply", kind, name, len(plan)-1)
+			return fmt.Errorf("disabling %s %q also disables the %d artifacts above; re-run with --with-dependents to apply", kind, name, len(plan)-1)
 		}
 		edits = planEdits(plan)
 	}
@@ -273,11 +273,11 @@ func runRemove(root, kind, name string, withDependents, dryRun bool, stdout io.W
 	for _, op := range plan {
 		pl, _ := project.PluralKind(op.Node.Kind)
 		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-add to keep them\n", op.Node.Kind, op.Node.Name)
+			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
 		}
 	}
 	if kind == "domain" && hasSidecarOrParts(root, key, name) {
-		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-add to keep them\n", kind, name)
+		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
 	}
 	noteUnrequiredAgents(p, plan, stdout)
 	return runSync(root, stdout)

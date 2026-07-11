@@ -33,7 +33,7 @@ data:
         - ref: ADR-0020
           text: '**No dead internal links.** `awf check` fails on any inline markdown link in an awf-managed rendered doc whose file-relative target is missing on disk.'
         - ref: ADR-0039
-          text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `add`, `remove`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` degrades to a static catalog reference outside an adopted tree instead of refusing.'
+          text: '**Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `enable`, `disable`, `new`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` degrades to a static catalog reference outside an adopted tree instead of refusing.'
         - ref: ADR-0040
           text: '**Self-pinning bootstrap.** The rendered `.awf/bootstrap.sh` defaults its fetch to exactly the rendering binary''s `project.Version`; a pre-set `AWF_VERSION` environment value overrides the target release, verification unchanged.'
         - ref: ADR-0040
@@ -45,7 +45,7 @@ data:
         - ref: ADR-0049
           text: '**Bootstrap output contract.** The rendered bootstrap prints exactly one stdout line (the resolved binary path), resolves an exactly-matching PATH `awf` before downloading, and verifies checksums via `sha256sum` or `shasum -a 256`; the contract is `bootstrap.sh`''s alone — the upgrade porcelain''s stdout belongs to the exec''d `awf upgrade`.'
         - ref: ADR-0050
-          text: '**Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf remove agent` refuses upfront and `awf add skill` auto-enables the pair.'
+          text: '**Reviewing-skill/agent pairing.** A reviewing skill enabled without its dispatched agent fails every gated command; `awf disable agent` refuses upfront and `awf enable skill` auto-enables the pair.'
         - ref: ADR-0051
           text: '**Single commit-scope storage.** Commit scopes live only in `audit.allowedScopes` — no `commitScope` var, no hand-written scope prose in templates; templates quote the `commitScopes` render key, and a scopes edit reflags referencing artifacts in `awf check`.'
         - ref: ADR-0055
@@ -85,9 +85,9 @@ data:
         - ref: ADR-0081
           text: '**Enabled set closed.** Every enabled, non-`local` artifact''s direct catalog requirements (`requiresSkills`, `requiresAgent`, `requiresDoc`) are enabled; a violation fails every gated command at project open with a repair hint.'
         - ref: ADR-0081
-          text: '**Add applies the closure plan.** `awf add` enables the requested artifact''s full missing forward closure in a single config rewrite, printing one provenance line per plan op; `--dry-run` prints without applying.'
+          text: '**Enable applies the closure plan.** `awf enable` enables the requested artifact''s full missing forward closure in a single config rewrite, printing one provenance line per plan op; `--dry-run` prints without applying.'
         - ref: ADR-0081
-          text: '**Remove refuses dependents.** Without `--with-dependents`, `awf remove` refuses while enabled transitive dependents exist, printing the dependent plan; with it, the full reverse closure lands in a single rewrite.'
+          text: '**Disable refuses dependents.** Without `--with-dependents`, `awf disable` refuses while enabled transitive dependents exist, printing the dependent plan; with it, the full reverse closure lands in a single rewrite.'
         - ref: ADR-0081
           text: '**Close-enabled-set migration.** The schema-8 migration closes the enabled set additively for skill, agent, and doc requirements, drops dormant non-`local` doc-gated skills, and is idempotent and atomic.'
         - ref: ADR-0081

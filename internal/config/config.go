@@ -265,7 +265,7 @@ func (c *Config) Validate() error {
 }
 
 // ValidateDomainName reports whether name is a usable domain key: non-empty and
-// free of path separators or "..". Shared by Validate and the `awf add domain`
+// free of path separators or "..". Shared by Validate and the `awf enable domain`
 // path so a freeform domain name is rejected the same way in both.
 func ValidateDomainName(name string) error {
 	if name == "" {

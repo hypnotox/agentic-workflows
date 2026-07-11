@@ -27,7 +27,7 @@ var isInteractive = func() bool {
 // commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
 var commandOrder = []string{
 	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "config", "new", "add", "remove", "upgrade", "uninstall", "changelog", "version",
+	"list", "config", "new", "enable", "disable", "upgrade", "uninstall", "changelog", "version",
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -56,7 +56,7 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|new|add|remove|upgrade|uninstall|changelog|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|new|enable|disable|upgrade|uninstall|changelog|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -123,29 +123,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 		} else {
 			cmdErr = runNew(cwd, args[2], args[3:], stdout)
 		}
-	case "add":
-		spec := argSpecs["add"]
+	case "enable":
+		spec := argSpecs["enable"]
 		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
 		switch {
 		case len(pos) == 2:
-			cmdErr = runAdd(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)
+			cmdErr = runEnable(cwd, pos[0], pos[1], hasFlag(args, "--dry-run"), stdout)
 		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runAdd(cwd, pos[0], "", hasFlag(args, "--dry-run"), stdout)
+			cmdErr = runEnable(cwd, pos[0], "", hasFlag(args, "--dry-run"), stdout)
 		case len(pos) == 1:
-			cmdErr = &usageErr{fmt.Sprintf("awf add requires a kind: awf add <kind> <name> (e.g. awf add skill %s)", pos[0])}
+			cmdErr = &usageErr{fmt.Sprintf("awf enable requires a kind: awf enable <kind> <name> (e.g. awf enable skill %s)", pos[0])}
 		default:
-			cmdErr = &usageErr{"usage: awf add <kind> <name> [--dry-run]"}
+			cmdErr = &usageErr{"usage: awf enable <kind> <name> [--dry-run]"}
 		}
-	case "remove":
-		spec := argSpecs["remove"]
+	case "disable":
+		spec := argSpecs["disable"]
 		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
 		switch {
 		case len(pos) == 2:
-			cmdErr = runRemove(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
+			cmdErr = runDisable(cwd, pos[0], pos[1], hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
 		case len(pos) == 1 && (pos[0] == "bootstrap" || pos[0] == "hooks"): // nameless singleton forms (ADR-0040, ADR-0048)
-			cmdErr = runRemove(cwd, pos[0], "", hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
+			cmdErr = runDisable(cwd, pos[0], "", hasFlag(args, "--with-dependents"), hasFlag(args, "--dry-run"), stdout)
 		default:
-			cmdErr = &usageErr{"usage: awf remove <kind> <name> [--with-dependents] [--dry-run]"}
+			cmdErr = &usageErr{"usage: awf disable <kind> <name> [--with-dependents] [--dry-run]"}
 		}
 	case "upgrade":
 		cmdErr = runUpgrade(cwd, stdout)
@@ -177,7 +177,7 @@ func (e *usageErr) Error() string { return e.msg }
 
 // argSpec declares a subcommand's accepted flags and positional bounds. boolFlags
 // take no value; valueFlags consume the following token; maxPos < 0 is unbounded
-// (new/add/remove refine their arity in the switch to keep their specific messages).
+// (new/enable/disable refine their arity in the switch to keep their specific messages).
 type argSpec struct {
 	boolFlags, valueFlags []string
 	minPos, maxPos        int
@@ -278,31 +278,31 @@ Scaffold a new artifact. <kind> is adr, skill, agent, or doc.
 - awf new doc <name> "<description>"     (a project-local doc; name may be nested, e.g. guides/ci)
 `,
 	},
-	"add": {
+	"enable": {
 		boolFlags: []string{"--dry-run"},
-		maxPos:    -1, summary: "Enable a target — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
-		help: `Usage: awf add <kind> <name> [--dry-run]
+		maxPos:    -1, summary: "Enable an artifact — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
+		help: `Usage: awf enable <kind> <name> [--dry-run]
 
-Enable a target. <kind> is skill, agent, doc, domain, target, bootstrap, or hooks.
-For skill/agent/doc, the full requirement closure is enabled in one edit,
-printed as a plan (ADR-0081).
+Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,
+bootstrap, or hooks. For skill/agent/doc, the full requirement closure is enabled
+in one edit, printed as a plan (ADR-0081).
 
 Flags:
   --dry-run    print the closure plan without changing the config
 `,
 	},
-	"remove": {
+	"disable": {
 		boolFlags: []string{"--with-dependents", "--dry-run"},
-		maxPos:    -1, summary: "Disable a target (a freeform domain, or a catalog target)",
-		help: `Usage: awf remove <kind> <name> [--with-dependents] [--dry-run]
+		maxPos:    -1, summary: "Disable an artifact (a catalog skill/agent/doc, a freeform domain, or a target)",
+		help: `Usage: awf disable <kind> <name> [--with-dependents] [--dry-run]
 
-Disable a target — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
-For skill/agent/doc, removal refuses while enabled artifacts still require
+Disable an artifact — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
+For skill/agent/doc, disabling refuses while enabled artifacts still require
 <name>, printing the dependent plan (ADR-0081).
 
 Flags:
-  --with-dependents    also remove every enabled artifact that transitively requires <name>
-  --dry-run            print the removal plan without changing the config
+  --with-dependents    also disable every enabled artifact that transitively requires <name>
+  --dry-run            print the plan without changing the config
 `,
 	},
 	"upgrade": {
@@ -369,7 +369,7 @@ func checkArgs(cmd string, rest []string, boolFlags, valueFlags []string, minPos
 }
 
 // positionals returns rest's non-flag tokens, skipping each valueFlag's
-// consumed value — the flag-tolerant arity source for add/remove.
+// consumed value — the flag-tolerant arity source for enable/disable.
 func positionals(rest []string, boolFlags, valueFlags []string) []string {
 	var out []string
 	for i := 0; i < len(rest); i++ {

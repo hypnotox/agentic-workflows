@@ -128,7 +128,7 @@ func TestRunUnknownCommand(t *testing.T) {
 func TestRunAddMissingSkillArg(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "add"}, &out, &errb); code != 2 {
+	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for add without skill, got %d", code)
 	}
 }
@@ -182,7 +182,7 @@ func TestRunDispatchArms(t *testing.T) {
 			}
 		})
 	}
-	t.Run("add", func(t *testing.T) {
+	t.Run("enable", func(t *testing.T) {
 		root := t.TempDir()
 		awf := filepath.Join(root, ".awf")
 		if err := os.MkdirAll(awf, 0o755); err != nil {
@@ -198,7 +198,7 @@ func TestRunDispatchArms(t *testing.T) {
 		}
 		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 		var out, errb bytes.Buffer
-		if code := run([]string{"awf", "add", "skill", "tdd"}, &out, &errb); code != 0 {
+		if code := run([]string{"awf", "enable", "skill", "tdd"}, &out, &errb); code != 0 {
 			t.Fatalf("add: expected exit 0, got %d (%s)", code, errb.String())
 		}
 	})
@@ -235,13 +235,13 @@ func TestHandlersOnBareDirError(t *testing.T) {
 			t.Error("expected Open error")
 		}
 	})
-	t.Run("add", func(t *testing.T) {
-		if err := runAdd(bare(t), "skill", "tdd", false, io.Discard); err == nil {
+	t.Run("enable", func(t *testing.T) {
+		if err := runEnable(bare(t), "skill", "tdd", false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
-	t.Run("remove", func(t *testing.T) {
-		if err := runRemove(bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
+	t.Run("disable", func(t *testing.T) {
+		if err := runDisable(bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})

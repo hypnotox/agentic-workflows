@@ -47,7 +47,7 @@ A script or task-runner alias makes the gate one word to run and one place to gr
 <!-- awf:section local-hooks -->
 ## Local git hooks
 
-awf never installs or activates git hooks — the wiring is yours. When the `hooks` singleton is enabled (`awf add hooks`; on by default from `awf init`), awf renders three inert payload scripts under `.awf/hooks/`: `pre-commit.sh` (rendered-file drift check, then the gate), `commit-msg.sh` (the commit-message gate), and `pre-push.sh` (the fullest configured gate tier). They are tracked and kept current by `awf sync` like every rendered file, and do nothing until you invoke them from hook wiring you own:
+awf never installs or activates git hooks — the wiring is yours. When the `hooks` singleton is enabled (`awf enable hooks`; on by default from `awf init`), awf renders three inert payload scripts under `.awf/hooks/`: `pre-commit.sh` (rendered-file drift check, then the gate), `commit-msg.sh` (the commit-message gate), and `pre-push.sh` (the fullest configured gate tier). They are tracked and kept current by `awf sync` like every rendered file, and do nothing until you invoke them from hook wiring you own:
 
 - a per-clone stub under `.git/hooks/` — e.g. an executable `pre-commit` file containing `exec bash .awf/hooks/pre-commit.sh "$@"`;
 - a tracked hook directory of your own, activated once per clone via `core.hooksPath`;

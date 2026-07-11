@@ -1,6 +1,6 @@
 ## Components
 
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `remove`, `new`,
+- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
   `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
   subcommands. The gated commands enforce the binary-version gate (ADR-0010, ADR-0039) before
   opening the project.
@@ -29,7 +29,7 @@
 - **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and
   `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source — enable array, catalog pool, declared sections, output path, and labels
-  resolve through it across `list`/`add`/`check`/`validate` (ADR-0027). `singleton.go`'s
+  resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries — the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
 - **`internal/audit/`** — go-git-backed collection of the branch's commits plus the advisory

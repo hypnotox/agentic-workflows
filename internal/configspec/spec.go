@@ -90,12 +90,12 @@ var keys = []Entry{
 	},
 	{
 		Path: "skills", Type: "string list", Default: "the workflow-core set at init",
-		Description:  "Enabled skills. Catalog names render from the embedded templates; a name with a `local: true` sidecar is a hand-maintained project-local skill. The enabled set must be requirement-closed: `awf add skill` enables a skill's full requirement closure, and `awf remove` refuses while enabled artifacts still require the target.",
+		Description:  "Enabled skills. Catalog names render from the embedded templates; a name with a `local: true` sidecar is a hand-maintained project-local skill. The enabled set must be requirement-closed: `awf enable skill` enables a skill's full requirement closure, and `awf disable` refuses while enabled artifacts still require it.",
 		Availability: "Always.",
 	},
 	{
 		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Enabled review agents. A reviewing skill's dispatched agent must stay enabled while the skill is — removal refuses upfront; `awf add skill` auto-enables the pair.",
+		Description:  "Enabled review agents. A reviewing skill's dispatched agent must stay enabled while the skill is — disabling refuses upfront; `awf enable skill` auto-enables the pair.",
 		Availability: "Always.",
 	},
 	{

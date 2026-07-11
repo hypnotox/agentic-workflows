@@ -16,7 +16,7 @@ type TargetSpec struct {
 	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
 	// unit"). Declarations are exact: the template test sweep fails on an
 	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
-	// not gated validation — promoting it to add/remove pairing UX is deferred.
+	// not gated validation — promoting it to enable/disable pairing UX is deferred.
 	RequiresSkills []string       `yaml:"requiresSkills"`
 	Data           map[string]any `yaml:"data"`
 }
@@ -89,7 +89,7 @@ func SingletonKinds() []string {
 }
 
 // NonMandatoryDocNames returns c's sorted toggleable-doc names (Mandatory
-// false) — the pool an adopter selects from and that `awf add`/`remove doc`
+// false) — the pool an adopter selects from and that `awf enable`/`disable doc`
 // operate on. Mandatory singletons are excluded (ADR-0061). It takes the catalog
 // so the kind-descriptor pool honours the catalog handed to it.
 func NonMandatoryDocNames(c *Catalog) []string {
