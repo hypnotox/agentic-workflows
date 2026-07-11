@@ -113,10 +113,13 @@ Grounding the design against the code surfaced facts that shape it:
 
 6. **Gating mirrors `runConfig`.** Outside an adopted tree (`ConfigPath` absent)
    `context` degrades to a static/empty answer rather than refusing; inside one it
-   runs the binary-version gate then opens the project. `context` joins the
-   enumerated gated command set — the ADR-0039 enumeration and the AGENTS.md
-   gated-command invariant line update in the same commit that lands the command
-   (no mechanical test fails otherwise).
+   runs the shared binary-version gate (`gate()`, `inv: version-compat-gate`) then
+   opens the project. `context` joins the gated command set; the authoritative
+   current-state enumeration is the AGENTS.md "Binary-version gate" invariant line,
+   which gains `context` in the commit that lands the command. ADR-0039's own text
+   is left frozen — config/add/remove/new set the precedent of extending only the
+   live AGENTS.md line, keeping the append-only-ADR invariant intact (no mechanical
+   test fails otherwise).
 
 7. **Skills invoke it directly, with no fallback prose.** This is consistent with
    the bare-`awf` calls skills already make; the binary is already a commit-time
@@ -132,11 +135,16 @@ Grounding the design against the code surfaced facts that shape it:
 ## Invariants
 
 - `inv: context-read-only` — the `context` command never writes to disk or mutates
-  config or the lock; it only reads committed state.
-- `inv: context-gated-static-fallback` — `awf context` outside an adopted tree
-  degrades to a static/empty answer (never a refusal), and inside one runs the
-  binary-version gate before opening the project — mirroring
-  `config-command-static-fallback` + `version-compat-gate`.
+  config or the lock; it only reads committed state. Backed by a test that snapshots
+  the working tree (file mtimes and `.awf/awf.lock` bytes) before and after
+  `awf context` across its branches and asserts byte-identity, with the marker on the
+  command entry point (which holds no writer dependency).
+- `inv: context-static-fallback` — `awf context` outside an adopted tree
+  (`ConfigPath` absent) degrades to a static/empty answer rather than refusing,
+  mirroring `config-command-static-fallback`. The inside-tree binary-version gate is
+  the shared `gate()` marker (`inv: version-compat-gate`), which `context` inherits
+  rather than re-declaring — so this slug backs the fallback branch alone, at a
+  single check site.
 - `inv: context-output-parity` — the human and `--json` renderings of `awf context`
   report the same underlying context set for the same inputs, because both derive
   from one assembled struct.
@@ -168,10 +176,11 @@ Grounding the design against the code surfaced facts that shape it:
   (progressive disclosure) is what this query serves. Recorded as future work, not a
   commitment of this ADR.
 - **Doc-currency obligations land in the implementing/status-flip commit(s):** back
-  the three new `inv:` slugs with source markers + tests; update the ADR-0039
-  gated-command enumeration and the AGENTS.md gated-command invariant line; add
-  `context` to the CLI help and `working-with-awf`; and regenerate
-  `docs/decisions/ACTIVE.md` via `./x sync`.
+  the three new `inv:` slugs with source markers + tests; add `context` to the
+  authoritative AGENTS.md "Binary-version gate" invariant line (ADR-0039's own text
+  stays frozen, per the config/add/remove/new precedent); add `context` to the CLI
+  help and `working-with-awf`; and regenerate `docs/decisions/ACTIVE.md` via
+  `./x sync`.
 
 ## Alternatives Considered
 
