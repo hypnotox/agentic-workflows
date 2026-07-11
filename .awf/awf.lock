@@ -263,8 +263,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:d673618e25a48d706093dabf93f327678b4d067c668232f6eba2824b9a81129e",
-      "configHash": "sha256:da36c7cc8abd178fd66b2e2a9ae4f51088611badd98aef9a827402e65a0135fc",
-      "outputHash": "sha256:0ed9f6613bcea0e1ec831318569fa312cb7b13623d7b4acc892adb4ab6fb0729"
+      "configHash": "sha256:2e050cee49cced0a0a8b7232b8d9146f14571efae2370dc49f0a04abea9dc29a",
+      "outputHash": "sha256:fd373b5a5430d0c3085779b87f8e9eb12ffe471e9dde3fb04ba1f65567a235fe"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -335,8 +335,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:15d26c3cc28bdd55c860fe5789db4b94ec68995cd4fece56c9b69440909d378d",
-      "configHash": "sha256:395ff29b172d7ee789d7cec9b6ef10afdeb8ed5747cc39abf706c0f61213d60a",
-      "outputHash": "sha256:c643854be4d0ee46d6a306a25d0150b6e8295e4b65cc9680c0b10c660b20df3d"
+      "configHash": "sha256:c1e4cdf94d10f8cb6d2cc291247de2d05ad4a1a6c49691142f896f04742f2bd1",
+      "outputHash": "sha256:e1370ca26e864221d72dfa77d1c406331265d2135d9a3abfb50f5f3fa39cd188"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",

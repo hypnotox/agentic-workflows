@@ -2,8 +2,14 @@
 
 - **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
   `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
-  subcommands. The gated commands enforce the binary-version gate (ADR-0010, ADR-0039) before
-  opening the project.
+  subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
+  (ADR-0010, ADR-0039) before opening the project — the driver pre-gates the always-gated ones,
+  while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
+- **`internal/clispec/`** — the declarative CLI command table (ADR-0094): each command's flags,
+  positional bounds, three-valued gating classification, help text, and (for `new`) its
+  subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs to it, and
+  `internal/project` reads its gated set to generate the docs' gated-command list.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`** — repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
