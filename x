@@ -70,6 +70,9 @@ case "$cmd" in
   audit)
     go run ./cmd/awf audit "$@"
     ;;
+  context)
+    go run ./cmd/awf context "$@"
+    ;;
   commit-gate)
     go run ./cmd/awf commit-gate "$@"
     ;;
