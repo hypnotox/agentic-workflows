@@ -56,7 +56,7 @@ Apply all five lenses to every plan:
 
 <!-- awf:edit project-focus — default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
-**step-exactness** — every task names exact file paths, exact content or diffs, and exact commands with expected output
+**step-exactness** — every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)
 
 
 **dependency-order** — tasks are ordered so each builds only on already-completed work

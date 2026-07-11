@@ -53,8 +53,8 @@
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:e359963ca759e360e99f29b0d1a52ad58744365000249c432704f14b17be55b2",
-      "configHash": "sha256:95192407b07033bf5d2639d5a8dd0a33be8d46ae3a549b681b6c4a1671d55cbd",
-      "outputHash": "sha256:db67ef62fb332ae36f83560ab7716d943669b866cda561468774ce4d48127e95"
+      "configHash": "sha256:48edd05460a072a8ef1f59a919ccc5d7a7d2cdf5d55c4498ab25e3e2e05e7b07",
+      "outputHash": "sha256:fe52836416e2780b7cc8d911e2783090c911977b082fa1361e00a1047bf7814e"
     },
     ".claude/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
