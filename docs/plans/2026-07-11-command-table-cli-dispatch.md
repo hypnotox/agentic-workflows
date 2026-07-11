@@ -17,6 +17,7 @@ Replace the hand-rolled per-command `switch` in `cmd/awf` with a declarative com
 - Go 1.26; module `github.com/hypnotox/agentic-workflows`.
 - Packages touched: new `internal/clispec`; `cmd/awf` (`main.go`, `list_add.go`, `new.go`, `context.go`, and their tests); `internal/project` (`resolve.go`, `placeholders.go`, `render.go`, a new `gatedcommands.go`); `internal/catalog` (`graph.go` if any `PlanOp` refs — none found, confirm); `templates/agents-doc/AGENTS.md.tmpl`; `.awf/agents-doc.yaml`; `.awf/domains/parts/tooling/current-state.md`; `.awf/docs/parts/architecture/components.md`; changelog.
 - Gates: `./x gate` (100% coverage, `deadcode`, lint, pincheck) before every commit; `./x check` (drift + invariants) for doc/config phases.
+- Constraint — template-source residue (ADR-0082, `template-source-residue`): no `ADR-NNNN` four-digit citation may appear in any `templates/**` source file; ADR citations live in `.awf/*.yaml` **data** and render via `{{ with .ref }}`. This governs the Phase 5 `AGENTS.md.tmpl` edit.
 
 ## File structure
 
@@ -89,7 +90,7 @@ var Commands = []Command{
 }
 ```
 
-- [ ] Fill `Commands` with all sixteen top-level entries in `commandOrder` order (`init, sync, check, invariants, audit, commit-gate, list, config, context, new, enable, disable, upgrade, uninstall, changelog, version`), each carrying its verbatim `Summary`/`HelpBody`/flags/bounds/`Gating` per the mapping above. `new`'s `Children` are four leaves `adr`/`skill`/`agent`/`doc`; give each its own `HelpBody` split out from the current `new` help (the four bullet lines at `main.go:317-320`) and `MinPos`/`MaxPos` (`adr`: MinPos 1, MaxPos -1; `skill`/`agent`/`doc`: MinPos 2, MaxPos -1). `new`'s own `Gating` is `GatedInHandler`; children inherit it (children are not separately gated — the child handler gates).
+- [ ] Fill `Commands` with all sixteen top-level entries in `commandOrder` order (`init, sync, check, invariants, audit, commit-gate, list, config, context, new, enable, disable, upgrade, uninstall, changelog, version`), each carrying its verbatim `Summary`/`HelpBody`/flags/bounds/`Gating` per the mapping above. `new` keeps its own `HelpBody` (the current `new` help verbatim, its group overview) and `Gating: GatedInHandler`. `new`'s `Children` are four leaves `adr`/`skill`/`agent`/`doc`, each with its own `HelpBody` split out from the current `new` help bullets (`main.go:317-320`) so `awf new <child> --help` prints child-specific help — a **new capability**. **Child arity stays loose (`MinPos: 0, MaxPos: -1`)** so `parseArgs` does not pre-empt the handlers' existing exact usage messages (`runNew`/`newADR`/`newLocal` own the "usage: awf new …" / empty-description errors); the children carry help/flags metadata only, not arity enforcement. Children are not separately gated — the single `new` handler (`runNew`) gates after name validation, so `adr-new-version-gated` stays backed on `runNew`.
 
 - [ ] Add the pure helpers below to `clispec.go`:
 
@@ -176,6 +177,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -191,10 +193,14 @@ type invocation struct {
 	multi       map[string][]string // every declared Repeatable flag → all values
 }
 
-// cmdCtx bundles what a handler needs.
+// cmdCtx bundles what a handler needs: the working dir, the parsed args, the
+// resolved subcommand token (for a group command; "" otherwise), and the I/O.
 type cmdCtx struct {
-	root string
-	inv  invocation
+	root   string
+	sub    string
+	inv    invocation
+	stdout io.Writer
+	stdin  io.Reader
 }
 
 // parseArgs validates rest against cmd's flag/positional spec and builds the
@@ -232,26 +238,29 @@ func parseArgs(cmd clispec.Command, rest []string) (invocation, error) {
 
 ### Task 2.2 — the handler registry and resolution
 
-- [ ] In `dispatch.go`, add the handler registry keyed by command path and the resolver. Handlers adapt today's `run*` funcs to the `func(*cmdCtx) error` shape (reading `c.inv` instead of raw `args`):
+- [ ] Extend `cmdCtx` (Task 2.1) with a `sub string` field — the resolved subcommand token for a group command (`"adr"` for `awf new adr`), `""` otherwise. The `new` group handler reads `c.sub`.
+- [ ] In `dispatch.go`, add the handler registry keyed by **top-level command name** and the resolver. A group command has ONE handler (not per-child entries): `new`'s handler wraps the existing `runNew`, passing the resolved child token — so `runNew` (and its `adr-new-version-gated` marker and ~26 direct test callers) survives unchanged. Handlers adapt today's `run*` funcs to `func(*cmdCtx) error`, reading `c.inv` instead of raw `args`:
 
 ```go
 type handler func(*cmdCtx) error
 
-// handlers maps a command path to its handler. Group children key on "new/adr" etc.
+// handlers maps a top-level command name to its handler. A group command (new)
+// has a single handler that dispatches on c.sub; children are NOT separate keys.
 var handlers = map[string]handler{
-	"init":        func(c *cmdCtx) error { return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], stdoutOf(c)) },
-	// ... one entry per leaf command and per new/* child ...
+	"init": func(c *cmdCtx) error { return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout) },
+	"new":  func(c *cmdCtx) error { return runNew(c.root, c.sub, c.inv.positionals, c.stdout) },
+	// ... one entry per top-level command ...
 }
 ```
 
-  Provide an entry for every leaf command and for `new/adr`, `new/skill`, `new/agent`, `new/doc`. A parity test (Task 2.4) asserts `handlers` keys exactly match the `clispec` leaf paths.
+  A parity test (Task 2.4) asserts `handlers` keys exactly match the top-level `clispec` command names (both directions) — leaves and the `new` group.
 
-- [ ] Add `resolve(args []string) (cmd clispec.Command, path string, rest []string, ok bool)`: look up `args[0]` in `clispec.Lookup`; if it is a group and `args[1]` names a child, descend (path = `"new/adr"`, rest = `args[2:]`); else leaf (path = name, rest = `args[1:]`). A group invoked with no/unknown child returns the group with a sentinel so the handler emits the group usage error (preserve `new`'s current `usage: awf new <kind> <title>` message and `enable`/`disable`'s kind-specific messages inside their handlers, which still read `c.inv.positionals`).
+- [ ] Add `resolve(args []string) (cmd clispec.Command, sub string, rest []string, ok bool)`: look up `args[0]` via `clispec.Lookup`; if it is a group and `args[1]` names a child (via `cmd.Child`), return the **child** as `cmd` (so `parseArgs` validates against the child's flag spec and `--help` prints the child `HelpBody`), `sub = args[1]`, `rest = args[2:]`; else a leaf/group returns itself, `sub = ""`, `rest = args[1:]`. For a group invoked with no child or an unknown child, `resolve` returns the **group** with `sub = ""` and `rest = args[1:]`; the driver still routes to the group's handler (`runNew`), whose existing empty/`default` cases emit the current `usage: awf new <kind> <title>` and unknown-kind messages verbatim. `enable`/`disable`'s kind-specific messages stay inside their handlers, reading `c.inv.positionals`.
 
 ### Task 2.3 — rewrite `run` as the driver
 
-- [ ] Replace `run`'s body (`main.go:59-192`) and delete `hasFlag`/`valueFlag`/`setFlags`/`baseFlag`/`positionals`/`checkArgs`/`hasHelpFlag` (now folded into `parseArgs`/`dispatch.go`). New `run` flow: bare-args guard → `help`/`--help` forms (via `clispec.Lookup`) → `getwd` → `resolve` (unknown command → `usageErr`) → `--help`/`-h` intercept on `rest` → `parseArgs` → `context` pre-gate hook (below) → `if cmd.Gating == clispec.Gated { gate(cwd) }` → `handlers[path](&cmdCtx{...})` → the existing `usageErr`→2 / err→1 mapping.
-- [ ] **`context` pre-gate hook:** `context` resolves `--staged`/`--range` to paths (today at `main.go:122-141`) *before* gating and can emit a `usageErr`. Keep that logic inside `runContext` (which is `GatedInHandler` and already gates internally at `context.go`), moving the git-path resolution from the `main.go` switch into `runContext` so the driver stays generic. `runContext` reads `c.inv.positionals`, `c.inv.bools["--staged"]`, `c.inv.values["--range"]`, `c.inv.bools["--json"]`.
+- [ ] Replace `run`'s body (`main.go:59-192`) and delete `hasFlag`/`valueFlag`/`setFlags`/`baseFlag`/`positionals`/`checkArgs`/`hasHelpFlag` (now folded into `parseArgs`/`dispatch.go`). New `run` flow: bare-args guard → `help`/`--help` forms (via `clispec.Lookup`) → `getwd` → `resolve` (unknown command → `usageErr`) → `--help`/`-h` intercept on `rest` → `parseArgs` → `if cmd.Gating == clispec.Gated { gate(cwd) }` → `handlers[topName](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin})` → the existing `usageErr`→2 / err→1 mapping. (Note: the registry key is the top-level command name even when `resolve` returned a child spec — the child's spec drives parse/help, the group's handler drives dispatch via `c.sub`.)
+- [ ] **`context` git-path resolution:** move the `--staged`/`--range`→paths logic (today at `main.go:122-141`) into `runContext`, placed **at the very top of `runContext`, before the `ConfigPath` stat / static-fallback branch** (`context.go:23-30`) — preserving today's order so that outside an adopted tree the static output still carries the git-resolved paths and a bad selector still errors (`context-static-fallback` unchanged). `runContext` reads `c.inv.positionals`, `c.inv.bools["--staged"]`, `c.inv.values["--range"]`, `c.inv.bools["--json"]` and keeps gating in-handler (it is `GatedInHandler`). No separate driver hook is needed — the resolution and gate both live in the handler.
 - [ ] Adapt the remaining handlers (`runSync`, `runCheck`, `runInvariants`, `runAudit`, `runCommitGate`, `runList`, `runConfig`, `runUpgrade`, `runUninstall`, `runChangelog`, `runVersion`) to the `func(*cmdCtx) error` registry entries, reading `c.inv`. `commit-gate` reads its optional positional (`c.inv.positionals`) and still uses `stdin`. Handlers keep their own `gate()` calls only for `config`/`context`/`new` children; remove the now-driver-owned `gate()` calls from `runSync`/`runCheck`/`runInvariants`/`runAudit`/`runList` and from `runEnable`/`runDisable` prologue (the driver pre-gates them). `new` children keep their in-handler `gate()` (after name validation).
 
 ### Task 2.4 — tests + verify + commit
@@ -269,12 +278,12 @@ Goal: `runEnable`/`runDisable` share a prologue; `newLocalArtifact`/`newLocalDoc
 
 ### Task 3.1 — enable/disable shared prologue
 
-- [ ] Extract the shared prologue of `runEnable` (`list_add.go:145-201`) and `runDisable` (`list_add.go:226-284`) into one helper `func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error` that runs: driver already gated → `checkGraphFlags` → `target`/`bootstrap`/`hooks` bespoke dispatch (`enableDisableTarget`/`enableDisableSingleton`, renamed in Phase 4) → `PluralKind` → `project.Open` → per-direction validation → per-direction plan → `rewriteConfig` → per-direction post-notes → `runSync`. `direction` selects `ResolveEnable`/`ResolveDisable` (Phase 4 names), the validation (enable: catalog/domain-name + not-already-enabled; disable: is-enabled), and the post-step (enable: `scaffoldDomainCurrentState`; disable: orphan notes + `noteUnrequiredAgents` + the dependent-refusal guard). `runEnable`/`runDisable` become thin wrappers passing the direction. Keep the exact user-facing messages and note text.
+- [ ] Extract the shared prologue of `runEnable` (`list_add.go:145-201`) and `runDisable` (`list_add.go:226-284`) into one helper `func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io.Writer) error` that runs: driver already gated → `checkGraphFlags` → `target`/`bootstrap`/`hooks` bespoke dispatch → `PluralKind` → `project.Open` → per-direction validation → per-direction plan → `rewriteConfig` → per-direction post-notes → `runSync`. **Use the CURRENT symbol names in this phase** — `addRemoveTarget`/`addRemoveSingleton` for the bespoke arms and `ResolveAdd`/`ResolveRemove` for the plans; Phase 4 renames these (and their new call sites inside `toggle`) together. `direction` selects the resolver call, the validation (enable: catalog/domain-name + not-already-enabled; disable: is-enabled), and the post-step (enable: `scaffoldDomainCurrentState`; disable: orphan notes + `noteUnrequiredAgents` + the dependent-refusal guard). `runEnable`/`runDisable` become thin wrappers passing the direction. Keep the exact user-facing messages and note text.
 - [ ] Read the per-kind bespoke behavior from `kindDescriptors` where it already lives; do not add per-kind branches. `target`/`bootstrap`/`hooks` stay the bespoke non-descriptor arms (unchanged, only renamed in Phase 4).
 
 ### Task 3.2 — new local-artifact merge
 
-- [ ] Merge `newLocalArtifact` (`new.go:52`) and `newLocalDoc` (`new.go:146`) into one `newLocal(root, kind string, args []string, stdout io.Writer)` parameterized by kind: kind ∈ {skill, agent} uses `ValidateArtifactName` + `localPartStub` + a `{description}` sidecar; kind == doc uses `ValidateDocName` + `localDocPartStub` + a `{title,description}` sidecar and the catalog-doc collision message. Factor the shared spine (validate name → gate → open → pool/authored-files collision guards → write sidecar+stub → `SetArrayMember` → `seedScaffoldVars` for skill/agent → `runSync`). `runNew`'s `case "skill", "agent"` and `case "doc"` both call `newLocal`.
+- [ ] `runNew` (the `new` group handler, keeping its `adr-new-version-gated` marker) still dispatches on kind: `case "adr"` → `newADR`; `case "skill", "agent", "doc"` → the merged `newLocal`. Merge `newLocalArtifact` (`new.go:52`) and `newLocalDoc` (`new.go:146`) into one `newLocal(root, kind string, args []string, stdout io.Writer)` parameterized by kind: kind ∈ {skill, agent} uses `ValidateArtifactName` + `localPartStub` + a `{description}` sidecar; kind == doc uses `ValidateDocName` + `localDocPartStub` + a `{title,description}` sidecar and the catalog-doc collision message. Factor the shared spine (validate name → gate → open → pool/authored-files collision guards → write sidecar+stub → `SetArrayMember` → `seedScaffoldVars` for skill/agent → `runSync`).
 
 ### Task 3.3 — verify + commit
 
@@ -303,7 +312,7 @@ Doc comments move with the identifiers (`// ResolveAdd plans enabling…` → `/
 
 - [ ] **Production sites** (from `grep -rn 'ResolveAdd\|ResolveRemove\|\.Add\b\|addRemoveTarget\|addRemoveSingleton' internal/project internal/catalog cmd/awf | grep -v _test`):
   - `internal/project/resolve.go`: `type PlanOp` field `Add bool` → `Enable bool` (lines 12-16); `ResolveAdd` (18-46) name + doc + the `PlanOp{…, Add: true, …}` literal (37); `ResolveRemove` (48-74) name + doc + the two `PlanOp{…, Add: false, …}` literals (56, 66).
-  - `cmd/awf/list_add.go`: `printPlan`'s `if !op.Add` (123) → `if !op.Enable`; `addRemoveSingleton`/`addRemoveTarget` definitions + call sites (26, 59, 155, 158, 235, 238) → `enableDisable*`; `ResolveAdd`/`ResolveRemove` call sites (185, 260) → `ResolveEnable`/`ResolveDisable`. (Several of these lines move in Phase 3's `toggle` extraction — apply the rename to their new home.)
+  - `cmd/awf/list_add.go`: `printPlan`'s `if !op.Add` (123) → `if !op.Enable`; `addRemoveSingleton`/`addRemoveTarget` definitions + all call sites → `enableDisable*`; `ResolveAdd`/`ResolveRemove` call sites → `ResolveEnable`/`ResolveDisable`. **Note:** Phase 3 moved several of these into the new `toggle` helper — grep the whole file for the current names (`grep -n 'ResolveAdd\|ResolveRemove\|addRemove\|op\.Add' cmd/awf/list_add.go`) and rename at their post-Phase-3 homes, not the pre-refactor line numbers above.
 - [ ] **Test sites** (`grep -rn 'ResolveAdd\|ResolveRemove\|\.Add\b\|addRemoveTarget\|addRemoveSingleton' internal/project/resolve_test.go cmd/awf/*_test.go`): rename identically. `PlanOp{…, Add: …}` literals and `.Add` reads in `resolve_test.go` and any `list_add_test.go` uses.
 - [ ] Leave untouched (not this vocabulary): `catalog.Node`/`RequiresOf`/`Closure` (no Add/Remove naming — confirmed), the config editors `SetArray`/`SetArrayMember`/`SetMappingScalar`, `wt.Add` in `internal/testsupport/gitfixture`, and the stable invariant slugs `add-skill-pairs-agent`/`remove-agent-pairing-guard`/`add-applies-closure-plan`/`remove-refuses-dependents`/`cli-config-kinds` (slugs are identifiers, not vocabulary — ADR-0094 Decision 7).
 
@@ -351,44 +360,54 @@ func gatedCommandsDisplay() string {
 
 ### Task 5.2 — the agents-doc typed marker
 
-- [ ] In `templates/agents-doc/AGENTS.md.tmpl`, add a branch to the invariants range loop (after the `kind == "scopes"` branch at line 42), mirroring it:
+- [ ] In `templates/agents-doc/AGENTS.md.tmpl`, add a branch to the invariants range loop (after the `kind == "scopes"` branch at line 42), mirroring it. **The ADR citation comes from the entry's `.ref` data via `{{ with .ref }}` — NOT hardcoded in template source (ADR-0082 residue guard bans `ADR-NNNN` in `templates/**`):**
 
 ```
 {{- else if eq .kind "gated-commands" }}
-- **Binary-version gate.** Every gated command ({{ $.gatedCommands }}) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` and `context` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command ({{ $.gatedCommands }}) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` and `context` degrade to a static reference outside an adopted tree instead of refusing.{{ with .ref }} ({{ . }}){{ end }}
 ```
 
-- [ ] In `.awf/agents-doc.yaml`, replace the hand-written `ref: ADR-0039` / `text: '**Binary-version gate.** …'` invariant entry (the enumerated-list line) with the typed marker `- kind: gated-commands` (at the same list position).
+- [ ] In `.awf/agents-doc.yaml`, replace the hand-written `text: '**Binary-version gate.** …'` invariant entry (the enumerated-list line) with a typed marker that **keeps its `ref`** so the citation renders from data:
 
-### Task 5.3 — the tooling current-state part
+```yaml
+        - kind: gated-commands
+          ref: ADR-0039
+```
+
+  at the same list position.
+
+### Task 5.3 — reword the doc surfaces onto the placeholder
 
 - [ ] In `.awf/domains/parts/tooling/current-state.md`, reword the ADR-0039 sentence (line 5) that today slash-joins `sync/check/invariants/audit/list/enable/disable/new` (omitting `config`/`context`) to consume the placeholder: `A binary-version gate (ADR-0039) precedes those reads: the gated commands ({{=awf:gatedCommands}}) refuse to run against a project rendered by a *newer* awf …` — a sentence rewrite, not token substitution, so the generated list carries the correct membership.
+- [ ] In `templates/docs/working-with-awf.md.tmpl`, add a `{{=awf:gatedCommands}}` row to the placeholder table inside the `awf:section placeholders` block (matching the existing rows' columns/format) — the placeholder is now part of the documented set. (This is template source; a placeholder-table row carries no `ADR-NNNN`, so the ADR-0082 residue guard is unaffected.)
+- [ ] In `.awf/domains/parts/rendering/current-state.md`, add a one-line mention that the gated-command list is generated from the command spec via the `{{=awf:gatedCommands}}` placeholder — so the rendering-domain territory change (the new placeholder) has a co-changed current-state part and `awf audit`'s `domain-code-staleness` rule stays quiet.
 
 ### Task 5.4 — cover, sync, verify, commit
 
 - [ ] Add `internal/project` coverage for `gatedCommandsDisplay()` (assert the rendered string equals the backticked join of `clispec.GatedCommandNames()`) — this also anchors `gated-commands-generated`.
-- [ ] `./x sync` — re-renders `AGENTS.md` (both the guide invariant and, via the part, the `tooling` domain doc) and updates `.awf/awf.lock`. Confirm the rendered `AGENTS.md` binary-version-gate line now reads `Every gated command (\`sync\`, \`check\`, \`invariants\`, \`audit\`, \`list\`, \`config\`, \`context\`, \`new\`, \`enable\`, \`disable\`)` — note the order now follows `clispec` (…`new`, `enable`, `disable`), a cosmetic change from the old hand-order.
+- [ ] `./x sync` — re-renders `AGENTS.md` (guide invariant), the `tooling` and `rendering` domain docs, and `working-with-awf`, and updates `.awf/awf.lock`. Confirm the rendered `AGENTS.md` binary-version-gate line now reads `Every gated command (\`sync\`, \`check\`, \`invariants\`, \`audit\`, \`list\`, \`config\`, \`context\`, \`new\`, \`enable\`, \`disable\`) … (ADR-0039)` — note the order now follows `clispec` (…`new`, `enable`, `disable`), a cosmetic change from the old hand-order.
 - [ ] `./x gate` green; `./x check` clean (no drift; ADR still Proposed so the slug is not yet enforced but the marker is present).
-- [ ] Commit (stage rendered + config + lock together): `git commit -m "feat(rendering): generate the gated-command list from clispec"`. Scope `rendering`.
+- [ ] Commit (stage the new/edited source + the four `.awf/` parts + the template + all re-rendered docs + lock together): `internal/project/gatedcommands.go`, `internal/project/placeholders.go`, `internal/project/render.go`, `templates/agents-doc/AGENTS.md.tmpl`, `templates/docs/working-with-awf.md.tmpl`, `.awf/agents-doc.yaml`, `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/rendering/current-state.md`, the re-rendered `AGENTS.md`/`docs/domains/*.md`/`docs/working-with-awf.md`, and `.awf/awf.lock`. `git commit -m "feat(rendering): generate the gated-command list from clispec"`. Scope `rendering`.
 
 ---
 
-## Phase 6 — flip ADR-0094 to Implemented; doc currency; changelog
+## Phase 6 — rendering-domain doc currency; flip ADR-0094 to Implemented
 
-### Task 6.1 — doc currency
+### Task 6.1 — rendered-doc currency (rendering-scoped)
 
-- [ ] `.awf/docs/parts/architecture/components.md`: add `internal/clispec` (the command-table leaf) and note the `cmd/awf` driver; update the ADR-0027 `list`/dispatch line if it references the old `switch`.
-- [ ] `.awf/docs/parts/working-with-awf/*` (placeholder list): add `{{=awf:gatedCommands}}` to the documented placeholder set if the doc enumerates placeholders.
-- [ ] Glossary (`.awf/docs/glossary.yaml`): add terms `command spec` (a `clispec.Command`) and `gating classification` if warranted.
+- [ ] `.awf/docs/parts/architecture/components.md`: add `internal/clispec` (the command-table leaf) and note the `cmd/awf` parse-once driver; update the ADR-0027 `list`/dispatch line if it references the old `switch`.
+- [ ] Glossary (`.awf/docs/glossary.yaml`): add terms `command spec` (a `clispec.Command`) and `gating classification` (the `ungated`/`gated`/`gated-in-handler` enum) if warranted.
+- [ ] `./x sync` (re-renders `docs/architecture.md`, `docs/glossary.md`); `./x gate` green; `./x check` clean.
+- [ ] Commit (stage the two parts + re-rendered `docs/architecture.md`/`docs/glossary.md` + lock): `git commit -m "docs(rendering): note clispec dispatch in architecture and glossary"`. Scope `rendering`.
+
+### Task 6.2 — changelog + flip status + final sync (adr-scoped)
+
 - [ ] `changelog/CHANGELOG.md` `[Unreleased]`: add an entry under the appropriate heading (Others/Changed) — "CLI dispatch restructured onto an internal command table; resolver vocabulary renamed to enable/disable; the gated-command list is now generated." No adopter-facing behavior change; no schema bump.
-
-### Task 6.2 — flip status + final sync
-
 - [ ] Flip `docs/decisions/0094-*.md` frontmatter `status: Proposed` → `status: Implemented` (via `awf-adr-lifecycle` semantics; single-line edit).
 - [ ] `./x sync` — regenerates `docs/decisions/ACTIVE.md` (0094 now Implemented) and any domain indexes.
 - [ ] `./x gate` green; `./x check` — now the two tagged slugs (`cli-command-spec-single-source`, `gated-commands-generated`) are enforced; expect `awf invariants: clean` (markers present since Phases 1 and 5).
-- [ ] `./x audit` — expect no blocking findings.
-- [ ] Commit (stage the ADR, ACTIVE.md, docs, changelog, lock): `git commit -m "docs(adr): mark 0094 implemented"`. Scope `adr`.
+- [ ] `./x audit` — expect no blocking findings (rendering + tooling current-state parts both co-changed in Phases 5–6, so `domain-code-staleness` stays quiet).
+- [ ] Commit (stage the ADR, ACTIVE.md, changelog, lock): `git commit -m "docs(adr): mark 0094 implemented"`. Scope `adr`.
 
 ### Task 6.3 — terminal
 
@@ -397,5 +416,5 @@ func gatedCommandsDisplay() string {
 ## Notes
 
 - **Gate-green-per-phase:** every phase's closing commit passes `./x gate` independently. Phase 1 introduces `clispec` and its first consumer (`main.go`) together; Phase 2's driver uses only Phase 1 types; no forward references.
-- **Behavior preservation:** Phases 1–4 are refactors pinned by existing tests; the only intended output changes are the generated `--help` blocks (Phase 2) and the generated gated-command list membership+order (Phase 5), both called out.
+- **Behavior preservation:** Phases 1–4 are refactors pinned by existing tests. The intended output changes are: (a) the generated per-command `--help` `Usage:`/`Flags:` blocks (Phase 2); (b) a **new capability** — `awf new <child> --help` now prints child-specific help instead of the whole `new` help; and (c) the generated gated-command list membership+order in the docs (Phase 5). Malformed `new <child>` invocations keep their current messages because child arity is left loose (Task 1.1) and `runNew`/`newADR`/`newLocal` still own those messages — verify the `new_test.go` assertions still pass unchanged; if any assert the whole-`new`-help text for `awf new adr --help`, update them to the child help.
 - **The exemplar+site-inventory tasks (Phase 4)** are mechanical renames; the grep-zero check is the completeness proof, `./x gate` the correctness proof.
