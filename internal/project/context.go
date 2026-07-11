@@ -43,7 +43,6 @@ type ADRRef struct {
 
 // ContextFor assembles the read-only context for paths. It reads only committed
 // state (domain sidecars, ADR files, source markers) and writes nothing.
-// invariant: context-read-only
 func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	clean := normalizeContextPaths(paths)
 	lay := p.layout()

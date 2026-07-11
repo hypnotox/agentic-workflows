@@ -16,7 +16,9 @@ import (
 // owning domains, backed invariants, related ADRs, and each domain's rendered
 // current-state pointer. It mirrors runConfig's gate + static-fallback shape: a
 // genuinely absent config prints the pre-adoption notice; any other stat fault
-// is an error; inside a tree the binary-version gate runs before Open.
+// is an error; inside a tree the binary-version gate runs before Open. The
+// command entry point holds no writer dependency — it only reads.
+// invariant: context-read-only
 func runContext(cwd string, paths []string, asJSON bool, stdout io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
