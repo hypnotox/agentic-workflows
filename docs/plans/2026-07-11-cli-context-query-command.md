@@ -5,69 +5,79 @@
 owning domain(s), backed invariant slugs, related ADRs, and each owning domain's rendered
 current-state pointer, with human and `--json` output and `--staged`/`--range` git sugar, gated
 and degrading exactly like `awf config`. Design rationale lives in the ADR — not duplicated here.
-**Stage (b)** of the ADR (rewriting the workflow skills to call `awf context`) is deliberately
-**out of scope for this plan**: it waits on a release that exposes the command to pinned-release
-adopters like `examples/sundial` (ADR-0092 Decision item 8), and is a separate later effort.
+**Stage (b)** of the ADR (rewriting the workflow skills to call `awf context`, and the Implemented
+flip) is deliberately **out of scope for this plan**: it waits on a release that exposes the
+command to pinned-release adopters like `examples/sundial` (ADR-0092 Decision item 8), and is a
+separate later effort.
 
 **Architecture summary:** the assembler is a `*Project` method (`ContextFor`) in a new
 `internal/project/context.go`, not a standalone package — this reuses `p.Cfg`, `p.layout()`,
 `p.Cfg.Sidecar`, and `p.decisionsDir()` directly and, critically, keeps every new production
 function reachable from `main` through the command in the same commit (the dead-code gate,
 ADR-0063, fails on any production function unreachable from a `main`). The one genuinely new
-join — invariant markers *under a path set* — is a new exported `invariants.MarkersUnder`
-helper reusing the existing `slugRe` and marker-scan logic. `cmd/awf/context.go` mirrors
-`runConfig` line-for-line for the gate + static-fallback branch. Four phases, each closing on a
-green `./x gate`:
+join — invariant markers *under a path set* — is a new exported `invariants.MarkersUnder` helper
+reusing the existing `slugRe` and marker-scan logic. `cmd/awf/context.go` mirrors `runConfig`
+line-for-line for the gate + static-fallback branch, and (because `unparam` is enabled in
+`.golangci.yml`) prints human **and** JSON in the same phase, so its `asJSON` parameter is read.
+The `--staged`/`--range` git sugar reuses go-git handling extracted from `internal/audit` into a
+new shared `internal/git` package. Four phases, each closing on a green `./x gate`:
 
-- **P1** — `awf context <path>...` with human output (the assembler, `MarkersUnder`, the command,
-  `main.go` wiring, the gated-command doc-currency line). Backs `inv: context-read-only` and
-  `inv: context-static-fallback`.
-- **P2** — `--json` output. Backs `inv: context-output-parity`.
-- **P3** — `--staged` / `--range <a>..<b>` git sugar (go-git, mirroring `audit`'s collection).
+- **P1** — `awf context <path>...` with human **and** `--json` output (assembler, `MarkersUnder`,
+  the command, `main.go` wiring, the gated-command doc-currency line). Backs all three invariants:
+  `inv: context-read-only`, `inv: context-static-fallback`, `inv: context-output-parity`.
+- **P2** — extract the go-git repo-open handling from `internal/audit` into a shared `internal/git`
+  package and refactor `audit` onto it (behavior-preserving; no new command surface).
+- **P3** — `--staged` / `--range <a>..<b>` git sugar, resolving paths via `internal/git`.
 - **P4** — docs travel + flip ADR-0092 to **Accepted** (design final, command landed; the
-  Implemented flip waits for stage (b)).
+  Implemented flip and the AGENTS.md Invariants-section bullets wait for stage (b)).
 
-**Tech stack:** Go 1.26. stdlib `encoding/json` (P2) and `sort`; `github.com/go-git/go-git/v5`
-(P3, already a direct dependency — `internal/audit` uses it). No new dependencies. Packages
-touched: `internal/project` (new `context.go`), `internal/invariants` (`invariants.go`),
-`cmd/awf` (new `context.go`, plus `main.go`), `.awf/agents-doc.yaml` (gated-command line +
-ADR bullet), `.awf/domains/parts/tooling/current-state.md`, `templates/docs/working-with-awf.md.tmpl`,
-`changelog/`, `docs/decisions/0092-*.md` (status flip).
+**Tech stack:** Go 1.26. stdlib `encoding/json` and `sort`; `github.com/go-git/go-git/v5` (already
+a direct dependency — `internal/audit` uses it). No new dependencies. Packages touched: new
+`internal/project/context.go`; new `internal/git` (P2); `internal/invariants` (`invariants.go`);
+`internal/audit` (`git.go`, refactored onto `internal/git` in P2); `cmd/awf` (new `context.go`,
+plus `main.go`); `.awf/agents-doc.yaml` (gated-command line in P1); `.awf/domains/parts/tooling/
+current-state.md` and `templates/docs/working-with-awf.md.tmpl` (P4); `changelog/`;
+`docs/decisions/0092-*.md` (status flip in P4).
 
 **File structure:**
 
 - Created: `internal/project/context.go`, `internal/project/context_test.go`,
-  `cmd/awf/context.go`, `cmd/awf/context_test.go`,
-  `docs/plans/2026-07-11-cli-context-query-command.md` (this plan)
-- Modified: `internal/invariants/invariants.go` (+`MarkersUnder`, +`invariants_test.go` cases),
-  `cmd/awf/main.go` (commandOrder, usage line, argSpecs, switch, `pathsFor` helper in P3),
-  `cmd/awf/help_test.go` (global-help pin), `.awf/agents-doc.yaml` (gated-command line in P1,
-  ADR-0092 bullet in P4), `.awf/domains/parts/tooling/current-state.md` (P4),
-  `templates/docs/working-with-awf.md.tmpl` (P4), `changelog/CHANGELOG.md`,
+  `cmd/awf/context.go`, `cmd/awf/context_test.go`, `internal/git/git.go` (P2),
+  `internal/git/git_test.go` (P2), `docs/plans/2026-07-11-cli-context-query-command.md` (this plan)
+- Modified: `internal/invariants/invariants.go` (+`MarkersUnder`) and `invariants_test.go`,
+  `internal/audit/git.go` (refactor onto `internal/git` in P2) and its test,
+  `cmd/awf/main.go` (commandOrder, argSpecs, switch; `--staged`/`--range` added in P3),
+  `cmd/awf/help_test.go` (auto-adapts; see fixture-fallout note),
+  `.awf/agents-doc.yaml` (gated-command line in P1), `.awf/domains/parts/tooling/current-state.md`
+  (P4), `templates/docs/working-with-awf.md.tmpl` (P4), `changelog/CHANGELOG.md`,
   `docs/decisions/0092-read-only-context-query-command.md` (status flip in P4), plus rendered
   files refreshed by `./x sync`
 - Deleted: none
 
-**Phase → ADR Decision map:** P1 → D1 (paths core), D4 (assembler), D5 (derived pointer +
-no-paths domain unreachable), D6 (gate/fallback), D7 (invariant backing); P2 → D3 (`--json`,
-parity); P3 → D2 (git sugar); P4 → D8 (rollout stage-a close) + doc-currency obligations.
+**Phase → ADR Decision map:** P1 → D1 (subcommand) + D2 explicit-paths contract + D3 (`--json`,
+parity) + D4 (assembler) + D5 (derived pointer, no-`paths` domain unreachable) + D6 (gate/fallback)
++ the D-Invariants backing; P2 → enabling refactor for D2's git half (no ADR item of its own);
+P3 → D2 git-sugar half; P4 → D8 (stage-a close). **ADR Decision item 7** (skills call it directly)
+is deferred to stage (b) with the Implemented flip.
 
-**Fixture-fallout rule (every phase):** a new gated command moves any test that pins the command
-set or help text. Update pins only by *adding* `context` (never weaken an assertion). Known
-candidates: `cmd/awf/help_test.go` (global-help string, per-command help), `cmd/awf/main_test.go`
-(usage line), and any `awf help`/`list` golden. The `.awf/agents-doc.yaml` gated-command line edit
-re-renders `AGENTS.md`; commit the rendered file with the config edit.
+**Fixture-fallout rule (every phase):** `cmd/awf/help_test.go` is generic — it iterates
+`commandOrder`/`argSpecs`, so adding `context` to both (with `help` text beginning
+`Usage: awf context`) satisfies it automatically; there is **no** usage-line pin in
+`cmd/awf/main_test.go` (`TestRunNoArgs` only asserts the output contains `usage:`) and no
+command-list doc-comment to edit. Editing the bare usage string at `cmd/awf/main.go:59` is
+optional (not test-pinned) but do it for accuracy. The `.awf/agents-doc.yaml` gated-command line
+edit re-renders `AGENTS.md`; commit the rendered file with the config edit.
 
 ---
 
-## Phase 1 — `awf context <path>...` with human output (D1, D4, D5, D6, D7)
+## Phase 1 — `awf context <path>...` with human + JSON output (D1, D2-paths, D3, D4, D5, D6)
 
 ### 1a. The `invariants.MarkersUnder` helper
 
-- [ ] In `internal/invariants/invariants.go`, add an exported helper that returns the invariant
-      slugs whose backing marker sits in a file *under* one of `paths` (in addition to matching a
-      source glob). Reuse `slugRe` and the same "marker must open its line" rule as `scanTags`.
-      Add verbatim:
+- [ ] In `internal/invariants/invariants.go`, add an exported helper returning the invariant slugs
+      whose backing marker sits in a file *under* one of `paths` (in addition to matching a source
+      glob). Reuse `slugRe` and the same "marker must open its line" rule as `scanTags`. Add
+      verbatim:
 
       ```go
       // MarkersUnder returns the sorted, unique invariant slugs whose backing
@@ -151,8 +161,8 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       }
       ```
 
-      Add `"sort"` to the import block if absent. (`os`, `io/fs`, `path/filepath`, `strings`,
-      and `internal/pathglob` are already imported by `scanTags`.)
+      Add `"sort"` to the import block if absent. (`os`, `io/fs`, `path/filepath`, `strings`, and
+      `internal/pathglob` are already imported by `scanTags`.)
 
 - [ ] In `internal/invariants/invariants_test.go`, add table cases for `MarkersUnder`:
       (1) a marker file under a queried dir → slug returned; (2) a marker file *outside* the
@@ -171,7 +181,9 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       package project
 
       import (
+      	"path/filepath"
       	"sort"
+      	"strings"
 
       	"github.com/hypnotox/agentic-workflows/internal/adr"
       	"github.com/hypnotox/agentic-workflows/internal/invariants"
@@ -197,7 +209,8 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       	CurrentState string `json:"currentState"`
       }
 
-      // ADRRef is an ADR related to the query via an owning domain.
+      // ADRRef is an ADR related to the query via an owning domain. Title is the
+      // human title with the "ADR-NNNN: " prefix stripped (Number carries it).
       type ADRRef struct {
       	Number string `json:"number"`
       	Title  string `json:"title"`
@@ -259,8 +272,10 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       		for _, dm := range a.Domains {
       			if owners[dm] {
       				res.ADRs = append(res.ADRs, ADRRef{
-      					Number: a.Number, Title: a.Title, Status: a.Status,
-      					Path: lay.DocsDir + "/decisions/" + a.Filename,
+      					Number: a.Number,
+      					Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
+      					Status: a.Status,
+      					Path:   lay.DocsDir + "/decisions/" + a.Filename,
       				})
       				break
       			}
@@ -277,7 +292,7 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       	var out []string
       	for _, p := range paths {
       		c := filepath.ToSlash(filepath.Clean(p))
-      		if c == "" || seen[c] {
+      		if c == "" || c == "." || seen[c] {
       			continue
       		}
       		seen[c] = true
@@ -288,28 +303,23 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       }
       ```
 
-      Add `"path/filepath"` to the import block (used by `normalizeContextPaths`). The `json`
-      struct tags are inert in P1 (no encoder yet) and consumed in P2 — they carry no behavior,
-      so they add no unreachable statement.
-
-- [ ] Create `internal/project/context_test.go`. Use the existing project test fixture helper
-      (mirror `configreference_test.go`'s setup: scaffold a tree with `.awf/config.yaml`, domain
-      sidecars with `paths:`, an ADR carrying `domains:`, and a source file with a backing
-      marker). Cases:
+- [ ] Create `internal/project/context_test.go` (mirror `configreference_test.go`'s fixture
+      setup: scaffold a tree with `.awf/config.yaml`, domain sidecars with `paths:`, an ADR
+      carrying `domains:`, and a source file with a backing marker). Cases:
       - a path under a domain's `paths:` glob → that domain in `Domains` with
         `CurrentState == "docs/domains/<d>.md"`;
       - a path under two domains → both, sorted;
       - a path under no domain → in `Unowned`, absent from `Domains`;
       - a marker file under the queried path → its slug in `Invariants`;
-      - an ADR whose `domains:` includes an owning domain → in `ADRs` (number/title/status/path);
-        an ADR touching no owning domain → excluded;
+      - an ADR whose `domains:` includes an owning domain → in `ADRs` with `Title` **stripped** of
+        the `ADR-NNNN: ` prefix; an ADR touching no owning domain → excluded;
       - a domain configured **without** `paths:` → never appears (D5 unreachable-by-path);
       - `Invariants` disabled (`invariants.disabled: true`) → empty `Invariants`, no error;
-      - duplicate + unclean input paths (`./cmd/`, `cmd`) collapse to one cleaned entry.
+      - duplicate + unclean input paths (`./cmd/`, `cmd`, `.`) collapse to one cleaned entry.
 
 - [ ] Verify: `go test ./internal/project/... -run Context` → `ok`.
 
-### 1c. The `context` command (human output) + gate/static-fallback
+### 1c. The `context` command (human + JSON) + gate/static-fallback
 
 - [ ] Create `cmd/awf/context.go` verbatim:
 
@@ -317,6 +327,7 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       package main
 
       import (
+      	"encoding/json"
       	"errors"
       	"fmt"
       	"io"
@@ -355,8 +366,15 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       	return printContext(stdout, res, asJSON, "context — live state for this project")
       }
 
-      // printContext renders res as human-readable text (asJSON is wired in P2).
+      // printContext renders res as JSON or human-readable text. Both modes read the
+      // same assembled res, so they cannot diverge.
+      // invariant: context-output-parity
       func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, header string) error {
+      	if asJSON {
+      		enc := json.NewEncoder(stdout)
+      		enc.SetIndent("", "  ")
+      		return enc.Encode(res)
+      	}
       	fmt.Fprintln(stdout, header)
       	fmt.Fprintf(stdout, "\npaths: %v\n", res.Paths)
       	fmt.Fprintln(stdout, "\n## Domains")
@@ -381,44 +399,28 @@ re-renders `AGENTS.md`; commit the rendered file with the config edit.
       }
       ```
 
-      The `asJSON` parameter is accepted but unused in P1; P2 adds its branch. To keep P1
-      statement-coverage clean, the P1 command wiring (next task) always passes `false`, and the
-      `asJSON` param carries no P1 branch — it is a plain unread parameter, not a dead statement.
-      (If the linter flags the unread param, keep it: the next commit reads it. Confirm the
-      `./x gate` lint tier is silent on unread params before committing; if not, fold P2's JSON
-      branch into P1 instead — see P2 note.)
-
 - [ ] Wire `main.go`:
       - add `"context"` to `commandOrder` (after `"config"`);
-      - add `context` to the two usage-line command lists (the `len(args) < 2` branch and the
-        top-of-file doc comment enumerations that list commands);
-      - add the `argSpecs["context"]` entry:
+      - update the bare usage string at `main.go:59` to include `context` (optional, for accuracy);
+      - add the `argSpecs["context"]` entry (P1 declares only `--json`; `--staged`/`--range` are
+        added in P3 with their implementation, so `checkArgs` rejects them until then):
 
         ```go
         "context": {
-        	boolFlags: []string{"--json", "--staged"}, valueFlags: []string{"--range"}, minPos: 0, maxPos: -1,
+        	boolFlags: []string{"--json"}, maxPos: -1,
         	summary: "Report owning domains, invariants, and ADRs for paths",
-        	help: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]
+        	help: `Usage: awf context <path>... [--json]
 
 Report the committed context awf holds for a set of repo-relative paths: owning
 domain(s), the invariant slugs backed under those paths, related ADRs, and each
 domain's current-state doc. Read-only. Inside an awf project the output reflects
 live config; outside one, a static pre-adoption notice prints.
 
-Provide paths explicitly, or resolve them from git with --staged (staged changes)
-or --range <a>..<b> (the diff between two revisions).
-
 Flags:
-  --json               emit the context as JSON
-  --staged             use the staged changed paths
-  --range <a>..<b>     use the paths changed between revisions a and b
+  --json    emit the context as JSON
 ` ,
         },
         ```
-
-        (`--staged`/`--range` are declared in the spec now so `checkArgs` accepts them; their
-        behavior lands in P3. Until then, passing them resolves to an empty path set, which the
-        no-path guard below rejects with the same hint — acceptable and covered.)
 
       - add the switch case:
 
@@ -426,119 +428,139 @@ Flags:
         case "context":
         	spec := argSpecs["context"]
         	pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
-        	if len(pos) == 0 && !hasFlag(args, "--staged") && valueFlag(args, "--range") == "" {
-        		cmdErr = &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
+        	if len(pos) == 0 {
+        		cmdErr = &usageErr{"usage: awf context <path>... [--json]"}
         	} else {
         		cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
         	}
         ```
 
-- [ ] Update `cmd/awf/help_test.go` and `cmd/awf/main_test.go` pins: add the `context` line to the
-      expected global-help output and the usage string. Add `context` to any exhaustive
-      command-list assertion.
-
 - [ ] Create `cmd/awf/context_test.go`. Cases (drive `run(...)` with injected writers, mirroring
       `config_test.go`):
       - inside a scaffolded tree, `awf context <path>` → exit 0, human output contains the owning
         domain and its `docs/domains/<d>.md` pointer;
-      - `awf context` with no paths and no git flag → exit 2, usage error on stderr;
-      - outside a tree (no `.awf/config.yaml`) → exit 0, static pre-adoption header, no gate/Open;
-      - a stat fault that is **not** `ErrNotExist` (e.g. `.awf/config.yaml` is a directory, or a
-        permission-denied parent) → exit 1 (covers the non-`ErrNotExist` branch);
+      - `awf context <path> --json` → exit 0, output parses as JSON and unmarshals to a
+        `project.ContextResult` equal to the human run's underlying set (the parity check);
+      - `awf context` with no paths → exit 2, usage error on stderr;
+      - outside a tree (no `.awf/config.yaml`) → exit 0, static pre-adoption header (and the
+        `--json` outside-tree variant → JSON of the paths-only result);
+      - a **non-`ErrNotExist`** stat fault → exit 1: use the `TestRunConfigStatFault` pattern —
+        `os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644)` so
+        `os.Stat(".awf/config.yaml")` returns ENOTDIR;
       - a behind-version tree → the gate error surfaces (exit 1) — reuse the version-gate fixture
         pattern from `config_test.go`;
       - `awf context --help` → prints the help text, exit 0;
       - a path with an unowned segment → the `## Unowned paths` section prints.
 
-- [ ] Back the invariants: `inv: context-read-only` (marker already on `ContextFor`) — add a
-      `context_test.go` (or `context_readonly_test.go`) case that snapshots the working-tree file
-      mtimes and `.awf/awf.lock` bytes before and after running `awf context` across its branches
-      and asserts byte-identity (the ADR's named backing check). `inv: context-static-fallback`
-      (marker on the fallback branch in `runContext`) — the outside-tree test case above is its
-      backing.
+- [ ] Back `inv: context-read-only`: add a `context_test.go` case that snapshots the working-tree
+      file mtimes and `.awf/awf.lock` bytes before and after running `awf context` across its
+      branches (human, `--json`, unowned) and asserts byte-identity — the ADR's named backing
+      check. (`inv: context-static-fallback` is backed by the outside-tree case;
+      `inv: context-output-parity` by the human-vs-JSON parity case.)
 
 - [ ] Doc-currency (gated line): edit `.awf/agents-doc.yaml`'s gated-command invariant data to add
       `context` to **both** the enumerated command list **and** the outside-tree degrade clause of
-      the "Binary-version gate" line (context degrades like config). Run `./x sync`; commit the
-      re-rendered `AGENTS.md` with the config edit.
+      the "Binary-version gate" line — and make the degrade verb plural (`config` and `context`
+      degrade …), since two commands now degrade. Run `./x sync`; commit the re-rendered
+      `AGENTS.md` with the config edit.
 
 - [ ] Verify: `./x gate` → passes (100% coverage, 0 lint, deadcode clean). Then
       `go run ./cmd/awf context cmd/awf/main.go` → prints the `tooling` domain, tooling-backed
-      invariants, and ADRs tagged `tooling` (a live smoke check in this repo).
+      invariants, and ADRs tagged `tooling`; `go run ./cmd/awf context cmd/awf/main.go --json` →
+      valid JSON (a live smoke check in this repo).
 
-- [ ] Commit: `feat(tooling): add read-only awf context command (human output)`.
-
----
-
-## Phase 2 — `--json` output (D3, parity)
-
-### 2a. JSON rendering
-
-- [ ] In `cmd/awf/context.go`, add the JSON branch at the top of `printContext`:
-
-      ```go
-      if asJSON {
-      	enc := json.NewEncoder(stdout)
-      	enc.SetIndent("", "  ")
-      	return enc.Encode(res)
-      }
-      ```
-
-      Add `"encoding/json"` to the imports. Both renderings now read the **same** `res` — the
-      structural backing of `inv: context-output-parity`.
-
-- [ ] Add the invariant marker `// invariant: context-output-parity` on `printContext` (the
-      single function both output modes flow through — one assembled `res` feeds both).
-
-- [ ] `context_test.go` cases: `awf context <path> --json` → exit 0, output parses as JSON and
-      unmarshals to a `project.ContextResult` whose `Domains`/`Invariants`/`ADRs`/`Unowned` equal
-      the human run's underlying set (decode both from one `ContextFor` call, or assert the JSON
-      decodes to the same struct the human path printed). Cover the `enc.Encode` path and the
-      `--json` outside-tree fallback (static header replaced by JSON of the paths-only result).
-
-- [ ] Verify: `./x gate` → passes. `go run ./cmd/awf context cmd/awf/main.go --json` → valid JSON.
-
-- [ ] Commit: `feat(tooling): add --json output to awf context`.
-
-> **Note (P1↔P2 fold):** if the P1 `./x gate` lint tier rejects the unread `asJSON` parameter,
-> merge 2a into P1 (land human + JSON together) and back all three invariants in the single
-> commit. The phase split is for reviewability, not a hard dependency — the deadcode gate does not
-> force it, since `printContext` is reachable from `main` either way.
+- [ ] Commit: `feat(tooling): add read-only awf context command`.
 
 ---
 
-## Phase 3 — `--staged` / `--range` git sugar (D2)
+## Phase 2 — extract the shared `internal/git` package (enabling refactor)
 
-### 3a. Path resolution from git
+Behavior-preserving: `internal/audit`'s go-git repo-open handling moves to a shared package so the
+context command's git sugar (P3) can reuse it. No command or output changes; the audit test suite
+is the regression pin.
 
-- [ ] In `cmd/awf/context.go` (or a small `cmd/awf/gitpaths.go`), add a resolver that turns
-      `--staged` / `--range <a>..<b>` into a repo-relative path set using `go-git/go-git/v5`,
-      mirroring how `internal/audit` opens the repo (`git.PlainOpen(cwd)`). Signature:
+- [ ] Read `internal/audit/git.go`. Move the repo-open helpers — `openRepo` and the worktree/
+      submodule filesystem handling it depends on (`dotGitFs`, `gitfileFs`, and the
+      `noExtensionsStorer` type + its `Config` method) — into a new `internal/git/git.go`, exported
+      as `git.OpenRepo(repoRoot string) (*gogit.Repository, error)` (alias the go-git import to
+      `gogit` to avoid the package-name clash). Keep audit's commit-log logic (`Collect`,
+      `toCommit`, `ruleUncommittedChanges`, etc.) in `internal/audit`; only the open/FS plumbing
+      moves.
+
+- [ ] Refactor `internal/audit/git.go` to call `git.OpenRepo` wherever it called `openRepo`. Move
+      the corresponding open/FS unit tests from the audit test file into `internal/git/git_test.go`
+      (the moved functions must keep their coverage; `internal/git` needs its own 100%). Leave the
+      audit tests that exercise `Collect`/rules in place — they now exercise the refactored path.
+
+- [ ] Verify: `./x gate` → passes (audit behavior unchanged; `internal/git` fully covered;
+      deadcode clean — `git.OpenRepo` is reachable from `main` via `awf audit`).
+
+- [ ] Commit: `refactor(tooling): extract shared internal/git repo-open helpers`.
+
+---
+
+## Phase 3 — `--staged` / `--range` git sugar (D2 git half)
+
+### 3a. `internal/git` changed-paths resolution
+
+- [ ] In `internal/git/git.go`, add `ChangedPaths` (reachable from `main` via P3b's command
+      wiring, landing in the same commit):
 
       ```go
-      // resolveGitPaths returns the repo-relative paths changed either in the
-      // staged index (staged) or between the two revisions of rangeSpec ("a..b").
-      // Exactly one selector is honored; an empty selector returns nil.
-      func resolveGitPaths(cwd string, staged bool, rangeSpec string) ([]string, error)
+      // ChangedPaths returns the repo-relative paths changed either in the staged
+      // index (staged) or between the two revisions of rangeSpec ("a..b"). Exactly
+      // one selector is honored (staged takes precedence); an empty selector
+      // returns nil. A revision that cannot resolve (shallow/detached checkout) is
+      // a clear error.
+      func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, error)
       ```
 
-      For `--staged`: open the repo, diff `HEAD`'s tree against the index, collect changed file
-      paths. For `--range a..b`: resolve both revisions, diff their trees. Return a clear error on
-      a shallow/detached checkout where a revision cannot resolve (the ADR's edge case). Follow the
-      exact go-git call shape `internal/audit` already uses — read `internal/audit/collect.go`
-      (or wherever `audit.Collect` lives) for the established pattern rather than inventing one.
+      For `staged`: open via `OpenRepo`, diff `HEAD`'s tree against the index worktree/staging,
+      collect changed file paths. For `rangeSpec`: split on `..`, `ResolveRevision` both ends,
+      diff their trees (`object.Tree.Diff`), collect paths. Return sorted, de-duplicated,
+      slash-separated repo-relative paths. Error clearly on a malformed range or an unresolvable
+      revision.
 
-- [ ] Wire the switch case: when `pos` is empty and `--staged`/`--range` is present, call
-      `resolveGitPaths` and pass its result to `runContext`; when it resolves to an empty set,
-      keep the existing usage error (nothing to report). Explicit `<path>...` args take precedence
-      over the git flags if both are given (document this in the help text; simplest: if `pos`
-      is non-empty, ignore the git flags).
+- [ ] `internal/git/git_test.go` cases (use `internal/testsupport/gitfixture`): a staged change →
+      its path; a two-commit range → the changed paths; a malformed `rangeSpec` (no `..`) → error;
+      an unknown revision → error; nothing staged → empty slice.
 
-- [ ] `context_test.go` cases (use the repo's git test fixture helper —
-      `internal/testsupport/gitfixture`): `--staged` with a staged change → its path resolves and
-      reports context; `--range a..b` across two commits → the changed paths resolve; a bad range
-      (unknown revision) → exit 1 with a clear error; `--staged` with nothing staged → empty set →
-      usage error.
+### 3b. Wire the flags into the command
+
+- [ ] In `cmd/awf/main.go`, extend `argSpecs["context"]`: add `--staged` to `boolFlags`, `--range`
+      to `valueFlags`, and append the two flags + a "provide paths explicitly, or resolve from git"
+      paragraph to the `help` text. Update the switch case so that when `pos` is empty, it resolves
+      git paths before erroring:
+
+      ```go
+      case "context":
+      	spec := argSpecs["context"]
+      	pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
+      	if len(pos) == 0 {
+      		staged, rng := hasFlag(args, "--staged"), valueFlag(args, "--range")
+      		if !staged && rng == "" {
+      			cmdErr = &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
+      			break
+      		}
+      		var gerr error
+      		if pos, gerr = git.ChangedPaths(cwd, staged, rng); gerr != nil {
+      			cmdErr = gerr
+      			break
+      		}
+      		if len(pos) == 0 {
+      			cmdErr = &usageErr{"awf context: no changed paths for the given selector"}
+      			break
+      		}
+      	}
+      	cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
+      ```
+
+      (Explicit `<path>...` args take precedence — if `pos` is non-empty, the git flags are
+      ignored; state this in the help text.) Add the `internal/git` import.
+
+- [ ] `cmd/awf/context_test.go` cases: `--staged` with a staged change → reports its context;
+      `--range a..b` → the changed paths' context; a bad range → exit 1 with the git error;
+      `--staged` with nothing staged → exit 2 usage error ("no changed paths").
 
 - [ ] Verify: `./x gate` → passes.
 
@@ -549,26 +571,24 @@ Flags:
 ## Phase 4 — Docs travel + status flip (D8 stage-a close)
 
 - [ ] `templates/docs/working-with-awf.md.tmpl`: add `awf context <path>...` to the commands
-      reference (alongside the other read-only query commands), one line describing it as the
-      read-only context oracle. Run `./x sync`.
+      reference, one line describing it as the read-only context oracle. Run `./x sync`.
 
 - [ ] `.awf/domains/parts/tooling/current-state.md`: add a sentence noting the new read-only
-      `awf context` query command. Run `./x sync`.
-
-- [ ] `.awf/agents-doc.yaml`: add the ADR-0092 invariants (the three `inv:` slugs) to the agent
-      guide's Invariants data, and a one-line entry for `context` if the guide enumerates commands.
-      Run `./x sync`; commit rendered `AGENTS.md`.
+      `awf context` query command and the shared `internal/git` package. Run `./x sync`.
 
 - [ ] `changelog/CHANGELOG.md`: add an Unreleased bullet — "Add read-only `awf context` query
       command (owning domains, backed invariants, related ADRs; `--json`, `--staged`, `--range`)."
 
 - [ ] Flip `docs/decisions/0092-read-only-context-query-command.md` `status:` to **Accepted**
-      (design final, command implemented; the **Implemented** flip waits for stage (b) skill
-      adoption). Run `./x sync` to regenerate `ACTIVE.md` + domain indexes. Do not hand-edit
-      `ACTIVE.md`.
+      (design final, command implemented; the **Implemented** flip — and adding the three `inv:`
+      slugs to the AGENTS.md Invariants section — waits for stage (b) skill adoption, per the
+      Implemented-only convention of that section). Run `./x sync` to regenerate `ACTIVE.md` +
+      domain indexes. Do not hand-edit `ACTIVE.md`.
 
-- [ ] Verify: `./x gate` → passes; `./x check` → clean (no drift; `awf invariants` clean — all
-      three slugs are backed from P1/P2).
+- [ ] Verify: `./x gate` → passes; `./x check` → clean. Note: `awf invariants` reports clean
+      because it requires backing only for **Implemented**-ADR slugs (ADR-0092 is `Accepted`), so
+      the three markers land now but are not yet gate-*required* — they become required at the
+      stage-(b) Implemented flip.
 
 - [ ] Commit: `docs(tooling): document awf context and accept ADR-0092`.
 
@@ -577,7 +597,10 @@ Flags:
 ## Out of scope (stage b, later effort)
 
 - Rewriting the workflow skills (`awf-brainstorming` step 1, subagent dispatch briefs, the impl
-  reviewers) to call `awf context` / `awf context --json` instead of grep-and-read prose. This is
-  ADR-0092 Decision item 7 + the Implemented flip, and waits for a release that exposes the
-  command to pinned-release adopters (`examples/sundial`). Track as a follow-up once stage (a)
-  ships in a release.
+  reviewers) to call `awf context` / `awf context --json` instead of grep-and-read prose — ADR-0092
+  Decision item 7.
+- Flipping ADR-0092 to **Implemented** and adding its three `inv:` slugs to the AGENTS.md
+  Invariants section (the section cites Implemented ADRs only).
+
+Both wait for a release that exposes the command to pinned-release adopters (`examples/sundial`).
+Track as a follow-up once stage (a) ships in a release.
