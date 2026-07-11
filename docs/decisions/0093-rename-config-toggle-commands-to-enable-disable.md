@@ -73,13 +73,18 @@ change is acceptable ("The bare `awf add <name>` form is removed").
    summary that names a toggle command — the gated-command list (Binary-version gate),
    the ADR-0050 reviewing-skill/agent pairing line (`awf remove agent`/`awf add skill`),
    and the ADR-0081 "Add applies the closure plan" and "Remove refuses dependents" lines
-   — plus the second hand-maintained copy of the gated-command list in
-   `.awf/domains/parts/tooling/current-state.md`. Also: the "Toggle an artifact" guide
-   bullet and its `awf add target cursor` example (`.awf/parts/agents-doc/awf-setup.md`,
-   `templates/agents-doc/AGENTS.md.tmpl`); the config-reference field descriptions
-   (`internal/configspec`); the glossary "plan op" term (`.awf/docs/glossary.yaml`); the
-   `working-with-awf` and `workflow` templates; hand-written `README.md`; the `config`
-   domain current-state; and the stale `inv: target-cli` backing comment
+   — plus the `tooling` domain current-state (`.awf/domains/parts/tooling/current-state.md`),
+   which holds several CLI references (the second gated-command copy, the ADR-0024
+   `awf add/remove/list` line, the ADR-0081 dependency-graph line, "opt-in via `awf add`",
+   "mirroring `awf remove`"). Also: the "Toggle an artifact" guide bullet and its
+   `awf add target cursor` example (`.awf/parts/agents-doc/awf-setup.md`,
+   `templates/agents-doc/AGENTS.md.tmpl`); the architecture doc part
+   (`.awf/docs/parts/architecture/components.md` — the `cmd/awf/` entry-point command
+   list and the ADR-0027 `list`/`add` dispatch line); the config-reference field
+   descriptions (`internal/configspec`); the glossary "plan op" term
+   (`.awf/docs/glossary.yaml`); the `working-with-awf` and `workflow` templates;
+   hand-written `README.md`; the `config` domain current-state; and the stale
+   `inv: target-cli` backing comment
    (`internal/project/target.go`), which backs ADR-0037's `target-cli` invariant —
    semantics unchanged, only the verb in the descriptive prose moves. These are all live
    rendered/hand-written surfaces; ADR-0037's, ADR-0039's, and ADR-0024's own frozen text
@@ -125,8 +130,8 @@ not retire.
 Doc-currency obligations the implementing commit(s) must satisfy:
 
 - Re-render all GENERATED docs via `./x sync` (`AGENTS.md`, `config-reference`,
-  `glossary`, the `tooling`/`config` domain indexes, `working-with-awf`, `workflow`) and
-  update hand-written `README.md`.
+  `glossary`, `architecture`, the `tooling`/`config` domain indexes, `working-with-awf`,
+  `workflow`) and update hand-written `README.md`.
 - Update the `tooling` and `config` domain current-state narratives' CLI references.
 - Update tests carrying hard-coded `add`/`remove` tokens or `runAdd`/`runRemove` calls
   (`run_test.go`, `list_add_test.go`, the `new_test.go` comment); the help-parity tests
