@@ -148,20 +148,21 @@ template and lists in the document map. Backs all seven ADR-0091 invariants.
   const defaultLocalDocDesc = "Project-local documentation."
 
   // DeriveDocTitle turns a local doc name into a display title: the last path
-  // segment, hyphens to spaces, each word capitalized. "guides/release-steps" →
-  // "Release Steps". `awf new doc` seeds the sidecar with it, and synthesis falls
-  // back to it when the sidecar omits data.title.
+  // segment, hyphens to spaces, each word capitalized, empty words (from a
+  // trailing or double hyphen) dropped. "guides/release-steps" → "Release Steps".
+  // `awf new doc` seeds the sidecar with it, and synthesis falls back to it when
+  // the sidecar omits data.title.
   func DeriveDocTitle(name string) string {
   	seg := name
   	if i := strings.LastIndex(name, "/"); i >= 0 {
   		seg = name[i+1:]
   	}
-  	words := strings.Split(seg, "-")
-  	for i, w := range words {
+  	var words []string
+  	for _, w := range strings.Split(seg, "-") {
   		if w == "" {
   			continue
   		}
-  		words[i] = strings.ToUpper(w[:1]) + w[1:]
+  		words = append(words, strings.ToUpper(w[:1])+w[1:])
   	}
   	return strings.Join(words, " ")
   }
@@ -456,6 +457,39 @@ template and lists in the document map. Backs all seven ADR-0091 invariants.
   		t.Error("a local:true doc must not be synthesized into the catalog")
   	}
   }
+
+  // TestLocalDocDefaultDescWhenSidecarOmits covers the desc-default branch of
+  // synthesizeLocalDocs (a sidecar with no data.description).
+  func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
+  	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - bare\n", map[string]string{
+  		"docs/bare.yaml":             "data:\n  title: Bare\n",
+  		"docs/parts/bare/content.md": "Body.\n",
+  	})
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if got := p.Cat.Docs["bare"].Desc; got != "Project-local documentation." {
+  		t.Errorf("default desc = %q, want the generic fallback", got)
+  	}
+  }
+
+  // TestDeriveDocTitle covers title derivation, including the empty-segment guard
+  // (a trailing/double hyphen yields an empty split word).
+  func TestDeriveDocTitle(t *testing.T) {
+  	cases := map[string]string{
+  		"ci":                  "Ci",
+  		"release-process":     "Release Process",
+  		"guides/release-steps": "Release Steps",
+  		"release-":            "Release",
+  		"a--b":                "A B",
+  	}
+  	for in, want := range cases {
+  		if got := DeriveDocTitle(in); got != want {
+  			t.Errorf("DeriveDocTitle(%q) = %q, want %q", in, got, want)
+  		}
+  	}
+  }
   ```
 
 - [ ] **Task 1.9 — Base-doc-template publication-safety row.**
@@ -475,11 +509,16 @@ template and lists in the document map. Backs all seven ADR-0091 invariants.
   ./x sync && ./x check && ./x gate
   ```
   Expected: `awf check: clean`, `awf invariants: clean`, `coverage: 100.0%`,
-  `0 issues.`, `deadcodecheck: no production dead code`. `./x sync` regenerates
-  `docs/config-reference.md` (two new `docs/_base` rows) and updates `.awf/awf.lock`.
-  Stage exactly the touched files:
+  `0 issues.`, `deadcodecheck: no production dead code`. `./x sync` updates
+  `.awf/awf.lock`; it does **not** change `docs/config-reference.md` — `dataKeyRows`
+  gates `_base` rows on a `hasLocal` scan that covers only skills/agents, and awf's
+  own tree has no local doc, so the new `docs/_base` configspec entries satisfy the
+  ADR-0088 parity check (Task 1.6) without surfacing a reference row. Surfacing
+  local-doc data keys in the reference (extending the `hasLocal` scan to `docs`) is
+  deliberately out of scope for this increment — the ADR mandates parity, not
+  rendering. Stage exactly the touched files (no `docs/config-reference.md`):
   ```
-  git add templates/embed.go templates/docs/_base.md.tmpl internal/config/config.go internal/config/docname_test.go internal/project/local.go internal/project/render.go internal/project/local_test.go internal/project/spine_test.go internal/configspec/spec.go internal/configspec/spec_test.go docs/config-reference.md .awf/awf.lock
+  git add templates/embed.go templates/docs/_base.md.tmpl internal/config/config.go internal/config/docname_test.go internal/project/local.go internal/project/render.go internal/project/local_test.go internal/project/spine_test.go internal/configspec/spec.go internal/configspec/spec_test.go .awf/awf.lock
   git commit -m "feat(rendering): render project-local custom docs from a base template" -m "Docs become the third ADR-0068 local kind: effectiveCatalog clones the Docs map and synthesizes a DocEntry per enabled non-Standard doc name with a declaring sidecar, rendering from templates/docs/_base.md.tmpl via p.docTID. Path-aware doc names (guides/foo) validate through config.ValidateDocName; skills/agents stay flat. Backs the seven ADR-0091 invariants."
   ```
 
@@ -651,6 +690,21 @@ Goal: `awf new doc <name> "<description>"` scaffolds a local doc end to end.
   	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err != nil {
   		t.Fatalf("first new doc: %v", err)
   	}
+  	// Disable ci in config but leave its sidecar+part on disk, so the second run's
+  	// catalog-collision check misses and the authored-files guard fires (mirrors
+  	// TestRunNewRefusesExistingLocalArtifactFiles).
+  	cfgPath := config.ConfigPath(root)
+  	src, err := os.ReadFile(cfgPath)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	updated, err := config.SetArrayMember(src, "docs", "ci", false)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
+  		t.Fatal(err)
+  	}
   	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err == nil {
   		t.Fatal("expected refusal for existing doc files")
   	}
@@ -663,8 +717,8 @@ Goal: `awf new doc <name> "<description>"` scaffolds a local doc end to end.
   	}
   }
   ```
-  Confirm `io` is imported in `new_test.go` (add it if the file lacks it; other tests
-  use `os`, `bytes`).
+  (`cmd/awf/new_test.go` already imports `io`, `os`, `strings`, `path/filepath`, and
+  `bytes` — no import changes needed. The `config` import is present via other tests.)
 
 - [ ] **Task 2.4 — Gate and commit.**
   ```
