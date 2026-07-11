@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [workflow, plans, convention, rendering]
-related: [28, 53, 54, 80, 90]
+related: [1, 45, 54, 80, 82, 90]
 domains: [rendering]
 ---
 # ADR-0095: Batch tasks in the plan convention
@@ -70,11 +70,17 @@ reconciliation across the catalog artifacts.
    batch task (representative + affected-site set + post-check)" so a legitimate batch task is not
    flagged.
 
-5. **Ship at catalog level.** The change lands in the `awf-writing-plans` skill template, the
-   `docs/plans/README.md` `structure` section, the `plan-reviewer` `step-exactness` default in
-   `internal/catalog` *and* this repository's `plan-reviewer` sidecar (whose `focusItems` replace
-   the catalog default wholesale), and the re-rendered example adopter — so every adopter receives
-   it.
+5. **Ship at catalog level.** The batch-task definition is hosted in the existing `conventions-tasks`
+   section of the `awf-writing-plans` skill template — no new `awf:section` marker is added, so
+   `skill-section-parity` (ADR-0054) is untouched. The change also lands in the
+   `docs/plans/README.md` `structure` section and the `plan-reviewer` `step-exactness` focus item,
+   refined in both the `internal/catalog` default *and* this repository's `plan-reviewer` sidecar
+   (whose `focusItems` replace the catalog default wholesale). Catalog-default template prose stays
+   publication-safe and generic (ADR-0001, ADR-0045, ADR-0082): it names "the project's drift check"
+   rather than a concrete `./x check`, and reserves repo-specific commands for this repo's sidecar
+   and rendered output. Catalog-default adopters receive the refinement on re-render; an adopter
+   whose `plan-reviewer` sidecar overrides `focusItems` wholesale — the case this ADR hand-patches
+   here — keeps its old `step-exactness` text and must update its own sidecar.
 
 ## Invariants
 
@@ -100,6 +106,10 @@ by the `plan-reviewer` lens, not by a source marker.
   the guarantee. Mitigated by the mandatory Edge field (waivable only with an explicit uniform-shape
   assertion) and by charging the refined reviewer lens to judge post-check *strength*, not merely
   its presence.
+- **Cost: heavier reviewer judgment.** Trading N eyeball-able diffs for one representative plus a
+  coverage check makes the `step-exactness` lens more subjective — a fresh-context or adopter
+  reviewer must judge whether a post-check *actually* proves coverage, which is harder to apply
+  consistently than confirming a diff is exact. Accepted as the price of removing the repetition.
 - **Forward-compatible hook, not yet enforced.** The four labeled fields are shaped so a future
   `awf check` could parse a batch task and assert it names a post-check. Nothing enforces this today
   — the fields are a human convention — and that gap is deliberate, recorded here so it is not
