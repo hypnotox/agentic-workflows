@@ -822,14 +822,17 @@ hand-authored `docs/releasing.md` + its `docMap` entry.
   ```
   `./x sync` regenerates `docs/releasing.md` (now `# Releasing` + awf's ported body),
   `AGENTS.md` (releasing moves from the docMap escape hatch into the document map
-  proper via `resolvedDocs`; the docMap block is gone), and `.awf/awf.lock`. Expected
+  proper via `resolvedDocs`; the docMap block is gone), `docs/config-reference.md`
+  (its live-state enabled-docs count rises by one now that `releasing` is enabled —
+  this is the ADR-0088 config-reference regen the ADR enumerates for releasing), and
+  `.awf/awf.lock`. Expected
   final: `awf check: clean`, `coverage: 100.0%`, `0 issues.` If a doc-count or
   doc-list golden/eval assertion now fails because `NonMandatoryDocNames` includes
   `releasing`, update that expected value in the same commit (search: `go test ./... 2>&1 | grep -i FAIL`).
 
 - [ ] **Task 3.6 — Commit.**
   ```
-  git add templates/docs/releasing.md.tmpl internal/catalog/standard.go internal/project/local_test.go .awf/config.yaml .awf/docs/parts/releasing/content.md .awf/agents-doc.yaml docs/releasing.md AGENTS.md .awf/awf.lock
+  git add templates/docs/releasing.md.tmpl internal/catalog/standard.go internal/project/local_test.go .awf/config.yaml .awf/docs/parts/releasing/content.md .awf/agents-doc.yaml docs/releasing.md docs/config-reference.md AGENTS.md .awf/awf.lock
   ```
   (plus any golden/eval file touched in 3.5)
   ```
