@@ -250,6 +250,20 @@ passes also missed, caught only by `git status` after the commit (2026-07-09). A
 in a status-flip commit, stage from `git status`, not from a memorised file list; every
 `domains:` entry implies its rendered doc.
 
+## The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit
+
+`.awf/awf.lock` is a single JSON manifest of every rendered file's hashes, so a change that
+regenerates outputs across several commit *scopes* — skill templates (`rendering`), an ADR flip's
+domain indexes (`adr`), an `agents-doc.yaml` invariant promotion (`invariants`) — produces one
+lock diff whose hunks cannot be sliced by pathspec: `git add <path>` is all-or-nothing on a file
+and interactive `git add -p` is unavailable here. Don't fight it into per-scope commits — the
+coupled regeneration *is* the concern. Bundle the source edits, their rendered outputs, and the
+whole lock into one commit; "one concern per commit" is satisfied because the concern is the
+coupled change, not each scope it happens to touch (ADR-0092 stage b, 2026-07-11: skill adoption
++ ADR flip + invariant promotion landed as one `feat(rendering)` commit — the impl review
+confirmed the boundary was reasoned, not a scope violation). A genuinely independent, non-rendered
+file — a `./x` arm, a lockless script — still commits on its own.
+
 ## Obsoleting rendered prose: sweep parts and whole narratives, not just templates
 
 Fixing a template's default sentence does not reach a project whose convention part
