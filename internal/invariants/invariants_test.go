@@ -425,3 +425,73 @@ func TestCheckZeroSlugsClean(t *testing.T) {
 		}
 	}
 }
+
+func joined(s []string) string { return strings.Join(s, ",") }
+
+func TestMarkersUnder(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "a.go"), "// invariant: alpha\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal", "b.go"), "// invariant: beta\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "notes.txt"), "// invariant: untracked\n")   // no glob match
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "c.go"), "x := \"// invariant: midline\"\n") // marker not opening the line
+	testsupport.WriteFile(t, filepath.Join(root, "vendor", "v.go"), "// invariant: vendored\n")      // skipped by name
+	testsupport.WriteFile(t, filepath.Join(root, "nested", ".git"), "gitdir: elsewhere\n")           // nested checkout
+	testsupport.WriteFile(t, filepath.Join(root, "nested", "n.go"), "// invariant: nested\n")
+	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
+
+	cases := []struct {
+		name  string
+		paths []string
+		want  string
+	}{
+		{"under dir", []string{"cmd"}, "alpha"},                     // beta out of scope, midline/txt excluded
+		{"exact file", []string{"internal/b.go"}, "beta"},           // a queried file that is itself a marker file
+		{"union sorted", []string{"cmd", "internal"}, "alpha,beta"}, // sorted, de-duplicated
+		{"nested checkout skipped", []string{"nested"}, ""},         // .git-bearing dir is another repo's tree
+		{"vendor skipped", []string{"vendor"}, ""},                  // vendor is skipped by name
+		{"empty paths", nil, ""},                                    // nothing queried
+	}
+	for _, c := range cases {
+		got, err := invariants.MarkersUnder(root, sources, c.paths)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if joined(got) != c.want {
+			t.Errorf("%s: got %q want %q", c.name, joined(got), c.want)
+		}
+	}
+}
+
+// A WalkDir error during the marker scan (a non-existent root) propagates out.
+func TestMarkersUnderWalkError(t *testing.T) {
+	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
+	if _, err := invariants.MarkersUnder(filepath.Join(t.TempDir(), "does-not-exist"), sources, []string{"cmd"}); err == nil {
+		t.Error("expected WalkDir error for non-existent root")
+	}
+}
+
+// An unreadable matched source file under a queried path surfaces the read error.
+// A dangling symlink whose name matches a glob keeps the fixture portable (no
+// chmod, root-fragile).
+func TestMarkersUnderReadError(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "cmd"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "missing"), filepath.Join(root, "cmd", "bad.go")); err != nil {
+		t.Fatal(err)
+	}
+	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
+	if _, err := invariants.MarkersUnder(root, sources, []string{"cmd"}); err == nil {
+		t.Error("expected read error for dangling symlink source file")
+	}
+}
+
+func TestDeclaredSlugs(t *testing.T) {
+	if got := invariants.DeclaredSlugs("- `inv: one` — x\n- `inv: two` — y\n"); joined(got) != "one,two" {
+		t.Errorf("two bullets: got %q", joined(got))
+	}
+	if got := invariants.DeclaredSlugs(""); got != nil {
+		t.Errorf("empty section: got %v, want nil", got)
+	}
+}

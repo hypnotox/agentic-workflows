@@ -27,7 +27,7 @@ var isInteractive = func() bool {
 // commandOrder is the display order for `awf help`; every entry is a key in argSpecs.
 var commandOrder = []string{
 	"init", "sync", "check", "invariants", "audit", "commit-gate",
-	"list", "config", "new", "enable", "disable", "upgrade", "uninstall", "changelog", "version",
+	"list", "config", "context", "new", "enable", "disable", "upgrade", "uninstall", "changelog", "version",
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -56,7 +56,7 @@ func hasHelpFlag(rest []string) bool {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|new|enable|disable|upgrade|uninstall|changelog|version> [args]")
+		fmt.Fprintln(stderr, "usage: awf <init|sync|check|invariants|audit|commit-gate|list|config|context|new|enable|disable|upgrade|uninstall|changelog|version> [args]")
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
@@ -117,6 +117,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 			key = args[2]
 		}
 		cmdErr = runConfig(cwd, key, stdout)
+	case "context":
+		spec := argSpecs["context"]
+		pos := positionals(args[2:], spec.boolFlags, spec.valueFlags)
+		if len(pos) == 0 {
+			cmdErr = &usageErr{"usage: awf context <path>... [--json]"}
+		} else {
+			cmdErr = runContext(cwd, pos, hasFlag(args, "--json"), stdout)
+		}
 	case "new":
 		if len(args) < 4 {
 			cmdErr = &usageErr{"usage: awf new <kind> <title>"}
@@ -264,6 +272,20 @@ each var; dormant hints). Outside one, a static catalog-wide reference prints.
 With an argument, print just that entry (a config key path like
 audit.diffThreshold, a var name like gateCmd, a sidecar field like
 sidecar.local, or a data key name).
+`,
+	},
+	"context": {
+		boolFlags: []string{"--json"}, maxPos: -1,
+		summary: "Report owning domains, invariants, and ADRs for paths",
+		help: `Usage: awf context <path>... [--json]
+
+Report the committed context awf holds for a set of repo-relative paths: owning
+domain(s), the invariant slugs backed under those paths, related ADRs, and each
+domain's current-state doc. Read-only. Inside an awf project the output reflects
+live config; outside one, a static pre-adoption notice prints.
+
+Flags:
+  --json    emit the context as JSON
 `,
 	},
 	"new": {

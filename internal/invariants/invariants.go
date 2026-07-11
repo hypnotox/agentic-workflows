@@ -198,3 +198,93 @@ func scanTags(root string, sources []config.InvariantSource) (map[string]bool, e
 	})
 	return present, err
 }
+
+// MarkersUnder returns the sorted, unique invariant slugs whose backing marker
+// comment lies in a file that both matches a source glob and sits under one of
+// paths (a queried path P owns file F when F == P or F is prefixed by P+"/").
+// paths are slash-separated repo-relative paths. It reads only source files and
+// writes nothing.
+func MarkersUnder(root string, sources []config.InvariantSource, paths []string) ([]string, error) {
+	present := map[string]bool{}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", "vendor", "node_modules":
+				return fs.SkipDir
+			}
+			if path != root {
+				if _, lerr := os.Lstat(filepath.Join(path, ".git")); lerr == nil {
+					return fs.SkipDir
+				}
+			}
+			return nil
+		}
+		rel, rerr := filepath.Rel(root, path)
+		if rerr != nil { // coverage-ignore: WalkDir yields paths under root, so Rel cannot fail
+			return rerr
+		}
+		relSlash := filepath.ToSlash(rel)
+		if !underAny(relSlash, paths) {
+			return nil
+		}
+		var markers []string
+		for _, src := range sources {
+			for _, g := range src.Globs {
+				if pathglob.Match(g, relSlash) {
+					markers = append(markers, src.Marker)
+					break
+				}
+			}
+		}
+		if len(markers) == 0 {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimLeft(line, " \t")
+			for _, marker := range markers {
+				if strings.HasPrefix(trimmed, marker) {
+					if m := slugRe.FindStringSubmatch(trimmed[len(marker):]); m != nil {
+						present[m[1]] = true
+					}
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(present))
+	for s := range present {
+		out = append(out, s)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// underAny reports whether rel is one of paths or nested beneath one.
+func underAny(rel string, paths []string) bool {
+	for _, p := range paths {
+		if rel == p || strings.HasPrefix(rel, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// DeclaredSlugs returns the invariant slugs declared via `inv: <slug>` bullets
+// in an ADR Invariants-section body, in source order.
+func DeclaredSlugs(section string) []string {
+	var out []string
+	for _, m := range declRe.FindAllStringSubmatch(section, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
