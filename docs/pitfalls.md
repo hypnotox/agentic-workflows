@@ -211,8 +211,12 @@ lifecycle rules regulate amendment-while-Proposed and full supersedence (predece
 flips) but say nothing about the reverse edge of a partial amendment. Convention: when ADR X
 partially amends ADR Y, add X to Y's `related:` frontmatter in the same commit — a
 metadata-only edit, consistent with the mutable `superseded_by` field; the body stays
-append-only. If this recurs despite the note, promote to an audit or gate check that scans
-ADR prose for "amends ADR-NNNN" and requires the back-pointer.
+append-only. This recurred despite the note — ADR-0093's partial supersedence of ADR-0024's
+Decision items 1 and 6 landed with no 0024 → 0093 back-pointer, again caught only in
+retrospective (fixed 2026-07-11). The recurrence has fired the promotion trigger: a
+deterministic check is now warranted — a gate or `repoaudit` rule that, for each ADR body
+citing another ADR's specific "Decision item", requires the cited ADR's `related:` to name
+the citing ADR.
 
 ## A milestone-time check must not double as an every-commit test
 
