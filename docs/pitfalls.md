@@ -470,3 +470,18 @@ and because `awf check` only enforces backing once the ADR is `Implemented`, the
 until the status flip — exactly when the effort is trying to conclude. Put the
 `// invariant: <slug>` on its own line directly above the statement it describes.
 
+## Relocating a cross-cutting guard out of a shared helper drops it for internal callers
+
+`gate()` (the binary-version guard) was applied *transitively*: `runSync` gated at its top,
+so every command that chained `runSync` — including the `Ungated` `init` and `upgrade` —
+inherited the refusal without a direct `gate()` call. Moving the gate up to the parse-once
+driver (ADR-0094) removed it from `runSync`; the top-level `sync` command stayed covered by
+the driver, but `init`/`upgrade` (Ungated, gating only through their chained sync) silently
+lost it — `awf init` on a schema-behind tree re-stamped the current schema over an unmigrated
+config instead of refusing "run awf upgrade". The transitive gate was real but *untested*, so
+the reclassification looked complete and the gap survived to the review step. When you relocate
+a guard out of a shared helper, enumerate every *internal* caller of that helper — not just the
+top-level entry point you are reclassifying — and add a per-caller test for each one that still
+needs the guard. `SyncReport`'s corrupt-lock refusal is not a substitute: it catches a corrupt
+lock but not a schema- or version-behind one, which only `gate()` sees.
+
