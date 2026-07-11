@@ -82,6 +82,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 
+### Proposed
+
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

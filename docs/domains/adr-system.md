@@ -21,3 +21,7 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
 
+### Proposed
+
+- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
+
