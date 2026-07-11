@@ -25,6 +25,7 @@ docs:
   - development
   - glossary
   - pitfalls
+  - releasing
   - testing
 domains:
   - adr-system

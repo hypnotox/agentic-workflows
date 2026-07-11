@@ -1,7 +1,4 @@
 data:
-    docMap:
-        - path: docs/releasing.md
-          desc: how to cut a release (tag, GoReleaser binaries, versioning)
     commands:
         - cmd: go test ./...
           desc: run the test suite

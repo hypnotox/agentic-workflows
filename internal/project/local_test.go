@@ -336,6 +336,30 @@ func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
 	}
 }
 
+func TestReleasingCatalogDocRenders(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - releasing\n", nil)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := findByTID(files, "docs/releasing.md.tmpl")
+	if len(got) != 1 || got[0].Path != "docs/releasing.md" {
+		t.Fatalf("releasing render wrong: %+v", got)
+	}
+	for _, want := range []string{"# Releasing", "Describe how this project cuts a release"} {
+		if !strings.Contains(got[0].Content, want) {
+			t.Errorf("missing %q in:\n%s", want, got[0].Content)
+		}
+	}
+	if strings.Contains(got[0].Content, "<no value>") {
+		t.Errorf("publication-unsafe render:\n%s", got[0].Content)
+	}
+}
+
 // TestDeriveDocTitle covers title derivation, including the empty-segment guard
 // (a trailing/double hyphen yields an empty split word).
 func TestDeriveDocTitle(t *testing.T) {

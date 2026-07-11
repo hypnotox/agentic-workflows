@@ -140,5 +140,5 @@ awf audit — report workflow-conformance findings over the branch's commits (ad
 - **Development:** [docs/development.md](docs/development.md) — local setup, the command runner, dependency reference
 - **Glossary:** [docs/glossary.md](docs/glossary.md) — project jargon and term ownership
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md) — recurring bugs and tricky areas
+- **Releasing:** [docs/releasing.md](docs/releasing.md) — how to cut a release — versioning, artifacts, and the publish process
 - **Testing:** [docs/testing.md](docs/testing.md) — gate tiers, test layout, what each tier covers
-- **docs/releasing.md:** [docs/releasing.md](docs/releasing.md) — how to cut a release (tag, GoReleaser binaries, versioning)
