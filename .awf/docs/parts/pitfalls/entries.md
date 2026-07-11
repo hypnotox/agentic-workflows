@@ -1,6 +1,6 @@
 ## `awf audit` and `extensions.worktreeConfig`
 
-`git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` — a flag `git worktree add` can leave behind even after the worktree is removed — regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/audit/git.go`'s `openRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; neither `Collect` nor `ruleUncommittedChanges` reads repo extensions, so hiding the section is safe. Any future `internal/audit` code opening a repo must go through `openRepo`, not `git.PlainOpen` directly.
+`git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` — a flag `git worktree add` can leave behind even after the worktree is removed — regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
 
 ## Stdout is API in command-substitution scripts
 
@@ -383,18 +383,29 @@ drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-
 the verify pass because the ADR-0020 dead-link scan covers awf-managed *rendered* docs
 only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
 
-## Repo opens in `internal/audit` must resolve the `.git` gitfile
+## `adr.ADR.Title` already carries the `ADR-NNNN: ` prefix
+
+`adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: …` heading, so it includes the
+`ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints
+both — as `awf context`'s `ADRRef` did in its first draft (2026-07-11) — double-prints the
+number (`ADR-0092 … ADR-0092: Title`); plan review caught it. Strip the prefix
+(`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
+`awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
+so the gotcha only surfaces as awf grows ADR-aware tooling.
+
+## Repo opens must resolve the `.git` gitfile (use `internal/git.OpenRepo`)
 
 In a linked worktree (`git worktree add`) — and the submodule layout — `.git` is a
 `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
 `open repo: … .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
 ADR-0090 impl review in a session worktree — every parallel session uses one). Fixed the
-same day: `openRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
+same day: `OpenRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
 `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
 `EnableDotGitCommonDir`; regression tests hand-craft the worktree layout (go-git cannot
 create one). The standing rule from the first entry above still governs: any future
-`internal/audit` code opening a repo goes through `openRepo` — `git.PlainOpen` gets neither
-the extensions workaround nor the gitfile resolution.
+awf code opening a repo goes through `internal/git.OpenRepo` — `git.PlainOpen` gets neither
+the extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
+until ADR-0092's stage-a extracted it into the shared `internal/git` package.)
 
 ## Section parts carry their own heading
 
