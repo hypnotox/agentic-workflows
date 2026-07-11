@@ -238,7 +238,7 @@ func parseArgs(cmd clispec.Command, rest []string) (invocation, error) {
 
 ### Task 2.2 — the handler registry and resolution
 
-- [ ] Extend `cmdCtx` (Task 2.1) with a `sub string` field — the resolved subcommand token for a group command (`"adr"` for `awf new adr`), `""` otherwise. The `new` group handler reads `c.sub`.
+- [ ] The `new` group handler reads `c.sub` — the resolved subcommand token already declared on `cmdCtx` in Task 2.1 (`"adr"` for `awf new adr`, `""` for a non-group command).
 - [ ] In `dispatch.go`, add the handler registry keyed by **top-level command name** and the resolver. A group command has ONE handler (not per-child entries): `new`'s handler wraps the existing `runNew`, passing the resolved child token — so `runNew` (and its `adr-new-version-gated` marker and ~26 direct test callers) survives unchanged. Handlers adapt today's `run*` funcs to `func(*cmdCtx) error`, reading `c.inv` instead of raw `args`:
 
 ```go
@@ -268,7 +268,7 @@ var handlers = map[string]handler{
 - [ ] Update `cmd/awf/run_test.go`, `failure_paths_test.go`, `context_test.go`, `new_test.go`, `list_add_test.go` for any raw-args assumptions; the behavior assertions (exit codes, messages) are unchanged, so most tests pass as-is once handler signatures compile. Add `TestHandlerRegistryParity` asserting `handlers` keys == `clispec` leaf paths (both directions).
 - [ ] Add coverage for every new `dispatch.go` branch (unknown flag, missing value, arity under/over, unknown command, group with unknown child, each gating arm, the `context` pre-gate usage errors). A genuinely-unreachable branch takes `// coverage-ignore: <reason>`.
 - [ ] `./x gate` green; `./x check` clean.
-- [ ] Commit: `git commit -m "refactor(tooling): dispatch CLI commands through a generic parse-once driver"`. Scope `tooling`.
+- [ ] Commit: `git commit -m "refactor(tooling): dispatch CLI commands through a parse-once driver"` (68 chars). Scope `tooling`.
 
 ---
 
@@ -320,7 +320,7 @@ Doc comments move with the identifiers (`// ResolveAdd plans enabling…` → `/
 
 - [ ] Grep-zero verify: `grep -rn 'ResolveAdd\|ResolveRemove\|addRemoveTarget\|addRemoveSingleton' internal cmd` returns nothing; `grep -rn '\.Add\b' internal/project cmd/awf | grep -v 'wt.Add\|SetArray'` returns nothing.
 - [ ] `./x gate` green (rename is type-checked; coverage unchanged); `./x check` clean.
-- [ ] Commit: `git commit -m "refactor(tooling): rename resolver Add/Remove to Enable/Disable (ADR-0093 item 4)"`. Scope `tooling`.
+- [ ] Commit (subject ≤72; the ADR-0093 reference goes in the body): `git commit -m "refactor(tooling): rename resolver Add/Remove to Enable/Disable" -m "Completes ADR-0093 Decision item 4 (deferred resolver rename), per ADR-0094 Decision 7."`. Scope `tooling`.
 
 ---
 
@@ -384,10 +384,10 @@ func gatedCommandsDisplay() string {
 
 ### Task 5.4 — cover, sync, verify, commit
 
-- [ ] Add `internal/project` coverage for `gatedCommandsDisplay()` (assert the rendered string equals the backticked join of `clispec.GatedCommandNames()`) — this also anchors `gated-commands-generated`.
+- [ ] Add `internal/project/gatedcommands_test.go` covering `gatedCommandsDisplay()` (assert the rendered string equals the backticked join of `clispec.GatedCommandNames()`) — this also anchors `gated-commands-generated`.
 - [ ] `./x sync` — re-renders `AGENTS.md` (guide invariant), the `tooling` and `rendering` domain docs, and `working-with-awf`, and updates `.awf/awf.lock`. Confirm the rendered `AGENTS.md` binary-version-gate line now reads `Every gated command (\`sync\`, \`check\`, \`invariants\`, \`audit\`, \`list\`, \`config\`, \`context\`, \`new\`, \`enable\`, \`disable\`) … (ADR-0039)` — note the order now follows `clispec` (…`new`, `enable`, `disable`), a cosmetic change from the old hand-order.
 - [ ] `./x gate` green; `./x check` clean (no drift; ADR still Proposed so the slug is not yet enforced but the marker is present).
-- [ ] Commit (stage the new/edited source + the four `.awf/` parts + the template + all re-rendered docs + lock together): `internal/project/gatedcommands.go`, `internal/project/placeholders.go`, `internal/project/render.go`, `templates/agents-doc/AGENTS.md.tmpl`, `templates/docs/working-with-awf.md.tmpl`, `.awf/agents-doc.yaml`, `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/rendering/current-state.md`, the re-rendered `AGENTS.md`/`docs/domains/*.md`/`docs/working-with-awf.md`, and `.awf/awf.lock`. `git commit -m "feat(rendering): generate the gated-command list from clispec"`. Scope `rendering`.
+- [ ] Commit (stage the new/edited source + its test + the three `.awf/` files + the two templates + all re-rendered docs + lock together): `internal/project/gatedcommands.go`, `internal/project/gatedcommands_test.go`, `internal/project/placeholders.go`, `internal/project/render.go`, `templates/agents-doc/AGENTS.md.tmpl`, `templates/docs/working-with-awf.md.tmpl`, `.awf/agents-doc.yaml`, `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/rendering/current-state.md`, the re-rendered `AGENTS.md`/`docs/domains/*.md`/`docs/working-with-awf.md`, and `.awf/awf.lock`. `git commit -m "feat(rendering): generate the gated-command list from clispec"`. Scope `rendering`.
 
 ---
 
