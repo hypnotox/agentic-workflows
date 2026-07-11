@@ -336,6 +336,23 @@ func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
 	}
 }
 
+// TestRenderAllRejectsDuplicateOutputPath: a path-aware local doc name can land
+// on awf's reserved output territory — here docs/decisions/template.md, also
+// rendered by the adr-template singleton — and RenderAll must fail loudly.
+func TestRenderAllRejectsDuplicateOutputPath(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - decisions/template\n", map[string]string{
+		"docs/decisions/template.yaml":             "data:\n  description: collide.\n",
+		"docs/parts/decisions/template/content.md": "body\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "same output path") {
+		t.Fatalf("expected duplicate-output-path error, got %v", err)
+	}
+}
+
 func TestReleasingCatalogDocRenders(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - releasing\n", nil)
 	p, err := Open(root)

@@ -411,7 +411,26 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		return nil, err
 	}
 	out = append(out, mrf)
+	if err := assertNoDuplicateOutputPaths(out); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+// assertNoDuplicateOutputPaths fails loudly when two rendered artifacts resolve
+// to the same output path — a silent last-write-wins overwrite otherwise. Path-
+// aware local doc names (ADR-0091) make this reachable: a name like
+// `domains/<x>` or `decisions/template` can collide with awf's reserved output
+// territory, which the name validator deliberately does not pre-reserve.
+func assertNoDuplicateOutputPaths(files []RenderedFile) error {
+	seen := make(map[string]bool, len(files))
+	for _, f := range files {
+		if seen[f.Path] {
+			return fmt.Errorf("two artifacts render to the same output path %q — rename one (a local doc name may collide with awf's reserved decisions/, plans/, or domains/ output)", f.Path)
+		}
+		seen[f.Path] = true
+	}
+	return nil
 }
 
 // PlannedOutputs returns the project-relative paths Sync would write: every
