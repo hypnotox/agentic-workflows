@@ -62,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
-	cmd, sub, rest, ok := resolve(args[1:])
+	cmd, top, sub, rest, ok := resolve(args[1:])
 	if !ok {
 		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
 	}
@@ -76,15 +76,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	// The driver gates every Gated command before its handler; config/context/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
-	if cmd.Gating == clispec.Gated {
+	// Gating is read from top (the top-level command), not the resolved child: a
+	// group's children never set Gating, so a future Gated group must gate from
+	// its top-level node rather than silently inherit a child's Ungated zero value.
+	if top.Gating == clispec.Gated {
 		if err := gate(cwd); err != nil {
 			return dispatchErr(stderr, err)
 		}
 	}
-	// The registry key is the top-level command name (args[1]) even when resolve
-	// returned a child spec — the child drives parse/help, the group's handler
-	// drives dispatch via sub.
-	if err := handlers[args[1]](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
+	// The registry key is the top-level command name even when resolve returned a
+	// child spec — the child drives parse/help, the group's handler drives
+	// dispatch via sub.
+	if err := handlers[top.Name](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
 		return dispatchErr(stderr, err)
 	}
 	return 0

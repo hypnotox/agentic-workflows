@@ -28,6 +28,20 @@ func TestCommandsWellFormed(t *testing.T) {
 	}
 }
 
+// Gating is a top-level property: a group command's children must leave Gating
+// at the Ungated zero value, so the driver (which reads gating from the
+// top-level node) is the single authority. A child that declared its own gating
+// would be silently ignored — this guards that trap shut.
+func TestGroupChildrenCarryNoGating(t *testing.T) {
+	for _, c := range Commands {
+		for _, ch := range c.Children {
+			if ch.Gating != Ungated {
+				t.Errorf("group %q child %q sets Gating=%d; children must stay Ungated (gating is top-level)", c.Name, ch.Name, ch.Gating)
+			}
+		}
+	}
+}
+
 func TestLookup(t *testing.T) {
 	if _, ok := Lookup("sync"); !ok {
 		t.Error("Lookup(sync) missing")

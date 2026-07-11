@@ -57,6 +57,25 @@ func TestHandlerRegistryParity(t *testing.T) {
 	}
 }
 
+// TestResolveReturnsTopLevel pins that resolve returns the top-level command
+// alongside a resolved child, so run() gates and keys the handler off the
+// top-level node rather than the child (whose Gating is an unset Ungated zero).
+func TestResolveReturnsTopLevel(t *testing.T) {
+	cmd, top, sub, rest, ok := resolve([]string{"new", "adr", "A Title"})
+	if !ok || cmd.Name != "adr" || top.Name != "new" || sub != "adr" {
+		t.Fatalf("resolve(new adr) = cmd=%q top=%q sub=%q ok=%v", cmd.Name, top.Name, sub, ok)
+	}
+	if len(rest) != 1 || rest[0] != "A Title" {
+		t.Errorf("resolve(new adr) rest = %v", rest)
+	}
+	if cmd, top, _, _, ok := resolve([]string{"sync"}); !ok || cmd.Name != "sync" || top.Name != "sync" {
+		t.Errorf("resolve(sync) = cmd=%q top=%q ok=%v; leaf should return itself as top", cmd.Name, top.Name, ok)
+	}
+	if _, _, _, _, ok := resolve([]string{"nope"}); ok {
+		t.Error("resolve(nope) should miss")
+	}
+}
+
 // parseArgs folds flag/value/repeatable/positional parsing and arity validation
 // into one pass: bool flags set bools, value flags consume their token, a
 // repeatable flag collects into multi, non-flag tokens are positionals, and an

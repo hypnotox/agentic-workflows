@@ -110,22 +110,25 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 }
 
 // resolve looks up args[0] as a top-level command. For a group command (new)
-// whose next token names a child, it returns the child (so parseArgs validates
-// against the child's flag spec and --help prints the child help), with sub set
-// to the child token and rest the tokens after it. A leaf, or a group with no or
-// an unknown child, returns itself with sub "" and rest args[1:] — the group's
-// handler then owns the missing/unknown-child messages.
-func resolve(args []string) (cmd clispec.Command, sub string, rest []string, ok bool) {
+// whose next token names a child, it returns the child as cmd (so parseArgs
+// validates against the child's flag spec and --help prints the child help),
+// with sub set to the child token and rest the tokens after it. A leaf, or a
+// group with no or an unknown child, returns itself as cmd with sub "" and rest
+// args[1:] — the group's handler then owns the missing/unknown-child messages.
+// top is always the top-level command (== cmd for a leaf, the group for a
+// resolved child); the driver reads gating and the handler key from top, since
+// both are top-level properties a child never overrides.
+func resolve(args []string) (cmd, top clispec.Command, sub string, rest []string, ok bool) {
 	top, found := clispec.Lookup(args[0])
 	if !found {
-		return clispec.Command{}, "", nil, false
+		return clispec.Command{}, clispec.Command{}, "", nil, false
 	}
 	if len(top.Children) > 0 && len(args) > 1 {
 		if child, childOK := top.Child(args[1]); childOK {
-			return child, args[1], args[2:], true
+			return child, top, args[1], args[2:], true
 		}
 	}
-	return top, "", args[1:], true
+	return top, top, "", args[1:], true
 }
 
 // wantsHelp reports whether a --help or -h token appears among a command's args,
