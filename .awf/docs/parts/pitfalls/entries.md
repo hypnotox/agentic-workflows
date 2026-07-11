@@ -480,3 +480,20 @@ a guard out of a shared helper, enumerate every *internal* caller of that helper
 top-level entry point you are reclassifying — and add a per-caller test for each one that still
 needs the guard. `SyncReport`'s corrupt-lock refusal is not a substitute: it catches a corrupt
 lock but not a schema- or version-behind one, which only `gate()` sees.
+
+## A plan editing a catalog template or default under-enumerates the render fan-out
+
+A plan whose diff touches a shipped template (`templates/**`) or a catalog default
+(`internal/catalog/standard.go`) naturally lists the one `.claude/` output the author is looking
+at — and misses the rest of the fan-out. One source edit re-renders **every enabled target**
+(`.claude/` *and* `.cursor/` here), **both** `.awf/awf.lock` files (root *and* `examples/sundial`),
+and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
+`[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
+plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,
+prefix `sundial`), omitted the `.cursor/` output and the example lock, and scheduled no changelog
+task — caught downstream by plan review, by reading `git status`, and by `./x audit-local`
+respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
+explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at
+execution treat the plan's `git add` list as a *floor* — run `./x sync`, then stage exactly what
+`git status --short` reports, adding paths the plan forgot rather than only dropping ones it
+over-named.
