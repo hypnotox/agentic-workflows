@@ -267,14 +267,15 @@ sidecar.local, or a data key name).
 `,
 	},
 	"new": {
-		maxPos: -1, summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent}",
+		maxPos: -1, summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent, doc}",
 		help: `Usage: awf new <kind> <args>
 
-Scaffold a new artifact. <kind> is adr, skill, or agent.
+Scaffold a new artifact. <kind> is adr, skill, agent, or doc.
 
 - awf new adr "Some Decision Title"
 - awf new skill <name> "<description>"   (a project-local skill)
 - awf new agent <name> "<description>"   (a project-local agent)
+- awf new doc <name> "<description>"     (a project-local doc; name may be nested, e.g. guides/ci)
 `,
 	},
 	"add": {

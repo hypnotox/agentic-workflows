@@ -23,8 +23,10 @@ func runNew(root, kind string, args []string, stdout io.Writer) error {
 		return newADR(root, args, stdout)
 	case "skill", "agent":
 		return newLocalArtifact(root, kind, args, stdout)
+	case "doc":
+		return newLocalDoc(root, args, stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, skill, agent)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, skill, agent, doc)", kind)}
 	}
 }
 
@@ -137,3 +139,74 @@ const localPartStub = "<!-- awf:stub -->\n" +
 	"awf check flags this part as unauthored while the marker remains. This file is a " +
 	"convention part: edit it to author the content, and see docs/working-with-awf.md for " +
 	"the placeholder syntax.\n"
+
+// newLocalDoc scaffolds a project-local custom doc (ADR-0091): a path-aware name,
+// a declaring sidecar carrying the derived title and description, a starter
+// content part, the enable, and a re-render.
+func newLocalDoc(root string, args []string, stdout io.Writer) error {
+	if len(args) < 2 {
+		return &usageErr{"usage: awf new doc <name> \"<description>\""}
+	}
+	name := args[0]
+	desc := strings.Join(strings.Fields(strings.Join(args[1:], " ")), " ")
+	if desc == "" {
+		return &usageErr{"description must not be empty"}
+	}
+	if err := config.ValidateDocName(name); err != nil {
+		return err
+	}
+	if err := gate(root); err != nil {
+		return err
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	if pool, _ := project.CatalogNames(p.Cat, "doc"); slices.Contains(pool, name) {
+		return fmt.Errorf("doc %q already exists (catalog or local) — pick another name", name)
+	}
+	scPath := filepath.Join(config.RootDir(root), "docs", name+".yaml")
+	partPath := p.Cfg.PartPath("docs", name, "content")
+	for _, existing := range []string{scPath, partPath} {
+		if _, err := os.Stat(existing); err == nil {
+			return fmt.Errorf("doc %q already has authored files (%s) — remove them first or pick another name", name, existing)
+		}
+	}
+	scBytes, err := yaml.Marshal(map[string]any{"data": map[string]any{
+		"title":       project.DeriveDocTitle(name),
+		"description": desc,
+	}})
+	if err != nil { // coverage-ignore: a string map always marshals
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(scPath), 0o755); err != nil { // coverage-ignore: parent is the just-opened .awf tree; fails only on a permission fault a test cannot trigger
+		return err
+	}
+	if err := os.WriteFile(scPath, scBytes, 0o644); err != nil { // coverage-ignore: post-mkdir write; fails only on a permission fault a test cannot trigger
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(partPath), 0o755); err != nil { // coverage-ignore: as above
+		return err
+	}
+	if err := os.WriteFile(partPath, []byte(localDocPartStub), 0o644); err != nil { // coverage-ignore: as above
+		return err
+	}
+	updated, err := config.SetArrayMember(p.Cfg.Source(), "docs", name, true)
+	if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot fail here
+		return err
+	}
+	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault a test cannot trigger
+		return err
+	}
+	return runSync(root, stdout)
+}
+
+// localDocPartStub is the starter body for a new local doc's content part. The
+// doc-standard pointer is prose, not a markdown link — a file-relative link would
+// resolve dead from a nested doc's directory (ADR-0020). The leading awf:stub
+// marker declares the part unauthored (ADR-0070).
+const localDocPartStub = "<!-- awf:stub -->\n" +
+	"Replace this with the document body, then delete the awf:stub marker line above — " +
+	"awf check flags this part as unauthored while the marker remains. Write it to the " +
+	"project's documentation standard (see docs/doc-standard.md). This file is a convention " +
+	"part: edit it to author the content.\n"

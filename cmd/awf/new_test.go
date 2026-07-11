@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -37,8 +38,84 @@ func TestRunNewADRError(t *testing.T) {
 
 func TestRunNewUnknownKind(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"x"}, os.Stdout); err == nil {
+	if err := runNew(root, "widget", []string{"x"}, os.Stdout); err == nil {
 		t.Fatal("expected error for unknown kind")
+	}
+}
+
+func TestRunNewScaffoldsDoc(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"guides/ci", "How", "CI", "runs"}, io.Discard); err != nil {
+		t.Fatalf("new doc: %v", err)
+	}
+	sc := filepath.Join(root, ".awf", "docs", "guides", "ci.yaml")
+	if b, err := os.ReadFile(sc); err != nil {
+		t.Fatalf("sidecar not written: %v", err)
+	} else if !strings.Contains(string(b), "title: Ci") || !strings.Contains(string(b), "description: How CI runs") {
+		t.Errorf("sidecar content wrong:\n%s", b)
+	}
+	part := filepath.Join(root, ".awf", "docs", "parts", "guides", "ci", "content.md")
+	if b, err := os.ReadFile(part); err != nil {
+		t.Fatalf("part not written: %v", err)
+	} else if !strings.Contains(string(b), "awf:stub") {
+		t.Errorf("part missing stub marker:\n%s", b)
+	}
+	out := filepath.Join(root, "docs", "guides", "ci.md")
+	if _, err := os.Stat(out); err != nil {
+		t.Errorf("rendered doc missing: %v", err)
+	}
+}
+
+func TestRunNewDocMissingDescription(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"ci"}, io.Discard); err == nil {
+		t.Fatal("expected usage error for missing description")
+	}
+}
+
+func TestRunNewDocEmptyDescription(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"ci", "   "}, io.Discard); err == nil {
+		t.Fatal("expected error for empty description")
+	}
+}
+
+func TestRunNewDocInvalidName(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"Bad", "desc"}, io.Discard); err == nil {
+		t.Fatal("expected error for invalid doc name")
+	}
+}
+
+func TestRunNewDocRefusesExisting(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err != nil {
+		t.Fatalf("first new doc: %v", err)
+	}
+	// Disable ci in config but leave its sidecar+part on disk, so the second run's
+	// catalog-collision check misses and the authored-files guard fires (mirrors
+	// TestRunNewRefusesExistingLocalArtifactFiles).
+	cfgPath := config.ConfigPath(root)
+	src, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := config.SetArrayMember(src, "docs", "ci", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err == nil {
+		t.Fatal("expected refusal for existing doc files")
+	}
+}
+
+func TestRunNewDocCollidesWithCatalog(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "doc", []string{"architecture", "desc"}, io.Discard); err == nil {
+		t.Fatal("expected collision error for a catalog doc name")
 	}
 }
 
@@ -184,6 +261,16 @@ func TestRunNewSkillOpenError(t *testing.T) {
 	// enabled doc that is not in the catalog.
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
 	if err := runNew(root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
+		t.Fatal("expected project.Open error")
+	}
+}
+
+func TestRunNewDocOpenError(t *testing.T) {
+	root := scaffoldProject(t)
+	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
+	// covering newLocalDoc's Open-error return.
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
+	if err := runNew(root, "doc", []string{"newdoc", "a description"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
 }
