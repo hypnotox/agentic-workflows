@@ -98,9 +98,9 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 
 - [ ] **1.4 Lock the new skill prose with a golden assertion.** In `internal/project/spine_test.go`,
   in `TestWritingPlansTemplate`, add `"batch task"` and `"affected-site set"` to the `loadBearing`
-  slice. The second phrase is unique to the four-field definition in the 1.1 bullet, so it locks the
-  batch-task *substance* (not just the two-word name, which also appears in the 1.2 bullet). Exact
-  diff:
+  slice. The second phrase is specific to the batch-task prose (the 1.1/1.2 bullets), not the
+  exact-diff rules, so it locks the batch-task *substance* — one of the four named fields — rather
+  than only the two-word name. Exact diff:
 
   ```diff
    	loadBearing := []string{
