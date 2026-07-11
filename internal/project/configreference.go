@@ -237,23 +237,13 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 }
 
 // dataKeyRows filters the described data keys to this project: enabled
-// artifacts, the local base entries when a local artifact of that kind
-// exists, and the always-on agents-doc.
+// artifacts, the local base entries when a synthesized project-local artifact
+// of that kind exists, and the always-on agents-doc.
 func (p *Project) dataKeyRows() ([]map[string]any, error) {
-	hasLocal := map[string]bool{}
-	for _, kv := range []struct {
-		kind  string
-		names []string
-	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
-		for _, name := range kv.names {
-			sc, err := p.Cfg.Sidecar(kv.kind, name)
-			if err != nil { // coverage-ignore: these sidecars were already read by RenderAll in the same pass
-				return nil, err
-			}
-			if sc.Local {
-				hasLocal[kv.kind] = true
-			}
-		}
+	hasLocal := map[string]bool{
+		"skills": p.hasLocalArtifact("skills"),
+		"agents": p.hasLocalArtifact("agents"),
+		"docs":   p.hasLocalArtifact("docs"),
 	}
 	var rows []map[string]any
 	for _, d := range configspec.DataKeys() {
@@ -302,6 +292,37 @@ func (p *Project) dataKeyRows() ([]map[string]any, error) {
 		})
 	}
 	return rows, nil
+}
+
+// hasLocalArtifact reports whether the project enables a synthesized
+// project-local artifact of the plural kind — one rendered from an awf-owned
+// base template, so the config reference should document that kind's `_base`
+// data keys (ADR-0068/0091). Skills and agents carry a `Base` flag; a local
+// doc's synthesized `DocEntry.TID` is the base doc template. A `local: true`
+// opt-out is hand-authored and never synthesized, so it correctly does not
+// count — its body is not rendered from the base template.
+func (p *Project) hasLocalArtifact(kind string) bool {
+	switch kind {
+	case "skills":
+		for _, n := range p.Cfg.Skills {
+			if p.Cat.Skills[n].Base {
+				return true
+			}
+		}
+	case "agents":
+		for _, n := range p.Cfg.Agents {
+			if p.Cat.Agents[n].Base {
+				return true
+			}
+		}
+	case "docs":
+		for _, n := range p.Cfg.Docs {
+			if p.Cat.Docs[n].TID == baseDocTID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // enableArray returns the enable array for a plural kind name.

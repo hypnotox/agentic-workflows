@@ -22,6 +22,13 @@ query a single version or a range.
   path, so a path-aware local doc name colliding with awf's reserved
   `decisions/`, `plans/`, or `domains/` output is caught rather than silently
   overwriting the other file.
+- `docs/config-reference.md` (and `awf config`) now document a project-local
+  artifact's base data keys when a *synthesized* local skill, agent, or doc is
+  enabled — the case where the base template actually renders those keys.
+  Previously the `_base` rows surfaced only for a hand-authored `local: true`
+  opt-out (which renders nothing from the base template) and never for a
+  `awf new skill|agent|doc`-created artifact, so a real custom artifact's keys
+  went undocumented.
 
 ## [0.14.1] - 2026-07-10
 

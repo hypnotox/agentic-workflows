@@ -310,3 +310,52 @@ func TestConfigReferenceIntroOverride(t *testing.T) {
 		t.Errorf("generated tables lost under an intro override:\n%s", got)
 	}
 }
+
+func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\nagents:\n  - my-agent\ndocs:\n  - my-doc\n", map[string]string{
+		"skills/my-skill.yaml":             "data:\n  description: d.\n",
+		"skills/parts/my-skill/content.md": "b\n",
+		"agents/my-agent.yaml":             "data:\n  description: d.\n",
+		"agents/parts/my-agent/content.md": "b\n",
+		"docs/my-doc.yaml":                 "data:\n  title: My Doc\n  description: d.\n",
+		"docs/parts/my-doc/content.md":     "b\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := p.dataKeyRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, r := range rows {
+		got[r["artifact"].(string)+"."+r["key"].(string)] = true
+	}
+	for _, want := range []string{"local skills.description", "local agents.description", "local docs.title", "local docs.description"} {
+		if !got[want] {
+			t.Errorf("config reference missing synthesized-local data key %q; got %v", want, got)
+		}
+	}
+}
+
+func TestConfigReferenceOmitsBaseRowsWithoutSynthesizedLocal(t *testing.T) {
+	// A local:true opt-out does not render from the base template, so its _base
+	// keys must not surface.
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - hand\n", map[string]string{
+		"skills/hand.yaml": "local: true\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := p.dataKeyRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if strings.HasPrefix(r["artifact"].(string), "local ") {
+			t.Errorf("unexpected _base row for a local:true opt-out: %v", r)
+		}
+	}
+}
