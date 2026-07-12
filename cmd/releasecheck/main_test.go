@@ -167,8 +167,24 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	if extract > build {
 		t.Error("the `awf changelog --version` extraction must run before the GoReleaser step")
 	}
-	if !strings.Contains(wf, "--release-notes") {
+	// The extraction redirect and the --release-notes arg must name the same file, or
+	// the release body silently diverges from what was written. Assert the shared basename
+	// appears both in a redirect (`> ...release-notes.md`) and on the --release-notes line.
+	const notesFile = "release-notes.md"
+	if !strings.Contains(wf, "> \"${RUNNER_TEMP}/"+notesFile+"\"") {
+		t.Errorf("release.yml does not redirect the extracted notes to $RUNNER_TEMP/%s", notesFile)
+	}
+	relIdx := strings.Index(wf, "--release-notes")
+	if relIdx < 0 {
 		t.Error("release.yml does not pass --release-notes to the GoReleaser step")
+	} else {
+		argLine := wf[relIdx:]
+		if nl := strings.IndexByte(argLine, '\n'); nl >= 0 {
+			argLine = argLine[:nl]
+		}
+		if !strings.Contains(argLine, notesFile) {
+			t.Errorf("--release-notes must point at %s (the file the extraction step writes), got %q", notesFile, argLine)
+		}
 	}
 
 	glb, err := os.ReadFile("../../.goreleaser.yaml")
@@ -176,8 +192,10 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		t.Fatalf("read goreleaser config: %v", err)
 	}
 	gl := string(glb)
-	if !strings.Contains(gl, "disable: true") {
-		t.Error(".goreleaser.yaml does not disable the commit-derived changelog (changelog.disable: true)")
+	// Scope the assertion to the changelog block's stable two-line token, so an unrelated
+	// `disable: true` elsewhere cannot mask a revert of the changelog disable.
+	if !strings.Contains(gl, "changelog:\n  disable: true") {
+		t.Error(".goreleaser.yaml does not disable the commit-derived changelog (changelog:\\n  disable: true)")
 	}
 	if strings.Contains(gl, "use: github") {
 		t.Error(".goreleaser.yaml still derives release notes from commits (use: github)")
