@@ -594,5 +594,23 @@ real tag build). When adding a future pre-release step, keep its output under `$
 the path to `.gitignore`; do not assume a build-time artifact in the worktree is harmless
 (2026-07-12).
 
+## Sidecar `data` is not placeholder-substituted — drop `{{=awf:…}}` escapes when converting a part
+
+_Domains: rendering_
+
+_Related: ADR-0089, ADR-0099_
+
+A raw convention part is run through awf's `{{=awf:…}}` sandbox substitution before Go templating
+(ADR-0057), so a part that *documents* a placeholder token backslash-escapes it (`\{{=awf:key}}`)
+to render the literal token. A sidecar-derived doc's `data` value is different: the transform hands
+it to the template as a plain string spliced in via Go `{{ . }}`, with no awf-placeholder pass over
+it — so a `\{{=awf:…}}` escape copied verbatim from a raw part into `data.<key>` renders the
+backslash literally, and an unescaped `{{=awf:…}}` renders as the literal token (never substituted).
+This bit the ADR-0099 pitfalls conversion: the 40-entry hand-migration copied entries.md's escaped
+tokens straight into `data.pitfalls`, and the backslashes leaked into the rendered doc — `awf check`
+stayed clean (the output is exactly what the data says), so only diffing the rendered file against
+the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
+`\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
+
 <!-- awf:edit append — default; create .awf/docs/parts/pitfalls/append.md to override -->
 
