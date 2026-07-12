@@ -51,8 +51,11 @@ zero-notes (ADR-0090).
   - `cmd/awf/new.go`, `cmd/awf/new_test.go`, `internal/clispec/clispec.go`, `internal/clispec/clispec_test.go`
   - `templates/skills/writing-plans/SKILL.md.tmpl`, `templates/skills/executing-plans/SKILL.md.tmpl`,
     `templates/skills/subagent-driven-development/SKILL.md.tmpl`, `templates/agents/plan-reviewer.md.tmpl`,
-    `templates/plans-readme/README.md.tmpl`
-  - `.awf/agents-doc.yaml` (`data.invariants` + `data.commands`), `AGENTS.md` (regenerated)
+    `templates/plans-readme/README.md.tmpl`, `.awf/agents/plan-reviewer.yaml`
+  - `.awf/agents-doc.yaml` (`data.invariants` + `data.commands`); regenerated rendered outputs:
+    `AGENTS.md`, `.claude/skills/awf-writing-plans/SKILL.md`, `.claude/skills/awf-executing-plans/SKILL.md`,
+    `.claude/skills/awf-subagent-driven-development/SKILL.md`, `.claude/agents/plan-reviewer.md`,
+    `docs/plans/README.md`
   - `docs/decisions/0097-*.md`, `docs/decisions/0098-*.md` (status flip), `docs/decisions/ACTIVE.md` (regen)
   - `.awf/awf.lock`, `docs/domains/rendering.md`, `docs/domains/tooling.md` (regen), `examples/sundial/**` (re-render)
 - **Deleted:** none
@@ -577,11 +580,14 @@ type PlanRef struct {
   Implemented` (replacing the `# Implementation complete (YYYY-MM-DD)` line) so ADR-driven and non-ADR
   plans freeze identically via the plan's own status; and update `procedure-resolve-plan`'s mutability
   wording to key off the plan's own status, not the ADR's. In
-  `templates/skills/subagent-driven-development/SKILL.md.tmpl`, whose single combined final section
-  (`Final task: ADR status flip and/or plan freeze`, ~line 69) covers both paths, apply the equivalent
-  edit: retain any ADR flip and add the plan `status: Proposed → Implemented` freeze + findings-recording.
-  Post-check: `grep -rn "Implementation complete" templates/skills/` returns nothing (also confirms
-  Task 5.1's `plan-lifecycle` rewrite).
+  `templates/skills/subagent-driven-development/SKILL.md.tmpl`, edit **two** sections: rewrite its
+  `procedure-resolve-plan` (~line 32, whose mutability prose still cites `# Implementation complete`)
+  to key off the plan's own `status:` like executing-plans'; and its single combined final section
+  (`Final task: ADR status flip and/or plan freeze`, ~line 69) retains any ADR flip and adds the plan
+  `status: Proposed → Implemented` freeze + findings-recording.
+  Post-check: `grep -rn "Implementation complete" templates/skills/` returns nothing — covering all
+  five occurrences (writing-plans `plan-lifecycle`; executing-plans `procedure-resolve-plan` +
+  `procedure-non-adr-final-commit`; subagent-driven `procedure-resolve-plan` + final section).
 
 - [ ] **Task 5.4 — Update the plans-readme + AGENTS.md source.** In
   `templates/plans-readme/README.md.tmpl` (`structure` and freeze prose) reflect the frontmatter, the
@@ -603,9 +609,14 @@ type PlanRef struct {
   the AGENTS.md currency, and the ADR flip are one indivisible unit of meaning and land together.
   - `./x gate` → all clean, `coverage: 100.0%`.
   - `./x check` → `awf check: clean`, zero `note:` lines for `examples/sundial`.
-  - `git add` the exact modified templates, `.awf/agents-doc.yaml`, `AGENTS.md`, both ADR files,
-    `docs/decisions/ACTIVE.md`, `docs/domains/rendering.md`, `docs/domains/tooling.md`,
-    `.awf/awf.lock`, and `examples/sundial`.
+  - `git add` the exact modified templates, `.awf/agents/plan-reviewer.yaml`, `.awf/agents-doc.yaml`,
+    the regenerated rendered outputs `.claude/skills/awf-writing-plans/SKILL.md`,
+    `.claude/skills/awf-executing-plans/SKILL.md`,
+    `.claude/skills/awf-subagent-driven-development/SKILL.md`, `.claude/agents/plan-reviewer.md`,
+    `docs/plans/README.md`, and `AGENTS.md`, both ADR files, `docs/decisions/ACTIVE.md`,
+    `docs/domains/rendering.md`, `docs/domains/tooling.md`, `.awf/awf.lock`, and `examples/sundial`.
+    (`./x sync` in Task 5.5 regenerates every `.claude/**` and `docs/**` rendered output from the
+    Phase-5 template/sidecar edits; enumerate them — `git add -A` is barred.)
   - `git commit -m "feat(rendering): adopt the ADR-0097 plan convention"` (body: flips ADR-0097 and
     ADR-0098 to Implemented; lists the convention changes and the five now-enforced invariants).
 
