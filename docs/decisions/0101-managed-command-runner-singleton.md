@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [config, rendering, tooling]
-related: [2, 40, 48, 49, 60, 61, 85, 86, 90, 92, 100]
+related: [2, 40, 48, 49, 60, 61, 84, 85, 86, 90, 92, 100]
 domains: [config, rendering]
 ---
 # ADR-0101: Managed Command Runner Singleton
@@ -56,7 +56,10 @@ Three couplings shaped the design:
 
 1. **A new toggleable `runner` singleton** renders a single command-runner file `x` at the repo
    root when enabled. It is a co-owned file per ADR-0100: awf owns the structure and the awf-verb
-   arms; the adopter owns the in-place sections.
+   arms; the adopter owns the in-place sections. The toggle mirrors the existing `bootstrap`/`hooks`
+   toggles and is **additive and default-off** — an absent key means disabled — so existing adopter
+   configs are unaffected and no schema-generation migration is required; a seed migration is
+   deliberately declined (adopters opt in explicitly, like `bootstrap`).
 2. **awf-verb dispatch is awf-owned** and delegates to the pinned binary via the bootstrap shim —
    each of `sync`, `check`, `invariants`, `audit`, `context`, `commit-gate`, `new` runs
    `"$(bash .awf/bootstrap.sh)" <verb> "$@"`. This set tracks awf's adopter-facing verbs, so a new
@@ -75,10 +78,12 @@ Three couplings shaped the design:
    in-place section, and the awf-owned dispatch supplies the `context` verb its hand-written runner
    was missing — fixing that drift as a side effect. The example must remain drift-free, invariant-
    clean, and **zero advisory notes** per ADR-0090.
-6. **The runner name and the command vars must agree.** The rendered file is `x`, matching the
-   `./x …` command-var defaults; an adopter who renames it must keep `gateCmd`/`checkCmd`/etc. in
-   step. The command vars remain the seam the hooks/skills/docs reference — the runner is what they
-   now point at.
+6. **The rendered path is fixed at `x`.** The singleton renders exactly `x` at the repo root,
+   matching the `./x …` command-var defaults; there is no filename parameter (consistent with the
+   "no extra parameters" framing). An adopter who wants a different entry point wraps or symlinks
+   `x` rather than renaming the rendered file — a renamed file would simply be foreign to the lock.
+   The command vars remain the seam the hooks/skills/docs reference — the runner is what they now
+   point at, and they keep their `./x` defaults.
 7. **This ADR partially supersedes ADR-0002 Decision item 5** (the deferral of the runner into the
    standard). ADR-0002's status stays live — its linting decision is unaffected — and its legacy
    `.claude/awf.yaml`/`.claude/awf.lock` paths are the pre-relocation names of today's `.awf/`
@@ -100,18 +105,23 @@ Three couplings shaped the design:
   (no unresolved token, no stray section/marker residue), like every other awf template.
 - `inv: runner-example-adopted` — `examples/sundial` enables the `runner` singleton and its
   rendered `x` is drift-free, invariant-clean, and free of advisory notes (ADR-0090).
-- `inv: singleton-kinds-complete` — the singleton-kind set stays exactly the mandatory doc entries
-  plus the explicitly-enumerated config-tree render units (bootstrap, hooks, runner); adding the
-  runner does not orphan the unified-doc-model completeness check.
+- `inv: singleton-kinds-complete` — the runner is a dedicated config-tree render block (like
+  `bootstrap`/`hooks`), not a `catalog.Standard.Docs` entry, so it stays outside `SingletonKinds()`
+  / `plainSingletons`; the unified-doc-model completeness test continues to assert
+  `SingletonKinds()` equals exactly the mandatory doc entries (runner excluded, still green), and
+  the runner instead carries its own dedicated render/check coverage.
 
 ## Consequences
 
 Easier:
 - Every adopter gets a runner that implements the verbs the standard already tells them to run —
   the dangling `./x` contract in the hook payloads and skills is closed.
-- The awf-verb plumbing can no longer rot: a new adopter-facing verb reaches every enabled runner
-  on the next sync, and `awf upgrade` re-renders it. The `sundial` `context` gap is fixed and
-  cannot recur.
+- Per-adopter rot of the awf-verb plumbing is eliminated: the awf-verb arms live in one awf-owned
+  template re-rendered on every sync (and re-rendered by `awf upgrade`), so an enabled runner cannot
+  fall behind the way `sundial`'s hand-written one did. Residual, stated honestly: the template's
+  own verb list is not yet mechanically cross-checked against the CLI dispatch table
+  (`cmd/awf/dispatch.go`), so adding a new adopter-facing verb still requires a same-change template
+  edit — a candidate for a future completeness check, like the deferred hooks↔runner advisory.
 - The runner is ADR-0100's first real consumer, exercising the in-place-section primitive on the
   in-repo example adopter on every `./x sync`/`check`.
 
