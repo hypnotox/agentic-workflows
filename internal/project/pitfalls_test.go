@@ -33,7 +33,7 @@ func renderPitfalls(t *testing.T, root string) string {
 // leaves absent domains/related nil.
 func TestPitfallEntriesValid(t *testing.T) {
 	raw := []any{
-		map[string]any{"title": " First ", "body": "one\n", "domains": []any{"rendering", " tooling "}, "related": []any{67, 92}},
+		map[string]any{"title": " First ", "body": "one\n", "domains": []any{"rendering", " tooling "}, "related": []any{67, 92}, "tags": []any{"rendering", " parts "}},
 		map[string]any{"title": "Second", "body": "two"},
 	}
 	entries, err := pitfallEntries(raw)
@@ -53,8 +53,11 @@ func TestPitfallEntriesValid(t *testing.T) {
 	if len(e.Related) != 2 || e.Related[0] != 67 || e.Related[1] != 92 {
 		t.Errorf("related wrong: %v", e.Related)
 	}
-	if entries[1].Domains != nil || entries[1].Related != nil {
-		t.Errorf("absent domains/related must be nil: %v / %v", entries[1].Domains, entries[1].Related)
+	if len(e.Tags) != 2 || e.Tags[0] != "rendering" || e.Tags[1] != "parts" {
+		t.Errorf("tags wrong: %v", e.Tags)
+	}
+	if entries[1].Domains != nil || entries[1].Related != nil || entries[1].Tags != nil {
+		t.Errorf("absent domains/related/tags must be nil: %v / %v / %v", entries[1].Domains, entries[1].Related, entries[1].Tags)
 	}
 }
 
@@ -100,6 +103,8 @@ func TestPitfallEntriesErrors(t *testing.T) {
 		"domain-empty":      {[]any{map[string]any{"title": "T", "body": "b", "domains": []any{" "}}}, "must be non-empty strings"},
 		"related-not-list":  {[]any{map[string]any{"title": "T", "body": "b", "related": "x"}}, `"related" must be a list`},
 		"related-not-int":   {[]any{map[string]any{"title": "T", "body": "b", "related": []any{"x"}}}, "must be ADR numbers"},
+		"tags-not-list":     {[]any{map[string]any{"title": "T", "body": "b", "tags": "x"}}, `"tags" must be a list`},
+		"tag-not-string":    {[]any{map[string]any{"title": "T", "body": "b", "tags": []any{42}}}, "must be non-empty strings"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := pitfallEntries(tc.raw)

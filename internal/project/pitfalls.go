@@ -12,13 +12,14 @@ import (
 const pitfallsSidecarPath = config.DirName + "/docs/pitfalls.yaml"
 
 // pitfallEntry is one authored pitfall: a heading title, the optional owning
-// domains that drive awf-context surfacing, optional related ADR numbers, and the
-// markdown body. Shared by the render transform, checkPitfalls, and ContextFor
-// (ADR-0099).
+// domains that drive awf-context surfacing, optional related ADR numbers, the
+// optional governed tags, and the markdown body. Shared by the render transform,
+// checkPitfalls, and ContextFor (ADR-0099).
 type pitfallEntry struct {
 	Title   string
 	Domains []string
 	Related []int
+	Tags    []string
 	Body    string
 }
 
@@ -99,7 +100,11 @@ func pitfallEntryFrom(i int, m map[string]any) (pitfallEntry, error) {
 	if err != nil {
 		return pitfallEntry{}, err
 	}
-	return pitfallEntry{Title: strings.TrimSpace(title), Domains: domains, Related: related, Body: strings.TrimRight(body, "\n")}, nil
+	tags, err := pitfallStrings(i, title, m, "tags")
+	if err != nil {
+		return pitfallEntry{}, err
+	}
+	return pitfallEntry{Title: strings.TrimSpace(title), Domains: domains, Related: related, Tags: tags, Body: strings.TrimRight(body, "\n")}, nil
 }
 
 // pitfallString reads a required string field.
