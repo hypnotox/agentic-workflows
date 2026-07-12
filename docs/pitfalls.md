@@ -579,6 +579,20 @@ execution treat the plan's `git add` list as a *floor* — run `./x sync`, then 
 `git status --short` reports, adding paths the plan forgot rather than only dropping ones it
 over-named.
 
+**Recurred (ADR-0103, 2026-07-13)** despite this note: adding one `internal/configspec` entry
+regenerates `examples/sundial/docs/config-reference.md` too, but the Phase-3 commit staged only
+the root reference — leaving the example regen for a follow-up commit and three intermediate
+commits `./x check`-red at checkout. The root cause the prose above missed is why staging
+discipline alone keeps failing here: the pre-commit hook validates the *working tree* (where the
+preceding `./x sync` had already written the example file), not the staged snapshot, so a
+regenerated-but-unstaged output passes the hook while the commit itself is drift-red — the
+`.githooks/pre-commit` staged-slice check runs `go build`, not `./x check`. Until the deferred
+fix lands (extend the staged-slice check to run `./x check`, or a `repoaudit` rule flagging a
+commit that touches `internal/configspec`/`internal/catalog`/`templates` but omits the
+`examples/sundial` outputs), the manual guard is: after `./x sync`, `git status --short` and
+stage **every** reported path including the `examples/sundial` tree, and sanity-check by
+`git stash`-ing nothing and re-running `./x check` against the *staged* set, not just the tree.
+
 ## GoReleaser aborts on a dirty git tree — pre-release artifacts belong outside the worktree
 
 _Domains: tooling_
