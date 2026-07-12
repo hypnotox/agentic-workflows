@@ -87,6 +87,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 
+### Proposed
+
+- [ADR-0096: GitHub Release Notes Sourced from the Curated Changelog](../decisions/0096-github-release-notes-sourced-from-the-curated-changelog.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

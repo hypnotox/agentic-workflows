@@ -99,6 +99,10 @@
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md) — Implemented
 - [ADR-0095: Batch tasks in the plan convention](0095-batch-tasks-in-the-plan-convention.md) — Implemented
 
+## Proposed
+
+- [ADR-0096: GitHub Release Notes Sourced from the Curated Changelog](0096-github-release-notes-sourced-from-the-curated-changelog.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
