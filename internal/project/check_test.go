@@ -2,10 +2,85 @@ package project
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+const pitfallsCheckCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
+
+// A disabled pitfalls doc yields no drift and never reads the sidecar.
+func TestCheckPitfallsDisabled(t *testing.T) {
+	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkPitfalls()
+	if err != nil || drift != nil {
+		t.Errorf("disabled pitfalls must yield no drift, got %v / %v", drift, err)
+	}
+}
+
+// An unknown domain yields pitfall-domain drift, a dangling related ADR yields
+// pitfall-adr-link drift, and an entry resolving both yields none.
+// invariant: pitfall-domains-resolved
+// invariant: pitfall-adr-link-resolved
+func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
+	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
+		"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
+			"    - title: Clean\n      domains: [rendering]\n      related: [1]\n      body: ok\n" +
+			"    - title: BadDomain\n      domains: [bogus]\n      body: ok\n" +
+			"    - title: BadLink\n      related: [42]\n      body: ok\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
+			testsupport.WithTitle("0001: Real"), testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkPitfalls()
+	if err != nil {
+		t.Fatalf("checkPitfalls: %v", err)
+	}
+	got := map[string]string{}
+	for _, d := range drift {
+		got[d.Kind] = d.Detail
+	}
+	if len(drift) != 2 || !strings.Contains(got["pitfall-domain"], "bogus") || !strings.Contains(got["pitfall-adr-link"], "0042") {
+		t.Fatalf("want pitfall-domain(bogus) + pitfall-adr-link(0042) drift, got %#v", drift)
+	}
+}
+
+// Valid YAML with a bad data.pitfalls shape surfaces the structural error.
+func TestCheckPitfallsStructuralError(t *testing.T) {
+	p, err := Open(scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
+		"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkPitfalls(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected structural error, got %v", err)
+	}
+}
+
+// A malformed ADR aborts the check via adr.ParseDir.
+func TestCheckPitfallsADRParseError(t *testing.T) {
+	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
+		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: ok\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkPitfalls(); err == nil {
+		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
+	}
+}
 
 // TestCheckPlansValidatesFrontmatterAndLinks exercises checkPlans over a
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,

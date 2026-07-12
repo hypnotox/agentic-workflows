@@ -437,6 +437,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, planDrift...)
+	pitfallDrift, err := p.checkPitfalls()
+	if err != nil { // coverage-ignore: every error checkPitfalls returns is pre-empted by an earlier Check() step (RenderAll's transform reads data.pitfalls; checkPlans parses the decisions dir), so this wiring branch is unreachable
+		return nil, err
+	}
+	drift = append(drift, pitfallDrift...)
 	return drift, nil
 }
 
@@ -648,6 +653,53 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 		for _, n := range pl.ADRs {
 			if !known[fmt.Sprintf("%04d", n)] {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
+			}
+		}
+	}
+	return drift, nil
+}
+
+// checkPitfalls validates the pitfalls sidecar when the doc is enabled: each entry's
+// domains: must resolve to a configured domain, and each related: number to an
+// existing ADR. Structural validation (title/body) is the transform's job; this
+// resolves the links the transform cannot see. A disabled pitfalls doc, or a sidecar
+// with no data.pitfalls, yields no drift.
+// invariant: pitfall-domains-resolved
+// invariant: pitfall-adr-link-resolved
+func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
+	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
+	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was already parsed and validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	entries, err := pitfallEntries(sc.Data["pitfalls"])
+	if err != nil {
+		return nil, err
+	}
+	domains := map[string]bool{}
+	for _, d := range p.Cfg.Domains {
+		domains[d] = true
+	}
+	adrs, err := adr.ParseDir(p.decisionsDir())
+	if err != nil {
+		return nil, err
+	}
+	known := map[string]bool{}
+	for _, a := range adrs {
+		known[a.Number] = true
+	}
+	var drift []manifest.Drift
+	for _, e := range entries {
+		for _, d := range e.Domains {
+			if !domains[d] {
+				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-domain", Detail: fmt.Sprintf("%q: unknown domain %q", e.Title, d)})
+			}
+		}
+		for _, n := range e.Related {
+			if !known[fmt.Sprintf("%04d", n)] {
+				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
 			}
 		}
 	}

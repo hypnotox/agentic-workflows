@@ -175,7 +175,7 @@ var Standard = &Catalog{
 		"testing":      {Title: "Testing", Desc: "gate tiers, test layout, what each tier covers", Sections: []string{"gate", "tiers", "layout"}, TID: "docs/testing.md.tmpl"},
 		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}, TID: "docs/development.md.tmpl"},
 		"debugging":    {Title: "Debugging", Desc: "recipes for common failure modes", Sections: []string{"surfaces", "recipes"}, TID: "docs/debugging.md.tmpl"},
-		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"entries"}, TID: "docs/pitfalls.md.tmpl"},
+		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"prepend", "append"}, TID: "docs/pitfalls.md.tmpl"},
 		"releasing":    {Title: "Releasing", Desc: "how to cut a release — versioning, artifacts, and the publish process", Sections: []string{"content"}, TID: "docs/releasing.md.tmpl"},
 		// The glossary's table is computed from sidecar data.terms, always
 		// sorted (ADR-0089); prepend/append are empty-default framing slots.

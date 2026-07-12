@@ -16,12 +16,16 @@ const glossarySidecarPath = config.DirName + "/docs/glossary.yaml"
 // where a doc's sidecar data is computed into rendered content upstream of both
 // renderTarget and artifactConfigHash, so a change to the computation itself
 // reflags the doc exactly like a config edit (the ADR-0045 both-consumers
-// pattern). Only the glossary computes today.
+// pattern). The glossary and pitfalls docs compute today.
 func docDataTransform(name string, sc config.Sidecar) (config.Sidecar, error) {
-	if name != "glossary" {
+	switch name {
+	case "glossary":
+		return glossaryTransform(sc)
+	case "pitfalls":
+		return pitfallsTransform(sc)
+	default:
 		return sc, nil
 	}
-	return glossaryTransform(sc)
 }
 
 // glossaryTransform replaces data.terms — the authored term→meaning map — with
