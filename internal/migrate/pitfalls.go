@@ -38,11 +38,17 @@ func applyPitfallsData(root string, out io.Writer) error {
 		return err
 	}
 	_ = os.Remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
+	sidecarRel := path.Join(config.DirName, "docs", "pitfalls.yaml")
+	if len(entries) == 0 {
+		// No `## ` heading to split on: the part is removed but its prose is not
+		// carried into the sidecar. Flag it rather than let the deletion be silent.
+		fmt.Fprintf(out, "pitfalls-data: no `## ` headings found — wrote an empty %s and removed the part; its prior content is recoverable from git history\n", sidecarRel)
+		return nil
+	}
 	for _, e := range entries {
 		fmt.Fprintf(out, "pitfalls-data: split entry %q\n", e.title)
 	}
-	fmt.Fprintf(out, "pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n",
-		path.Join(config.DirName, "docs", "pitfalls.yaml"))
+	fmt.Fprintf(out, "pitfalls-data: review %s and tag each entry's domains: (untagged entries do not surface in awf context)\n", sidecarRel)
 	return nil
 }
 

@@ -74,12 +74,15 @@ func TestPitfallsDataSplits(t *testing.T) {
 	}
 }
 
-// A part with no top-level `##` heading yields an empty-list sidecar (still valid).
+// A part with no top-level `##` heading yields an empty-list sidecar (still
+// valid), removes the part, and warns that its content was not carried over so
+// the deletion is not silent.
 func TestPitfallsDataEmptyList(t *testing.T) {
 	root := t.TempDir()
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
 	testsupport.WriteFile(t, part, "just prose, no headings\n")
-	if err := applyPitfallsData(root, io.Discard); err != nil {
+	var out bytes.Buffer
+	if err := applyPitfallsData(root, &out); err != nil {
 		t.Fatalf("applyPitfallsData: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(root, ".awf", "docs", "pitfalls.yaml"))
@@ -88,6 +91,12 @@ func TestPitfallsDataEmptyList(t *testing.T) {
 	}
 	if strings.TrimSpace(string(b)) != "data:\n  pitfalls: []" {
 		t.Errorf("empty part must yield an empty list, got:\n%s", b)
+	}
+	if !strings.Contains(out.String(), "no `## ` headings found") || !strings.Contains(out.String(), "recoverable from git history") {
+		t.Errorf("empty split must warn that content was not carried over, got:\n%s", out.String())
+	}
+	if _, err := os.Stat(part); !os.IsNotExist(err) {
+		t.Errorf("part should still be removed: %v", err)
 	}
 }
 
