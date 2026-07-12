@@ -55,4 +55,5 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
 - [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
+- [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
 

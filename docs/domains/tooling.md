@@ -91,6 +91,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)
 - [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](../decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md)
 
+### Proposed
+
+- [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

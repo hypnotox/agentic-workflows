@@ -18,3 +18,7 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 
+### Proposed
+
+- [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
+
