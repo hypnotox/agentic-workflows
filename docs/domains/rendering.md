@@ -76,4 +76,5 @@ ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCa
 ### Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
+- [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
 
