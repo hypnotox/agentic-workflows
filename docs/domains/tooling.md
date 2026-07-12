@@ -88,6 +88,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 - [ADR-0096: GitHub Release Notes Sourced from the Curated Changelog](../decisions/0096-github-release-notes-sourced-from-the-curated-changelog.md)
 
+### Proposed
+
+- [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032
