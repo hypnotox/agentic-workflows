@@ -168,9 +168,10 @@ Harder / accepted trade-offs:
   but it is genuinely new surface in the assembly.
 - **The implementing commit must convert two parts by hand** (awf's own and `examples/sundial`),
   because the migration runs under `awf upgrade`, not the `./x sync` that re-renders the example.
-- **The migration departs from ADR-0089's ruled-out row.** Justified by the mechanical reliability
-  of the `##`-heading split and made auditable, but it is a deliberate case-specific exception that
-  the ADR records rather than hides.
+- **The migration departs from ADR-0089's ruled-out row.** Justified by the narrower, more
+  tractable `##`-heading split and made safe by auditability (per-entry provenance + review
+  instruction), not by claiming perfect mechanics — a deliberate case-specific exception that the
+  ADR records rather than hides.
 
 Ruled out / deferred:
 - **`awf new pitfall`** — not applicable to a singleton doc with many entries; entries are authored
@@ -198,6 +199,6 @@ same commit regenerates `docs/decisions/ACTIVE.md`.
 |---|---|
 | Directory of per-entry files (the ADR/plan model): `docs/pitfalls/<slug>.md` with frontmatter + `internal/pitfall` ParseDir + `awf new pitfall` | Richer bodies and natural scaffolding, but the largest new surface (new artifact kind, directory, index generation, scaffolding, validation) for entries that are often short, and it converts the single skimmable doc into a directory. Model A reuses an existing seam for the actual goal (domain-tagging + context surfacing) at a fraction of the cost. |
 | In-doc HTML-comment metadata under each `##` heading (keep one authored file, add a metadata line per entry) | A third bespoke parsing dialect alongside frontmatter-files and sidecar-data; fragile and against the project's grain, which prefers frontmatter or sidecar `data`. |
-| Break adopters with a changelog recipe and ship no migration (ADR-0089's chosen path for the glossary) | Rejected *for this case*: pitfalls split on clean top-level `##` headings is mechanically reliable, unlike glossary table parsing, so the ADR-0089 "fragile rewriter" objection does not bind; the user asked to attempt the migration; and an auditable auto-split (per-entry provenance + review instruction) is materially friendlier than hand-reconstructing a ~520-line doc. |
+| Break adopters with a changelog recipe and ship no migration (ADR-0089's chosen path for the glossary) | Rejected *for this case*: the top-level `##`-heading split is materially narrower and more tractable than glossary table parsing, and an auditable auto-split (per-entry provenance + mandatory review, with fenced-code `##` lines skipped) contains the residual mis-split risk rather than relying on perfect mechanics — so the ADR-0089 "fragile rewriter" objection is met by auditability, not by a reliability claim; the user asked to attempt the migration; and it is materially friendlier than hand-reconstructing a ~520-line doc. |
 | Make pitfalls first-class as a persisted per-effort retrospective document | Explored and rejected upstream: it re-opens ADR-0067's ruled-out findings-ledger (Approach B), adds an incentive regression (a dumping ground that lets authors skip promotion), and duplicates homes the plan Notes tail and pitfalls.md already provide. Structuring the existing rung-4 home is the surgical change. |
 | Surface pitfalls transitively via linked ADRs (as plans surface) | A pitfall's relevance is to a *code area*, not to a decision; tagging its own `domains` (like an ADR) is the direct model. `related:` ADRs are rendered as a linked line in the doc and link-validated, but are not a `awf context` surfacing path. |
