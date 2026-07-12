@@ -50,7 +50,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   `cmd/awf/context.go`, `cmd/awf/dispatch.go`, `cmd/awf/context_test.go`,
   `internal/clispec/clispec.go`, `internal/clispec/clispec_test.go` (if flag-set assertions exist),
   `docs/working-with-awf.md`, `docs/decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md`,
-  `docs/decisions/ACTIVE.md`, this plan, `.awf/awf.lock`.
+  `docs/decisions/ACTIVE.md`, `.awf/agents-doc.yaml`, `AGENTS.md`, this plan, `.awf/awf.lock`.
 - **Deleted:** none.
 
 ## Phase 1 — Implement `--uncovered` end-to-end (one commit; deadcode-coupled)
@@ -431,17 +431,32 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
 
 ## Phase 2 — Flip ADR-0102 and this plan to Implemented (final commit)
 
-- [ ] **Task 2.1 — Flip statuses + regenerate.** In
+- [ ] **Task 2.1 — Record the invariants in the agent guide.** Append three bullets to
+  the invariants list in `.awf/agents-doc.yaml` (after the ADR-0099 entries, mirroring
+  the ADR-0092 `context-*` shape — AGENTS.md's Invariants section is generated from this
+  source, so the backed-invariant check would not catch this as drift; it is a
+  hand-maintained convention every recent invariant-introducing ADR followed):
+
+  ```yaml
+          - ref: ADR-0102
+            text: '**Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`).'
+          - ref: ADR-0102
+            text: '**Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`inv: uncovered-collapses-directories`).'
+          - ref: ADR-0102
+            text: '**Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`inv: uncovered-output-parity`).'
+  ```
+
+- [ ] **Task 2.2 — Flip statuses + regenerate.** In
   `docs/decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md` set
   `status: Implemented`. In this plan set `status: Implemented` and record any
-  implementation deltas in Notes. Run `./x sync` to regenerate
-  `docs/decisions/ACTIVE.md`. Run `./x gate` and `./x check` — check now enforces the
-  three slugs are backed (they were marked in Phase 1): expect `awf check: clean`,
-  `awf invariants: clean`.
+  implementation deltas in Notes. Run `./x sync` to re-render `AGENTS.md` (picking up
+  the Task 2.1 bullets) and regenerate `docs/decisions/ACTIVE.md`. Run `./x gate` and
+  `./x check` — check now enforces the three slugs are backed (they were marked in
+  Phase 1): expect `awf check: clean`, `awf invariants: clean`.
 
-- [ ] **Task 2.2 — Verify and commit.** `git add` the ADR, this plan, `ACTIVE.md`, and
-  `.awf/awf.lock`. Commit: `docs(adr): implement 0102 — flip status`. This is the
-  final commit; the plan freezes here.
+- [ ] **Task 2.3 — Verify and commit.** `git add` the ADR, this plan, `ACTIVE.md`,
+  `.awf/agents-doc.yaml`, the re-rendered `AGENTS.md`, and `.awf/awf.lock`. Commit:
+  `docs(adr): implement 0102 — flip status`. This is the final commit; the plan freezes here.
 
 ## Verification
 
