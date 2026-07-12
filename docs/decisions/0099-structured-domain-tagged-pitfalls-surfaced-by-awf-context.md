@@ -59,10 +59,15 @@ Grounding surfaced the constraints this decision must respect:
   ruled out converting an authored part into `data` ("parsing hand-authored markdown is
   unreliable; a changelog recipe beats a fragile rewriter") and instead accepted breaking adopters
   with a changelog recipe and no migration. The distinguishing fact here is that pitfalls split on
-  clean top-level `##` headings — a mechanically reliable transformation, unlike parsing arbitrary
-  glossary table framing — and the user asked to attempt it. This ADR therefore takes the opposite
-  path *for this case*, with the split made auditable (per-entry provenance + a review instruction)
-  precisely because the ADR-0089 concern is real.
+  top-level `##` headings — a far narrower and more tractable transformation than parsing arbitrary
+  glossary table framing — and the user asked to attempt it. The split is *not* absolutely
+  reliable: a `##` line inside a fenced code block or a nested sub-heading in an adopter's body
+  could still be mis-split, and "top-level heading" is a property of awf's own flat corpus, not one
+  the migration can prove from raw markdown. The migration reduces that risk mechanically (it skips
+  `##` lines inside fenced code) but the actual safety is **auditability**, not perfect mechanics:
+  the per-entry provenance and mandatory review instruction (Decision item 6) mean a mis-split
+  surfaces for human correction rather than landing silently. That is what makes the departure
+  defensible where ADR-0089's silent-rewrite concern was not.
 
 ## Decision
 
@@ -75,9 +80,12 @@ Grounding surfaced the constraints this decision must respect:
 
 2. **Render via the ADR-0089 transform seam.** A `renderKindSpec.transform` (a sibling of
    `glossaryTransform` in `internal/project/glossary.go`) replaces `data.pitfalls` with the
-   assembled markdown — each entry as a `## <title>` section, an optional domain line, and its
-   `body` — computed upstream of render and config-hash so the doc stays in the ordinary drift
-   model. Malformed data (empty title, a newline in a title, empty body) is a hard render error.
+   assembled markdown — each entry as a `## <title>` section, an optional domain line, an optional
+   `Related:` line of linked ADR references built from `related:`, and its `body` — computed
+   upstream of render and config-hash so the doc stays in the ordinary drift model. Rendering
+   `related:` gives the field a reader in the doc itself, so it is projected data rather than
+   validate-only metadata. Malformed data (empty title, a newline in a title, empty body) is a hard
+   render error.
 
 3. **Retire the stub; render from plain template text.** The `pitfalls` `DocEntry` sections change
    from the single `entries` stub to plain framing sections plus a body that textually references
@@ -101,8 +109,10 @@ Grounding surfaced the constraints this decision must respect:
 
 6. **Ship a schema migration that auto-splits the existing part.** A new schema-9 migration
    converts a present `.awf/docs/parts/pitfalls/entries.md` into `data.pitfalls` entries — each
-   top-level `## ` heading becomes an entry's `title`, the text beneath becomes its `body`, and
-   `domains`/`related` are left empty for the adopter to fill in. The migration **prints one
+   top-level `## ` heading *outside a fenced code block* becomes an entry's `title`, the text
+   beneath becomes its `body`, and `domains`/`related` are left empty for the adopter to fill in.
+   Skipping fenced code narrows the residual mis-split risk; auditability (below) covers the rest.
+   The migration **prints one
    provenance line per created entry** and closes with an explicit instruction to review the split
    and tag domains; it **deletes** the now-orphaned part file (else it becomes ADR-0086
    orphaned-part drift); and it is idempotent (a no-op once the sidecar exists / the part is
@@ -116,6 +126,10 @@ Grounding surfaced the constraints this decision must respect:
    description entry (ADR-0088).
 
 ## Invariants
+
+Each slug below is backed by a `// invariant: <slug>` marker (comment or test) in the implementing
+commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them once this ADR is
+`Implemented`.
 
 - `inv: pitfall-data-validated` — `awf check` fails on unparseable `.awf/docs/pitfalls.yaml`
   data, and on an entry with an empty/newline-bearing title or an empty body; the transform that
@@ -170,7 +184,8 @@ Ruled out / deferred:
 
 Downstream work unblocked: an implementation plan covering the sidecar model + transform + template
 retirement of the stub; the `ContextResult.Pitfalls` field + `ContextFor` reader + `awf context`
-rendering; the `awf check` domain/ADR-link/parse validation; the schema-9 auto-split migration
+rendering; the four new `inv:` slugs backed with markers + tests; the `awf check`
+domain/ADR-link/parse validation; the schema-9 auto-split migration
 (+ `minVersionBySchema` + version bump); the hand-conversion of awf's own and the example adopter's
 parts; the `configspec` data-key entry; and the doc currency (AGENTS.md invariants list, the
 `rendering`/`tooling` domain current-state parts, `config-reference.md`, glossary, and a changelog
@@ -185,4 +200,4 @@ same commit regenerates `docs/decisions/ACTIVE.md`.
 | In-doc HTML-comment metadata under each `##` heading (keep one authored file, add a metadata line per entry) | A third bespoke parsing dialect alongside frontmatter-files and sidecar-data; fragile and against the project's grain, which prefers frontmatter or sidecar `data`. |
 | Break adopters with a changelog recipe and ship no migration (ADR-0089's chosen path for the glossary) | Rejected *for this case*: pitfalls split on clean top-level `##` headings is mechanically reliable, unlike glossary table parsing, so the ADR-0089 "fragile rewriter" objection does not bind; the user asked to attempt the migration; and an auditable auto-split (per-entry provenance + review instruction) is materially friendlier than hand-reconstructing a ~520-line doc. |
 | Make pitfalls first-class as a persisted per-effort retrospective document | Explored and rejected upstream: it re-opens ADR-0067's ruled-out findings-ledger (Approach B), adds an incentive regression (a dumping ground that lets authors skip promotion), and duplicates homes the plan Notes tail and pitfalls.md already provide. Structuring the existing rung-4 home is the surgical change. |
-| Surface pitfalls transitively via linked ADRs (as plans surface) | A pitfall's relevance is to a *code area*, not to a decision; tagging its own `domains` (like an ADR) is the direct model. `related:` ADRs stay informational (and link-validated), not a surfacing path. |
+| Surface pitfalls transitively via linked ADRs (as plans surface) | A pitfall's relevance is to a *code area*, not to a decision; tagging its own `domains` (like an ADR) is the direct model. `related:` ADRs are rendered as a linked line in the doc and link-validated, but are not a `awf context` surfacing path. |
