@@ -63,6 +63,13 @@ templates. `TestUnsetFallbackRenders` reads both base templates from `templates.
 regression fails the gate — but the failure is a confusing missing-file error, not an obvious embed
 bug, hence this note.
 
+The same directive is an **explicit directory allowlist**, not a glob, so it has a second edge: a
+brand-new top-level template directory (a new singleton's `templates/<name>/`) is silently *not*
+embedded until its name is added to the `//go:embed` line. The symptom is identical — `awf sync`
+fails with `read template <name>/…: file does not exist` even though the file is on disk — because
+the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
+`templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
+
 ## Concurrent agents in one worktree share the git index
 
 Two agents working in the same checkout share one staging area: `git commit` commits the
