@@ -21,10 +21,12 @@ func runNew(root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":
 		return newADR(root, args, stdout)
+	case "plan":
+		return newPlan(root, args, stdout)
 	case "skill", "agent", "doc":
 		return newLocal(root, kind, args, stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, skill, agent, doc)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, skill, agent, doc)", kind)}
 	}
 }
 
@@ -40,6 +42,25 @@ func newADR(root string, titleWords []string, stdout io.Writer) error {
 		return err
 	}
 	path, err := p.NewADR(strings.Join(titleWords, " "))
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(stdout, path)
+	return nil
+}
+
+func newPlan(root string, titleWords []string, stdout io.Writer) error {
+	if len(titleWords) == 0 {
+		return &usageErr{"usage: awf new plan <title>"}
+	}
+	if err := gate(root); err != nil {
+		return err
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	path, err := p.NewPlan(strings.Join(titleWords, " "))
 	if err != nil {
 		return err
 	}

@@ -145,13 +145,14 @@ Flags:
 `,
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent, doc}",
+		Name: "new", Summary: "Scaffold a new artifact — kind ∈ {adr, plan, skill, agent, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf new <kind> <args>
 
-Scaffold a new artifact. <kind> is adr, skill, agent, or doc.
+Scaffold a new artifact. <kind> is adr, plan, skill, agent, or doc.
 
 - awf new adr "Some Decision Title"
+- awf new plan "Some Plan Title"
 - awf new skill <name> "<description>"   (a project-local skill)
 - awf new agent <name> "<description>"   (a project-local agent)
 - awf new doc <name> "<description>"     (a project-local doc; name may be nested, e.g. guides/ci)
@@ -163,6 +164,14 @@ Scaffold a new artifact. <kind> is adr, skill, agent, or doc.
 
 Scaffold a new ADR under docs/decisions with the next sequential number, from
 the rendered template with its date and title heading filled in.
+`,
+			},
+			{
+				Name: "plan", Summary: "Scaffold a new plan", MinPos: 0, MaxPos: -1,
+				HelpBody: `Usage: awf new plan <title>
+
+Scaffold a new plan under docs/plans, date-prefixed (no sequential number),
+from the rendered plans template with its date and title heading filled in.
 `,
 			},
 			{

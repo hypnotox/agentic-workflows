@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 )
 
 // Version is the awf release version — the single version authority
@@ -340,4 +341,10 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 // exported method, never internal/project.Layout directly.
 func (p *Project) NewADR(title string) (string, error) {
 	return adr.NewFile(p.decisionsDir(), title)
+}
+
+// NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
+// template. Mirrors NewADR minus sequential numbering (ADR-0098).
+func (p *Project) NewPlan(title string) (string, error) {
+	return plan.NewFile(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"), title)
 }

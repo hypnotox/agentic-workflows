@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -40,6 +41,57 @@ func TestRunNewUnknownKind(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runNew(root, "widget", []string{"x"}, os.Stdout); err == nil {
 		t.Fatal("expected error for unknown kind")
+	}
+}
+
+func TestRunNewScaffoldsPlan(t *testing.T) {
+	root := scaffoldProject(t)
+	var out bytes.Buffer
+	if err := runNew(root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
+		t.Fatalf("runNew: %v", err)
+	}
+	got := strings.TrimSpace(out.String())
+	// Date-prefixed under docs/plans (no sequential number); the date is today's,
+	// so match on shape rather than couple the test to the wall clock.
+	if dir := filepath.Dir(got); dir != filepath.Join(root, "docs", "plans") {
+		t.Errorf("plan written to %q, want under docs/plans", got)
+	}
+	if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-some-plan-title\.md$`).MatchString(filepath.Base(got)) {
+		t.Errorf("plan filename %q not YYYY-MM-DD-some-plan-title.md", filepath.Base(got))
+	}
+	body, err := os.ReadFile(got)
+	if err != nil {
+		t.Fatalf("created file not found: %v", err)
+	}
+	if !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
+		t.Errorf("plan not scaffolded from template:\n%s", body)
+	}
+}
+
+func TestRunNewPlanMissingTitle(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "plan", nil, os.Stdout); err == nil {
+		t.Fatal("expected usage error for a missing plan title")
+	}
+}
+
+func TestRunNewPlanRefusesExisting(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := runNew(root, "plan", []string{"Same", "Plan"}, io.Discard); err != nil {
+		t.Fatalf("first runNew: %v", err)
+	}
+	if err := runNew(root, "plan", []string{"Same", "Plan"}, io.Discard); err == nil {
+		t.Fatal("expected overwrite refusal for a same-day same-title plan")
+	}
+}
+
+func TestRunNewPlanOpenError(t *testing.T) {
+	root := scaffoldProject(t)
+	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
+	// covering newPlan's Open-error return.
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
+	if err := runNew(root, "plan", []string{"Some", "Plan"}, io.Discard); err == nil {
+		t.Fatal("expected project.Open error")
 	}
 }
 

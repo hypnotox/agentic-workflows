@@ -103,6 +103,9 @@ func TestNewGatesInHandler(t *testing.T) {
 	if err := runNew(root, "adr", []string{"x"}, &out); err == nil {
 		t.Error("runNew: expected gate error on ahead schema")
 	}
+	if err := runNew(root, "plan", []string{"x"}, &out); err == nil {
+		t.Error("runNew plan: expected gate error on ahead schema")
+	}
 	if err := runNew(root, "skill", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew skill: expected gate error on ahead schema")
 	}
