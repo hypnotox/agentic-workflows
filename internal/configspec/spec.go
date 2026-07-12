@@ -114,6 +114,11 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
+		Path: "tags", Type: "key → value map", Default: "none",
+		Description:  "A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. ADR `tags:` and pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. An empty or absent vocabulary disables the check (tags are then free-form). Declaring a member no artifact uses is allowed.",
+		Availability: "Always; the membership check is inert until the vocabulary is non-empty.",
+	},
+	{
 		Path: "invariants.disabled", Type: "bool", Default: "false",
 		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants — set `sources` or set this true.",
 		Availability: "Always.",
