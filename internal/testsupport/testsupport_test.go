@@ -94,12 +94,13 @@ func TestADREveryOption(t *testing.T) {
 		testsupport.WithTitle("0002: Full"),
 		testsupport.WithDate("2026-06-25"),
 		testsupport.WithTags("x", "y"),
+		testsupport.WithRelated(1, 5),
 		testsupport.WithDomains("tooling"),
 		testsupport.WithRetiresInvariants("old-slug"),
 		testsupport.WithSupersededBy("0003"),
 		testsupport.WithBody("## Context\nbody\n"),
 	)
-	want := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x, y]\ndomains: [tooling]\nretires_invariants: [old-slug]\nsuperseded_by: \"0003\"\n---\n# ADR-0002: Full\n## Context\nbody\n"
+	want := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x, y]\nrelated: [1, 5]\ndomains: [tooling]\nretires_invariants: [old-slug]\nsuperseded_by: \"0003\"\n---\n# ADR-0002: Full\n## Context\nbody\n"
 	if got != want {
 		t.Errorf("ADR(full) =\n%q\nwant\n%q", got, want)
 	}

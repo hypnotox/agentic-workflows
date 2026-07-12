@@ -39,6 +39,8 @@ type ADR struct {
 	Filename          string            // e.g. "0001-template-overlay-rendering-engine.md"
 	Path              string            // path as globbed
 	Domains           []string          // `domains:` frontmatter (ADR-0014)
+	Tags              []string          // `tags:` frontmatter (keyword labels)
+	Related           []int             // `related:` frontmatter (ADR numbers)
 	SupersededBy      string            // `superseded_by:` frontmatter (e.g. "0008", or "")
 	RetiresInvariants []string          // `retires_invariants:` frontmatter (ADR-0031)
 	Sections          map[string]string // `## ` heading -> section body
@@ -78,6 +80,8 @@ func ParseDir(dir string) ([]ADR, error) {
 type adrFrontmatter struct {
 	Status            string   `yaml:"status"`
 	Domains           []string `yaml:"domains"`
+	Tags              []string `yaml:"tags"`
+	Related           []int    `yaml:"related"`
 	SupersededBy      string   `yaml:"superseded_by"`
 	RetiresInvariants []string `yaml:"retires_invariants"`
 }
@@ -89,7 +93,7 @@ func parse(data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	a := ADR{Status: fm.Status, Domains: fm.Domains, SupersededBy: fm.SupersededBy, RetiresInvariants: fm.RetiresInvariants, Sections: sections(string(body))}
+	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, RetiresInvariants: fm.RetiresInvariants, Sections: sections(string(body))}
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")

@@ -11,6 +11,7 @@ package testsupport
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -73,6 +74,7 @@ type adrOpts struct {
 	title             string
 	date              string
 	tags              []string
+	related           []int
 	domains           []string
 	retiresInvariants []string
 	supersededBy      string
@@ -89,6 +91,9 @@ func WithDate(date string) ADROption { return func(o *adrOpts) { o.date = date }
 
 // WithTags sets the frontmatter tags array.
 func WithTags(tags ...string) ADROption { return func(o *adrOpts) { o.tags = tags } }
+
+// WithRelated sets the frontmatter related array (ADR numbers).
+func WithRelated(nums ...int) ADROption { return func(o *adrOpts) { o.related = nums } }
 
 // WithDomains sets the frontmatter domains array.
 func WithDomains(domains ...string) ADROption { return func(o *adrOpts) { o.domains = domains } }
@@ -127,6 +132,13 @@ func ADR(status string, opts ...ADROption) string {
 	}
 	if o.tags != nil {
 		b.WriteString("tags: [" + strings.Join(o.tags, ", ") + "]\n")
+	}
+	if o.related != nil {
+		parts := make([]string, len(o.related))
+		for i, n := range o.related {
+			parts[i] = strconv.Itoa(n)
+		}
+		b.WriteString("related: [" + strings.Join(parts, ", ") + "]\n")
 	}
 	if o.domains != nil {
 		b.WriteString("domains: [" + strings.Join(o.domains, ", ") + "]\n")

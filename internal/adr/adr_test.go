@@ -177,6 +177,32 @@ func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 	}
 }
 
+// TestParseDirExtractsTagsAndRelated confirms the revived tags:/related:
+// frontmatter is lifted into adr.ADR (previously parsed past and dropped).
+func TestParseDirExtractsTagsAndRelated(t *testing.T) {
+	dir := t.TempDir()
+	content := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+		testsupport.WithTags("context", "config"), testsupport.WithRelated(1, 92),
+		testsupport.WithTitle("0007: Tagged"), testsupport.WithBody("## Context\nx\n"))
+	if err := os.WriteFile(filepath.Join(dir, "0007-tagged.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+	if len(adrs) != 1 {
+		t.Fatalf("expected 1 ADR, got %d", len(adrs))
+	}
+	got := adrs[0]
+	if len(got.Tags) != 2 || got.Tags[0] != "context" || got.Tags[1] != "config" {
+		t.Errorf("tags: got %#v", got.Tags)
+	}
+	if len(got.Related) != 2 || got.Related[0] != 1 || got.Related[1] != 92 {
+		t.Errorf("related: got %#v", got.Related)
+	}
+}
+
 // TestParseDirGlobError exercises the glob-pattern failure path: a directory
 // whose name contains an unterminated "[" yields an ErrBadPattern from Glob.
 func TestParseDirGlobError(t *testing.T) {
