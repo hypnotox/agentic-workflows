@@ -207,9 +207,12 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   ```
 
   Also **export** the existing `normalizeContextPaths` by renaming it to
-  `NormalizeContextPaths` (unchanged body), and update its two callers —
+  `NormalizeContextPaths` (body unchanged), and update its two callers —
   `ContextFor` (line ~69, `clean := NormalizeContextPaths(paths)`) and the new
-  `Uncovered` above. The CLI static fallback (Task 1.3) also calls it.
+  `Uncovered` above. The CLI static fallback (Task 1.3) also calls it. Also update the
+  function's doc comment (context.go:~187) so its leading word is `NormalizeContextPaths`,
+  not `normalizeContextPaths` — staticcheck ST1020 (enabled via `staticcheck ["all", …]`)
+  requires an exported function's doc to start with its name, or `./x gate` fails.
 
 - [ ] **Task 1.3 — Wire the `--uncovered` mode into `runContext` + add `printUncovered`.**
   In `cmd/awf/context.go`: add `uncovered bool` to `runContext`'s signature (after
@@ -388,8 +391,10 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   git init):
   - `TestRunContextUncoveredHuman`: in an adopted tree with a domain owning
     `internal/render/**`, a committed uncovered file `internal/plan/p.go`; run
-    `runContext(dir, nil, false, "", false, true, buf)`; assert stdout contains
-    `## Uncovered` and `internal/plan/`.
+    `runContext(dir, []string{"internal/plan"}, false, "", false, true, buf)` (a scan
+    root, so the `scan roots:` line renders — covers `printUncovered`'s
+    `len(ScanRoots) > 0` branch); assert stdout contains `## Uncovered`,
+    `internal/plan/`, and `scan roots:`.
   - `TestRunContextUncoveredJSONParity`: same setup, `asJSON=true`; decode stdout into
     `project.UncoveredResult`; assert its `Entries` equals the human run's listed
     entries (parity).
