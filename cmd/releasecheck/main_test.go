@@ -168,11 +168,17 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		t.Error("the `awf changelog --version` extraction must run before the GoReleaser step")
 	}
 	// The extraction redirect and the --release-notes arg must name the same file, or
-	// the release body silently diverges from what was written. Assert the shared basename
-	// appears both in a redirect (`> ...release-notes.md`) and on the --release-notes line.
+	// the release body silently diverges from what was written. Assert the extraction line
+	// redirects to a RUNNER_TEMP-scoped release-notes.md (outside the worktree, so
+	// GoReleaser's dirty-tree check passes) and that the --release-notes arg names the same
+	// basename — checking the components rather than one pinned interpolation form.
 	const notesFile = "release-notes.md"
-	if !strings.Contains(wf, "> \"${RUNNER_TEMP}/"+notesFile+"\"") {
-		t.Errorf("release.yml does not redirect the extracted notes to $RUNNER_TEMP/%s", notesFile)
+	extractLine := wf[extract:]
+	if nl := strings.IndexByte(extractLine, '\n'); nl >= 0 {
+		extractLine = extractLine[:nl]
+	}
+	if !strings.Contains(extractLine, ">") || !strings.Contains(extractLine, "RUNNER_TEMP") || !strings.Contains(extractLine, notesFile) {
+		t.Errorf("the extraction step must redirect (>) into a RUNNER_TEMP-scoped %s, got %q", notesFile, extractLine)
 	}
 	relIdx := strings.Index(wf, "--release-notes")
 	if relIdx < 0 {
