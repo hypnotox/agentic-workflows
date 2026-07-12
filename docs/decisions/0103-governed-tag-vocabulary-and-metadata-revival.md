@@ -96,6 +96,11 @@ Grounding also fixed the boundaries this decision must respect:
    member of the vocabulary, and on any vocabulary entry whose meaning is empty. When the vocabulary
    is empty or absent, the membership rule is inert (no findings) — the opt-in degradation. This
    mirrors `pitfall-domains-resolved` structurally: a used label must resolve to a configured member.
+   Governance is one-directional by design — a declared vocabulary member that no ADR or pitfall
+   currently uses is intentionally permitted (declared members are the authority, not a
+   required-exhaustive set), exactly as an unused configured domain is allowed under
+   `pitfall-domains-resolved`; this keeps a deliberately-reserved or transiently-orphaned member
+   (e.g. left behind after a synonym merge) from failing the gate.
 
 5. **Resolve ADR `related:` links in `awf check`.** Now that `related:` is parsed, `awf check` fails
    an ADR whose `related:` names an ADR number with no matching file under `docs/decisions/` —
@@ -109,7 +114,9 @@ Grounding also fixed the boundaries this decision must respect:
    `query`→`context`, and the rest of the long tail) into their canonical members. awf's own ~102
    ADRs and ~43 pitfalls are re-tagged to the curated set in the same commit — a one-time in-repo
    edit, **not** a schema migration (per Context). The curation is quality-first (a tight, meaningful
-   set), not a mechanical union of every label in use.
+   set), not a mechanical union of every label in use. The same commit confirms that every existing
+   ADR `related:` reference already resolves (it does across the current corpus), so enabling item 5's
+   unconditional check lands green rather than flagging pre-existing dangling links.
 
 ## Invariants
 
@@ -169,8 +176,10 @@ lift; the pitfall `tags:` parse; the `config.Tags` key + `configspec` entry + `c
 regeneration; the two `awf check` rules (vocabulary governance + ADR `related:` resolution) backed
 with `inv:` markers and tests; the curated vocabulary authored into `.awf/config.yaml`; the one-time
 corpus re-tagging of awf's ADRs and pitfalls; and doc currency (the AGENTS.md invariants list, the
-`config`/`invariants`/`tooling` domain current-state parts, `config-reference.md`, and a changelog
-`[Unreleased]` entry). When this ADR flips to `Implemented`, the same commit regenerates
+`config` and `adr-system` domain current-state parts — the two domains whose owned code territory
+changes, `internal/config` and `internal/adr`; the new `awf check` rules land in the domain-unowned
+`internal/project` and `internal/invariants` is untouched this slice — `config-reference.md`, and a
+changelog `[Unreleased]` entry). When this ADR flips to `Implemented`, the same commit regenerates
 `docs/decisions/ACTIVE.md`.
 
 ## Alternatives Considered
