@@ -72,3 +72,7 @@ ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCa
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](../decisions/0097-plan-convention-sections-granularity-and-lifecycle.md)
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
 
+### Proposed
+
+- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)
+

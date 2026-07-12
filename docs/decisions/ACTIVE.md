@@ -102,6 +102,10 @@
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](0097-plan-convention-sections-granularity-and-lifecycle.md) — Implemented
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](0098-structured-plan-artifact-frontmatter-template-and-linking.md) — Implemented
 
+## Proposed
+
+- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
