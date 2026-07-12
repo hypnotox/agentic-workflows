@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [cli, context, domains, coverage]
-related: [14, 77, 86, 92]
+related: [14, 77, 86, 92, 94]
 domains: [tooling]
 ---
 # ADR-0102: Domain-Coverage Report Mode via awf context --uncovered
@@ -21,10 +21,12 @@ gaps**. A repository can leave whole packages owned by no domain, silently, and
 the only symptom is thin context for those paths.
 
 awf itself demonstrates the problem: the five configured domains cover
-`internal/adr`, `internal/config|migrate|manifest`, `internal/invariants`,
-`internal/render|catalog|templates`, and `cmd|internal/audit|coverage|changelog|evals`
-— but **not** `internal/project`, `internal/plan`, `internal/frontmatter`,
-`internal/pathglob`, `internal/git`, or `internal/configspec`. Querying
+`internal/adr`; `internal/config|migrate|manifest`; `internal/invariants`;
+`internal/render`, `internal/catalog`, and top-level `templates/`; and `cmd/`,
+`internal/audit|coverage|changelog|evals`, plus the top-level `x` runner — but
+**not** several `internal/` packages (e.g. `internal/project`, `internal/plan`,
+`internal/frontmatter`, `internal/pathglob`, `internal/git`, `internal/clispec`,
+`internal/configspec`). Querying
 `awf context internal/project/placeholders.go` today returns bare invariant slugs
 and zero related ADRs, because the file belongs to no domain. The gap is invisible
 until someone runs a query and notices the silence.
@@ -42,11 +44,13 @@ runs on demand to decide where new domains are warranted.
    the inverse of the domain-ownership test `awf context <paths>` already performs.
 
 2. **Argument contract in `--uncovered` mode.** Positional arguments are optional
-   **scan-root prefixes** that restrict the report to tracked paths beneath them;
-   with none given the scan root is the repository root. `--staged` and `--range`
-   (which resolve *changed* paths, a different intent) are rejected in this mode
-   with a usage error. This inverts the normal-mode contract, where at least one
-   path or selector is required.
+   **scan-root directories** that restrict the report to tracked paths beneath them;
+   with none given the scan root is the repository root. Matching is on
+   slash-separated path-segment boundaries (a directory subtree), not raw string
+   prefixes — `internal/git` scans that directory's subtree and never a sibling like
+   `internal/gitlab`. `--staged` and `--range` (which resolve *changed* paths, a
+   different intent) are rejected in this mode with a usage error. This inverts the
+   normal-mode contract, where at least one path or selector is required.
 
 3. **Scanned set is git-tracked files at HEAD.** A new read-only helper in
    `internal/git` lists the repository's tracked paths (walking the HEAD tree, a
@@ -75,10 +79,13 @@ runs on demand to decide where new domains are warranted.
 
 ## Invariants
 
-- `inv: uncovered-lists-unowned-only` — In `--uncovered` mode the report contains
-  exactly the scanned tracked paths (under the given scan roots, or the whole tree)
-  matched by no configured domain `paths` glob; a path owned by any domain never
-  appears.
+- `inv: uncovered-lists-unowned-only` — In `--uncovered` mode the reported entries
+  cover exactly the scanned tracked paths (under the given scan roots, or the whole
+  tree) matched by no configured domain `paths` glob: every such uncovered path is
+  represented by exactly one reported entry — itself or a reported ancestor
+  directory — and no path owned by a domain is represented by any entry. (Whether an
+  entry is a file or a collapsed directory is the separate
+  `uncovered-collapses-directories` contract.)
 - `inv: uncovered-collapses-directories` — A directory all of whose scanned tracked
   descendants are uncovered is reported as that topmost directory, never as its
   individual descendant files.
@@ -96,8 +103,12 @@ this ADR adds no separate slug for them.
   on domain-coverage completeness that ADR-0014's model never surfaced.
 - awf dogfoods it: the report is how the currently-unowned `internal/*` packages get
   found and given domains, which in turn strengthens every domain-derived signal.
-- One small new read-only helper in `internal/git` (tracked-path listing at HEAD);
-  no change to normal-mode `awf context <paths>` behavior.
+- Implementation surfaces beyond the assembly, all updated in the same commit: a
+  small new read-only helper in `internal/git` (tracked-path listing at HEAD); the
+  `context` `CommandSpec` in `internal/clispec` (register `--uncovered`, extend the
+  help/usage with the mode and its rejection of `--staged`/`--range`; ADR-0094); and
+  the `awf context` entry in `docs/working-with-awf.md`. Normal-mode
+  `awf context <paths>` behavior is unchanged.
 - The `--json` output grows a coverage-report shape (a new mode result). Pre-1.0,
   a schema addition is acceptable.
 - Deliberately *not* an audit rule: coverage is adopter judgment (many repos rightly
