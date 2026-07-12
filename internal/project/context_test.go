@@ -188,6 +188,84 @@ invariants:
 	}
 }
 
+const ctxPitfallsYAML = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [alpha, beta]\n"
+
+// ctxPitfallsProject scaffolds a tree where alpha owns cmd/**, beta owns lib/**,
+// and the pitfalls sidecar carries the given data.
+func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
+	t.Helper()
+	root := scaffoldFiles(t, ctxPitfallsYAML, map[string]string{
+		"domains/alpha.yaml": "paths:\n  - cmd/**\n",
+		"domains/beta.yaml":  "paths:\n  - lib/**\n",
+		"docs/pitfalls.yaml": sidecar,
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root, p
+}
+
+// A pitfall whose own domain owns a queried path surfaces (sorted by title); a
+// pitfall owning only an unqueried domain, and a domainless pitfall, do not.
+// invariant: context-surfaces-pitfalls
+func TestContextForSurfacesPitfalls(t *testing.T) {
+	_, p := ctxPitfallsProject(t, "data:\n  pitfalls:\n"+
+		"    - title: Bravo\n      domains: [alpha]\n      body: b\n"+
+		"    - title: Alfa\n      domains: [alpha]\n      body: b\n"+
+		"    - title: OnlyBeta\n      domains: [beta]\n      body: b\n"+
+		"    - title: Cross\n      body: b\n")
+	res, err := p.ContextFor([]string{"cmd/x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, pf := range res.Pitfalls {
+		got = append(got, pf.Title)
+	}
+	if strings.Join(got, ",") != "Alfa,Bravo" {
+		t.Fatalf("pitfalls: got %v want [Alfa Bravo] sorted (OnlyBeta + Cross excluded)", got)
+	}
+	if res.Pitfalls[0].Path != "docs/pitfalls.md" || strings.Join(res.Pitfalls[0].Domains, ",") != "alpha" {
+		t.Errorf("pitfall ref fields wrong: %+v", res.Pitfalls[0])
+	}
+}
+
+// A disabled pitfalls doc surfaces no pitfalls.
+func TestContextForPitfallsDisabled(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [alpha]\n",
+		map[string]string{"domains/alpha.yaml": "paths:\n  - cmd/**\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.ContextFor([]string{"cmd/x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Pitfalls != nil {
+		t.Errorf("disabled pitfalls must surface none, got %v", res.Pitfalls)
+	}
+}
+
+// Both pitfalls reader faults propagate: a structural error (valid YAML, bad
+// shape) and a post-Open sidecar parse error (the sidecar re-reads on each call).
+func TestContextForPitfallsFaults(t *testing.T) {
+	t.Run("structural error", func(t *testing.T) {
+		_, p := ctxPitfallsProject(t, "data:\n  pitfalls: not-a-list\n")
+		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
+			t.Error("expected a pitfalls structural error")
+		}
+	})
+	t.Run("sidecar parse error", func(t *testing.T) {
+		root, p := ctxPitfallsProject(t, "data:\n  pitfalls: []\n")
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls.yaml"), "data:\n  pitfalls: [\n")
+		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
+			t.Error("expected a pitfalls sidecar parse error")
+		}
+	})
+}
+
 // Each reader's fault propagates out of ContextFor. Faults are induced after
 // Open (config.Sidecar and adr.ParseDir re-read from disk on each call).
 func TestContextForReaderFaults(t *testing.T) {

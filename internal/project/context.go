@@ -2,6 +2,7 @@ package project
 
 import (
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,12 +18,21 @@ import (
 // the invariant slugs backed under those paths, the ADRs related via the owning
 // domains, and any queried path matching no configured domain.
 type ContextResult struct {
-	Paths      []string    `json:"paths"`
-	Domains    []DomainRef `json:"domains"`
-	Invariants []string    `json:"invariants"`
-	ADRs       []ADRRef    `json:"adrs"`
-	Plans      []PlanRef   `json:"plans"`
-	Unowned    []string    `json:"unowned"`
+	Paths      []string     `json:"paths"`
+	Domains    []DomainRef  `json:"domains"`
+	Invariants []string     `json:"invariants"`
+	ADRs       []ADRRef     `json:"adrs"`
+	Plans      []PlanRef    `json:"plans"`
+	Pitfalls   []PitfallRef `json:"pitfalls"`
+	Unowned    []string     `json:"unowned"`
+}
+
+// PitfallRef is a pitfall surfaced because one of its domains: owns a queried
+// path. Path is the docsDir-rooted pitfalls doc; Domains are the entry's own tags.
+type PitfallRef struct {
+	Title   string   `json:"title"`
+	Domains []string `json:"domains"`
+	Path    string   `json:"path"`
 }
 
 // PlanRef is a plan surfaced because its adrs: links an ADR reported for the
@@ -145,6 +155,32 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		}
 	}
 	sort.Slice(res.Plans, func(i, j int) bool { return res.Plans[i].Filename < res.Plans[j].Filename })
+
+	// Surface pitfalls whose own domains: owns a queried path (like ADRs, not
+	// transitively like plans). Only when the toggleable pitfalls doc is enabled.
+	// invariant: context-surfaces-pitfalls
+	if slices.Contains(p.Cfg.Docs, "pitfalls") {
+		sc, err := p.Cfg.Sidecar("docs", "pitfalls")
+		if err != nil {
+			return ContextResult{}, err
+		}
+		entries, err := pitfallEntries(sc.Data["pitfalls"])
+		if err != nil {
+			return ContextResult{}, err
+		}
+		for _, e := range entries {
+			for _, d := range e.Domains {
+				if owners[d] {
+					res.Pitfalls = append(res.Pitfalls, PitfallRef{
+						Title: e.Title, Domains: e.Domains,
+						Path: lay.DocsDir + "/pitfalls.md",
+					})
+					break
+				}
+			}
+		}
+		sort.Slice(res.Pitfalls, func(i, j int) bool { return res.Pitfalls[i].Title < res.Pitfalls[j].Title })
+	}
 	return res, nil
 }
 

@@ -24,6 +24,8 @@ skills:
   - tdd
 agents:
   - code-reviewer
+docs:
+  - pitfalls
 domains:
   - alpha
   - beta
@@ -57,6 +59,9 @@ func ctxFixture(t *testing.T) string {
 	// A plan linking ADR 0001 (alpha-owned → surfaced for cmd/ queries).
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
 		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
+	// A pitfall tagged alpha → surfaced for cmd/ queries.
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls.yaml"),
+		"data:\n  pitfalls:\n    - title: Worktree hazard\n      domains: [alpha]\n      body: use a worktree\n")
 	return root
 }
 
@@ -78,6 +83,8 @@ func TestRunContextHuman(t *testing.T) {
 		"invariants: [declared-slug]",
 		"## Related plans",
 		"2026-07-12-linked.md (Proposed) — docs/plans/2026-07-12-linked.md",
+		"## Related pitfalls",
+		"Worktree hazard [alpha] — docs/pitfalls.md",
 		"## Unowned paths",
 		"README.md",
 	} {
@@ -111,12 +118,15 @@ func TestRunContextJSONParity(t *testing.T) {
 	if len(res.Plans) != 1 || res.Plans[0].Filename != "2026-07-12-linked.md" || res.Plans[0].Status != "Proposed" {
 		t.Errorf("json plans: %+v", res.Plans)
 	}
+	if len(res.Pitfalls) != 1 || res.Pitfalls[0].Title != "Worktree hazard" || res.Pitfalls[0].Path != "docs/pitfalls.md" {
+		t.Errorf("json pitfalls: %+v", res.Pitfalls)
+	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
 	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug", "2026-07-12-linked.md"} {
+	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug", "2026-07-12-linked.md", "Worktree hazard"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
