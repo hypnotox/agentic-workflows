@@ -70,7 +70,7 @@ func ctxFixture(t *testing.T) string {
 func TestRunContextHuman(t *testing.T) {
 	root := ctxFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go", "README.md"}, false, "", false, &out); err != nil {
+	if err := runContext(root, []string{"cmd/x.go", "README.md"}, false, "", false, false, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
@@ -99,7 +99,7 @@ func TestRunContextHuman(t *testing.T) {
 func TestRunContextJSONParity(t *testing.T) {
 	root := ctxFixture(t)
 	var jsonOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", true, &jsonOut); err != nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", true, false, &jsonOut); err != nil {
 		t.Fatal(err)
 	}
 	var res project.ContextResult
@@ -123,7 +123,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, &humanOut); err != nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug", "2026-07-12-linked.md", "Worktree hazard"} {
@@ -138,14 +138,14 @@ func TestRunContextJSONParity(t *testing.T) {
 // emits the paths-only result.
 func TestRunContextStaticFallback(t *testing.T) {
 	var human bytes.Buffer
-	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, &human); err != nil {
+	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, false, &human); err != nil {
 		t.Fatalf("static human errored: %v", err)
 	}
 	if !strings.Contains(human.String(), "not inside an awf project") {
 		t.Errorf("static human: %s", human.String())
 	}
 	var j bytes.Buffer
-	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", true, &j); err != nil {
+	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", true, false, &j); err != nil {
 		t.Fatalf("static json errored: %v", err)
 	}
 	var res project.ContextResult
@@ -164,7 +164,7 @@ func TestRunContextStatFault(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, io.Discard); err == nil {
 		t.Error("a non-absence stat fault must surface")
 	}
 }
@@ -173,7 +173,7 @@ func TestRunContextStatFault(t *testing.T) {
 // refuses like every gated command.
 func TestRunContextGated(t *testing.T) {
 	root := gateFixture(t, "99.0.0", migrate.Current())
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, io.Discard); err == nil {
 		t.Error("expected the version gate to refuse a behind binary")
 	}
 }
@@ -186,7 +186,7 @@ func TestRunContextOpenError(t *testing.T) {
 	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, io.Discard); err == nil {
 		t.Error("expected the open-time validation error")
 	}
 }
@@ -196,7 +196,7 @@ func TestRunContextOpenError(t *testing.T) {
 func TestRunContextAssembleFault(t *testing.T) {
 	root := ctxFixture(t)
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0009-bad.md"), "---\nstatus: \"unterminated\n---\n# ADR-X: T\n")
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, io.Discard); err == nil {
+	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, io.Discard); err == nil {
 		t.Error("expected the assemble fault to surface")
 	}
 }
@@ -239,7 +239,7 @@ func TestRunContextReadOnly(t *testing.T) {
 		{[]string{"cmd/x.go"}, true},
 		{[]string{"README.md"}, false},
 	} {
-		if err := runContext(root, tc.paths, false, "", tc.asJSON, io.Discard); err != nil {
+		if err := runContext(root, tc.paths, false, "", tc.asJSON, false, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -286,6 +286,148 @@ func TestRunContextGitSelectors(t *testing.T) {
 			t.Errorf("expected static fallback: %s", out.String())
 		}
 	})
+}
+
+const uncoveredCmdYAML = `prefix: example
+vars:
+  gateCmd: make gate
+skills:
+  - tdd
+agents:
+  - code-reviewer
+domains:
+  - render
+invariants:
+  sources:
+    - globs:
+        - '**/*.go'
+      marker: '//'
+`
+
+// uncoveredCmdFixture builds an adopted tree that is ALSO a git repo (so
+// TrackedPaths resolves): a domain owning internal/render/**, a current lock, and
+// two committed files — one covered (internal/render/r.go), one not
+// (internal/plan/p.go).
+func uncoveredCmdFixture(t *testing.T) string {
+	t.Helper()
+	repo, root := gitfixture.InitRepo(t)
+	testsupport.WriteAwfConfig(t, root, uncoveredCmdYAML)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "render.yaml"), "paths:\n  - internal/render/**\n")
+	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{"internal/render", "internal/plan"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitfixture.Commit(t, repo, root, "base", map[string]string{
+		"internal/render/r.go": "package r\n",
+		"internal/plan/p.go":   "package p\n",
+	})
+	return root
+}
+
+// --uncovered lists tracked paths owned by no domain, collapsing a fully-uncovered
+// subtree; a scan root renders the `scan roots:` line.
+func TestRunContextUncoveredHuman(t *testing.T) {
+	root := uncoveredCmdFixture(t)
+	var out bytes.Buffer
+	if err := runContext(root, []string{"internal/plan"}, false, "", false, true, &out); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	for _, want := range []string{"## Uncovered", "internal/plan/", "scan roots:"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("uncovered human missing %q\n%s", want, got)
+		}
+	}
+}
+
+// The --uncovered JSON render carries the same uncovered set as the human render —
+// one assembled UncoveredResult feeds both (inv: uncovered-output-parity).
+func TestRunContextUncoveredJSONParity(t *testing.T) {
+	root := uncoveredCmdFixture(t)
+	var j bytes.Buffer
+	if err := runContext(root, nil, false, "", true, true, &j); err != nil {
+		t.Fatal(err)
+	}
+	var res project.UncoveredResult
+	if err := json.Unmarshal(j.Bytes(), &res); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+	if strings.Join(res.Entries, ",") != "internal/plan/" {
+		t.Errorf("json entries: got %v want [internal/plan/]", res.Entries)
+	}
+	var human bytes.Buffer
+	if err := runContext(root, nil, false, "", false, true, &human); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(human.String(), "internal/plan/") {
+		t.Errorf("human render diverges from JSON: %s", human.String())
+	}
+}
+
+// --uncovered rejects the --staged/--range selectors (a different intent).
+func TestRunContextUncoveredRejectsSelectors(t *testing.T) {
+	if err := runContext(t.TempDir(), nil, true, "", false, true, io.Discard); err == nil || !strings.Contains(err.Error(), "--staged/--range") {
+		t.Errorf("--uncovered with --staged must be a usage error, got: %v", err)
+	}
+}
+
+// Outside an adopted tree --uncovered prints the static notice and succeeds (inv:
+// context-static-fallback); the empty result exercises printUncovered's no-entries
+// branch.
+func TestRunContextUncoveredStaticFallback(t *testing.T) {
+	var out bytes.Buffer
+	if err := runContext(t.TempDir(), nil, false, "", false, true, &out); err != nil {
+		t.Fatalf("static uncovered errored: %v", err)
+	}
+	if !strings.Contains(out.String(), "not inside an awf project") {
+		t.Errorf("static uncovered: %s", out.String())
+	}
+}
+
+// A non-absence stat fault surfaces in --uncovered mode too.
+func TestRunContextUncoveredStatFault(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(root, nil, false, "", false, true, io.Discard); err == nil {
+		t.Error("a non-absence stat fault must surface")
+	}
+}
+
+// --uncovered is gated: a binary behind the project refuses.
+func TestRunContextUncoveredGated(t *testing.T) {
+	root := gateFixture(t, "99.0.0", migrate.Current())
+	if err := runContext(root, nil, false, "", false, true, io.Discard); err == nil {
+		t.Error("expected the version gate to refuse a behind binary")
+	}
+}
+
+// An invalid config fails project open in --uncovered mode.
+func TestRunContextUncoveredOpenError(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: \"\"\n")
+	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(root, nil, false, "", false, true, io.Discard); err == nil {
+		t.Error("expected the open-time validation error")
+	}
+}
+
+// An adopted tree that is not a git repo makes TrackedPaths fault, surfacing as the
+// command's error.
+func TestRunContextUncoveredTrackedPathsFault(t *testing.T) {
+	root := ctxFixture(t) // adopted (config+lock+domains) but no git repo
+	if err := runContext(root, nil, false, "", false, true, io.Discard); err == nil {
+		t.Error("expected a TrackedPaths open-repo error in a non-git adopted tree")
+	}
 }
 
 func snapshotTree(t *testing.T, root string) string {

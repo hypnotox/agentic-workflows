@@ -377,8 +377,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:ac85fa3c3d846dda48df7b748324274fbfc650b8e78444f4f96671df41490f2f",
-      "configHash": "sha256:fc384e051ef9b0dc447fb717641308f15371935f39de39b969a9d4335513bf5c",
-      "outputHash": "sha256:76db8e0ba6f997f755467c731dfa42873b7fac0c6f46b67d9d6debdeb8d1ab7a"
+      "configHash": "sha256:e0acabe0f5b855af362e19e49cdce4abc4b9c9e73cf2fc5f0978e0f4b86bed31",
+      "outputHash": "sha256:c65fe345401afc3c4a403ded73b8a810dd72aae77fd6e54437bf2d93f7fff1b5"
     }
   }
 }

@@ -82,6 +82,36 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 	return out, nil
 }
 
+// TrackedPaths returns the sorted, unique repo-relative slash paths tracked at
+// HEAD. It reads the repository only.
+func TrackedPaths(repoRoot string) ([]string, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	ref, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("resolve HEAD: %w", err)
+	}
+	c, err := repo.CommitObject(ref.Hash())
+	if err != nil { // coverage-ignore: HEAD resolved above points at a real commit
+		return nil, err
+	}
+	tree, err := c.Tree()
+	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+		return nil, err
+	}
+	var out []string
+	if ferr := tree.Files().ForEach(func(f *object.File) error {
+		out = append(out, f.Name)
+		return nil
+	}); ferr != nil { // coverage-ignore: the collector callback never returns an error
+		return nil, ferr
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // treeAt resolves a revision to its commit tree.
 func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 	h, err := repo.ResolveRevision(plumbing.Revision(rev))

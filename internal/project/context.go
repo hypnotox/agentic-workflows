@@ -66,7 +66,7 @@ type ADRRef struct {
 // ContextFor assembles the read-only context for paths. It reads only committed
 // state (domain sidecars, ADR files, source markers) and writes nothing.
 func (p *Project) ContextFor(paths []string) (ContextResult, error) {
-	clean := normalizeContextPaths(paths)
+	clean := NormalizeContextPaths(paths)
 	lay := p.layout()
 	res := ContextResult{Paths: clean}
 
@@ -184,9 +184,118 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	return res, nil
 }
 
-// normalizeContextPaths slash-normalizes, path-cleans, de-duplicates, and sorts
+// UncoveredResult is the read-only domain-coverage report for a set of scan roots:
+// the git-tracked paths matched by no configured domain glob, with a fully-uncovered
+// directory collapsed to its topmost node (a trailing-slash entry). ScanRoots echoes
+// the requested roots (empty = whole repository).
+type UncoveredResult struct {
+	ScanRoots []string `json:"scanRoots"`
+	Entries   []string `json:"entries"`
+}
+
+// Uncovered assembles the domain-coverage report over the tracked paths. It writes
+// nothing and reads only the domain sidecars. scanRoots restrict the report to
+// tracked paths at or beneath them, matched on slash-separated segment boundaries
+// (a directory subtree), not raw string prefixes; empty scanRoots scans everything.
+// invariant: uncovered-lists-unowned-only
+// invariant: uncovered-collapses-directories
+func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error) {
+	roots := NormalizeContextPaths(scanRoots)
+	res := UncoveredResult{ScanRoots: roots}
+
+	// Domain glob set, once.
+	var globs []string
+	for _, d := range p.Cfg.Domains {
+		sc, err := p.Cfg.Sidecar("domains", d)
+		if err != nil {
+			return UncoveredResult{}, err
+		}
+		globs = append(globs, sc.Paths...)
+	}
+
+	inScope := func(path string) bool {
+		if len(roots) == 0 {
+			return true
+		}
+		for _, r := range roots {
+			if path == r || strings.HasPrefix(path, r+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	covered := func(path string) bool {
+		for _, g := range globs {
+			if pathglob.Match(g, path) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// coveredDirs: every ancestor directory (including "." root) of an in-scope
+	// covered tracked path, plus each scan root's strict ancestors so a collapse
+	// never climbs above a requested root. A directory absent here has no covered
+	// descendant within scope.
+	coveredDirs := map[string]bool{}
+	for _, r := range roots {
+		for _, a := range ancestors(r) {
+			coveredDirs[a] = true
+		}
+	}
+	var uncovered []string
+	for _, path := range tracked {
+		clean := filepath.ToSlash(filepath.Clean(path))
+		if !inScope(clean) {
+			continue
+		}
+		if covered(clean) {
+			for _, a := range ancestors(clean) {
+				coveredDirs[a] = true
+			}
+			continue
+		}
+		uncovered = append(uncovered, clean)
+	}
+
+	// Collapse each uncovered path to its topmost ancestor that has no covered
+	// descendant; a path all of whose ancestors are covered-adjacent reports itself.
+	entries := map[string]bool{}
+	for _, u := range uncovered {
+		pick := u
+		for _, a := range ancestors(u) {
+			if !coveredDirs[a] {
+				if a == "." {
+					pick = "."
+				} else {
+					pick = a + "/"
+				}
+				break
+			}
+		}
+		entries[pick] = true
+	}
+	for e := range entries {
+		res.Entries = append(res.Entries, e)
+	}
+	sort.Strings(res.Entries)
+	return res, nil
+}
+
+// ancestors returns path's directory ancestors from the top down — "." then each
+// strict directory prefix — excluding path itself.
+func ancestors(path string) []string {
+	out := []string{"."}
+	segs := strings.Split(path, "/")
+	for i := 1; i < len(segs); i++ {
+		out = append(out, strings.Join(segs[:i], "/"))
+	}
+	return out
+}
+
+// NormalizeContextPaths slash-normalizes, path-cleans, de-duplicates, and sorts
 // the queried paths so the assembly is deterministic.
-func normalizeContextPaths(paths []string) []string {
+func NormalizeContextPaths(paths []string) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, p := range paths {

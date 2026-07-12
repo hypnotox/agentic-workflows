@@ -15,7 +15,7 @@ full catalog enabled and every rendered file committed, kept in sync from source
 by this repository's own checks (ADR-0090).
 
 
-<!-- awf:edit commands — default; create .awf/parts/working-with-awf/commands.md to override -->
+<!-- awf:edit commands — from .awf/parts/working-with-awf/commands.md -->
 ## Commands
 
 - `awf sync` — re-render every artifact from `.awf/` and update `.awf/awf.lock`.
@@ -34,6 +34,10 @@ by this repository's own checks (ADR-0090).
 - `awf changelog` — query the changelog by version or range.
 - `awf uninstall` — remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
 - `awf version` — print the binary's version.
+
+`awf context --uncovered [<scan-root>...]` reports git-tracked paths owned by no
+domain — the signal for where to configure a new domain.
+
 
 <!-- awf:edit config-and-overrides — default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->
 ## Config and overrides

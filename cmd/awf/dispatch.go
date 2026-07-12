@@ -56,7 +56,7 @@ var handlers = map[string]handler{
 	"list":        func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"config":      func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {
-		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--json"], c.stdout)
+		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--json"], c.inv.bools["--uncovered"], c.stdout)
 	},
 	"new": func(c *cmdCtx) error {
 		// For a recognized child, sub is the kind and positionals are the child's

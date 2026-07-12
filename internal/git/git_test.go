@@ -89,6 +89,39 @@ func TestChangedPathsErrors(t *testing.T) {
 	}
 }
 
+// TrackedPaths lists the HEAD tree's files as sorted, slash-separated
+// repo-relative paths.
+func TestTrackedPathsListsHeadTreeSorted(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, "a"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Commit(t, repo, dir, "one", map[string]string{"b.txt": "1", "a/c.txt": "2", "a/d.txt": "3"})
+
+	got, err := awfgit.TrackedPaths(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != "a/c.txt,a/d.txt,b.txt" {
+		t.Errorf("tracked: got %v want [a/c.txt a/d.txt b.txt]", got)
+	}
+}
+
+// A repository with no commit has no resolvable HEAD, which is a clear error.
+func TestTrackedPathsNoHeadErrors(t *testing.T) {
+	_, dir := gitfixture.InitRepo(t)
+	if _, err := awfgit.TrackedPaths(dir); err == nil || !strings.Contains(err.Error(), "resolve HEAD") {
+		t.Fatalf("want a resolve-HEAD error on a commit-less repo, got: %v", err)
+	}
+}
+
+// Outside a repository, opening fails.
+func TestTrackedPathsBadRepoErrors(t *testing.T) {
+	if _, err := awfgit.TrackedPaths(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
+		t.Fatalf("want an open-repo error outside a repository, got: %v", err)
+	}
+}
+
 // OpenRepo resolves a normal repository and reports the canonical
 // not-a-repository error outside one.
 func TestOpenRepo(t *testing.T) {

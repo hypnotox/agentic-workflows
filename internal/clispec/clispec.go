@@ -126,8 +126,8 @@ sidecar.local, or a data key name).
 	},
 	{
 		Name: "context", Summary: "Report owning domains, invariants, and ADRs for paths",
-		BoolFlags: []string{"--json", "--staged"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
-		HelpBody: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]
+		BoolFlags: []string{"--json", "--staged", "--uncovered"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
+		HelpBody: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>] [--uncovered]
 
 Report the committed context awf holds for a set of repo-relative paths: owning
 domain(s), the invariant slugs backed under those paths, related ADRs, and each
@@ -138,10 +138,16 @@ Provide paths explicitly, or resolve them from git with --staged (the staged
 changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
 take precedence over the git selectors.
 
+With --uncovered, ignore the path lookup and instead report git-tracked-at-HEAD
+paths matched by no configured domain glob — the coverage-gap signal for where to
+add a domain. Positional args become optional scan roots (a directory subtree);
+--staged/--range are not accepted in this mode.
+
 Flags:
   --json               emit the context as JSON
   --staged             use the staged changed paths
   --range <a>..<b>     use the paths changed between revisions a and b
+  --uncovered          report tracked paths owned by no domain (scan roots optional)
 `,
 	},
 	{

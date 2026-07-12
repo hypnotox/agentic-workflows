@@ -301,3 +301,104 @@ func domainNames(res ContextResult) string {
 	}
 	return strings.Join(n, ",")
 }
+
+// uncoveredBase is ctxYAML without a domains block, so each Uncovered case injects
+// its own domain ownership.
+const uncoveredBase = `prefix: example
+vars:
+  gateCmd: make gate
+skills:
+  - tdd
+agents:
+  - code-reviewer
+invariants:
+  sources:
+    - globs:
+        - '**/*.go'
+      marker: '//'
+`
+
+func TestUncovered(t *testing.T) {
+	type dom struct{ name, glob string }
+	build := func(t *testing.T, doms ...dom) *Project {
+		t.Helper()
+		var cfg strings.Builder
+		cfg.WriteString(uncoveredBase)
+		side := map[string]string{}
+		if len(doms) > 0 {
+			cfg.WriteString("domains:\n")
+			for _, d := range doms {
+				cfg.WriteString("  - " + d.name + "\n")
+				side["domains/"+d.name+".yaml"] = "paths:\n  - " + d.glob + "\n"
+			}
+		}
+		root := scaffoldFiles(t, cfg.String(), side)
+		p, err := Open(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	join := func(e []string) string { return strings.Join(e, ",") }
+
+	t.Run("collapse fully-uncovered subtree", func(t *testing.T) {
+		p := build(t, dom{"render", "internal/render/**"})
+		res, err := p.Uncovered([]string{"internal/render/r.go", "internal/plan/p.go", "internal/plan/q.go"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "internal/plan/" {
+			t.Errorf("got %v want [internal/plan/]", res.Entries)
+		}
+	})
+	t.Run("stray top-level file reported individually", func(t *testing.T) {
+		p := build(t, dom{"runner", "x"})
+		res, err := p.Uncovered([]string{"x", "README.md"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "README.md" {
+			t.Errorf("got %v want [README.md]", res.Entries)
+		}
+	})
+	t.Run("mixed dir reports files individually", func(t *testing.T) {
+		p := build(t, dom{"awf", "cmd/awf/main.go"})
+		res, err := p.Uncovered([]string{"cmd/awf/main.go", "cmd/awf/other.go"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "cmd/awf/other.go" {
+			t.Errorf("got %v want [cmd/awf/other.go]", res.Entries)
+		}
+	})
+	t.Run("zero covered collapses to root", func(t *testing.T) {
+		p := build(t)
+		res, err := p.Uncovered([]string{"a/b.go", "c.go"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "." {
+			t.Errorf("got %v want [.]", res.Entries)
+		}
+	})
+	t.Run("scan-root segment boundary", func(t *testing.T) {
+		p := build(t)
+		res, err := p.Uncovered([]string{"internal/git/g.go", "internal/gitlab/h.go"}, []string{"internal/git"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "internal/git/" {
+			t.Errorf("got %v want [internal/git/] (gitlab sibling out of scope)", res.Entries)
+		}
+		if join(res.ScanRoots) != "internal/git" {
+			t.Errorf("scanRoots: got %v want [internal/git]", res.ScanRoots)
+		}
+	})
+	t.Run("sidecar fault", func(t *testing.T) {
+		root, p := ctxProject(t, ctxYAML)
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths: [\n")
+		if _, err := p.Uncovered([]string{"cmd/x.go"}, nil); err == nil {
+			t.Error("expected a domain-sidecar parse error")
+		}
+	})
+}

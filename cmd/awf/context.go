@@ -24,7 +24,10 @@ import (
 // gate runs before Open. The command entry point holds no writer dependency —
 // it only reads.
 // invariant: context-read-only
-func runContext(cwd string, paths []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
+func runContext(cwd string, paths []string, staged bool, rng string, asJSON, uncovered bool, stdout io.Writer) error {
+	if uncovered {
+		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
+	}
 	if len(paths) == 0 {
 		if !staged && rng == "" {
 			return &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
@@ -58,6 +61,64 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON bool
 		return err
 	}
 	return printContext(stdout, res, asJSON, "context — live state for this project")
+}
+
+// runUncovered serves `awf context --uncovered`: the whole-tree inverse of the
+// domain-ownership resolution. Positional args are optional scan roots; --staged and
+// --range are rejected. It mirrors runContext's read-only + static-fallback shape.
+// invariant: context-read-only
+func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
+	if staged || rng != "" {
+		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --staged/--range"}
+	}
+	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		// invariant: context-static-fallback
+		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
+			"context --uncovered (static — not inside an awf project; live coverage appears inside one)")
+	}
+	if err := gate(cwd); err != nil {
+		return err
+	}
+	p, err := project.Open(cwd)
+	if err != nil {
+		return err
+	}
+	tracked, err := awfgit.TrackedPaths(cwd)
+	if err != nil {
+		return err
+	}
+	res, err := p.Uncovered(tracked, scanRoots)
+	if err != nil { // coverage-ignore: Uncovered's only fault is a domain-sidecar read, which project.Open validates first — unreachable post-Open here; the branch is covered at the project level (TestUncovered sidecar fault)
+		return err
+	}
+	return printUncovered(stdout, res, asJSON, "context --uncovered — tracked paths owned by no domain")
+}
+
+// printUncovered renders res as JSON or human-readable text. Both modes read the same
+// assembled res, so they cannot diverge.
+// invariant: uncovered-output-parity
+func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, header string) error {
+	if asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(res)
+	}
+	fmt.Fprintln(stdout, header)
+	if len(res.ScanRoots) > 0 {
+		fmt.Fprintf(stdout, "\nscan roots: %v\n", res.ScanRoots)
+	}
+	if len(res.Entries) == 0 {
+		fmt.Fprintln(stdout, "\nall scanned tracked paths are owned by a domain")
+		return nil
+	}
+	fmt.Fprintln(stdout, "\n## Uncovered (configure a domain to own these)")
+	for _, e := range res.Entries {
+		fmt.Fprintf(stdout, "  %s\n", e)
+	}
+	return nil
 }
 
 // printContext renders res as JSON or human-readable text. Both modes read the
