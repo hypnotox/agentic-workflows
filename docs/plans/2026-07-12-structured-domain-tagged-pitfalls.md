@@ -45,9 +45,14 @@ before every commit.
   `internal/project/glossary.go`, `internal/project/context.go`, `internal/project/check.go`,
   `internal/project/context_test.go`, `internal/project/check_test.go`, `cmd/awf/context.go`,
   `internal/configspec/spec.go`, `internal/migrate/migrate.go`, `internal/project/project.go`,
-  `.awf/agents-doc.yaml`, `.awf/domains/parts/rendering/current-state.md`,
+  `.awf/agents-doc.yaml`, `.awf/docs/glossary.yaml`,
+  `.awf/domains/parts/rendering/current-state.md`,
   `.awf/domains/parts/tooling/current-state.md`, `changelog/CHANGELOG.md`,
   `docs/decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md`, this plan.
+  Plus the generated rendered outputs, committed via the in-phase `./x sync` steps:
+  `docs/pitfalls.md` (the primary output), `docs/config-reference.md` (regenerated from the Task 1.5
+  configspec entry), `AGENTS.md` (guide invariants + version), `docs/decisions/ACTIVE.md`,
+  `docs/domains/{rendering,tooling}.md`, `docs/glossary.md`, and both `.awf/awf.lock` files.
 - **Deleted:** `.awf/docs/parts/pitfalls/entries.md`,
   `examples/sundial/.awf/docs/parts/pitfalls/entries.md`.
 
@@ -385,13 +390,18 @@ its own closing commit passes the gate.
   ```
   	drift = append(drift, planDrift...)
   +	pitfallDrift, err := p.checkPitfalls()
-  +	if err != nil {
+  +	if err != nil { // coverage-ignore: every error checkPitfalls returns is pre-empted by an earlier Check() step (RenderAll's transform reads data.pitfalls; checkPlans parses the decisions dir), so this wiring branch is unreachable
   +		return nil, err
   +	}
   +	drift = append(drift, pitfallDrift...)
   ```
 
   (`adr`, `slices`, `fmt`, `manifest` are already imported — `checkPlans`/`unusedDataDrift` use them.)
+  The `// coverage-ignore:` is required: `checkPitfalls`'s own error returns are covered by the
+  Task 1.9 unit tests that call it directly, but this `Check()` wiring branch cannot be reached
+  because `RenderAll` (structural + sidecar-read errors) and `checkPlans` (ADR-parse error) run
+  first — mirroring the `unusedDataDrift` wiring ignore. Without it, Task 1.10's gate fails the
+  100% floor (ADR-0012).
 
 - [ ] **Task 1.7 — Convert awf's own pitfalls (batch).** Create `.awf/docs/pitfalls.yaml` by
   converting every top-level `## ` section of `.awf/docs/parts/pitfalls/entries.md` into a
@@ -401,7 +411,7 @@ its own closing commit passes the gate.
   ```yaml
   data:
     pitfalls:
-      - title: "awf audit and extensions.worktreeConfig"
+      - title: "`awf audit` and `extensions.worktreeConfig`"
         domains: [tooling]
         body: |
           `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has
@@ -423,11 +433,30 @@ its own closing commit passes the gate.
   byte-preserved modulo the added `_Domains:_`/`_Related:_` lines); no drift/`note:` line mentions
   `pitfalls`.
 
-- [ ] **Task 1.8 — Convert the example adopter's pitfalls (batch).** Identical transformation on
-  `examples/sundial/.awf/docs/parts/pitfalls/entries.md` → `examples/sundial/.awf/docs/pitfalls.yaml`,
-  tagging domains from *sundial's* configured domains (read `examples/sundial/.awf/config.yaml`
-  `domains:`). Delete the example's `parts/pitfalls/entries.md` and its now-empty dir. Post-check:
-  the `./x check` example step is clean and note-free (ADR-0090 `example-zero-notes`).
+- [ ] **Task 1.8 — Convert the example adopter's pitfalls.** Unlike awf's own file, sundial's
+  `examples/sundial/.awf/docs/parts/pitfalls/entries.md` is a single `## Entries` heading followed by
+  a two-bullet list (`time.Now()` in tests; longitude sign confusion) — *not* one `## ` per pitfall.
+  Split the two bullets into two titled `data.pitfalls` entries in
+  `examples/sundial/.awf/docs/pitfalls.yaml`, e.g.:
+
+  ```yaml
+  data:
+    pitfalls:
+      - title: "`time.Now()` in tests"
+        domains: [almanac]
+        body: |
+          The sun table depends on the date; a test that formats "today" goes red twice
+          a year at the solstices. Fix the date with `time.Date`.
+      - title: "Longitude sign confusion"
+        domains: [almanac, cli]
+        body: |
+          East is positive; a flipped sign shifts solar noon by minutes per degree and
+          looks like a model bug (it isn't — check the input first).
+  ```
+
+  Domains are drawn from sundial's configured `[almanac, cli]` (in `examples/sundial/.awf/config.yaml`).
+  Delete the example's `parts/pitfalls/entries.md` and its now-empty dir. Post-check: the `./x check`
+  example step is clean and note-free (ADR-0090 `example-zero-notes`).
 
 - [ ] **Task 1.9 — Add tests.** Create `internal/project/pitfalls_test.go` covering `pitfallEntries`
   (valid list; nil/absent → nil; non-list; non-mapping element; empty title; newline title; empty
@@ -455,12 +484,23 @@ its own closing commit passes the gate.
 - [ ] **Task 2.1 — Add the ref type and field.** In `internal/project/context.go`, add `PitfallRef`
   near `PlanRef` and a `Pitfalls` field on `ContextResult`:
 
+  Adding `[]PitfallRef` (wider than the current widest type `[]DomainRef`) reflows every struct
+  tag under gofmt, so write the whole struct with the shifted alignment (not a partial hunk):
+
+  ```go
+  type ContextResult struct {
+  	Paths      []string     `json:"paths"`
+  	Domains    []DomainRef   `json:"domains"`
+  	Invariants []string      `json:"invariants"`
+  	ADRs       []ADRRef      `json:"adrs"`
+  	Plans      []PlanRef     `json:"plans"`
+  	Pitfalls   []PitfallRef  `json:"pitfalls"`
+  	Unowned    []string      `json:"unowned"`
+  }
   ```
-  		ADRs       []ADRRef    `json:"adrs"`
-  		Plans      []PlanRef   `json:"plans"`
-  +		Pitfalls   []PitfallRef `json:"pitfalls"`
-  		Unowned    []string    `json:"unowned"`
-  ```
+
+  (Run `./x fmt` after editing — the exact column widths are whatever gofmt produces; the point is
+  the committed diff must be gofmt-clean.)
 
   ```go
   // PitfallRef is a pitfall surfaced because one of its domains: owns a queried path.
@@ -520,8 +560,10 @@ its own closing commit passes the gate.
 - [ ] **Task 2.4 — Add tests.** Extend `internal/project/context_test.go`: a pitfall whose domain
   owns a queried path surfaces; a domainless pitfall never surfaces; a pitfall whose domain does not
   own the path does not surface; disabled pitfalls doc → empty `Pitfalls`; a structural-error sidecar
-  propagates. Assert `--json` includes the `pitfalls` array (output-parity) via the existing JSON
-  test pattern.
+  propagates; **and a Sidecar-read error propagates** (e.g. `pitfalls.yaml` present as a directory) —
+  `ContextFor` has two distinct error branches (the `Sidecar` read and `pitfallEntries`), both
+  coverable here because `ContextFor` runs standalone before `RenderAll`. Assert `--json` includes the
+  `pitfalls` array (output-parity) via the existing JSON test pattern.
 
 - [ ] **Task 2.5 — Gate and commit.** `./x gate` + `./x check` clean. Commit:
 
@@ -609,14 +651,21 @@ its own closing commit passes the gate.
   `data.pitfalls` with empty domains and prints a review instruction; adopters then tag domains, and
   should review any pitfall whose body had `##` inside fenced code.
 
-- [ ] **Task 4.4 — Flip statuses (the freeze).** In
+- [ ] **Task 4.4 — Glossary.** ADR-0099's Downstream list names the glossary. Add a term to
+  `.awf/docs/glossary.yaml` `data.terms` for the new load-bearing concept — e.g. `"pitfall entry":`
+  defining the structured `{title, domains, related, body}` unit of `data.pitfalls`, that it renders
+  a `## title` section and surfaces in `awf context` by its `domains:` (cite ADR-0099) — in the style
+  of the existing entries. (The `sidecar-derived doc` term already exists from ADR-0089; this adds the
+  pitfall-specific unit, not a duplicate.)
+
+- [ ] **Task 4.5 — Flip statuses (the freeze).** In
   `docs/decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md` set `status:
   Proposed` → `status: Implemented`. In this plan's frontmatter set `status: Proposed` →
   `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. `./x check` clean —
   this is where the four `inv:` markers are enforced (ADR-0099 now Implemented); confirm each is
   backed.
 
-- [ ] **Task 4.5 — Gate and commit.** `./x gate`, `./x check`, and `./x audit-local` clean. Commit:
+- [ ] **Task 4.6 — Gate and commit.** `./x gate`, `./x check`, and `./x audit-local` clean. Commit:
 
   ```
   docs(rendering): implement ADR-0099 — flip status, currency
