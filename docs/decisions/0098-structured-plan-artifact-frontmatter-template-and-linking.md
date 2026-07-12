@@ -40,8 +40,9 @@ Grounding that shaped the design:
 
 ## Decision
 
-1. **Plan frontmatter schema.** A plan carries YAML frontmatter with `date` (ISO-8601, matching the
-   filename), `adrs` (a possibly-empty list of linked ADR numbers — the structured plan→ADR link
+1. **Plan frontmatter schema.** A plan carries YAML frontmatter with `date` (ISO-8601; the scaffold
+   fills it to match the filename — a convention the checks do not separately enforce), `adrs` (a
+   possibly-empty list of linked ADR numbers — the structured plan→ADR link
    replacing prose citation), and `status` (`Proposed` or `Implemented`, per ADR-0097). The title is
    not a frontmatter field — it stays the `# Plan: <Title>` H1, mirroring the ADR template (whose
    title is likewise its H1). Frontmatter is required on new plans and absent on the grandfathered
@@ -62,11 +63,13 @@ Grounding that shaped the design:
    is factored into a home independent of `internal/adr` (whose scaffold is coupled to ADR
    numbering).
 
-4. **Plan→ADR link-consistency check.** `awf check` gains a check that reads `docs/plans/*.md` and,
+4. **Plan→ADR link-consistency check.** `awf check` gains a check that reads the plan files under
+   `docs/plans/` matching the `YYYY-MM-DD-*.md` filename pattern — which excludes the `template.md`
+   singleton and `README.md`, just as the numeric `NNNN-*.md` pattern excludes them for ADRs — and,
    for each plan carrying frontmatter, fails when an `adrs:` entry names a number with no
    `docs/decisions/NNNN-*.md` file. Plans without frontmatter (the grandfathered corpus) are skipped.
    This is distinct from the rendered-file dead-reference check (ADR-0020), which scans only
-   awf-managed rendered output; the disk-scan precedent is `adr.ParseDir`.
+   awf-managed rendered output; the disk-scan and filename-exclusion precedent is `adr.ParseDir`.
 
 5. **`awf context` plan integration.** `awf context <paths>` additionally surfaces the plans linked
    (via `adrs:`) to the ADRs it already reports for those paths, carried in the single assembled
@@ -74,9 +77,9 @@ Grounding that shaped the design:
    the same plan set in human and `--json` renderings. Because plans declare `adrs:` and not
    `paths:`, the join is transitive: path → owning domain → ADR → plans linking that ADR.
 
-6. **Frontmatter parse-validation.** `awf check` fails on a plan whose frontmatter is present but
-   malformed — unparseable YAML, or a `status` outside {`Proposed`, `Implemented`}. Frontmatter-less
-   plans pass unchanged.
+6. **Frontmatter parse-validation.** Over the same `YYYY-MM-DD-*.md` scan set, `awf check` fails on
+   a plan whose frontmatter is present but malformed — unparseable YAML, or a `status` outside
+   {`Proposed`, `Implemented`}. Frontmatter-less plans pass unchanged.
 
 ## Invariants
 
@@ -89,8 +92,10 @@ links ADR-0097 and this ADR). `awf check` enforces them once this ADR is `Implem
 - `inv: plan-adr-link-resolved` — `awf check` fails when a frontmatter-bearing plan's `adrs:` entry
   names an ADR number with no matching `docs/decisions/NNNN-*.md`; frontmatter-less plans are
   skipped.
-- `inv: plans-template-rendered` — the `plans-template` mandatory singleton renders to
-  `docs/plans/template.md` and is leak-free under empty data, like every catalog singleton.
+- `inv: plans-template-taxonomy` — the rendered `plans-template` (`docs/plans/template.md`) carries
+  the frontmatter block (`date` / `adrs` / `status`) and ADR-0097's section taxonomy (the `# Plan:`
+  title, the four narrative header fields, a phase, and the optional Verification/Notes tails) — a
+  plans-specific check beyond the doc model's generic render-and-leak-free coverage.
 - `inv: plan-new-unnumbered` — `awf new plan "<Title>"` scaffolds `docs/plans/YYYY-MM-DD-<slug>.md`
   from the plans template with today's date and no sequential number, refusing to overwrite an
   existing file.
@@ -117,7 +122,10 @@ links ADR-0097 and this ADR). `awf check` enforces them once this ADR is `Implem
   and this ADR); per ADR-0097's ordering note, the frontmatter mechanism here is sequenced ahead of
   α's lifecycle wiring. The `plans-template` and prose changes land in the `internal/catalog`
   defaults, so they re-render `examples/sundial` (which must stay zero-notes per ADR-0090) and stay
-  publication-safe and generic (ADR-0001, ADR-0045, ADR-0082).
+  publication-safe and generic (ADR-0001, ADR-0045, ADR-0082). The implementing plan also updates
+  `AGENTS.md` in the same commit that lands the change: an `awf new plan` entry in the Commands
+  section and the five new invariant bullets in the Invariants list, per the docs-travel-with-the-
+  change rule.
 
 ## Alternatives Considered
 
