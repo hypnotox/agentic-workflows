@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [release, changelog, goreleaser]
-related: [30, 41, 78]
+related: [30, 41, 78, 79]
 domains: [tooling]
 ---
 # ADR-0096: GitHub Release Notes Sourced from the Curated Changelog
@@ -44,18 +44,25 @@ on adopter-facing effect; the release notes should present it, not compete with 
 ## Decision
 
 1. **The GitHub Release body is the curated changelog section for the tagged version, not
-   a commit-derived changelog.** `.goreleaser.yaml` sets `changelog.disable: true` and
-   drops the `groups` and `filters` blocks — GoReleaser no longer derives release notes
-   from commit messages, and the buggy exclude patterns are deleted rather than repaired.
+   a commit-derived changelog.** The `.goreleaser.yaml` `changelog` block collapses to
+   exactly `changelog:` / `disable: true` — the `use: github`, `sort: asc`, `groups`, and
+   `filters` lines are all dropped, not just the exclude patterns. GoReleaser no longer
+   derives release notes from commit messages, and the buggy exclude patterns are deleted
+   rather than repaired. The residual two-line block is a stable token the gate test can
+   match to prove the commit-derived changelog is off.
 
 2. **The release workflow feeds the curated section to GoReleaser.** `.github/workflows/release.yml`
    extracts it after the `releasecheck` step and before the GoReleaser step —
-   `go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > release-notes.md` — and
-   the GoReleaser action passes `--release-notes release-notes.md` in its `args`. The full
-   section text is used verbatim, including its leading `## [<version>] - <date>` header.
+   `go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/release-notes.md"` —
+   and the GoReleaser action passes `--release-notes` that same absolute path in its `args`.
+   The notes file is written **outside the git worktree** (under `$RUNNER_TEMP`): GoReleaser's
+   release pipeline aborts on a dirty tree, and an untracked `release-notes.md` at the repo
+   root would count as dirty, so the notes must not land in the checkout. The full section
+   text is used verbatim, including its leading `## [<version>] - <date>` header.
    `releasecheck` (run earlier in the same workflow) guarantees the newest section equals
    the tagged version, so the extraction always resolves; an absent version fails the step
-   non-zero rather than shipping empty notes.
+   non-zero rather than shipping empty notes. The exact `args` interpolation is settled at
+   implementation and validated with `goreleaser check` against the pinned v2.17.0.
 
 3. **A gate test backs the wiring.** A test in `cmd/releasecheck/main_test.go`, mirroring
    the existing `TestReleaseWorkflowRunsReleasecheck`, asserts that `release.yml` extracts
@@ -84,6 +91,10 @@ on adopter-facing effect; the release notes should present it, not compete with 
 - The release body opens with the `## [<version>] - <date>` H2 that GitHub also renders as
   the release title; this mild redundancy is accepted in exchange for using `awf changelog`'s
   output verbatim (no fragile header-stripping in the workflow).
+- The notes file is written under `$RUNNER_TEMP`, outside the checkout, precisely because
+  GoReleaser's release pipeline refuses to run against a dirty git tree (an untracked file
+  counts). Writing it into the repo root would have broken the very release step this ADR
+  fixes — the notes path must stay out of the worktree.
 - `.goreleaser.yaml` no longer classifies commits into changelog groups. Nothing else in
   the config consumed the changelog (no `announce`/`blob` sections), so no other behavior
   changes.
