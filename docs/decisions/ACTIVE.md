@@ -100,6 +100,10 @@
 - [ADR-0095: Batch tasks in the plan convention](0095-batch-tasks-in-the-plan-convention.md) — Implemented
 - [ADR-0096: GitHub Release Notes Sourced from the Curated Changelog](0096-github-release-notes-sourced-from-the-curated-changelog.md) — Implemented
 
+## Proposed
+
+- [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](0097-plan-convention-sections-granularity-and-lifecycle.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
