@@ -697,8 +697,8 @@ its own closing commit passes the gate.
   in-cell, and the pitfall bodies themselves already carry 57 plain `ADR-NNNN` citations and zero
   markdown links. So `_Related: ADR-0067, ADR-0092_` matches how every pitfall body and `awf context`
   already reference ADRs. The transform also cannot resolve numbers to filenames (it receives only
-  the sidecar). **Resync action:** soften ADR-0099 item 2 + its Alternatives row from "linked ADR
-  references" to "ADR references (link-validated)".
+  the sidecar). **Resync done (2026-07-12):** ADR-0099 item 2 + its Alternatives row softened from
+  "linked ADR references" to plain `ADR-NNNN` (link-validated) — plan and ADR converged.
 - Structural validation lives in the transform (`pitfall-data-validated`); domain/ADR-link resolution
   lives in `checkPitfalls` (`pitfall-domains-resolved`, `pitfall-adr-link-resolved`) — the split
   mirrors glossary-structure-in-transform vs plan-links-in-checkPlans, because the transform cannot

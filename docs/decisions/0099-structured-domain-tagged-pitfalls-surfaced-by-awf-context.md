@@ -81,11 +81,13 @@ Grounding surfaced the constraints this decision must respect:
 2. **Render via the ADR-0089 transform seam.** A `renderKindSpec.transform` (a sibling of
    `glossaryTransform` in `internal/project/glossary.go`) replaces `data.pitfalls` with the
    assembled markdown — each entry as a `## <title>` section, an optional domain line, an optional
-   `Related:` line of linked ADR references built from `related:`, and its `body` — computed
-   upstream of render and config-hash so the doc stays in the ordinary drift model. Rendering
-   `related:` gives the field a reader in the doc itself, so it is projected data rather than
-   validate-only metadata. Malformed data (empty title, a newline in a title, empty body) is a hard
-   render error.
+   `Related:` line of `ADR-NNNN` references (link-validated against `docs/decisions/` by
+   `checkPitfalls`, but rendered as plain text — the transform receives only the sidecar and cannot
+   resolve numbers to filenames, and plain `ADR-NNNN` is the convention `awf context`, the glossary,
+   and the pitfall bodies already use) built from `related:`, and its `body` — computed upstream of
+   render and config-hash so the doc stays in the ordinary drift model. Rendering `related:` gives
+   the field a reader in the doc itself, so it is projected data rather than validate-only metadata.
+   Malformed data (empty title, a newline in a title, empty body) is a hard render error.
 
 3. **Retire the stub; render from plain template text.** The `pitfalls` `DocEntry` sections change
    from the single `entries` stub to plain framing sections plus a body that textually references
@@ -201,4 +203,4 @@ same commit regenerates `docs/decisions/ACTIVE.md`.
 | In-doc HTML-comment metadata under each `##` heading (keep one authored file, add a metadata line per entry) | A third bespoke parsing dialect alongside frontmatter-files and sidecar-data; fragile and against the project's grain, which prefers frontmatter or sidecar `data`. |
 | Break adopters with a changelog recipe and ship no migration (ADR-0089's chosen path for the glossary) | Rejected *for this case*: the top-level `##`-heading split is materially narrower and more tractable than glossary table parsing, and an auditable auto-split (per-entry provenance + mandatory review, with fenced-code `##` lines skipped) contains the residual mis-split risk rather than relying on perfect mechanics — so the ADR-0089 "fragile rewriter" objection is met by auditability, not by a reliability claim; the user asked to attempt the migration; and it is materially friendlier than hand-reconstructing a ~520-line doc. |
 | Make pitfalls first-class as a persisted per-effort retrospective document | Explored and rejected upstream: it re-opens ADR-0067's ruled-out findings-ledger (Approach B), adds an incentive regression (a dumping ground that lets authors skip promotion), and duplicates homes the plan Notes tail and pitfalls.md already provide. Structuring the existing rung-4 home is the surgical change. |
-| Surface pitfalls transitively via linked ADRs (as plans surface) | A pitfall's relevance is to a *code area*, not to a decision; tagging its own `domains` (like an ADR) is the direct model. `related:` ADRs are rendered as a linked line in the doc and link-validated, but are not a `awf context` surfacing path. |
+| Surface pitfalls transitively via linked ADRs (as plans surface) | A pitfall's relevance is to a *code area*, not to a decision; tagging its own `domains` (like an ADR) is the direct model. `related:` ADRs are rendered as a plain `ADR-NNNN` line in the doc and link-validated, but are not a `awf context` surfacing path. |
