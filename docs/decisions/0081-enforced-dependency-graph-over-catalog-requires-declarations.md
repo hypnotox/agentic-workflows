@@ -4,7 +4,7 @@ date: 2026-07-09
 supersedes: []
 retires_invariants: [doc-gated-skill-suppressed]
 superseded_by: ""
-tags: [dependency-graph, cli, catalog, validation, migration]
+tags: [tooling, catalog, governance, migration]
 related: [13, 24, 31, 46, 49, 50, 68, 76, 77, 80]
 domains: [config, rendering, tooling]
 ---

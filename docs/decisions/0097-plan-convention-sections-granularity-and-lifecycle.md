@@ -4,7 +4,7 @@ date: 2026-07-12
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [workflow, plans, convention, lifecycle]
+tags: [workflow, plans, adr-system]
 related: [95]
 domains: [rendering]
 ---

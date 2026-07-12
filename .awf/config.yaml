@@ -56,6 +56,42 @@ skills:
   - subagent-driven-development
   - tdd
   - writing-plans
+tags:
+  adoption: Adopter-facing behaviour, portability, and the example adopter
+  adr-system: The ADR machinery — parsing, ACTIVE.md generation, and lifecycle
+  advisory: Non-failing advisory notes and warnings that never change exit status
+  agents: The independent review-agent artifacts
+  audit: The workflow-conformance audit over a branch's commits
+  bootstrap: The bootstrap and upgrade installer porcelain
+  catalog: The compile-time catalog of skills, agents, and docs
+  changelog: The changelog and release-notes pipeline
+  config: The .awf config tree, its schema, and parsing
+  context: The awf context read-only query command
+  dispatch: Subagent dispatch and the review-agent seam
+  docs: Managed documentation and the documentation standard
+  domains: Domain keys, their generated docs, and file territory
+  drift: Drift detection between committed config and rendered output
+  feedback-loop: The retrospective loop promoting findings toward checks
+  governance: Checks that a used label or link resolves to a declared authority
+  hooks: The git-hook payloads and their wiring
+  invariants: Invariant declaration, backing markers, and enforcement
+  memory: Ephemeral working-memory session state
+  migration: Schema-generation migrations of the config tree
+  parts: Convention-part overrides and section assembly
+  pitfalls: The pitfalls knowledge surface
+  plans: The plan artifact and its conventions
+  publication-safety: Publication-safe degradation of unset template values
+  refactor: Structural refactors and coupling changes
+  release: Releasing — versioning, GoReleaser, and distribution
+  rendering: The template render engine, overlay, and template sources
+  scaffold: awf new / init scaffolding of new artifacts
+  security: Checksums, atomic writes, and supply-chain integrity
+  sidecar-derived-doc: Docs computed from sidecar data via a transform
+  skills: The workflow skill artifacts
+  staleness: Code and doc staleness detection
+  testing: Test suites, gate tiers, coverage, and mutation triage
+  tooling: The awf CLI, command dispatch, and the ./x runner
+  workflow: The brainstorm→ADR→plan→implement→review chain
 targets:
   - claude
   - cursor

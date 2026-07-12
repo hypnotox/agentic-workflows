@@ -4,7 +4,7 @@ date: 2026-07-02
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [bootstrap, layout, adoption]
+tags: [bootstrap, rendering, adoption]
 related: [9, 23, 32, 35, 40]
 domains: [rendering, tooling]
 ---

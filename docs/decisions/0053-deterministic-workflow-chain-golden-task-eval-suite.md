@@ -4,7 +4,7 @@ date: 2026-07-04
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [testing, evals, verification]
+tags: [testing]
 related: [12, 13, 17, 22, 46, 52]
 domains: [tooling]
 ---

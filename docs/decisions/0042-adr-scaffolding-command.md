@@ -4,7 +4,7 @@ date: 2026-07-01
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [cli, adr, tooling]
+tags: [tooling, adr-system]
 related: [39]
 domains: [adr-system, tooling]
 ---

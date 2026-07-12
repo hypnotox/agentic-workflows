@@ -4,7 +4,7 @@ date: 2026-07-07
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [workflow, review, agents]
+tags: [workflow, dispatch, agents]
 related: [17, 50, 52, 54, 67]
 domains: [tooling]
 ---

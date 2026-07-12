@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
-tags: [workflow, documentation, templates]
+tags: [workflow, docs, rendering]
 related: [4]
 domains: [adr-system]
 ---

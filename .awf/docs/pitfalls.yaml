@@ -2,10 +2,12 @@ data:
   pitfalls:
     - title: "`awf audit` and `extensions.worktreeConfig`"
       domains: [tooling]
+      tags: [tooling, audit]
       body: |
         `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` — a flag `git worktree add` can leave behind even after the worktree is removed — regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
     - title: "Stdout is API in command-substitution scripts"
       domains: [rendering]
+      tags: [bootstrap, rendering]
       body: |
         `.awf/bootstrap.sh` is consumed as `"$(bash .awf/bootstrap.sh)" <args>`, so its stdout is the
         binary path and nothing else — a checksum tool's `<asset>: OK` line on stdout execs as part of
@@ -14,6 +16,7 @@ data:
         bootstrap-stdout-path-only`, ADR-0049).
     - title: "Adding a catalog skill: what the guards force"
       domains: [rendering]
+      tags: [catalog, skills, testing]
       body: |
         A new `SkillSpec` in `internal/catalog/standard.go` is covered automatically by the
         catalog-derived eval fixture (ADR-0053) and by ADR-0080's derived guards, which fail
@@ -34,6 +37,7 @@ data:
         is an explicit entry that itself fails when stale.
     - title: "Hard-coded counts in domain narratives drift"
       domains: [adr-system]
+      tags: [domains, staleness, docs]
       body: |
         The domain current-state narratives (`.awf/domains/parts/*/current-state.md`) are free prose, so a
         spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain skills")
@@ -44,6 +48,7 @@ data:
         count in the doc — not just the paragraph you are editing — whenever a chain artifact lands.
     - title: "README.md is outside the drift oracle"
       domains: [tooling]
+      tags: [docs, drift, tooling]
       body: |
         `README.md` is hand-owned — not rendered, so `awf check` never flags it. Its command table and
         feature claims drift silently when the CLI grows (`awf new` and `awf commit-gate` shipped without
@@ -51,6 +56,7 @@ data:
         change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
     - title: "`//go:embed` silently skips `_`- and `.`-prefixed paths"
       domains: [rendering]
+      tags: [rendering, testing]
       body: |
         The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
         `templates/agents/_base.md.tmpl` (ADR-0068). Go's `//go:embed` walk **excludes** every file or
@@ -69,6 +75,7 @@ data:
         the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
         `templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
     - title: "Concurrent agents in one worktree share the git index"
+      tags: [workflow, tooling]
       body: |
         Two agents working in the same checkout share one staging area: `git commit` commits the
         **whole index**, so another agent's `git add` between your `git add` and `git commit` sweeps
@@ -92,6 +99,7 @@ data:
         verify the staged slice deliberately.
     - title: "A new var reference in a previously var-free template is adopter-visible"
       domains: [rendering]
+      tags: [rendering, adoption, publication-safety]
       body: |
         Referencing a `{{ .vars.* }}` value in a template that referenced none before changes more than
         the prose: every adopter without that var set starts seeing an ADR-0045 unset-var advisory for
@@ -103,6 +111,7 @@ data:
         the advisory as intended signal.
     - title: "A `data:` list override replaces the catalog defaults wholesale"
       domains: [config]
+      tags: [config, catalog, drift]
       body: |
         Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
         plan-reviewer's `focusItems`) replaces the catalog's default list — it does not append. Adding
@@ -114,6 +123,7 @@ data:
         deleted default lines before committing.
     - title: "Registry-relative constants in migration code drift"
       domains: [config]
+      tags: [migration, config]
       body: |
         `migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree — correct when
         the To:3 relocation was the newest migration, silently wrong once To:4..6 registered: the tree
@@ -128,6 +138,7 @@ data:
         gate the way a mispinned sentinel once mis-gated a healthy tree.
     - title: "Binary-side render changes do not reflag rendered outputs"
       domains: [rendering]
+      tags: [rendering, drift]
       body: |
         `awf check` hashes config bytes and template bytes — a change to the *Go render logic*
         (a new render key, a changed derivation like `taskSkills`) alters what a fresh render
@@ -141,6 +152,7 @@ data:
         trusting a clean check.
     - title: "Documenting a literal `{{=awf:key}}` token in the agent guide trips the render-guide brace check"
       domains: [rendering]
+      tags: [rendering, parts, docs]
       body: |
         `internal/project/guide_scopes_test.go`'s `renderGuide` helper rejects any `{{` or `}}` in the
         rendered agent guide as an unrendered template action. A guide default that documents a literal
@@ -155,6 +167,7 @@ data:
         guard. (This very entry backslash-escapes its tokens because the pitfalls doc is itself a raw
         convention part run through the same substitution.)
     - title: "A dispatched fix-applying subagent sometimes commits on a new branch, not `main`"
+      tags: [dispatch, workflow]
       body: |
         A dispatched subagent that applies fixes as commits — the implementer subagents in
         `<prefix>-subagent-driven-development` (as of ADR-0074 the review subagents are report-only and no
@@ -170,6 +183,7 @@ data:
         fix-applying subagent returns rather than trusting it stayed put.
     - title: "Zero-padded ADR numbers in YAML lists are octal to YAML-1.1 parsers"
       domains: [adr-system]
+      tags: [adr-system, config]
       body: |
         A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which a
         YAML-1.1 parser (PyYAML and kin) resolves as octal — `0017` becomes 15, silently pointing at the
@@ -182,6 +196,7 @@ data:
         ints instead of re-recording it.
     - title: "Enabled linters constrain API shape — sketch signatures against them"
       domains: [tooling]
+      tags: [tooling, plans]
       body: |
         An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
         forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state
@@ -194,6 +209,7 @@ data:
         enumerates, not novel linter/API interactions.
     - title: "Growing a pinned set breaks exact-assertion tests the change forgot to enumerate"
       domains: [config]
+      tags: [testing, migration, config]
       body: |
         Several gate tests deliberately pin a *complete current state*: `TestCurrentIsSeven` pins the
         migration registry head, `TestUpgradeAppliesInOrderIdempotent`/`TestUpgradeStampsTreeLock` pin
@@ -206,6 +222,7 @@ data:
         of these as blockers precisely because the plan hadn't.
     - title: "A partial amendment needs a forward pointer on the amended ADR"
       domains: [adr-system]
+      tags: [adr-system, workflow]
       body: |
         ADR-0079 Decision 4 revised one sentence of Implemented ADR-0065's Decision 3 (partial-item
         supersedence: the successor cites the item in prose and carries `related: [65]`, the
@@ -223,6 +240,7 @@ data:
         the citing ADR.
     - title: "A milestone-time check must not double as an every-commit test"
       domains: [tooling]
+      tags: [testing, release, tooling]
       body: |
         `cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
         exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a
@@ -235,6 +253,7 @@ data:
         for the milestone gate alone.
     - title: "gofmt rewrites double backticks in doc comments into curly quotes"
       domains: [tooling]
+      tags: [tooling, docs]
       body: |
         Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
         a doc comment as the old quoting convention and rewrites it to a curly quote (`“`) — so a
@@ -245,6 +264,7 @@ data:
         non-doc comments or raw strings.
     - title: "An ADR's `domains:` list dictates which domain docs a flip commit stages"
       domains: [adr-system]
+      tags: [adr-system, domains]
       body: |
         `./x sync` regenerates the generated ADR index of **every** domain doc named in an ADR's
         `domains:` frontmatter, not just the one whose current-state part the effort edited. The
@@ -255,6 +275,7 @@ data:
         `domains:` entry implies its rendered doc.
     - title: "The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit"
       domains: [rendering]
+      tags: [rendering, workflow]
       body: |
         `.awf/awf.lock` is a single JSON manifest of every rendered file's hashes, so a change that
         regenerates outputs across several commit *scopes* — skill templates (`rendering`), an ADR flip's
@@ -269,6 +290,7 @@ data:
         file — a `./x` arm, a lockless script — still commits on its own.
     - title: "Obsoleting rendered prose: sweep parts and whole narratives, not just templates"
       domains: [rendering]
+      tags: [rendering, parts, docs]
       body: |
         Fixing a template's default sentence does not reach a project whose convention part
         *overrides* that section — awf's own `.awf/parts/agents-doc/awf-setup.md` kept ADR-0081's
@@ -280,6 +302,7 @@ data:
         outputs will surface every carrier, parts included) and rewrite stale clauses in place —
         an appended correction beside a surviving old claim is worse than either alone.
     - title: "An empty scan result only counts once the probe provably ran"
+      tags: [testing, workflow]
       body: |
         A compound shell command that errors mid-sequence silently drops every later segment: a
         `grep A; echo ---; grep B` probe whose separator failed to parse never ran the second grep,
@@ -291,6 +314,7 @@ data:
         observe as unrun, not clean.
     - title: "A coverage-ignore justification is stale the moment its line is refactored"
       domains: [tooling]
+      tags: [testing, tooling, refactor]
       body: |
         A `coverage-ignore` comment asserts a reachability claim about the code shape it was written
         against; a refactor that merges call sites, changes a signature, or widens who runs the code
@@ -315,6 +339,7 @@ data:
         `os.Geteuid() == 0` skip, since root bypasses it).
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
       domains: [tooling]
+      tags: [testing, tooling]
       body: |
         A pinned-list test that selects its population by an attribute (`if d.Kind == "string"`)
         pins only that slice: anything added under a different attribute value bypasses the pin
@@ -328,6 +353,7 @@ data:
         filtering to the bucket you thought of first.
     - title: "A Proposed ADR's same-commit state-doc update must not speak in present tense"
       domains: [adr-system]
+      tags: [adr-system, docs]
       body: |
         The proposing step updates the shifted domain's current-state doc in the ADR's own commit,
         but the ADR is still `Proposed` there — writing "the four prose knobs are removed" while the
@@ -338,6 +364,7 @@ data:
         implementation commit that makes it true, alongside the status flip.
     - title: "Retiring an Implemented ADR's invariant couples the feature to the successor's status flip"
       domains: [invariants]
+      tags: [invariants, workflow]
       body: |
         The invariant scanner demands every `inv:` slug of an Implemented ADR stay backed until an
         *Implemented* successor retires it — so a commit that removes or renames the backing marker
@@ -349,6 +376,7 @@ data:
         final implementation commit to include the status flip from the start.
     - title: "An unescaped consumable placeholder in a part is silently rewritten, check-clean"
       domains: [rendering]
+      tags: [rendering, parts]
       body: |
         The guide-brace-check entry above covers a token tripping a test; the worse variant trips
         nothing. A convention part that *documents* a consumable placeholder (`{{=awf:gateCmd}}`,
@@ -363,6 +391,7 @@ data:
         meant-to-resolve means bare, and verify by reading the rendered file, not the part.
     - title: "Moving a check earlier in the pipeline steals a later stage's error-branch coverage"
       domains: [tooling]
+      tags: [testing, tooling]
       body: |
         A fixture that corrupts state up front (a directory where a sidecar file belongs, an
         unreadable file) to pin a *late* stage's error propagation silently changes meaning when a
@@ -374,6 +403,7 @@ data:
         mutation), so each stage's own error branch keeps a test that reaches it; and when adding
         an earlier check, grep the tests for fixtures corrupting the state it newly reads.
     - title: "Parallel sessions share one git index"
+      tags: [workflow, tooling]
       body: |
         Two agent sessions (or an agent and a human) working in the same checkout share the staging
         area: a bare `git commit` after `git add <own files>` commits the *whole index*, silently
@@ -396,6 +426,7 @@ data:
         (`git worktree add`) or serialize.
     - title: "Link ADRs by their on-disk filename, never by constructing one from the title"
       domains: [adr-system]
+      tags: [adr-system, docs]
       body: |
         An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
         drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input")
@@ -404,6 +435,7 @@ data:
         only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
     - title: "`adr.ADR.Title` already carries the `ADR-NNNN: ` prefix"
       domains: [adr-system]
+      tags: [adr-system, context]
       body: |
         `adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: …` heading, so it includes the
         `ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints
@@ -414,6 +446,7 @@ data:
         so the gotcha only surfaces as awf grows ADR-aware tooling.
     - title: "Repo opens must resolve the `.git` gitfile (use `internal/git.OpenRepo`)"
       domains: [tooling]
+      tags: [tooling]
       body: |
         In a linked worktree (`git worktree add`) — and the submodule layout — `.git` is a
         `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
@@ -428,6 +461,7 @@ data:
         until ADR-0092's stage-a extracted it into the shared `internal/git` package.)
     - title: "Section parts carry their own heading"
       domains: [rendering]
+      tags: [rendering, parts]
       body: |
         A convention part replaces its section's *body*, and for most doc/guide sections the
         `## Heading` line lives inside that body — a part written without it renders a headless
@@ -436,6 +470,7 @@ data:
         section's default (or an existing adopter's part) for whether the heading is yours to write.
         No note fires: the stub advisory clears the moment the part exists, whatever its shape.
     - title: "Verify compound-chain side effects by reading the target back"
+      tags: [workflow, testing]
       body: |
         A `cd <dir> && <edit>` chain silently skips the edit when the `cd` fails (wrong cwd
         assumption across tool calls), while an unchained command later in the same block still
@@ -445,6 +480,7 @@ data:
         target's content, not the block's exit status.
     - title: "Hand-rolled repo enumeration crosses repository boundaries"
       domains: [tooling]
+      tags: [tooling]
       body: |
         Anything that walks or opens the repo tree itself must define its repository boundary;
         the Go toolchain gets this free (dot-dirs and nested modules are invisible to `./...`),
@@ -460,6 +496,7 @@ data:
         immune by construction and preferred where it fits.
     - title: "An `inv:` backing marker must open its own line, not trail a statement"
       domains: [invariants]
+      tags: [invariants]
       body: |
         The invariant-backing scanner (`internal/invariants`) matches a slug only when the marker
         opens its line after indentation — `strings.TrimLeft(line, " \t")` must start with the
@@ -472,6 +509,7 @@ data:
         `// invariant: <slug>` on its own line directly above the statement it describes.
     - title: "Relocating a cross-cutting guard out of a shared helper drops it for internal callers"
       domains: [tooling]
+      tags: [tooling, refactor, testing]
       body: |
         `gate()` (the binary-version guard) was applied *transitively*: `runSync` gated at its top,
         so every command that chained `runSync` — including the `Ungated` `init` and `upgrade` —
@@ -487,6 +525,7 @@ data:
         lock but not a schema- or version-behind one, which only `gate()` sees.
     - title: "A plan editing a catalog template or default under-enumerates the render fan-out"
       domains: [rendering]
+      tags: [rendering, catalog, plans]
       body: |
         A plan whose diff touches a shipped template (`templates/**`) or a catalog default
         (`internal/catalog/standard.go`) naturally lists the one `.claude/` output the author is looking
@@ -504,6 +543,7 @@ data:
         over-named.
     - title: "GoReleaser aborts on a dirty git tree — pre-release artifacts belong outside the worktree"
       domains: [tooling]
+      tags: [release, tooling]
       body: |
         `goreleaser release` runs a git-state validation that refuses a dirty tree, and *untracked* files
         count (`git status --porcelain` lists them as `??`). So any `release.yml` step that produces a file
@@ -518,6 +558,7 @@ data:
     - title: "Sidecar `data` is not placeholder-substituted — drop `{{=awf:…}}` escapes when converting a part"
       domains: [rendering]
       related: [89, 99]
+      tags: [rendering, sidecar-derived-doc, parts]
       body: |
         A raw convention part is run through awf's `{{=awf:…}}` sandbox substitution before Go templating
         (ADR-0057), so a part that *documents* a placeholder token backslash-escapes it (`\{{=awf:key}}`)
@@ -533,6 +574,7 @@ data:
     - title: "A new invariant's AGENTS.md bullet is a hand-maintained convention with no check"
       domains: [adr-system]
       related: [69]
+      tags: [invariants, docs, adr-system]
       body: |
         When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `inv:` slug
         has a source marker — but NOTHING verifies the slug also appears as a bullet in the agent guide's
@@ -546,6 +588,7 @@ data:
     - title: "A CLI command that re-Opens can't reach an assembly error Open already re-validates"
       domains: [tooling]
       related: [12, 92, 102]
+      tags: [tooling, testing]
       body: |
         An `awf` command handler that calls `project.Open` and then a project assembly method (e.g.
         `runUncovered` → `Uncovered`) cannot reach an assembly error whose only source is state `Open`

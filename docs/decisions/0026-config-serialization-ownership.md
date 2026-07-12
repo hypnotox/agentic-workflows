@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
-tags: [config, tooling, serialization, yaml]
+tags: [config, tooling]
 related: [1, 9, 10, 22, 24]
 domains: [config, tooling]
 ---

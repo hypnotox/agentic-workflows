@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [audit, conformance, tooling]
+tags: [audit, tooling]
 related: [8, 12]
 domains: [tooling, config]
 ---

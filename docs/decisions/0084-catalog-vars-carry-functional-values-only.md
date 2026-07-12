@@ -4,7 +4,7 @@ date: 2026-07-09
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [config, catalog, vars, init]
+tags: [config, catalog, scaffold]
 related: [2, 29, 51, 80]
 domains: [config]
 ---

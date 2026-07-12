@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [docs, standard, templates, portability]
+tags: [docs, adoption, rendering]
 related: [18, 37]
 domains: [rendering]
 ---

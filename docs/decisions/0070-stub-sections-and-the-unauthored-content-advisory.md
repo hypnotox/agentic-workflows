@@ -4,7 +4,7 @@ date: 2026-07-07
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, templates, sections, check, advisory, stub]
+tags: [rendering, tooling, advisory]
 related: [1, 11, 34, 45, 46, 54, 57, 58, 68]
 domains: [rendering, tooling]
 ---

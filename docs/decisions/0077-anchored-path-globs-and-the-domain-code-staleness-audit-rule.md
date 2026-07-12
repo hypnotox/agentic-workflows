@@ -4,7 +4,7 @@ date: 2026-07-08
 supersedes: []
 retires_invariants: [invariants-glob-basename]
 superseded_by: ""
-tags: [audit, globs, staleness, migration, config]
+tags: [audit, config, staleness, migration]
 related: [17, 19, 26, 33, 39, 49, 76, 86]
 domains: [tooling, config, invariants]
 ---

@@ -4,7 +4,7 @@ date: 2026-07-06
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [catalog, rendering, cli, adopter-extensibility]
+tags: [catalog, rendering, tooling, adoption]
 related: [22, 37, 45, 50, 53, 54, 57, 58, 60, 61]
 domains: []
 ---

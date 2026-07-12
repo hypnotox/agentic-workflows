@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, adoption, sync, safety]
+tags: [tooling, adoption, publication-safety]
 related: [16, 23]
 domains: [tooling]
 ---

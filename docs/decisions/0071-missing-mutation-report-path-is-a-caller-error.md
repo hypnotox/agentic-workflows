@@ -4,7 +4,7 @@ date: 2026-07-07
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, mutation-testing, advisory]
+tags: [tooling, testing, advisory]
 related: [66]
 domains: [tooling]
 ---

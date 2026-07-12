@@ -4,7 +4,7 @@ date: 2026-07-09
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, advisory, convention-parts]
+tags: [rendering, advisory, parts]
 related: [34, 70, 77, 82]
 domains: [rendering]
 ---

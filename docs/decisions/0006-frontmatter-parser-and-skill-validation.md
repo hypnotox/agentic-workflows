@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
-tags: [tooling, render]
+tags: [tooling, rendering]
 related: [1, 5]
 domains: [rendering, adr-system]
 ---

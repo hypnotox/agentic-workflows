@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: [target-output-paths]
 superseded_by: ""
-tags: [rendering, adapter, cursor, config]
+tags: [rendering, adoption, config]
 related: [14, 16, 24]
 domains: [rendering, config, tooling]
 ---

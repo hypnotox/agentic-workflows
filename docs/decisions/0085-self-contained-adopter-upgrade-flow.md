@@ -4,7 +4,7 @@ date: 2026-07-10
 supersedes: []
 retires_invariants: [bootstrap-pin]
 superseded_by: ""
-tags: [bootstrap, upgrade, rendering]
+tags: [bootstrap, rendering]
 related: [39, 40, 49, 76, 79, 82]
 domains: [rendering, config]
 ---

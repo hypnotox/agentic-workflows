@@ -4,7 +4,7 @@ date: 2026-06-30
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, versioning, gate]
+tags: [tooling, release]
 related: [30, 40]
 domains: [tooling]
 ---

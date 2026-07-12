@@ -4,7 +4,7 @@ date: 2026-07-11
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [workflow, plans, convention, rendering]
+tags: [workflow, plans, rendering]
 related: [1, 45, 54, 80, 82, 90]
 domains: [rendering]
 ---

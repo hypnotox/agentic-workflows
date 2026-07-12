@@ -4,7 +4,7 @@ date: 2026-07-03
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [render, templates, partials, drift]
+tags: [rendering, parts, drift]
 related: [1, 15, 27, 34, 45, 46]
 domains: [rendering]
 ---

@@ -4,7 +4,7 @@ date: 2026-07-05
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [invariants, rendering, config, drift, init]
+tags: [invariants, rendering, config, drift, scaffold]
 related: [8, 29, 45, 51, 55, 57]
 domains: [rendering, config, invariants]
 ---

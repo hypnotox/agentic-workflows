@@ -4,7 +4,7 @@ date: 2026-07-12
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [cli, context, domains, coverage]
+tags: [tooling, context, domains, testing]
 related: [14, 77, 86, 92, 94]
 domains: [tooling]
 ---

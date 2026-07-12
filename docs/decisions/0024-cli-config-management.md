@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-27
 supersedes: []
 superseded_by: ""
-tags: [tooling, config, cli, adoption]
+tags: [tooling, config, adoption]
 related: [9, 14, 22, 93]
 domains: [tooling, config]
 ---

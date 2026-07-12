@@ -4,7 +4,7 @@ date: 2026-07-08
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [release, ci, supply-chain, security, tooling]
+tags: [release, tooling, security]
 related: [30, 40, 49, 65, 78]
 domains: [tooling]
 ---

@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, commit, gate, hooks, audit]
+tags: [tooling, workflow, hooks, audit]
 related: [17, 32]
 domains: [tooling]
 ---

@@ -4,7 +4,7 @@ date: 2026-07-07
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, audit, changelog, reviewing-impl, repo-local, dogfood]
+tags: [tooling, audit, changelog, dispatch, adoption]
 related: [17, 41, 67, 72]
 domains: [tooling]
 ---

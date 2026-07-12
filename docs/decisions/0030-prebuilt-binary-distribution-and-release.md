@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
-tags: [tooling, release, distribution]
+tags: [tooling, release]
 related: [3]
 domains: [tooling]
 ---

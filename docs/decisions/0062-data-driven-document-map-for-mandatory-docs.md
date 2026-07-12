@@ -4,7 +4,7 @@ date: 2026-07-05
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [docs, rendering, catalog, singleton]
+tags: [docs, rendering, catalog]
 related: [43, 59, 61]
 domains: [rendering]
 ---

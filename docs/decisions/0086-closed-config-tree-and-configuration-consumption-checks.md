@@ -4,7 +4,7 @@ date: 2026-07-10
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [config, check, drift, validation, hygiene]
+tags: [config, tooling, drift, governance]
 related: [11, 22, 45, 68, 69, 70, 76, 77, 81, 83]
 domains: [config, rendering]
 ---

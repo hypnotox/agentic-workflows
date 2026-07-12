@@ -4,7 +4,7 @@ date: 2026-07-11
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [cli, workflow, domains, invariants, query]
+tags: [tooling, workflow, domains, invariants, context]
 related: [8, 19, 24, 39, 49, 77, 86, 88]
 domains: [tooling, config, invariants, adr-system]
 ---

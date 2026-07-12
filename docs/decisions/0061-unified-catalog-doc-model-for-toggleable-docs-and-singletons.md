@@ -4,7 +4,7 @@ date: 2026-07-05
 supersedes: []
 retires_invariants: [mandatory-docs-not-in-docs-catalog, singleton-kind-single-source]
 superseded_by: ""
-tags: [catalog, docs, singleton, rendering, config, refactor]
+tags: [catalog, docs, rendering, config, refactor]
 related: [4, 21, 22, 27, 31, 37, 43, 59, 60]
 domains: [rendering, config]
 ---

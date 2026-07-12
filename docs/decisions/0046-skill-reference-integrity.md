@@ -4,7 +4,7 @@ date: 2026-07-01
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [check, drift, skills, adoption]
+tags: [tooling, drift, skills, adoption]
 related: [13, 20, 22, 28, 34, 45, 81]
 domains: [rendering, config]
 ---
