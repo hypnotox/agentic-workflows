@@ -109,6 +109,7 @@
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
+- [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Proposed
 
 ## Superseded
 
