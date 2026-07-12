@@ -1,7 +1,7 @@
 ---
 date: 2026-07-12
 adrs: [102]
-status: Proposed
+status: Implemented
 ---
 # Plan: Domain-Coverage Report Mode: awf context --uncovered
 
@@ -475,3 +475,17 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
 - Out of scope (per ADR-0102): promoting `--uncovered` to an audit rule; adding the
   domains for the unowned awf packages the report surfaces (that config work follows,
   informed by this tool); the tag-vocabulary and context-tiering ADRs.
+
+### Implementation findings
+- **`runUncovered`'s `p.Uncovered` error branch is unreachable, not testable.** Task 1.9
+  planned a CLI-level sidecar-fault test for it, but `runUncovered` re-opens the project
+  and `project.Open` validates every domain sidecar (`validate.go` → `validateAgainstCatalog`)
+  — so a corrupt sidecar surfaces at `Open`, before `Uncovered`. Since `Uncovered`'s only
+  fault source is that same sidecar read (unlike `ContextFor`, which can also fail on an
+  ADR parse that `Open` skips), the branch got a `// coverage-ignore` with that reason, and
+  the planned `AssembleFault` CLI test was dropped (it exercised `Open`, redundant with
+  `TestRunContextUncoveredOpenError`). `Uncovered`'s own error path stays covered at the
+  project level (`TestUncovered` sidecar-fault case).
+- **`gitfixture.Commit` does not create parent directories.** The nested committed paths in
+  Tasks 1.7/1.9 needed a `MkdirAll` before `Commit` in the tests (kept local to the test
+  files rather than modifying the shared fixture).

@@ -102,12 +102,12 @@
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](0097-plan-convention-sections-granularity-and-lifecycle.md) — Implemented
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](0098-structured-plan-artifact-frontmatter-template-and-linking.md) — Implemented
 - [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) — Implemented
+- [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Proposed
 
 ## Superseded
 

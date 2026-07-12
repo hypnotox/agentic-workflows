@@ -148,3 +148,9 @@ data:
           text: '**Pitfall→ADR links resolve.** `awf check` fails a pitfall entry whose `related:` names an ADR number with no matching file under `docs/decisions/` (`inv: pitfall-adr-link-resolved`).'
         - ref: ADR-0099
           text: '**Context surfaces pitfalls.** `awf context` surfaces every pitfall whose `domains:` owns a queried path, on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-pitfalls`).'
+        - ref: ADR-0102
+          text: '**Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`).'
+        - ref: ADR-0102
+          text: '**Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`inv: uncovered-collapses-directories`).'
+        - ref: ADR-0102
+          text: '**Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`inv: uncovered-output-parity`).'

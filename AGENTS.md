@@ -104,6 +104,9 @@ Hard rules every change must respect:
 - **Pitfall domains resolve.** `awf check` fails a pitfall entry whose `domains:` names a domain not configured in the project; a domainless entry is valid and never surfaces via `awf context` (`inv: pitfall-domains-resolved`). (ADR-0099)
 - **Pitfall→ADR links resolve.** `awf check` fails a pitfall entry whose `related:` names an ADR number with no matching file under `docs/decisions/` (`inv: pitfall-adr-link-resolved`). (ADR-0099)
 - **Context surfaces pitfalls.** `awf context` surfaces every pitfall whose `domains:` owns a queried path, on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-pitfalls`). (ADR-0099)
+- **Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`). (ADR-0102)
+- **Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`inv: uncovered-collapses-directories`). (ADR-0102)
+- **Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`inv: uncovered-output-parity`). (ADR-0102)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
