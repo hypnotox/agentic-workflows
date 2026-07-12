@@ -55,6 +55,18 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 			testsupport.WithTitle("0003: Later decision"), testsupport.WithDomains("alpha"),
 			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
+	// Two plans linking alpha-owned ADRs (0001, 0003) → both surfaced, sorted by
+	// filename (also-linked before linked).
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
+		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-also-linked.md"),
+		"---\ndate: 2026-07-12\nadrs: [3]\nstatus: Implemented\n---\n# Plan: Also Linked\n")
+	// A plan linking only ADR 0002 (unowned domain → never surfaced).
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-unlinked.md"),
+		"---\ndate: 2026-07-12\nadrs: [2]\nstatus: Proposed\n---\n# Plan: Unlinked\n")
+	// A grandfathered frontmatter-less plan — skipped even though it exists.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-06-24-legacy.md"),
+		"# Plan: Legacy\n\nNo frontmatter.\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -93,6 +105,42 @@ func TestContextForAssembles(t *testing.T) {
 	}
 	if len(res.Unowned) != 0 {
 		t.Errorf("unowned: got %v want none", res.Unowned)
+	}
+}
+
+// invariant: context-surfaces-linked-plans
+func TestContextForSurfacesLinkedPlans(t *testing.T) {
+	_, p := ctxProject(t, ctxYAML)
+
+	res, err := p.ContextFor([]string{"cmd/x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The two plans linking surfaced ADRs (0001, 0003) appear, sorted by filename;
+	// the plan linking the unowned ADR 0002 and the frontmatter-less legacy plan
+	// do not.
+	if len(res.Plans) != 2 {
+		t.Fatalf("plans: got %+v, want the two alpha-linked plans", res.Plans)
+	}
+	if res.Plans[0].Filename != "2026-07-12-also-linked.md" || res.Plans[1].Filename != "2026-07-12-linked.md" {
+		t.Errorf("plans not sorted by filename: got %+v", res.Plans)
+	}
+	pl := res.Plans[1]
+	if pl.Path != "docs/plans/2026-07-12-linked.md" {
+		t.Errorf("plan path: got %q", pl.Path)
+	}
+	if pl.Status != "Proposed" || len(pl.ADRs) != 1 || pl.ADRs[0] != 1 {
+		t.Errorf("plan ref fields: got %+v", pl)
+	}
+}
+
+// context.go's plan.ParseDir error propagates rather than silently dropping plans.
+func TestContextForPropagatesPlanParseError(t *testing.T) {
+	root, p := ctxProject(t, ctxYAML)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
+		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
+	if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
+		t.Fatal("expected ContextFor to propagate the plan parse error, got nil")
 	}
 }
 

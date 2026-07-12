@@ -86,6 +86,12 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 			fmt.Fprintf(stdout, "    invariants: %v\n", a.Invariants)
 		}
 	}
+	if len(res.Plans) > 0 {
+		fmt.Fprintln(stdout, "\n## Related plans")
+		for _, pl := range res.Plans {
+			fmt.Fprintf(stdout, "  %s (%s) — %s\n", pl.Filename, pl.Status, pl.Path)
+		}
+	}
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")
 		for _, u := range res.Unowned {

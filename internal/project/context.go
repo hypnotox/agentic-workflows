@@ -3,11 +3,13 @@ package project
 import (
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 )
 
 // ContextResult is the read-only context awf holds for a set of repo-relative
@@ -19,7 +21,17 @@ type ContextResult struct {
 	Domains    []DomainRef `json:"domains"`
 	Invariants []string    `json:"invariants"`
 	ADRs       []ADRRef    `json:"adrs"`
+	Plans      []PlanRef   `json:"plans"`
 	Unowned    []string    `json:"unowned"`
+}
+
+// PlanRef is a plan surfaced because its adrs: links an ADR reported for the
+// query. Path is docsDir-rooted; ADRs are the linked ADR numbers.
+type PlanRef struct {
+	Filename string `json:"filename"`
+	Path     string `json:"path"`
+	Status   string `json:"status"`
+	ADRs     []int  `json:"adrs"`
 }
 
 // DomainRef is an owning domain and its rendered current-state doc path, derived
@@ -104,6 +116,35 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		}
 	}
 	sort.Slice(res.ADRs, func(i, j int) bool { return res.ADRs[i].Number < res.ADRs[j].Number })
+
+	// Surface plans transitively: a plan whose adrs: links any ADR reported above.
+	// Plans declare adrs: not paths:, so this ADR join is the only clean link.
+	// invariant: context-surfaces-linked-plans
+	surfaced := map[int]bool{}
+	for _, a := range res.ADRs {
+		if n, err := strconv.Atoi(a.Number); err == nil { // coverage-ignore: a.Number is always a 4-digit numeral from FilenameRe
+			surfaced[n] = true
+		}
+	}
+	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	if err != nil {
+		return ContextResult{}, err
+	}
+	for _, pl := range plans {
+		if !pl.HasFrontmatter {
+			continue
+		}
+		for _, n := range pl.ADRs {
+			if surfaced[n] {
+				res.Plans = append(res.Plans, PlanRef{
+					Filename: pl.Filename, Path: lay.PlansDir + "/" + pl.Filename,
+					Status: pl.Status, ADRs: pl.ADRs,
+				})
+				break
+			}
+		}
+	}
+	sort.Slice(res.Plans, func(i, j int) bool { return res.Plans[i].Filename < res.Plans[j].Filename })
 	return res, nil
 }
 

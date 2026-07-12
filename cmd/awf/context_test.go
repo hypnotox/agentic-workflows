@@ -54,6 +54,9 @@ func ctxFixture(t *testing.T) string {
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
 			testsupport.WithBody("## Invariants\n- `inv: declared-slug` — a contract.\n## Consequences\nc\n")))
+	// A plan linking ADR 0001 (alpha-owned → surfaced for cmd/ queries).
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
+		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
 	return root
 }
 
@@ -73,6 +76,8 @@ func TestRunContextHuman(t *testing.T) {
 		"backed-here",
 		"ADR-0001 (Implemented) Alpha decision — docs/decisions/0001-a.md",
 		"invariants: [declared-slug]",
+		"## Related plans",
+		"2026-07-12-linked.md (Proposed) — docs/plans/2026-07-12-linked.md",
 		"## Unowned paths",
 		"README.md",
 	} {
@@ -103,12 +108,15 @@ func TestRunContextJSONParity(t *testing.T) {
 	if len(res.ADRs) != 1 || strings.Join(res.ADRs[0].Invariants, ",") != "declared-slug" {
 		t.Errorf("json adrs: %+v", res.ADRs)
 	}
+	if len(res.Plans) != 1 || res.Plans[0].Filename != "2026-07-12-linked.md" || res.Plans[0].Status != "Proposed" {
+		t.Errorf("json plans: %+v", res.Plans)
+	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
 	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug"} {
+	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug", "2026-07-12-linked.md"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
@@ -133,6 +141,9 @@ func TestRunContextStaticFallback(t *testing.T) {
 	var res project.ContextResult
 	if err := json.Unmarshal(j.Bytes(), &res); err != nil || strings.Join(res.Paths, ",") != "cmd/x.go" {
 		t.Errorf("static json: %s (err %v)", j.String(), err)
+	}
+	if len(res.Plans) != 0 {
+		t.Errorf("static fallback must leave Plans empty, got %+v", res.Plans)
 	}
 }
 
