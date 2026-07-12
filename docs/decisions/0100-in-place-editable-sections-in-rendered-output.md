@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [rendering, config]
-related: [15, 60, 61, 72]
+related: [15, 48, 60, 61, 70, 72, 83, 86]
 domains: [config, rendering]
 ---
 # ADR-0100: In-Place-Editable Sections in Rendered Output
@@ -68,19 +68,26 @@ section and the file's structure.
    partial guard rejects only those two literals, and the part-marker advisory (ADR-0083) and stub
    marker are likewise unaffected.
 
-2. **Read-back sourcing, bounded by the pointer sequence.** On both sync and check, an
+2. **Read-back sourcing, bounded by awf's section registry.** On both sync and check, an
    in-place-editable section's body is sourced by **reading it back from the existing output
-   file** — the text between its `awf:edit-in-place` pointer and the next `awf:edit`-family
-   pointer or end-of-file — rather than from a template default or a `.awf/parts/` part. When the
-   output file is absent (first render) or the section's pointer is not found, the body falls back
-   to the template default (a starter scaffold). The read-back is spliced verbatim, never
-   re-templated.
+   file** — rather than from a template default or a `.awf/parts/` part. The region runs from just
+   after the section's `awf:edit-in-place` pointer to the **exact expected pointer of awf's next
+   registered section** (from the ordered section list awf is assembling), or end-of-file when the
+   in-place section is last. The trailing boundary is thus awf's own next pointer, matched by its
+   expected string — **not any pointer-shaped line found in adopter text** — so an adopter body that
+   happens to contain a line resembling an `awf:edit`-family pointer does not truncate the region.
+   Adopter content is matched (bounded), never parsed. When the output file is absent (first render)
+   or the section's pointer is not found, the body falls back to the template default (a starter
+   scaffold). The read-back is spliced verbatim, never re-templated.
 
-3. **awf owns the framing; the adopter owns the content lines.** Inter-section blank-line spacing
-   is awf-owned structure, re-applied canonically on every render; read-back trims the captured
-   region to its content lines. This makes the round-trip an idempotent fixpoint: after a sync the
-   file is canonical, and a re-check reads the same content back and matches, so benign whitespace
-   never churns as drift.
+3. **awf owns the framing; the adopter owns the region interior.** Only the **leading and trailing
+   whitespace** of an in-place region is awf-owned framing — the blank-line separation between a
+   section body and its neighbouring pointers — re-applied canonically on every render. Every line
+   **inside** the region, including internal blank lines (a runner block's own spacing), is
+   adopter-owned and spliced back verbatim; awf never reflows or canonicalizes the interior. Because
+   the interior is echoed byte-for-byte and only the outer framing is regenerated to a fixed form,
+   the round-trip is an idempotent fixpoint: after a sync the file is canonical, and a re-check reads
+   the same interior back and matches, so benign whitespace never churns as drift.
 
 4. **A section is part-overridable OR in-place-editable, never both.** The two override channels
    are mutually exclusive per section — a section sourced from a `.awf/parts/` input (the existing
@@ -119,13 +126,15 @@ section and the file's structure.
   reported as drift, while an edit confined to an in-place-editable section's content lines is not.
 - `inv: section-source-exclusive` — no section is simultaneously part-overridable and
   in-place-editable; a declaration asserting both is a render/build error.
-- `inv: in-place-spacing-owned` — inter-section spacing is regenerated canonically and the
-  in-place read-back trims to content lines, so the sync→check round-trip is an idempotent fixpoint
-  (a second sync with no adopter edit is a no-op and reports no drift).
-- `inv: regeneration-checked-attribute` — the set of regeneration-checked files (excluded from the
-  frozen-`OutputHash` compare) is derived from a first-class attribute on the rendered-file model,
-  not a hardcoded path list; `ACTIVE.md`, the config reference, and the domain docs carry that
-  attribute, and any file with an in-place-editable section carries it.
+- `inv: in-place-spacing-owned` — an in-place region's interior (all lines between its framing,
+  including internal blank lines) is spliced back verbatim while only the leading/trailing framing
+  is regenerated to a fixed form, so the sync→check round-trip is an idempotent fixpoint (a second
+  sync with no adopter edit is a no-op and reports no drift).
+- `inv: regeneration-checked-attribute` — the files excluded from the frozen-`OutputHash` compare
+  are exactly those a first-class attribute on the rendered-file model marks regeneration-checked;
+  `ACTIVE.md`, the config reference, and the domain docs carry that attribute, and every file with
+  an in-place-editable section carries it. (That this attribute *replaces* the former hardcoded
+  path list is enforced by the dead-code gate on the removed literals, not by this bullet.)
 
 ## Consequences
 
