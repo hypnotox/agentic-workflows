@@ -106,9 +106,25 @@ of its own.
   formally independent.
 - **Ruled out:** an `Accepted` middle state for plans (meaningless while plans stay mutable through
   implementation), wall-clock task sizing, and the `# Implementation complete` prose freeze marker.
-- **Downstream:** the companion structured-artifact ADR mechanizes this convention; the
-  `awf-writing-plans` skill, the `plans-readme` doc, and the executing skills are updated to it in
-  the implementing plan.
+- **Migration:** the 67 existing dogfooded plans (no frontmatter, `# Implementation complete`
+  markers, stray `Date:` / `Branch:` fields) are grandfathered as frozen historical records — never
+  retrofitted. The convention binds new plans only; the companion ADR's frontmatter parse-validation
+  and plan→ADR link check must exempt pre-convention frozen plans, which carry no frontmatter to
+  validate.
+- **Downstream:** the companion structured-artifact ADR (β) mechanizes this convention —
+  frontmatter, the `plans-template` singleton, `awf new plan`, and the plan→ADR link check. Because
+  Decision 1's title/frontmatter split and Decision 4's `status:` freeze marker both ride on β's
+  frontmatter mechanism, α's convention cannot be *fully* implemented until β lands; the single
+  implementing plan links both ADRs and sequences β's frontmatter ahead of (or co-ships it with) α's
+  lifecycle wiring. The updated artifacts are the `awf-writing-plans` skill, the `plans-readme` doc,
+  the executing skills (which own the `status` flip that replaces the `# Implementation complete`
+  line), and the **`plan-reviewer` agent** — whose `executability` lens still hard-codes the retired
+  "~2-5 min" sizing and the unconditional self-contained-phase rule, and must retire the wall-clock
+  wording, add the coupled-phase exception, and gain focus items for the section taxonomy, the
+  coupled-group marker, and the two-state freeze. These edits land in the `internal/catalog`
+  defaults, so they re-render `examples/sundial` (which must stay zero-notes per ADR-0090), the
+  catalog-default prose stays publication-safe and generic (ADR-0001, ADR-0045, ADR-0082), and any
+  wholesale-override sidecar (e.g. the plan-reviewer `focusItems`) is patched in lockstep.
 
 ## Alternatives Considered
 
