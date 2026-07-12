@@ -502,3 +502,16 @@ execution treat the plan's `git add` list as a *floor* — run `./x sync`, then 
 `git status --short` reports, adding paths the plan forgot rather than only dropping ones it
 over-named.
 
+## GoReleaser aborts on a dirty git tree — pre-release artifacts belong outside the worktree
+
+`goreleaser release` runs a git-state validation that refuses a dirty tree, and *untracked* files
+count (`git status --porcelain` lists them as `??`). So any `release.yml` step that produces a file
+before the GoReleaser step must write it **outside the checkout** — `release.yml` extracts the
+curated release notes into `"$RUNNER_TEMP/release-notes.md"` and passes that absolute path via
+`--release-notes` precisely so the tree GoReleaser sees stays clean (ADR-0096). Writing
+`release-notes.md` into the repo root would have reddened the very release it was added to fix — a
+non-obvious coupling caught in ADR review, not by any local check (the failure only manifests on a
+real tag build). When adding a future pre-release step, keep its output under `$RUNNER_TEMP` or add
+the path to `.gitignore`; do not assume a build-time artifact in the worktree is harmless
+(2026-07-12).
+
