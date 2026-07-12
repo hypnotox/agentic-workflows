@@ -612,5 +612,37 @@ stayed clean (the output is exactly what the data says), so only diffing the ren
 the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
 `\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
 
+## A new invariant's AGENTS.md bullet is a hand-maintained convention with no check
+
+_Domains: adr-system_
+
+_Related: ADR-0069_
+
+When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `inv:` slug
+has a source marker — but NOTHING verifies the slug also appears as a bullet in the agent guide's
+Invariants section (authored in `.awf/agents-doc.yaml`, rendered into `AGENTS.md`). Every recent
+invariant-bearing ADR (0091, 0092, 0098, 0099, 0102) added those bullets by hand, and a plan can
+omit the step with a fully green gate — the drift is silent, caught here only by a reviewer's
+doc-currency lens. Until a deterministic check exists (a deferred follow-up: assert every
+non-retired Implemented-ADR `inv:` slug has a matching agents-doc bullet), treat the
+`.awf/agents-doc.yaml` update as a mandatory step of any invariant-introducing implementation, in
+the same commit that flips the ADR (2026-07-13).
+
+## A CLI command that re-Opens can't reach an assembly error Open already re-validates
+
+_Domains: tooling_
+
+_Related: ADR-0012, ADR-0092, ADR-0102_
+
+An `awf` command handler that calls `project.Open` and then a project assembly method (e.g.
+`runUncovered` → `Uncovered`) cannot reach an assembly error whose only source is state `Open`
+re-validates. `Open` runs `validateAgainstCatalog`, which reads every domain sidecar — so a
+malformed sidecar faults at `Open`, never at the later assembly call, making that assembly's
+`if err != nil { return err }` branch unreachable from the CLI and a legitimate `// coverage-ignore`
+(the assembly's own error stays covered at the project layer, where the test reuses one `Open`ed
+project). The escape hatch is an error source `Open` does NOT touch: `ContextFor` stays reachable
+because it also parses ADRs and plans. Before coverage-ignoring such a branch, confirm the assembly
+reads nothing beyond what `Open` validates (2026-07-13).
+
 <!-- awf:edit append — default; create .awf/docs/parts/pitfalls/append.md to override -->
 
