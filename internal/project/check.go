@@ -442,6 +442,16 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, pitfallDrift...)
+	tagDrift, err := p.checkTagVocabulary()
+	if err != nil { // coverage-ignore: checkTagVocabulary's reads are pre-empted by earlier Check() steps (checkPlans ParseDir, RenderAll's pitfalls transform)
+		return nil, err
+	}
+	drift = append(drift, tagDrift...)
+	relDrift, err := p.checkADRRelatedLinks()
+	if err != nil { // coverage-ignore: adr.ParseDir here is pre-empted by checkPlans
+		return nil, err
+	}
+	drift = append(drift, relDrift...)
 	return drift, nil
 }
 
@@ -700,6 +710,89 @@ func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
 		for _, n := range e.Related {
 			if !known[fmt.Sprintf("%04d", n)] {
 				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
+			}
+		}
+	}
+	return drift, nil
+}
+
+// checkTagVocabulary validates tag governance when the config tags: vocabulary
+// is non-empty: every tag used by an ADR (frontmatter tags:) or a pitfall
+// (tags:) must be a declared vocabulary member, and every member must declare a
+// non-empty meaning. An empty or absent vocabulary is inert (tags are then
+// free-form). A declared member no artifact uses is intentionally permitted,
+// mirroring an unused configured domain under pitfall-domains-resolved.
+// invariant: tag-vocabulary-governed
+func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
+	if len(p.Cfg.Tags) == 0 {
+		return nil, nil
+	}
+	cfgPath := config.DirName + "/config.yaml"
+	var drift []manifest.Drift
+	for _, tag := range slices.Sorted(maps.Keys(p.Cfg.Tags)) {
+		if strings.TrimSpace(p.Cfg.Tags[tag]) == "" {
+			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-vocabulary", Detail: fmt.Sprintf("tag %q has an empty meaning", tag)})
+		}
+	}
+	adrs, err := adr.ParseDir(p.decisionsDir())
+	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed ADR; pre-empted only inside full Check()
+		return nil, err
+	}
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	for _, a := range adrs {
+		for _, tag := range a.Tags {
+			if _, ok := p.Cfg.Tags[tag]; !ok {
+				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-tag", Detail: fmt.Sprintf("ADR-%s: unknown tag %q", a.Number, tag)})
+			}
+		}
+	}
+	pf, err := p.pitfallTagEntries()
+	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed pitfalls sidecar; pitfallEntries validates shape
+		return nil, err
+	}
+	for _, e := range pf {
+		for _, tag := range e.Tags {
+			if _, ok := p.Cfg.Tags[tag]; !ok {
+				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-tag", Detail: fmt.Sprintf("%q: unknown tag %q", e.Title, tag)})
+			}
+		}
+	}
+	return drift, nil
+}
+
+// pitfallTagEntries returns the pitfall entries when the pitfalls doc is
+// enabled, else nil — factored so checkTagVocabulary reads tags without
+// duplicating checkPitfalls' sidecar plumbing.
+func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
+	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
+		return nil, nil
+	}
+	sc, err := p.Cfg.Sidecar("docs", "pitfalls")
+	if err != nil { // coverage-ignore: the pitfalls sidecar's YAML was validated at Open, so this re-read cannot fail
+		return nil, err
+	}
+	return pitfallEntries(sc.Data["pitfalls"])
+}
+
+// checkADRRelatedLinks fails an ADR whose related: names an ADR number with no
+// matching file under the decisions dir — structurally identical to the
+// pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
+// invariant: adr-related-link-resolved
+func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {
+	adrs, err := adr.ParseDir(p.decisionsDir())
+	if err != nil { // reachable via a direct checkADRRelatedLinks call over a malformed ADR; pre-empted only inside full Check()
+		return nil, err
+	}
+	known := map[string]bool{}
+	for _, a := range adrs {
+		known[a.Number] = true
+	}
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	var drift []manifest.Drift
+	for _, a := range adrs {
+		for _, n := range a.Related {
+			if !known[fmt.Sprintf("%04d", n)] {
+				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-link", Detail: fmt.Sprintf("ADR-%s: ADR-%04d", a.Number, n)})
 			}
 		}
 	}

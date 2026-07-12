@@ -82,6 +82,142 @@ func TestCheckPitfallsADRParseError(t *testing.T) {
 	}
 }
 
+// A non-member tag on an ADR or a pitfall yields tag drift; an empty-meaning
+// member yields tag-vocabulary drift; a fully-conforming corpus yields none.
+// invariant: tag-vocabulary-governed
+func TestCheckTagVocabulary(t *testing.T) {
+	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
+		"tags:\n  rendering: the render engine\n  empty: \"\"\n"
+	root := scaffoldFiles(t, cfg, map[string]string{
+		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [rendering, ghost]\n      body: ok\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithTags("rendering", "bogus"), testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkTagVocabulary()
+	if err != nil {
+		t.Fatalf("checkTagVocabulary: %v", err)
+	}
+	got := map[string]string{}
+	for _, d := range drift {
+		got[d.Kind] = d.Detail
+	}
+	if len(drift) != 3 || !strings.Contains(got["adr-tag"], "bogus") ||
+		!strings.Contains(got["pitfall-tag"], "ghost") || !strings.Contains(got["tag-vocabulary"], "empty") {
+		t.Fatalf("want adr-tag(bogus)+pitfall-tag(ghost)+tag-vocabulary(empty), got %#v", drift)
+	}
+}
+
+// An empty/absent vocabulary makes the membership rule inert.
+func TestCheckTagVocabularyInert(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithTags("anything"), testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkTagVocabulary()
+	if err != nil || drift != nil {
+		t.Fatalf("empty vocabulary must be inert, got %#v / %v", drift, err)
+	}
+}
+
+// With a non-empty vocabulary but the pitfalls doc disabled, checkTagVocabulary
+// proceeds past the ADR loop and pitfallTagEntries short-circuits to no entries;
+// a conforming ADR yields no drift.
+func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: the render engine\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithTags("rendering"), testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkTagVocabulary()
+	if err != nil || drift != nil {
+		t.Fatalf("conforming ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
+	}
+}
+
+// A dangling ADR related: number yields adr-related-link drift; a resolving one
+// yields none. Unconditional (no vocabulary configured here).
+// invariant: adr-related-link-resolved
+func TestCheckADRRelatedLinks(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkADRRelatedLinks()
+	if err != nil {
+		t.Fatalf("checkADRRelatedLinks: %v", err)
+	}
+	if len(drift) != 1 || drift[0].Kind != "adr-related-link" || !strings.Contains(drift[0].Detail, "0042") {
+		t.Fatalf("want one adr-related-link(0042) drift, got %#v", drift)
+	}
+}
+
+// The two methods' adr.ParseDir branches are reachable via direct calls (they
+// are pre-empted only inside full Check() by checkPlans), so they are tested,
+// not coverage-ignored — mirroring TestCheckPitfallsADRParseError.
+func TestCheckTagVocabularyADRParseError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: x\n", nil)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkTagVocabulary(); err == nil {
+		t.Fatal("expected adr.ParseDir error, got nil")
+	}
+}
+
+func TestCheckADRRelatedLinksParseError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkADRRelatedLinks(); err == nil {
+		t.Fatal("expected adr.ParseDir error, got nil")
+	}
+}
+
+// checkTagVocabulary's pitfallTagEntries branch surfaces a malformed pitfalls
+// sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
+// method proceeds past the len==0 guard) — reachable, tested not ignored.
+func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
+		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.checkTagVocabulary(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected pitfalls structural error, got %v", err)
+	}
+}
+
 // TestCheckPlansValidatesFrontmatterAndLinks exercises checkPlans over a
 // docs/plans/ set: a plan linking a nonexistent ADR yields plan-adr-link drift,
 // a bad status: yields plan-frontmatter drift, a valid plan yields none, and a
