@@ -233,7 +233,7 @@ Go 1.26. Files touched: `internal/adr/adr.go`, `internal/testsupport/testsupport
   		}
   	}
   	adrs, err := adr.ParseDir(p.decisionsDir())
-  	if err != nil { // coverage-ignore: an earlier Check() step (checkPlans) already ParseDir'd the decisions dir, so a parse error is pre-empted
+  	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed ADR (Task 4.3); pre-empted only inside full Check()
   		return nil, err
   	}
   	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
@@ -245,7 +245,7 @@ Go 1.26. Files touched: `internal/adr/adr.go`, `internal/testsupport/testsupport
   		}
   	}
   	pf, err := p.pitfallTagEntries()
-  	if err != nil { // coverage-ignore: the pitfalls sidecar was validated at Open, so this re-read cannot fail
+  	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed pitfalls sidecar (Task 4.3); pitfallEntries validates shape
   		return nil, err
   	}
   	for _, e := range pf {
@@ -278,7 +278,7 @@ Go 1.26. Files touched: `internal/adr/adr.go`, `internal/testsupport/testsupport
   // invariant: adr-related-link-resolved
   func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {
   	adrs, err := adr.ParseDir(p.decisionsDir())
-  	if err != nil { // coverage-ignore: checkPlans already ParseDir'd the decisions dir
+  	if err != nil { // reachable via a direct checkADRRelatedLinks call over a malformed ADR (Task 4.3); pre-empted only inside full Check()
   		return nil, err
   	}
   	known := map[string]bool{}
@@ -388,19 +388,70 @@ Go 1.26. Files touched: `internal/adr/adr.go`, `internal/testsupport/testsupport
   		t.Fatalf("want one adr-related-link(0042) drift, got %#v", drift)
   	}
   }
+
+  // The two methods' adr.ParseDir branches are reachable via direct calls (they
+  // are pre-empted only inside full Check() by checkPlans), so they are tested,
+  // not coverage-ignored — mirroring TestCheckPitfallsADRParseError.
+  func TestCheckTagVocabularyADRParseError(t *testing.T) {
+  	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: x\n", nil)
+  	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+  		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if _, err := p.checkTagVocabulary(); err == nil {
+  		t.Fatal("expected adr.ParseDir error, got nil")
+  	}
+  }
+
+  func TestCheckADRRelatedLinksParseError(t *testing.T) {
+  	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+  	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+  		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if _, err := p.checkADRRelatedLinks(); err == nil {
+  		t.Fatal("expected adr.ParseDir error, got nil")
+  	}
+  }
+
+  // checkTagVocabulary's pitfallTagEntries branch surfaces a malformed pitfalls
+  // sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
+  // method proceeds past the len==0 guard) — reachable, tested not ignored.
+  func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
+  	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
+  		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
+  	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+  		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+  			testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if _, err := p.checkTagVocabulary(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+  		t.Fatalf("expected pitfalls structural error, got %v", err)
+  	}
+  }
   ```
 
-  If, after `./x gate`, the two `err != nil` wiring branches in `Check()` or the ParseDir/sidecar
-  branches in the new methods are reported uncovered (they are marked `coverage-ignore` above because
-  earlier `Check()` steps pre-empt them), keep the `coverage-ignore` comments; if coverage flags any
-  as genuinely reachable, add a direct error-injection test mirroring
-  `TestCheckPitfallsADRParseError` rather than an unjustified ignore.
+  Keep the `coverage-ignore` only on the genuinely-unreachable branches: the two `err != nil` wiring
+  branches added in Task 4.2 (pre-empted by `checkPlans` inside `Check()`) and the `p.Cfg.Sidecar`
+  error inside `pitfallTagEntries` (the sidecar YAML is validated at `Open`) — both consistent with
+  `checkPitfalls`' existing ignores at `check.go:441`/`674`. If `Open` rejects the malformed-pitfalls
+  fixture in `TestCheckTagVocabularyPitfallStructuralError` before the test can call
+  `checkTagVocabulary` (i.e. the sidecar shape is validated at `Open`, making the `pitfallTagEntries`
+  branch unreachable after all), restore that one `coverage-ignore` and drop this test — but verify
+  against `checkPitfalls`' `TestCheckPitfallsStructuralError`, which reaches the identical branch
+  through a live `Open`, so the fixture is expected to open cleanly.
 
 - [ ] **Task 4.4 — Verify and commit.** `./x gate` (awf's own `tags:` vocabulary is still absent, so
   `checkTagVocabulary` is inert on this tree; every ADR `related:` already resolves, so
   `checkADRRelatedLinks` is clean). Then
   `git add internal/project/check.go internal/project/check_test.go` and commit:
-  `feat(tooling): govern ADR/pitfall tags and resolve ADR related links in awf check`.
+  `feat(tooling): govern ADR/pitfall tags and resolve ADR related links` (68 runes, ≤72).
 
 ## Phase 5 — Adopt the vocabulary and normalize the corpus
 
@@ -477,12 +528,14 @@ so the corpus must already conform in the same gate. The active check is the exh
   - **Affected set:** every file matched by `ls docs/decisions/[0-9]*.md` (ADR-0103's own
     `tags: [context, config, adr-system, invariants, tooling]` are all canonical → unchanged).
   - **Post-check:** after Task 5.1's vocabulary is in place, this command must print nothing (every
-    used ADR tag is a vocabulary member):
+    used ADR tag is a vocabulary member). The vocabulary side is anchored to the `tags:` block only
+    (`awk` gates on it) so an out-of-vocab tag that coincidentally equals another 2-space config key
+    is still surfaced; Task 5.4's `./x check` remains the exact, authoritative proof:
 
     ```
     comm -23 \
       <(grep -h '^tags:' docs/decisions/[0-9]*.md | sed 's/^tags: \[//; s/\]$//; s/, /\n/g' | sed 's/^ *//;s/ *$//' | grep -v '^$' | sort -u) \
-      <(sed -n 's/^  \([a-z-]*\):.*/\1/p' .awf/config.yaml | sort -u)
+      <(awk '/^tags:/{f=1;next} /^[a-z]/{f=0} f' .awf/config.yaml | sed -n 's/^  \([a-z-]*\):.*/\1/p' | sort -u)
     ```
 
 - [ ] **Task 5.3 — Tag awf's pitfall corpus (batch).** Add a `tags:` list to every entry in
