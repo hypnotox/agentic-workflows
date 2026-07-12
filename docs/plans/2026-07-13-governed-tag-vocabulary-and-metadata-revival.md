@@ -1,7 +1,7 @@
 ---
 date: 2026-07-13
 adrs: [103]
-status: Proposed
+status: Implemented
 ---
 # Plan: Governed tag vocabulary and metadata revival
 
@@ -629,3 +629,18 @@ so the corpus must already conform in the same gate. The active check is the exh
   output.
 - The vocabulary is authored quality-first, not as a mechanical union of every label in use; the
   synonym map in Task 5.2 records the merges applied to the existing corpus.
+
+### Implementation findings
+
+- **Phase 3 under-enumerated the example fan-out.** Adding the `tags` `configspec` entry regenerates
+  `examples/sundial/docs/config-reference.md` (and its lock) too, not just the root reference
+  (ADR-0090) — the render-fan-out pitfall. Phase 3's `git add` named only the root files, so the
+  example regeneration was landed in a separate follow-up commit rather than with Phase 3. Future
+  plans touching `configspec` or any catalog/template surface should list the `examples/sundial`
+  outputs explicitly.
+- **Phase 4 needed one extra coverage test.** `pitfallTagEntries`' pitfalls-disabled branch was not
+  reached by the planned tests (they either enabled pitfalls or errored earlier); added
+  `TestCheckTagVocabularyPitfallsDisabled` to cover it.
+- **`tags:` stays out of the config hash and the lock.** As predicted, populating the vocabulary
+  changed no rendered output — `docs/pitfalls.md` is byte-identical and no `.awf/awf.lock` hash
+  moved for the Phase-5 corpus commit.

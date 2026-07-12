@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:757cd5b4505f65fd8743885116a71f829db0e1d203b3695e37a81bf8038cd088",
-      "configHash": "sha256:d5b742bf04355a3997ec6329d19e7ba29207fbc36466828e28271aaed9650484",
-      "outputHash": "sha256:aa59922a43888c162017942af9cd5d87d93ae0ddea12d3381cf038d2a703a148"
+      "configHash": "sha256:d57c486ea43a04a2e73b279aa7f2ec80fa2694b825ae989beeeab6e8f65e0a45",
+      "outputHash": "sha256:8e1a62d7982d847ecde8e733e2ada6dc526938d4589fd145c4208bcfc37b8232"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -276,7 +276,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:ab73866e55b00e469cfc9176d0263e822f69bfa1fa5d1e8426fe22efdd89aea1"
+      "outputHash": "sha256:11ae27baf7f3ff21469ca0ca4f409c8571c024ff40f8fee50981605ae235c9a0"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -306,19 +306,19 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:d0495f883f74f291ec9a5fa57392618e671fbd3dd208e7285fca20a4909fcc39"
+      "outputHash": "sha256:8a7763bc2f09532184462972f4dcc24e0178146628405ccf92a988d03b718fe2"
     },
     "docs/domains/config.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:273ab9f62e455be7032c66e8e2cb65c02316e6c61902b500fdaab54afacc210c"
+      "outputHash": "sha256:a42f1b5d31b3c38ff3ce083979cd6639ef5c84912170ac1b6d16884fb1f1265d"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:6eb02b3794ba9ca517d3a48eb422968b3681ade6beba536a81cbb2160fddd728"
+      "outputHash": "sha256:e82979f5ec36e26b9e9c7dbeaedd932a4fbe1242ea82235804a60dc376a23550"
     },
     "docs/domains/rendering.md": {
       "templateId": "",
@@ -330,7 +330,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:d756bf309d996f14eab7ca6bb1c2fd1da0143ca16cfd1bd8b4a297f66805fd6d"
+      "outputHash": "sha256:3b77632ea83777c2c461f93a3adb3de5e4c0acdd7074ba156f02eed99ec03ff7"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

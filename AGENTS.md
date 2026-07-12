@@ -107,6 +107,8 @@ Hard rules every change must respect:
 - **Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`). (ADR-0102)
 - **Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`inv: uncovered-collapses-directories`). (ADR-0102)
 - **Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`inv: uncovered-output-parity`). (ADR-0102)
+- **Governed tag vocabulary.** With a non-empty `tags:` vocabulary, `awf check` fails on any tag used by an ADR or a pitfall that is not a declared vocabulary member, and on any member with an empty meaning; an empty or absent vocabulary is inert, and a declared member no artifact uses is allowed (`inv: tag-vocabulary-governed`). (ADR-0103)
+- **ADR related links resolve.** `awf check` fails an ADR whose `related:` names an ADR number with no matching file under `docs/decisions/`, independent of the tag vocabulary (`inv: adr-related-link-resolved`). (ADR-0103)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

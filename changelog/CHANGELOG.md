@@ -24,6 +24,16 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- Governed tag vocabulary and revived ADR/pitfall metadata (ADR-0103). ADR
+  `tags:` and `related:` frontmatter — long authored but parsed-then-dropped —
+  are now lifted into `adr.ADR`, and pitfall entries gain an optional `tags:`
+  field. A new top-level `tags:` config key declares a vocabulary mapping each
+  tag to a one-line meaning; when it is non-empty, `awf check` fails on any ADR
+  or pitfall tag that is not a declared member and on any member with an empty
+  meaning (an empty or absent vocabulary is inert, so tags stay free-form until
+  you opt in). `awf check` also now resolves every ADR's `related:` numbers
+  against `docs/decisions/`. The key is additive and absent-safe — no schema
+  migration — and changes nothing about `awf context` output yet.
 - `awf context --uncovered [<scan-root>...]` reports git-tracked-at-HEAD paths
   matched by no configured domain glob — the inverse of the per-path domain
   resolution, and an on-demand signal for where a domain is missing (ADR-0102).
