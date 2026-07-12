@@ -143,3 +143,43 @@ func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 		t.Error("releasecheck must run before the GoReleaser step")
 	}
 }
+
+// TestReleaseNotesFromCuratedChangelog backs inv: release-notes-from-changelog
+// (ADR-0096) — the Release workflow must extract the tagged version's section from
+// the curated changelog via `awf changelog --version` before the GoReleaser step and
+// pass it through `--release-notes`, and `.goreleaser.yaml` must disable GoReleaser's
+// commit-derived changelog, so a commit subject can no longer reach the release notes.
+// invariant: release-notes-from-changelog
+func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
+	wfb, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatalf("read release workflow: %v", err)
+	}
+	wf := string(wfb)
+	extract := strings.Index(wf, "awf changelog --version")
+	build := strings.Index(wf, "goreleaser/goreleaser-action")
+	if extract < 0 {
+		t.Error("release.yml does not extract release notes via `awf changelog --version`")
+	}
+	if build < 0 {
+		t.Fatal("release.yml does not run the GoReleaser action")
+	}
+	if extract > build {
+		t.Error("the `awf changelog --version` extraction must run before the GoReleaser step")
+	}
+	if !strings.Contains(wf, "--release-notes") {
+		t.Error("release.yml does not pass --release-notes to the GoReleaser step")
+	}
+
+	glb, err := os.ReadFile("../../.goreleaser.yaml")
+	if err != nil {
+		t.Fatalf("read goreleaser config: %v", err)
+	}
+	gl := string(glb)
+	if !strings.Contains(gl, "disable: true") {
+		t.Error(".goreleaser.yaml does not disable the commit-derived changelog (changelog.disable: true)")
+	}
+	if strings.Contains(gl, "use: github") {
+		t.Error(".goreleaser.yaml still derives release notes from commits (use: github)")
+	}
+}

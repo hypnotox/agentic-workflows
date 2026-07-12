@@ -39,24 +39,12 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# Release notes come from the curated changelog/CHANGELOG.md, not commit messages:
+# release.yml extracts the tagged version's section with `awf changelog --version`
+# and passes it via `--release-notes` (ADR-0096). Deriving notes from commit subjects
+# leaked internal commits whose scopes dodged the exclude filters.
 changelog:
-  use: github
-  sort: asc
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\(.+\))??!?:.+$'
-      order: 0
-    - title: Bug fixes
-      regexp: '^.*?fix(\(.+\))??!?:.+$'
-      order: 1
-    - title: Others
-      order: 999
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^ci:'
+  disable: true
 
 release:
   draft: false
