@@ -24,6 +24,14 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf context --uncovered [<scan-root>...]` reports git-tracked-at-HEAD paths
+  matched by no configured domain glob — the inverse of the per-path domain
+  resolution, and an on-demand signal for where a domain is missing (ADR-0102).
+  A fully-uncovered directory collapses to its topmost node; positional args are
+  optional scan roots (matched on directory-segment boundaries), while
+  `--staged`/`--range` are rejected in this mode. Human and `--json` output derive
+  from one result, and the mode reuses `awf context`'s read-only and
+  static-fallback contracts.
 - `awf context <path>` now surfaces the pitfalls relevant to a queried area
   (ADR-0099): when the toggleable `pitfalls` doc is enabled, it lists each pitfall
   whose own `domains:` owns a queried path — by the entry's tag, like an ADR, not
