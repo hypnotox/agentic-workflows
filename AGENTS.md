@@ -100,6 +100,10 @@ Hard rules every change must respect:
 - **Plans-template taxonomy.** The `plans-template` singleton renders `docs/plans/template.md` with the canonical `date`/`adrs`/`status` frontmatter and the Goal/Architecture/Tech-stack/File-structure header, phases, and Verification/Notes tails, marker- and leak-free (`inv: plans-template-taxonomy`). (ADR-0097, ADR-0098)
 - **Plan scaffolding is unnumbered.** `awf new plan "<Title>"` scaffolds a date-prefixed `YYYY-MM-DD-slug.md` from the rendered plans template — no sequential number allocated — refusing to overwrite a same-day same-title plan (`inv: plan-new-unnumbered`). (ADR-0098)
 - **Context surfaces linked plans.** `awf context` surfaces each plan whose `adrs:` links an ADR reported for the query (path → domain → ADR → plans), on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-linked-plans`). (ADR-0098)
+- **Pitfall data validated.** `awf check` fails on unparseable `.awf/docs/pitfalls.yaml` data, and on an entry with an empty/newline title or empty body; the render transform is a hard error on the same malformed data (`inv: pitfall-data-validated`). (ADR-0099)
+- **Pitfall domains resolve.** `awf check` fails a pitfall entry whose `domains:` names a domain not configured in the project; a domainless entry is valid and never surfaces via `awf context` (`inv: pitfall-domains-resolved`). (ADR-0099)
+- **Pitfall→ADR links resolve.** `awf check` fails a pitfall entry whose `related:` names an ADR number with no matching file under `docs/decisions/` (`inv: pitfall-adr-link-resolved`). (ADR-0099)
+- **Context surfaces pitfalls.** `awf context` surfaces every pitfall whose `domains:` owns a queried path, on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-pitfalls`). (ADR-0099)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow

@@ -140,3 +140,11 @@ data:
           text: '**Plan scaffolding is unnumbered.** `awf new plan "<Title>"` scaffolds a date-prefixed `YYYY-MM-DD-slug.md` from the rendered plans template — no sequential number allocated — refusing to overwrite a same-day same-title plan (`inv: plan-new-unnumbered`).'
         - ref: ADR-0098
           text: '**Context surfaces linked plans.** `awf context` surfaces each plan whose `adrs:` links an ADR reported for the query (path → domain → ADR → plans), on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-linked-plans`).'
+        - ref: ADR-0099
+          text: '**Pitfall data validated.** `awf check` fails on unparseable `.awf/docs/pitfalls.yaml` data, and on an entry with an empty/newline title or empty body; the render transform is a hard error on the same malformed data (`inv: pitfall-data-validated`).'
+        - ref: ADR-0099
+          text: '**Pitfall domains resolve.** `awf check` fails a pitfall entry whose `domains:` names a domain not configured in the project; a domainless entry is valid and never surfaces via `awf context` (`inv: pitfall-domains-resolved`).'
+        - ref: ADR-0099
+          text: '**Pitfall→ADR links resolve.** `awf check` fails a pitfall entry whose `related:` names an ADR number with no matching file under `docs/decisions/` (`inv: pitfall-adr-link-resolved`).'
+        - ref: ADR-0099
+          text: '**Context surfaces pitfalls.** `awf context` surfaces every pitfall whose `domains:` owns a queried path, on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-pitfalls`).'

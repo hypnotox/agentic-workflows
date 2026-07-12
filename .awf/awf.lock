@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:757cd5b4505f65fd8743885116a71f829db0e1d203b3695e37a81bf8038cd088",
-      "configHash": "sha256:310fe378b4af09a5783ea1ff2ecf18cf786f0afedf567f8ae68d8bec100e9419",
-      "outputHash": "sha256:8e441671d4db67709f502395516f183f78d7e3f2b928dff742fe97b1aed6018a"
+      "configHash": "sha256:bbc30a855eefdc13af53103c279d671313136a65e0aa005fc89f404e9c4db79d",
+      "outputHash": "sha256:c3e8bff86cdda9bd604044b234193363dd73c424bfa8fdfef73fab5fa8a5f592"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -276,7 +276,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:9cb584bd3f34110f8ca0deb8c940643d6d7ba3773c84cab610b65b05467158f7"
+      "outputHash": "sha256:df8aa5dc43dff6eed81c7a80554d2a403ae4acf011c347ce1ef16b26d285d56a"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -324,19 +324,19 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:47d6e88712f8649d9a990a3e461f7a24bab37aa64b9d8d77374da20c21841e11"
+      "outputHash": "sha256:df70c35540f76499f53323646e554973de9071f8c3b6e9cdf0f9710b185f7733"
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:a754d31af735ea8e0a841fb4902c6ded3dbb270cff1d841f5bc19e39f9016884"
+      "outputHash": "sha256:2556b85e042c170713632f6e834ad8b8f48ff7dbca9f01b18c6a8f7006b135b7"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:15d26c3cc28bdd55c860fe5789db4b94ec68995cd4fece56c9b69440909d378d",
-      "configHash": "sha256:409d228e46cf50b776534c3597cb75ffa106954c615d7a893ef046e63f57b178",
-      "outputHash": "sha256:7513246e153a6d68b4970e4eb1dd6baf15b129e23149dd5865e502ebb72946bd"
+      "configHash": "sha256:4d0136b6b4b4980068e4a087f47a70b5971e8603404245b8ac25968d7ad31966",
+      "outputHash": "sha256:a0db646e7f65463fa69f8ee34c2328551f02792d771f1024341c60cd49053b81"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",

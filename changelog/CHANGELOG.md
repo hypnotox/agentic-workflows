@@ -8,7 +8,27 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- Pitfalls become a structured, domain-tagged sidecar-derived doc (ADR-0099).
+  `docs/pitfalls.md` is no longer authored as a free-prose `entries` part; its
+  entries now live as a `data.pitfalls` list of `{title, domains, related, body}`
+  in `.awf/docs/pitfalls.yaml`, rendered by a transform (the ADR-0089 seam the
+  glossary uses). The schema-9 `pitfalls-data` migration ports adopters on the
+  next `awf upgrade`: it auto-splits an existing `entries.md` on its top-level
+  `##` headings (fenced-code `##` lines skipped) into `data.pitfalls` entries with
+  empty `domains`, deletes the part, and prints one provenance line per entry plus
+  a review instruction. **Review the split and tag each entry's `domains:`** —
+  untagged entries render but do not surface in `awf context`. An entry's optional
+  `related:` ADR numbers render as plain `ADR-NNNN` text and are link-validated.
+  `awf check` now fails on unparseable pitfalls data, a bad entry shape, an unknown
+  `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
+
 ### Features
+- `awf context <path>` now surfaces the pitfalls relevant to a queried area
+  (ADR-0099): when the toggleable `pitfalls` doc is enabled, it lists each pitfall
+  whose own `domains:` owns a queried path — by the entry's tag, like an ADR, not
+  transitively like a plan — in both the human and `--json` output, on the same
+  read-only `ContextResult`.
 - Plans get a machine-readable spine and a uniform authored shape (ADR-0097,
   ADR-0098). A new `plans-template` singleton renders `docs/plans/template.md`
   — the canonical taxonomy: `date`/`adrs`/`status` frontmatter, a `# Plan:` H1,

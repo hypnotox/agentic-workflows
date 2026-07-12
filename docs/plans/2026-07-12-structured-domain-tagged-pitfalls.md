@@ -1,7 +1,7 @@
 ---
 date: 2026-07-12
 adrs: [99]
-status: Proposed
+status: Implemented
 ---
 # Plan: Structured Domain-Tagged Pitfalls Surfaced by awf context
 
