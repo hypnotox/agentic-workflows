@@ -118,9 +118,10 @@ section and the file's structure.
   (`no-section-marker-leak` and the `awf:include` partial guard stay green with in-place sections
   present).
 - `inv: in-place-readback` — on sync and check, an in-place-editable section's body is the text
-  read back from the existing output file between its `awf:edit-in-place` pointer and the next
-  `awf:edit`-family pointer or end-of-file; when the output is absent or the pointer is not found,
-  the body is the template default.
+  read back from the existing output file between its `awf:edit-in-place` pointer and awf's next
+  *registered* section pointer (matched by that pointer's expected string, never any pointer-shaped
+  line in adopter text), or end-of-file when the section is last; when the output is absent or the
+  section's pointer is not found, the body is the template default.
 - `inv: in-place-tamper-drift` — regeneration re-derives every awf-owned section and the file
   structure from the template, so an edit to an awf-owned region or to the file structure is
   reported as drift, while an edit confined to an in-place-editable section's content lines is not.
