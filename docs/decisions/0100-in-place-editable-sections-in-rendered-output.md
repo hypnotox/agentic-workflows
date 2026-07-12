@@ -1,0 +1,170 @@
+---
+status: Proposed
+date: 2026-07-12
+supersedes: []
+retires_invariants: []
+superseded_by: ""
+tags: [rendering, config]
+related: [15, 60, 61, 72]
+domains: [config, rendering]
+---
+# ADR-0100: In-Place-Editable Sections in Rendered Output
+
+## Context
+
+Today every awf-rendered file is *wholly* owned. A rendered file is assembled from a template
+skeleton plus per-section bodies — each body drawn from the template default or a convention
+part input under `.awf/<kind>/parts/…` (ADR-0015) — and written out in full; the whole file is
+hash-locked (`manifest.Entry.OutputHash`) and `awf check` reports drift on any hand-edit. The
+adopter's only override channel is a **part file** (a *render input*): edit the input under
+`.awf/`, awf re-injects it, and the *output* stays 100% generated. There is no supported way for
+an adopter to edit a rendered *output* directly and have awf preserve that edit across syncs.
+
+That gap blocks a class of artifact awf wants to own but cannot fully generate: files that are
+mostly boilerplate awf should own and keep current, but that also carry a region only the adopter
+can fill because its content is project- and language-specific. The motivating case is a
+**managed command runner** (`./x`): the awf-verb plumbing (`sync`, `check`, …) is language-agnostic
+boilerplate awf should own and keep from rotting, but the project verbs (`gate`, `test`, `build`)
+are the adopter's own logic awf cannot render. A follow-on ADR consumes this primitive for the
+runner; **this ADR defines only the general mechanism**, consumer-agnostic.
+
+Two couplings shaped the design:
+
+1. **Provenance pointers already segment the output.** ADR-0015 emits a one-line `awf:edit
+   <name>` provenance pointer immediately before every non-dropped section body
+   (`section-edit-pointer`), and — unlike the structural `awf:section`/`awf:end` markers, which
+   are consumed and never leak (`no-section-marker-leak`) — those `awf:edit` pointers **survive
+   into the rendered output**. So the output is already partitioned into named regions: a
+   section's body runs from just after its pointer to just before the next `awf:edit`-family
+   pointer, or end-of-file. No new closing-fence grammar is needed to bound an editable region.
+
+2. **A second drift mode already exists.** Generated indexes (`ACTIVE.md`, the config reference,
+   the domain docs) are not checked by the frozen-`OutputHash` equality compare; they are checked
+   by **regeneration** — re-derived from their sources and compared to disk — and are singled out
+   of the hash compare by a **hardcoded set of path checks** in `internal/project/check.go`. A
+   file whose adopter-owned region legitimately changes between syncs *must* use this regeneration
+   mode, or a legitimate edit would false-positive as a hand-edit. Today membership in that class
+   is a hand-maintained path list, not a first-class property — a smell this ADR removes.
+
+The alternative to in-place editing — a two-file split (awf renders a payload, the adopter owns a
+thin stub that delegates to it, as ADR-0048 does for git hooks) — reuses all existing machinery
+but sacrifices single-file ergonomics and yields no reusable capability. In-place editing is the
+larger investment, justified by being a general primitive: once awf can own *part* of a file, the
+same mechanism later serves lint config, a `Makefile`, or CI config, not only the runner.
+
+## Decision
+
+Introduce **in-place-editable sections**: a section whose adopter-owned content lives directly in
+the rendered output file and is preserved across syncs, while awf continues to own every other
+section and the file's structure.
+
+1. **A fourth provenance-pointer variant, `awf:edit-in-place <name>`.** An in-place-editable
+   section renders this distinct pointer in place of the three existing `awf:edit` variants
+   (from-part / stub / default; `internal/render` `editPointer`). Its phrasing states the
+   contract — the region below is the adopter's, preserved across syncs — and carries no part
+   path (there is no part input). The token is distinct from `awf:edit` so read-back can tell the
+   two apart, and it is chosen to pass every existing marker guard unchanged: `no-section-marker-leak`
+   and the residual-marker guard (ADR-0070) anchor on `awf:section`/`awf:end`, the `awf:include`
+   partial guard rejects only those two literals, and the part-marker advisory (ADR-0083) and stub
+   marker are likewise unaffected.
+
+2. **Read-back sourcing, bounded by the pointer sequence.** On both sync and check, an
+   in-place-editable section's body is sourced by **reading it back from the existing output
+   file** — the text between its `awf:edit-in-place` pointer and the next `awf:edit`-family
+   pointer or end-of-file — rather than from a template default or a `.awf/parts/` part. When the
+   output file is absent (first render) or the section's pointer is not found, the body falls back
+   to the template default (a starter scaffold). The read-back is spliced verbatim, never
+   re-templated.
+
+3. **awf owns the framing; the adopter owns the content lines.** Inter-section blank-line spacing
+   is awf-owned structure, re-applied canonically on every render; read-back trims the captured
+   region to its content lines. This makes the round-trip an idempotent fixpoint: after a sync the
+   file is canonical, and a re-check reads the same content back and matches, so benign whitespace
+   never churns as drift.
+
+4. **A section is part-overridable OR in-place-editable, never both.** The two override channels
+   are mutually exclusive per section — a section sourced from a `.awf/parts/` input (the existing
+   `awf:edit` mechanism) cannot also be in-place-editable, and vice versa. There is no precedence
+   chain. An in-place-editable section adds no `.awf/` part file, so it introduces no new claimed
+   path under the closed config tree (ADR-0086).
+
+5. **Drift by regeneration-with-read-back.** A file carrying any in-place-editable section is
+   drift-checked by regeneration, not by frozen-`OutputHash` equality: awf re-derives every
+   awf-owned section and the file structure **from the template** (never from disk) and reads
+   in-place sections back from the existing output, then compares the assembly to disk. An edit to
+   an awf-owned section or to the file structure therefore surfaces as drift and is overwritten on
+   the next sync; only in-place-section content is preserved. awf-owned regions and layout cannot
+   be persistently tampered.
+
+6. **A first-class `regeneration-checked` attribute, replacing the hardcoded path list.**
+   Membership in the regeneration-checked class (no frozen-`OutputHash` compare) becomes an
+   explicit attribute on the rendered-file model rather than a hand-maintained set of path checks
+   in `check.go`. The existing regeneration-checked outputs (`ACTIVE.md`, the config reference,
+   the domain docs) are migrated onto the attribute in the same change, and files with an
+   in-place-editable section carry it. No new file joins the class by editing a hardcoded path.
+
+## Invariants
+
+- `inv: in-place-pointer-distinct` — an in-place-editable section renders an `awf:edit-in-place
+  <name>` provenance pointer, textually distinct from the `awf:edit` pointer; neither the pointer
+  nor any in-place read-back causes `awf:section`/`awf:end` marker residue to appear in output
+  (`no-section-marker-leak` and the `awf:include` partial guard stay green with in-place sections
+  present).
+- `inv: in-place-readback` — on sync and check, an in-place-editable section's body is the text
+  read back from the existing output file between its `awf:edit-in-place` pointer and the next
+  `awf:edit`-family pointer or end-of-file; when the output is absent or the pointer is not found,
+  the body is the template default.
+- `inv: in-place-tamper-drift` — regeneration re-derives every awf-owned section and the file
+  structure from the template, so an edit to an awf-owned region or to the file structure is
+  reported as drift, while an edit confined to an in-place-editable section's content lines is not.
+- `inv: section-source-exclusive` — no section is simultaneously part-overridable and
+  in-place-editable; a declaration asserting both is a render/build error.
+- `inv: in-place-spacing-owned` — inter-section spacing is regenerated canonically and the
+  in-place read-back trims to content lines, so the sync→check round-trip is an idempotent fixpoint
+  (a second sync with no adopter edit is a no-op and reports no drift).
+- `inv: regeneration-checked-attribute` — the set of regeneration-checked files (excluded from the
+  frozen-`OutputHash` compare) is derived from a first-class attribute on the rendered-file model,
+  not a hardcoded path list; `ACTIVE.md`, the config reference, and the domain docs carry that
+  attribute, and any file with an in-place-editable section carries it.
+
+## Consequences
+
+Easier:
+- awf can own boilerplate-heavy files that also need an adopter-specific region, keeping the
+  awf-owned part from rotting while the adopter edits their region in place, in one file — no
+  two-file split, no delegation stub.
+- The general primitive is reusable beyond its first consumer (lint config, `Makefile`, CI config).
+- Regeneration-checked membership becomes explicit and self-documenting; adding a regeneration-
+  checked file no longer means editing a hardcoded path list (ADR-0060/0061 single-source ethos).
+
+Harder / accepted trade-offs:
+- A new drift path (regeneration-with-read-back) and a new pointer variant enlarge the render/check
+  surface. This is genuinely more machinery than a two-file split, accepted for the reusable
+  primitive it buys.
+- The adopter may extend a file **only inside** its in-place-editable section(s); content added
+  elsewhere is discarded on the next sync (and drift-flagged before it). Templates consuming this
+  primitive must place in-place sections at the real extension points. This is also a coherence
+  feature — the file's structure stays awf-owned.
+- **First adoption of a pre-existing hand-written file is lossy.** A file already on disk with no
+  `awf:edit-in-place` pointer is treated as foreign: on first sync it is backed up (`*.awf-bak`)
+  and overwritten with the scaffold, so its adopter content lands only in the backup and must be
+  hand-ported into the new in-place section. Mitigation: the backup is retained and the port is a
+  one-time cost per file; the consuming ADR/plan owns any specific migration.
+- If an adopter deletes an in-place section's `awf:edit-in-place` pointer, read-back loses its
+  anchor and the section reverts to the default on the next sync (git-recoverable, and drift-flagged
+  beforehand). A future refinement may add an `awf check` note for a missing/duplicated in-place
+  pointer; this ADR does not require it.
+
+Ruled out:
+- A dedicated closing-fence marker in the output (the pointer sequence already bounds regions).
+- A precedence chain between part-override and in-place sources (mutual exclusivity is simpler).
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Two-file split (awf payload + adopter stub, as ADR-0048 does for hooks) | Reuses all existing machinery but loses single-file ergonomics and yields no reusable primitive; the whole point is a general in-place capability. |
+| New OPEN+CLOSE fence markers to bound the editable region | Unnecessary: the durable `awf:edit`-family pointer sequence already partitions the output; a closing marker would risk tripping `no-section-marker-leak`/`awf:include` guards. |
+| Keep read-back content in a `.awf/parts/` input instead of the output | That is the existing part mechanism; it keeps the output fully generated and does not let the adopter edit the output in place — the exact gap this ADR closes. |
+| Extend the hardcoded regeneration-checked path list with each new file | Perpetuates a by-hand path list; a first-class attribute matches awf's compile-time single-source model (ADR-0060/0061). |
+| Precedence chain (part input overrides in-place, or vice versa) | Ambiguous and harder to reason about than declaring each section as exactly one source. |
