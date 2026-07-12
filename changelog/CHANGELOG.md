@@ -8,6 +8,27 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- Plans get a machine-readable spine and a uniform authored shape (ADR-0097,
+  ADR-0098). A new `plans-template` singleton renders `docs/plans/template.md`
+  — the canonical taxonomy: `date`/`adrs`/`status` frontmatter, a `# Plan:` H1,
+  the Goal/Architecture-summary/Tech-stack/File-structure header, phases, and
+  optional Verification/Notes tails. `awf new plan "<Title>"` scaffolds a
+  date-prefixed plan from it (no sequential number). `awf check` now validates
+  plan frontmatter (`status` enum; unparseable YAML is a hard error) and
+  plan→ADR links (`adrs:` must resolve to real ADRs); the grandfathered
+  frontmatter-less corpus is skipped. `awf context` surfaces each plan whose
+  `adrs:` links a reported ADR, in both the human and `--json` output. The
+  plan convention itself is reframed: task granularity is now "one reviewable,
+  logically-coherent change" (not wall-clock minutes), a sanctioned
+  coupled-phase escape covers genuinely un-sliceable changes, and plans carry
+  a two-state (`Proposed`→`Implemented`) lifecycle that freezes on the plan's
+  own `status`, replacing the ad-hoc `# Implementation complete` line. The
+  `awf-writing-plans`, `awf-executing-plans`, and
+  `awf-subagent-driven-development` skills, the `plan-reviewer` agent, and the
+  plans README are reconciled to it. Adopters get it all on their next
+  `awf sync`.
+
 ## [0.16.0] - 2026-07-11
 
 ### Features
