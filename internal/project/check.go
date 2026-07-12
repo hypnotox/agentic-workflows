@@ -11,9 +11,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
@@ -429,6 +431,12 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 
 	drift = append(drift, p.checkDeadRefs(slices.Concat(files, crefFiles), amd, dds)...)
 	drift = append(drift, p.checkDeadSkillRefs(slices.Concat(files, crefFiles), amd, dds, p.effSkills)...)
+
+	planDrift, err := p.checkPlans()
+	if err != nil {
+		return nil, err
+	}
+	drift = append(drift, planDrift...)
 	return drift, nil
 }
 
@@ -606,4 +614,42 @@ func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []Re
 		}
 	}
 	return drift
+}
+
+// checkPlans validates plan frontmatter and plan→ADR links over docs/plans/,
+// scanning the YYYY-MM-DD-*.md set only (excluding template.md and README.md).
+// Frontmatter-less plans (the grandfathered corpus, ADR-0098) are skipped.
+// invariant: plan-frontmatter-validated
+// invariant: plan-adr-link-resolved
+func (p *Project) checkPlans() ([]manifest.Drift, error) {
+	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
+	plans, err := plan.ParseDir(plansDir)
+	if err != nil {
+		return nil, err
+	}
+	adrs, err := adr.ParseDir(p.decisionsDir())
+	if err != nil {
+		return nil, err
+	}
+	known := map[string]bool{}
+	for _, a := range adrs {
+		known[a.Number] = true
+	}
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	var drift []manifest.Drift
+	for _, pl := range plans {
+		if !pl.HasFrontmatter {
+			continue
+		}
+		path := rel + "/" + pl.Filename
+		if !plan.ValidStatuses[pl.Status] {
+			drift = append(drift, manifest.Drift{Path: path, Kind: "plan-frontmatter", Detail: fmt.Sprintf("status %q not in {Proposed, Implemented}", pl.Status)})
+		}
+		for _, n := range pl.ADRs {
+			if !known[fmt.Sprintf("%04d", n)] {
+				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
+			}
+		}
+	}
+	return drift, nil
 }
