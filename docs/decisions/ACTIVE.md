@@ -107,6 +107,7 @@
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
+- [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Proposed
 
 ## Superseded
 
