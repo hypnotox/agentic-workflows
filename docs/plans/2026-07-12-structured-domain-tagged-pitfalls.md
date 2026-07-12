@@ -691,10 +691,14 @@ its own closing commit passes the gate.
 
 ## Notes
 
-- **`related:` renders as plain `ADR-NNNN` text, not hyperlinks.** The transform receives only the
-  sidecar (no project root / ADR filenames), so it cannot resolve numbers to file paths. ADR-0099
-  item 2 says "linked ADR references"; this is the faithful implementation given the transform's
-  inputs. Flagged for the plan↔ADR resync to reconcile the ADR wording ("ADR references" vs "linked").
+- **`related:` renders as plain `ADR-NNNN` text, not hyperlinks (RESOLVED, user 2026-07-12).** Plain
+  text is the established convention across exactly these surfaces, not a compromise: `awf context`
+  cites ADRs as plain `ADR-NNNN` + path (terminal text, no link), the glossary cites them plain
+  in-cell, and the pitfall bodies themselves already carry 57 plain `ADR-NNNN` citations and zero
+  markdown links. So `_Related: ADR-0067, ADR-0092_` matches how every pitfall body and `awf context`
+  already reference ADRs. The transform also cannot resolve numbers to filenames (it receives only
+  the sidecar). **Resync action:** soften ADR-0099 item 2 + its Alternatives row from "linked ADR
+  references" to "ADR references (link-validated)".
 - Structural validation lives in the transform (`pitfall-data-validated`); domain/ADR-link resolution
   lives in `checkPitfalls` (`pitfall-domains-resolved`, `pitfall-adr-link-resolved`) — the split
   mirrors glossary-structure-in-transform vs plan-links-in-checkPlans, because the transform cannot
