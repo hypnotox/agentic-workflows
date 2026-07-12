@@ -45,6 +45,29 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
+	// The plans-template singleton renders the ADR-0097 taxonomy: frontmatter
+	// spine + canonical headings, section-assembly markers stripped, no
+	// unresolved template value.
+	// invariant: plans-template-taxonomy
+	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
+	if err != nil {
+		t.Fatalf("plans-template not rendered: %v", err)
+	}
+	for _, want := range []string{
+		"date:", "adrs:", "status:",
+		"# Plan:", "## Goal", "## Architecture summary", "## Tech stack",
+		"## File structure", "## Phase", "## Verification", "## Notes",
+	} {
+		if !strings.Contains(string(plansTemplate), want) {
+			t.Errorf("plans-template missing taxonomy element %q:\n%s", want, plansTemplate)
+		}
+	}
+	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
+		if strings.Contains(string(plansTemplate), bad) {
+			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
+		}
+	}
+
 	// A fresh check on the synced tree is clean.
 	drift, err := p.Check()
 	if err != nil || len(drift) != 0 {

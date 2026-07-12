@@ -35,6 +35,7 @@ func testLayout() map[string]any {
 		"adrTemplate":      "docs/decisions/template.md",
 		"plansDir":         "docs/plans",
 		"plansReadme":      "docs/plans/README.md",
+		"plansTemplate":    "docs/plans/template.md",
 		"docs":             map[string]any{},
 		"workflowRef":      "docs/workflow.md",
 		"docStandard":      "docs/doc-standard.md",
@@ -720,6 +721,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		"adrReadme":        "documentation/decisions/README.md",
 		"adrTemplate":      "documentation/decisions/template.md",
 		"plansReadme":      "documentation/plans/README.md",
+		"plansTemplate":    "documentation/plans/template.md",
 		"workflowRef":      "documentation/workflow.md",
 		"docStandard":      "documentation/doc-standard.md",
 		"agentsMdStandard": "documentation/agents-md-standard.md",
@@ -733,11 +735,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 8 mandatory-singleton keys = 14 (agents-doc has
+	// 5 fixed dir keys + docs + 9 mandatory-singleton keys = 15 (agents-doc has
 	// no TemplateKey and is excluded; the generated config reference is
 	// layout-exposed like its hash-checked siblings).
-	if len(tm) != 14 {
-		t.Errorf("templateMap has %d keys, want 14", len(tm))
+	if len(tm) != 15 {
+		t.Errorf("templateMap has %d keys, want 15", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
