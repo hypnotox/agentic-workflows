@@ -7,7 +7,7 @@ description: Use to write an implementation plan for a complex awf task under do
 # awf-writing-plans
 
 <!-- awf:edit positioning — default; create .awf/skills/parts/writing-plans/positioning.md to override -->
-Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist) — a plan may link zero or more. Do not duplicate rationale — link.
+Writes a plan to `docs/plans/YYYY-MM-DD-<topic>.md` per the awf plan convention. The plan is the execution record; the design lives in the linked ADR(s) (when any exist) — a plan may link zero or more, declared structurally in its `adrs:` frontmatter. Do not duplicate rationale — link.
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/writing-plans/when-to-invoke.md to override -->
 ## When to invoke
@@ -20,12 +20,12 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 - **Path:** `docs/plans/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
 
 <!-- awf:edit conventions-header — default; create .awf/skills/parts/writing-plans/conventions-header.md to override -->
-- **Required header:** goal, architecture summary, tech stack (language version, key packages touched), file structure (created / modified / deleted).
+- **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the four canonical fields as `## ` sections — Goal, Architecture summary, Tech stack (language version, key packages touched), and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
 
 <!-- awf:edit conventions-tasks — default; create .awf/skills/parts/writing-plans/conventions-tasks.md to override -->
-- **Tasks:** bite-sized (~2-5 min each), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
+- **Tasks:** one reviewable, logically-coherent change each (a whole new file is a single task), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
 - **Batch tasks for repeated work:** when one transformation applies across multiple sites — 3+ sites whose change is identical modulo the site, or sites sharing one rationale with only mechanical variation — a task may take the *batch* form instead of repeating N near-identical diffs. A batch task names four things: a **representative** site shown as an exact diff, with the instruction to apply the identical shape to every affected site; an **edge** site shown as an exact diff (omit only when the shape is identical at every site, and say so); the **affected-site set**, given either as an exhaustive list of paths or symbols or as a command whose output is exactly that set; and a **post-check** — a deterministic command that fails if any site is unconverted or wrong (a drift check, a test target, or a search whose match count must reach zero). Genuinely distinct per-site edits stay exact-diff tasks.
-- **Self-contained phases:** every phase's closing commit must pass `./x gate` on its own. Never introduce a function, type, or file whose first production use lands in a later phase — place each definition in the phase that first uses it, merging or reordering phases as needed.
+- **Self-contained phases:** every phase's closing commit must pass `./x gate` on its own. Never introduce a function, type, or file whose first production use lands in a later phase — place each definition in the phase that first uses it, merging or reordering phases as needed. When a change genuinely cannot be sliced into independently-gate-passing phases (a signature threaded through many callers, a struct-shape rewrite), mark the coupled phases as a group and share one closing commit, stating why it cannot be sliced — the exception, never a convenience.
 
 <!-- awf:edit conventions-no-placeholders — default; create .awf/skills/parts/writing-plans/conventions-no-placeholders.md to override -->
 - **No placeholders:** no "TBD", "implement later", or vague "similar to task N" deferral. If a step changes a file, the step shows the change verbatim — or, for a batch task, shows the representative and edge diffs, the affected-site set, and the post-check (see Tasks). If a verify step runs a command, the expected output is exact.
@@ -42,7 +42,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan.
 
 <!-- awf:edit plan-template-ref — default; create .awf/skills/parts/writing-plans/plan-template-ref.md to override -->
-
+Start from the canonical skeleton rather than a blank file: run `awf new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `docs/plans/template.md`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the four canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
 
 <!-- awf:edit procedure-write-plan — default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
 2. **Write the plan file in one go.** The plan must be self-contained — every step executable by an agent with no prior conversation context.
@@ -64,11 +64,11 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 ## Notes
 
 <!-- awf:edit plan-lifecycle — default; create .awf/skills/parts/writing-plans/plan-lifecycle.md to override -->
-- Plans are mutable while the corresponding ADR is `Proposed` (the ADR stays `Proposed` through implementation) or while non-ADR implementation is in flight; they freeze when the ADR flips to `Implemented` or when a `# Implementation complete (YYYY-MM-DD)` line is added at the top for non-ADR work.
+- A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** — through review and through implementation, where findings are noted as they surface — and **freezes at `status: Implemented`**, flipped in the implementation's final commit (the same flip for ADR-driven and non-ADR plans). In awf's usual flow a plan and its ADR(s) co-flip in that final commit, but the plan's freeze keys off its own status, not the ADR's.
 
 <!-- awf:edit plan-resync — default; create .awf/skills/parts/writing-plans/plan-resync.md to override -->
 - If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `awf-proposing-adr` (or amend a still-`Proposed` ADR via `awf-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`awf-reviewing-plan-resync`) reconciles any resulting drift before implementation.
 
 <!-- awf:edit notes — default; create .awf/skills/parts/writing-plans/notes.md to override -->
-- The plan is the execution record. The design lives in the linked ADR(s). Do not duplicate design rationale in the plan — link to the ADR(s) instead.
+- The plan is the execution record. The design lives in the linked ADR(s), declared in the plan's `adrs:` frontmatter. Do not duplicate design rationale in the plan — link to the ADR(s) instead.
 - Plans stay in the repo permanently after freezing. They are the historical record of how a complex change rolled out.

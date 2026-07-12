@@ -25,7 +25,7 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented` — independent of any linked ADR's status.
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
@@ -47,11 +47,11 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section procedure-adr-final-commit -->
-4. **Final commit for ADR-driven plans.** Flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) in the same commit. Then run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
+4. **Final commit for ADR-driven plans.** In the same commit: (a) flip the plan's own `status:` frontmatter from `Proposed → Implemented`, recording any implementation findings (a wrong diff, an unsliceable phase, a bad estimate) in the plan's Notes section alongside the freeze; and (b) flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed). Then run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the commit touches the decisions directory, so the gate's drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section procedure-non-adr-final-commit -->
-5. **Final commit for non-ADR plans.** Add a `# Implementation complete (YYYY-MM-DD)` header line at the top of the plan file (freezes the plan per `{{ .layout.workflowRef }}`).
+5. **Final commit for non-ADR plans.** Flip the plan's own `status:` frontmatter from `Proposed → Implemented`, recording any implementation findings in the plan's Notes section — the same freeze as ADR-driven plans, keyed on the plan's own status.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->

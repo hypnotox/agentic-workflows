@@ -18,7 +18,7 @@ Apply all five lenses to every plan:
 
 1. **scope-completeness** — every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
 
-1. **executability** — no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step, and each phase's closing commit passes the project's gate on its own — flag any definition whose first production use lands in a later phase; tasks are bite-sized (~2–5 min); code changes shown as exact diff not prose.
+1. **executability** — no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step, and each phase's closing commit passes the project's gate on its own — flag any definition whose first production use lands in a later phase, unless the plan marks a coupled-phase group that genuinely cannot be sliced and states why; each task is one reviewable, logically-coherent change (a whole new file is one task); code changes shown as exact diff not prose.
 
 1. **doc-currency (plan-level)** — same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
 

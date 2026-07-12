@@ -69,9 +69,6 @@ ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCa
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 - [ADR-0095: Batch tasks in the plan convention](../decisions/0095-batch-tasks-in-the-plan-convention.md)
-
-### Proposed
-
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](../decisions/0097-plan-convention-sections-granularity-and-lifecycle.md)
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
 

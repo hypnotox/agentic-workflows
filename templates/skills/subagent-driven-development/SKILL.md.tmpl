@@ -29,7 +29,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented` — independent of any linked ADR's status.
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
@@ -66,7 +66,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
+7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section — named explicitly in the dispatched task prompt, the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->

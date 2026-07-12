@@ -10,6 +10,8 @@ data:
           desc: migrate the config tree to the current schema after upgrading awf
         - cmd: awf audit
           desc: report workflow-conformance findings over the branch's commits (advisory)
+        - cmd: awf new plan "<Title>"
+          desc: scaffold a dated plan under docs/plans from the rendered plans template
     invariants:
         - ref: ADR-0001, ADR-0045
           text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
@@ -128,3 +130,13 @@ data:
           text: '**Context static fallback.** Outside an adopted tree (`ConfigPath` absent) `awf context` degrades to a static answer rather than refusing, mirroring the `config` command; the inside-tree version gate is the shared `gate()` marker, so this slug backs the fallback branch alone (`inv: context-static-fallback`).'
         - ref: ADR-0092
           text: '**Context output parity.** The human and `--json` renderings of `awf context` report the same context set for the same inputs, because both derive from one assembled `ContextResult` (`inv: context-output-parity`).'
+        - ref: ADR-0098
+          text: '**Plan frontmatter validated.** `awf check` fails a plan under `docs/plans/` whose `status:` is outside `{Proposed, Implemented}`, and a plan whose YAML frontmatter is unparseable is a hard check error; the grandfathered frontmatter-less corpus is skipped (`inv: plan-frontmatter-validated`).'
+        - ref: ADR-0098
+          text: '**Plan→ADR links resolve.** `awf check` fails a plan whose `adrs:` names an ADR number with no matching file under `docs/decisions/` (`inv: plan-adr-link-resolved`).'
+        - ref: ADR-0097, ADR-0098
+          text: '**Plans-template taxonomy.** The `plans-template` singleton renders `docs/plans/template.md` with the canonical `date`/`adrs`/`status` frontmatter and the Goal/Architecture/Tech-stack/File-structure header, phases, and Verification/Notes tails, marker- and leak-free (`inv: plans-template-taxonomy`).'
+        - ref: ADR-0098
+          text: '**Plan scaffolding is unnumbered.** `awf new plan "<Title>"` scaffolds a date-prefixed `YYYY-MM-DD-slug.md` from the rendered plans template — no sequential number allocated — refusing to overwrite a same-day same-title plan (`inv: plan-new-unnumbered`).'
+        - ref: ADR-0098
+          text: '**Context surfaces linked plans.** `awf context` surfaces each plan whose `adrs:` links an ADR reported for the query (path → domain → ADR → plans), on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-linked-plans`).'

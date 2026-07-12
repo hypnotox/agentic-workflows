@@ -95,6 +95,11 @@ Hard rules every change must respect:
 - **Context read-only.** `awf context <paths>` reports the owning domains, backed invariants, related ADRs, and each domain's current-state pointer for the given repo-relative paths; the command entry point holds no writer dependency and never mutates config, the lock, or any file (`inv: context-read-only`). (ADR-0092)
 - **Context static fallback.** Outside an adopted tree (`ConfigPath` absent) `awf context` degrades to a static answer rather than refusing, mirroring the `config` command; the inside-tree version gate is the shared `gate()` marker, so this slug backs the fallback branch alone (`inv: context-static-fallback`). (ADR-0092)
 - **Context output parity.** The human and `--json` renderings of `awf context` report the same context set for the same inputs, because both derive from one assembled `ContextResult` (`inv: context-output-parity`). (ADR-0092)
+- **Plan frontmatter validated.** `awf check` fails a plan under `docs/plans/` whose `status:` is outside `{Proposed, Implemented}`, and a plan whose YAML frontmatter is unparseable is a hard check error; the grandfathered frontmatter-less corpus is skipped (`inv: plan-frontmatter-validated`). (ADR-0098)
+- **Plan→ADR links resolve.** `awf check` fails a plan whose `adrs:` names an ADR number with no matching file under `docs/decisions/` (`inv: plan-adr-link-resolved`). (ADR-0098)
+- **Plans-template taxonomy.** The `plans-template` singleton renders `docs/plans/template.md` with the canonical `date`/`adrs`/`status` frontmatter and the Goal/Architecture/Tech-stack/File-structure header, phases, and Verification/Notes tails, marker- and leak-free (`inv: plans-template-taxonomy`). (ADR-0097, ADR-0098)
+- **Plan scaffolding is unnumbered.** `awf new plan "<Title>"` scaffolds a date-prefixed `YYYY-MM-DD-slug.md` from the rendered plans template — no sequential number allocated — refusing to overwrite a same-day same-title plan (`inv: plan-new-unnumbered`). (ADR-0098)
+- **Context surfaces linked plans.** `awf context` surfaces each plan whose `adrs:` links an ADR reported for the query (path → domain → ADR → plans), on the single `ContextResult` preserving read-only/parity/fallback (`inv: context-surfaces-linked-plans`). (ADR-0098)
 
 <!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
@@ -130,6 +135,7 @@ go test ./... — run the test suite
 ./x check — check rendered files for drift (also enforces the schema-version gate)
 awf upgrade — migrate the config tree to the current schema after upgrading awf
 awf audit — report workflow-conformance findings over the branch's commits (advisory)
+awf new plan "<Title>" — scaffold a dated plan under docs/plans from the rendered plans template
 ```
 
 <!-- awf:edit document-map — default; create .awf/parts/agents-doc/document-map.md to override -->

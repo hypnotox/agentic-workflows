@@ -2,9 +2,10 @@
 # Implementation Plans
 
 <!-- awf:edit intro — default; create .awf/parts/plans-readme/intro.md to override -->
-A plan is the step-by-step execution record for a complex change: bite-sized tasks, exact file
+A plan is the step-by-step execution record for a complex change: reviewable tasks, exact file
 paths, exact content or diffs, and the commands that verify each step. The design rationale lives in
-the linked ADR (when one exists) — a plan links to it rather than restating it.
+the linked ADR (when one exists) — a plan links to it (structurally, via its `adrs:` frontmatter)
+rather than restating it.
 
 <!-- awf:edit naming — default; create .awf/parts/plans-readme/naming.md to override -->
 ## Naming & location
@@ -21,17 +22,24 @@ where the date is the day the plan is written (ISO-8601). Example:
 <!-- awf:edit structure — default; create .awf/parts/plans-readme/structure.md to override -->
 ## What a plan contains
 
-- A header: goal, architecture summary, tech stack, and the file structure (created / modified /
+- Frontmatter: `date`, `adrs: []` (the linked ADR numbers), and a two-state `status`.
+- A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the four canonical
+  header sections: Goal, Architecture summary, Tech stack, and File structure (created / modified /
   deleted).
-- Phases of bite-sized tasks (~2-5 min each) as `- [ ]` checkboxes, each naming exact paths, the
-  exact content or diff, and the exact verifying command with its expected output.
+- Phases of tasks — each task one reviewable, logically-coherent change (a whole new file is one
+  task) — as `- [ ]` checkboxes, each naming exact paths, the exact content or diff, and the exact
+  verifying command with its expected output.
 - For a transformation repeated across many sites, a task may take the *batch* form instead of N
   near-identical diffs: a representative site shown as an exact diff, an edge site (unless the shape
   is identical everywhere), the exhaustive affected-site set (a list or a command that reproduces
   it), and a deterministic post-check that fails if any site is missed.
 - A commit step at the end of each phase. Each phase must pass the project's gate on its own:
-  code is introduced in the phase that first uses it, never a phase earlier.
+  code is introduced in the phase that first uses it, never a phase earlier. When a change genuinely
+  cannot be sliced that way, a marked coupled-phase group may share one closing commit, stating why.
+- Optionally, two trailing sections after the phases: **Verification** (whole-effort acceptance
+  checks) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation).
 
-A plan is mutable while its ADR is `Proposed` (or while non-ADR work is in flight) and freezes once
-the ADR is `Accepted`/`Implemented`. Plans stay in the repository permanently as the historical
-record of how a change rolled out.
+A plan carries its own two-state lifecycle, independent of any linked ADR: it is mutable while
+`status: Proposed` — through review and implementation, where findings are noted as they surface —
+and freezes at `status: Implemented`, flipped in the implementation's final commit. Plans stay in the
+repository permanently as the historical record of how a change rolled out.

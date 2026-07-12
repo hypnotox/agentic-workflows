@@ -246,7 +246,7 @@ func TestWritingPlansTemplate(t *testing.T) {
 		"vars": map[string]any{
 			"gateCmd": "./x gate",
 		},
-		"layout": map[string]any{"plansDir": "docs/plans"},
+		"layout": map[string]any{"plansDir": "docs/plans", "plansTemplate": "docs/plans/template.md"},
 		"data":   map[string]any{},
 	}
 
@@ -259,10 +259,11 @@ func TestWritingPlansTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to writing-plans
 	loadBearing := []string{
-		"bite-sized",
+		"one reviewable, logically-coherent change",
 		"exact file paths",
 		"No placeholders",
 		"whose first production use lands in a later phase",
+		"cannot be sliced",
 		"example-reviewing-plan",
 		"batch task",
 		"affected-site set",
@@ -303,7 +304,7 @@ func TestExecutingPlansTemplate(t *testing.T) {
 	loadBearing := []string{
 		"one commit per task",
 		"Proposed → Accepted",
-		"Implementation complete",
+		"recording any implementation findings",
 		"example-reviewing-impl",
 	}
 	for _, phrase := range loadBearing {

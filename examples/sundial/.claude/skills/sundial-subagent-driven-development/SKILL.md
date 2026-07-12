@@ -27,7 +27,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 ## Procedure
 
 <!-- awf:edit procedure-resolve-plan — default; create .awf/skills/parts/subagent-driven-development/procedure-resolve-plan.md to override -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable until its corresponding ADR flips to `Implemented` or it gains a `# Implementation complete (YYYY-MM-DD)` header (non-ADR plans).
+1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented` — independent of any linked ADR's status.
 
 <!-- awf:edit procedure-raise-concerns — default; create .awf/skills/parts/subagent-driven-development/procedure-raise-concerns.md to override -->
 2. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
@@ -58,7 +58,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 6. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 
 <!-- awf:edit final-task-adr-flip — default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
-7. **Final task: ADR status flip and/or plan freeze.** The final subagent's commit includes the ADR `Proposed → Accepted`/`Implemented` flip, named explicitly in the dispatched task prompt. The prompt must also instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the ADR commit runs the gate, so the drift test must pass. Same rule for the `# Implementation complete (YYYY-MM-DD)` header on non-ADR plans.
+7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section — named explicitly in the dispatched task prompt, the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it — the ADR commit runs the gate, so the drift test must pass.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
 8. **Terminal step: invoke `sundial-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
