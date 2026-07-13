@@ -59,7 +59,12 @@ migration once rather than twice.
    marker verbatim. `declRe` is updated accordingly. The declaration-token rewrite (all ADR
    declarations + `declRe`) is **atomic** — one commit — distinct from the phased source-marker
    migration (item 4 consequences). The rename is bundled here deliberately (Context): it is a
-   pre-1.0-only break landed alongside the marker relocation.
+   pre-1.0-only break landed alongside the marker relocation. The unification is **total**: beyond the
+   parsed declaration token, every prose occurrence of the `inv:` token in awf-managed docs — the
+   `(inv: <slug>)` citation prefixes in the rendered agent guide (`.awf/agents-doc.yaml`) and the
+   domain current-state narratives — is rewritten to `invariant:` in the same effort, so no second
+   spelling survives. These citations are references, not parsed declarations, so their rewrite is
+   mechanical.
 
 2. **Two source markers with a strong/weak gradient.**
    - **`invariant: <slug>`** — the *proof* marker. It backs a slug only when it sits in a file
