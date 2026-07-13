@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -47,7 +48,12 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(notes, th...), nil
+	notes = append(notes, th...)
+	pcs, err := p.planCommitScopeNotes()
+	if err != nil {
+		return nil, err
+	}
+	return append(notes, pcs...), nil
 }
 
 // tagFrequencyThreshold is the share of tag-bearing artifacts above which a tag
@@ -711,9 +717,11 @@ func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []Re
 	return drift
 }
 
-// checkPlans validates plan frontmatter and plan→ADR links over docs/plans/,
-// scanning the YYYY-MM-DD-*.md set only (excluding template.md and README.md).
-// Frontmatter-less plans (the grandfathered corpus, ADR-0098) are skipped.
+// checkPlans validates plan frontmatter, plan→ADR links, and planned commit
+// subjects over docs/plans/, scanning the YYYY-MM-DD-*.md set only (excluding
+// template.md and README.md). Frontmatter-less plans (the grandfathered corpus,
+// ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
+// drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // invariant: plan-frontmatter-validated
 // invariant: plan-adr-link-resolved
 func (p *Project) checkPlans() ([]manifest.Drift, error) {
@@ -730,6 +738,7 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 	for _, a := range adrs {
 		known[a.Number] = true
 	}
+	aset := audit.Resolve(p.Cfg.Audit)
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
 	var drift []manifest.Drift
 	for _, pl := range plans {
@@ -745,8 +754,43 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
 			}
 		}
+		for _, sub := range pl.CommitSubjects {
+			for _, f := range audit.CheckPlannedSubject(sub, aset) {
+				if f.Severity == audit.Error {
+					drift = append(drift, manifest.Drift{Path: path, Kind: "plan-commit-subject", Detail: f.Detail})
+				}
+			}
+		}
 	}
 	return drift, nil
+}
+
+// planCommitScopeNotes returns advisory (non-failing) notes for a plan's ```commit
+// subject naming a scope outside the configured allow-list. Unlike an over-length or
+// mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
+// may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
+// frontmatter-less plan is skipped.
+func (p *Project) planCommitScopeNotes() ([]string, error) {
+	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
+	if err != nil {
+		return nil, err
+	}
+	aset := audit.Resolve(p.Cfg.Audit)
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
+	var notes []string
+	for _, pl := range plans {
+		if !pl.HasFrontmatter {
+			continue
+		}
+		for _, sub := range pl.CommitSubjects {
+			for _, f := range audit.CheckPlannedSubject(sub, aset) {
+				if f.Severity == audit.Warning {
+					notes = append(notes, fmt.Sprintf("%s/%s: planned commit %s", rel, pl.Filename, f.Detail))
+				}
+			}
+		}
+	}
+	return notes, nil
 }
 
 // checkPitfalls validates the pitfalls sidecar when the doc is enabled: each entry's

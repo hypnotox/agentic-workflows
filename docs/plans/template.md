@@ -32,7 +32,9 @@ linked ADR).
   file is one task). For a transformation repeated across 3+ sites, use the batch form (a
   representative diff, an edge diff, the affected-site set, and a post-check).
 - [ ] **Task 1.2 — Verify and commit.** Run `./x gate`; `git add` the exact paths; commit with a
-  Conventional-Commits subject. Every phase's closing commit passes `./x gate` on its own — unless the
+  Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
+  validates its length and type before you commit (tag a display-only example `commit awf-ignore`
+  to skip it). Every phase's closing commit passes `./x gate` on its own — unless the
   change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
   commit, stating why.
 

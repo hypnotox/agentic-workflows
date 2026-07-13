@@ -58,6 +58,35 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 	}
 }
 
+// TestParseDirExtractsCommitSubjects covers commit-subject extraction: a ```commit
+// block is captured (first non-empty line, multi-line body ignored); a bare fence, a
+// language fence, a ```commit awf-ignore opt-out, and an empty ```commit block are
+// all skipped.
+func TestParseDirExtractsCommitSubjects(t *testing.T) {
+	dir := t.TempDir()
+	body := "---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: X\n\n" +
+		"```commit\nfeat(awf): real subject\nbody line ignored\n```\n\n" +
+		"```\nfeat(awf): bare fence not captured\n```\n\n" +
+		"```go\nfmt.Println()\n```\n\n" +
+		"```commit awf-ignore\nfeat(awf): opted-out example\n```\n\n" +
+		"```commit\n\n```\n"
+	if err := os.WriteFile(filepath.Join(dir, "2026-07-14-x.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plans, err := plan.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+	if len(plans) != 1 {
+		t.Fatalf("want 1 plan, got %d", len(plans))
+	}
+	got := plans[0].CommitSubjects
+	want := []string{"feat(awf): real subject"}
+	if len(got) != len(want) || got[0] != want[0] {
+		t.Fatalf("CommitSubjects = %#v, want %#v", got, want)
+	}
+}
+
 // TestParseDirGlobError exercises the glob-pattern failure path: a directory
 // whose name contains an unterminated "[" yields an ErrBadPattern from Glob.
 func TestParseDirGlobError(t *testing.T) {

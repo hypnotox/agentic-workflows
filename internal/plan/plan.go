@@ -31,6 +31,10 @@ type Plan struct {
 	ADRs           []int
 	Status         string
 	HasFrontmatter bool
+	// CommitSubjects are the planned commit subjects a plan marks with ```commit
+	// fences (ADR-0111): the first non-empty line of each fenced block whose info
+	// string's first token is `commit` and which carries no `awf-ignore` opt-out.
+	CommitSubjects []string
 }
 
 type planFrontmatter struct {
@@ -64,9 +68,57 @@ func ParseDir(dir string) ([]Plan, error) {
 		plans = append(plans, Plan{
 			Filename: base, Path: path, Date: fm.Date, ADRs: fm.ADRs,
 			Status: fm.Status, HasFrontmatter: found,
+			CommitSubjects: commitSubjects(string(data)),
 		})
 	}
 	return plans, nil
+}
+
+// commitSubjects returns the planned commit subjects a plan marks with ```commit
+// fences (ADR-0111): for every ``` fenced block whose info string's first
+// whitespace-delimited token is `commit` and which carries no `awf-ignore` opt-out
+// token, the block's first non-empty line. An empty/whitespace-only block yields
+// nothing. Every line beginning with ``` toggles the fenced state, mirroring the
+// fence tracking in refs.WithoutFences.
+func commitSubjects(content string) []string {
+	var subjects []string
+	inFence := false
+	checked := false // the open fence is a checkable ```commit block
+	var first string // first non-empty line inside the open block
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "```") {
+			if inFence && checked && first == "" && trimmed != "" {
+				first = trimmed
+			}
+			continue
+		}
+		if inFence {
+			if checked && first != "" {
+				subjects = append(subjects, first)
+			}
+			inFence, checked, first = false, false, ""
+			continue
+		}
+		inFence = true
+		checked = isCommitInfo(trimmed[3:])
+	}
+	return subjects
+}
+
+// isCommitInfo reports whether a fence info string marks a checkable planned-commit
+// block: its first token is `commit` and no token is the `awf-ignore` opt-out.
+func isCommitInfo(info string) bool {
+	fields := strings.Fields(info)
+	if len(fields) == 0 || fields[0] != "commit" {
+		return false
+	}
+	for _, f := range fields[1:] {
+		if f == "awf-ignore" {
+			return false
+		}
+	}
+	return true
 }
 
 // now returns the current time; overridden in tests (mirrors adr.now).

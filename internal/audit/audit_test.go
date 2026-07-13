@@ -79,6 +79,32 @@ func TestRuleConventionalCommitsAcceptAny(t *testing.T) {
 	}
 }
 
+func TestCheckPlannedSubject(t *testing.T) {
+	s := Settings{
+		AllowedTypes:     []string{"feat", "fix"},
+		AllowedScopes:    []config.ScopeSpec{{Name: "awf"}},
+		SubjectMaxLength: 20,
+	}
+	// A disallowed scope is a Warning at plan time (a plan may add the scope).
+	if got := CheckPlannedSubject("feat(newscope): x", s); len(got) != 1 || got[0].Severity != Warning {
+		t.Fatalf("scope: want 1 Warning, got %#v", got)
+	}
+	// Length, disallowed type, and malformed shape stay Error.
+	if got := CheckPlannedSubject("feat(awf): this one is definitely over twenty", s); len(got) != 1 || got[0].Severity != Error {
+		t.Fatalf("length: want 1 Error, got %#v", got)
+	}
+	if got := CheckPlannedSubject("chore(awf): x", s); len(got) != 1 || got[0].Severity != Error {
+		t.Fatalf("type: want 1 Error, got %#v", got)
+	}
+	if got := CheckPlannedSubject("not conventional", s); len(got) != 1 || got[0].Severity != Error {
+		t.Fatalf("malformed: want 1 Error, got %#v", got)
+	}
+	// A fully valid subject yields nothing.
+	if got := CheckPlannedSubject("feat(awf): ok", s); len(got) != 0 {
+		t.Fatalf("valid: want 0, got %#v", got)
+	}
+}
+
 var proposedADR = testsupport.ADR("Proposed")
 var acceptedADR = testsupport.ADR("Accepted")
 

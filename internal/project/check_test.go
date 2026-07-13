@@ -10,6 +10,8 @@ import (
 
 const pitfallsCheckCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
 
+const commitSubjectCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\naudit:\n  allowedScopes:\n    - name: awf\n"
+
 // A disabled pitfalls doc yields no drift and never reads the sidecar.
 func TestCheckPitfallsDisabled(t *testing.T) {
 	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
@@ -276,6 +278,99 @@ func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
 	if _, err := p.checkPlans(); err == nil {
 		t.Fatal("expected plan.ParseDir error for malformed frontmatter, got nil")
+	}
+}
+
+// TestCheckPlansCommitSubjectDrift covers the ```commit length/type/shape drift and
+// confirms an unknown scope is NOT drift (it is an advisory note instead).
+func TestCheckPlansCommitSubjectDrift(t *testing.T) {
+	root := scaffold(t, commitSubjectCfg)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, content string) {
+		testsupport.WriteFile(t, filepath.Join(root, "docs/plans", name), content)
+	}
+	fm := "---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: P\n\n"
+	long := "feat(awf): " + strings.Repeat("x", 80)
+	write("2026-07-14-long.md", fm+"```commit\n"+long+"\n```\n")
+	write("2026-07-14-type.md", fm+"```commit\nzzz(awf): bad type\n```\n")
+	write("2026-07-14-shape.md", fm+"```commit\nno conventional shape here\n```\n")
+	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
+	write("2026-07-14-ok.md", fm+"```commit\nfeat(awf): fine\n```\n")
+
+	drift, err := p.checkPlans()
+	if err != nil {
+		t.Fatalf("checkPlans: %v", err)
+	}
+	got := map[string]bool{}
+	for _, d := range drift {
+		if d.Kind == "plan-commit-subject" {
+			got[filepath.Base(d.Path)] = true
+		}
+	}
+	for _, name := range []string{"2026-07-14-long.md", "2026-07-14-type.md", "2026-07-14-shape.md"} {
+		if !got[name] {
+			t.Errorf("expected plan-commit-subject drift for %s, got %#v", name, drift)
+		}
+	}
+	if got["2026-07-14-scope.md"] {
+		t.Errorf("unknown scope must be advisory, not drift: %#v", drift)
+	}
+	if got["2026-07-14-ok.md"] {
+		t.Errorf("valid subject must not drift: %#v", drift)
+	}
+}
+
+// TestPlanCommitScopeNotes covers the scope advisory: a note for an unknown scope,
+// none for an over-length subject (Error, not Warning), a frontmatter-less plan
+// skipped, and the ParseDir error branch.
+func TestPlanCommitScopeNotes(t *testing.T) {
+	root := scaffold(t, commitSubjectCfg)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, content string) {
+		testsupport.WriteFile(t, filepath.Join(root, "docs/plans", name), content)
+	}
+	fm := "---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: P\n\n"
+	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
+	write("2026-07-14-long.md", fm+"```commit\nfeat(awf): "+strings.Repeat("x", 80)+"\n```\n")
+	// A frontmatter-less plan is skipped (covers the !HasFrontmatter continue); the
+	// note count stays 1.
+	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
+
+	notes, err := p.planCommitScopeNotes()
+	if err != nil {
+		t.Fatalf("planCommitScopeNotes: %v", err)
+	}
+	if len(notes) != 1 || !strings.Contains(notes[0], "2026-07-14-scope.md") || !strings.Contains(notes[0], "disallowed scope") {
+		t.Fatalf("want one scope note, got %#v", notes)
+	}
+
+	// A malformed plan makes ParseDir fail.
+	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
+		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
+	if _, err := p.planCommitScopeNotes(); err == nil {
+		t.Fatal("expected ParseDir error for malformed frontmatter, got nil")
+	}
+}
+
+// TestAdvisoryNotesSurfacesPlanCommitError covers the planCommitScopeNotes error
+// propagation wired into AdvisoryNotes. Empty tags keep tagHealthNotes inert (so it
+// does not error first); a malformed plan makes planCommitScopeNotes' ParseDir fail.
+func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
+		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.AdvisoryNotes(); err == nil {
+		t.Fatal("expected AdvisoryNotes to surface the plan-commit ParseDir error")
 	}
 }
 
