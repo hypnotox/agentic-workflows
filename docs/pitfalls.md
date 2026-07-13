@@ -708,6 +708,26 @@ template starts referencing a var it did not before, grep the tests for that var
 golden; if an isolation test used that var precisely because it was unconsumed, switch it to a var
 still not consumed by any mandatory singleton (e.g. `checkCmd`).
 
+## A code-fence info string chosen as a marker can collide with a Linguist alias
+
+_Domains: adr-system_
+
+_Related: ADR-0111_
+
+ADR-0111 marks a plan's planned commit subject with a ```commit fenced block. `commit` is
+not an arbitrary token: GitHub Linguist registers it as an alias of its "Git Commit" grammar,
+so ```commit is a real, highlighted language identifier. Two forces followed from that. (1)
+Keep `commit` rather than a namespaced `awf-commit`, so the block keeps its commit-message
+syntax highlighting — `awf-commit` is unknown to every highlighter. (2) Make the check fail
+*safe*: a ```commit block is validated by default (a real planned subject in the natural fence
+is caught, not silently skipped), with a second info-string token `awf-ignore` (```commit
+awf-ignore) as the per-block opt-out for a display-only example. Highlighting survives the
+opt-out because a highlighter selects the language from the info string's *first* token and
+ignores the rest. Lesson for any future fence-based marker: check the token against Linguist's
+language aliases (`lib/linguist/languages.yml`) before adopting it, and prefer a
+checked-by-default marker plus an explicit opt-out over a namespaced token that silently loses
+highlighting and fails open (ADR-0111; 2026-07-14).
+
 ## A new `awf check` note producer must be inert for the example adopter
 
 _Domains: tooling_
