@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:90857c47123319d195e696aecac4a715e4dc1423db29c157dfc91f4966baf7c6"
+      "outputHash": "sha256:820c43a8b8ae6b488a164b9a477167eaf4a2742c5a4d2627f223626a65d3cfe0"
     },
     "docs/debugging.md": {
       "templateId": "docs/debugging.md.tmpl",
