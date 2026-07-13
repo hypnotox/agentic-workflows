@@ -708,5 +708,20 @@ template starts referencing a var it did not before, grep the tests for that var
 golden; if an isolation test used that var precisely because it was unconsumed, switch it to a var
 still not consumed by any mandatory singleton (e.g. `checkCmd`).
 
+## A new `awf check` note producer must be inert for the example adopter
+
+_Domains: tooling_
+
+A new advisory note wired into `awf check` (a producer folded into
+`Project.AdvisoryNotes`) fires over whatever corpus the project has — including the committed
+example adopter `examples/sundial`, whose ADR-0090 `example-zero-notes` gate fails on *any*
+`note:` line. sundial carries free-form ADR/pitfall tags but no `tags:` vocabulary, so a
+tag-health note that keyed only off tag *presence* would fire there and redden the example
+check. Guard the producer on the opt-in config it governs — `tagHealthNotes` returns early when
+`len(p.Cfg.Tags) == 0`, so an un-curated adopter and the example stay note-free, mirroring how
+`tag-vocabulary-governed` is itself inert under an empty vocabulary. Any future advisory note
+must degrade to inert for a minimally-configured project, or `example-zero-notes` catches it
+(ADR-0109, ADR-0090; 2026-07-13).
+
 <!-- awf:edit append — default; create .awf/docs/parts/pitfalls/append.md to override -->
 
