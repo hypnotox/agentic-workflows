@@ -99,6 +99,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 ### Proposed
 
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
+- [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
 
 ### Superseded
 
