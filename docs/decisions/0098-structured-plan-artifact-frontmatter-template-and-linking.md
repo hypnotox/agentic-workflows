@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [workflow, plans, config, tooling, rendering]
-related: [6, 60, 92, 95, 97]
+related: [6, 60, 92, 95, 97, 108]
 domains: [rendering, tooling]
 ---
 # ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking

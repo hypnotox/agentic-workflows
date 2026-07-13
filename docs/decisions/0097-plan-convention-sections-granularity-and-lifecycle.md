@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [workflow, plans, adr-system]
-related: [95]
+related: [95, 108]
 domains: [rendering]
 ---
 # ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle

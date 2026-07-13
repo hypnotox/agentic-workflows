@@ -113,6 +113,7 @@
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
+- [ADR-0108: Trim the plan header taxonomy to three fields](0108-trim-the-plan-header-taxonomy-to-three-fields.md) — Proposed
 
 ## Superseded
 
