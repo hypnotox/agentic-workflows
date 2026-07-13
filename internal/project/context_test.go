@@ -205,6 +205,71 @@ func TestContextForUnownedAndDedup(t *testing.T) {
 	}
 }
 
+// TestContextForLabelsAndNotes exercises ADR-0106: each governing invariant
+// surfaced under a queried production path is labelled backed/unbacked from its
+// declaring ADR's class; an unbacked invariant surfaces its Verify: guidance and
+// a touches marker its site note; and a proof marker in a test file under the
+// queried production directory surfaces via the union scan.
+func TestContextForLabelsAndNotes(t *testing.T) {
+	const yaml = "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [foo]\n" +
+		"invariants:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n"
+	root := scaffoldFiles(t, yaml, map[string]string{"domains/foo.yaml": "paths:\n  - internal/foo/**\n"})
+	// Production file: an unbacked slug's touches note and a slug marked by both a
+	// proof and a touches marker.
+	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x.go"), "package x\n"+
+		"// touches-invariant: unbacked-slug — the reasoned site.\n"+
+		"// invariant: dual-slug\n"+
+		"// touches-invariant: dual-slug — dual note.\n")
+	// Test file under the same production directory: a proof marker only. The union
+	// scan surfaces it when the production directory is queried (ADR-0106).
+	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x_test.go"), "package x\n// invariant: backed-slug\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+			testsupport.WithTitle("0001: Labels"), testsupport.WithDomains("foo"),
+			testsupport.WithBody("## Invariants\n"+
+				"- `invariant: backed-slug` — b.\n"+
+				"- `invariant: dual-slug` — d.\n"+
+				"- `unbacked-invariant: unbacked-slug` — a reasoned contract. **Verify:** inspect by hand.\n"+
+				"## Consequences\nc\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.ContextFor([]string{"internal/foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byslug := map[string]InvariantRef{}
+	var order []string
+	for _, iv := range res.Invariants {
+		byslug[iv.Slug] = iv
+		order = append(order, iv.Slug)
+	}
+	if strings.Join(order, ",") != "backed-slug,dual-slug,unbacked-slug" {
+		t.Fatalf("invariants (slug-sorted): got %v", order)
+	}
+	// backed-slug: surfaced via a proof marker in a test file (union scan), backed.
+	if b := byslug["backed-slug"]; b.Class != "backed" || b.Verify != "" || len(b.Touches) != 0 {
+		t.Errorf("backed-slug: %+v", b)
+	}
+	// dual-slug: proof + touches, backed, carries the touches note.
+	if d := byslug["dual-slug"]; d.Class != "backed" || len(d.Touches) != 1 || !strings.Contains(d.Touches[0], "dual note") {
+		t.Errorf("dual-slug: %+v", d)
+	}
+	// unbacked-slug: touches-only, labelled unbacked, surfaces Verify + touches note.
+	u := byslug["unbacked-slug"]
+	if u.Class != "unbacked" || u.Verify != "inspect by hand." {
+		t.Errorf("unbacked-slug label: %+v", u)
+	}
+	if len(u.Touches) != 1 || !strings.Contains(u.Touches[0], "reasoned site") {
+		t.Errorf("unbacked-slug touches: %+v", u.Touches)
+	}
+	// All three are declared by 0001 → a single deduped Governing entry.
+	if len(res.Governing) != 1 || res.Governing[0].Number != "0001" {
+		t.Errorf("governing: %+v", res.Governing)
+	}
+}
+
 func TestContextForInvariantsDisabled(t *testing.T) {
 	const disabledYAML = `prefix: example
 vars:

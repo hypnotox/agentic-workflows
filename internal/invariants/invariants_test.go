@@ -50,8 +50,9 @@ func TestDeclaringADRs(t *testing.T) {
 }
 
 // TestDeclaringADRsUnbackedClass pins that an `unbacked-invariant:` declaration
-// is classified ClassUnbacked, that its VerifyNote flag reflects a `Verify:`
-// note on the bullet, and that a backed declaration ignores the note.
+// is classified ClassUnbacked, that its Verify text captures a `Verify:` note on
+// the bullet (markdown emphasis trimmed), and that a backed declaration ignores
+// the note.
 func TestDeclaringADRsUnbackedClass(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented",
@@ -66,10 +67,10 @@ func TestDeclaringADRsUnbackedClass(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeclaringADRs: %v", err)
 	}
-	if got["reasoned"].Class != invariants.ClassUnbacked || !got["reasoned"].VerifyNote {
-		t.Errorf("reasoned: want unbacked+verify, got %#v", got["reasoned"])
+	if got["reasoned"].Class != invariants.ClassUnbacked || got["reasoned"].Verify != "run it by hand." {
+		t.Errorf("reasoned: want unbacked + verify text, got %#v", got["reasoned"])
 	}
-	if got["bare"].Class != invariants.ClassUnbacked || got["bare"].VerifyNote {
+	if got["bare"].Class != invariants.ClassUnbacked || got["bare"].Verify != "" {
 		t.Errorf("bare: want unbacked, no verify, got %#v", got["bare"])
 	}
 	if got["proven"].Class != invariants.ClassBacked {
@@ -719,7 +720,14 @@ func TestCheckZeroSlugsClean(t *testing.T) {
 	}
 }
 
-func joined(s []string) string { return strings.Join(s, ",") }
+// hitSlugs joins the slugs of a MarkerHit slice for compact case assertions.
+func hitSlugs(hits []invariants.MarkerHit) string {
+	s := make([]string, len(hits))
+	for i, h := range hits {
+		s[i] = h.Slug
+	}
+	return strings.Join(s, ",")
+}
 
 func TestMarkersUnder(t *testing.T) {
 	root := t.TempDir()
@@ -730,7 +738,8 @@ func TestMarkersUnder(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "vendor", "v.go"), "// invariant: vendored\n")      // skipped by name
 	testsupport.WriteFile(t, filepath.Join(root, "nested", ".git"), "gitdir: elsewhere\n")           // nested checkout
 	testsupport.WriteFile(t, filepath.Join(root, "nested", "n.go"), "// invariant: nested\n")
-	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
+	testsupport.WriteFile(t, filepath.Join(root, "adopter", ".awf", "config.yaml"), "prefix: ex\n") // nested adopter
+	testsupport.WriteFile(t, filepath.Join(root, "adopter", "z.go"), "// invariant: adopted\n")
 
 	cases := []struct {
 		name  string
@@ -741,24 +750,79 @@ func TestMarkersUnder(t *testing.T) {
 		{"exact file", []string{"internal/b.go"}, "beta"},           // a queried file that is itself a marker file
 		{"union sorted", []string{"cmd", "internal"}, "alpha,beta"}, // sorted, de-duplicated
 		{"nested checkout skipped", []string{"nested"}, ""},         // .git-bearing dir is another repo's tree
+		{"nested adopter skipped", []string{"adopter"}, ""},         // .awf-bearing dir is another awf project
 		{"vendor skipped", []string{"vendor"}, ""},                  // vendor is skipped by name
 		{"empty paths", nil, ""},                                    // nothing queried
 	}
 	for _, c := range cases {
-		got, err := invariants.MarkersUnder(root, sources, c.paths)
+		got, err := invariants.MarkersUnder(root, goSrcConfig(), c.paths)
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
-		if joined(got) != c.want {
-			t.Errorf("%s: got %q want %q", c.name, joined(got), c.want)
+		if hitSlugs(got) != c.want {
+			t.Errorf("%s: got %q want %q", c.name, hitSlugs(got), c.want)
 		}
+	}
+}
+
+// TestMarkersUnderTwoMarkers pins that both marker kinds surface a slug under a
+// queried path (ADR-0106): a proof-only marker, a touches-only marker, and a slug
+// carrying both, with the touches site notes deduped and a bare touches marker
+// contributing no note.
+func TestMarkersUnderTwoMarkers(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "proof.go"), "package x\n// invariant: proof-only\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "touch.go"), "package x\n// touches-invariant: touch-only — a site note.\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "both.go"), "package x\n"+
+		"// invariant: both\n"+
+		"// touches-invariant: both — first note.\n"+
+		"// touches-invariant: both — first note.\n"+ // duplicate note → deduped
+		"// touches-invariant: both\n") // bare touches → no note
+	hits, err := invariants.MarkersUnder(root, goSrcConfig(), []string{"cmd"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hitSlugs(hits) != "both,proof-only,touch-only" { // slug-sorted
+		t.Fatalf("slugs: got %q", hitSlugs(hits))
+	}
+	both, proof, touch := hits[0], hits[1], hits[2]
+	if !both.Proof || !both.Touches || len(both.Notes) != 1 || !strings.Contains(both.Notes[0], "first note") {
+		t.Errorf("both: want proof+touches with one deduped note, got %#v", both)
+	}
+	if !proof.Proof || proof.Touches || len(proof.Notes) != 0 {
+		t.Errorf("proof-only: want proof, no touches/notes, got %#v", proof)
+	}
+	if touch.Proof || !touch.Touches || len(touch.Notes) != 1 || !strings.Contains(touch.Notes[0], "site note") {
+		t.Errorf("touch-only: want touches with a note, no proof, got %#v", touch)
+	}
+}
+
+// TestMarkersUnderUnionScan pins the ADR-0106 union: a proof marker in a test
+// file under a queried production path surfaces (the file matches both the source
+// glob and testGlobs → the same marker is added once), and a file matched ONLY by
+// a testGlobs glob (not by any source glob) is still scanned with the source
+// markers.
+func TestMarkersUnderUnionScan(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x_test.go"), "package x\n// invariant: test-proof\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.spec"), "// invariant: spec-slug\n") // only testGlobs matches
+	cfg := goSrcConfig()
+	cfg.TestGlobs = []string{"**/*_test.go", "**/*.spec"}
+	hits, err := invariants.MarkersUnder(root, cfg, []string{"internal/foo", "cmd"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hitSlugs(hits) != "spec-slug,test-proof" {
+		t.Fatalf("union scan: got %q want spec-slug,test-proof", hitSlugs(hits))
+	}
+	if !hits[1].Proof {
+		t.Errorf("test-proof should surface via its proof marker, got %#v", hits[1])
 	}
 }
 
 // A WalkDir error during the marker scan (a non-existent root) propagates out.
 func TestMarkersUnderWalkError(t *testing.T) {
-	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
-	if _, err := invariants.MarkersUnder(filepath.Join(t.TempDir(), "does-not-exist"), sources, []string{"cmd"}); err == nil {
+	if _, err := invariants.MarkersUnder(filepath.Join(t.TempDir(), "does-not-exist"), goSrcConfig(), []string{"cmd"}); err == nil {
 		t.Error("expected WalkDir error for non-existent root")
 	}
 }
@@ -774,8 +838,7 @@ func TestMarkersUnderReadError(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "missing"), filepath.Join(root, "cmd", "bad.go")); err != nil {
 		t.Fatal(err)
 	}
-	sources := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
-	if _, err := invariants.MarkersUnder(root, sources, []string{"cmd"}); err == nil {
+	if _, err := invariants.MarkersUnder(root, goSrcConfig(), []string{"cmd"}); err == nil {
 		t.Error("expected read error for dangling symlink source file")
 	}
 }

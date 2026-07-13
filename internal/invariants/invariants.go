@@ -48,12 +48,13 @@ const (
 )
 
 // Decl is a declared invariant slug's declaring ADR, its backing class, and —
-// for an unbacked declaration — whether its bullet carries the required `Verify:`
-// note.
+// for an unbacked declaration — the `Verify:` guidance text its bullet carries
+// (empty when absent). Check treats an empty Verify on an unbacked declaration as
+// a MissingVerify finding; ContextFor surfaces the text as the site note.
 type Decl struct {
-	ADR        string // filename of the declaring ADR
-	Class      Class
-	VerifyNote bool // only meaningful for ClassUnbacked
+	ADR    string // filename of the declaring ADR
+	Class  Class
+	Verify string // Verify: guidance text; only meaningful for ClassUnbacked
 }
 
 // Note is a non-failing advisory from the invariant scan (ADR-0105 item 5):
@@ -108,8 +109,9 @@ var (
 	// cross-reference to another ADR's slug is not (it does not lead a list item)
 	// — which would otherwise phantom-duplicate that slug.
 	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)(.*)$")
-	// verifyRe matches the `Verify:` note an unbacked declaration must carry.
-	verifyRe = regexp.MustCompile(`(?i)\bVerify:\s*\S`)
+	// verifyRe matches the `Verify:` note an unbacked declaration must carry;
+	// group 1 is the guidance text following the token (surfaced by ContextFor).
+	verifyRe = regexp.MustCompile(`(?i)\bVerify:\s*(\S.*)`)
 	// slugRe matches a proof `invariant: <slug>` marker after a source marker.
 	slugRe = regexp.MustCompile(`^\s*invariant:\s*([a-z0-9-]+)`)
 	// touchesRe matches an advisory `touches-invariant: <slug>[ note]` marker;
@@ -120,7 +122,7 @@ var (
 // DeclaringADRs returns the slug → declaring-ADR map for adrs: every invariant
 // slug declared (in the Invariants section) by an Implemented ADR, carrying its
 // backing class (backed `invariant:` / unbacked `unbacked-invariant:`) and, for
-// unbacked declarations, whether the bullet carries the `Verify:` note. ADR-0031
+// unbacked declarations, the `Verify:` guidance text the bullet carries. ADR-0031
 // retirements are applied. It refuses two Implemented ADRs declaring the same
 // slug (duplicate) and a retirement of a slug no Implemented ADR declares
 // (dangling). Check and ContextFor (ADR-0104 Tier 1) share it.
@@ -139,7 +141,11 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 			if m[1] == "unbacked-" {
 				class = ClassUnbacked
 			}
-			required[slug] = Decl{ADR: a.Filename, Class: class, VerifyNote: verifyRe.MatchString(m[3])}
+			verify := ""
+			if vm := verifyRe.FindStringSubmatch(m[3]); vm != nil {
+				verify = strings.Trim(vm[1], " *")
+			}
+			required[slug] = Decl{ADR: a.Filename, Class: class, Verify: verify}
 		}
 	}
 	// Retirements: an Implemented ADR may retire an invariant slug it removed the
@@ -206,7 +212,7 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, [
 				findings = append(findings, Finding{Slug: slug, ADR: d.ADR, Status: UnbackedHasProof})
 			}
 			// ADR-0105 unbacked-requires-verify-note.
-			if !d.VerifyNote {
+			if d.Verify == "" {
 				findings = append(findings, Finding{Slug: slug, ADR: d.ADR, Status: MissingVerify})
 			}
 		default: // ClassBacked
@@ -378,13 +384,30 @@ func matchesAnyGlob(globs []string, relSlash string) bool {
 	return false
 }
 
-// MarkersUnder returns the sorted, unique invariant slugs whose backing marker
-// comment lies in a file that both matches a source glob and sits under one of
-// paths (a queried path P owns file F when F == P or F is prefixed by P+"/").
-// paths are slash-separated repo-relative paths. It reads only source files and
-// writes nothing.
-func MarkersUnder(root string, sources []config.InvariantSource, paths []string) ([]string, error) {
-	present := map[string]bool{}
+// MarkerHit is an invariant slug found under a queried path: the marker kind(s)
+// that surfaced it — a proof `invariant:` marker, a `touches-invariant:` marker,
+// or both — and, for touches markers, the deduped, sorted, non-empty site notes.
+// (ADR-0106: both marker kinds count as present under a path.)
+type MarkerHit struct {
+	Slug    string
+	Proof   bool     // surfaced by a proof `invariant:` marker under the query
+	Touches bool     // surfaced by a `touches-invariant:` marker under the query
+	Notes   []string // touches-marker site notes (deduped, sorted, non-empty)
+}
+
+// MarkersUnder returns the slug-sorted MarkerHits for the invariant markers that
+// lie in a file sitting under one of paths (a queried path P owns file F when
+// F == P or F is prefixed by P+"/"). A file is scanned when it matches an
+// `invariants.sources` glob or a `cfg.TestGlobs` glob (the ADR-0106 union scan),
+// so a proof marker in a test file governing production code queried by its path
+// still surfaces. Both the proof `invariant: <slug>` and the advisory
+// `touches-invariant: <slug>[ note]` markers count as present. paths are
+// slash-separated repo-relative paths. It reads only source files and writes
+// nothing.
+func MarkersUnder(root string, cfg *config.InvariantConfig, paths []string) ([]MarkerHit, error) {
+	proof := map[string]bool{}
+	touches := map[string]bool{}
+	notes := map[string]map[string]bool{} // slug -> set of non-empty touches notes
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -398,6 +421,9 @@ func MarkersUnder(root string, sources []config.InvariantSource, paths []string)
 				if _, lerr := os.Lstat(filepath.Join(path, ".git")); lerr == nil {
 					return fs.SkipDir
 				}
+				if _, lerr := os.Lstat(filepath.Join(path, ".awf")); lerr == nil {
+					return fs.SkipDir
+				}
 			}
 			return nil
 		}
@@ -409,15 +435,7 @@ func MarkersUnder(root string, sources []config.InvariantSource, paths []string)
 		if !underAny(relSlash, paths) {
 			return nil
 		}
-		var markers []string
-		for _, src := range sources {
-			for _, g := range src.Globs {
-				if pathglob.Match(g, relSlash) {
-					markers = append(markers, src.Marker)
-					break
-				}
-			}
-		}
+		markers := markersFor(cfg, relSlash)
 		if len(markers) == 0 {
 			return nil
 		}
@@ -428,9 +446,19 @@ func MarkersUnder(root string, sources []config.InvariantSource, paths []string)
 		for _, line := range strings.Split(string(data), "\n") {
 			trimmed := strings.TrimLeft(line, " \t")
 			for _, marker := range markers {
-				if strings.HasPrefix(trimmed, marker) {
-					if m := slugRe.FindStringSubmatch(trimmed[len(marker):]); m != nil {
-						present[m[1]] = true
+				if !strings.HasPrefix(trimmed, marker) {
+					continue
+				}
+				rest := trimmed[len(marker):]
+				if m := slugRe.FindStringSubmatch(rest); m != nil {
+					proof[m[1]] = true
+				} else if m := touchesRe.FindStringSubmatch(rest); m != nil {
+					touches[m[1]] = true
+					if note := strings.TrimSpace(m[2]); note != "" {
+						if notes[m[1]] == nil {
+							notes[m[1]] = map[string]bool{}
+						}
+						notes[m[1]][note] = true
 					}
 				}
 			}
@@ -440,12 +468,50 @@ func MarkersUnder(root string, sources []config.InvariantSource, paths []string)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]string, 0, len(present))
-	for s := range present {
-		out = append(out, s)
+	slugs := map[string]bool{}
+	for s := range proof {
+		slugs[s] = true
 	}
-	sort.Strings(out)
+	for s := range touches {
+		slugs[s] = true
+	}
+	out := make([]MarkerHit, 0, len(slugs))
+	for s := range slugs {
+		var ns []string
+		for n := range notes[s] {
+			ns = append(ns, n)
+		}
+		sort.Strings(ns)
+		out = append(out, MarkerHit{Slug: s, Proof: proof[s], Touches: touches[s], Notes: ns})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Slug < out[j].Slug })
 	return out, nil
+}
+
+// markersFor returns the deduped comment markers to scan for in the file at
+// relSlash: the marker of every source whose glob matches, plus — when the file
+// matches a `cfg.TestGlobs` glob (the union scan) — every source marker, so a
+// test file matched only by testGlobs is still scanned with the known markers.
+func markersFor(cfg *config.InvariantConfig, relSlash string) []string {
+	seen := map[string]bool{}
+	var markers []string
+	add := func(m string) {
+		if !seen[m] {
+			seen[m] = true
+			markers = append(markers, m)
+		}
+	}
+	for _, src := range cfg.Sources {
+		if matchesAnyGlob(src.Globs, relSlash) {
+			add(src.Marker)
+		}
+	}
+	if matchesAnyGlob(cfg.TestGlobs, relSlash) {
+		for _, src := range cfg.Sources {
+			add(src.Marker)
+		}
+	}
+	return markers
 }
 
 // underAny reports whether rel is one of paths or nested beneath one.

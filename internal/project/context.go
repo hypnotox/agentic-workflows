@@ -18,15 +18,28 @@ import (
 // the invariant slugs backed under those paths, the ADRs related via the owning
 // domains, and any queried path matching no configured domain.
 type ContextResult struct {
-	Paths      []string     `json:"paths"`
-	Domains    []DomainRef  `json:"domains"`
-	Invariants []string     `json:"invariants"`
-	Governing  []ADRRef     `json:"governing"`  // Tier 1: invariants backed under the query
-	Related    []ADRRef     `json:"related"`    // Tier 2: precise-tag or related: linked
-	Pitfalls   []PitfallRef `json:"pitfalls"`   // Tier 2: precise-tag match
-	Plans      []PlanRef    `json:"plans"`      // linked to a Tier-1/Tier-2 ADR
-	Background int          `json:"background"` // Tier 3: collapsed domain-ADR count
-	Unowned    []string     `json:"unowned"`
+	Paths      []string       `json:"paths"`
+	Domains    []DomainRef    `json:"domains"`
+	Invariants []InvariantRef `json:"invariants"`
+	Governing  []ADRRef       `json:"governing"`  // Tier 1: invariants backed under the query
+	Related    []ADRRef       `json:"related"`    // Tier 2: precise-tag or related: linked
+	Pitfalls   []PitfallRef   `json:"pitfalls"`   // Tier 2: precise-tag match
+	Plans      []PlanRef      `json:"plans"`      // linked to a Tier-1/Tier-2 ADR
+	Background int            `json:"background"` // Tier 3: collapsed domain-ADR count
+	Unowned    []string       `json:"unowned"`
+}
+
+// InvariantRef is an invariant slug surfaced as present under a queried path
+// (ADR-0106). Class labels a governing (declared) invariant backed or unbacked;
+// it is empty for a slug present under the path but declared by no Implemented
+// ADR. Verify carries an unbacked governing invariant's `Verify:` guidance;
+// Touches carries the site notes from any `touches-invariant:` marker under the
+// query. Both renderings derive from this one value (context-output-parity).
+type InvariantRef struct {
+	Slug    string   `json:"slug"`
+	Class   string   `json:"class,omitempty"`
+	Verify  string   `json:"verify,omitempty"`
+	Touches []string `json:"touches,omitempty"`
 }
 
 // PitfallRef is a pitfall surfaced because it shares a precise tag with the
@@ -101,12 +114,13 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		}
 	}
 
+	var hits []invariants.MarkerHit
 	if p.Cfg.Invariants != nil && !p.Cfg.Invariants.Disabled {
-		slugs, err := invariants.MarkersUnder(p.Root, p.Cfg.Invariants.Sources, clean)
+		h, err := invariants.MarkersUnder(p.Root, p.Cfg.Invariants, clean)
 		if err != nil {
 			return ContextResult{}, err
 		}
-		res.Invariants = slugs
+		hits = h
 	}
 
 	adrs, err := adr.ParseDir(p.decisionsDir())
@@ -116,6 +130,9 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 
 	// Tier 1 — "governs this code": ADRs declaring an invariant slug present as a
 	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
+	// Each surfaced slug is labelled backed/unbacked from its declaring ADR's
+	// ADR-0105 class, with an unbacked invariant's `Verify:` guidance and any
+	// touches-marker site note carried on the InvariantRef (ADR-0106).
 	// invariant: context-tier1-governs
 	declaring, err := invariants.DeclaringADRs(adrs)
 	if err != nil {
@@ -127,18 +144,21 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	}
 	tier1 := map[string]bool{}
 	var t1 []adr.ADR
-	for _, slug := range res.Invariants {
-		decl, ok := declaring[slug]
-		if !ok {
-			continue
+	for _, h := range hits {
+		ref := InvariantRef{Slug: h.Slug, Touches: h.Notes}
+		if decl, ok := declaring[h.Slug]; ok {
+			ref.Class = string(decl.Class)
+			if decl.Class == invariants.ClassUnbacked {
+				ref.Verify = decl.Verify
+			}
+			a := byFile[decl.ADR]
+			if !tier1[a.Number] {
+				tier1[a.Number] = true
+				t1 = append(t1, a)
+				res.Governing = append(res.Governing, adrRefOf(a, lay))
+			}
 		}
-		a := byFile[decl.ADR]
-		if tier1[a.Number] {
-			continue
-		}
-		tier1[a.Number] = true
-		t1 = append(t1, a)
-		res.Governing = append(res.Governing, adrRefOf(a, lay))
+		res.Invariants = append(res.Invariants, ref)
 	}
 	sort.Slice(res.Governing, func(i, j int) bool { return res.Governing[i].Number < res.Governing[j].Number })
 

@@ -51,11 +51,15 @@ func ctxFixture(t *testing.T) string {
 	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: gov-slug\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n"+
+		"// invariant: gov-slug\n"+
+		"// touches-invariant: unbk-slug — the reasoned production site.\n"+
+		"// invariant: orphan-slug\n") // present but declared by no ADR → no class label
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — a contract.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — a contract.\n"+
+				"- `unbacked-invariant: unbk-slug` — a reasoned contract. **Verify:** inspect by hand.\n## Consequences\nc\n")))
 	// 0002 shares the precise tag → Tier 2 (Related). 0003 is domain-owned only →
 	// Tier 3 background count. Both exercise their render blocks.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
@@ -89,7 +93,11 @@ func TestRunContextHuman(t *testing.T) {
 		"live state for this project",
 		"alpha — docs/domains/alpha.md",
 		"beta — docs/domains/beta.md",
-		"gov-slug",
+		"gov-slug [backed]",
+		"unbk-slug [unbacked]",
+		"\n  orphan-slug\n", // present but undeclared → rendered without a class label
+		"Verify: inspect by hand.",
+		"touches: — the reasoned production site.",
 		"## Governing ADRs (invariants backed here)",
 		"ADR-0001 (Implemented) Alpha decision — docs/decisions/0001-a.md",
 		"## Related ADRs (shared tag)",
@@ -123,8 +131,25 @@ func TestRunContextJSONParity(t *testing.T) {
 	if len(res.Domains) != 2 || res.Domains[0].Name != "alpha" || res.Domains[1].Name != "beta" {
 		t.Errorf("json domains: %+v", res.Domains)
 	}
-	if strings.Join(res.Invariants, ",") != "gov-slug" {
-		t.Errorf("json invariants: %v", res.Invariants)
+	// Three path-present invariants, slug-sorted: the backed gov-slug (proof
+	// marker), an orphan-slug present but declared by no ADR (no class), and the
+	// unbacked unbk-slug (touches marker) carrying its Verify note + site note.
+	if len(res.Invariants) != 3 || res.Invariants[0].Slug != "gov-slug" ||
+		res.Invariants[1].Slug != "orphan-slug" || res.Invariants[2].Slug != "unbk-slug" {
+		t.Fatalf("json invariants: %+v", res.Invariants)
+	}
+	if res.Invariants[0].Class != "backed" {
+		t.Errorf("gov-slug class: got %q want backed", res.Invariants[0].Class)
+	}
+	if res.Invariants[1].Class != "" {
+		t.Errorf("orphan-slug must carry no class, got %q", res.Invariants[1].Class)
+	}
+	unbk := res.Invariants[2]
+	if unbk.Class != "unbacked" || unbk.Verify != "inspect by hand." {
+		t.Errorf("unbk-slug label: %+v", unbk)
+	}
+	if len(unbk.Touches) != 1 || !strings.Contains(unbk.Touches[0], "reasoned production site") {
+		t.Errorf("unbk-slug touches: %+v", unbk.Touches)
 	}
 	if len(res.Governing) != 1 || res.Governing[0].Number != "0001" {
 		t.Errorf("json governing: %+v", res.Governing)

@@ -137,8 +137,18 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		fmt.Fprintf(stdout, "  %s — %s\n", d.Name, d.CurrentState)
 	}
 	fmt.Fprintln(stdout, "\n## Invariants")
-	for _, s := range res.Invariants {
-		fmt.Fprintf(stdout, "  %s\n", s)
+	for _, iv := range res.Invariants {
+		if iv.Class != "" {
+			fmt.Fprintf(stdout, "  %s [%s]\n", iv.Slug, iv.Class)
+		} else {
+			fmt.Fprintf(stdout, "  %s\n", iv.Slug)
+		}
+		if iv.Verify != "" {
+			fmt.Fprintf(stdout, "    Verify: %s\n", iv.Verify)
+		}
+		for _, n := range iv.Touches {
+			fmt.Fprintf(stdout, "    touches: %s\n", n)
+		}
 	}
 	if len(res.Governing) > 0 {
 		fmt.Fprintln(stdout, "\n## Governing ADRs (invariants backed here)")
