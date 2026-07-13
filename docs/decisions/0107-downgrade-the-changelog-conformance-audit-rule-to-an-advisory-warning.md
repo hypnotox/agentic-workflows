@@ -21,9 +21,10 @@ deterministic rung.
 
 That promotion weighed the missed-entry cost but not the symmetric one: **the rule over-fires on
 benign changes**. Its detection is a path heuristic (`adopterFacingPrefixes` — `templates/`,
-`cmd/awf/`, the config/lock schema); it cannot distinguish a behavioral change from a benign one — a
-refactor, or a comment/marker relocation — that touches the same path. A change that alters no adopter
-output still trips the Error.
+`cmd/awf/`, and the config/lock/catalog packages `internal/config/`, `internal/manifest/`,
+`internal/catalog/`); it cannot distinguish a behavioral change from a benign one — a refactor, or a
+comment/marker relocation — that touches the same path. A change that alters no adopter output still
+trips the Error.
 
 This is not hypothetical. The ADR-0105/0106 invariant-backing migration (2026-07-13) relocated
 `// invariant:` markers to `// touches-invariant:` across `cmd/awf/` and `internal/config/` — comment-only
@@ -76,9 +77,13 @@ attention signal, not as a gate.
 - **A genuinely missed entry is no longer caught deterministically at impl review** — this walks back
   part of ADR-0073's prose→blocking-Error move. Mitigations, in order: the Warning keeps it visible at
   the exact review moment; the `awf-retrospective` changelog step (ADR-0041/0067) re-checks it per
-  effort; `releasecheck` (ADR-0078) blocks any release on a missing/non-empty `[Unreleased]`. The
-  accepted trade: a false Error blocking legitimate work is both costlier and more frequent than a
-  missed entry surviving a Warning plus two backstops.
+  effort; `releasecheck` (ADR-0078) blocks any release on a missing/non-empty `[Unreleased]`. Be honest
+  about the first two: the retrospective step is the *same* prose mechanism ADR-0073's Context records as
+  having already failed (the ADR-0072 effort missed its entry despite it), so the residual is one
+  known-leaky per-effort prose check plus one release-time *structural* check (`releasecheck`, which
+  guards `[Unreleased]` well-formedness — not per-effort entry presence). The accepted trade: a false
+  Error blocking legitimate work is both costlier and more frequent than a missed entry surviving a
+  Warning plus those backstops — and the user explicitly accepted it.
 - **The exit contract is unchanged.** `repo-audit-error-exit` still holds; only which findings source an
   Error changes, and its proof relocates to an infrastructure-failure test — no behavior change to the
   command's exit semantics.
