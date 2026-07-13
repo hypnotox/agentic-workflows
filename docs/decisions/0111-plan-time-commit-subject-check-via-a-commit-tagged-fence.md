@@ -88,11 +88,11 @@ advisories (ADR-0070, ADR-0083) established this `note:` tier as the home for no
 5. **The plans template and the writing-plans skill teach the fence, in prose.** The `plans-template`
    singleton's phases section (`templates/plans-template/template.md.tmpl`) and the `awf-writing-plans`
    skill both instruct authors — in prose, referencing the fence via inline code — to write the planned
-   subject in a ` ```commit ` fence in the closing-commit task. Neither embeds a *literal* ` ```commit `
-   block, so an `awf new plan` scaffold carries no planned-subject block until the author writes one; a
-   fresh, unedited scaffold therefore has nothing to validate and cannot fail on a placeholder subject.
-   Any literal commit example either skill or template does show uses the ` ```commit awf-ignore `
-   opt-out. Both edits land in the same commit as the check. The rendered `docs/plans/template.md` and
+   subject in a ` ```commit ` fence in the closing-commit task. Neither embeds an un-opted-out
+   (checkable) ` ```commit ` block, so an `awf new plan` scaffold carries nothing the check will
+   validate; a fresh, unedited scaffold therefore cannot fail on a placeholder subject. Any literal
+   commit example either skill or template does show carries the ` ```commit awf-ignore ` opt-out, which
+   the check skips. Both edits land in the same commit as the check. The rendered `docs/plans/template.md` and
    the example adopter's rendered template are additionally excluded from validation because plan
    parsing already skips `template.md`/`README.md` by filename.
 
@@ -140,10 +140,11 @@ advisories (ADR-0070, ADR-0083) established this `note:` tier as the home for no
   opt-out is a single token, the false-positive is a visible nudge rather than silent breakage, and
   display-only commit examples are rare inside `docs/plans/` (they live mostly in docs and skills,
   which this check does not scan).
-- The shared conventional-commit rule gains a second consumer: `internal/audit/audit.go`'s package doc
-  and the `CheckConventionalCommit` doc comment, which today describe the rule as advisory and never
-  wired into the gate, are corrected in the same implementation commit to name the new plan-time
-  `awf check` consumer.
+- The shared conventional-commit rule gains a gate-side consumer for the first time, so two
+  `internal/audit/audit.go` doc comments are updated in the same implementation commit: the
+  `CheckConventionalCommit` function doc, which already names the commit-gate consumer, additionally
+  names the new plan-time `awf check` consumer; and the package doc, which today states the package is
+  "advisory … never wired into the gate", is corrected, since `awf check` now consumes the rule.
 - The scope-advisory split means a plan proposing a not-yet-declared scope surfaces a `note:` rather
   than blocking, correctly modelling a plan that establishes its own new scope; the commit gate still
   enforces the scope once the plan has landed it in `audit.allowedScopes`.
