@@ -257,7 +257,7 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // existing file at that path.
 // invariant: adr-new-strips-markers
 // invariant: adr-new-heading-matches-file
-// invariant: adr-new-no-overwrite
+// touches-invariant: adr-new-no-overwrite — refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
 func NewFile(dir, title string) (string, error) {
 	title = strings.TrimSpace(title)
 	number, err := NextNumber(dir)

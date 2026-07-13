@@ -102,8 +102,11 @@ deferred until a second concrete, freely-authored-content case exists (see Alter
   `Title` placeholder never survives into the committed file.
 - `invariant: adr-new-sequential-numbering` — `internal/adr.NextNumber` always returns the max existing
   ADR number plus one, and never reuses a number already present in the directory.
-- `invariant: adr-new-no-overwrite` — `awf new adr` refuses to overwrite an existing file at its computed
-  target path rather than silently clobbering it.
+- `unbacked-invariant: adr-new-no-overwrite` — `awf new adr` refuses to overwrite an existing file at its
+  computed target path rather than silently clobbering it. **Verify:** `NewFile` (`internal/adr/adr.go`)
+  stats the target and returns an "already exists" error before any write; the branch is
+  `// coverage-ignore` (unreachable, since `NextNumber` always returns one past every existing
+  `NNNN-*.md`), so confirm the guard precedes the write by reading `NewFile`.
 - `invariant: adr-new-version-gated` — `awf new adr` invokes the ADR-0039 binary-version gate before
   reading or writing any project file.
 - The `awf-proposing-adr` skill never instructs an agent to hand-copy `docs/decisions/template.md`
