@@ -125,9 +125,11 @@ Grounding fixed the boundaries this decision must respect:
    stable.
 
 6. **Resync the rendered surfaces citing the Tier-2 wording.** The agent guide's invariant list
-   (sourced from `.awf/agents-doc.yaml`) is updated to the renamed invariant and re-synced in the
-   same change (docs travel with the change), alongside the `./x sync` regeneration of
-   `docs/decisions/ACTIVE.md` at the eventual Proposed→Implemented status flip.
+   (sourced from `.awf/agents-doc.yaml`) is updated — the Tier-2 bullet renamed to
+   `context-tier2-precise-tag`, and three new bullets added for `tag-not-domain-name`,
+   `tag-frequency-note`, and `tag-coverage-note` (the list is hand-maintained with no gate) — and
+   re-synced in the same change (docs travel with the change), alongside the `./x sync` regeneration
+   of `docs/decisions/ACTIVE.md` at the eventual Proposed→Implemented status flip.
 
 ## Invariants
 
@@ -167,7 +169,7 @@ commit.
   coarsening deterministically; the advisory frequency note catches the subtler
   broad-but-not-domain-named drift the gate cannot express as a hard rule.
 - **Re-tagging ~154 artifacts by hand is the main cost.** The coverage note backstops *omission*
-  (a zero- or domain-only-tagged artifact), but no check can judge whether a chosen narrow tag is the
+  (a zero-tagged artifact), but no check can judge whether a chosen narrow tag is the
   *right* topic — that remains authoring and review discipline.
 - **The frequency note is corpus-size-sensitive.** A fixed percentage default keeps awf's own output
   quiet after re-tagging and loud before it, but a very small adopter corpus may see false frequency
