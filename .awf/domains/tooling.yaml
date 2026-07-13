@@ -4,4 +4,7 @@ paths:
   - internal/coverage/**
   - internal/changelog/**
   - internal/evals/**
+  - internal/clispec/**
+  - internal/initspec/**
+  - internal/git/**
   - x

@@ -1,2 +1,4 @@
 paths:
   - internal/adr/**
+  - internal/plan/**
+  - internal/frontmatter/**

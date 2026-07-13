@@ -1,4 +1,6 @@
 paths:
   - internal/render/**
   - internal/catalog/**
+  - internal/project/**
+  - internal/refs/**
   - templates/**

@@ -2,3 +2,5 @@ paths:
   - internal/config/**
   - internal/migrate/**
   - internal/manifest/**
+  - internal/configspec/**
+  - internal/pathglob/**
