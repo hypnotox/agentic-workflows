@@ -357,9 +357,10 @@ correct) and discharges ADR-0105's doc-currency obligations.
   `invariants.testGlobs` file (`['**/*_test.go']` here; source-only fallback when unset); the advisory
   `touches-invariant:` context marker; and the symmetric checks (backed-requires-proof,
   unbacked-refuses-proof, unbacked-requires-verify-note) plus the dangling-marker/bare-touches
-  advisories. Keep the retirement (ADR-0031) and the `DeclaringADRs` join description. Preserve ADR-0077
-  glob wording. Then `./x sync` (regenerates `docs/decisions/ACTIVE.md` for the status flip and
-  `docs/domains/invariants.md`).
+  advisories. Keep the retirement (ADR-0031) and the `DeclaringADRs` Tier-1-join description unchanged
+  here — Phase 5's Task 5.3(d) revises that join sentence for ADR-0106's union scan once ADR-0106 is
+  `Implemented`. Preserve ADR-0077 glob wording. Then `./x sync` (regenerates `docs/decisions/ACTIVE.md`
+  for the status flip and `docs/domains/invariants.md`).
 
 - [ ] **Task 4.4 — Verify and commit.** `./x gate` && `./x check` (clean: ADR-0105's 9 slugs are now
   enforced and backed in test scope; `ACTIVE.md` shows `0105` Implemented). `git add
@@ -416,10 +417,19 @@ context bullet + tooling narrative swap to the successor.
   sentence so "present as a marker under a queried path" reflects the union scan of
   `invariants.sources` + `testGlobs` recognising both the proof `invariant:` and the
   `touches-invariant:` marker, and note that each governing invariant is labelled backed/unbacked.
+  Also change that bullet's provenance from `ref: ADR-0104` to `ref: ADR-0104, ADR-0106` (the
+  successor slug `context-tier1-marker-union` is declared by ADR-0106, and the repo's multi-ADR ref
+  convention — e.g. `ref: ADR-0097, ADR-0098` — cites both the establishing and amending ADR).
   (c) In `.awf/domains/parts/tooling/current-state.md`, update the `awf context` narrative for the
   union scan (`MarkersUnder` over `sources` ∪ `testGlobs`, both marker kinds), the backed/unbacked
-  labelling of governing invariants, and the surfaced `Verify:`/touches site notes. Then `./x sync`
-  (regenerates `AGENTS.md`, `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`).
+  labelling of governing invariants, and the surfaced `Verify:`/touches site notes. (d) In
+  `.awf/domains/parts/invariants/current-state.md`, update the closing sentence that ties
+  `invariants.DeclaringADRs` to "`awf context`'s Tier-1 relevance join" — ADR-0106 makes that join a
+  two-marker union scan (`invariants.sources` ∪ `testGlobs`, proof + touches) with backed/unbacked
+  labelling; discharge ADR-0106's second doc-currency target (Task 4.3's Phase-4 rewrite deliberately
+  left this join sentence for Phase 5, since ADR-0106 is not `Implemented` until here). Then `./x sync`
+  (regenerates `AGENTS.md`, `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`,
+  `docs/domains/invariants.md`).
 
 - [ ] **Task 5.4 — Verify and commit.** `./x gate` && `./x check` (clean: `context-tier1-governs` is
   retired — dropped from the required set with no residual marker — `context-tier1-marker-union` and
@@ -427,7 +437,8 @@ context bullet + tooling narrative swap to the successor.
   `context-tier1-governs` reference survives outside the historical ADR-0104/0106 bodies). `git add
   internal/invariants/invariants_test.go internal/project/context.go internal/project/context_test.go
   docs/decisions/0106-*.md docs/decisions/ACTIVE.md .awf/agents-doc.yaml AGENTS.md
-  .awf/domains/parts/tooling/current-state.md docs/domains/tooling.md`. Commit:
+  .awf/domains/parts/tooling/current-state.md docs/domains/tooling.md
+  .awf/domains/parts/invariants/current-state.md docs/domains/invariants.md`. Commit:
   `feat(invariants): union-scan context surfacing, retire tier1-governs` (≤72 chars — commit-gate limit).
 
 ## Verification
