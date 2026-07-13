@@ -641,3 +641,21 @@ data:
         adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
         sibling — `invariants.testGlobs` mirrors `invariants.sources`) and assert the rendered value in a
         `configreference_test.go` case; a `—` for a set top-level field is the smell.
+    - title: "Referencing a new var in an always-on template shifts that var's consumer set"
+      domains: [rendering, config]
+      tags: [rendering, testing]
+      related: [86, 88, 108]
+      body: |
+        Making a template interpolate `.vars.<x>` for the first time changes which artifacts *consume*
+        that var — and if the template is a mandatory always-on singleton, the var is now consumed in
+        every project, which two consumer-coupled surfaces encode: the config-reference "Consumed by:"
+        golden line (`internal/project/configreference_test.go`) and the unused-var isolation test
+        (`internal/project/unused_test.go` `TestPartPlaceholderConsumesVar`, whose premise that a var is
+        otherwise-unused in its fixture breaks). ADR-0108 made the `plans-template` singleton reference
+        `.vars.gateCmd`, and both tests failed at the gate — the grounding check, the ADR fan-out, the
+        plan, plan-review, AND the resync all missed them; only `./x gate` caught it (2026-07-13). The
+        render-fan-out sweep is about doc *outputs*; this is a distinct var-*consumer* fan-out. When a
+        template starts referencing a var it did not before, grep the tests for that var
+        (`grep -rn '"gateCmd"' internal/project/*_test.go`) and update the config-reference "Consumed by"
+        golden; if an isolation test used that var precisely because it was unconsumed, switch it to a var
+        still not consumed by any mandatory singleton (e.g. `checkCmd`).
