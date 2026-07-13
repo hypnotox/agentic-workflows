@@ -106,7 +106,10 @@ commit.
   `Implemented` flip; update the `docs/domains/tooling.md`/`docs/domains/invariants.md` narratives for
   the union scan and the backed/unbacked context labelling; the AGENTS.md `context` invariant bullets
   (rendered from `.awf/`) gain the `context-tier1-marker-union` wording and drop
-  `context-tier1-governs`.
+  `context-tier1-governs`; add a changelog `[Unreleased]` entry for the user-facing `awf context`
+  changes (the risk-map backed/unbacked labels, the surfaced `Verify:`/touches notes, and the
+  `--json` shape carrying per-invariant class and notes) — folded into ADR-0105's joint `[Unreleased]`
+  entry, since the two land together.
 - **New branches to cover.** union-scan hit via proof-only, via touches-only, and via both; a backed
   vs. an unbacked governing invariant; an unbacked invariant's `Verify:` surfaced; a touches note
   surfaced; and the static-fallback path — each needs an explicit test under the 100% gate.

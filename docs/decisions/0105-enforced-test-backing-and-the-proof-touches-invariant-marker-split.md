@@ -174,7 +174,10 @@ test file under the new model. (This ADR's own declarations use today's `inv:` t
   explicit classification; rewrite the adr-readme Invariant-tagging part
   (`.awf/parts/adr-readme/invariants.md`, rendered into `docs/decisions/README.md`) to the unified
   `invariant:`/`unbacked-invariant:` declarations and the proof/touches marker split; regenerate
-  `docs/config-reference.md` for `testGlobs`.
+  `docs/config-reference.md` for `testGlobs`; add a joint changelog `[Unreleased]` entry covering
+  this effort's user-facing changes (the `invariant:`/`unbacked-invariant:` declaration and
+  `touches-invariant:` markers, `testGlobs`, and — with ADR-0106 — the `awf context` risk-map labels
+  and surfaced notes).
 - **`Check` return shape widens.** It must return advisory notes alongside hard findings so
   dangling-marker and bare-touches notes flow to the `note:` channel; `MarkersUnder` (context) must
   scan the union of `sources` and `testGlobs`, or splitting the globs would silently narrow Tier-1
