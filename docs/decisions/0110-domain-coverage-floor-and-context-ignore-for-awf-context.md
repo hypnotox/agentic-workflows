@@ -59,15 +59,16 @@ Grounding fixed the mechanics and boundaries:
 
 1. **Fold every uncovered code package into one of the five existing domains** by extending its sidecar
    `paths:` — **no sixth domain**, preserving the ADR-0055 domain/scope mirror:
-   - `rendering`: `internal/project/**`, `internal/refs/**`, `internal/frontmatter/**`
+   - `rendering`: `internal/project/**`, `internal/refs/**`
    - `config`: `internal/configspec/**`, `internal/pathglob/**`
    - `tooling`: `internal/clispec/**`, `internal/initspec/**`, `internal/git/**`
-   - `adr-system`: `internal/plan/**`
+   - `adr-system`: `internal/plan/**`, `internal/frontmatter/**`
 
    (`internal/invariants` is already owned by the `invariants` domain.) Some folds are a deliberate
-   stretch — `internal/plan` under `adr-system` (both are decision-artifact machinery),
-   `internal/project` under `rendering` (the render/sync orchestration core) — accepted as the cost of
-   not fracturing the mirror.
+   stretch — `internal/plan` and `internal/frontmatter` under `adr-system` (decision-artifact parsing;
+   `frontmatter`'s importers are `adr`/`plan`/`audit`/`project`, predominantly artifact machinery),
+   `internal/project` and `internal/refs` under `rendering` (the render/sync orchestration core) —
+   accepted as the cost of not fracturing the mirror.
 
 2. **Auto-exclude awf's own generated outputs.** A tracked path present in `PlannedOutputs()` is never
    reported by `--uncovered`. The rendered adapter trees and generated docs drop out, and the
@@ -89,23 +90,29 @@ Grounding fixed the mechanics and boundaries:
 5. **Retire and rename the lister invariant, and register the config key.** `uncovered-lists-unowned-only`
    is retired and a renamed successor carries the widened contract; the collapse and output-parity
    invariants (ADR-0102) compose on the new set unchanged. `contextIgnore` gains its `configspec`
-   entry and `config-reference.md` is regenerated in the same commit.
+   entry and `config-reference.md` is regenerated in the same commit, which also updates the agent
+   guide's invariant entry (sourced from `.awf/agents-doc.yaml`) — renaming the bullet to
+   `uncovered-lists-unowned-unignored`, widening its contract, and re-citing ADR-0110 — re-syncs
+   `AGENTS.md`, and regenerates `docs/decisions/ACTIVE.md` via `./x sync` at the eventual
+   Proposed→Implemented status flip.
 
 ## Invariants
 
-Each slug below is backed by a `// invariant: <slug>` proof marker on a test in the implementing
-commit; `awf check` enforces them once this ADR is `Implemented`. The retired slug's marker is removed
-and re-homed to the renamed successor in the same commit.
+The slug below is backed by a `// invariant: <slug>` proof marker on a test in the implementing
+commit; `awf check` enforces it once this ADR is `Implemented`. The retired slug's proof marker
+(`internal/project/context_test.go`) and its advisory `touches-invariant` marker (the `Uncovered`
+docstring in `internal/project/context.go`) are both removed and re-homed to the renamed successor in
+the same commit.
 
 - `` `invariant: uncovered-lists-unowned-unignored` `` (replaces `uncovered-lists-unowned-only`) — in
   `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan
   roots, or the whole tree) that are matched by no configured domain glob, are not in the project's
   `PlannedOutputs()` set, and are matched by no `contextIgnore` glob; every such uncovered path is
   represented by exactly one reported entry (itself or a reported ancestor directory), and no
-  domain-owned, generated, or `contextIgnore`-matched path is represented by any entry.
-- `` `invariant: context-ignore-absent-safe` `` — with `contextIgnore` absent or empty, the
-  `--uncovered` report is exactly the domain-and-generated-unowned set (the key adds no exclusion and
-  changes no other behaviour); a project configuring the key subtracts exactly its glob matches.
+  domain-owned, generated, or `contextIgnore`-matched path is represented by any entry. Its proof
+  includes the absent/empty-`contextIgnore` case (the key is additive-only: an absent or empty list
+  subtracts nothing and changes no other behaviour, a configured one subtracts exactly its glob
+  matches), so the feature is publication-safe without a separate slug.
 
 The ADR-0102 invariants `uncovered-collapses-directories` and `uncovered-output-parity` are unchanged:
 directory collapse and human/`--json` parity operate on whatever the reported set is, and that set is
@@ -126,7 +133,16 @@ now the narrowed one above.
   extended only when a genuinely-new non-code top-level tree appears (rare), and each entry is visible
   in review rather than buried in scan-root defaults.
 - **`--uncovered` now runs a render pass** (`PlannedOutputs` → `RenderAll`) — heavier than a pure path
-  scan, but read-only and acceptable for an advisory, non-gated query.
+  scan, but read-only and acceptable for an advisory, non-gated query. It also inherits `RenderAll`'s
+  failure modes: a render error (a malformed ADR, a corrupt sidecar) now fails `--uncovered` where
+  before it was a near-pure path scan — bounded, since `awf check` is already red in that state.
+- **The folds enroll the new packages in each domain's advisory surface.** Editing `internal/project`
+  or `internal/refs` (rendering), or `internal/plan` or `internal/frontmatter` (adr-system), can now
+  raise an ADR-0077 domain-code-staleness Warning absent a current-state co-update, and enlarges each
+  domain's current-state-doc scope. Advisory only; never changes the audit exit code.
+- **This ADR's own `tags: [context, domains]` are re-tagged under ADR-0109's re-curated vocabulary**
+  in the shared implementation sequence; both are narrow, non-domain topics expected to survive the
+  re-curation, so the two ADRs must land their vocabulary and frontmatter together.
 - **`internal/testsupport` is excluded via `contextIgnore`, not a domain** — consistent with the
   coverage and dead-code gates that special-case it by name; it is production-imported (not test-only
   in the Go sense) yet is not domain territory.
