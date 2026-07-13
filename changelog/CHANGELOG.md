@@ -9,6 +9,24 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Invariant backing is redesigned into enforced test-backing with a two-marker
+  vocabulary (ADR-0105, ADR-0106). The ADR Invariants-section declaration token is
+  unified from `inv: <slug>` to `invariant: <slug>` — the same token the source
+  proof marker uses (**adopters must rewrite `inv:`→`invariant:` in their own
+  `docs/decisions/**`; awf cannot auto-migrate user-owned ADR prose**). Source
+  markers split into a proof `invariant: <slug>` marker and an advisory
+  `touches-invariant: <slug> — <note>` context marker. A new `invariants.testGlobs`
+  config scopes the proof marker to test files (backing then means an executed test
+  line); when it is empty or absent, backing falls back to source-glob scope, so
+  the change is additive for projects that do not set it. Each invariant is declared
+  `invariant:` (backed) or `unbacked-invariant:` (unbacked, carrying a `Verify:`
+  note), symmetrically enforced: `awf check` fails a backed slug with no proof
+  marker, an unbacked slug that has a proof marker, and an unbacked declaration
+  missing its `Verify:` note; a marker naming an undeclared slug and a note-less
+  `touches-invariant:` are non-failing advisories. `awf context` now labels each
+  governing invariant `backed`/`unbacked` and surfaces its `Verify:`/touches site
+  notes (the `--json` invariant refs carry per-invariant `class` and notes), reading
+  as a risk map — its Tier-1 scan spans both markers across the source and test globs.
 - `awf context <paths>` output is now relevance-tiered (ADR-0104). It no longer
   dumps every ADR/pitfall sharing a queried path's domain. The human render gains
   `## Governing ADRs (invariants backed here)` (Tier 1 — ADRs whose invariants are
