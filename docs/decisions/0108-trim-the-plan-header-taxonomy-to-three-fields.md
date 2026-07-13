@@ -55,27 +55,34 @@ is load-bearing and recorded here as a partial-item supersession rather than an 
    job — a one-line statement of what the plan implements, the instruction to link driving ADRs in
    `adrs:` and inline, and **one line of explicit non-goals (what the plan does not do)** — folds into
    the `Goal` section. This drops the template's `positioning` `awf:section`, so the `plans-template`
-   catalog `Sections` list loses its `positioning` entry (the `docs-section-parity` invariant keeps
-   template markers and catalog list in lockstep).
+   catalog `Sections` list loses its `positioning` entry (the `adr-singleton-section-parity` invariant
+   — which covers Mandatory singletons like `plans-template`; `docs-section-parity` skips them — keeps
+   the singleton's template markers and catalog `Sections` list in lockstep).
 
 3. **The plans template interpolates the configured gate command.** The `plans-template` source uses
    the standard `{{ with .vars.gateCmd }}` `{{ . }}` `{{ else }}the project's gate{{ end }}` form for
    every command-bearing gate reference, degrading to generic prose when `gateCmd` is unset — matching
-   the rest of the standard and satisfying the publication-safe-templates invariant.
+   the rest of the standard and satisfying the publication-safe-templates invariant. This
+   publication-safety fix co-ships with Decisions 1–2 rather than standing as its own ADR because it
+   edits the same `plans-template` source and rides the same render fan-out sweep; splitting it would
+   fragment one file's change across two records.
 
 ## Invariants
 
 This ADR declares **no new invariant slug**. It narrows the existing `plans-template-taxonomy`
 invariant (declared by ADR-0098, one declaring ADR per slug), whose backing test
 (`internal/project/golden_test.go`) drops its `## Tech stack` assertion and continues to prove the
-now-three-field header. The `docs-section-parity` invariant continues to hold once the template's
-`positioning` section and the catalog `Sections` entry are removed together.
+now-three-field header. The `adr-singleton-section-parity` invariant continues to hold once the
+template's `positioning` section and the catalog `Sections` entry are removed together.
 
 - The rendered `plans-template` carries exactly the three header fields Goal / Architecture summary /
   File structure — no `## Tech stack` heading and no standalone positioning section — plus the
   frontmatter block, `# Plan:` title, a phase, and the optional Verification/Notes tails.
-- No command-bearing gate reference in the `plans-template` source is a hard-coded English literal;
-  each degrades to generic prose when `gateCmd` is unset.
+- The rendered `plans-template` (real config, `gateCmd: ./x gate`) surfaces the interpolated gate
+  command and carries no hard-coded "the gate" literal — asserted positively by the
+  `plans-template-taxonomy` golden test (the absence of a plain-prose literal is not otherwise
+  mechanically checkable), while `adr-singleton-section-parity` renders the singleton under empty
+  vars to reject any `<no value>` leak from a bare interpolation.
 
 ## Consequences
 
@@ -84,13 +91,18 @@ now-three-field header. The `docs-section-parity` invariant continues to hold on
 - **Non-goals get a home.** Scope boundaries move from the easily-skipped optional Notes tail into
   Goal, without adding a top-level section (ADR-0097's "no other top-level sections" holds).
 - **Publication parity.** Adopters' rendered plans template now surfaces their own verify command.
+- **Accepted loss.** A plan read cold and standalone (e.g. a published adopter plan) no longer states
+  its language / stack at a glance; File structure gives paths, not stack orientation. Accepted
+  because the stack is a project constant already recorded elsewhere (`go.mod`, the agent guide) and a
+  plan is always authored and read within its project.
 - **Fan-out to sweep in one change** (the recurring under-enumeration pitfall): the template source
   and its root + `examples/sundial` renders; the catalog `Sections` list; the
   `plans-template-taxonomy` backing test; the two prose surfaces that enumerate "the four fields"
   (`writing-plans` SKILL, plans README); the two sidecar prose overrides that name the four-field
-  header (`plan-reviewer.yaml` section-taxonomy lens, `agents-doc.yaml` invariant bullet); a
-  `CHANGELOG.md` `[Unreleased]` entry; and `./x sync` regenerating every target render and both
-  lockfiles.
+  header (`plan-reviewer.yaml` section-taxonomy lens, and the `agents-doc.yaml` invariant bullet —
+  whose `ref:` gains ADR-0108 alongside the text edit); a `CHANGELOG.md` `[Unreleased]` entry; and
+  `./x sync` regenerating every target render, `docs/decisions/ACTIVE.md` (on the eventual status
+  flip), and both lockfiles.
 - **Predecessor back-pointers.** Per the partial-supersession convention (and the twice-recurred
   forward-pointer pitfall), ADR-0097 and ADR-0098 each gain `108` in their `related:` frontmatter in
   the same change; their status stays `Implemented` and their bodies are untouched.
