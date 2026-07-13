@@ -1,7 +1,7 @@
 ---
 date: 2026-07-13
 adrs: [109, 110]
-status: Proposed
+status: Implemented
 ---
 # Plan: Precise awf context — narrow-topic tags and a domain-coverage floor
 
@@ -238,3 +238,26 @@ new slug already backed. This is the deliberate unsliceable exception.
   deterministic backstop, but whether each chosen tag is the *right* topic remains review discipline.
 - **Atomicity.** Phase 4's re-tag + gate + vocabulary change share one commit by necessity; Phase 2's
   field + consumer + flip likewise. Both are stated exceptions to per-task commits, not conveniences.
+
+### Implementation findings (freeze)
+
+- **Vocabulary landed at 96 tags, above the ~60–90 estimate.** 25 are single-artifact tags (kept per
+  the standard — a 1-artifact tag is inert for Tier 2, not a defect); the busiest is `convention-parts`
+  at 10/156. Curated via a 5-way subagent fan-out (four ADR batches + pitfalls) over a seed vocabulary,
+  reconciled by hand.
+- **Tier-2 payoff confirmed:** `awf context internal/adr` dropped from ~32 related ADRs to 14, all
+  topically adjacent (shared narrow tags + the curated `related:` tail) — precise, not empty.
+- **Phase 2 test-fixture nuance (Task 2.4):** the `Uncovered` collapse logic collapses an orphan path
+  to its topmost fully-uncovered ancestor, so the generated/ignored assertions needed a covered domain
+  anchor (`internal/render`) to pin `internal/orphan/` precisely.
+- **Phase 3 coverage (Task 3.1/3.2):** covering `tagHealthNotes` to 100% needed three extra cases the
+  plan under-counted — the pitfall arm of the artifact scan, the `AdvisoryNotes` error-propagation
+  branch (isolated via `domains: []` so `generateDomainDocs` parses no ADRs), and a `perfsprint` lint
+  fix (single-`%s` Sprintf → concatenation).
+- **Phase 4 tier test (Task 4.4):** with the filter gone, the fixture's domain-mirror `alpha` tag is
+  inert (no non-Tier-1 ADR shares it), so the observable Tier-2 result was unchanged; the
+  domain-mirror-exclusion assertion was retired to comments plus the dedicated `tag-not-domain-name`
+  gate test rather than inverted in place.
+- **Plan freeze deviation:** ADR-0109/0110 flipped to Implemented in their own phase-final commits
+  (Phase 4 / Phase 2); this plan's status flip lands in a separate follow-up commit rather than sharing
+  the ADR-flip commit.
