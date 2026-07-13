@@ -96,6 +96,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 ### Proposed
 
 - [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md)
+- [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 
 ### Superseded
 
