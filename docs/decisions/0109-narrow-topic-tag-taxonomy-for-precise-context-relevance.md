@@ -101,11 +101,12 @@ Grounding fixed the boundaries this decision must respect:
      cross the line, and both are domain names item 3 already rejects — so the note earns its keep
      going forward, not on the present state.) The 25% default is a documented constant, no new
      config key.
-   - **Coverage:** each ADR or pitfall carrying zero tags — or, under an empty/free-form vocabulary,
-     only tags equal to a configured domain name — yields a note, the backstop against silent
-     under-tagging across the hand re-tag. Under a non-empty *governed* vocabulary an artifact tagged
-     only with a domain name is already a hard failure (item 3's gate or `tag-vocabulary-governed`),
-     so the domain-only branch is meaningful chiefly for adopters running tags free-form.
+   - **Coverage:** each ADR or pitfall carrying **zero** tags yields a note, the backstop against
+     silent under-tagging across the hand re-tag. The whole tag-health producer is inert under an
+     empty/absent vocabulary, so an un-curated adopter — and the example — stays note-free; a
+     domain-named tag is never surfaced by the coverage note, because under a governed vocabulary it
+     is already a hard failure (item 3's gate or `tag-vocabulary-governed`) and under an empty
+     vocabulary the producer does not run.
 
    Both notes are advisory and never change the exit code.
 
@@ -114,7 +115,7 @@ Grounding fixed the boundaries this decision must respect:
    `context.go` becomes provably inert under item 3 and is removed). `context-tier2-topical` is
    retired and a renamed successor invariant carries the simplified rule; the retained
    `related:`-link tail (the deliberate curated adjacency) and the "at most one tier" property are
-   unchanged. The proof and touches markers move to the new slug in the implementing commit — and the
+   unchanged. The two proof markers (`context.go` and `context_test.go`) move to the new slug in the implementing commit — and the
    existing `TestContextForAssembles` domain-mirror-*exclusion* assertion, inverted once the filter is
    gone, is re-purposed into a `tag-not-domain-name` gate test rather than carried stale onto the new
    slug. The two sibling ADR-0104 invariants that reference the precise set need **no** rename: once
@@ -125,15 +126,15 @@ Grounding fixed the boundaries this decision must respect:
 
 6. **Resync the rendered surfaces citing the Tier-2 wording.** The agent guide's invariant list
    (sourced from `.awf/agents-doc.yaml`) is updated to the renamed invariant and re-synced in the
-   same change (docs travel with the change), alongside the `docs/decisions/README.md` index row for
-   ADR-0109 and the `./x sync` regeneration of `docs/decisions/ACTIVE.md` at the eventual
-   Proposed→Implemented status flip.
+   same change (docs travel with the change), alongside the `./x sync` regeneration of
+   `docs/decisions/ACTIVE.md` at the eventual Proposed→Implemented status flip.
 
 ## Invariants
 
 Each slug below is backed by a `// invariant: <slug>` proof marker on a test in the implementing
 commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them once this ADR is
-`Implemented`. The retired slug's marker is removed and re-homed to the renamed successor in the same
+`Implemented`. The retired slug's two proof markers (`internal/project/context.go` and
+`internal/project/context_test.go`) are removed and re-homed to the renamed successor in the same
 commit.
 
 - `` `invariant: tag-not-domain-name` `` — with a non-empty `tags:` vocabulary and a non-empty
@@ -143,9 +144,9 @@ commit.
   tag carried by strictly more than 25% of the artifacts carrying at least one vocabulary tag (the
   denominator; the numerator is the artifacts carrying that tag, counting ADRs and pitfalls alike),
   and for no tag at or below that share; the finding never changes the exit code.
-- `` `invariant: tag-coverage-note` `` — `awf check` emits a non-failing `note:` for each ADR and each
-  pitfall carrying zero tags, or only tags equal to a configured domain name, and for no
-  fully-narrow-tagged artifact; the finding never changes the exit code.
+- `` `invariant: tag-coverage-note` `` — under a non-empty vocabulary, `awf check` emits a non-failing
+  `note:` for each ADR and each pitfall carrying zero tags, and for no tagged artifact; the finding
+  never changes the exit code, and an empty/absent vocabulary is inert.
 - `` `invariant: context-tier2-precise-tag` `` (replaces `context-tier2-topical`) — the precise tag
   set reported by `awf context <paths>` is exactly the union of the Tier-1 ADRs' tags, with no
   domain-name filtering; a non-Tier-1, non-Superseded ADR is reported in Tier 2 iff it shares a tag
