@@ -96,6 +96,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 - [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](../decisions/0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md)
 
+### Proposed
+
+- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

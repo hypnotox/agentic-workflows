@@ -22,3 +22,7 @@ Each machine-enforceable ADR Invariant bullet is declared in one of two forms (A
 - [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md)
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 
+### Proposed
+
+- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
+
