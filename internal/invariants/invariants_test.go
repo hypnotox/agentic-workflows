@@ -6,10 +6,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+// TestDeclaringADRs exercises the shared slug→declaring-Implemented-ADR join
+// directly: an Implemented declarer maps one-to-one, a non-Implemented one is
+// ignored, and a retirement drops the slug. The duplicate and dangling error
+// paths are covered through Check (TestCheckDuplicateSlug and the retirement
+// tests), which now routes through DeclaringADRs.
+func TestDeclaringADRs(t *testing.T) {
+	dir := t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: kept` — x.\n- `inv: gone` — y.")
+	writeADR(t, dir, "0002-b.md", "Proposed", "- `inv: ignored` — z.")
+	// 0003 retires 0001's `gone` slug.
+	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.WithRetiresInvariants("gone"), testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Invariants\n- `inv: fresh` — w.\n## Consequences\nc\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0003-c.md"), content)
+
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := invariants.DeclaringADRs(adrs)
+	if err != nil {
+		t.Fatalf("DeclaringADRs: %v", err)
+	}
+	if got["kept"] != "0001-a.md" || got["fresh"] != "0003-c.md" {
+		t.Errorf("expected kept→0001, fresh→0003, got %#v", got)
+	}
+	if _, ok := got["gone"]; ok {
+		t.Errorf("retired slug 'gone' must be dropped: %#v", got)
+	}
+	if _, ok := got["ignored"]; ok {
+		t.Errorf("Proposed ADR's slug must be ignored: %#v", got)
+	}
+}
 
 func writeADR(t *testing.T, dir, name, status, invBody string) {
 	t.Helper()

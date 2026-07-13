@@ -59,14 +59,12 @@ var (
 	slugRe = regexp.MustCompile(`^\s*invariant:\s*([a-z0-9-]+)`)
 )
 
-// Check returns a Finding per unsatisfied Implemented-ADR invariant slug.
-// No required slugs → nil. cfg disabled → nil. cfg nil or source-less → every
-// required slug is Unchecked. Otherwise unbacked slugs are Unbacked.
-func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, error) {
-	adrs, err := adr.ParseDir(decisionsDir)
-	if err != nil {
-		return nil, err
-	}
+// DeclaringADRs returns the slug → declaring-ADR-filename map for adrs: every
+// inv: slug declared (in the Invariants section) by an Implemented ADR, with
+// ADR-0031 retirements applied. It refuses two Implemented ADRs declaring the
+// same slug (duplicate) and a retirement of a slug no Implemented ADR declares
+// (dangling). Check and ContextFor (ADR-0104 Tier 1) share it.
+func DeclaringADRs(adrs []adr.ADR) (map[string]string, error) {
 	required := map[string]string{} // slug -> declaring ADR filename
 	for _, a := range adrs {
 		if a.Status != "Implemented" {
@@ -93,6 +91,21 @@ func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, e
 			}
 			delete(required, slug)
 		}
+	}
+	return required, nil
+}
+
+// Check returns a Finding per unsatisfied Implemented-ADR invariant slug.
+// No required slugs → nil. cfg disabled → nil. cfg nil or source-less → every
+// required slug is Unchecked. Otherwise unbacked slugs are Unbacked.
+func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, error) {
+	adrs, err := adr.ParseDir(decisionsDir)
+	if err != nil {
+		return nil, err
+	}
+	required, err := DeclaringADRs(adrs)
+	if err != nil {
+		return nil, err
 	}
 	if len(required) == 0 {
 		return nil, nil
