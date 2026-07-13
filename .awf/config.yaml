@@ -39,6 +39,8 @@ invariants:
     - globs:
         - '**/*.go'
       marker: //
+  testGlobs:
+    - '**/*_test.go'
 prefix: awf
 skills:
   - adr-lifecycle
