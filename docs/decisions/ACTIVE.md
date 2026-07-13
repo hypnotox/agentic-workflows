@@ -107,12 +107,12 @@
 - [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Implemented
 - [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md) — Implemented
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](0106-backed-aware-two-marker-context-surfacing.md) — Implemented
+- [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md) — Proposed
 
 ## Superseded
 

@@ -105,8 +105,9 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	}
 }
 
-func TestErrorMissingEntry(t *testing.T) {
-	// Adopter-facing change, [Unreleased] identical across the range → Error, exit 1.
+func TestWarningMissingEntry(t *testing.T) {
+	// Adopter-facing change, [Unreleased] identical across the range → advisory Warning,
+	// exit 0 (ADR-0107): the conformance verdict no longer blocks, only informs.
 	same := changelog("\n")
 	g := fakeGit{
 		"merge-base b h": {out: "b\n"},
@@ -116,8 +117,8 @@ func TestErrorMissingEntry(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	// invariant: repo-audit-error-exit
-	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
+	// invariant: changelog-rule-advisory
+	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 	if !strings.Contains(out, "adopter-facing paths in b..h: templates/x.tmpl") {
@@ -166,7 +167,7 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
+	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 }
@@ -186,7 +187,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
+	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 	if !strings.Contains(out, "adopter-facing paths in m..h:") {
@@ -197,6 +198,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 func TestMergeBaseFails(t *testing.T) {
 	g := fakeGit{"merge-base b h": {err: errors.New("boom")}}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	// invariant: repo-audit-error-exit
 	if code != 1 || !strings.Contains(out, "git merge-base b h failed") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}

@@ -122,8 +122,10 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 }
 
 // changelogRule flags an adopter-facing change in base..head that lacks a CHANGELOG
-// [Unreleased] entry. It logs the adopter-facing files it considered. A git or parse
-// failure becomes an Error finding — it cannot verify conformance, so it fails loud.
+// [Unreleased] entry. It logs the adopter-facing files it considered. The conformance
+// verdict is an advisory Warning (ADR-0107) — the path heuristic cannot tell a benign
+// change from a behavioral one, so it informs rather than blocks. A git or parse failure
+// is an Error — it cannot verify conformance, so it fails loud.
 func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	// Judge from the merge base, not the base tip: once base moves past the fork
 	// point, endpoint semantics would blame upstream files on the effort (false
@@ -163,7 +165,11 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, head, err)}}
 	}
 	if baseBody == headBody {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged — add an entry", base, head, changelogPath)}}
+		// Advisory, not blocking (ADR-0107): the path heuristic cannot tell a benign
+		// change (a refactor, a comment/marker relocation) from a behavioral one, so a
+		// blocking Error over-fires. A git/read failure above stays an Error — that means
+		// the rule cannot verify conformance and must fail loud.
+		return []finding{{warning, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged — add an entry", base, head, changelogPath)}}
 	}
 	return nil
 }
