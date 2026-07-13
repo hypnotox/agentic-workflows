@@ -147,16 +147,22 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   from `Domains []string` to `Tags []string` (the surfacing reason is now the shared tag), keeping
   `{Title, Tags, Path}`. Update the doc comments to describe the tiers.
 
+  **Dead-code follow-through:** `context.go:122` was the *only* production caller of
+  `invariants.DeclaredSlugs`; dropping `ADRRef.Invariants` makes it unreachable from any `main`, so
+  the dead-code gate (ADR-0063) fails unless it goes. Delete `DeclaredSlugs` from
+  `internal/invariants/invariants.go` and `TestDeclaredSlugs` from
+  `internal/invariants/invariants_test.go` in this same Phase-2 commit (confirmed no other caller;
+  the tier assembly uses `DeclaringADRs`, not `DeclaredSlugs`).
+
 - [ ] **Task 2.2 — Rewrite the tier assembly in `ContextFor`.** Replace the ADR/plan/pitfall
   surfacing block (current `internal/project/context.go` ~L110-183, from `adrs, err := adr.ParseDir`
   through the pitfalls loop) with the tiered assembly. Keep the preceding domain/`owners`/`matched`
   and `res.Invariants` computation unchanged. Add two package-level helpers near the bottom of the
-  file (use the actual type `p.layout()` returns for `adrRefOf`'s second parameter — match the
-  existing `lay :=` binding):
+  file (`p.layout()` returns the exported `Layout`, `internal/project/layout.go`):
 
   ```
   // adrRefOf projects an ADR to its context reference (Title prefix stripped).
-  func adrRefOf(a adr.ADR, lay layout) ADRRef {
+  func adrRefOf(a adr.ADR, lay Layout) ADRRef {
   	return ADRRef{
   		Number: a.Number,
   		Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
@@ -361,8 +367,11 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   (`Governing`); a precise-tag ADR and pitfall in Tier 2; a domain-mirror-only Tier-1 tag yielding no
   tag-based Tier 2; a `related:`-linked Tier-2 ADR under an empty precise set; a Superseded ADR
   excluded from Tier 2; a domain-membership ADR counted in `Background`; a plan linked to a
-  Governing/Related ADR surfaced; the pitfalls-disabled path; and JSON/human parity (mirror the
-  existing parity test). Use `testsupport.ADR` with `WithTags`/`WithRelated`/`WithDomains` and an
+  Governing/Related ADR surfaced; the pitfalls-disabled path; **a present marker whose slug no
+  Implemented ADR declares** (the `if !ok { continue }` Tier-1 skip — e.g. an `// invariant:` marker
+  for a Proposed ADR's slug under the queried path); **one Implemented ADR declaring two distinct
+  present slugs** (the `if tier1[a.Number] { continue }` Tier-1 dedup skip); and JSON/human parity
+  (mirror the existing parity test). Use `testsupport.ADR` with `WithTags`/`WithRelated`/`WithDomains` and an
   `## Invariants` body section carrying an `` - `inv: <slug>` `` bullet plus a matching source-marker
   fixture (a `.go` file under a domain glob with `// invariant: <slug>`) so the Tier-1 join resolves.
   Keep the read-only / output-parity / static-fallback tests green. The `DeclaringADRs` error path in
@@ -388,7 +397,8 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
 
 - [ ] **Task 2.8 — Verify and commit.** `./x gate` and `./x check` (green: new slugs backed, retired
   slugs no longer required, no dangling retirement, output-parity preserved). Then stage explicitly:
-  `internal/project/context.go internal/project/context_test.go cmd/awf/context.go
+  `internal/invariants/invariants.go internal/invariants/invariants_test.go
+  internal/project/context.go internal/project/context_test.go cmd/awf/context.go
   cmd/awf/context_test.go .awf/agents-doc.yaml AGENTS.md
   .awf/domains/parts/tooling/current-state.md .awf/domains/parts/invariants/current-state.md
   docs/domains/tooling.md docs/domains/invariants.md changelog/CHANGELOG.md
