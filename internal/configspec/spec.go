@@ -119,6 +119,11 @@ var keys = []Entry{
 		Availability: "Always; the membership check is inert until the vocabulary is non-empty.",
 	},
 	{
+		Path: "contextIgnore", Type: "string list", Default: "none",
+		Description:  "Anchored doublestar globs for tracked paths that no domain should own (config source, docs, the example adopter, top-level non-code files). `awf context --uncovered` treats them as legitimately unowned, alongside awf's own generated outputs, so the report finds only genuinely-unowned code. An empty or absent list adds no exclusion.",
+		Availability: "Always; only consulted by `awf context --uncovered`.",
+	},
+	{
 		Path: "invariants.disabled", Type: "bool", Default: "false",
 		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants — set `sources` or set this true.",
 		Availability: "Always.",

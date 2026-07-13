@@ -483,9 +483,46 @@ func TestUncovered(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// invariant: uncovered-lists-unowned-only
 		if join(res.Entries) != "cmd/awf/other.go" {
 			t.Errorf("got %v want [cmd/awf/other.go]", res.Entries)
+		}
+	})
+	t.Run("generated output excluded", func(t *testing.T) {
+		p := build(t, dom{"render", "internal/render/**"})
+		res, err := p.Uncovered([]string{"AGENTS.md", "internal/render/r.go", "internal/orphan/o.go"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// invariant: uncovered-lists-unowned-unignored
+		// AGENTS.md is a rendered output (in PlannedOutputs), so it is excluded
+		// even though no domain glob or contextIgnore covers it; only the genuinely
+		// unowned internal/orphan is reported.
+		if join(res.Entries) != "internal/orphan/" {
+			t.Errorf("got %v want [internal/orphan/] (AGENTS.md is generated)", res.Entries)
+		}
+	})
+	t.Run("contextIgnore glob excluded; absent is inert", func(t *testing.T) {
+		root := scaffoldFiles(t, uncoveredBase+"domains:\n  - render\ncontextIgnore:\n  - vendor/**\n",
+			map[string]string{"domains/render.yaml": "paths:\n  - internal/render/**\n"})
+		p, err := Open(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tracked := []string{"vendor/lib.go", "internal/render/r.go", "internal/orphan/o.go"}
+		res, err := p.Uncovered(tracked, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res.Entries) != "internal/orphan/" {
+			t.Errorf("got %v want [internal/orphan/] (vendor/** ignored)", res.Entries)
+		}
+		// Absent contextIgnore is inert: the same tracked set now reports vendor too.
+		res2, err := build(t, dom{"render", "internal/render/**"}).Uncovered(tracked, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if join(res2.Entries) != "internal/orphan/,vendor/" {
+			t.Errorf("absent contextIgnore should report both; got %v", res2.Entries)
 		}
 	})
 	t.Run("zero covered collapses to root", func(t *testing.T) {
@@ -518,4 +555,18 @@ func TestUncovered(t *testing.T) {
 			t.Error("expected a domain-sidecar parse error")
 		}
 	})
+}
+
+// Uncovered runs a render pass via PlannedOutputs, so a RenderAll failure (here a
+// corrupt skill sidecar) surfaces as an error rather than a silent partial report.
+func TestUncoveredSurfacesPlannedOutputsError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corruptSidecar(t, root, "skills/tdd.yaml")
+	if _, err := p.Uncovered([]string{"cmd/x.go"}, nil); err == nil {
+		t.Fatal("expected Uncovered to surface the PlannedOutputs error")
+	}
 }

@@ -145,7 +145,7 @@ data:
         - ref: ADR-0099
           text: '**Pitfall→ADR links resolve.** `awf check` fails a pitfall entry whose `related:` names an ADR number with no matching file under `docs/decisions/` (`invariant: pitfall-adr-link-resolved`).'
         - ref: ADR-0102
-          text: '**Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`invariant: uncovered-lists-unowned-only`).'
+          text: '**Uncovered lists unowned, unignored, ungenerated.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob, not in the project''s rendered `PlannedOutputs` set, and matched by no `contextIgnore` glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned, generated, or ignored path represented; an absent/empty `contextIgnore` is inert (`invariant: uncovered-lists-unowned-unignored`).'
         - ref: ADR-0102
           text: '**Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`invariant: uncovered-collapses-directories`).'
         - ref: ADR-0102

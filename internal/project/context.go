@@ -294,7 +294,7 @@ type UncoveredResult struct {
 // nothing and reads only the domain sidecars. scanRoots restrict the report to
 // tracked paths at or beneath them, matched on slash-separated segment boundaries
 // (a directory subtree), not raw string prefixes; empty scanRoots scans everything.
-// touches-invariant: uncovered-lists-unowned-only — unowned-path reporting; proof in context_test.go
+// touches-invariant: uncovered-lists-unowned-unignored — unowned-path reporting; proof in context_test.go
 // touches-invariant: uncovered-collapses-directories — fully-uncovered directory collapse; proof in context_test.go
 func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error) {
 	roots := NormalizeContextPaths(scanRoots)
@@ -308,6 +308,27 @@ func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error
 			return UncoveredResult{}, err
 		}
 		globs = append(globs, sc.Paths...)
+	}
+
+	// Generated outputs (every rendered artifact) and configured contextIgnore
+	// globs are legitimately unowned — subtracted alongside domain coverage so the
+	// report finds only genuinely-unowned code, and stays correct as targets and
+	// artifacts change without a hand edit.
+	planned, err := p.PlannedOutputs()
+	if err != nil {
+		return UncoveredResult{}, err
+	}
+	generated := map[string]bool{}
+	for _, f := range planned {
+		generated[filepath.ToSlash(f)] = true
+	}
+	ignored := func(path string) bool {
+		for _, g := range p.Cfg.ContextIgnore {
+			if pathglob.Match(g, path) {
+				return true
+			}
+		}
+		return false
 	}
 
 	inScope := func(path string) bool {
@@ -346,7 +367,7 @@ func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error
 		if !inScope(clean) {
 			continue
 		}
-		if covered(clean) {
+		if covered(clean) || generated[clean] || ignored(clean) {
 			for _, a := range ancestors(clean) {
 				coveredDirs[a] = true
 			}

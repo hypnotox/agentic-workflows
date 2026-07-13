@@ -41,21 +41,22 @@ type Sidecar struct {
 // data/sections/local live in sidecars, not here. Targets is the adapter-runtime
 // enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
-	Prefix     string            `yaml:"prefix"`
-	DocsDir    string            `yaml:"docsDir"`
-	Vars       map[string]any    `yaml:"vars"`
-	Skills     []string          `yaml:"skills"`
-	Agents     []string          `yaml:"agents"`
-	Docs       []string          `yaml:"docs"`
-	Domains    []string          `yaml:"domains"`
-	Tags       map[string]string `yaml:"tags"`
-	Targets    []string          `yaml:"targets"`
-	Invariants *InvariantConfig  `yaml:"invariants"`
-	Audit      *AuditConfig      `yaml:"audit"`
-	Bootstrap  *BootstrapConfig  `yaml:"bootstrap"`
-	Hooks      *HooksConfig      `yaml:"hooks"`
-	root       string            // <project>/.awf, for sidecar/part resolution
-	raw        []byte            // the exact config.yaml bytes Load read, for in-place byte edits
+	Prefix        string            `yaml:"prefix"`
+	DocsDir       string            `yaml:"docsDir"`
+	Vars          map[string]any    `yaml:"vars"`
+	Skills        []string          `yaml:"skills"`
+	Agents        []string          `yaml:"agents"`
+	Docs          []string          `yaml:"docs"`
+	Domains       []string          `yaml:"domains"`
+	Tags          map[string]string `yaml:"tags"`
+	ContextIgnore []string          `yaml:"contextIgnore"`
+	Targets       []string          `yaml:"targets"`
+	Invariants    *InvariantConfig  `yaml:"invariants"`
+	Audit         *AuditConfig      `yaml:"audit"`
+	Bootstrap     *BootstrapConfig  `yaml:"bootstrap"`
+	Hooks         *HooksConfig      `yaml:"hooks"`
+	root          string            // <project>/.awf, for sidecar/part resolution
+	raw           []byte            // the exact config.yaml bytes Load read, for in-place byte edits
 }
 
 // Source returns the exact config.yaml bytes Load read. A byte-level editor

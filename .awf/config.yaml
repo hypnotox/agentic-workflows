@@ -94,6 +94,23 @@ tags:
   testing: Test suites, gate tiers, coverage, and mutation triage
   tooling: The awf CLI, command dispatch, and the ./x runner
   workflow: The brainstorm→ADR→plan→implement→review chain
+contextIgnore:
+  - .awf/**
+  - docs/**
+  - examples/**
+  - .github/**
+  - .githooks/**
+  - changelog/**
+  - internal/testsupport/**
+  - LICENSE
+  - go.mod
+  - go.sum
+  - README.md
+  - codecov.yml
+  - .gitignore
+  - .golangci.yml
+  - .goreleaser.yaml
+  - .gremlins.yaml
 targets:
   - claude
   - cursor
