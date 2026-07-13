@@ -229,6 +229,12 @@ func TestConfigReferenceCurrentValues(t *testing.T) {
   subjectMaxLength: 80
   allowedTypes: []
   dependencyManifests: []
+invariants:
+  sources:
+    - globs: ['**/*.go']
+      marker: '//'
+  testGlobs:
+    - '**/*_test.go'
 `
 	root, _ := syncedProject(t, auditYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
@@ -240,6 +246,8 @@ func TestConfigReferenceCurrentValues(t *testing.T) {
 		"| 72 | 80 |", // configured, no "(default)" marker
 		"| accept any |",
 		"| rule off |",
+		"| 1 sources |", // invariants.sources live-state count
+		"| 1 globs |",   // invariants.testGlobs live-state count (ADR-0088 projection)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)

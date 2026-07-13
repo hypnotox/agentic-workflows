@@ -138,6 +138,11 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return strconv.Itoa(len(p.Cfg.Invariants.Sources)) + " sources"
+	case "invariants.testGlobs":
+		if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.TestGlobs) == 0 {
+			return "(none)"
+		}
+		return strconv.Itoa(len(p.Cfg.Invariants.TestGlobs)) + " globs"
 	case "audit.baseBranch":
 		return withDefault("`"+res.BaseBranch+"`", a == nil || a.BaseBranch == "")
 	case "audit.allowedTypes":
