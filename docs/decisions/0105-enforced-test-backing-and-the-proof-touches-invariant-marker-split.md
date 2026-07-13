@@ -171,7 +171,10 @@ test file under the new model. (This ADR's own declarations use today's `inv:` t
   `./x sync` on the `Implemented` flip; update the `docs/domains/invariants.md` narrative for the
   proof/touches model and the backed/unbacked classification; reword the AGENTS.md "Backed
   invariants" rule (rendered from `.awf/`) for the two markers, the test-scoped proof, and the
-  explicit classification; regenerate `docs/config-reference.md` for `testGlobs`.
+  explicit classification; rewrite the adr-readme Invariant-tagging part
+  (`.awf/parts/adr-readme/invariants.md`, rendered into `docs/decisions/README.md`) to the unified
+  `invariant:`/`unbacked-invariant:` declarations and the proof/touches marker split; regenerate
+  `docs/config-reference.md` for `testGlobs`.
 - **`Check` return shape widens.** It must return advisory notes alongside hard findings so
   dangling-marker and bare-touches notes flow to the `note:` channel; `MarkersUnder` (context) must
   scan the union of `sources` and `testGlobs`, or splitting the globs would silently narrow Tier-1
