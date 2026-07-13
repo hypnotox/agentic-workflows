@@ -116,6 +116,7 @@
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
+- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Proposed
 
 ## Superseded
 
