@@ -55,6 +55,22 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf context --uncovered` now reports a clean coverage floor (ADR-0110). Every
+  code package has a domain home, and the report additionally subtracts awf's own
+  generated outputs (`PlannedOutputs`) and a new absent-safe top-level
+  `contextIgnore` config key — a list of anchored globs naming genuinely non-domain
+  paths (config source, docs, the example adopter, top-level non-code files) — so a
+  newly-unowned path surfaces as a real signal rather than standing noise. An empty
+  or absent `contextIgnore` adds no exclusion.
+- Narrow-topic tag taxonomy for precise `awf context` relevance (ADR-0109). Tags are
+  redefined as sub-domain topics, never domain-scale buckets: `awf check` now fails
+  if any `tags:` vocabulary member equals a configured domain name, and Tier 2 drops
+  its domain-name filter (the precise set is the plain union of the Tier-1 tags), so
+  a domain-scoped query returns a tight topical cluster instead of a third of the
+  corpus. Two advisory, non-failing `awf check` notes flag tag health — a coarsening
+  note for any tag on more than 25% of the tag-bearing artifacts, and an
+  under-tagging note for any ADR or pitfall with zero tags — both inert under an
+  empty vocabulary.
 - Governed tag vocabulary and revived ADR/pitfall metadata (ADR-0103). ADR
   `tags:` and `related:` frontmatter — long authored but parsed-then-dropped —
   are now lifted into `adr.ADR`, and pitfall entries gain an optional `tags:`
