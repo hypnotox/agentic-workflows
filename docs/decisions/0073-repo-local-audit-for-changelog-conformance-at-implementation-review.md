@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [tooling, audit, changelog, dispatch, adoption]
-related: [17, 41, 67, 72]
+related: [17, 41, 67, 72, 107]
 domains: [tooling]
 ---
 # ADR-0073: Repo-local audit for changelog conformance at implementation review
