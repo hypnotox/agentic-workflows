@@ -55,6 +55,14 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf check` now validates planned commit subjects in plans (ADR-0111). A plan marks
+  a phase's closing-commit subject with a fenced code block tagged `commit`; `awf check`
+  reads its first non-empty line and validates it against the project's `audit` settings
+  — an over-length subject, a disallowed type, or a malformed shape is drift, while an
+  unknown scope is a non-failing advisory note (a plan may be the change that adds the
+  scope). Tag a display-only example `commit awf-ignore` to skip that one block. The rule
+  is presence-triggered, so bare-fence plans are unaffected; the plans template and the
+  writing-plans skill teach the fence in prose.
 - `awf context --uncovered` now reports a clean coverage floor (ADR-0110). Every
   code package has a domain home, and the report additionally subtracts awf's own
   generated outputs (`PlannedOutputs`) and a new absent-safe top-level
