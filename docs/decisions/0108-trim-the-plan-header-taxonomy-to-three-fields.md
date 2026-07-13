@@ -78,11 +78,11 @@ template's `positioning` section and the catalog `Sections` entry are removed to
 - The rendered `plans-template` carries exactly the three header fields Goal / Architecture summary /
   File structure — no `## Tech stack` heading and no standalone positioning section — plus the
   frontmatter block, `# Plan:` title, a phase, and the optional Verification/Notes tails.
-- The rendered `plans-template` (real config, `gateCmd: ./x gate`) surfaces the interpolated gate
-  command and carries no hard-coded "the gate" literal — asserted positively by the
-  `plans-template-taxonomy` golden test (the absence of a plain-prose literal is not otherwise
-  mechanically checkable), while `adr-singleton-section-parity` renders the singleton under empty
-  vars to reject any `<no value>` leak from a bare interpolation.
+- The rendered `plans-template`, given a non-empty `gateCmd`, surfaces that interpolated command and
+  carries no hard-coded "the gate" literal — asserted positively by the `plans-template-taxonomy`
+  golden test against its own fixture's configured `gateCmd` (the absence of a plain-prose literal is
+  not otherwise mechanically checkable), while `adr-singleton-section-parity` renders the singleton
+  under empty vars to reject any `<no value>` leak from a bare interpolation.
 
 ## Consequences
 
