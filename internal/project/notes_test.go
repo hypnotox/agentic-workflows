@@ -340,6 +340,10 @@ func TestTagHealthNotes(t *testing.T) {
 	writeADR(t, root, "0003-c.md", testsupport.ADR("Implemented", testsupport.WithTitle("0003: C"), testsupport.WithTags("delta")))
 	writeADR(t, root, "0004-d.md", testsupport.ADR("Implemented", testsupport.WithTitle("0004: D"), testsupport.WithTags("epsilon")))
 	writeADR(t, root, "0005-e.md", testsupport.ADR("Implemented", testsupport.WithTitle("0005: E")))
+	// 0006 carries only `bogus` (non-vocabulary): it has tags (no coverage note),
+	// but contributes to neither the numerator nor the denominator — proving the
+	// denominator counts only vocabulary-tag-bearing artifacts (alpha stays 2/4).
+	writeADR(t, root, "0006-f.md", testsupport.ADR("Implemented", testsupport.WithTitle("0006: F"), testsupport.WithTags("bogus")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -357,9 +361,13 @@ func TestTagHealthNotes(t *testing.T) {
 	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
 		t.Errorf("did not expect a note for a 25%%-share tag; got %v", notes)
 	}
-	// `bogus` (non-vocabulary) is on 2/4 but is not counted → no coarsening note.
+	// `bogus` (non-vocabulary) is not counted → no coarsening note, and 0006
+	// (bogus-only) is neither a coverage note nor part of the denominator.
 	if strings.Contains(joined, `tag "bogus"`) {
 		t.Errorf("a non-vocabulary tag must not surface a frequency note; got %v", notes)
+	}
+	if strings.Contains(joined, "0006-f.md carries no tags") {
+		t.Errorf("a bogus-only artifact has tags — no coverage note expected; got %v", notes)
 	}
 	// invariant: tag-coverage-note — 0005 carries no tags
 	if !strings.Contains(joined, "0005-e.md carries no tags") {

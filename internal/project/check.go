@@ -96,14 +96,22 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 			notes = append(notes, art.label+" carries no tags — add a narrow topic tag")
 			continue
 		}
-		tagged++
+		// Count only vocabulary members — both the numerator and the denominator.
+		// The invariant speaks of "vocabulary tags" and "artifacts carrying at
+		// least one vocabulary tag", and a non-member tag is already a hard
+		// checkTagVocabulary failure, so it must not skew the coarsening signal.
+		var vocab []string
 		for _, t := range art.tags {
-			// Count only vocabulary members: the invariant speaks of "vocabulary
-			// tags", and a non-member tag is already a hard checkTagVocabulary
-			// failure, so it must not surface a spurious coarsening note.
 			if _, ok := p.Cfg.Tags[t]; ok {
-				freq[t]++
+				vocab = append(vocab, t)
 			}
+		}
+		if len(vocab) == 0 {
+			continue
+		}
+		tagged++
+		for _, t := range vocab {
+			freq[t]++
 		}
 	}
 	// Empty-denominator guard: no tag-bearing artifacts, no frequency to compute.
