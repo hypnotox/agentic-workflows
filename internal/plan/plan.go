@@ -78,8 +78,11 @@ func ParseDir(dir string) ([]Plan, error) {
 // fences (ADR-0111): for every ``` fenced block whose info string's first
 // whitespace-delimited token is `commit` and which carries no `awf-ignore` opt-out
 // token, the block's first non-empty line. An empty/whitespace-only block yields
-// nothing. Every line beginning with ``` toggles the fenced state, mirroring the
-// fence tracking in refs.WithoutFences.
+// nothing. Every line beginning with ``` toggles the fenced state. Only ``` is a
+// fence delimiter here — ADR-0111 deliberately drops `~~~` to avoid an uncovered
+// branch — so, as accepted best-effort edges over well-formed plan markdown, a
+// ```commit nested inside a `~~~` block is still read, and an unclosed ```commit
+// fence at end-of-file (subject appended only on its closing ```) yields no subject.
 // invariant: plan-commit-subject-marker-scoped
 // invariant: plan-commit-subject-optout-honored
 func commitSubjects(content string) []string {
