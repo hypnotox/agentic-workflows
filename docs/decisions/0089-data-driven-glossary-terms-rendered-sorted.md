@@ -122,14 +122,14 @@ Grounding discoveries shaping the design:
 
 ## Invariants
 
-- `inv: glossary-terms-sorted` — the rendered glossary table's rows are ordered by
+- `invariant: glossary-terms-sorted` — the rendered glossary table's rows are ordered by
   case-insensitive term regardless of authored map order (ties cannot arise: duplicate
   lowered terms are rejected); equal entry sets render byte-identically.
-- `inv: glossary-terms-validated` — an empty term, an empty/null/non-string meaning, an
+- `invariant: glossary-terms-validated` — an empty term, an empty/null/non-string meaning, an
   interior newline in a term or meaning, a non-string map key, or a case-insensitive
   duplicate term in `data.terms` fails the render with the sidecar path and offending
   key named.
-- `inv: glossary-table-forced` — no convention part can replace the rendered terms
+- `invariant: glossary-table-forced` — no convention part can replace the rendered terms
   table; the only part-override surfaces on the glossary doc are the `prepend` and
   `append` sections.
 - Textual: the glossary stays in the `RenderAll`/lock drift model; moving it to the

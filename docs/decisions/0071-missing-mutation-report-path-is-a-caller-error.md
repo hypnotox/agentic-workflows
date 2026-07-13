@@ -36,7 +36,7 @@ ADR-0066 is Implemented and append-only.
 
 ## Invariants
 
-- `inv: mutants-missing-report-errors` — `cmd/mutants` exits non-zero for a nonexistent
+- `invariant: mutants-missing-report-errors` — `cmd/mutants` exits non-zero for a nonexistent
   report path and never prints "no survived mutants" for one; a present-but-empty file still
   reports no survivors with exit 0.
 - ADR-0066's `inv: mutants-timeout-untrusted` remains in force with its missing-file phrase

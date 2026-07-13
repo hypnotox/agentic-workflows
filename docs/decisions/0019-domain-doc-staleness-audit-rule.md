@@ -79,12 +79,12 @@ rule `adr-status-cochange`.
 
 ## Invariants
 
-- `inv: audit-domain-doc-staleness` — the staleness rule emits a `Warning` for domain `X` exactly
+- `invariant: audit-domain-doc-staleness` — the staleness rule emits a `Warning` for domain `X` exactly
   when an in-range commit brings an ADR with `X` in its `domains` to `status: Implemented`, `X` is a
   configured domain, and no in-range commit changes `.awf/domains/parts/<X>/current-state.md`; it is
   silent when the part is co-changed, when the status reaches only `Accepted`/`Proposed`, when `X`
   is unconfigured, and when the ADR carries no `domains`.
-- `inv: audit-undocumented-domain` — the undocumented-domain rule emits a `Warning` for domain `X`
+- `invariant: audit-undocumented-domain` — the undocumented-domain rule emits a `Warning` for domain `X`
   exactly when an in-range commit adds or changes an ADR whose `domains` includes `X` and `X` is not
   in `config.Domains`; it is silent for configured domains and for ADRs with no `domains`.
 - Both rules are advisory: they produce only `Warning` findings and never make `awf audit` exit

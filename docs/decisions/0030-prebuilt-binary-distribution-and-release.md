@@ -87,7 +87,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `inv: version-ldflags-precedence` — `awfVersion()` returns the ldflags-injected package var when it
+- `invariant: version-ldflags-precedence` — `awfVersion()` returns the ldflags-injected package var when it
   is non-empty, in preference to the `runtime/debug` BuildInfo version and the `project.Version`
   constant. (Backed by a `cmd/awf` test that sets the package var and asserts it is returned.)
 - `.goreleaser.yaml` builds `./cmd/awf` into a binary named `awf` and injects `main.version`; the

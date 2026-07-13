@@ -107,16 +107,16 @@ surface.
 
 ## Invariants
 
-- `inv: include-splice` — an `<!-- awf:include NAME -->` directive in an awf template renders
+- `invariant: include-splice` — an `<!-- awf:include NAME -->` directive in an awf template renders
   the verbatim body of `templates/partials/NAME.md` in its place, expanded before section
   parsing.
-- `inv: include-missing-fails` — an `awf:include` naming a nonexistent partial is a hard render
+- `invariant: include-missing-fails` — an `awf:include` naming a nonexistent partial is a hard render
   error, not a silent empty splice.
-- `inv: include-no-nested` — a partial whose body contains an `awf:include` directive is a hard
+- `invariant: include-no-nested` — a partial whose body contains an `awf:include` directive is a hard
   render error.
-- `inv: include-no-sections` — a partial whose body contains an `awf:section` or `awf:end`
+- `invariant: include-no-sections` — a partial whose body contains an `awf:section` or `awf:end`
   marker is a hard render error.
-- `inv: include-in-templatehash` — an artifact's lock `TemplateHash` is computed over the
+- `invariant: include-in-templatehash` — an artifact's lock `TemplateHash` is computed over the
   post-expansion source, so editing an included partial changes that artifact's `TemplateHash`
   and `awf check` reports the artifact stale.
 

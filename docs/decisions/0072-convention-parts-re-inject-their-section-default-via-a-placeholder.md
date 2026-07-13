@@ -83,11 +83,11 @@ default, and can only do so in the render layer.
 
 ## Invariants
 
-- `inv: section-default-splice` — When a convention part body contains the `sectionDefault`
+- `invariant: section-default-splice` — When a convention part body contains the `sectionDefault`
   split-marker sentinel, `Assemble` splits the part at that marker and emits the overridden
   section's default template source between the two verbatim part fragments, so `Execute`
   renders the default in place and the part's surrounding prose is restored verbatim.
-- `inv: section-default-stub-error` — A `sectionDefault` reference in a part overriding a
+- `invariant: section-default-stub-error` — A `sectionDefault` reference in a part overriding a
   section whose default carries the `stub` marker is a hard render error, never a silent
   splice of the authoring prompt.
 

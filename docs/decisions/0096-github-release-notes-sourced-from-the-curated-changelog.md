@@ -72,7 +72,7 @@ on adopter-facing effect; the release notes should present it, not compete with 
 
 ## Invariants
 
-- `inv: release-notes-from-changelog` — the GitHub Release body is sourced from the curated
+- `invariant: release-notes-from-changelog` — the GitHub Release body is sourced from the curated
   changelog: `.goreleaser.yaml` disables GoReleaser's commit-derived changelog, and a gate
   test asserts `release.yml` extracts the tagged version's section via `awf changelog
   --version` and passes it to the GoReleaser step through `--release-notes`, both before

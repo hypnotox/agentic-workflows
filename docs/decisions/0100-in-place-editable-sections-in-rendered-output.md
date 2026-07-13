@@ -112,26 +112,26 @@ section and the file's structure.
 
 ## Invariants
 
-- `inv: in-place-pointer-distinct` — an in-place-editable section renders an `awf:edit-in-place
+- `invariant: in-place-pointer-distinct` — an in-place-editable section renders an `awf:edit-in-place
   <name>` provenance pointer, textually distinct from the `awf:edit` pointer; neither the pointer
   nor any in-place read-back causes `awf:section`/`awf:end` marker residue to appear in output
   (`no-section-marker-leak` and the `awf:include` partial guard stay green with in-place sections
   present).
-- `inv: in-place-readback` — on sync and check, an in-place-editable section's body is the text
+- `invariant: in-place-readback` — on sync and check, an in-place-editable section's body is the text
   read back from the existing output file between its `awf:edit-in-place` pointer and awf's next
   *registered* section pointer (matched by that pointer's expected string, never any pointer-shaped
   line in adopter text), or end-of-file when the section is last; when the output is absent or the
   section's pointer is not found, the body is the template default.
-- `inv: in-place-tamper-drift` — regeneration re-derives every awf-owned section and the file
+- `invariant: in-place-tamper-drift` — regeneration re-derives every awf-owned section and the file
   structure from the template, so an edit to an awf-owned region or to the file structure is
   reported as drift, while an edit confined to an in-place-editable section's content lines is not.
-- `inv: section-source-exclusive` — no section is simultaneously part-overridable and
+- `invariant: section-source-exclusive` — no section is simultaneously part-overridable and
   in-place-editable; a declaration asserting both is a render/build error.
-- `inv: in-place-spacing-owned` — an in-place region's interior (all lines between its framing,
+- `invariant: in-place-spacing-owned` — an in-place region's interior (all lines between its framing,
   including internal blank lines) is spliced back verbatim while only the leading/trailing framing
   is regenerated to a fixed form, so the sync→check round-trip is an idempotent fixpoint (a second
   sync with no adopter edit is a no-op and reports no drift).
-- `inv: regeneration-checked-attribute` — the files excluded from the frozen-`OutputHash` compare
+- `invariant: regeneration-checked-attribute` — the files excluded from the frozen-`OutputHash` compare
   are exactly those a first-class attribute on the rendered-file model marks regeneration-checked;
   `ACTIVE.md`, the config reference, and the domain docs carry that attribute, and every file with
   an in-place-editable section carries it. (That this attribute *replaces* the former hardcoded

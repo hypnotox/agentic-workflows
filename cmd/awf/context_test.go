@@ -55,7 +55,7 @@ func ctxFixture(t *testing.T) string {
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `inv: gov-slug` — a contract.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — a contract.\n## Consequences\nc\n")))
 	// 0002 shares the precise tag → Tier 2 (Related). 0003 is domain-owned only →
 	// Tier 3 background count. Both exercise their render blocks.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),

@@ -108,11 +108,11 @@ is precedent for a token handled bespoke, outside that table.
 
 ## Invariants
 
-- `inv: bootstrap-pin` — the rendered `awf-bootstrap.sh` pins exactly the rendering binary's
+- `invariant: bootstrap-pin` — the rendered `awf-bootstrap.sh` pins exactly the rendering binary's
   `project.Version`: a golden-render test asserts the script contains the literal assignment
   `AWF_VERSION="<project.Version>"` (the same value `sync` stamps into the lock's `awfVersion`), so
   the pin has a single source of truth and cannot drift from the lock.
-- `inv: bootstrap-checksum` — a golden-render test asserts the rendered `awf-bootstrap.sh` contains
+- `invariant: bootstrap-checksum` — a golden-render test asserts the rendered `awf-bootstrap.sh` contains
   a `sha256` verification step (the `checksums.txt` comparison) ahead of the install step, so the
   download is always integrity-checked before use. (Checkable by string presence in the rendered
   output; unlike [ADR-0039](0039-binary-version-compatibility-gate.md)'s skip-on-unparseable

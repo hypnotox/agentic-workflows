@@ -130,24 +130,24 @@ Tagged bullets are enforced once this ADR is `Implemented`; each is backed by a 
 test file under the new model. (This ADR's own declarations use today's `inv:` token while
 `Proposed`; the mechanism plan's atomic rewrite migrates them to `invariant:`.)
 
-- `inv: proof-marker-test-scoped` — with `testGlobs` configured, a proof `invariant: <slug>` marker
+- `invariant: proof-marker-test-scoped` — with `testGlobs` configured, a proof `invariant: <slug>` marker
   backs a slug only when its file matches a `testGlobs` pattern; the identical marker in a non-test
   source file does not back it.
-- `inv: absent-testglobs-source-fallback` — with `testGlobs` absent or empty, backing falls back to
+- `invariant: absent-testglobs-source-fallback` — with `testGlobs` absent or empty, backing falls back to
   source-glob scope (ADR-0008 semantics), so a project without `testGlobs` is unaffected.
-- `inv: backed-requires-proof` — a `invariant: <slug>` (backed) declaration with no proof marker in
+- `invariant: backed-requires-proof` — a `invariant: <slug>` (backed) declaration with no proof marker in
   backing scope fails `awf check`.
-- `inv: unbacked-refuses-proof` — an `unbacked-invariant: <slug>` declaration for which a proof
+- `invariant: unbacked-refuses-proof` — an `unbacked-invariant: <slug>` declaration for which a proof
   marker exists in backing scope fails `awf check`.
-- `inv: unbacked-requires-verify-note` — an `unbacked-invariant: <slug>` declaration with no
+- `invariant: unbacked-requires-verify-note` — an `unbacked-invariant: <slug>` declaration with no
   `Verify:` note fails `awf check`.
-- `inv: touches-marker-advisory` — a `touches-invariant: <slug>` marker never satisfies backing and
+- `invariant: touches-marker-advisory` — a `touches-invariant: <slug>` marker never satisfies backing and
   never produces a hard `awf check` finding.
-- `inv: dangling-marker-advisory` — a source `invariant:`/`touches-invariant:` marker naming a slug
+- `invariant: dangling-marker-advisory` — a source `invariant:`/`touches-invariant:` marker naming a slug
   no Implemented ADR declares yields a non-failing advisory note, never a hard finding.
-- `inv: bare-touches-note` — a `touches-invariant:` marker carrying no note yields a non-failing
+- `invariant: bare-touches-note` — a `touches-invariant:` marker carrying no note yields a non-failing
   advisory note, never a hard finding.
-- `inv: testglobs-anchored-validated` — `Config.Validate` rejects a `testGlobs` pattern that is
+- `invariant: testglobs-anchored-validated` — `Config.Validate` rejects a `testGlobs` pattern that is
   malformed or contains no path separator, on the same anchored-glob rule as `invariants.sources`.
 
 ## Consequences

@@ -315,7 +315,6 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 	}
 }
 
-// invariant: audit-worktree-config-extension
 func TestCollectWorktreeConfigExtension(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})

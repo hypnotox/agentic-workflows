@@ -12,9 +12,12 @@ func runInvariants(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	findings, err := p.CheckInvariants()
+	findings, notes, err := p.CheckInvariants()
 	if err != nil {
 		return err
+	}
+	for _, n := range notes {
+		fmt.Fprintf(stdout, "note: %s\n", n.Line())
 	}
 	if len(findings) == 0 {
 		fmt.Fprintln(stdout, "awf invariants: clean")

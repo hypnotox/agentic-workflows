@@ -110,7 +110,7 @@ Four constraints shape the design:
 
 ## Invariants
 
-- `inv: evals-full-catalog-coverage` — the golden-task fixture's enabled skill/agent set is derived
+- `invariant: evals-full-catalog-coverage` — the golden-task fixture's enabled skill/agent set is derived
   from `catalog.Load(templates.FS)` and includes every catalog skill and agent; a test in
   `internal/evals` fails if any catalog skill or agent is absent from the fixture's enabled set, so the
   suite cannot silently stop covering a newly-added chain artifact. Backed by

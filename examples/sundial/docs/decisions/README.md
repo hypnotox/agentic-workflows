@@ -52,12 +52,16 @@ leave it `[]`.
 <!-- awf:edit invariants — default; create .awf/parts/adr-readme/invariants.md to override -->
 ## Invariant tagging
 
-Give each machine-enforceable Invariants bullet an explicit slug —
-``- `inv: <slug>` — …`` — and add a matching `` `invariant: <slug>` `` comment, prefixed with the comment marker for the file's type (`**/*.go` → `//`), to a test that
-exercises it. `awf check` and the standalone `awf invariants` fail when an **Implemented** ADR has
-a tagged slug with no backing test. Proposed/Accepted ADRs are not yet enforced (tests land with
-implementation); Superseded ADRs are skipped. Bullets without a slug are textual contracts, not
-machine-checked.
+Declare each machine-enforceable Invariants bullet with an explicit slug in one of two forms: a
+backed ``- `invariant: <slug>` — …`` for a test-proven property, or an
+``- `unbacked-invariant: <slug>` — …. **Verify:** …`` for a reasoned contract with no automatic test.
+Back a backed slug with a matching `` `invariant: <slug>` `` proof comment, prefixed with the comment marker for the file's type (`**/*.go` → `//`), on a test that
+exercises it (scoped to `invariants.testGlobs` when configured, else any `invariants.sources` file); a
+`` `touches-invariant: <slug> — <note>` `` marker records a related production site and never backs.
+`awf check` and the standalone `awf invariants` fail when an **Implemented** ADR declares a backed slug
+with no proof, an unbacked slug that a proof marker contradicts, or an unbacked slug with no `Verify:`
+note. Proposed/Accepted ADRs are not yet enforced (tests land with implementation); Superseded ADRs are
+skipped. Bullets without a slug are textual contracts, not machine-checked.
 
 <!-- awf:edit active-md — default; create .awf/parts/adr-readme/active-md.md to override -->
 ## ACTIVE.md

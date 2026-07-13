@@ -111,17 +111,17 @@ configuration.
 
 ## Invariants
 
-- `inv: empty-init-coherent-render` — a non-interactive `awf init` with no answers renders
+- `invariant: empty-init-coherent-render` — a non-interactive `awf init` with no answers renders
   artifacts containing no empty inline code spans, no tables without body rows, and no
   list-introduction sentences followed by nothing.
-- `inv: catalog-data-in-confighash` — a change to an artifact's catalog default data changes
+- `invariant: catalog-data-in-confighash` — a change to an artifact's catalog default data changes
   its lock `configHash`, so `awf check` flags the artifact stale.
-- `inv: sidecar-key-overrides-default` — a sidecar data key that is present (including null
+- `invariant: sidecar-key-overrides-default` — a sidecar data key that is present (including null
   or empty) fully replaces the catalog default for that key; an absent key falls through to
   the default.
-- `inv: completeness-advisory-nonfailing` — unset-var notes never affect `awf check`'s exit
+- `invariant: completeness-advisory-nonfailing` — unset-var notes never affect `awf check`'s exit
   code.
-- `inv: catalog-defaults-generic-denylist` — no catalog default data value contains `./x` or
+- `invariant: catalog-defaults-generic-denylist` — no catalog default data value contains `./x` or
   `hypnotox/agentic-workflows` (mechanical backstop; the full generic-content contract remains
   a textual contract, audited at review).
 

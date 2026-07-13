@@ -156,21 +156,21 @@ merely guarded by a parity test.
 Checkable constraints that must hold as long as this decision stands — conditions that
 should trigger a new ADR if violated.
 
-- `inv: singleton-kind-single-source` — `config.IsSingletonKind` and `internal/project`'s
+- `invariant: singleton-kind-single-source` — `config.IsSingletonKind` and `internal/project`'s
   `plainSingletons` table both derive their kind-name membership from `catalog.SingletonKinds()`; a
   test asserts the two sets are identical (accounting for `agents-doc`, which `IsSingletonKind`
   includes but `plainSingletons` deliberately excludes).
-- `inv: plain-singleton-via-renderkind` — a table-driven test exercises `RenderAll` for each of the
+- `invariant: plain-singleton-via-renderkind` — a table-driven test exercises `RenderAll` for each of the
   six plain singletons (`adr-readme`, `adr-template`, `plans-readme`, `workflow`, `doc-standard`,
   `agents-md-standard`) and asserts each produces its expected output path and content through
   `plainSingletons` + `renderKind`.
-- `inv: singleton-doc-migration-relocates-parts` — the `singleton-standard-docs` migration relocates
+- `invariant: singleton-doc-migration-relocates-parts` — the `singleton-standard-docs` migration relocates
   both the sidecar file and the convention-part directory for each promoted doc, not only its
   `docs:` array entry.
-- `inv: document-map-lists-mandatory-docs` — `AGENTS.md`'s document-map section always cites
+- `invariant: document-map-lists-mandatory-docs` — `AGENTS.md`'s document-map section always cites
   `.layout.workflowRef`, `.layout.docStandard`, and `.layout.agentsMdStandard`, regardless of the
   project's `docs:` array contents.
-- `inv: mandatory-docs-not-in-docs-catalog` — `templates/catalog.yaml`'s `docs:` block contains no
+- `invariant: mandatory-docs-not-in-docs-catalog` — `templates/catalog.yaml`'s `docs:` block contains no
   entry named `workflow`, `doc-standard`, or `agents-md-standard`, and `DocSpec` carries no `Core`
   field.
 

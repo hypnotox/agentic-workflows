@@ -143,7 +143,7 @@ language-agnostic.
 
 ## Invariants
 
-- `inv: mutants-timeout-untrusted` — `cmd/mutants` exits non-zero when any mutation in its
+- `invariant: mutants-timeout-untrusted` — `cmd/mutants` exits non-zero when any mutation in its
   input JSON has status `TIMED OUT`, and otherwise reports exactly the `LIVED` mutants —
   dropping `NOT COVERED` and every other status — treating a missing or empty input file as an
   empty run. Backed by a `// invariant: mutants-timeout-untrusted` marker on the `cmd/mutants`

@@ -79,7 +79,7 @@ projections is deferred to a successor ADR so this step stays a behavior-preserv
 
 ## Invariants
 
-- `inv: catalog-go-single-source` — the standard catalog has exactly one authoritative
+- `invariant: catalog-go-single-source` — the standard catalog has exactly one authoritative
   representation: the compile-time Go value in `internal/catalog`. There is no embedded
   `catalog.yaml` and no runtime catalog parse. Backed by a test asserting `templates.FS` contains no
   `catalog.yaml` entry and that `catalog.Standard` is populated across all kinds.

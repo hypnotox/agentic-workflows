@@ -70,7 +70,7 @@ lived in `docs:` and adds no config field.
 
 ## Invariants
 
-- `inv: working-with-awf-mandatory` — the `working-with-awf` doc renders as an always-on singleton
+- `invariant: working-with-awf-mandatory` — the `working-with-awf` doc renders as an always-on singleton
   for every project (present in `plainSingletons` and `catalog.SingletonKinds`), suppressible only
   via a `local: true` sidecar. Backed by the singleton-set test extended to assert its presence.
 - **Partial-item supersedence of ADR-0043's `document-map-lists-mandatory-docs` invariant.** This

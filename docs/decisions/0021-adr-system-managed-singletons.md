@@ -56,10 +56,10 @@ outpaths (`adrReadme`, `adrTemplate`) exist and the wiring mirrors cleanly.
 
 ## Invariants
 
-- `inv: adr-system-singletons-rendered` — `RenderAll` emits `<docsDir>/decisions/README.md` and
+- `invariant: adr-system-singletons-rendered` — `RenderAll` emits `<docsDir>/decisions/README.md` and
   `<docsDir>/decisions/template.md` from their always-on singletons, and omits each when its sidecar
   sets `local: true`.
-- `inv: adr-singleton-section-parity` — each singleton's catalog `sections` equal its template's
+- `invariant: adr-singleton-section-parity` — each singleton's catalog `sections` equal its template's
   `awf:section` markers, and it renders without an unresolved-variable placeholder.
 - The two singletons are not ADRs: `internal/adr` skips `README.md` and `template.md` when parsing
   the decisions dir (textual; pre-existing).

@@ -108,15 +108,15 @@ removes the split behind failures 1 and 2.
 
 ## Invariants
 
-- `inv: single-version-authority` — `awfVersion()` returns `project.Version`; no ldflags var or
+- `invariant: single-version-authority` — `awfVersion()` returns `project.Version`; no ldflags var or
   module build info feeds version gating, lock stamping, or bootstrap pinning.
-- `inv: schema-min-version` — `minVersionBySchema` contains an entry for `migrate.Current()`,
+- `invariant: schema-min-version` — `minVersionBySchema` contains an entry for `migrate.Current()`,
   and `project.Version` is semver-at-or-above it.
-- `inv: bootstrap-stdout-path-only` — the rendered bootstrap writes exactly one line to stdout:
+- `invariant: bootstrap-stdout-path-only` — the rendered bootstrap writes exactly one line to stdout:
   the resolved binary path; all diagnostics go to stderr. (Golden-render assertion, per the
   ADR-0040 precedent: every diagnostic and checksum-verification line in the rendered script
   carries a stderr redirect; the only bare `echo`s print the resolved binary path.)
-- `inv: bootstrap-local-first` — the rendered bootstrap uses a PATH `awf` reporting exactly the
+- `invariant: bootstrap-local-first` — the rendered bootstrap uses a PATH `awf` reporting exactly the
   pinned version before attempting any download. (Golden-render assertion: the PATH-probe block
   appears in the rendered script before the first `curl`.)
 - The release pipeline refuses a tag that does not equal `project.Version` (textual contract;

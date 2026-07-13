@@ -282,10 +282,10 @@ func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)
 }
 
-// CheckInvariants reports Implemented-ADR invariant slugs that lack a backing
-// `<marker> invariant: <slug>` comment (per the project's configured invariant
-// sources) under the project root.
-func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
+// CheckInvariants reports Implemented-ADR invariant backing findings (per the
+// ADR-0105 two-marker model and the project's configured invariant sources)
+// under the project root, alongside the non-failing advisory notes.
+func (p *Project) CheckInvariants() ([]invariants.Finding, []invariants.Note, error) {
 	return invariants.Check(p.decisionsDir(), p.Root, p.Cfg.Invariants)
 }
 

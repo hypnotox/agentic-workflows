@@ -69,13 +69,13 @@ type-prefix proxy.
 
 ## Invariants
 
-- `inv: changelog-embed-decodes` — the embedded `changelog/CHANGELOG.md` always parses without
+- `invariant: changelog-embed-decodes` — the embedded `changelog/CHANGELOG.md` always parses without
   error; enforced by a test that parses the real embedded `changelog.FS` content directly (not a
   synthetic fixture), mirroring how `internal/catalog`'s tests load the real `templates.FS`. Any
   downstream call site may then treat a parse failure as unreachable.
-- `inv: changelog-range-chronological` — `internal/changelog.Range` rejects a `from` version that
+- `invariant: changelog-range-chronological` — `internal/changelog.Range` rejects a `from` version that
   is chronologically newer than `to` rather than silently reordering them.
-- `inv: changelog-flags-exclusive` — `awf changelog` rejects a command line that sets 2 or more of
+- `invariant: changelog-flags-exclusive` — `awf changelog` rejects a command line that sets 2 or more of
   `--version`/`--since`/`--range` at once.
 - Category placement in `changelog/CHANGELOG.md` (Breaking changes / Features / Bug fixes / Others)
   is judged by adopter-facing effect, not by a commit's Conventional-Commits type or

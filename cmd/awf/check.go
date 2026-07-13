@@ -36,9 +36,14 @@ func runCheck(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	findings, err := p.CheckInvariants()
+	findings, invNotes, err := p.CheckInvariants()
 	if err != nil {
 		return err
+	}
+	// Invariant advisory notes (dangling marker, bare touches) ride the same
+	// non-failing note: channel (ADR-0105 item 5); only hard findings fail.
+	for _, n := range invNotes {
+		fmt.Fprintf(stdout, "note: %s\n", n.Line())
 	}
 	for _, d := range drift {
 		fmt.Fprintf(stdout, "  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)

@@ -75,7 +75,7 @@ companion ADR's plan — not here.
 
 ## Invariants
 
-- `inv: scope-config-dual-form` — `audit.allowedScopes` decodes both a bare-string element and a
+- `invariant: scope-config-dual-form` — `audit.allowedScopes` decodes both a bare-string element and a
   `{name, meaning}` mapping element in the same list; `audit.Resolve` yields the `Name` for gating
   regardless of form, and `Meaning` is empty for the bare-string form (and for a mapping omitting
   it). Backed by a config/audit parse test asserting a mixed list round-trips and that a

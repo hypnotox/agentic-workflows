@@ -249,32 +249,32 @@ Checkable contracts that must hold while this decision stands. Tagged slugs are
 backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`; ADR-0008); untagged bullets are textual contracts.
 
-- `inv: config-root` — Config loads from `.claude/awf/config.yaml` and the lock is
+- `invariant: config-root` — Config loads from `.claude/awf/config.yaml` and the lock is
   written to/read from `.claude/awf/awf.lock`; no normal load/render/sync/check path
   reads or writes `.claude/awf.yaml` or `.claude/awf.lock`. The `internal/migrate`
   package under `awf upgrade` is the single named exception, reading the legacy file
   only to port it forward (ADR-0010 `legacy-read-isolation`).
-- `inv: enable-arrays` — `config.Config.Skills`/`Agents`/`Docs` are string arrays
+- `invariant: enable-arrays` — `config.Config.Skills`/`Agents`/`Docs` are string arrays
   whose entries enable targets by presence; a `data:`, `sections:`, or `local:` key
   at the root of `config.yaml` is rejected at load (`KnownFields(true)`).
-- `inv: sidecar-optional` — An enabled target with no `<kind>/<name>.yaml` sidecar
+- `invariant: sidecar-optional` — An enabled target with no `<kind>/<name>.yaml` sidecar
   renders successfully from template defaults, emitting no `<no value>` token for any
   absent `data` field (`missingkey=zero`, ADR-0001).
-- `inv: parts-convention` — A section is replaced by
+- `invariant: parts-convention` — A section is replaced by
   `.claude/awf/<kind>/parts/<target>/<section>.md` when that file exists, and the
   per-section precedence is `drop > explicit replaceWith > convention part >
   template default`.
-- `inv: local-frontmatter` — A declared `local` skill/agent has its on-disk
+- `invariant: local-frontmatter` — A declared `local` skill/agent has its on-disk
   frontmatter validated by `sync` and `check` at its conventional output path;
   missing/empty `name`/`description` fails identically to a rendered target, and an
   absent file for a declared local target is an error.
-- `inv: drift-source-set` — Each rendered file's `ConfigHash` is a per-target
+- `invariant: drift-source-set` — Each rendered file's `ConfigHash` is a per-target
   projection over only its own effective inputs (the skeleton fields it reads, its
   sidecar, its consumed parts); `awf check` reports that file stale when any of those
   inputs change since the last `sync`, and editing one target's sidecar or part does
   **not** flag unrelated targets' files. A sidecar or part file matching no
   enabled/declared target is reported as an orphan.
-- `inv: agentsdoc-parts` — The `agents-doc` `you-and-this-project` and `identity`
+- `invariant: agentsdoc-parts` — The `agents-doc` `you-and-this-project` and `identity`
   section bodies are overridable via convention parts under
   `.claude/awf/parts/agents-doc/`, and render publication-safe with no override
   and empty `invariants`/`docMap`.

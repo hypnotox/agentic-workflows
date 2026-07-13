@@ -139,24 +139,24 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 
 ## Invariants
 
-- `inv: local-doc-catalog-clone` — `effectiveCatalog` synthesizes local doc entries
+- `invariant: local-doc-catalog-clone` — `effectiveCatalog` synthesizes local doc entries
   into a clone of `catalog.Standard.Docs`; the package global's `Docs` map is never
   mutated by opening a project.
-- `inv: local-doc-requires-declaration` — a non-Standard, non-`local:true` enabled
+- `invariant: local-doc-requires-declaration` — a non-Standard, non-`local:true` enabled
   doc name without a declaring sidecar is a hard error at project open.
-- `inv: local-doc-no-shadow` — a local (non-Standard) doc name equal to a
+- `invariant: local-doc-no-shadow` — a local (non-Standard) doc name equal to a
   `catalog.Standard.Docs` name is rejected.
-- `inv: local-doc-renders-from-base` — a rendered local doc resolves its template id
+- `invariant: local-doc-renders-from-base` — a rendered local doc resolves its template id
   through the effective catalog to the shared base doc template, not the
   name-derived or empty path.
-- `inv: local-doc-map-fields` — a synthesized local doc entry always carries a
+- `invariant: local-doc-map-fields` — a synthesized local doc entry always carries a
   non-empty `Title` and `Desc` — lifted from its declaring sidecar, or a name-derived
   (`Title`) / generic (`Desc`) default when the sidecar omits the key — so the
   document map lists it with a non-empty title and description.
-- `inv: local-doc-base-publication-safe` — the base doc template renders leak-free
+- `invariant: local-doc-base-publication-safe` — the base doc template renders leak-free
   (no `<no value>`, no marker or leak residue) under empty data and no `content`
   part.
-- `inv: local-doc-name-path-validated` — a local doc name is accepted only as one or
+- `invariant: local-doc-name-path-validated` — a local doc name is accepted only as one or
   more lowercase-kebab `/`-separated segments and is rejected for a path-escape
   (`..`), a leading/trailing/empty segment, a `.md` suffix, or the reserved
   base-template stem `_base`; skill and agent names remain flat.

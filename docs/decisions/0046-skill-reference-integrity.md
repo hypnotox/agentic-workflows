@@ -101,16 +101,16 @@ should fail loudly, not render vague prose around missing steps.
 
 ## Invariants
 
-- `inv: skill-ref-dead-fails` — a managed rendered artifact referencing a known skill name
+- `invariant: skill-ref-dead-fails` — a managed rendered artifact referencing a known skill name
   outside the effective rendered set produces a failing `awf check` finding.
-- `inv: skill-ref-unknown-ignored` — a `<prefix>-<word>` token whose word matches no
+- `invariant: skill-ref-unknown-ignored` — a `<prefix>-<word>` token whose word matches no
   catalog or local skill name produces no finding.
-- `inv: skills-context-effective-set` — the render context's `skills` set equals enabled
+- `invariant: skills-context-effective-set` — the render context's `skills` set equals enabled
   skills minus doc-gate-suppressed, with `local`-declared skills always kept.
-- `inv: skills-set-in-confighash` — a change to the skills enable array changes the lock
+- `invariant: skills-set-in-confighash` — a change to the skills enable array changes the lock
   `configHash` of every artifact whose assembled template references `.skills`, so
   `awf check` flags those artifacts stale.
-- `inv: curated-init-skill-refs-clean` — a default curated `awf init` render passes the
+- `invariant: curated-init-skill-refs-clean` — a default curated `awf init` render passes the
   check with zero `dead-skill-reference` findings (backed on the empty-init regression
   surface of [ADR-0045](0045-out-of-box-render-completeness.md)).
 

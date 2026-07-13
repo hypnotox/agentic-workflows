@@ -120,19 +120,19 @@ project-defined entries is a distinct concern, and this ADR treats it as such.
 
 ## Invariants
 
-- `inv: local-catalog-clone` — `project.Open` synthesizes local entries into a
+- `invariant: local-catalog-clone` — `project.Open` synthesizes local entries into a
   clone of `catalog.Standard`; the package global's `Skills`/`Agents` maps are
   never mutated by opening a project.
-- `inv: local-requires-declaration` — a non-Standard, non-`local:true` enabled
+- `invariant: local-requires-declaration` — a non-Standard, non-`local:true` enabled
   skill/agent name without a declaring sidecar is a hard error at project open.
-- `inv: local-no-shadow` — a local (non-Standard) skill/agent name equal to a
+- `invariant: local-no-shadow` — a local (non-Standard) skill/agent name equal to a
   `catalog.Standard` name is rejected.
-- `inv: local-renders-from-base` — a rendered local artifact resolves its template
+- `invariant: local-renders-from-base` — a rendered local artifact resolves its template
   id to the shared base template for its kind, not the name-derived path.
-- `inv: local-base-publication-safe` — the base skill and agent templates render
+- `invariant: local-base-publication-safe` — the base skill and agent templates render
   leak-free (no `<no value>`, no marker/leak residue) under empty data and no
   `content` part.
-- `inv: local-name-validated` — local skill/agent names are rejected when they
+- `invariant: local-name-validated` — local skill/agent names are rejected when they
   contain a path separator or `..`.
 
 ## Consequences

@@ -379,13 +379,13 @@ func TestCheckInvariantsReportsUnbacked(t *testing.T) {
 		"invariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\n"
 	root := scaffold(t, cfg)
 	adrBody := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Invariants\n- `inv: my-slug`\n## Context\nx\n"))
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Invariants\n- `invariant: my-slug`\n## Context\nx\n"))
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := p.CheckInvariants()
+	findings, _, err := p.CheckInvariants()
 	if err != nil {
 		t.Fatalf("CheckInvariants: %v", err)
 	}

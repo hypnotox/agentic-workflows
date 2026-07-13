@@ -171,32 +171,32 @@ Forces and grounding discoveries shaping the design:
 
 ## Invariants
 
-- `inv: configspec-key-parity` — every adopter-writable `config.Config`/`Sidecar` leaf
+- `invariant: configspec-key-parity` — every adopter-writable `config.Config`/`Sidecar` leaf
   key has exactly one configspec entry with a non-empty description, and every config-key
   entry names a live field, enforced by a reflection walk over the yaml tags.
-- `inv: configspec-data-parity` — configspec's per-artifact data-key descriptions match,
+- `invariant: configspec-data-parity` — configspec's per-artifact data-key descriptions match,
   one-to-one in both directions, the data keys each catalog artifact's — plus the two
   local base templates' — include-expanded
   template references (union its catalog-declared defaults), with the injected keys
   exempt: the domain-doc pair and the config reference's own injected collections
   (neither is adopter-settable — domain sidecars are paths-only, the config-reference
   sidecar rejects `data:`).
-- `inv: configspec-var-derivation` — configspec's var entries are derived from
+- `invariant: configspec-var-derivation` — configspec's var entries are derived from
   `catalog.Vars` and cover exactly its config-var descriptors (empty or `"var"`
   `Target`; the init-routing descriptors — the multiselects and the audit-scopes
   writer — are not `vars:` keys), carrying the descriptor description text
   verbatim; configspec attaches only availability clauses — no second var-description
   authority exists.
-- `inv: config-reference-regen-drift` — `docs/config-reference.md` is drift-checked by
+- `invariant: config-reference-regen-drift` — `docs/config-reference.md` is drift-checked by
   full regeneration, never by content hash alone.
-- `inv: config-command-static-fallback` — `awf config` outside an adopted tree prints the
+- `invariant: config-command-static-fallback` — `awf config` outside an adopted tree prints the
   static catalog reference and exits zero; inside one it runs gated at open.
-- `inv: configspec-description-residue` — no configspec description string carries a
+- `invariant: configspec-description-residue` — no configspec description string carries a
   concrete `ADR-` citation or a repo-identity literal.
-- `inv: config-reference-no-bare-vars` — the reference-doc template's assembled source
+- `invariant: config-reference-no-bare-vars` — the reference-doc template's assembled source
   contains no bare `.vars` or `.data` reference (all computed state arrives via dedicated
   data keys), so it never widens ADR-0086's conservative consumption escapes.
-- `inv: config-reference-data-rejected` — a non-empty `data:` block on the
+- `invariant: config-reference-data-rejected` — a non-empty `data:` block on the
   config-reference sidecar fails every gated command at project open.
 - Textual: descriptions are adopter-voiced — they explain effect and availability in the
   adopter's terms, and availability claims match the real consumption channels (only

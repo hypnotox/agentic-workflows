@@ -102,12 +102,12 @@ unaffected: `{{=awf:…}}` is not a template action.
 
 ## Invariants
 
-- `inv: part-placeholder-sandboxed` — a `{{=awf:key}}` placeholder in a convention part is resolved
+- `invariant: part-placeholder-sandboxed` — a `{{=awf:key}}` placeholder in a convention part is resolved
   by literal substitution (never `text/template`) against the closed dynamic registry; an
   unknown-or-empty key, or any residual `{{=awf` token surviving substitution, is a hard render
   error that fails both `awf sync` and `awf check`. Backed by substitution tests carrying the
   marker.
-- `inv: part-scopes-in-confighash` — a raw part body referencing a `{{=awf:commitScope*}}`
+- `invariant: part-scopes-in-confighash` — a raw part body referencing a `{{=awf:commitScope*}}`
   placeholder folds resolved scope data into that artifact's confighash, so an `audit.allowedScopes`
   edit flags the artifact stale in `awf check`. Backed by a drift test parallel to the existing
   template-path `TestScopesEditReflagsReferencingArtifacts`.

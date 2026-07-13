@@ -105,23 +105,23 @@ also realises the user-facing `targets:` key ADR-0016 Decision item 2 deliberate
 key lands with the second adapter"), so introducing `targets:` extends rather than contradicts
 ADR-0016.
 
-- `inv: multi-target-render` — with `targets` enabling N adapters, each adapter artifact (skill,
+- `invariant: multi-target-render` — with `targets` enabling N adapters, each adapter artifact (skill,
   agent) renders once per enabled target to that target's paths (for `claude`,
   `.claude/skills/<prefix>-<name>/SKILL.md` and `.claude/agents/<name>.md`; for `cursor`,
   `.cursor/skills/<prefix>-<name>/SKILL.md` and `.cursor/agents/<name>.md`), with paths produced by
   the `Target` descriptor, not render-loop literals; neutral artifacts render exactly once
   regardless of N.
-- `inv: targets-default-claude` — a config with no `targets:` key loads as `["claude"]`;
+- `invariant: targets-default-claude` — a config with no `targets:` key loads as `["claude"]`;
   `config.Validate` rejects an empty `targets` list and path-separator names; `project.Open` (via
   `resolveTargets`) rejects any unknown adapter name — config stays registry-free, so the
   unknown-name check lives where the adapter registry does.
-- `inv: cursor-no-bridge` — the `cursor` target has an empty `BridgeFile` and emits no bridge file;
+- `invariant: cursor-no-bridge` — the `cursor` target has an empty `BridgeFile` and emits no bridge file;
   its rendered skill and agent files are byte-identical in body and frontmatter to the `claude`
   target's at their respective paths.
-- `inv: target-prune-ancestors` — removing a target from `targets:` and re-syncing deletes that
+- `invariant: target-prune-ancestors` — removing a target from `targets:` and re-syncing deletes that
   target's rendered files and every resulting empty ancestor directory, not only the immediate
   parent.
-- `inv: target-cli` — `awf add target` / `awf remove target` mutate the config `targets` array
+- `invariant: target-cli` — `awf add target` / `awf remove target` mutate the config `targets` array
   against the known-adapter set, and `awf list target` reads it, all without routing through the
   `kindDescriptor` machinery. This adds a CLI kind token (`target`) alongside the
   `kindDescriptor`-backed kinds; `inv: cli-config-kinds` (backed by the marker comment on the

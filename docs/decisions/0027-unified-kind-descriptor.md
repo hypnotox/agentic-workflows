@@ -91,7 +91,7 @@ single enumeration of CLI kinds; any consolidation must keep that invariant back
 
 ## Invariants
 
-- `inv: kind-dispatch-single-table` — every per-kind facet (enable array, catalog pool, declared
+- `invariant: kind-dispatch-single-table` — every per-kind facet (enable array, catalog pool, declared
   sections, output path, singular/plural labels) resolves through the single `internal/project`
   descriptor table; no other site hand-rolls a parallel per-kind `switch` over the kind set. A
   test enumerates the table and asserts its kind set equals the catalog's kind set plus

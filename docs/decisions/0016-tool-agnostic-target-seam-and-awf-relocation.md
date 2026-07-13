@@ -168,18 +168,18 @@ ADR-0009/0010).
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`); untagged bullets are textual contracts.
 
-- `inv: awf-config-root` — config loads from `.awf/config.yaml` and the lock is written to/read
+- `invariant: awf-config-root` — config loads from `.awf/config.yaml` and the lock is written to/read
   from `.awf/awf.lock`; no normal load/render/sync/check path reads or writes `.claude/awf/…`. The
   `internal/migrate` package under `awf upgrade` is the single exception, reading the legacy
   `.claude/awf.yaml` (ADR-0010) and the pre-relocation `.claude/awf/` tree only to port forward.
-- `inv: target-output-paths` — adapter-artifact output paths are produced by the active `Target`,
+- `invariant: target-output-paths` — adapter-artifact output paths are produced by the active `Target`,
   not by literals in the render loop; for the `claude` target a skill renders to
   `.claude/skills/<prefix>-<name>/SKILL.md` and an agent to `.claude/agents/<name>.md`.
-- `inv: claude-md-bridge` — the `claude` target emits a repo-root `CLAUDE.md` whose body is exactly
+- `invariant: claude-md-bridge` — the `claude` target emits a repo-root `CLAUDE.md` whose body is exactly
   the `@AGENTS.md` import (plus the ADR-0015 banner), tracked as a rendered file.
-- `inv: init-collision-guard` — `awf init` writes nothing and reports the offending paths when any
+- `invariant: init-collision-guard` — `awf init` writes nothing and reports the offending paths when any
   file it would create already exists; `awf init --force` overwrites.
-- `inv: awf-relocation-migration` — the migrate registry contains `{To:3}`; `Generation` reports a
+- `invariant: awf-relocation-migration` — the migrate registry contains `{To:3}`; `Generation` reports a
   tree still at `.claude/awf/` as a pending upgrade (generation < `Current()`), and `awf upgrade`
   relocates it to `.awf/` and stamps the new schema version.
 - Neutral artifacts (`AGENTS.md`, docs, domain docs, ADR infra, `.githooks/`) keep their existing

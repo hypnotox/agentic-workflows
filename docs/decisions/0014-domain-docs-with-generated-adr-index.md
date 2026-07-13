@@ -110,12 +110,12 @@ applied uniformly, but not as a one-off exception here.
 
 Constraints that must hold while this decision stands; a violation should trigger a new ADR.
 
-- `inv: domain-index-matches-domains` — `RenderDomainIndex(dir, d)` lists exactly the ADRs under
+- `invariant: domain-index-matches-domains` — `RenderDomainIndex(dir, d)` lists exactly the ADRs under
   `dir` whose parsed `domains` frontmatter includes `d`, and no others.
-- `inv: domain-doc-regenerated` — `Check` regenerates each enabled domain doc from current ADR
+- `invariant: domain-doc-regenerated` — `Check` regenerates each enabled domain doc from current ADR
   state and reports it `stale` when on-disk content diverges; retagging or superseding an ADR
   without `sync` is detected (the domain doc is not validated by the lock hash alone).
-- `inv: domain-name-validated` — `config.Validate` rejects a domain name containing a path
+- `invariant: domain-name-validated` — `config.Validate` rejects a domain name containing a path
   separator (`/` or `\`, as the `prefix` check already does) or `..`.
 - **Publication-safe** (textual) — a domain doc with zero matching ADRs renders a placeholder,
   never a `<no value>` token or an empty `## Decisions` index.

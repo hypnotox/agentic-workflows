@@ -104,16 +104,16 @@ convention-only overrides is its enabling simplification.
 
 ## Invariants
 
-- `inv: provenance-banner` — every rendered file carries the awf generated-by banner as its first
+- `invariant: provenance-banner` — every rendered file carries the awf generated-by banner as its first
   line, except where it must follow a leading construct: after the closing frontmatter delimiter
   for targets that carry frontmatter, and after the `#!` shebang line for shell hooks.
-- `inv: section-edit-pointer` — every rendered, non-dropped section is immediately preceded by an
+- `invariant: section-edit-pointer` — every rendered, non-dropped section is immediately preceded by an
   `awf:edit` pointer naming its conventional part path.
-- `inv: no-section-marker-leak` — `awf:section` / `awf:end` markers never appear in rendered
+- `invariant: no-section-marker-leak` — `awf:section` / `awf:end` markers never appear in rendered
   output; `awf:edit` pointers and the banner are the only awf markers a rendered file may carry.
   (Restates ADR-0001 Invariants bullet 4's section-marker ban, which remains in force, and narrows
   bullet 1's "zero `awf` markers" clause to permit the banner and `awf:edit` pointers.)
-- `inv: no-replacewith` — `config.SectionOverride` exposes no `replaceWith` field; the sole
+- `invariant: no-replacewith` — `config.SectionOverride` exposes no `replaceWith` field; the sole
   section-replacement mechanism is a convention part.
 
 ## Consequences

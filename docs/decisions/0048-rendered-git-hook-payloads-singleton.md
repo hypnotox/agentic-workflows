@@ -148,14 +148,14 @@ adopters own all hook *wiring* — awf never touches `.git/` or git config.
 
 ## Invariants
 
-- `inv: hook-payloads-rendered` — with the singleton enabled, exactly three payloads
+- `invariant: hook-payloads-rendered` — with the singleton enabled, exactly three payloads
   render at `.awf/hooks/pre-commit.sh`, `.awf/hooks/commit-msg.sh`, and
   `.awf/hooks/pre-push.sh`; with it absent or disabled, no path under `.awf/hooks/`
   renders.
-- `inv: hook-payloads-fallback-safe` — with `checkCmd`, `gateCmd`, `gateCmdFull`, and
+- `invariant: hook-payloads-fallback-safe` — with `checkCmd`, `gateCmd`, `gateCmdFull`, and
   `commitGateCmd` all unset, every payload renders as a runnable script whose commands
   degrade to the generic `awf` forms, with no unresolved-value token.
-- `inv: init-hooks-default-on` — `awf init`'s scaffolded config enables the `hooks`
+- `invariant: init-hooks-default-on` — `awf init`'s scaffolded config enables the `hooks`
   singleton.
 - awf never activates hooks: no code path writes under `.git/` or mutates git config
   (textual contract, reaffirming ADR-0032).

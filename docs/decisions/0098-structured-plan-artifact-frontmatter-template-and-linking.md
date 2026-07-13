@@ -86,20 +86,20 @@ Grounding that shaped the design:
 Tagged below; each is backed with a `// invariant: <slug>` comment by the implementing plan (which
 links ADR-0097 and this ADR). `awf check` enforces them once this ADR is `Implemented`.
 
-- `inv: plan-frontmatter-validated` — `awf check` fails on a plan with present-but-malformed
+- `invariant: plan-frontmatter-validated` — `awf check` fails on a plan with present-but-malformed
   frontmatter (unparseable YAML, or a `status` not in {`Proposed`, `Implemented`}); a plan with no
   frontmatter passes.
-- `inv: plan-adr-link-resolved` — `awf check` fails when a frontmatter-bearing plan's `adrs:` entry
+- `invariant: plan-adr-link-resolved` — `awf check` fails when a frontmatter-bearing plan's `adrs:` entry
   names an ADR number with no matching `docs/decisions/NNNN-*.md`; frontmatter-less plans are
   skipped.
-- `inv: plans-template-taxonomy` — the rendered `plans-template` (`docs/plans/template.md`) carries
+- `invariant: plans-template-taxonomy` — the rendered `plans-template` (`docs/plans/template.md`) carries
   the frontmatter block (`date` / `adrs` / `status`) and ADR-0097's section taxonomy (the `# Plan:`
   title, the four narrative header fields, a phase, and the optional Verification/Notes tails) — a
   plans-specific check beyond the doc model's generic render-and-leak-free coverage.
-- `inv: plan-new-unnumbered` — `awf new plan "<Title>"` scaffolds `docs/plans/YYYY-MM-DD-<slug>.md`
+- `invariant: plan-new-unnumbered` — `awf new plan "<Title>"` scaffolds `docs/plans/YYYY-MM-DD-<slug>.md`
   from the plans template with today's date and no sequential number, refusing to overwrite an
   existing file.
-- `inv: context-surfaces-linked-plans` — `awf context` includes, in its single `ContextResult`
+- `invariant: context-surfaces-linked-plans` — `awf context` includes, in its single `ContextResult`
   (human and `--json` alike), the plans whose `adrs:` link an ADR it surfaces for the queried paths,
   without mutating anything.
 

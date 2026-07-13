@@ -87,7 +87,7 @@ range, advisory in the same Error-blocks / Warning-informs sense.
 
 ## Invariants
 
-- `inv: repo-audit-error-exit` — the repo-local audit exits non-zero when and only when it
+- `invariant: repo-audit-error-exit` — the repo-local audit exits non-zero when and only when it
   reports at least one Error finding; Warning-only and clean runs exit zero.
 
 The "repo-audit is never part of the shipped standard" property is **not** a tagged invariant:

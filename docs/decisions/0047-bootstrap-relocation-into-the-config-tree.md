@@ -75,7 +75,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `inv: bootstrap-config-tree-path` — when enabled, the bootstrap renders at
+- `invariant: bootstrap-config-tree-path` — when enabled, the bootstrap renders at
   `.awf/bootstrap.sh` and no rendered output path is `awf-bootstrap.sh` (the retired
   root location).
 - ADR-0040's `bootstrap-pin` and `bootstrap-checksum` invariants continue to hold at the

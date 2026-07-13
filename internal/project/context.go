@@ -128,11 +128,11 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	tier1 := map[string]bool{}
 	var t1 []adr.ADR
 	for _, slug := range res.Invariants {
-		fn, ok := declaring[slug]
+		decl, ok := declaring[slug]
 		if !ok {
 			continue
 		}
-		a := byFile[fn]
+		a := byFile[decl.ADR]
 		if tier1[a.Number] {
 			continue
 		}

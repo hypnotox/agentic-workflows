@@ -100,18 +100,18 @@ marker mapping from it.
 
 ## Invariants
 
-- `inv: invariant-markers-derived` — the adr-readme invariant-tagging guidance renders its
+- `invariant: invariant-markers-derived` — the adr-readme invariant-tagging guidance renders its
   comment-marker mapping from `invariants.sources` (via the `.invariantMarkers` render key in the
   template default and `{{=awf:invariantMarkerSentence}}` in awf's own section override), never a
   hardcoded marker literal; with no sources configured it degrades to marker-agnostic generic prose.
   Backed by a real-render (`RenderAll`/`SyncReport`) test that configures a multi-source
   `invariants.sources` and asserts each source's marker appears in the rendered README — not a
   `renderGolden` hand-injected-data test, which bypasses `data()`.
-- `inv: invariant-markers-in-confighash` — an artifact that references the marker mapping (template
+- `invariant: invariant-markers-in-confighash` — an artifact that references the marker mapping (template
   render key or part placeholder) folds `invariants.sources` into its config hash, so editing
   `invariants.sources` reflags that artifact stale in `awf check`. Backed by a confighash test on
   both the template-reference and part-placeholder paths.
-- `inv: no-single-marker-init-descriptor` — the catalog exposes no `invariants-marker` or
+- `invariant: no-single-marker-init-descriptor` — the catalog exposes no `invariants-marker` or
   `invariants-globs` var descriptor; the marker reaches config only through `invariants.sources`.
   Backed by the descriptor-parity / init-resolution tests.
 

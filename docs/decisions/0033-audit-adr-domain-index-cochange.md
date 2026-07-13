@@ -78,7 +78,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `inv: audit-adr-domain-cochange` — a commit that adds an ADR, or changes its `status:`,
+- `invariant: audit-adr-domain-cochange` — a commit that adds an ADR, or changes its `status:`,
   without also changing each `docs/domains/<d>.md` index for the ADR's configured
   domains, yields one `adr-domain-cochange` `Error` per missing index; the same change with those indexes
   co-changed yields none. When `DomainsIndexDir` is empty or no domains are configured,

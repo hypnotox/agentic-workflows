@@ -130,23 +130,23 @@ Forces and observations shaping the design:
 
 ## Invariants
 
-- `inv: bootstrap-env-override` — the rendered bootstrap's version assignment is the
+- `invariant: bootstrap-env-override` — the rendered bootstrap's version assignment is the
   default-expansion form `AWF_VERSION="${AWF_VERSION:-<project.Version>}"`: a pre-set
   environment value wins, and absent one the script resolves exactly the rendering binary's
   `project.Version`. (Golden-render assertion; replaces the retired ADR-0040
   `inv: bootstrap-pin` — see `retires_invariants` — keeping its single-source-of-truth
   property under the new assignment form.)
-- `inv: upgrade-exec-final` — the rendered `.awf/upgrade.sh` triggers the upgrade with
+- `invariant: upgrade-exec-final` — the rendered `.awf/upgrade.sh` triggers the upgrade with
   `exec "$binary" upgrade` and that `exec` line is the script's final statement, so the
   shell process is replaced before `awf upgrade` re-renders the script truncate-in-place.
   (Golden-render assertion.)
-- `inv: upgrade-delegates-fetch` — the rendered `.awf/upgrade.sh` obtains the binary
+- `invariant: upgrade-delegates-fetch` — the rendered `.awf/upgrade.sh` obtains the binary
   exclusively by invoking `.awf/bootstrap.sh` with `AWF_VERSION` set; it contains no
   `curl` of a release asset and no checksum invocation of its own — the latest-tag redirect
   probe is its only direct network call. (Golden-render assertion.)
-- `inv: upgrade-always-syncs` — `runUpgrade` reaches `runSync` on every successful run,
+- `invariant: upgrade-always-syncs` — `runUpgrade` reaches `runSync` on every successful run,
   including the zero-migrations case.
-- `inv: bootstrap-two-files` — with the `bootstrap` singleton enabled, the render set
+- `invariant: bootstrap-two-files` — with the `bootstrap` singleton enabled, the render set
   contains exactly two files under it: `.awf/bootstrap.sh` and `.awf/upgrade.sh`.
   (Golden-render assertion over the sync output paths; lock tracking, prune-on-disable,
   and uninstall removal follow structurally from the shared render/lock path.)

@@ -41,7 +41,7 @@
 - **`internal/audit/`** — go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/invariants/`** — verifies every Implemented ADR's `inv:` slugs against
+- **`internal/invariants/`** — verifies every Implemented ADR's `invariant:` slugs against
   `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
   powers `awf invariants` and the gated check.
 - **`internal/pathglob/`** — awf's single glob dialect (ADR-0077): anchored full-path doublestar

@@ -111,11 +111,11 @@ path and asserts step ordering.
 
 ## Invariants
 
-- `inv: workflow-actions-sha-pinned` — `cmd/pincheck`, run by `./x gate`, exits non-zero
+- `invariant: workflow-actions-sha-pinned` — `cmd/pincheck`, run by `./x gate`, exits non-zero
   when any remote `uses:` reference under `.github/workflows/` is not pinned to a full
   40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned), or
   when a `goreleaser-action` `version:` input is not an exact semver version.
-- `inv: release-gate-on-tag` — a gate test asserts `release.yml` runs the
+- `invariant: release-gate-on-tag` — a gate test asserts `release.yml` runs the
   ancestry check, `./x gate`, and `./x check` before the GoReleaser step.
 - `.github/dependabot.yml` covers the `github-actions` and `gomod` ecosystems.
 - `.github/workflows/ci.yml` maps `secrets.CODECOV_TOKEN` into a job-level env var and

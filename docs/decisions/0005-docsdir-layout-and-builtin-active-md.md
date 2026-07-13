@@ -171,10 +171,10 @@ tagging convention and its enforcement checker are deferred to ADR-0006, which w
 retro-apply tagged tests to these bullets; for now they are textual contracts verified by
 the implementation plan's tests.)
 
-- `inv: docsdir-default` — `config.Config` has a `docsDir` field; loading an `awf.yaml` that omits it yields
+- `invariant: docsdir-default` — `config.Config` has a `docsDir` field; loading an `awf.yaml` that omits it yields
   `DocsDir == "docs"`, and an explicit value relocates every layout path and managed-doc
   output path to that root.
-- `inv: layout-derivation` — The layout paths (`adrDir`, `activeMd`, `adrReadme`, `adrTemplate`, `plansDir`) are
+- `invariant: layout-derivation` — The layout paths (`adrDir`, `activeMd`, `adrReadme`, `adrTemplate`, `plansDir`) are
   reachable in templates under `.layout.*` and are **not** present as `.vars.*` keys;
   `render.ReferencedVars`/`ScaffoldConfig` does not seed them, so a fresh `awf init` emits no
   `adrDir`/`plansDir`/`activeMdPath`/`adrReadme`/`adrTemplatePath` var. `planTemplatePath` is
@@ -182,13 +182,13 @@ the implementation plan's tests.)
 - With `docsDir` defaulting to `"docs"`, every rendered file and the generated `ACTIVE.md`
   are byte-identical to the pre-change output (managed docs at `docs/<name>.md`, ADR index at
   `docs/decisions/ACTIVE.md`).
-- `inv: sync-generates-active-md` — `awf sync`, run with ≥1 `NNNN-*.md` ADR under `<docsDir>/decisions/`, writes
+- `invariant: sync-generates-active-md` — `awf sync`, run with ≥1 `NNNN-*.md` ADR under `<docsDir>/decisions/`, writes
   `<docsDir>/decisions/ACTIVE.md` grouped by status and records it in the lock; run with an
   absent or ADR-less decisions dir, it writes no `ACTIVE.md` and prunes any previously locked
   one. (Prune safety: the existing `Sync` prune removes a pruned file's parent dir only when
   empty (`project.go:301-303`); `<docsDir>/decisions/` holds the ADRs themselves, so removing
   a pruned `ACTIVE.md` never deletes the decisions dir.)
-- `inv: check-active-md-stale` — `awf check` reports drift for `ACTIVE.md` when the on-disk content differs from a fresh
+- `invariant: check-active-md-stale` — `awf check` reports drift for `ACTIVE.md` when the on-disk content differs from a fresh
   regeneration (frontmatter change, hand-edit) or when it is absent while ADRs exist — via a
   path that does not depend on `TemplateHash`/`ConfigHash`. A synced, unchanged `ACTIVE.md`
   produces **no** drift entry (not `orphaned`, not `stale`): the generic lock-iteration loop

@@ -61,14 +61,14 @@ answers into the invariants block (`invariants-marker`, `invariants-globs`) and 
 
 ## Invariants
 
-- `inv: commit-scope-single-storage` — no file under `templates/` contains the string
+- `invariant: commit-scope-single-storage` — no file under `templates/` contains the string
   `.vars.commitScope`, and the catalog `vars:` block carries no `commitScope` descriptor; every
   rendered commit-scope mention derives from `audit.allowedScopes` via the `commitScopes` render
   context key.
-- `inv: audit-scopes-descriptor-routed` — the `commitScopes` init answer lands in
+- `invariant: audit-scopes-descriptor-routed` — the `commitScopes` init answer lands in
   `audit.allowedScopes` (comma-split, trimmed), and an empty answer leaves the audit block
   unwritten.
-- `inv: scopes-in-confighash` — the resolved scope list participates in `artifactConfigHash` for
+- `invariant: scopes-in-confighash` — the resolved scope list participates in `artifactConfigHash` for
   every artifact whose assembled template references `.commitScopes`, so an `audit.allowedScopes`
   edit flags those artifacts stale in `awf check`.
 - The rendered prose and `commit-gate` can never disagree on scopes (textual contract — both

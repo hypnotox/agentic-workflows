@@ -99,17 +99,17 @@ the standard library (`os.Stdin.Stat()` + `os.ModeCharDevice`), so no new depend
 
 ## Invariants
 
-- `inv: var-descriptor-parity` — every var referenced by any catalog template has a matching
+- `invariant: var-descriptor-parity` — every var referenced by any catalog template has a matching
   descriptor in `templates/catalog.yaml`, and no descriptor names a var that appears in no template.
-- `inv: catalog-trim-applied` — a non-nil catalog-trim dimension passed to `ScaffoldConfig` replaces
+- `invariant: catalog-trim-applied` — a non-nil catalog-trim dimension passed to `ScaffoldConfig` replaces
   the curated-core skills/docs enable array verbatim (the full-deselectable trim); a nil dimension
   keeps exactly the core.
-- `inv: init-noninteractive-default` — `awf init` with a non-TTY stdin and no `--set`/`--answers`
+- `invariant: init-noninteractive-default` — `awf init` with a non-TTY stdin and no `--set`/`--answers`
   seeds every var empty (no descriptor default applied), byte-identical to the pre-feature seed-empty
   output, preserving scriptable init.
-- `inv: describe-read-only` — `awf init --describe` writes no file under the target root and emits
+- `invariant: describe-read-only` — `awf init --describe` writes no file under the target root and emits
   the descriptor set as valid JSON on stdout.
-- `inv: explicit-answers-win` — a value supplied via `--set` or `--answers` is used verbatim and
+- `invariant: explicit-answers-win` — a value supplied via `--set` or `--answers` is used verbatim and
   suppresses prompting for that key, overriding the descriptor default regardless of TTY state.
 
 ## Consequences

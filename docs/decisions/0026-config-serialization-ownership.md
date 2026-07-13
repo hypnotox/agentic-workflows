@@ -75,11 +75,11 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
 
 ## Invariants
 
-- `inv: config-serialization-owned` — the live `.awf/config.yaml` is constructed and mutated only
+- `invariant: config-serialization-owned` — the live `.awf/config.yaml` is constructed and mutated only
   through `internal/config` (`MarshalSkeleton`, `SetArrayMember`), which share one `encode` funnel; no
   other package hand-rolls config.yaml serialization (`internal/migrate`'s forward-compat marshalling
   excepted per Decision 4).
-- `inv: config-mutation-roundtrip` — `SetArrayMember` edits config.yaml via a `yaml.Node` round-trip
+- `invariant: config-mutation-roundtrip` — `SetArrayMember` edits config.yaml via a `yaml.Node` round-trip
   (not line/string surgery), preserving comments and unrelated formatting and accepting both block-
   and flow-style input arrays.
 

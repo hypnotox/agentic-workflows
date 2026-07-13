@@ -91,21 +91,21 @@ Three couplings shaped the design:
 
 ## Invariants
 
-- `inv: runner-singleton-toggle` — with the `runner` singleton enabled, `awf sync` renders exactly
+- `invariant: runner-singleton-toggle` — with the `runner` singleton enabled, `awf sync` renders exactly
   one runner file at the repo-root path `x`; disabled (or absent), it renders none. awf's own
   project config leaves it disabled.
-- `inv: runner-awf-verbs-owned` — the rendered runner's awf-verb arms (`sync`, `check`,
+- `invariant: runner-awf-verbs-owned` — the rendered runner's awf-verb arms (`sync`, `check`,
   `invariants`, `audit`, `context`, `commit-gate`, `new`) are awf-owned (outside any
   `awf:edit-in-place` section) and each delegates to the bootstrap-resolved pinned binary, so they
   regenerate on every sync and cannot drift out of the adopter's control.
-- `inv: runner-project-verbs-in-place` — the rendered runner's project-verb region and its
+- `invariant: runner-project-verbs-in-place` — the rendered runner's project-verb region and its
   setup/helpers region are `awf:edit-in-place` sections (ADR-0100), so an adopter's project-verb
   edits survive re-sync while the awf-owned arms and structure do not.
-- `inv: runner-render-publication-safe` — the runner template renders leak-free under empty data
+- `invariant: runner-render-publication-safe` — the runner template renders leak-free under empty data
   (no unresolved token, no stray section/marker residue), like every other awf template.
-- `inv: runner-example-adopted` — `examples/sundial` enables the `runner` singleton and its
+- `invariant: runner-example-adopted` — `examples/sundial` enables the `runner` singleton and its
   rendered `x` is drift-free, invariant-clean, and free of advisory notes (ADR-0090).
-- `inv: singleton-kinds-complete` — the runner is a dedicated config-tree render block (like
+- `invariant: singleton-kinds-complete` — the runner is a dedicated config-tree render block (like
   `bootstrap`/`hooks`), not a `catalog.Standard.Docs` entry, so it stays outside `SingletonKinds()`
   / `plainSingletons`; the unified-doc-model completeness test continues to assert
   `SingletonKinds()` equals exactly the mandatory doc entries (runner excluded, still green), and

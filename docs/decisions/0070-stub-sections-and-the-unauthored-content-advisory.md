@@ -104,15 +104,15 @@ template ids, so any per-template-id keying collapses distinct local artifacts.
 
 ## Invariants
 
-- `inv: stub-advisory-nonfailing` — unreplaced stub sections or stub-marked parts never
+- `invariant: stub-advisory-nonfailing` — unreplaced stub sections or stub-marked parts never
   by themselves cause `awf check` (or any gated command) to exit non-zero.
-- `inv: no-residual-section-marker` — an assembled skeleton still containing a
+- `invariant: no-residual-section-marker` — an assembled skeleton still containing a
   marker-shaped `<!-- awf:section` / `<!-- awf:end` comment token is a hard render
   error in production code, not only a test-side assertion; a bare backtick-quoted
   identifier in default prose does not trip it.
-- `inv: stub-part-verbatim` — a stub-marked convention part renders byte-for-byte
+- `invariant: stub-part-verbatim` — a stub-marked convention part renders byte-for-byte
   verbatim, marker included; detection never mutates part bodies.
-- `inv: stub-notes-path-keyed` — the advisory reports per output path, so artifacts
+- `invariant: stub-notes-path-keyed` — the advisory reports per output path, so artifacts
   sharing a template id (local artifacts, domain docs) each report independently.
 - Textual: every shipped template section default is deliberately classified — an
   authoring prompt carries `stub`; prose valid to ship does not. New templates classify

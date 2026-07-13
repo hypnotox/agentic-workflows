@@ -107,7 +107,7 @@ everywhere else.
 
 ## Invariants
 
-- `inv: guide-scopes-derived` — the agent-guide template renders its commit-scope mention from
+- `invariant: guide-scopes-derived` — the agent-guide template renders its commit-scope mention from
   the `$.commitScopes` render key, and `.awf/agents-doc.yaml` carries no hand-written commit-scope
   token list; the mention degrades to generic Conventional-Commits prose when scopes are
   accept-any. Backed by a golden test under `./internal/...` (carrying the `// invariant:

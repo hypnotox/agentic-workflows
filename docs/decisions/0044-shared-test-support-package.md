@@ -128,7 +128,7 @@ production code imports go-git in a way that could create a cycle back into a te
 
 ## Invariants
 
-- `inv: testsupport-zero-internal-deps` — no non-test `.go` file under `internal/testsupport/`
+- `invariant: testsupport-zero-internal-deps` — no non-test `.go` file under `internal/testsupport/`
   (including `internal/testsupport/gitfixture/`) imports any `github.com/hypnotox/agentic-workflows/internal/*`
   package; only the Go standard library and (in `gitfixture` only) `github.com/go-git/go-git/v5`
   and its subpackages are permitted. Backed by a test that inspects the package's own import

@@ -87,7 +87,7 @@ them the gate would fail an adopter's first check.
 
 ## Invariants
 
-- `inv: dead-reference-gated` — `awf check` emits a `dead-reference` drift, and fails, when a managed
+- `invariant: dead-reference-gated` — `awf check` emits a `dead-reference` drift, and fails, when a managed
   rendered markdown file contains an inline markdown link whose relative target does not resolve
   (file-relative) on disk; it is silent for resolving targets, external/anchor targets, and links
   inside fenced code blocks.

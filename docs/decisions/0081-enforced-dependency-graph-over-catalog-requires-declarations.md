@@ -163,20 +163,20 @@ invariant, so folding docs into the graph reaches that ADR too.
 
 ## Invariants
 
-- `inv: enabled-set-closed` — every enabled, non-`local` artifact's direct
+- `invariant: enabled-set-closed` — every enabled, non-`local` artifact's direct
   catalog requirements (`RequiresSkills`, `RequiresAgent`, `RequiresDoc`) are
   enabled; a violation fails project open, with a repair hint.
-- `inv: add-applies-closure-plan` — `awf add` enables the requested artifact's
+- `invariant: add-applies-closure-plan` — `awf add` enables the requested artifact's
   full missing forward closure in a single config rewrite, printing one
   provenance line per plan op.
-- `inv: remove-refuses-dependents` — without the cascade flag, `awf remove`
+- `invariant: remove-refuses-dependents` — without the cascade flag, `awf remove`
   refuses while enabled transitive dependents exist, printing the dependent
   plan; with `--with-dependents` it removes the full reverse closure in a
   single rewrite.
-- `inv: close-enabled-set-migration` — the schema-8 migration closes the
+- `invariant: close-enabled-set-migration` — the schema-8 migration closes the
   enabled set additively for skill, agent, and doc requirements, drops
   dormant non-`local` doc-gated skills, and is idempotent and atomic.
-- `inv: init-set-closed` — `awf init`'s scaffolded enabled set (curated
+- `invariant: init-set-closed` — `awf init`'s scaffolded enabled set (curated
   default or closure-completed trim) satisfies `enabled-set-closed`.
 - Re-anchored, not retired: `reviewing-skill-agent-pairing`,
   `add-skill-pairs-agent`, `remove-agent-pairing-guard` move with the code

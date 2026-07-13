@@ -101,13 +101,13 @@ decided here.
 
 ## Invariants
 
-- `inv: coverage-gate-100` — the coverage checker exits non-zero when the total over
+- `invariant: coverage-gate-100` — the coverage checker exits non-zero when the total over
   non-ignored statements in a coverprofile is below 100%, and zero when it is exactly
   100%. Backed by a checker test over fixture profiles.
-- `inv: coverage-ignore-reason` — a `// coverage-ignore` marker with no non-empty reason
+- `invariant: coverage-ignore-reason` — a `// coverage-ignore` marker with no non-empty reason
   causes the checker to fail rather than silently dropping the block. Backed by a checker
   test over a fixture carrying a reasonless marker.
-- `inv: single-os-exit` — within `cmd/awf`, `os.Exit` appears only in `main.go`'s `main`,
+- `invariant: single-os-exit` — within `cmd/awf`, `os.Exit` appears only in `main.go`'s `main`,
   whose body is solely `os.Exit(run(...))`; no `fatal`/`fatalIf` helpers remain. Backed by
   a tree-walking test over the `cmd/awf` package sources.
 - Every `// coverage-ignore` marker in the tree carries a justification reviewed under

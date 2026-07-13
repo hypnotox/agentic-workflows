@@ -80,10 +80,10 @@ that relationship.
 
 ## Invariants
 
-- `inv: escaped-placeholder-literal` — a `\{{=…awf` sequence in a convention part renders as the
+- `invariant: escaped-placeholder-literal` — a `\{{=…awf` sequence in a convention part renders as the
   literal token (backslash consumed) and triggers neither substitution nor the residual-guard error.
   Backed by a substitution test.
-- `inv: placeholder-value-token-free` — `placeholderRegistry` returns a hard error, naming the key,
+- `invariant: placeholder-value-token-free` — `placeholderRegistry` returns a hard error, naming the key,
   when any registry value contains a `{{=…awf` token. Backed by a registry test.
 
 ## Consequences

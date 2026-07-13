@@ -77,12 +77,12 @@ the same shape: declared by the successor, predecessor left intact.
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this
 ADR is `Implemented`).
 
-- `inv: inv-retirement-drops-slug` — a slug listed in `retires_invariants` of an `Implemented`
+- `invariant: inv-retirement-drops-slug` — a slug listed in `retires_invariants` of an `Implemented`
   ADR is not required to be backed: `awf check` is clean when that slug's backing comment is
   absent, given the slug is declared `inv:` by some Implemented ADR.
-- `inv: inv-retirement-implemented-only` — a `retires_invariants` entry in a non-`Implemented`
+- `invariant: inv-retirement-implemented-only` — a `retires_invariants` entry in a non-`Implemented`
   ADR does not drop the slug; it remains required (and its absence of backing is still reported).
-- `inv: inv-retirement-dangling-errors` — a slug in an Implemented ADR's `retires_invariants`
+- `invariant: inv-retirement-dangling-errors` — a slug in an Implemented ADR's `retires_invariants`
   that no Implemented ADR declares as `inv:` makes `awf check` fail.
 
 ## Consequences

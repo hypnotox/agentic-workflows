@@ -23,7 +23,7 @@ awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore t
 - `awf new doc <name> "<description>"` — scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
 - `awf upgrade` — migrate the config tree after upgrading the awf binary.
 - `awf audit` — report Conventional-Commits / workflow-conformance findings over the branch (advisory).
-- `awf invariants` — report Implemented-ADR `inv:` slugs that lack a backing comment in source.
+- `awf invariants` — report Implemented-ADR `invariant:` slugs that lack a backing proof comment in source.
 - `awf commit-gate <file>` — validate one commit message (used by a commit-msg hook).
 - `awf changelog` — query the changelog by version or range.
 - `awf uninstall` — remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.

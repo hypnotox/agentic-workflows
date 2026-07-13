@@ -27,7 +27,7 @@ value is being small and instant.
 
 ## Invariants
 
-- `inv: almanac-clamped-latitude` — latitude is clamped to [-90, 90] before the
+- `invariant: almanac-clamped-latitude` — latitude is clamped to [-90, 90] before the
   day-length model; out-of-range input degrades to the pole, never to a domain
   error.
 - Textual: `internal/almanac` stays standard-library-only.

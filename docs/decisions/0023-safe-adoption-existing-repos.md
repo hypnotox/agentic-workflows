@@ -85,11 +85,11 @@ subdir-invocation defect that makes `setup` skip hook activation when run below 
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`); the bullets below are the mechanically verifiable contracts those tests assert.
 
-- `inv: init-force-backs-up` — under `--force`, `awf init` copies every colliding non-managed file to
+- `invariant: init-force-backs-up` — under `--force`, `awf init` copies every colliding non-managed file to
   `<path>.awf-bak` before any managed output overwrites it.
-- `inv: setup-guards-hookspath` — `awf setup` does not overwrite a `core.hooksPath` set to a value
+- `invariant: setup-guards-hookspath` — `awf setup` does not overwrite a `core.hooksPath` set to a value
   other than `.githooks` unless `--force-hooks` is passed.
-- `inv: uninstall-removes-lock-tracked` — `awf uninstall` removes exactly the files recorded in the
+- `invariant: uninstall-removes-lock-tracked` — `awf uninstall` removes exactly the files recorded in the
   lock plus the lock file itself, and unsets `core.hooksPath` only when it points to `.githooks`,
   leaving the authored `.awf/` config (config.yaml, sidecars, parts) intact.
 

@@ -72,15 +72,15 @@ today's `inv:` token while `Proposed`; the mechanism plan's atomic rewrite migra
 check` enforces them once this ADR is `Implemented`; the retired slug's marker is removed in the same
 commit.
 
-- `inv: context-tier1-marker-union` — the Tier-1 governing set reported by `awf context <paths>` is
+- `invariant: context-tier1-marker-union` — the Tier-1 governing set reported by `awf context <paths>` is
   exactly the Implemented, non-retired ADRs declaring an invariant slug present under a queried path,
   where presence derives from the union scan of `invariants.sources` and `testGlobs` recognising both
   the proof `invariant:` and the `touches-invariant:` marker (intersected with the shared
   `slug → declaring ADR` join). Replaces `context-tier1-governs`.
-- `inv: context-invariant-backed-labeled` — every invariant `awf context` reports as governing a
+- `invariant: context-invariant-backed-labeled` — every invariant `awf context` reports as governing a
   queried path is labelled backed or unbacked according to its declaring ADR's ADR-0105
   classification; no governing invariant is reported without a class.
-- `inv: context-surfaces-marker-notes` — `awf context` carries, on the single `ContextResult`, each
+- `invariant: context-surfaces-marker-notes` — `awf context` carries, on the single `ContextResult`, each
   surfaced unbacked governing invariant's `Verify:` note and each under-path `touches-invariant:`
   marker's site note, preserving read-only / output-parity / static-fallback.
 

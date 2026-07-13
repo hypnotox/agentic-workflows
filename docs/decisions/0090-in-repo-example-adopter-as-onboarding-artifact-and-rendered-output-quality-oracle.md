@@ -144,12 +144,12 @@ scratch adopter):
 
 ## Invariants
 
-- `inv: example-adopter-checked` — `./x sync` re-renders `examples/sundial` with the
+- `invariant: example-adopter-checked` — `./x sync` re-renders `examples/sundial` with the
   from-source binary, and `./x check` runs `awf check` and `awf invariants` there;
   example drift or an invariant finding fails `./x check`.
-- `inv: example-zero-notes` — the example check step fails on any `note: ` line in the
+- `invariant: example-zero-notes` — the example check step fails on any `note: ` line in the
   example's `awf check` output.
-- `inv: example-module-isolated` — `examples/sundial` is its own Go module; no enclosing
+- `invariant: example-module-isolated` — `examples/sundial` is its own Go module; no enclosing
   `./...` sweep (test, coverage, vet, lint, deadcode) includes its packages.
 - Textual: fictional invariant slugs in the example are namespaced away from real awf
   slugs; `awf audit` is not run in the example; the example's hook payloads and

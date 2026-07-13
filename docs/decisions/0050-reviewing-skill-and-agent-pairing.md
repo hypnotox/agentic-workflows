@@ -76,14 +76,14 @@ gated command failing until the user re-adds the agent by hand.
 
 ## Invariants
 
-- `inv: reviewing-skill-agent-pairing` — an enabled, non-`local` skill whose catalog spec
+- `invariant: reviewing-skill-agent-pairing` — an enabled, non-`local` skill whose catalog spec
   carries `requiresAgent` fails `sync`/`check` (via `project.Open`) when that agent is not in
   the `agents:` enable array.
-- `inv: remove-agent-pairing-guard` — `awf remove agent` refuses, with the config file
+- `invariant: remove-agent-pairing-guard` — `awf remove agent` refuses, with the config file
   unchanged, while an enabled, non-`local` skill requires the agent.
-- `inv: add-skill-pairs-agent` — `awf add skill` enables the skill's required agent in the same
+- `invariant: add-skill-pairs-agent` — `awf add skill` enables the skill's required agent in the same
   config rewrite when it is missing.
-- `inv: reviewing-skill-specs-paired` — every catalog skill named `reviewing-*` carries a
+- `invariant: reviewing-skill-specs-paired` — every catalog skill named `reviewing-*` carries a
   non-empty `requiresAgent` naming its dispatched agent (prefix-anchored catalog test, covering
   future reviewing skills as well as the current four).
 

@@ -63,7 +63,7 @@ one implementation plan.
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`); untagged bullets are textual contracts.
 
-- `inv: skill-prose-tool-agnostic` — every rendered skill and agent body is free of runtime
+- `invariant: skill-prose-tool-agnostic` — every rendered skill and agent body is free of runtime
   tool-name tokens; the backing check matches the complete neutralised vocabulary
   **case-insensitively** and word-anchored (`subagent_type` / "subagent type", "Agent tool" / "the
   agent tool", the "`Agent` prompt" phrasing, "Skill tool", "AskUserQuestion"), so the lowercase "the

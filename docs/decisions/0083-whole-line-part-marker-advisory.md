@@ -89,7 +89,7 @@ awf-owned template sources for ADR citations and identity literals.
 
 ## Invariants
 
-- `inv: part-marker-advisory` — a trimmed part line beginning with a marker-shaped
+- `invariant: part-marker-advisory` — a trimmed part line beginning with a marker-shaped
   `awf:section`/`awf:end` comment opener, outside fenced code, yields a
   part-path-keyed note from `awf check` and `awf init`, and never by itself causes
   any command to exit non-zero; inline prose quoting the marker form mid-line and a

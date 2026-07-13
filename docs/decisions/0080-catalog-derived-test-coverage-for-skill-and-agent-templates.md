@@ -130,17 +130,17 @@ so catalog-derived fixture builders live at their test call sites, not in
 
 ## Invariants
 
-- `inv: catalog-template-sweep` — every `catalog.Standard` skill and agent
+- `invariant: catalog-template-sweep` — every `catalog.Standard` skill and agent
   template is rendered under empty data by a catalog-derived loop that bans
   leak residue and undeclared skill-reference residue; the loop's artifact set
   derives from the catalog, never a hand-maintained list.
-- `inv: requires-skills-exact` — `RequiresSkills` declarations are exact:
+- `invariant: requires-skills-exact` — `RequiresSkills` declarations are exact:
   an unconditional skill reference missing from the declaration and a declared
   entry no longer present in the rendered output both fail the sweep.
-- `inv: conditional-fallback-case-guard` — every catalog template whose
+- `invariant: conditional-fallback-case-guard` — every catalog template whose
   post-expansion source contains a conditional template action has a
   hand-authored unset-data case in the fallback case list.
-- `inv: golden-test-completeness` — every catalog skill and agent has its
+- `invariant: golden-test-completeness` — every catalog skill and agent has its
   per-artifact golden test function in `internal/project`.
 
 ## Consequences

@@ -133,15 +133,15 @@ Each slug below is backed by a `// invariant: <slug>` marker (comment or test) i
 commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them once this ADR is
 `Implemented`.
 
-- `inv: pitfall-data-validated` — `awf check` fails on unparseable `.awf/docs/pitfalls.yaml`
+- `invariant: pitfall-data-validated` — `awf check` fails on unparseable `.awf/docs/pitfalls.yaml`
   data, and on an entry with an empty/newline-bearing title or an empty body; the transform that
   renders `docs/pitfalls.md` is a hard error on the same malformed data.
-- `inv: pitfall-domains-resolved` — `awf check` fails a pitfall entry whose `domains:` names a
+- `invariant: pitfall-domains-resolved` — `awf check` fails a pitfall entry whose `domains:` names a
   domain not configured in the project; an entry with no `domains:` is valid and never surfaces
   via `awf context`.
-- `inv: pitfall-adr-link-resolved` — `awf check` fails a pitfall entry whose `related:` names an
+- `invariant: pitfall-adr-link-resolved` — `awf check` fails a pitfall entry whose `related:` names an
   ADR number with no matching file under `docs/decisions/`.
-- `inv: context-surfaces-pitfalls` — `awf context` surfaces every pitfall whose `domains:` names
+- `invariant: context-surfaces-pitfalls` — `awf context` surfaces every pitfall whose `domains:` names
   an owning domain of a queried path, on the single `ContextResult`, preserving the ADR-0092
   read-only / output-parity / static-fallback guarantees.
 

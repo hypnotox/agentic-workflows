@@ -134,18 +134,18 @@ Grounding the design against the code surfaced facts that shape it:
 
 ## Invariants
 
-- `inv: context-read-only` — the `context` command never writes to disk or mutates
+- `invariant: context-read-only` — the `context` command never writes to disk or mutates
   config or the lock; it only reads committed state. Backed by a test that snapshots
   the working tree (file mtimes and `.awf/awf.lock` bytes) before and after
   `awf context` across its branches and asserts byte-identity, with the marker on the
   command entry point (which holds no writer dependency).
-- `inv: context-static-fallback` — `awf context` outside an adopted tree
+- `invariant: context-static-fallback` — `awf context` outside an adopted tree
   (`ConfigPath` absent) degrades to a static/empty answer rather than refusing,
   mirroring `config-command-static-fallback`. The inside-tree binary-version gate is
   the shared `gate()` marker (`inv: version-compat-gate`), which `context` inherits
   rather than re-declaring — so this slug backs the fallback branch alone, at a
   single check site.
-- `inv: context-output-parity` — the human and `--json` renderings of `awf context`
+- `invariant: context-output-parity` — the human and `--json` renderings of `awf context`
   report the same underlying context set for the same inputs, because both derive
   from one assembled struct.
 

@@ -64,7 +64,7 @@ Consequences).
 
 ## Invariants
 
-- `inv: audit-uncommitted-changes` — when enabled, `awf audit` reports an `Error` finding if the
+- `invariant: audit-uncommitted-changes` — when enabled, `awf audit` reports an `Error` finding if the
   working tree has any uncommitted change: a tracked modification, or an untracked file not matched
   by the repository's `.gitignore` or `.git/info/exclude`. "Not matched" here is exactly what go-git's
   `Worktree().Status()` reports (see the Consequences note on the global-`core.excludesFile` gap), so

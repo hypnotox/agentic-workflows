@@ -67,7 +67,7 @@ ADR-0001 (the rendering engine and its publication-safety contract). ADR-0015 st
 
 ## Invariants
 
-- `inv: parts-raw` — A convention part body is never passed through `text/template`; it appears
+- `invariant: parts-raw` — A convention part body is never passed through `text/template`; it appears
   verbatim in rendered output. Backed by a render-layer test asserting that a part containing
   literal `{{`/`}}` and template-shaped text renders byte-for-byte, and that a part is not
   variable-interpolated while the surrounding default sections are.

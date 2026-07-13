@@ -17,7 +17,7 @@ _Domains: rendering_
 `.awf/bootstrap.sh` is consumed as `"$(bash .awf/bootstrap.sh)" <args>`, so its stdout is the
 binary path and nothing else — a checksum tool's `<asset>: OK` line on stdout execs as part of
 the command and fails only on cache-miss runs, which presents as flaky CI. Every diagnostic in
-rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`inv:
+rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`invariant:
 bootstrap-stdout-path-only`, ADR-0049).
 
 ## Adding a catalog skill: what the guards force
@@ -393,7 +393,7 @@ implementation commit that makes it true, alongside the status flip.
 
 _Domains: invariants_
 
-The invariant scanner demands every `inv:` slug of an Implemented ADR stay backed until an
+The invariant scanner demands every `invariant:` slug of an Implemented ADR stay backed until an
 *Implemented* successor retires it — so a commit that removes or renames the backing marker
 cannot land while the successor is still Proposed, and the green-gate-per-commit rule then
 forces the feature and the successor's `Implemented` flip into one commit. The ADR-0085
@@ -529,7 +529,7 @@ submodule) and takes a deliberate stance on hidden directories; a repo open reso
 gitfile layout; enumeration derived from git history (commit diffs, `git ls-files`) is
 immune by construction and preferred where it fits.
 
-## An `inv:` backing marker must open its own line, not trail a statement
+## An `invariant:` backing marker must open its own line, not trail a statement
 
 _Domains: invariants_
 
@@ -632,13 +632,13 @@ _Domains: adr-system_
 
 _Related: ADR-0069_
 
-When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `inv:` slug
+When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `invariant:` slug
 has a source marker — but NOTHING verifies the slug also appears as a bullet in the agent guide's
 Invariants section (authored in `.awf/agents-doc.yaml`, rendered into `AGENTS.md`). Every recent
 invariant-bearing ADR (0091, 0092, 0098, 0099, 0102) added those bullets by hand, and a plan can
 omit the step with a fully green gate — the drift is silent, caught here only by a reviewer's
 doc-currency lens. Until a deterministic check exists (a deferred follow-up: assert every
-non-retired Implemented-ADR `inv:` slug has a matching agents-doc bullet), treat the
+non-retired Implemented-ADR `invariant:` slug has a matching agents-doc bullet), treat the
 `.awf/agents-doc.yaml` update as a mandatory step of any invariant-introducing implementation, in
 the same commit that flips the ADR (2026-07-13).
 

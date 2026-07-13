@@ -123,11 +123,11 @@ should exist and fail first before the fix comes in."
 
 ## Invariants
 
-- `inv: lock-atomic-save` — `.awf/awf.lock` and migration rewrites of existing config files
+- `invariant: lock-atomic-save` — `.awf/awf.lock` and migration rewrites of existing config files
   are written via the temp-file-plus-rename helper; no direct `os.WriteFile` of the lock or
   of an existing `.awf/config.yaml` remains in `internal/manifest` or `internal/migrate`
   (fresh-file writes in the 0→1 tree port exempt per Decision 1).
-- `inv: corrupt-lock-refuses` — a present-but-unreadable `.awf/awf.lock` causes a hard error
+- `invariant: corrupt-lock-refuses` — a present-but-unreadable `.awf/awf.lock` causes a hard error
   in every lock reader (gate, upgrade, sync, check, audit, uninstall, init collisions);
   in particular `SyncReport` refuses before writing any file, so a corrupt lock can never
   create a backup, skip a prune, or be overwritten.

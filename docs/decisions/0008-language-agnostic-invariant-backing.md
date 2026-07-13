@@ -136,21 +136,21 @@ a workflow/identity change) and a plan because it is multi-commit.
 Checkable contracts, tagged per the convention (each backed by an `internal/invariants` /
 `internal/config` test added at implementation):
 
-- `inv: invariants-three-state` — with a non-empty required set: a `nil` `Invariants` (or present
+- `invariant: invariants-three-state` — with a non-empty required set: a `nil` `Invariants` (or present
   with no sources and not disabled) reports every slug `unchecked`; `Disabled: true` reports
   nothing (clean); non-empty `Sources` reports only unbacked slugs.
-- `inv: invariants-multilang-scan` — a slug backed by `<marker> invariant: <slug>` in a file whose
+- `invariant: invariants-multilang-scan` — a slug backed by `<marker> invariant: <slug>` in a file whose
   basename matches a configured glob is detected as backed for a non-`//`/non-`.go` pair
   (e.g. `marker: "#"`, `globs: ["*.py"]`).
-- `inv: invariants-marker-literal` — the marker is matched as a literal string; a marker containing
+- `invariant: invariants-marker-literal` — the marker is matched as a literal string; a marker containing
   regex metacharacters is not interpreted as a regex.
-- `inv: invariants-marker-whitespace` — a slug is detected when optional whitespace separates the
+- `invariant: invariants-marker-whitespace` — a slug is detected when optional whitespace separates the
   marker from `invariant:` (e.g. `// invariant: <slug>` with `marker: "//"`), so existing C-style
   backing comments stay backed under `{globs:["*.go"], marker:"//"}`.
-- `inv: invariants-glob-basename` — globs match file basenames via `filepath.Match` (`*.go` matches
+- `invariant: invariants-glob-basename` — globs match file basenames via `filepath.Match` (`*.go` matches
   a nested file), and `Config.Validate` rejects both a syntactically malformed glob and a glob
   containing a path separator (e.g. `**/*.go`, `src/*.go`).
-- `inv: invariants-zero-slugs-clean` — a project whose `Implemented` ADRs declare no `inv:` slugs is
+- `invariant: invariants-zero-slugs-clean` — a project whose `Implemented` ADRs declare no `inv:` slugs is
   clean regardless of the `invariants` config (including absent).
 
 ## Consequences

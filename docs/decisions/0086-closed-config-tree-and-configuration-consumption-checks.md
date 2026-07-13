@@ -138,20 +138,20 @@ Forces shaping the design:
 
 ## Invariants
 
-- `inv: closed-config-tree` — every filesystem entry under `.awf/` outside the claimed-path
+- `invariant: closed-config-tree` — every filesystem entry under `.awf/` outside the claimed-path
   model of Decision 1 (with `memory/**` exempt) is reported as failing drift by `awf check`.
-- `inv: awf-bak-flagged` — a `*.awf-bak` or `*.awf-bak.<N>` file under `.awf/` (outside
+- `invariant: awf-bak-flagged` — a `*.awf-bak` or `*.awf-bak.<N>` file under `.awf/` (outside
   `memory/**`) reports drift with the stale-backup detail, never passes silently.
-- `inv: unused-var-drift` — a non-empty `vars:` key referenced by no assembled template
+- `invariant: unused-var-drift` — a non-empty `vars:` key referenced by no assembled template
   source and no `gateCmd`/`checkCmd` part placeholder (domain-doc parts included) is failing
   drift; empty-valued keys never are.
-- `inv: unused-data-drift` — a sidecar `data:` key unreferenced by its artifact's assembled
+- `invariant: unused-data-drift` — a sidecar `data:` key unreferenced by its artifact's assembled
   sources across all enabled targets is failing drift keyed to the sidecar path.
-- `inv: inert-sidecar-field-rejected` — non-empty `paths:` on a non-domain sidecar
+- `invariant: inert-sidecar-field-rejected` — non-empty `paths:` on a non-domain sidecar
   (regardless of its `local:` flag) and any non-`paths:` field on a domain sidecar
   (non-empty `data:`/`sections:`, or `local: true`) fail every gated command at
   project open.
-- `inv: init-prompts-enabled-vars` — interactive `awf init` prompts only for vars referenced
+- `invariant: init-prompts-enabled-vars` — interactive `awf init` prompts only for vars referenced
   by the scaffolded enabled set's templates.
 - Textual: the advisory tier is untouched — ADR-0070 stub notes and ADR-0083 marker notes
   remain non-failing; ADR-0045's unset-var advisory remains the *unset* direction's contract.

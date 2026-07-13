@@ -112,9 +112,9 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `inv: absent-var-acknowledged` — an absent `vars:` key never produces an unset-var
+- `invariant: absent-var-acknowledged` — an absent `vars:` key never produces an unset-var
   note; a present key with an empty or null value does.
-- `inv: new-seeds-scaffold-vars` — `awf new` adds an empty `vars:` key for every var its
+- `invariant: new-seeds-scaffold-vars` — `awf new` adds an empty `vars:` key for every var its
   scaffolded template source references that is absent from config.
 - Notes remain non-failing (`inv: completeness-advisory-nonfailing`, ADR-0045 — unchanged
   and still backed).

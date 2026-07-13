@@ -138,14 +138,14 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
 
 ## Invariants
 
-- `inv: unified-doc-model` — every doc/singleton projection is a derivation over the single `catalog`
+- `invariant: unified-doc-model` — every doc/singleton projection is a derivation over the single `catalog`
   doc collection, asserted by iterating that collection: every `Mandatory` entry appears in
   `SingletonKinds`; every `Mandatory && !AgentsDoc` entry appears in `plainSingletons` (and no other
   kind does); every mandatory entry's `TemplateKey`/`Path` appears in `Layout`'s `templateMap` with the
   derived path. (The "no hand-maintained list" property is a design consequence of full derivation, not
   itself the machine check — the projection-vs-collection assertions above are. Pool exclusion is the
   separate `mandatory-doc-pool-exclusion` invariant.)
-- `inv: mandatory-doc-pool-exclusion` — no `Mandatory` entry appears in the toggleable-doc pool: it is
+- `invariant: mandatory-doc-pool-exclusion` — no `Mandatory` entry appears in the toggleable-doc pool: it is
   absent from `CatalogNames("doc")`, rejected by `awf add doc` / `awf remove doc`, and never seeds a
   scaffolded `docs:` array. Backed by a test asserting the `!Mandatory` filter across the pool
   consumers.

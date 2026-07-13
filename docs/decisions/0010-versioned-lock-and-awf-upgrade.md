@@ -158,22 +158,22 @@ Checkable contracts that must hold while this decision stands. Tagged slugs are 
 by tests landing with implementation (enforced by `awf check` once this ADR is
 `Implemented`; ADR-0008); untagged bullets are textual contracts.
 
-- `inv: schema-version-lock` — `manifest.Lock` carries an integer `schemaVersion`; a
+- `invariant: schema-version-lock` — `manifest.Lock` carries an integer `schemaVersion`; a
   lock written by `Sync` has `schemaVersion` equal to the current schema version (the
   highest registered migration `To`), and `AWFVersion` remains an independent tool
   release string.
-- `inv: upgrade-gate` — `awf sync` and `awf check` (in their `cmd/awf` handlers, before
+- `invariant: upgrade-gate` — `awf sync` and `awf check` (in their `cmd/awf` handlers, before
   `project.Open`) exit non-zero with a "run `awf upgrade`" message when the project's
   effective generation (legacy layout → `0`, else `lock.schemaVersion`) is below current
   **and at least one** registered migration has a `To` in the open interval
   `(generation, current]`; a project at the current schema does not gate.
-- `inv: migration-ordering` — `awf upgrade` applies exactly the registered migrations
+- `invariant: migration-ordering` — `awf upgrade` applies exactly the registered migrations
   with `To` greater than the detected generation, in ascending `To` order, and is
   idempotent: re-running at the current schema applies nothing and exits zero.
-- `inv: legacy-read-isolation` — The legacy `.claude/awf.yaml` is read only by the
+- `invariant: legacy-read-isolation` — The legacy `.claude/awf.yaml` is read only by the
   `internal/migrate` registry under `awf upgrade`; no `config.Load`/render/`Sync`/`Check`
   path reads it (the named exemption to ADR-0009 `config-root`).
-- `inv: noop-autobump` — When the effective generation is below current but **no**
+- `invariant: noop-autobump` — When the effective generation is below current but **no**
   registered migration has a `To` in the open interval `(generation, current]`, `awf sync`
   writes the lock at the current schema version without gating and without error. (This
   case only arises for a project whose tree layout already loads; a legacy-layout project

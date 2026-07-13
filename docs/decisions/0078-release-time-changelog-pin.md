@@ -82,10 +82,10 @@ file order, so nothing today proves the changelog is sorted newest-first.
 
 ## Invariants
 
-- `inv: changelog-monotonic` — the gate fails when the embedded changelog's entries are not
+- `invariant: changelog-monotonic` — the gate fails when the embedded changelog's entries are not
   strictly descending by semver or the newest entry exceeds `project.Version`; it does not
   fail merely because `project.Version` has no entry yet.
-- `inv: release-changelog-pin` — `cmd/releasecheck` exits non-zero unless the newest embedded
+- `invariant: release-changelog-pin` — `cmd/releasecheck` exits non-zero unless the newest embedded
   changelog entry equals `project.Version` and a standing `[Unreleased]` section is present
   and empty modulo whitespace; a gate test asserts `release.yml` invokes it before the
   GoReleaser step.

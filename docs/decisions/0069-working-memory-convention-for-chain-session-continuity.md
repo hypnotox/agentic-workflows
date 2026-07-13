@@ -147,12 +147,12 @@ Mechanical facts established by a grounding pass against source:
 
 ## Invariants
 
-- `inv: memory-gitignore-always-on` — every `awf sync` renders `.awf/memory/.gitignore`
+- `invariant: memory-gitignore-always-on` — every `awf sync` renders `.awf/memory/.gitignore`
   unconditionally (no config gate), lock-tracked, with content that ignores everything
   in the directory except itself and carries a `#`-comment provenance banner.
-- `inv: agents-doc-section-parity` — the agents-doc template's `awf:section` markers
+- `invariant: agents-doc-section-parity` — the agents-doc template's `awf:section` markers
   match the catalog-declared section list for the `agents-doc` entry.
-- `inv: memory-checkpoint-chain-coverage` — every non-terminal chain-node skill
+- `invariant: memory-checkpoint-chain-coverage` — every non-terminal chain-node skill
   template (the nine in Decision 8) plus `bugfix` and `debugging` carries the
   memory-checkpoint reference in its rendered full-catalog output; `retrospective`
   carries the deletion step.

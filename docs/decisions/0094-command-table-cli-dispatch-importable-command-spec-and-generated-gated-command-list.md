@@ -178,14 +178,14 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
 
 ## Invariants
 
-- `inv: cli-command-spec-single-source` — stated as a positive derivation the backing
+- `invariant: cli-command-spec-single-source` — stated as a positive derivation the backing
   test asserts by equality: the top-level usage line, the `awf help` overview (its
   command set and order), and the generated gated-command list are each byte-equal to
   their `internal/clispec`-derived rendering, and the gated set is anchored to its known
   membership so a misclassification (e.g. marking `upgrade` gated, or dropping `context`)
   fails the test. There is no second command-order slice, hardcoded usage enumeration, or
   hand-written gated list in `cmd/awf` for these to diverge from.
-- `inv: gated-commands-generated` — the gated-command list rendered into awf-managed
+- `invariant: gated-commands-generated` — the gated-command list rendered into awf-managed
   docs is generated from `internal/clispec` — exactly the top-level commands whose gating
   classification is not `ungated`, a group command contributing only its single token —
   through one generator feeding both the `{{=awf:gatedCommands}}` placeholder and the

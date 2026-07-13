@@ -128,7 +128,7 @@ Scope is this repo's own gate only; promoting dead-code analysis into the render
 
 ## Invariants
 
-- `inv: deadcode-gate` — `./x gate` runs `deadcode` (no `-test`) over `./...` and fails when
+- `invariant: deadcode-gate` — `./x gate` runs `deadcode` (no `-test`) over `./...` and fails when
   any reported unreachable function lies outside `internal/testsupport/`; `cmd/deadcodecheck`
   ignores exactly that path prefix and exits non-zero on every other finding. Backed by a
   `// invariant: deadcode-gate` marker on the `cmd/deadcodecheck` test that asserts a

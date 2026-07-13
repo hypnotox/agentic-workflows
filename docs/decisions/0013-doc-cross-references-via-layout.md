@@ -121,16 +121,16 @@ docs will live in.
 
 Constraints that must hold while this decision stands; a violation should trigger a new ADR.
 
-- `inv: no-doc-path-vars` — No template under `templates/` references any of the migrated or
+- `invariant: no-doc-path-vars` — No template under `templates/` references any of the migrated or
   deleted vars: `workflowDoc`, `debuggingDoc`, `pitfallsDoc`, `roadmapDoc`, `stateDocsPath`,
   `oracleStateDoc`, `autonomousAdrRef`, `hostGitAdrRef`, `keyInvariantAdrRef`, `noDivingAdrRef`,
   `perTaskReviewAdrRef`.
-- `inv: layout-docs-enabled-only` — `.layout.docs` maps exactly the names in `config.Docs`,
+- `invariant: layout-docs-enabled-only` — `.layout.docs` maps exactly the names in `config.Docs`,
   each to `<docsDir>/<name>.md`, and contains no other keys.
-- `inv: workflow-ref-fallback` — `.layout.workflowRef` equals `<docsDir>/workflow.md` when the
+- `invariant: workflow-ref-fallback` — `.layout.workflowRef` equals `<docsDir>/workflow.md` when the
   workflow doc is enabled and the literal `AGENTS.md` when it is not.
-- `inv: domains-dir-given` — `.layout.domainsDir` equals `<docsDir>/domains`.
-- `inv: doc-gated-skill-suppressed` — a skill whose catalog entry declares `requiresDoc: D`
+- `invariant: domains-dir-given` — `.layout.domainsDir` equals `<docsDir>/domains`.
+- `invariant: doc-gated-skill-suppressed` — a skill whose catalog entry declares `requiresDoc: D`
   is present in the render set if and only if `D` is in the project's enabled docs. Checkable by
   rendering twice — with and without `D` enabled — and asserting the skill's output path
   (e.g. `.claude/skills/<prefix>-roadmap-graduation/SKILL.md`) appears in the render set only when

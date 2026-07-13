@@ -121,7 +121,7 @@ and the 100% coverage gate (ADR-0012).
 
 ## Invariants
 
-- `inv: skill-section-parity` — for every catalog skill and agent, the set of `awf:section` markers in
+- `invariant: skill-section-parity` — for every catalog skill and agent, the set of `awf:section` markers in
   its template source equals its `catalog.yaml`-declared `sections` list (set equality,
   order-independent), so a section rename cannot half-land with a blank-path provenance pointer. Backed
   by `// invariant: skill-section-parity` in an `internal/project` `_test.go` (matching

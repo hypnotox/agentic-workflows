@@ -65,9 +65,9 @@ without a `<no value>` failure.
 
 ## Invariants
 
-- `inv: scaffold-core-only` — the config `ScaffoldConfig` generates enables exactly the catalog's
+- `invariant: scaffold-core-only` — the config `ScaffoldConfig` generates enables exactly the catalog's
   core skills and core docs (plus all agents and all hooks), and no non-core skill or doc.
-- `inv: scaffold-seeds-all-vars` — `ScaffoldConfig` seeds every var referenced by any catalog
+- `invariant: scaffold-seeds-all-vars` — `ScaffoldConfig` seeds every var referenced by any catalog
   skill, agent, hook, or doc template, independent of whether its target is core, so opt-in
   additions render cleanly. The backing test derives its expected var set directly from those
   template families (rather than mirroring `collectVars`'s inputs), so it fails if a future

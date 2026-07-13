@@ -79,17 +79,17 @@ runs on demand to decide where new domains are warranted.
 
 ## Invariants
 
-- `inv: uncovered-lists-unowned-only` — In `--uncovered` mode the reported entries
+- `invariant: uncovered-lists-unowned-only` — In `--uncovered` mode the reported entries
   cover exactly the scanned tracked paths (under the given scan roots, or the whole
   tree) matched by no configured domain `paths` glob: every such uncovered path is
   represented by exactly one reported entry — itself or a reported ancestor
   directory — and no path owned by a domain is represented by any entry. (Whether an
   entry is a file or a collapsed directory is the separate
   `uncovered-collapses-directories` contract.)
-- `inv: uncovered-collapses-directories` — A directory all of whose scanned tracked
+- `invariant: uncovered-collapses-directories` — A directory all of whose scanned tracked
   descendants are uncovered is reported as that topmost directory, never as its
   individual descendant files.
-- `inv: uncovered-output-parity` — The human and `--json` renderings of
+- `invariant: uncovered-output-parity` — The human and `--json` renderings of
   `--uncovered` report the same uncovered set, because both derive from one
   assembled result (the `--uncovered`-mode analogue of `context-output-parity`).
 

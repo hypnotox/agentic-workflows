@@ -54,7 +54,7 @@ Grounding discoveries that shape the design:
   with `<!-- awf:section <name> -->…<!-- awf:end -->`; an override part lives at
   `.awf/docs/parts/<doc>/<section>.md`. `awf check` flags an override part whose section is not
   catalog-declared. A non-empty prose default body is publication-safe (ADR-0001).
-- `inv: setup-guards-hookspath` is backed in `cmd/awf/setup.go` and declared by ADR-0023, which
+- `invariant: setup-guards-hookspath` is backed in `cmd/awf/setup.go` and declared by ADR-0023, which
   also declares the live, untouched `inv: init-force-backs-up` and `inv: uninstall-removes-lock-tracked`.
   Retiring the one slug while keeping ADR-0023 `Implemented` uses the
   [ADR-0031](0031-invariant-retirement-via-successor-adr.md) retirement mechanism.
@@ -114,7 +114,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `inv: hooks-config-dropped` — the schema-4 migration removes the `hooks:` key from a
+- `invariant: hooks-config-dropped` — the schema-4 migration removes the `hooks:` key from a
   `.awf/config.yaml`, and is a no-op on a config that has no `hooks:` key (idempotent).
 - awf renders no files under `.githooks/`, and the catalog and config schema declare no `hook`
   kind or `hooks` key (textual contract; verified by the golden render no longer producing

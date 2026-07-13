@@ -117,21 +117,21 @@ implementation plan's tests.)
 - `internal/frontmatter` is the only non-test code that splits `---`-delimited frontmatter;
   `internal/adr` and the skill/agent validator both call it, and the former
   `parseFrontmatterAndTitle` magic-offset splitter no longer exists.
-- `inv: frontmatter-split` — `frontmatter.Split` on content without a leading `---` returns `found == false` and the
+- `invariant: frontmatter-split` — `frontmatter.Split` on content without a leading `---` returns `found == false` and the
   original content as `body`; on well-formed frontmatter it returns the YAML block and the body
   following the closing `---` line.
-- `inv: render-active-md` — `internal/adr.RenderActiveMD` produces output byte-identical to the pre-rename generator for
+- `invariant: render-active-md` — `internal/adr.RenderActiveMD` produces output byte-identical to the pre-rename generator for
   the same decisions directory (this repo's `ACTIVE.md` is unchanged by the refactor) and returns
   `""` when the directory holds no ADRs.
 - `awf sync` returns an error and writes nothing when any rendered skill or agent output has
   missing or unparseable frontmatter, or an empty `name` or `description`.
-- `inv: check-invalid-frontmatter` — `awf check` reports an `invalid-frontmatter` drift entry for an on-disk skill/agent file that is
+- `invariant: check-invalid-frontmatter` — `awf check` reports an `invalid-frontmatter` drift entry for an on-disk skill/agent file that is
   otherwise in sync (not `stale`/`orphaned`/`missing`/`hand-edited`) but whose frontmatter is
   missing, unparseable, or has an empty `name`/`description`; a clean synced tree reports no such
   entry, and at most one drift entry is reported per path.
 - Frontmatter validation applies to skill and agent outputs only; rendering hooks, docs, or
   `AGENTS.md` never triggers it.
-- `inv: templates-valid-frontmatter` — Every catalog skill and agent template, rendered with representative data, produces frontmatter
+- `invariant: templates-valid-frontmatter` — Every catalog skill and agent template, rendered with representative data, produces frontmatter
   that parses with a non-empty `name` and a non-empty `description`.
 
 ## Consequences

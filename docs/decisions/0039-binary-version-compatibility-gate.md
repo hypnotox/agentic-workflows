@@ -90,7 +90,7 @@ resolves without a new dependency but requires a leading `v` (it rejects `0.4.0`
 
 ## Invariants
 
-- `inv: version-compat-gate` — every gated command (`sync`, `check`, `invariants`, `audit`, `list`)
+- `invariant: version-compat-gate` — every gated command (`sync`, `check`, `invariants`, `audit`, `list`)
   routes through `gate()`, which refuses to proceed when the running binary is behind the project on
   either axis: config schema generation greater than `migrate.Current()`, or lock `awfVersion`
   semver-greater than `awfVersion()`. A binary at or ahead of the project on both axes is permitted.

@@ -71,10 +71,10 @@ freeform — the adopter invents domain names and authors each domain's current-
 
 ## Invariants
 
-- `inv: cli-config-kinds` — `awf add`/`remove` operate on exactly the five config enable arrays via a
+- `invariant: cli-config-kinds` — `awf add`/`remove` operate on exactly the five config enable arrays via a
   required `<kind>` token, validating catalog-backed kinds against the catalog and `domain` names
   through the `config` path-safety rule.
-- `inv: remove-block-scoped` — `awf remove <kind> <name>` deletes `<name>` only from the named kind's
+- `invariant: remove-block-scoped` — `awf remove <kind> <name>` deletes `<name>` only from the named kind's
   array block, leaving a same-named entry under any other kind untouched.
 
 ## Consequences

@@ -76,7 +76,7 @@ anywhere in init, sync, check, upgrade, or audit, so leftover keys in adopter co
 - Every catalog var descriptor names a value the rendered artifacts or the awf tooling execute
   or enforce; no descriptor exists solely to tune prose wording. (Textual contract — the
   functional/prose distinction is a judgment ADR review applies, not a machine check.)
-- `inv: var-descriptor-set-pinned` — the catalog's string var descriptor keys are exactly the
+- `invariant: var-descriptor-set-pinned` — the catalog's string var descriptor keys are exactly the
   eight functional keys this ADR enumerates (`gateCmd`, `gateCmdFull`, `checkCmd`,
   `commitGateCmd`, `testCmd`, `commitScopes`, `activeMdRegenCmd`, `invariantTestPath`), pinned by
   a test whose set is extended only by a successor ADR (the ADR-0082 pinned-list pattern). The

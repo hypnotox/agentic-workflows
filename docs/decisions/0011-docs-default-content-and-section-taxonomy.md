@@ -109,10 +109,10 @@ Checkable contracts that must hold while this decision stands. Tagged slugs are 
 landing with implementation (enforced by `awf check` once this ADR is `Implemented`; ADR-0008);
 untagged bullets are textual contracts.
 
-- `inv: docs-section-parity` — For every doc in the catalog, the set of declared sections equals
+- `invariant: docs-section-parity` — For every doc in the catalog, the set of declared sections equals
   the set of `<!-- awf:section NAME -->` marker blocks in its template, and the doc renders from
   template defaults with no `<no value>` token.
-- `inv: section-orphan-flagged` — `awf check` reports a convention part
+- `invariant: section-orphan-flagged` — `awf check` reports a convention part
   `<kind>/parts/<target>/<section>.md` as drift whenever `<section>` is not among the enabled
   target's catalog-declared sections. (An undeclared sidecar `sections` key is separately rejected
   as a render error by `checkSectionsAllowed`, covered by the existing config tests.)

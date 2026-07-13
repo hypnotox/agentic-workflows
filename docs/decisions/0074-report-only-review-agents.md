@@ -80,7 +80,7 @@ agent stays enabled, only its role narrows.
 
 ## Invariants
 
-- `inv: reviewers-report-only` — no rendered reviewer agent (the shared spine or any of the three
+- `invariant: reviewers-report-only` — no rendered reviewer agent (the shared spine or any of the three
   reviewer templates) contains a fix-application, commit, or re-review imperative: the reviewer is
   instructed to report findings, never to edit, commit, or loop. Backed by a golden-render test in
   `internal/project` over the `awf:include`-expanded reviewer renders asserting the rendered output

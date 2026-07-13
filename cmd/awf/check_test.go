@@ -106,7 +106,7 @@ func TestRunCheckSurfacesInvariantError(t *testing.T) {
 	}
 	adr := func(n, title string) string {
 		return testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-			testsupport.WithTitle(n+": "+title), testsupport.WithBody("## Invariants\n- `inv: dup-slug`\n## Context\nx\n"))
+			testsupport.WithTitle(n+": "+title), testsupport.WithBody("## Invariants\n- `invariant: dup-slug`\n## Context\nx\n"))
 	}
 	if err := os.WriteFile(filepath.Join(dec, "0001-a.md"), []byte(adr("0001", "A")), 0o644); err != nil {
 		t.Fatal(err)

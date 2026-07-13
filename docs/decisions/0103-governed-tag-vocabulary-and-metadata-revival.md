@@ -124,11 +124,11 @@ Each slug below is backed by a `// invariant: <slug>` marker (comment or test) i
 commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them once this ADR is
 `Implemented`.
 
-- `inv: tag-vocabulary-governed` — with a non-empty `tags:` vocabulary, `awf check` fails on any tag
+- `invariant: tag-vocabulary-governed` — with a non-empty `tags:` vocabulary, `awf check` fails on any tag
   used by an ADR or a pitfall that is not a declared vocabulary member, and on any vocabulary entry
   whose meaning is empty; with an empty or absent vocabulary the membership rule is inert (opt-in
   degradation).
-- `inv: adr-related-link-resolved` — `awf check` fails an ADR whose `related:` names an ADR number
+- `invariant: adr-related-link-resolved` — `awf check` fails an ADR whose `related:` names an ADR number
   with no matching file under `docs/decisions/`; this holds independent of the tag vocabulary.
 
 ## Consequences

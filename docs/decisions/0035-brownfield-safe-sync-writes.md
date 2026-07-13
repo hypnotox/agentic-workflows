@@ -79,7 +79,7 @@ model unchanged — it narrows no decision item of either, so neither is partial
 
 ## Invariants
 
-- `inv: sync-backs-up-foreign` — during `awf sync`, a target path that exists on disk and is not
+- `invariant: sync-backs-up-foreign` — during `awf sync`, a target path that exists on disk and is not
   recorded as awf-written in the lock at the start of the sync is copied to a free `.awf-bak[.N]`
   sibling before being overwritten, and the backup is reported; a path recorded in that lock is
   overwritten with no backup. Backed by a test that syncs over both a foreign colliding file and a

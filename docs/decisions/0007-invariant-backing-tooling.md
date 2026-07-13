@@ -95,17 +95,17 @@ convention) and a plan because it is multi-commit.
 Checkable contracts, tagged per the convention this ADR introduces (each is backed by an
 `internal/invariants` test added at implementation):
 
-- `` `inv: invariants-implemented-only` `` — `invariants.Check` derives required slugs only from
+- `` `invariant: invariants-implemented-only` `` — `invariants.Check` derives required slugs only from
   ADRs whose status is `Implemented`; `Proposed`, `Accepted`, and `Superseded` ADRs contribute no
   required slugs.
-- `` `inv: invariants-unbacked-detected` `` — an `Implemented` ADR invariant slug with no
+- `` `invariant: invariants-unbacked-detected` `` — an `Implemented` ADR invariant slug with no
   `// invariant: <slug>` comment in any scanned `*.go` file yields a Finding; the same slug with at
   least one such comment yields none.
-- `` `inv: invariants-duplicate-slug` `` — the same `inv:` slug declared by two ADRs is reported as
+- `` `invariant: invariants-duplicate-slug` `` — the same `inv:` slug declared by two ADRs is reported as
   an error.
-- `` `inv: invariants-in-check` `` — `awf check` reports failure when `CheckInvariants` returns any
+- `` `invariant: invariants-in-check` `` — `awf check` reports failure when `CheckInvariants` returns any
   Finding and is clean when it returns none.
-- `` `inv: adr-sections-parsed` `` — `adr.ParseDir` populates `ADR.Sections["Invariants"]` with the
+- `` `invariant: adr-sections-parsed` `` — `adr.ParseDir` populates `ADR.Sections["Invariants"]` with the
   body of the Invariants section for an ADR that has one.
 
 ## Consequences

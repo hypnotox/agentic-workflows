@@ -41,7 +41,7 @@ An observation is a **promotion candidate** when the main thread saw it recur wi
 
 Route each recurring, codifiable observation to the **strongest** rung it can support:
 
-1. **Invariant** — a load-bearing rule the project must remember. Record the decision via `awf-proposing-adr`, give it an `inv:` slug, and back it with a `<marker> invariant: <slug>` comment or test (backing tests live under `./internal/...`). The marker and globs are config-driven, so this works in any language.
+1. **Invariant** — a load-bearing rule the project must remember. Record the decision via `awf-proposing-adr`, give it an `invariant:` slug, and back it with a `<marker> invariant: <slug>` proof comment on a test (backing tests live under `./internal/...`) — or declare it `unbacked-invariant:` with a `Verify:` note when no automatic test fits. The marker and globs are config-driven, so this works in any language.
 2. **Gate test or lint rule** — an ordinary mechanically-checkable rule that does not rise to an invariant. Add a test or linter rule so `./x gate` catches it; no decision record needed.
 3. **Code-review focus item** — a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
 4. **Pitfalls note** — tricky knowledge that is not mechanically checkable. Add an entry to `docs/pitfalls.md`.

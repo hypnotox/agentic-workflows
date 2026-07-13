@@ -102,19 +102,19 @@ process properties over history*, which is the audit's sole concern.
 Checkable contracts, each backed by an `internal/audit` / `internal/config` test added at
 implementation (`// invariant: <slug>`, `*.go` per `invariants.sources`):
 
-- `inv: audit-conventional-commits` — a range commit whose subject is malformed, carries a
+- `invariant: audit-conventional-commits` — a range commit whose subject is malformed, carries a
   disallowed type or scope, or exceeds `subjectMaxLength` yields an `Error` finding; a conforming
   commit yields none.
-- `inv: audit-adr-status-cochange` — a commit that changes an ADR file's `status:` frontmatter
+- `invariant: audit-adr-status-cochange` — a commit that changes an ADR file's `status:` frontmatter
   without also changing `ACTIVE.md` yields an `Error`; the same flip with `ACTIVE.md` co-changed
   yields none.
-- `inv: audit-dependency-warn` — a `dependencyManifests`-matching file changed on the branch with no
+- `invariant: audit-dependency-warn` — a `dependencyManifests`-matching file changed on the branch with no
   ADR file changed on the branch yields a finding of severity `Warning` (never `Error`).
-- `inv: audit-plan-threshold-warn` — branch-aggregate non-generated changed-lines exceeding
+- `invariant: audit-plan-threshold-warn` — branch-aggregate non-generated changed-lines exceeding
   `diffThreshold` with no `plansDir` file touched yields a finding of severity `Warning`.
-- `inv: audit-warn-exit-zero` — a run whose findings are all `Warning` returns no error from
+- `invariant: audit-warn-exit-zero` — a run whose findings are all `Warning` returns no error from
   `runAudit` (exit 0); any single `Error` finding makes it return non-zero.
-- `inv: audit-empty-range-clean` — a branch with no commits beyond the base yields zero findings.
+- `invariant: audit-empty-range-clean` — a branch with no commits beyond the base yields zero findings.
 
 The `dependencyManifests` basename-glob validation is the same contract already backed by ADR-0008's
 `invariants-glob-basename`; it is reused, not re-tagged. The shared validator is unit-tested at the

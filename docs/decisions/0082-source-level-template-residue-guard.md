@@ -80,11 +80,11 @@ reviews that introduced them — human review is demonstrably insufficient for t
 
 ## Invariants
 
-- `inv: template-source-residue` — every file in the embedded templates FS is free of
+- `invariant: template-source-residue` — every file in the embedded templates FS is free of
   `ADR-[0-9]{4}` tokens, and free of repo-identity literals (`hypnotox`,
   `agentic-workflows`) outside an explicit exemption list whose entries each fail when the
   named file no longer carries the literal.
-- `inv: residue-exemptions-pinned` — the identity-exemption list contains exactly two
+- `invariant: residue-exemptions-pinned` — the identity-exemption list contains exactly two
   entries, the bootstrap template and the agents-doc template, asserted by the guard test;
   extending the list requires a successor ADR amending this item.
 

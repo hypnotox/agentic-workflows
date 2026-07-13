@@ -118,16 +118,16 @@ Grounding facts that shaped the decision (verified against source):
 
 ## Invariants
 
-- `inv: pathglob-anchored` — `pathglob.Match` is an anchored full-path doublestar match against a
+- `invariant: pathglob-anchored` — `pathglob.Match` is an anchored full-path doublestar match against a
   slash-separated repo-relative path: `*.go` does not match `cmd/a.go`; `**/*.go` matches both
   `a.go` and `cmd/a.go`; `cmd/**` matches every file under `cmd/`. No production matcher matches
   against a basename.
-- `inv: audit-domain-code-staleness` — the rule emits a `Warning` for domain `X` exactly when `X`
+- `invariant: audit-domain-code-staleness` — the rule emits a `Warning` for domain `X` exactly when `X`
   is configured with non-empty sidecar `paths`, an in-range commit changed a non-generated file
   matching those patterns, and no in-range commit changed
   `.awf/domains/parts/<X>/current-state.md`; it is silent when the part is co-changed, when only
   generated paths matched, when `X` declares no `paths`, and when disabled via its toggle.
-- `inv: glob-migration-anchored` — the generation-7 migration rewrites every no-slash pattern in
+- `invariant: glob-migration-anchored` — the generation-7 migration rewrites every no-slash pattern in
   `invariants.sources[].globs` and `audit.dependencyManifests` to `**/<pattern>`, leaves slashed
   patterns untouched, and is idempotent.
 - The rule is advisory: it produces only `Warning` findings and never makes `awf audit` exit

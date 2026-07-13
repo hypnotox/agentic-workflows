@@ -255,7 +255,7 @@ func TestRunInvariantsReportsFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: unbacked-here` — x.\n## Consequences\nc\n"))
+		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: unbacked-here` — x.\n## Consequences\nc\n"))
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatal(err)

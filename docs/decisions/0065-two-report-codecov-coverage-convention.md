@@ -114,7 +114,7 @@ separately load-bearing change and is out of scope.
 
 ## Invariants
 
-- `inv: covered-profile-honors-ignores` — the filtered coverprofile emitted by
+- `invariant: covered-profile-honors-ignores` — the filtered coverprofile emitted by
   `internal/coverage` contains a block **iff** that block is not `// coverage-ignore`-d
   under the same `ignoredLines` logic the ADR-0012 gate uses; the two never diverge on
   what "ignored" means. Backed by a `// invariant: covered-profile-honors-ignores` marker

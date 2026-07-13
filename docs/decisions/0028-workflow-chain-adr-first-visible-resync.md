@@ -119,9 +119,9 @@ flip — `awf-reviewing-plan-resync` (its "the ADR status is flipped" preconditi
 
 ## Invariants
 
-- `inv: workflow-chain-adr-before-plan` — the rendered AGENTS.md / workflow.md chain string presents
+- `invariant: workflow-chain-adr-before-plan` — the rendered AGENTS.md / workflow.md chain string presents
   the ADR step before the plan step.
-- `inv: workflow-chain-surfaces-resync` — the rendered Workflow chain names the plan↔ADR resync
+- `invariant: workflow-chain-surfaces-resync` — the rendered Workflow chain names the plan↔ADR resync
   step; it is no longer hidden from the high-level chain.
 - The "single terminal review" / "grounding-check subsumes plan/ADR review" framing appears in no
   rendered awf-managed doc. (textual)

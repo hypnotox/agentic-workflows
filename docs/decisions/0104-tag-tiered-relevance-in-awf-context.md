@@ -111,23 +111,23 @@ Each slug below is backed by a `// invariant: <slug>` marker (comment or test) i
 commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them once this ADR is
 `Implemented`. The two retired slugs' markers are removed in the same commit that flips this ADR.
 
-- `inv: context-tier1-governs` — the Tier-1 ADR set reported by `awf context <paths>` is exactly the
+- `invariant: context-tier1-governs` — the Tier-1 ADR set reported by `awf context <paths>` is exactly the
   Implemented, non-retired ADRs declaring an invariant slug that is present as a marker under a
   queried path (the intersection of the path-present slugs with the shared `slug → declaring
   Implemented ADR` join); no Tier-1 ADR lacks such a slug and no such ADR is omitted.
-- `inv: context-tier2-topical` — the precise tag set is the union of the Tier-1 ADRs' tags with every
+- `invariant: context-tier2-topical` — the precise tag set is the union of the Tier-1 ADRs' tags with every
   tag that names a configured domain removed; a non-Tier-1, non-Superseded ADR is reported in Tier 2
   iff it shares a tag with that precise set or is named in a Tier-1 ADR's `related:`, and a pitfall
   is reported in Tier 2 iff it shares a tag with that set; every artifact appears in at most one tier
   (Tier 1 over Tier 2). An empty precise set yields a Tier 2 of only the Tier-1 ADRs' `related:`
   links.
-- `inv: context-tier3-collapsed` — a domain-membership ADR in neither Tier 1 nor Tier 2 is reported
+- `invariant: context-tier3-collapsed` — a domain-membership ADR in neither Tier 1 nor Tier 2 is reported
   only as part of a collapsed background count with the domain current-state pointers, never as an
   individually enumerated ADR entry.
-- `inv: context-surfaces-tiered-plans` — `awf context` surfaces a plan iff its `adrs:` links a
+- `invariant: context-surfaces-tiered-plans` — `awf context` surfaces a plan iff its `adrs:` links a
   Tier-1 or Tier-2 ADR, on the single `ContextResult`, preserving read-only / output-parity /
   static-fallback (replaces `context-surfaces-linked-plans`).
-- `inv: context-surfaces-tiered-pitfalls` — `awf context` surfaces a pitfall iff it shares a tag
+- `invariant: context-surfaces-tiered-pitfalls` — `awf context` surfaces a pitfall iff it shares a tag
   with the Tier-1 precise tag set, on the single `ContextResult`, preserving read-only /
   output-parity / static-fallback (replaces `context-surfaces-pitfalls`).
 

@@ -75,7 +75,7 @@ commits.
 
 ## Invariants
 
-- `inv: commit-gate-shared-rule` — the Conventional Commits subject check has exactly one definition
+- `invariant: commit-gate-shared-rule` — the Conventional Commits subject check has exactly one definition
   (a single shared function), consumed by both the `awf audit` range loop and the `awf commit-gate`
   command; neither re-implements the regex, the type/scope allow-lists, or the subject-length limit.
   Backed by a test asserting a subject the audit rejects is also rejected by `commit-gate` (and a
