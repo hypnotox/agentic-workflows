@@ -98,7 +98,12 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 		}
 		tagged++
 		for _, t := range art.tags {
-			freq[t]++
+			// Count only vocabulary members: the invariant speaks of "vocabulary
+			// tags", and a non-member tag is already a hard checkTagVocabulary
+			// failure, so it must not surface a spurious coarsening note.
+			if _, ok := p.Cfg.Tags[t]; ok {
+				freq[t]++
+			}
 		}
 	}
 	// Empty-denominator guard: no tag-bearing artifacts, no frequency to compute.
@@ -806,6 +811,7 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 		}
 		// A tag must be finer than a domain (ADR-0109): a vocabulary member that
 		// names a configured domain is the coarse-tag regression, gated exactly.
+		// invariant: tag-not-domain-name
 		if domainName[tag] {
 			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name — tags must be finer than domains", tag)})
 		}

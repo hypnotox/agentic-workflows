@@ -332,8 +332,11 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 func TestTagHealthNotes(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
 		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n")
-	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha", "beta")))
-	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"), testsupport.WithTags("alpha", "gamma")))
+	// 0001/0002 also carry `bogus`, a non-vocabulary tag: it is excluded from the
+	// frequency accounting (only vocabulary members count) so it never surfaces a
+	// coarsening note, even though it would exceed 25% if counted.
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha", "beta", "bogus")))
+	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"), testsupport.WithTags("alpha", "gamma", "bogus")))
 	writeADR(t, root, "0003-c.md", testsupport.ADR("Implemented", testsupport.WithTitle("0003: C"), testsupport.WithTags("delta")))
 	writeADR(t, root, "0004-d.md", testsupport.ADR("Implemented", testsupport.WithTitle("0004: D"), testsupport.WithTags("epsilon")))
 	writeADR(t, root, "0005-e.md", testsupport.ADR("Implemented", testsupport.WithTitle("0005: E")))
@@ -353,6 +356,10 @@ func TestTagHealthNotes(t *testing.T) {
 	// beta/delta each 1/4 (25%, not strictly over) — no note.
 	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
 		t.Errorf("did not expect a note for a 25%%-share tag; got %v", notes)
+	}
+	// `bogus` (non-vocabulary) is on 2/4 but is not counted → no coarsening note.
+	if strings.Contains(joined, `tag "bogus"`) {
+		t.Errorf("a non-vocabulary tag must not surface a frequency note; got %v", notes)
 	}
 	// invariant: tag-coverage-note — 0005 carries no tags
 	if !strings.Contains(joined, "0005-e.md carries no tags") {
