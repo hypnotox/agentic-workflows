@@ -485,6 +485,33 @@ func TestInvariantGlobValidation(t *testing.T) {
 	}
 }
 
+func TestInvariantTestGlobsValidation(t *testing.T) {
+	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
+		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
+		TestGlobs: []string{"**/*_test.go"},
+	}}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("valid anchored testGlobs rejected: %v", err)
+	}
+	// A no-slash pattern is a valid anchored glob under ADR-0077 (top-level only),
+	// so it is accepted like any source glob — validation rejects only malformed
+	// patterns, matching the source-glob rule.
+	topLevel := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
+		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
+		TestGlobs: []string{"*_test.go"},
+	}}
+	if err := topLevel.Validate(); err != nil {
+		t.Errorf("a top-level anchored testGlobs pattern must be accepted (ADR-0077): %v", err)
+	}
+	malformed := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
+		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
+		TestGlobs: []string{"**/["},
+	}}
+	if err := malformed.Validate(); err == nil {
+		t.Error("expected a malformed testGlobs pattern to be rejected")
+	}
+}
+
 func TestAuditDependencyManifestValidation(t *testing.T) {
 	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
 		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},

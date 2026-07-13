@@ -66,9 +66,17 @@ func (c *Config) Source() []byte { return c.raw }
 // InvariantConfig configures language-agnostic invariant backing. A nil
 // *InvariantConfig (key absent) means "unchecked"; Disabled is the explicit
 // opt-out; a non-empty Sources enables enforcement.
+//
+// TestGlobs scopes the proof `invariant:` marker to test files (ADR-0105): when
+// non-empty, a proof marker backs a slug only in a file matching one of these
+// anchored globs; when empty or absent, backing falls back to source-glob scope
+// (the pre-ADR-0105 semantics). TestGlobs is an inert optional field within the
+// current schema — an absent value degrades to the fallback, so it needs no
+// schema-generation bump.
 type InvariantConfig struct {
-	Disabled bool              `yaml:"disabled"`
-	Sources  []InvariantSource `yaml:"sources"`
+	Disabled  bool              `yaml:"disabled"`
+	Sources   []InvariantSource `yaml:"sources"`
+	TestGlobs []string          `yaml:"testGlobs"`
 }
 
 // InvariantSource pairs anchored path globs (ADR-0077; matched against a file's
@@ -241,6 +249,11 @@ func (c *Config) Validate() error {
 				if err := validatePathGlob(g); err != nil {
 					return fmt.Errorf("invariants glob: %w", err)
 				}
+			}
+		}
+		for _, g := range c.Invariants.TestGlobs {
+			if err := validatePathGlob(g); err != nil {
+				return fmt.Errorf("invariants.testGlobs: %w", err)
 			}
 		}
 	}

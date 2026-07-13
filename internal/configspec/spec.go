@@ -139,6 +139,11 @@ var keys = []Entry{
 		Availability: "Within each `invariants.sources` entry.",
 	},
 	{
+		Path: "invariants.testGlobs", Type: "string list", Default: "none — proof markers fall back to source-glob scope",
+		Description:  "Anchored path globs (same dialect as `invariants.sources[].globs`) identifying test files. When non-empty, a proof `invariant: <slug>` marker backs an invariant only in a file matching one of these globs — backing means an executed test line. When empty or absent, backing falls back to source-glob scope. The `touches-invariant:` context marker is unaffected.",
+		Availability: "Within `invariants`; opt-in teeth for the proof marker.",
+	},
+	{
 		Path: "audit.baseBranch", Type: "string", Default: "main",
 		Description:  "The branch `awf audit` compares against when computing the branch's commit range; `--base <ref>` overrides per run.",
 		Availability: "Read by `awf audit`.",
