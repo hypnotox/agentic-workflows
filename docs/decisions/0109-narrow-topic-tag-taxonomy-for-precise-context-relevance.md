@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: [context-tier2-topical]
 superseded_by: ""
-tags: [context, governance, config]
+tags: [context, governance]
 related: [92, 99, 102, 103, 104, 106]
 domains: [tooling, config, invariants]
 ---
@@ -79,6 +79,10 @@ Grounding fixed the boundaries this decision must respect:
    meaning), and awf's ~108 ADR frontmatters and ~46 pitfall entries are re-tagged to it — a one-time
    in-repo data edit governed by the existing `awf check` vocabulary rule, **not** a schema migration.
    The curation is quality-first (tight, meaningful topics), not a mechanical union of prior labels.
+   The five current vocabulary members that name domains (`adr-system`, `config`, `invariants`,
+   `rendering`, `tooling`) are removed and every artifact using them re-tagged in the *same* commit,
+   so item 3's gate lands green rather than flagging the pre-existing corpus; ADR-0109's own
+   frontmatter is re-tagged with it.
 
 3. **Gate the standard's hard floor.** When the `tags:` vocabulary is non-empty, `awf check` fails if
    any vocabulary member name equals a configured domain name (added to the existing
@@ -88,11 +92,16 @@ Grounding fixed the boundaries this decision must respect:
 
 4. **Add a non-failing tag-health note to `awf check`** (a new note producer, distinct from the
    render-pass advisory channel and from the vocabulary `Drift`):
-   - **Frequency:** each vocabulary tag carried by more than a fixed default share of tagged
-     artifacts (a documented percentage; no new config key) yields a note that the tag is coarsening —
-     catching sub-domain-but-still-broad drift the exact gate cannot.
-   - **Coverage:** each ADR or pitfall carrying zero tags, or only tags equal to a configured domain
-     name, yields a note — the backstop against silent under-tagging across the hand re-tag.
+   - **Frequency:** each vocabulary tag carried by more than a fixed default share — **25% of the
+     artifacts carrying at least one vocabulary tag** — yields a note that the tag is coarsening,
+     catching sub-domain-but-still-broad drift the exact gate cannot express. The 25% default is a
+     documented constant (no new config key): it keeps the re-tagged awf corpus quiet while flagging
+     today's domain-scale offenders (`tooling` 55%, `rendering` 44%, `config` 30%).
+   - **Coverage:** each ADR or pitfall carrying zero tags — or, under an empty/free-form vocabulary,
+     only tags equal to a configured domain name — yields a note, the backstop against silent
+     under-tagging across the hand re-tag. Under a non-empty *governed* vocabulary an artifact tagged
+     only with a domain name is already a hard failure (item 3's gate or `tag-vocabulary-governed`),
+     so the domain-only branch is meaningful chiefly for adopters running tags free-form.
 
    Both notes are advisory and never change the exit code.
 
@@ -101,11 +110,20 @@ Grounding fixed the boundaries this decision must respect:
    `context.go` becomes provably inert under item 3 and is removed). `context-tier2-topical` is
    retired and a renamed successor invariant carries the simplified rule; the retained
    `related:`-link tail (the deliberate curated adjacency) and the "at most one tier" property are
-   unchanged. The proof and touches markers move to the new slug in the implementing commit.
+   unchanged. The proof and touches markers move to the new slug in the implementing commit — and the
+   existing `TestContextForAssembles` domain-mirror-*exclusion* assertion, inverted once the filter is
+   gone, is re-purposed into a `tag-not-domain-name` gate test rather than carried stale onto the new
+   slug. The two sibling ADR-0104 invariants that reference the precise set need **no** rename: once
+   item 3 bans domain-name tags, "union of Tier-1 tags minus any tag naming a domain" is identically
+   "union of Tier-1 tags", so `context-surfaces-tiered-pitfalls`'s observable contract is unchanged;
+   `context-surfaces-tiered-plans` references tier *membership*, not the precise set, and is likewise
+   stable.
 
 6. **Resync the rendered surfaces citing the Tier-2 wording.** The agent guide's invariant list
    (sourced from `.awf/agents-doc.yaml`) is updated to the renamed invariant and re-synced in the
-   same change (docs travel with the change).
+   same change (docs travel with the change), alongside the `docs/decisions/README.md` index row for
+   ADR-0109 and the `./x sync` regeneration of `docs/decisions/ACTIVE.md` at the eventual
+   Proposed→Implemented status flip.
 
 ## Invariants
 
@@ -118,8 +136,9 @@ commit.
   `domains:` set, `awf check` fails iff some vocabulary member name equals a configured domain name;
   an empty vocabulary or a project with no configured domains is inert (no finding).
 - `` `invariant: tag-frequency-note` `` — `awf check` emits a non-failing `note:` for each vocabulary
-  tag carried by strictly more than the default share of tagged artifacts (ADRs plus pitfalls) and
-  for no tag at or below it; the finding never changes the exit code.
+  tag carried by strictly more than 25% of the artifacts carrying at least one vocabulary tag (the
+  denominator; the numerator is the artifacts carrying that tag, counting ADRs and pitfalls alike),
+  and for no tag at or below that share; the finding never changes the exit code.
 - `` `invariant: tag-coverage-note` `` — `awf check` emits a non-failing `note:` for each ADR and each
   pitfall carrying zero tags, or only tags equal to a configured domain name, and for no
   fully-narrow-tagged artifact; the finding never changes the exit code.
@@ -128,7 +147,7 @@ commit.
   domain-name filtering; a non-Tier-1, non-Superseded ADR is reported in Tier 2 iff it shares a tag
   with the precise set or is named in a Tier-1 ADR's `related:`, and a pitfall is reported in Tier 2
   iff it shares a tag with the precise set; every artifact appears in at most one tier (Tier 1 over
-  Tier 2).
+  Tier 2). An empty precise set yields a Tier 2 of only the Tier-1 ADRs' `related:` links.
 
 ## Consequences
 
