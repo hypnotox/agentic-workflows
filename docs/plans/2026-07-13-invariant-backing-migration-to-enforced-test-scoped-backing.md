@@ -44,7 +44,7 @@ Phase 3):
 
 ## Tech stack
 
-Go 1.26. Packages/files touched: `.awf/config.yaml`, `docs/decisions/{0042,0092,0105,0106}-*.md`,
+Go 1.26. Packages/files touched: `.awf/config.yaml`, `docs/decisions/{0042,0105,0106}-*.md`,
 production `.go` files across `cmd/awf`, `cmd/{releasecheck,repoaudit,pincheck}`, and `internal/**`,
 their `_test.go` siblings, `.awf/agents-doc.yaml`, `.awf/domains/parts/{invariants,tooling}/current-state.md`,
 and the regenerated rendered surfaces (`AGENTS.md`, `docs/decisions/ACTIVE.md`, `docs/domains/*.md`,
@@ -56,7 +56,6 @@ requiring zero issues.
 
 - **Created:** none (the `skills-set-in-confighash` proof test extends an existing `_test.go`).
 - **Modified:** `.awf/config.yaml`; `docs/decisions/0042-adr-scaffolding-command.md`,
-  `docs/decisions/0092-read-only-context-query-command.md`,
   `docs/decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md`,
   `docs/decisions/0106-backed-aware-two-marker-context-surfacing.md`; every production `.go` file in
   the marker table below and each named `_test.go`; `.awf/agents-doc.yaml`;
@@ -102,7 +101,8 @@ production marker and add the `Verify:` note in the same commit.
   now satisfies `unbacked-refuses-proof` — no proof marker remains — and `unbacked-requires-verify-note`;
   the note-bearing `touches-invariant:` raises no bare-touches advisory). `git add
   docs/decisions/0042-adr-scaffolding-command.md internal/adr/adr.go`. Commit:
-  `refactor(invariants): reclassify adr-new-no-overwrite as unbacked (unreachable guard)`.
+  `refactor(invariants): reclassify adr-new-no-overwrite as unbacked` (≤72 chars — the `./x commit-gate`
+  hook hard-rejects any subject over 72).
 
 ## Phase 2 — Add test proof markers for the 72 backed slugs
 
@@ -118,7 +118,8 @@ Two slugs are handled first because they are not pure marker-moves:
 - [ ] **Task 2.1 — Write the missing `skills-set-in-confighash` proof test, then mark it.**
   `skills-set-in-confighash` (`internal/project/confighash.go`, the `render.ReferencesSkills` fold)
   has no dedicated test asserting its drift consequence, unlike its siblings `scopes-in-confighash`
-  and `invariant-markers-in-confighash`. Add a test to `internal/project/confighash_test.go` mirroring
+  and `invariant-markers-in-confighash`. Add a test to `internal/project/drift_test.go` — the file that
+  already holds the sibling reflag tests — mirroring
   `internal/project/drift_test.go :: TestScopesEditReflagsReferencingArtifacts`: it must build a
   project whose enabled set renders at least one `.skills`-referencing artifact, compute its
   `ConfigHash`, toggle the `skills` enable array, and assert the hash changes (the enable-set edit
@@ -129,7 +130,7 @@ Two slugs are handled first because they are not pure marker-moves:
 
   ```diff
   -		// invariant: skills-set-in-confighash
-  +		// touches-invariant: skills-set-in-confighash — folds the effective skills set into ConfigHash; proof in confighash_test.go
+  +		// touches-invariant: skills-set-in-confighash — folds the effective skills set into ConfigHash; proof in drift_test.go
   ```
 
 - [ ] **Task 2.2 — Add the 71 remaining proof markers (batch).** For each slug in the **affected-site
@@ -270,8 +271,8 @@ Two slugs are handled first because they are not pure marker-moves:
   Then `./x gate` (100% coverage holds; the new `skills-set-in-confighash` test is covered) && `./x
   check` (clean — every `touches-invariant:` names a declared slug and carries a note, so no
   dangling-marker and no bare-touches advisory appears). `git add` the changed production `.go` files,
-  their `_test.go` siblings, and `internal/project/confighash_test.go`. Commit:
-  `feat(invariants): add test proof markers for 72 backed invariants`.
+  their `_test.go` siblings, and `internal/project/drift_test.go` (the new `skills-set-in-confighash`
+  test). Commit: `feat(invariants): add test proof markers for 72 backed invariants`.
 
 ## Phase 3 — Turn on `testGlobs`
 
@@ -337,8 +338,17 @@ correct) and discharges ADR-0105's doc-currency obligations.
   +  to shed its slug and become prose.
   ```
 
-  (Read the exact surrounding lines first; preserve wording outside the example.) (b) Flip the
-  frontmatter `status: Proposed` → `status: Implemented`.
+  (Read the exact surrounding lines first; preserve wording outside the example.) (b) In the
+  Invariants-section preamble, strike the now-false transitional parenthetical — Plan 1's atomic
+  rewrite already migrated this ADR's declarations to `invariant:`/`unbacked-invariant:`:
+
+  ```diff
+  -test file under the new model. (This ADR's own declarations use today's `inv:` token while
+  -`Proposed`; the mechanism plan's atomic rewrite migrates them to `invariant:`.)
+  +test file under the new model.
+  ```
+
+  (c) Flip the frontmatter `status: Proposed` → `status: Implemented`.
 
 - [ ] **Task 4.3 — Rewrite the invariants domain narrative.** In
   `.awf/domains/parts/invariants/current-state.md`, replace the single-marker description with the
@@ -386,7 +396,20 @@ context bullet + tooling narrative swap to the successor.
   ```
 
 - [ ] **Task 5.3 — Flip ADR-0106 status and swap the context wording.** (a) In
-  `docs/decisions/0106-...surfacing.md`, flip `status: Proposed` → `status: Implemented`. (b) In
+  `docs/decisions/0106-...surfacing.md`, flip `status: Proposed` → `status: Implemented`, and strike
+  the now-false transitional parenthetical in the Invariants-section preamble (Plan 1 already migrated
+  this ADR's bullets to the unified token):
+
+  ```diff
+  -Each slug is backed under the ADR-0105 model in the implementing commit (this ADR's own bullets use
+  -today's `inv:` token while `Proposed`; the mechanism plan's atomic rewrite migrates them). `awf
+  -check` enforces them once this ADR is `Implemented`; the retired slug's marker is removed in the same
+  -commit.
+  +Each slug is backed under the ADR-0105 model in the implementing commit. `awf check` enforces them
+  +once this ADR is `Implemented`; the retired slug's marker is removed in the same commit.
+  ```
+
+  (b) In
   `.awf/agents-doc.yaml`, rewrite the `**Context Tier 1 governs.**` bullet (locate with
   `grep -n context-tier1-governs .awf/agents-doc.yaml`): rename the trailing
   `(invariant: context-tier1-governs)` to `(invariant: context-tier1-marker-union)` and reword the
@@ -405,7 +428,7 @@ context bullet + tooling narrative swap to the successor.
   internal/invariants/invariants_test.go internal/project/context.go internal/project/context_test.go
   docs/decisions/0106-*.md docs/decisions/ACTIVE.md .awf/agents-doc.yaml AGENTS.md
   .awf/domains/parts/tooling/current-state.md docs/domains/tooling.md`. Commit:
-  `feat(invariants): enforce ADR-0106 union-scan context surfacing, retire context-tier1-governs`.
+  `feat(invariants): union-scan context surfacing, retire tier1-governs` (≤72 chars — commit-gate limit).
 
 ## Verification
 
