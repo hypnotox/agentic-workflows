@@ -325,3 +325,151 @@ func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
 		}
 	}
 }
+
+// tagHealthNotes emits a frequency note for a tag over the 25% share of
+// tag-bearing artifacts and a coverage note for a zero-tag artifact; a 25%-share
+// tag (not strictly over) stays quiet.
+func TestTagHealthNotes(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
+		"tags:\n  alpha: A\n  beta: B\n  gamma: C\n  delta: D\n  epsilon: E\n")
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha", "beta")))
+	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"), testsupport.WithTags("alpha", "gamma")))
+	writeADR(t, root, "0003-c.md", testsupport.ADR("Implemented", testsupport.WithTitle("0003: C"), testsupport.WithTags("delta")))
+	writeADR(t, root, "0004-d.md", testsupport.ADR("Implemented", testsupport.WithTitle("0004: D"), testsupport.WithTags("epsilon")))
+	writeADR(t, root, "0005-e.md", testsupport.ADR("Implemented", testsupport.WithTitle("0005: E")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.tagHealthNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(notes, "\n")
+	// invariant: tag-frequency-note — alpha on 2/4 tagged artifacts (50% > 25%)
+	if !strings.Contains(joined, `tag "alpha" is on 2/4`) {
+		t.Errorf("expected an alpha frequency note; got %v", notes)
+	}
+	// beta/delta each 1/4 (25%, not strictly over) — no note.
+	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
+		t.Errorf("did not expect a note for a 25%%-share tag; got %v", notes)
+	}
+	// invariant: tag-coverage-note — 0005 carries no tags
+	if !strings.Contains(joined, "0005-e.md carries no tags") {
+		t.Errorf("expected a coverage note for the untagged ADR; got %v", notes)
+	}
+}
+
+// An empty/absent vocabulary makes the whole tag-health producer inert — the
+// example-adopter safety case (sundial carries free-form tags but no vocabulary).
+func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.tagHealthNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("empty vocabulary must be inert; got %v", notes)
+	}
+}
+
+// With a non-empty vocabulary but every artifact untagged, coverage notes fire and
+// the frequency computation is skipped (empty-denominator guard, no divide-by-zero).
+func TestTagHealthNotesEmptyDenominator(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
+	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.tagHealthNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(notes, "\n")
+	if !strings.Contains(joined, "0001-a.md carries no tags") || !strings.Contains(joined, "0002-b.md carries no tags") {
+		t.Errorf("expected coverage notes for both untagged ADRs; got %v", notes)
+	}
+	for _, n := range notes {
+		if strings.Contains(n, "coarsening") {
+			t.Errorf("no frequency note expected with zero tagged artifacts; got %v", notes)
+		}
+	}
+}
+
+// A malformed ADR surfaces as an error from tagHealthNotes' adr.ParseDir.
+func TestTagHealthNotesADRParseError(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.tagHealthNotes(); err == nil {
+		t.Fatal("expected adr.ParseDir error, got nil")
+	}
+}
+
+// A malformed pitfalls sidecar surfaces as an error from tagHealthNotes'
+// pitfallTagEntries (only reached once the vocabulary is non-empty and the ADRs parse).
+func TestTagHealthNotesPitfallError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
+		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.tagHealthNotes(); err == nil {
+		t.Fatal("expected pitfallTagEntries structural error, got nil")
+	}
+}
+
+// tagHealthNotes counts pitfall tags alongside ADR tags and flags an untagged
+// pitfall — exercising the pitfall arm of the artifact scan.
+func TestTagHealthNotesPitfalls(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
+		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +
+			"    - title: Tagged\n      tags: [alpha]\n      body: ok\n" +
+			"    - title: Untagged\n      body: ok\n"})
+	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.tagHealthNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(notes, "\n")
+	// alpha on the tagged pitfall + the ADR = 2/2 tagged artifacts (>25%).
+	if !strings.Contains(joined, `tag "alpha" is on 2/2`) {
+		t.Errorf("expected alpha frequency note counting the pitfall; got %v", notes)
+	}
+	if !strings.Contains(joined, "Untagged carries no tags") {
+		t.Errorf("expected coverage note for the untagged pitfall; got %v", notes)
+	}
+}
+
+// AdvisoryNotes surfaces a tagHealthNotes fault: with no domains (generateDomainDocs
+// parses no ADRs) but a non-empty vocabulary, a malformed ADR fails inside
+// tagHealthNotes, exercising AdvisoryNotes' propagation of that error.
+func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.AdvisoryNotes(); err == nil {
+		t.Fatal("expected AdvisoryNotes to surface the tag-health ADR parse error")
+	}
+}

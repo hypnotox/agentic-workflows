@@ -42,7 +42,74 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 		all = append(all, *cref)
 	}
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
-	return append(notes, markerNotes(all)...), nil
+	notes = append(notes, markerNotes(all)...)
+	th, err := p.tagHealthNotes()
+	if err != nil {
+		return nil, err
+	}
+	return append(notes, th...), nil
+}
+
+// tagFrequencyThreshold is the share of tag-bearing artifacts above which a tag
+// is flagged as coarsening toward domain scale (ADR-0109 item 4). Advisory only;
+// a documented constant, deliberately not a config key in this slice.
+const tagFrequencyThreshold = 0.25
+
+// tagHealthNotes returns advisory (non-failing) notes about the tag vocabulary's
+// health: a frequency note for any tag carried by more than tagFrequencyThreshold
+// of the tag-bearing artifacts (the coarsening the exact tag≠domain gate cannot
+// express), and a coverage note for any ADR or pitfall carrying zero tags (the
+// under-tagging backstop). Inert under an empty/absent vocabulary, so an
+// un-curated adopter — and the example — stays note-free.
+// invariant: tag-frequency-note
+// invariant: tag-coverage-note
+func (p *Project) tagHealthNotes() ([]string, error) {
+	if len(p.Cfg.Tags) == 0 {
+		return nil, nil
+	}
+	adrs, err := adr.ParseDir(p.decisionsDir())
+	if err != nil {
+		return nil, err
+	}
+	pf, err := p.pitfallTagEntries()
+	if err != nil {
+		return nil, err
+	}
+	type artifact struct {
+		label string
+		tags  []string
+	}
+	var arts []artifact
+	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
+	for _, a := range adrs {
+		arts = append(arts, artifact{label: rel + "/" + a.Filename, tags: a.Tags})
+	}
+	for _, e := range pf {
+		arts = append(arts, artifact{label: e.Title, tags: e.Tags})
+	}
+
+	var notes []string
+	tagged := 0
+	freq := map[string]int{}
+	for _, art := range arts {
+		if len(art.tags) == 0 {
+			notes = append(notes, art.label+" carries no tags — add a narrow topic tag")
+			continue
+		}
+		tagged++
+		for _, t := range art.tags {
+			freq[t]++
+		}
+	}
+	// Empty-denominator guard: no tag-bearing artifacts, no frequency to compute.
+	if tagged > 0 {
+		for _, t := range slices.Sorted(maps.Keys(freq)) {
+			if float64(freq[t]) > tagFrequencyThreshold*float64(tagged) {
+				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged artifacts (>%.0f%%) — coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
+			}
+		}
+	}
+	return notes, nil
 }
 
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
