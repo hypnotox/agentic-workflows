@@ -80,6 +80,8 @@ func ParseDir(dir string) ([]Plan, error) {
 // token, the block's first non-empty line. An empty/whitespace-only block yields
 // nothing. Every line beginning with ``` toggles the fenced state, mirroring the
 // fence tracking in refs.WithoutFences.
+// invariant: plan-commit-subject-marker-scoped
+// invariant: plan-commit-subject-optout-honored
 func commitSubjects(content string) []string {
 	var subjects []string
 	inFence := false

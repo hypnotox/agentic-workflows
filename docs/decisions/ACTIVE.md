@@ -111,12 +111,12 @@
 - [ADR-0108: Trim the plan header taxonomy to three fields](0108-trim-the-plan-header-taxonomy-to-three-fields.md) — Implemented
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md) — Implemented
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](0110-domain-coverage-floor-and-context-ignore-for-awf-context.md) — Implemented
+- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Proposed
 
 ## Superseded
 

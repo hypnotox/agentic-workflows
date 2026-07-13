@@ -97,9 +97,6 @@ ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go m
 - [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](../decisions/0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md)
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
-
-### Proposed
-
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 
 ### Superseded

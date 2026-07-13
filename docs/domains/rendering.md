@@ -73,10 +73,10 @@ ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCa
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
 - [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)
 - [ADR-0108: Trim the plan header taxonomy to three fields](../decisions/0108-trim-the-plan-header-taxonomy-to-three-fields.md)
+- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 
 ### Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
 - [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
-- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 

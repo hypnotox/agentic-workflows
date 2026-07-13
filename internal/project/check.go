@@ -724,6 +724,8 @@ func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []Re
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
 // invariant: plan-frontmatter-validated
 // invariant: plan-adr-link-resolved
+// invariant: plan-commit-subject-length-checked
+// invariant: plan-commit-subject-shape-checked
 func (p *Project) checkPlans() ([]manifest.Drift, error) {
 	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
 	plans, err := plan.ParseDir(plansDir)
@@ -770,6 +772,7 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 // mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
+// invariant: plan-commit-subject-scope-advisory
 func (p *Project) planCommitScopeNotes() ([]string, error) {
 	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
 	if err != nil {

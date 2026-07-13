@@ -283,6 +283,8 @@ func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 
 // TestCheckPlansCommitSubjectDrift covers the ```commit length/type/shape drift and
 // confirms an unknown scope is NOT drift (it is an advisory note instead).
+// invariant: plan-commit-subject-length-checked
+// invariant: plan-commit-subject-shape-checked
 func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
 	p, err := Open(root)
@@ -326,6 +328,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 // TestPlanCommitScopeNotes covers the scope advisory: a note for an unknown scope,
 // none for an over-length subject (Error, not Warning), a frontmatter-less plan
 // skipped, and the ParseDir error branch.
+// invariant: plan-commit-subject-scope-advisory
 func TestPlanCommitScopeNotes(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
 	p, err := Open(root)

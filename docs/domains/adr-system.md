@@ -22,8 +22,5 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
-
-### Proposed
-
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-14
 adrs: [111]
-status: Proposed
+status: Implemented
 ---
 # Plan: Plan-time commit-subject check
 
@@ -542,6 +542,12 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   literal ` ``` ` fenced block, no `{{`/`}}`, and no bare "the gate".
 
 ## Notes
+
+**Findings at freeze:** The plan executed as written — the exact diffs applied cleanly and the
+tests hit 100% coverage on the first gate run. The two coverage gaps the plan reviewer had already
+folded into Task 1.7 (the `planCommitScopeNotes` `!HasFrontmatter` skip and the `AdvisoryNotes`
+error branch) were the only pre-empted risks. Dogfooding confirmed: once Phase 1 landed, this plan's
+own Task 1.9 / 2.3 ` ```commit ` subjects were validated by the live check and produced no drift.
 
 Out of scope: migrating the existing bare-fence plan corpus (grandfathered by the presence trigger),
 adding a config key (the check reuses `audit.SubjectMaxLength`/`allowedScopes`/`allowedTypes`), and
