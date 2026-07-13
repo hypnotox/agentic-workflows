@@ -183,6 +183,7 @@ func TestCheckBackedNoProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: backed-requires-proof
 	if len(f) != 1 || f[0].Slug != "b-missing" || f[0].Status != invariants.Unbacked {
 		t.Errorf("backed-without-proof must fail unbacked, got %#v", f)
 	}
@@ -202,6 +203,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: proof-marker-test-scoped
 	if len(f) != 1 || f[0].Slug != "b-prod" || f[0].Status != invariants.Unbacked {
 		t.Fatalf("testGlobs set: non-test proof must not back, got %#v", f)
 	}
@@ -214,6 +216,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: absent-testglobs-source-fallback
 	if len(f) != 0 {
 		t.Errorf("testGlobs empty: source-only fallback must back the slug, got %#v", f)
 	}
@@ -247,6 +250,7 @@ func TestCheckUnbackedWithoutVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: unbacked-requires-verify-note
 	if len(f) != 1 || f[0].Slug != "u-noverify" || f[0].Status != invariants.MissingVerify {
 		t.Errorf("unbacked-without-verify must fail MissingVerify, got %#v", f)
 	}
@@ -262,6 +266,7 @@ func TestCheckUnbackedWithProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: unbacked-refuses-proof
 	if len(f) != 1 || f[0].Slug != "u-proof" || f[0].Status != invariants.UnbackedHasProof {
 		t.Errorf("unbacked-with-proof must fail UnbackedHasProof, got %#v", f)
 	}
@@ -305,6 +310,7 @@ func TestCheckDanglingMarkerNote(t *testing.T) {
 	if len(f) != 0 {
 		t.Fatalf("dangling markers must not produce findings, got %#v", f)
 	}
+	// invariant: dangling-marker-advisory
 	if len(notes) != 2 || notes[0].Slug != "ghost" || notes[1].Slug != "phantom" {
 		t.Errorf("want one note each for ghost, phantom (sorted), got %#v", notes)
 	}
@@ -330,6 +336,7 @@ func TestCheckBareTouchesNote(t *testing.T) {
 	if len(f) != 0 {
 		t.Fatalf("a bare touches marker must not produce a finding, got %#v", f)
 	}
+	// invariant: bare-touches-note
 	if len(notes) != 1 || notes[0].Slug != "real" || !strings.Contains(notes[0].Line(), "no note") {
 		t.Errorf("want one bare-touches note for real, got %#v", notes)
 	}
@@ -815,6 +822,7 @@ func TestMarkersUnderTwoMarkers(t *testing.T) {
 	if !proof.Proof || proof.Touches || len(proof.Notes) != 0 {
 		t.Errorf("proof-only: want proof, no touches/notes, got %#v", proof)
 	}
+	// invariant: touches-marker-advisory
 	if touch.Proof || !touch.Touches || len(touch.Notes) != 1 || !strings.Contains(touch.Notes[0], "site note") {
 		t.Errorf("touch-only: want touches with a note, no proof, got %#v", touch)
 	}

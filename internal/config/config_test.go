@@ -508,6 +508,7 @@ func TestInvariantTestGlobsValidation(t *testing.T) {
 		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
 		TestGlobs: []string{"**/["},
 	}}
+	// invariant: testglobs-anchored-validated
 	if err := malformed.Validate(); err == nil {
 		t.Error("expected a malformed testGlobs pattern to be rejected")
 	}

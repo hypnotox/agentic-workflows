@@ -105,12 +105,12 @@
 - [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Implemented
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](0103-governed-tag-vocabulary-and-metadata-revival.md) — Implemented
 - [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Implemented
+- [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md) — Proposed
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](0106-backed-aware-two-marker-context-surfacing.md) — Proposed
 
 ## Superseded

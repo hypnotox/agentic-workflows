@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-13
 supersedes: []
 retires_invariants: []
@@ -31,9 +31,9 @@ Three further frictions compound this:
   tokens carry no distinction — only cognitive load ("why two names for one concept?").
 - **ADR-0008 Decision item 4** ("Untestable invariants stay untagged … every tagged slug is
   enforced; there is no per-slug exemption mechanism") forces a genuinely-untestable but
-  load-bearing property — e.g. `context-read-only`, structural single-source properties — to shed
-  its slug and become prose. That removes it from the `awf context` governance signal precisely when
-  a reader most needs to know it exists.
+  load-bearing property — e.g. a defensive guard whose refusal branch is unreachable by construction —
+  to shed its slug and become prose. That removes it from the `awf context` governance signal precisely
+  when a reader most needs to know it exists.
 - **The Invariants section is unstructured.** A flat bullet list makes "backed" an implicit,
   after-the-fact property (does a marker happen to exist?) rather than an explicit authoring
   decision. The plan artifact was given structure and validation (ADR-0098); ADR invariants warrant
@@ -127,8 +127,7 @@ migration once rather than twice.
 ## Invariants
 
 Tagged bullets are enforced once this ADR is `Implemented`; each is backed by a proof marker in a
-test file under the new model. (This ADR's own declarations use today's `inv:` token while
-`Proposed`; the mechanism plan's atomic rewrite migrates them to `invariant:`.)
+test file under the new model.
 
 - `invariant: proof-marker-test-scoped` — with `testGlobs` configured, a proof `invariant: <slug>` marker
   backs a slug only when its file matches a `testGlobs` pattern; the identical marker in a non-test
