@@ -25,7 +25,7 @@ work so their invariant slug-renames land cleanly:
   `uncovered-lists-unowned-unignored` (folding the absent-safe case into its proof).
 - **ADR-0109 (Phases 3–4):** add two advisory `awf check` note producers (frequency + coverage), inert
   under an empty vocabulary; then, in one atomic commit, re-curate `.awf/config.yaml` `tags:` to a
-  narrow-topic vocabulary, re-tag all 108 ADRs + 46 pitfalls, add the exact `tag ≠ domain name` gate,
+  narrow-topic vocabulary, re-tag every ADR (~110 today) + 46 pitfalls, add the exact `tag ≠ domain name` gate,
   and drop Tier 2's domain-name filter (retire/rename `context-tier2-topical` →
   `context-tier2-precise-tag`).
 
@@ -61,7 +61,7 @@ uncovered slug, an advisory `touches-invariant` marker in a docstring, in the fl
   must print **nothing** (all nine now domain-owned; `testsupport` remains, handled in Phase 2). Run
   `./x gate` (expect `GATE_OK` / 100% coverage — no code changed). `git add` the four sidecars plus the
   `./x sync`-regenerated `docs/domains/*.md` and `.awf/awf.lock`; commit
-  `config(domains): fold orphan code packages into the five domains`.
+  `feat(config): fold orphan code packages into the five domains`.
 
 ## Phase 2 — contextIgnore + generated-exclusion + uncovered rename, flip ADR-0110
 
@@ -87,16 +87,19 @@ cannot be sliced into independently-gate-passing sub-commits.
   into a `map[string]bool` keyed by `filepath.ToSlash`; (b) build an `ignored(path)` closure matching
   `p.Cfg.ContextIgnore` globs via `pathglob.Match`; (c) in the per-path loop, treat a path as excluded
   when `covered(clean) || planned[clean] || ignored(clean)` (fold generated+ignored into the existing
-  covered-branch so their ancestors also mark `coveredDirs`, preserving collapse). Move the
-  `// invariant:` marker on this function to `uncovered-lists-unowned-unignored` and update the
-  advisory `touches-invariant: uncovered-lists-unowned-only` marker in the `Uncovered` docstring
-  (context.go ~:297) to the new slug.
+  covered-branch so their ancestors also mark `coveredDirs`, preserving collapse). Rename the advisory
+  `touches-invariant: uncovered-lists-unowned-only` marker in the `Uncovered` docstring (context.go
+  ~:297) to `touches-invariant: uncovered-lists-unowned-unignored`. (`Uncovered` carries no
+  `// invariant:` proof marker — the proof lives in the test and is renamed by Task 2.4.)
 - [ ] **Task 2.4 — Update the uncovered tests.** In `internal/project/context_test.go`: rename the
   proof marker at ~:486 to `// invariant: uncovered-lists-unowned-unignored`; add two assertions to
   `TestUncovered…` — a tracked path present in `PlannedOutputs()` is not reported, and a path matched
   by a configured `contextIgnore` glob is not reported — and one absent/empty-`contextIgnore` case
   asserting the report is unchanged from domain+generated exclusion alone (backs the folded
-  absent-safe clause). Reuse the existing synthetic-project fixture; assert exact `Entries`.
+  absent-safe clause). Add a render-error-injection case asserting `Uncovered` propagates a
+  `PlannedOutputs`/`RenderAll` error (mirror the existing `AdvisoryNotes` render-error tests in
+  `internal/project/notes_test.go:113,129`), covering the new error branch. Reuse the existing
+  synthetic-project fixture; assert exact `Entries`.
 - [ ] **Task 2.5 — Add awf's own `contextIgnore` list.** In `.awf/config.yaml`, add a top-level
   `contextIgnore:` list with: `.awf/**`, `docs/**`, `examples/**`, `.github/**`, `.githooks/**`,
   `changelog/**`, `internal/testsupport/**`, `LICENSE`, `go.mod`, `go.sum`, `README.md`, `codecov.yml`,
@@ -111,37 +114,44 @@ cannot be sliced into independently-gate-passing sub-commits.
   `/tmp/awf context --uncovered` (rebuild `/tmp/awf` first: `go build -o /tmp/awf ./cmd/awf`) prints
   the zero-state header with **no** path entries. Run `./x gate` (expect 100%). `git add` the config,
   configspec, context.go/_test.go, agents-doc, the ADR, and every regenerated surface; commit
-  `feat(tooling): add contextIgnore and drive awf context --uncovered to zero (ADR-0110)`.
+  `feat(tooling): drive awf context --uncovered to zero (ADR-0110)`.
 
 ## Phase 3 — Advisory tag-health note producers (ADR-0109), no flip
 
-- [ ] **Task 3.1 — Add the frequency + coverage note producers, inert under an empty vocabulary.** Add
-  a `Project` method (e.g. `tagHealthNotes() []string`) in `internal/project/check.go` returning
-  non-failing note strings, guarded by `if len(p.Cfg.Tags) == 0 { return nil }` so an un-curated
-  adopter (and the example) stays note-free. It reads the ADR + pitfall tag sets (reuse
-  `adr.ParseDir(p.decisionsDir())` and `p.pitfallTagEntries()`, as `checkTagVocabulary` does) and emits:
-  - **frequency:** for each vocabulary tag carried by strictly more than 25% of the artifacts carrying
-    ≥1 vocabulary tag (denominator = tag-bearing ADRs + pitfalls; numerator = artifacts carrying that
-    tag), a `note:`-prefixed line naming the tag and its share.
-  - **coverage:** for each ADR or pitfall carrying zero tags, or (only when a governed vocabulary is
-    non-empty is this branch reachable in a green tree — so exercise it under an empty-vocabulary test
-    fixture) only tags equal to a configured domain name, a `note:`-prefixed line naming the artifact.
+- [ ] **Task 3.1 — Add the frequency + coverage tag-health notes, inert under an empty vocabulary.**
+  Fold the tag-health notes into the existing advisory-note producer `Project.AdvisoryNotes()`
+  (`internal/project/check.go`, covered by `notes_test.go`) rather than a new `cmd/awf` call — so they
+  ride the same non-failing channel and stay under the 100%-covered `internal/project` tier. Guard the
+  whole tag-health block with `if len(p.Cfg.Tags) == 0 { … }` (no notes under an empty/absent
+  vocabulary — keeps un-curated adopters, including the example, note-free). Reading the ADR + pitfall
+  tag sets (reuse `adr.ParseDir(p.decisionsDir())` and `p.pitfallTagEntries()`, as `checkTagVocabulary`
+  does), emit:
+  - **frequency:** let the denominator be the count of artifacts carrying ≥1 vocabulary tag (ADRs +
+    pitfalls); if the denominator is 0, emit no frequency note (empty-denominator guard against
+    divide-by-zero). Otherwise, for each vocabulary tag carried by strictly more than 25% of that
+    denominator, emit a `note:` line naming the tag and its share.
+  - **coverage:** for each ADR or pitfall carrying **zero** tags, emit a `note:` line naming the
+    artifact — the under-tagging backstop, reachable under a non-empty vocabulary (sundial's empty
+    vocab is pre-empted by the guard). The ADR-0109 "only domain-named tags" sub-case is intentionally
+    **not** implemented: under the non-empty-vocabulary guard a domain-named tag is already an
+    unknown-tag hard failure (`tag-vocabulary-governed`), so the branch is unreachable in any green
+    tree — see Notes; ADR-0109 is trimmed to match in the resync step.
 
   Define the 25% threshold as a named constant with a one-line comment tying it to ADR-0109 item 4.
-- [ ] **Task 3.2 — Wire the notes into the check-notes path and test.** Emit `tagHealthNotes()` through
-  the same non-failing `note:` channel as the existing advisories (see `cmd/awf/check.go`; do not route
-  them through `checkTagVocabulary`, which returns hard `Drift`). Add `internal/project` tests: a
-  coarse-vocabulary fixture yields the expected frequency note; a zero-tag-artifact fixture yields the
-  coverage note; an **empty-vocabulary** fixture yields **no** notes (the sundial-safety case). Mark
-  the frequency and coverage assertions with backed `// invariant: tag-frequency-note` and
-  `// invariant: tag-coverage-note` proof markers (declared by ADR-0109, enforced once it flips in
-  Phase 4).
+- [ ] **Task 3.2 — Test the tag-health notes.** Extend `internal/project/notes_test.go`: a
+  coarse-vocabulary fixture (a tag on >25% of tag-bearing artifacts) yields the expected frequency
+  `note:`; a zero-tag-artifact fixture yields the coverage `note:` **and** exercises the
+  empty-denominator guard (all artifacts untagged → denominator 0 → no frequency note); an
+  **empty-vocabulary** fixture yields **no** notes (the sundial-safety case). Mark the frequency
+  assertion `// invariant: tag-frequency-note` and the coverage assertion `// invariant:
+  tag-coverage-note` (declared by ADR-0109, enforced once it flips in Phase 4). No `cmd/awf` change —
+  `AdvisoryNotes()` is already printed by `cmd/awf/check.go`.
 - [ ] **Task 3.3 — Verify and commit.** Run `./x gate` (100%). `./x check` on awf will now print
   frequency `note:` lines for `tooling`/`rendering` — advisory, non-failing, and expected until the
   Phase-4 re-tag; confirm the exit is still clean. Confirm the example stays note-free:
   `cd examples/sundial && /tmp/awf check` prints no `note:` line (empty vocabulary → inert). `git add`
-  `internal/project/check.go`, its test, and any `cmd/awf/check.go` wiring; commit
-  `feat(tooling): advisory tag-frequency and tag-coverage check notes (ADR-0109)`.
+  `internal/project/check.go` and `internal/project/notes_test.go`; commit
+  `feat(tooling): advisory tag-health check notes (ADR-0109)`.
 
 ## Phase 4 — Narrow vocabulary, re-tag, gate, Tier-2 simplification, flip ADR-0109
 
@@ -158,7 +168,7 @@ new slug already backed. This is the deliberate unsliceable exception.
   proposes 1–3 narrow topic labels; then a single merge pass reconciles synonyms into the governed
   vocabulary. Record the resulting vocabulary in `.awf/config.yaml`. (This task produces data validated
   by the post-checks in 4.2/4.6, not an exact diff — the label set is the curation output.)
-- [ ] **Task 4.2 — Re-tag all 108 ADRs and 46 pitfalls (batch).** Rewrite each artifact's `tags:` to
+- [ ] **Task 4.2 — Re-tag every ADR (~110 today) and all 46 pitfalls (batch).** Rewrite each artifact's `tags:` to
   members of the new vocabulary.
   - **Representative** (`docs/decisions/0109-*.md` frontmatter):
     `tags: [context, governance]` → `tags: [context-tiering, tag-taxonomy]` (illustrative narrow
@@ -215,6 +225,10 @@ new slug already backed. This is the deliberate unsliceable exception.
 - **Out of scope / follow-up:** the `awf doctor` housekeeping command (make the 25% threshold
   configurable, surface unused-vocabulary members and orphaned working-memory files) — its own future
   effort, per ADR-0109 Consequences.
+- **ADR-0109 resync item:** the plan implements the coverage note as **zero-tag only** — the ADR's
+  "only domain-named tags" sub-case is unreachable under the empty-vocabulary guard (needed for
+  example-zero-notes). The `awf-reviewing-plan-resync` step should trim ADR-0109 Decision item 4 and
+  the `tag-coverage-note` invariant to zero-tag-only so the ADR and this plan agree.
 - **Curation is the risk.** Task 4.1's vocabulary is a judgment output, not a mechanical diff; the
   4.2/4.6 post-checks (unknown-tag Drift = 0, frequency notes = 0, the coverage-note backstop) are the
   deterministic backstop, but whether each chosen tag is the *right* topic remains review discipline.
