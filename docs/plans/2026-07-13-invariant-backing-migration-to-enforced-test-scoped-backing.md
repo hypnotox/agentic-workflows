@@ -1,7 +1,7 @@
 ---
 date: 2026-07-13
 adrs: [105, 106]
-status: Proposed
+status: Implemented
 ---
 # Plan: Invariant-Backing Migration to Enforced Test-Scoped Backing
 
@@ -483,3 +483,36 @@ context bullet + tooling narrative swap to the successor.
 - **Resync.** This plan links `Proposed` ADRs 0105/0106; `awf-reviewing-plan` hands off to
   `awf-reviewing-plan-resync` to reconcile the plan against the finalised ADRs (in particular the
   Task 4.2 example amendment) before implementation.
+
+## Implementation findings (recorded at freeze)
+
+Plan `status: Implemented` (2026-07-13); ADR-0105 and ADR-0106 both flipped to `Implemented` (Phases 4
+and 5). Phase commits: `e10b9d0` (P1), `9ff1a1d` (P2), `40cc9fb` (P3), `89b19de` (P4), plus the P5
+final commit carrying this freeze. Deviations encountered during execution:
+
+- **Phase 2 was executed by a fan-out of worker subagents** partitioned into disjoint file sets, not
+  hand-edited inline — the 72-slug migration is uniform mechanical work with a deterministic
+  completeness post-check (temp-set `testGlobs` → `awf invariants` reports 0), which the main thread
+  re-ran independently before committing. No escape valve was needed: every named proof test was
+  confirmed to assert its slug.
+- **`context-static-fallback` also had two production markers** (like `context-read-only`), on
+  `runContext` and `runUncovered`; both were downgraded to `touches-invariant:`. The plan's edge list
+  named only `context-read-only` as the two-marker case.
+- **`internal/project/sweep_test.go` needed a `gofmt` realignment** after the `awf-bak-flagged` proof
+  marker landed inside a struct-literal `want` map (the marker shifted column alignment); no logic
+  change.
+- **~37 already-test-backed slugs (never in the failing 73) retain a redundant production
+  `// invariant:` marker.** Under `testGlobs` these sit outside proof scope and are simply ignored
+  (not flagged, not dangling — the slug is backed by its own test marker). Converting them to
+  `touches-invariant:` for consistency with the proof/touches model is a deliberate out-of-scope
+  tidy-up, not required for green teeth.
+- **`docs/config-reference.md` live-state column shows `—` for `invariants.testGlobs`** rather than the
+  configured `**/*_test.go` value; the field's live projection was not wired in the mechanism plan.
+  Regeneration is idempotent (no drift, `./x check` clean), so this is a cosmetic follow-up, not a
+  blocker.
+- **The tooling domain narrative names `context-tier1-governs`** in a "retiring X for the union-aware
+  `context-tier1-marker-union`" explanatory clause — matching how the same narrative already documents
+  earlier retirements (`context-surfaces-pitfalls`, etc.). It is descriptive prose, not a live citation
+  or marker, and raises no check finding; Task 5.4's "no surviving reference" verify is met in spirit.
+- **The 0105/0106 status flips regenerated the per-domain ADR indexes** in `docs/domains/{config,tooling}.md`
+  (both ADRs sit in those domains), committed alongside each flip.

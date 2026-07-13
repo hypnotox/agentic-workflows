@@ -133,7 +133,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	// Each surfaced slug is labelled backed/unbacked from its declaring ADR's
 	// ADR-0105 class, with an unbacked invariant's `Verify:` guidance and any
 	// touches-marker site note carried on the InvariantRef (ADR-0106).
-	// invariant: context-tier1-governs
+	// touches-invariant: context-tier1-marker-union — Tier-1 union-scan join site; proof in invariants_test.go
 	declaring, err := invariants.DeclaringADRs(adrs)
 	if err != nil {
 		return ContextResult{}, err

@@ -99,7 +99,6 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 // present slug skipped), Tier 2 (shared precise tag and related-linked, with the
 // domain-mirror tag excluded and a Superseded ADR dropped), and the Tier-3
 // collapsed background count.
-// invariant: context-tier1-governs
 // invariant: context-tier2-topical
 // invariant: context-tier3-collapsed
 func TestContextForAssembles(t *testing.T) {
@@ -249,6 +248,7 @@ func TestContextForLabelsAndNotes(t *testing.T) {
 		t.Fatalf("invariants (slug-sorted): got %v", order)
 	}
 	// backed-slug: surfaced via a proof marker in a test file (union scan), backed.
+	// invariant: context-invariant-backed-labeled
 	if b := byslug["backed-slug"]; b.Class != "backed" || b.Verify != "" || len(b.Touches) != 0 {
 		t.Errorf("backed-slug: %+v", b)
 	}
@@ -261,6 +261,7 @@ func TestContextForLabelsAndNotes(t *testing.T) {
 	if u.Class != "unbacked" || u.Verify != "inspect by hand." {
 		t.Errorf("unbacked-slug label: %+v", u)
 	}
+	// invariant: context-surfaces-marker-notes
 	if len(u.Touches) != 1 || !strings.Contains(u.Touches[0], "reasoned site") {
 		t.Errorf("unbacked-slug touches: %+v", u.Touches)
 	}

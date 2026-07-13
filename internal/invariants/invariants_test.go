@@ -843,6 +843,7 @@ func TestMarkersUnderUnionScan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: context-tier1-marker-union
 	if hitSlugs(hits) != "spec-slug,test-proof" {
 		t.Fatalf("union scan: got %q want spec-slug,test-proof", hitSlugs(hits))
 	}

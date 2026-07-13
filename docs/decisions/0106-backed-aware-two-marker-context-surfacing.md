@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-13
 supersedes: []
 retires_invariants: [context-tier1-governs]
@@ -67,10 +67,8 @@ shifts but whose downstream rules do not. ADR-0104 stays `Implemented`; this ADR
 
 ## Invariants
 
-Each slug is backed under the ADR-0105 model in the implementing commit (this ADR's own bullets use
-today's `inv:` token while `Proposed`; the mechanism plan's atomic rewrite migrates them). `awf
-check` enforces them once this ADR is `Implemented`; the retired slug's marker is removed in the same
-commit.
+Each slug is backed under the ADR-0105 model in the implementing commit. `awf check` enforces them
+once this ADR is `Implemented`; the retired slug's marker is removed in the same commit.
 
 - `invariant: context-tier1-marker-union` — the Tier-1 governing set reported by `awf context <paths>` is
   exactly the Implemented, non-retired ADRs declaring an invariant slug present under a queried path,
