@@ -226,10 +226,20 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   backed/unbacked classification with symmetric enforcement. Also fix the peripheral `inv:`→`invariant:`
   token-spelling mentions in the guide sources that co-travel with the rename: `.awf/docs/glossary.yaml`
   (the invariant term), `.awf/docs/parts/architecture/components.md`, the working-with-awf source part,
-  and any `.awf/docs/pitfalls.yaml` entry naming the token. **Do not touch the AGENTS.md `context`
-  rules** (`context-tier1-governs` etc.) nor the domain current-state narratives under
-  `.awf/domains/parts/*/current-state.md` — those stay live/enforced until the migration plan flips
-  ADR-0106; see Notes. Run `./x sync`.
+  any `.awf/docs/pitfalls.yaml` entry naming the token, and the **declaration-token spelling only** in
+  `.awf/domains/parts/invariants/current-state.md` (sentence 1's `inv: <slug>` → `invariant: <slug>`).
+  **Do not touch the AGENTS.md `context` rules** (`context-tier1-governs` etc.) nor the *proof/touches
+  model and Tier-1/context wording* in the domain current-state narratives — those stay live/enforced
+  until the migration plan flips ADR-0106; see Notes. Run `./x sync`.
+
+  **Batch — prose `(inv: <slug>)` citation prefixes → `(invariant: <slug>)`** (ADR-0105 item 1's total
+  unification). Representative: in `.awf/agents-doc.yaml` a bullet ending ``… (`inv: local-doc-catalog-clone`).``
+  becomes ``… (`invariant: local-doc-catalog-clone`).``. No edge variant — every citation is the same
+  shape. Affected-site set: `grep -rnE '\binv: ' .awf/agents-doc.yaml .awf/domains/parts/*/current-state.md`
+  (the ~24 agent-guide invariant-bullet citations plus the rendering/adr-system/config narrative
+  citations); rewrite each `inv:` token occurrence to `invariant:`, leaving surrounding prose intact.
+  Post-check: `grep -rnE '\binv: ' .awf/agents-doc.yaml .awf/domains/parts/*/current-state.md | wc -l`
+  prints `0`. Run `./x sync` after.
 
 - [ ] **Task 2.9 — Verify and commit (coupled Phase-2 commit).** `./x gate` && `./x check` (clean, no
   new `note:` lines). `git add` the changed `internal/invariants/*`, `cmd/awf/check.go`,
@@ -237,7 +247,8 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   `DeclaringADRs` return-type consumer, Task 2.1), their tests, every rewritten `docs/decisions/*.md`,
   the changed `.awf/` authoring parts, and the regenerated rendered surfaces (`AGENTS.md`,
   `docs/decisions/README.md`, the ADR template, the `proposing-adr` skill, and the regenerated
-  `docs/glossary.md`, `docs/architecture.md`, `docs/working-with-awf.md`, `docs/pitfalls.md`). Commit:
+  `docs/glossary.md`, `docs/architecture.md`, `docs/working-with-awf.md`, `docs/pitfalls.md`, and the
+  regenerated domain docs `docs/domains/{invariants,rendering,adr-system,config}.md`). Commit:
   `feat(invariants): two-marker backing, testGlobs teeth, classification`.
 
 ## Phase 3 — Backed-aware context
