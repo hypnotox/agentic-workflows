@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: [uncovered-lists-unowned-only]
 superseded_by: ""
-tags: [context, domains]
+tags: [uncovered-coverage, domain-index]
 related: [77, 86, 88, 102, 104, 109]
 domains: [tooling, config]
 ---

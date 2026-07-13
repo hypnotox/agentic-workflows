@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [docs, rendering]
+tags: [cross-references, layout-namespace]
 related: [5, 11, 81]
 domains: [rendering]
 ---

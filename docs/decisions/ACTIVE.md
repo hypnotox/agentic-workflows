@@ -109,13 +109,13 @@
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](0106-backed-aware-two-marker-context-surfacing.md) — Implemented
 - [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md) — Implemented
 - [ADR-0108: Trim the plan header taxonomy to three fields](0108-trim-the-plan-header-taxonomy-to-three-fields.md) — Implemented
+- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md) — Implemented
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](0110-domain-coverage-floor-and-context-ignore-for-awf-context.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md) — Proposed
 
 ## Superseded
 

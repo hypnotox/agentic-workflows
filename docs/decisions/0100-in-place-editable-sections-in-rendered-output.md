@@ -4,7 +4,7 @@ date: 2026-07-12
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, config]
+tags: [editable-sections, provenance-markers]
 related: [15, 48, 60, 61, 70, 72, 83, 86]
 domains: [config, rendering]
 ---

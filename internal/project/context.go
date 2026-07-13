@@ -162,19 +162,15 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	}
 	sort.Slice(res.Governing, func(i, j int) bool { return res.Governing[i].Number < res.Governing[j].Number })
 
-	// Precise tag set: union of Tier-1 tags minus any tag naming a configured
-	// domain (a domain-mirror tag is Tier-3 relatedness, not Tier-2 precision).
-	domainName := map[string]bool{}
-	for _, d := range p.Cfg.Domains {
-		domainName[d] = true
-	}
+	// Precise tag set: the plain union of the Tier-1 ADRs' tags. Tags are
+	// narrow sub-domain topics that cannot name a configured domain (enforced by
+	// the tag-not-domain-name gate, ADR-0109), so no domain-mirror filtering is
+	// needed — a shared narrow tag is precise relatedness.
 	precise := map[string]bool{}
 	relatedNum := map[int]bool{}
 	for _, a := range t1 {
 		for _, tag := range a.Tags {
-			if !domainName[tag] {
-				precise[tag] = true
-			}
+			precise[tag] = true
 		}
 		for _, n := range a.Related {
 			relatedNum[n] = true
@@ -183,7 +179,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 
 	// Tier 2 — "topically related": non-Tier-1, non-Superseded ADRs sharing a
 	// precise tag or named in a Tier-1 ADR's related:.
-	// invariant: context-tier2-topical
+	// invariant: context-tier2-precise-tag
 	inTier2 := map[string]bool{}
 	for _, a := range adrs {
 		if tier1[a.Number] || strings.HasPrefix(a.Status, "Superseded") {

@@ -795,10 +795,19 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 		return nil, nil
 	}
 	cfgPath := config.DirName + "/config.yaml"
+	domainName := map[string]bool{}
+	for _, d := range p.Cfg.Domains {
+		domainName[d] = true
+	}
 	var drift []manifest.Drift
 	for _, tag := range slices.Sorted(maps.Keys(p.Cfg.Tags)) {
 		if strings.TrimSpace(p.Cfg.Tags[tag]) == "" {
 			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-vocabulary", Detail: fmt.Sprintf("tag %q has an empty meaning", tag)})
+		}
+		// A tag must be finer than a domain (ADR-0109): a vocabulary member that
+		// names a configured domain is the coarse-tag regression, gated exactly.
+		if domainName[tag] {
+			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name — tags must be finer than domains", tag)})
 		}
 	}
 	adrs, err := adr.ParseDir(p.decisionsDir())

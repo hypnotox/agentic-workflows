@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: [context-tier1-governs]
 superseded_by: ""
-tags: [context, invariants]
+tags: [context-tiering, invariant-backing]
 related: [8, 31, 92, 104, 105]
 domains: [tooling, invariants]
 ---

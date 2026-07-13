@@ -4,7 +4,7 @@ date: 2026-07-12
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [pitfalls, docs, context, rendering, feedback-loop, sidecar-derived-doc]
+tags: [pitfalls-surface, context-query, sidecar-derived-doc]
 related: [67, 86, 88, 89, 90, 92, 98]
 domains: [rendering, tooling]
 ---

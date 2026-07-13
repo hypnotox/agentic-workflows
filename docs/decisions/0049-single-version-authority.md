@@ -4,7 +4,7 @@ date: 2026-07-02
 supersedes: []
 retires_invariants: [version-ldflags-precedence]
 superseded_by: ""
-tags: [release, bootstrap]
+tags: [version-authority, bootstrap-porcelain]
 related: [30, 39, 40, 48]
 domains: [tooling]
 ---

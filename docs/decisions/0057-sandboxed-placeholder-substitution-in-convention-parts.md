@@ -4,7 +4,7 @@ date: 2026-07-04
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, parts, config]
+tags: [convention-parts, placeholder-registry]
 related: [1, 12, 15, 34, 45, 51, 55, 56]
 domains: [rendering, config]
 ---

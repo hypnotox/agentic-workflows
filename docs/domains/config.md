@@ -52,11 +52,11 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
 - [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md)
+- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
 
 ### Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
 - [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
-- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 

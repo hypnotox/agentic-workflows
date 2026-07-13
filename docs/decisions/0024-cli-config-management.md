@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-27
 supersedes: []
 superseded_by: ""
-tags: [tooling, config, adoption]
+tags: [cli-dispatch, kind-descriptor]
 related: [9, 14, 22, 93]
 domains: [tooling, config]
 ---

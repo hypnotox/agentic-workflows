@@ -4,7 +4,7 @@ date: 2026-07-10
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, docs, catalog, config]
+tags: [glossary, sidecar-derived-doc]
 related: [11, 45, 61, 80, 82, 86, 88]
 domains: [rendering, config]
 ---

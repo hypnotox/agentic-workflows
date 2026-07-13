@@ -1,10 +1,10 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-13
 supersedes: []
 retires_invariants: [context-tier2-topical]
 superseded_by: ""
-tags: [context, governance]
+tags: [tag-vocabulary, context-tiering]
 related: [92, 99, 102, 103, 104, 106]
 domains: [tooling, config, invariants]
 ---

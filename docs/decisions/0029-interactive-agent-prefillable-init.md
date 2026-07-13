@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
-tags: [scaffold, tooling, adoption]
+tags: [init-scaffolding, catalog-vars]
 related: [22]
 domains: [tooling, config]
 ---

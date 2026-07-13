@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-24
 supersedes: []
 superseded_by: ""
-tags: [tooling]
+tags: [static-linting, command-runner]
 related: []
 domains: [tooling]
 ---

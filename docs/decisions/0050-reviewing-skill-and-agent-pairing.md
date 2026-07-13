@@ -4,7 +4,7 @@ date: 2026-07-02
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [catalog, governance, agents]
+tags: [skill-agent-pairing]
 related: [13, 22, 46, 81]
 domains: [config, rendering]
 ---

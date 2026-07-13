@@ -3,7 +3,7 @@ status: Superseded by ADR-0032
 date: 2026-06-24
 supersedes: []
 superseded_by: "0032"
-tags: [tooling]
+tags: [git-hooks, cli-dispatch]
 related: [2]
 domains: [tooling]
 ---

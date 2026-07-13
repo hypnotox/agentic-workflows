@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
-tags: [tooling, workflow]
+tags: [invariant-backing, adr-parsing]
 related: [5, 6]
 domains: [invariants]
 ---

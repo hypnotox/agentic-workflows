@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [tooling, rendering]
+tags: [section-assembly, publication-safety]
 related: [4, 9, 86]
 domains: [rendering]
 ---

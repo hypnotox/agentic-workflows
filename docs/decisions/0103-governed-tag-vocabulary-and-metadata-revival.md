@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [context, config, adr-system, invariants, tooling]
+tags: [tag-vocabulary, adr-parsing]
 related: [86, 88, 92, 98, 99, 102]
 domains: [config, adr-system, invariants, tooling]
 ---

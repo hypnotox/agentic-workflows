@@ -4,7 +4,7 @@ date: 2026-07-01
 supersedes: []
 retires_invariants: [workflow-ref-fallback]
 superseded_by: ""
-tags: [docs, rendering, catalog, config]
+tags: [doc-singletons, schema-migration]
 related: [4, 13, 18, 20, 21, 22, 29, 31, 37]
 domains: [rendering, config]
 ---

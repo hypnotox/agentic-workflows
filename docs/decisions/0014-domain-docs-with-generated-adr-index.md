@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [docs, adr-system, rendering]
+tags: [domain-index, adr-parsing]
 related: [5, 11, 13]
 domains: [adr-system, rendering]
 ---

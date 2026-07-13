@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [tooling, testing]
+tags: [coverage-gate, cli-dispatch]
 related: [2, 8]
 domains: [tooling]
 ---

@@ -4,7 +4,7 @@ date: 2026-07-09
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [testing, catalog, rendering, publication-safety]
+tags: [publication-safety, catalog-derived-tests]
 related: [44, 45, 46, 50, 53, 54, 67]
 domains: [rendering, tooling]
 ---

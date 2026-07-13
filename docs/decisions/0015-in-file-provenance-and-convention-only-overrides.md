@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-26
 supersedes: []
 superseded_by: ""
-tags: [tooling, rendering, config]
+tags: [provenance-markers, convention-parts]
 related: [1, 6, 9, 10, 11]
 domains: [rendering, config]
 ---

@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [plans, publication-safety]
+tags: [plan-taxonomy, placeholder-degradation]
 related: [97, 98]
 domains: [rendering]
 ---

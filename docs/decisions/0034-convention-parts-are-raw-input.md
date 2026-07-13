@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, parts, adoption]
+tags: [convention-parts, section-assembly]
 related: [1, 15]
 domains: [rendering]
 ---

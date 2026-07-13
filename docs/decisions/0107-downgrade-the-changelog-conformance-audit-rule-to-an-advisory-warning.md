@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, audit, changelog, feedback-loop]
+tags: [audit-rules, changelog]
 related: [41, 67, 73, 78]
 domains: [tooling]
 ---

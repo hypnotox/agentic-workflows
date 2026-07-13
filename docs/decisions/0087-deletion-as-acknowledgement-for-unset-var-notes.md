@@ -4,7 +4,7 @@ date: 2026-07-10
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [rendering, advisory, config, adoption]
+tags: [catalog-vars, unset-var-advisory]
 related: [22, 26, 29, 34, 45, 49, 57, 84, 86]
 domains: [rendering, config]
 ---

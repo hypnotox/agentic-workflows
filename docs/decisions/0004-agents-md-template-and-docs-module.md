@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-24
 supersedes: []
 superseded_by: ""
-tags: [tooling, rendering]
+tags: [agents-guide, doc-model]
 related: [1]
 domains: [adr-system]
 ---

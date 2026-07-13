@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-27
 supersedes: []
 superseded_by: ""
-tags: [rendering, adr-system, catalog]
+tags: [doc-singletons, adr-scaffolding]
 related: [4, 9, 11, 15, 16, 20]
 domains: [rendering, adr-system]
 ---

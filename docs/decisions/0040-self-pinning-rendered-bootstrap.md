@@ -4,7 +4,7 @@ date: 2026-06-30
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, release, rendering, config]
+tags: [bootstrap-porcelain, checksum-verify]
 related: [24, 27, 30, 39]
 domains: [tooling, rendering, config]
 ---

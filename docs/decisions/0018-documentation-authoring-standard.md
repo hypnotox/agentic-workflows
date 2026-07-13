@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-27
 supersedes: []
 superseded_by: ""
-tags: [docs, adoption, rendering]
+tags: [doc-standard, agents-guide]
 related: [4, 11, 15]
 domains: [rendering]
 ---

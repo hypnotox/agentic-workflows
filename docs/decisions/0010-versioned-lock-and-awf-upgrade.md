@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
-tags: [tooling, config]
+tags: [schema-migration, upgrade-flow]
 related: [9]
 domains: [config]
 ---

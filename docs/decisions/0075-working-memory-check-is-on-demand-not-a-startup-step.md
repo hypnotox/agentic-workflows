@@ -4,7 +4,7 @@ date: 2026-07-08
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [workflow, memory, context, docs]
+tags: [working-memory]
 related: [69]
 domains: [rendering, tooling]
 ---

@@ -152,12 +152,18 @@ data:
           text: '**Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`invariant: uncovered-output-parity`).'
         - ref: ADR-0103
           text: '**Governed tag vocabulary.** With a non-empty `tags:` vocabulary, `awf check` fails on any tag used by an ADR or a pitfall that is not a declared vocabulary member, and on any member with an empty meaning; an empty or absent vocabulary is inert, and a declared member no artifact uses is allowed (`invariant: tag-vocabulary-governed`).'
+        - ref: ADR-0109
+          text: '**Tag not domain name.** A tag is a sub-domain topic, finer than a domain: with a non-empty `tags:` vocabulary and a non-empty `domains:` set, `awf check` fails if any vocabulary member equals a configured domain name; an empty vocabulary or a project with no domains is inert (`invariant: tag-not-domain-name`).'
+        - ref: ADR-0109
+          text: '**Tag frequency note.** `awf check` emits a non-failing `note:` for each vocabulary tag carried by more than 25% of the tag-bearing artifacts (ADRs plus pitfalls) — advisory coarsening drift that never changes the exit code (`invariant: tag-frequency-note`).'
+        - ref: ADR-0109
+          text: '**Tag coverage note.** Under a non-empty vocabulary, `awf check` emits a non-failing `note:` for each ADR or pitfall carrying zero tags — the under-tagging backstop; an empty/absent vocabulary is inert and the note never changes the exit code (`invariant: tag-coverage-note`).'
         - ref: ADR-0103
           text: '**ADR related links resolve.** `awf check` fails an ADR whose `related:` names an ADR number with no matching file under `docs/decisions/`, independent of the tag vocabulary (`invariant: adr-related-link-resolved`).'
         - ref: ADR-0104, ADR-0106
           text: '**Context Tier 1 governs.** `awf context <paths>` reports as Tier-1 "governing" ADRs exactly the Implemented, non-retired ADRs declaring an invariant slug present under a queried path — presence deriving from the union scan of `invariants.sources` and `invariants.testGlobs`, recognising both the proof `invariant:` and the advisory `touches-invariant:` marker, intersected with the shared one-to-one `slug → declaring ADR` join; each governing invariant is labelled backed or unbacked (`invariant: context-tier1-marker-union`).'
         - ref: ADR-0104
-          text: '**Context Tier 2 topical.** A non-Tier-1, non-Superseded ADR is Tier 2 iff it shares a tag with the Tier-1 precise set (the Tier-1 tags minus any tag naming a configured domain) or is `related:`-linked from a Tier-1 ADR; a pitfall is Tier 2 iff it shares such a tag; each artifact appears in at most one tier (`invariant: context-tier2-topical`).'
+          text: '**Context Tier 2 precise tag.** The Tier-1 precise set is the plain union of the Tier-1 ADRs'' tags (no domain-name filtering — the tag-not-domain-name gate forbids a tag naming a domain). A non-Tier-1, non-Superseded ADR is Tier 2 iff it shares a precise tag or is `related:`-linked from a Tier-1 ADR; a pitfall is Tier 2 iff it shares a precise tag; each artifact appears in at most one tier; an empty precise set yields a Tier 2 of only the Tier-1 ADRs'' `related:` links (`invariant: context-tier2-precise-tag`).'
         - ref: ADR-0104
           text: '**Context Tier 3 collapsed.** A domain-membership ADR in neither Tier 1 nor Tier 2 is reported only as part of a collapsed background count with the domain current-state pointers, never individually enumerated (`invariant: context-tier3-collapsed`).'
         - ref: ADR-0104

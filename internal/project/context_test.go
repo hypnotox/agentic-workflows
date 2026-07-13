@@ -41,8 +41,8 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 	// Implemented ADR declares (the Tier-1 !ok skip).
 	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"),
 		"package x\n// invariant: gov-slug\n// invariant: gov-slug2\n// invariant: gov-slug3\n// invariant: orphan-slug\n")
-	// 0001 Implemented, declares BOTH present gov slugs; tag `precise` plus the
-	// domain-mirror `alpha` (excluded from the precise set); related: [3, 5] → Tier 1.
+	// 0001 Implemented, declares BOTH present gov slugs; tag `precise` plus `alpha`
+	// (now in the precise set — no domain-name filtering); related: [3, 5] → Tier 1.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
 			testsupport.WithTags("precise", "alpha"), testsupport.WithRelated(3, 5),
@@ -70,9 +70,9 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("nomatch"),
 			testsupport.WithTitle("0005: Related only"), testsupport.WithDomains("other"),
 			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// 0006 Implemented, declares the third present gov slug; tag `alpha` is a
-	// domain-mirror (excluded from the precise set) → a second Tier-1 ADR, so the
-	// Governing sort comparator runs.
+	// 0006 Implemented, declares the third present gov slug; tag `alpha` (a second
+	// Tier-1 ADR, so the Governing sort comparator runs). `alpha` is inert for Tier 2
+	// here because no non-Tier-1 ADR shares it.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0006-f.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("alpha"),
 			testsupport.WithTitle("0006: Second governor"), testsupport.WithDomains("alpha"),
@@ -96,10 +96,11 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 
 // TestContextForAssembles exercises the three-tier assembly: Tier 1 (an ADR
 // declaring a present invariant slug, deduped when it declares two, an orphan
-// present slug skipped), Tier 2 (shared precise tag and related-linked, with the
-// domain-mirror tag excluded and a Superseded ADR dropped), and the Tier-3
-// collapsed background count.
-// invariant: context-tier2-topical
+// present slug skipped), Tier 2 (shared precise tag and related-linked, with a
+// Superseded ADR dropped; the precise set is the plain union of Tier-1 tags — no
+// domain-name filtering, since the tag-not-domain-name gate forbids a tag naming
+// a domain), and the Tier-3 collapsed background count.
+// invariant: context-tier2-precise-tag
 // invariant: context-tier3-collapsed
 func TestContextForAssembles(t *testing.T) {
 	_, p := ctxProject(t, ctxYAML)

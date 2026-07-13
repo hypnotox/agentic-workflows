@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [audit, tooling, publication-safety]
+tags: [audit-rules, domain-index]
 related: [17, 19]
 domains: [tooling]
 ---

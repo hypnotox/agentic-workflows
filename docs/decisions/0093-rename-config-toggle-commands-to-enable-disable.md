@@ -4,7 +4,7 @@ date: 2026-07-11
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [tooling, adoption, docs]
+tags: [cli-dispatch, enable-closure]
 related: [24, 37, 39, 92, 94]
 domains: [tooling, config]
 ---

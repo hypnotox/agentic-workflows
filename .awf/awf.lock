@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:757cd5b4505f65fd8743885116a71f829db0e1d203b3695e37a81bf8038cd088",
-      "configHash": "sha256:3a2be701691c621a5551d71dc8a90c003a212abb08542b6f511abcecf840b4c2",
-      "outputHash": "sha256:c845bd67a77d2536a97613b49232a8122648af7047dddcdf0963b30662093ce7"
+      "configHash": "sha256:5fe6821d914737bdf2cbabce4bbabf4dbd706f3bcebad9dd71c481ee3d194ec7",
+      "outputHash": "sha256:c09a1b1f755ae2d8410041bc85501e3a259c6b8b22e8e67d66790a63cea6cbc6"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -276,7 +276,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:703b04f1cb9791a10fcbf81f01f836c532f6cadbf08e72dcb5a4fffeb070c406"
+      "outputHash": "sha256:fb0016a5f177e1f51b577a5b04f22a497defb05dc8b4f8ad910462b174f4baf3"
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -312,13 +312,13 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:5bb8a184b9cd541639c6671306326e0cc9b74dbc6cf29561f3bd22b15e86a196"
+      "outputHash": "sha256:762fdc56266ff13aeaef88b6b84bdc7124d5c9c1b8af1b3d08a7ce6814e04a24"
     },
     "docs/domains/invariants.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:adab85865d42f0e1e37618ec7595c2d3de5d5f1f4f746f61c98a682d3a9665ac"
+      "outputHash": "sha256:900435cd17bfd87fbedce72c7b8f038d9708ab6302fe4e2618ca46e007010160"
     },
     "docs/domains/rendering.md": {
       "templateId": "",
@@ -330,7 +330,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:d8fd664d10e33c6476c7586c5d0c9628dfc83660077583fae41e24a39e47623d"
+      "outputHash": "sha256:a3d310bda0cd44ad844a6c924550154fe906fca614ff692b9b97ed24b066da90"
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

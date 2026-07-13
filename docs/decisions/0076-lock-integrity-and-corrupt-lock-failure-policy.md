@@ -4,7 +4,7 @@ date: 2026-07-08
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [config, tooling, security, testing]
+tags: [atomic-writes, corrupt-lock]
 related: [10, 16, 23, 39]
 domains: [config, tooling]
 ---

@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-29
 supersedes: [3]
 superseded_by: ""
-tags: [tooling, hooks, adoption, rendering]
+tags: [git-hooks, schema-migration]
 related: [23, 30, 31]
 domains: [tooling, rendering]
 retires_invariants: [setup-guards-hookspath]

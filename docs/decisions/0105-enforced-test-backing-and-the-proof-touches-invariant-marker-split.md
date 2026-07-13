@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [invariants, testing, config, adr-system]
+tags: [invariant-backing, marker-scoping]
 related: [7, 8, 31, 64, 77, 98, 104]
 domains: [invariants, config, tooling]
 ---

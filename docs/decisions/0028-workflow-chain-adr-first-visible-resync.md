@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-28
 supersedes: []
 superseded_by: ""
-tags: [workflow, docs, rendering]
+tags: [workflow-chain, chain-handoffs]
 related: [4]
 domains: [adr-system]
 ---

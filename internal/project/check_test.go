@@ -87,13 +87,13 @@ func TestCheckPitfallsADRParseError(t *testing.T) {
 // invariant: tag-vocabulary-governed
 func TestCheckTagVocabulary(t *testing.T) {
 	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n" +
-		"tags:\n  rendering: the render engine\n  empty: \"\"\n"
+		"tags:\n  render-engine: the render engine\n  empty: \"\"\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [rendering, ghost]\n      body: ok\n",
+		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: P\n      tags: [render-engine, ghost]\n      body: ok\n",
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
-			testsupport.WithTags("rendering", "bogus"), testsupport.WithTitle("0001: A"),
+			testsupport.WithTags("render-engine", "bogus"), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
 	p, err := Open(root)
 	if err != nil {
@@ -309,5 +309,46 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
 	if _, err := p.Check(); err == nil {
 		t.Fatal("expected Check to propagate the checkPlans parse error, got nil")
+	}
+}
+
+// A vocabulary member equal to a configured domain name is the coarse-tag
+// regression, gated exactly; inert when no domains are configured.
+// invariant: tag-not-domain-name
+func TestCheckTagVocabularyDomainCollision(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
+		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkTagVocabulary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	for _, d := range drift {
+		if d.Kind == "tag-domain-collision" {
+			got = d.Detail
+		}
+	}
+	if !strings.Contains(got, "rendering") {
+		t.Fatalf("want tag-domain-collision for rendering, got %+v", drift)
+	}
+	// No domains configured: the collision rule is inert.
+	root2 := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
+		"tags:\n  rendering: fine when no domains\n")
+	p2, err := Open(root2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift2, err := p2.checkTagVocabulary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range drift2 {
+		if d.Kind == "tag-domain-collision" {
+			t.Errorf("no collision expected with no domains; got %+v", drift2)
+		}
 	}
 }

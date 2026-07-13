@@ -4,7 +4,7 @@ date: 2026-07-12
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [workflow, plans, config, tooling, rendering]
+tags: [plan-artifact, frontmatter-validation]
 related: [6, 60, 92, 95, 97, 108]
 domains: [rendering, tooling]
 ---

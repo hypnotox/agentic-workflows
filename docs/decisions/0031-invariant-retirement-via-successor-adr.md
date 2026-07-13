@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-29
 supersedes: []
 superseded_by: ""
-tags: [invariants, adr-system]
+tags: [invariant-retirement]
 related: [8]
 domains: [invariants, adr-system]
 ---

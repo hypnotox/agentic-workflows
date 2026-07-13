@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-27
 supersedes: []
 superseded_by: ""
-tags: [tooling, adoption, scaffold]
+tags: [brownfield-adoption, git-hooks]
 related: [3, 16]
 domains: [tooling]
 ---

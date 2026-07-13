@@ -4,7 +4,7 @@ date: 2026-07-02
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [hooks, rendering, adoption, tooling]
+tags: [git-hooks, config-tree]
 related: [23, 32, 35, 36, 39, 40, 45, 47]
 domains: [rendering, config, tooling]
 ---

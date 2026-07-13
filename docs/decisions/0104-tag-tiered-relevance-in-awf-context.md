@@ -4,7 +4,7 @@ date: 2026-07-13
 supersedes: []
 retires_invariants: [context-surfaces-linked-plans, context-surfaces-pitfalls]
 superseded_by: ""
-tags: [context, invariants, tooling, adr-system, governance]
+tags: [context-tiering]
 related: [8, 31, 92, 98, 99, 102, 103]
 domains: [tooling, invariants]
 ---

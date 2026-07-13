@@ -4,7 +4,7 @@ date: 2026-07-04
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [audit, config, rendering]
+tags: [commit-scopes, agents-guide]
 related: [8, 17, 36, 45, 51]
 domains: [config, rendering, tooling]
 ---

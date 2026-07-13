@@ -4,7 +4,7 @@ date: 2026-07-11
 supersedes: []
 retires_invariants: []
 superseded_by: ""
-tags: [catalog, rendering, tooling, docs, adoption]
+tags: [local-artifacts, doc-model]
 related: [20, 45, 60, 61, 68, 70, 77, 82, 86, 88, 90]
 domains: [config, rendering, tooling]
 ---

@@ -3,7 +3,7 @@ status: Implemented
 date: 2026-06-25
 supersedes: []
 superseded_by: ""
-tags: [tooling, config]
+tags: [active-md, layout-namespace]
 related: [1, 4]
 domains: [config, adr-system]
 ---
