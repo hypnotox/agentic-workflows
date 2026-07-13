@@ -15,7 +15,7 @@ domains: [rendering, config]
 Upgrading awf in an adopter project has a chicken-and-egg: the rendered `.awf/bootstrap.sh`
 (ADR-0040) pins exactly the version that rendered it, so every upgrade begins with manually
 locating, downloading, checksum-verifying, and extracting the *new* binary before `awf upgrade`
-can run. The first real adopter upgrade (fleet, v0.5.0→0.12.0, 2026-07-09) named this the top
+can run. The first real adopter upgrade (v0.5.0→0.12.0, 2026-07-09) named this the top
 friction point: the migration chain itself was smooth, but the documented flow is not
 self-contained — "something like `AWF_VERSION=0.13.0 bash .awf/bootstrap.sh` honoring an
 override, or `awf upgrade --to`, would make the documented flow self-contained."
@@ -116,7 +116,7 @@ Forces and observations shaping the design:
    section (template edit plus the catalog `Sections` entry, which are parity-checked
    together): the single-command flow, the explicit-version form, the env override on its
    own, and the residual manual work a renderer cannot do (adopter-owned call sites, hook
-   wiring, prose parts) — the adopter upgrade runbook owed since the fleet rehearsal. The
+   wiring, prose parts) — the adopter upgrade runbook owed since the upgrade rehearsal. The
    rendered `AGENTS.md` invariant entries for ADR-0040/0049 *and* the ADR-0082 exemption
    bullet (two entries → three) are reworded via their `.awf/agents-doc.yaml` data entries
    in the same change, and the commit that flips this ADR's status adds this ADR's
@@ -158,7 +158,7 @@ Forces and observations shaping the design:
   re-renders, and re-pins the bootstrap. The env override is independently useful (CI
   trialing a release before committing the pin).
 - **One bridging upgrade still starts manually.** `.awf/upgrade.sh` exists in an adopter
-  tree only after the first upgrade to a release that ships it, so that one upgrade (fleet's
+  tree only after the first upgrade to a release that ships it, so that one upgrade (the first adopter's
   next, the motivating case) uses the env override by hand:
   `AWF_VERSION=X bash .awf/bootstrap.sh` then `<path> upgrade`. Every upgrade after that is
   the single command.
@@ -174,7 +174,7 @@ Forces and observations shaping the design:
   the redirect-shape assumption (effective URL ends in `/tag/vX.Y.Z`) must be confirmed
   manually when implementing and is guarded at runtime by the loud no-`/tag/` failure.
   awf's own repo disables the bootstrap singleton (builds from source), so dogfooding
-  happens in adopters, fleet first — same as the bootstrap itself.
+  happens in adopters — same as the bootstrap itself.
 - **ADR-0082's exemption ceiling moves from two to three.** The rule that extension
   requires a successor ADR held in practice; this ADR is that successor.
 - **A `.ps1`/Windows companion remains out of scope**, inherited from ADR-0040.

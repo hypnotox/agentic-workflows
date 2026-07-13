@@ -209,7 +209,7 @@ Forces and grounding discoveries shaping the design:
   `awf config`, including the previously invisible dormancy answer ("no enabled artifact
   references this; enabling X would"). The `audit.*` knobs become documented for the
   first time outside Go source.
-- Every adopter repo (fleet, go-php) gains `docs/config-reference.md` at its next sync —
+- Every adopter repo gains `docs/config-reference.md` at its next sync —
   confirmed desired. The doc's content changes whenever config changes; regeneration
   checking makes that drift visible instead of silent.
 - Maintenance cost is the point: a new config field, catalog var, or data key cannot land

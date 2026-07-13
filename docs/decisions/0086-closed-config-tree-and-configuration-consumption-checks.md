@@ -69,7 +69,7 @@ Forces shaping the design:
 - Dogfood is already clean: awf's own `.awf/` tree and the `internal/evals` full-catalog
   fixture were enumerated against the proposed model during design — no unused vars, no
   unused data keys, no strays, no inert fields. The checks land green here.
-- External adopters (fleet, go-php) will see new hard failures on upgrade; every new error
+- External adopters will see new hard failures on upgrade; every new error
   must therefore name the exact file or key and the edit that fixes it.
 
 ## Decision
@@ -164,7 +164,7 @@ Forces shaping the design:
   says it doesn't; a configuration value either feeds rendering or is flagged. The
   "publication-safe degradation hides typos" hole closes without weakening degradation
   itself (unset-and-referenced stays legal; set-and-unreferenced becomes the error).
-- **Upgrade friction, accepted:** fleet and go-php may go red on their first post-upgrade
+- **Upgrade friction, accepted:** external adopters may go red on their first post-upgrade
   `awf check`. Every error self-describes its repair; the changelog entry flags the
   strictness change. Toggling a render unit off (`awf remove hooks`) can newly strand a var
   (`commitGateCmd`) and require a same-commit vars edit — intended, documented. Likewise a

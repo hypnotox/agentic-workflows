@@ -19,8 +19,8 @@ which forced a repo-local gate test (`TestGlossaryTermsSorted`) — enforcement 
 this repo gets, while adopters authoring the same table have nothing. The user direction:
 "rework the glossary to simply always render it sorted. Entries should be config values
 … enables us to enforce some things on the content, e.g. deterministic sorting in the
-first place." Breaking the existing adopters is accepted — only fleet enables the
-glossary (with an authored `terms.md` part); go-php does not.
+first place." Breaking the existing adopters is accepted — only one adopter enables the
+glossary (with an authored `terms.md` part); the others do not.
 
 Grounding discoveries shaping the design:
 
@@ -145,10 +145,10 @@ Easier:
   checks apply to them with no carve-outs.
 
 Harder / accepted trade-offs:
-- **Breaking for fleet** (accepted by the user): after upgrade, its authored
+- **Breaking for the glossary-enabled adopter** (accepted by the user): after upgrade, its authored
   `terms.md` part becomes orphaned-part drift with the section gone; the remedy —
   convert rows to `data.terms`, optionally keep framing prose as `prepend` — ships in
-  the changelog Breaking entry. go-php is unaffected (glossary not enabled).
+  the changelog Breaking entry. Adopters without the glossary enabled are unaffected.
 - Meanings are single-line YAML strings; genuinely multi-line definitions are out of
   scope for a table-shaped glossary (the hard error makes the constraint explicit).
 - Escaping `|` as `\|` inside a code span renders the backslash literally on some

@@ -12,7 +12,7 @@ domains: [rendering]
 
 ## Context
 
-An upgrade rehearsal against a real adopter tree (fleet, v0.5.0 → 0.12.0) probed the
+An upgrade rehearsal against a real adopter tree (v0.5.0 → 0.12.0) probed the
 residual-marker guard's edges: a convention part containing the line
 `<!-- awf:section bogus -->` syncs without error, the marker lands verbatim in the
 rendered artifact, and `awf check` reports clean. An adopter who typos a section marker

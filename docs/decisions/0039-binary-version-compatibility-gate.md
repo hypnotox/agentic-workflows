@@ -12,7 +12,7 @@ domains: [tooling]
 
 ## Context
 
-awf's first external adopter (the sibling project `fleet`) pins the awf binary in two
+awf's first external adopter pins the awf binary in two
 independent places: a hand-rolled `AWF_VERSION="0.4.0"` in its `./x` dev wrapper, and the
 `awfVersion` field of `.awf/awf.lock`, which awf itself stamps from `project.Version` on every
 `sync`. Nothing keeps these two in step — `awf upgrade` bumps the lock's `schemaVersion` (and a

@@ -362,8 +362,7 @@ field's one-line consensus: **canonicalize the harness as config, fan it out
 deterministically, and let deterministic oracles catch what the agent can't.**
 
 Current state: **v0.6.2**, public, 52 ADRs (all Implemented bar 0001/0003),
-14-skill workflow chain, 3 fresh-context reviewer agents, one external adopter
-(go-php).
+14-skill workflow chain, 3 fresh-context reviewer agents, one external adopter.
 
 ### Scorecard — awf vs. the field
 
@@ -438,8 +437,8 @@ Ranked by leverage:
 4. **Cold-start / adopter onboarding (already on the backlog).** The field's
    "80% problem" and low full-delegation rates (0–20%) imply the last mile is
    human trust. An **example/tutorial adopter repo** (already a deferred backlog
-   item) directly attacks adoption friction — high value now that go-php proves
-   external adoption works.
+   item) directly attacks adoption friction — high value now that an external
+   adopter proves external adoption works.
 5. **Close the Part-1 documentation gaps as product positioning.** The pillars
    where the *field* is thin (AGENTS.md governance, drift/provenance) are exactly
    where awf can publish the reference implementation. Turning awf's ADRs on drift

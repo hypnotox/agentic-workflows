@@ -17,7 +17,7 @@ prints a non-failing note per rendered artifact that references unset vars. "Uns
 means *missing key or empty value* — `unsetVarNotes` indexes the vars map without the
 presence flag (`internal/project/check.go:52`), so the two states are indistinguishable.
 An adopter who considers a var and deliberately declines it has no way to say so: the
-note prints on every `awf check` and `awf init`, forever. The fleet repository carries
+note prints on every `awf check` and `awf init`, forever. A real adopter repository carries
 two such standing `invariantTestPath` notes. Permanent unactionable output trains readers
 to skim the notes channel, which buries the one note that is new and matters.
 
@@ -89,7 +89,7 @@ Grounding discoveries that shape the design:
    This is a textual contract on future var-introducing ADRs (precedent: ADR-0084's
    textual policy), not standing machinery: there is no generic scan, and **no seed ships
    for the existing eight vars** — configs already lacking a referenced key flip from
-   noting to silent, which is exactly the intended fleet fix.
+   noting to silent, which is exactly the intended adopter fix.
 
 4. **`awf new` seeds its scaffold's vars.** At creation, `awf new skill|agent` computes
    the vars referenced by the artifact's template source as scaffolded and adds each
@@ -127,7 +127,7 @@ Grounding discoveries that shape the design:
 ## Consequences
 
 Easier:
-- A deliberate "we don't use this var" is expressible, permanent, and auditable; fleet
+- A deliberate "we don't use this var" is expressible, permanent, and auditable; an adopter
   deletes `invariantTestPath` and its two standing notes end. The notes channel stays
   high-signal — every note has a concrete config edit that resolves it.
 - No new config surface, no severity model, no suppression list to rot: the ADR-0086
@@ -170,7 +170,7 @@ Harder / accepted trade-offs:
 | Empty-string-means-acknowledged | Init seeds every referenced var as `""` (ADR-0022/0029); fresh scaffolds would be born fully acknowledged and the advisory would never fire for anyone. |
 | Generic scan-at-upgrade seeding (referenced ∩ missing → seed) | Cannot distinguish a release-introduced var from a deliberately deleted one; resurrects every acknowledgement on every upgrade unless given memory. |
 | Lock-recorded referenced-var union as that memory | Machinery solving a problem only the generic scan creates; per-release seed steps get run-once semantics free from the generation gate. |
-| One-time seed of the existing eight vars at this release | Re-materializes the exact keys adopters like fleet want gone; contradicts the goal. |
+| One-time seed of the existing eight vars at this release | Re-materializes the exact keys adopters want gone; contradicts the goal. |
 | Suppression severity model on notes | ADR-0045 already rejected a severity model for one consumer; notes remain uniformly informational. |
 | Present-null-means-acknowledged (data-namespace symmetry) | Unrepresentable by awf's own tooling (`Skeleton.Vars` is `map[string]string`, ADR-0026 Decision 3), contradicts the recorded user direction, and breaks the uniform "present = open to-do" reading. |
 | No seed for future catalog vars (changelog-only announcement) | Silences the advisory for exactly the var nobody has considered yet, gutting the discovery premise; the migration cost is rare and already ADR-gated. |

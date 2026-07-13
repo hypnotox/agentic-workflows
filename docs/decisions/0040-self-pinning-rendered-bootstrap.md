@@ -14,7 +14,7 @@ domains: [tooling, rendering, config]
 
 awf is distributed as prebuilt, checksum-bearing release archives plus a `go install` fallback
 ([ADR-0030](0030-prebuilt-binary-distribution-and-release.md)). It does not, however, give an
-adopter any *vendored* way to obtain a pinned binary. The first adopter (`fleet`) hand-rolled one:
+adopter any *vendored* way to obtain a pinned binary. The first adopter hand-rolled one:
 a ~30-line `ensure_awf` in its `./x` dev wrapper that detects arch, fetches
 `awf_<ver>_<os>_<arch>.tar.gz` plus `checksums.txt`, verifies the SHA-256, extracts, and caches the
 binary — pinned by a hardcoded `AWF_VERSION="0.4.0"`. It took three follow-up commits to harden
@@ -131,7 +131,7 @@ is precedent for a token handled bespoke, outside that table.
 - **Shell runtime is outside the coverage gate.** The 100% Go statement-coverage gate
   ([ADR-0012](0012-full-coverage-gate-and-conventions.md)) covers the Go code that *renders* the
   template (testable by golden render) but not the shell script's runtime behavior (fetch, verify,
-  cache) — there is no shell-coverage harness in the repo. Real-world exercise comes from `fleet`
+  cache) — there is no shell-coverage harness in the repo. Real-world exercise comes from an adopter
   migrating its `./x` onto the rendered script; that migration is downstream of this repo.
 - **New default for fresh and upgraded projects.** `init` and the schema-5 migration both enable the
   bootstrap, so adopters get it unless they `awf remove bootstrap`.
