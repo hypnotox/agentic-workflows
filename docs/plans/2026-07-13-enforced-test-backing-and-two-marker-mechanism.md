@@ -1,7 +1,7 @@
 ---
 date: 2026-07-13
 adrs: [105, 106]
-status: Proposed
+status: Implemented
 ---
 # Plan: Enforced Test-Backing and Two-Marker Mechanism
 
@@ -319,3 +319,32 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   adds advisory notes) thread through `CheckInvariants`, `runCheck`, `runInvariants`, and
   `context.go` — all updated within Phase 2 (Task 2.9's commit). The `MarkersUnder` signature change
   (Task 3.1) is absorbed by `context.go` within Phase 3. No signature change outlives its phase.
+
+## Implementation findings (recorded at freeze)
+
+Plan `status: Implemented` (2026-07-13). ADR-0105 and ADR-0106 **remain Proposed** — the enforcement
+flip and both ADR status flips are Plan 2's (migration) job; the plan lifecycle allows this plan's
+status to be independent of its ADRs'. Phase commits: `cbd296d` (P1), `5210a90` (P2), `5555c33` (P3),
+`cdf82ca` (P4). Deviations from the plan text encountered during execution:
+
+- **Task 1.1 (P1) — test premise was wrong.** The plan expected a basename-only `testGlobs: ['*_test.go']`
+  to be rejected; under ADR-0077 a no-slash pattern is a *valid* anchored glob (top-level only), so
+  validation rejects only malformed patterns. Test corrected to assert `*_test.go` is accepted.
+- **Task 2.8 (P2) — authoring sources.** The plan named `.awf/docs/decisions-template/*`, which does
+  not exist; the ADR template / proposing-adr / working-with-awf defaults live in the embedded
+  `templates/` FS. Edited there (plus the real `.awf/parts/adr-readme/invariants.md` override).
+- **P2 — `examples/sundial` migrated too.** The nested example adopter (checked by `./x check`,
+  ADR-0090) has its own `inv:` declaration; left unmigrated its own check would emit a dangling-marker
+  note. Renamed to `invariant:` and re-synced.
+- **P2 — new scanner rule (behavior addition beyond plan/ADR).** `scanTags`/`MarkersUnder` now skip a
+  subdirectory carrying its own `.awf/` (a nested adopter), mirroring the existing nested-`.git` skip,
+  so the main scan does not flag `examples/sundial`'s markers as dangling. **Flagged for impl-review /
+  retrospective — candidate for a follow-up ADR to formalize.**
+- **P2 — removed one orphan marker** `// invariant: audit-worktree-config-extension`
+  (`internal/audit/git_test.go`): no ADR declares that slug, so the new dangling-marker advisory
+  correctly surfaced it. Test logic unchanged.
+- **P2 — `Class` constants** are `ClassBacked`/`ClassUnbacked` (not the plan's `Backed`/`Unbacked`) to
+  avoid colliding with the pre-existing `Unbacked` `Status` constant.
+- **Task 3.2 (P3) — `Decl.VerifyNote bool` → `Decl.Verify string`.** ADR-0106 item 3 surfaces the
+  unbacked invariant's `Verify:` *text*, which a bool cannot carry; converted to a string (empty =
+  absent) with `Check`'s presence check updated accordingly.
