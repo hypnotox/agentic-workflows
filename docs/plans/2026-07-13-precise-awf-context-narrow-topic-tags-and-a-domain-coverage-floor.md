@@ -38,7 +38,7 @@ uncovered slug, an advisory `touches-invariant` marker in a docstring, in the fl
 - **Modified:**
   - `.awf/domains/rendering.yaml`, `.awf/domains/config.yaml`, `.awf/domains/tooling.yaml`, `.awf/domains/adr-system.yaml` (domain path folds).
   - `internal/config/config.go` (`ContextIgnore` field), `internal/configspec/*` (its `KeyEntry`), `docs/config-reference.md` (regenerated).
-  - `internal/project/context.go` (`Uncovered` rewrite; Tier-2 filter removal; both invariant markers), `internal/project/context_test.go` (renamed proof markers + new coverage cases), `internal/project/check.go` (`tag ≠ domain` gate; note producers), plus the note-producer wiring in `cmd/awf/check.go`.
+  - `internal/project/context.go` (`Uncovered` rewrite; Tier-2 filter removal; both invariant markers), `internal/project/context_test.go` (renamed proof markers + new coverage cases), `internal/project/check.go` (`tag ≠ domain` gate; tag-health note producers folded into `AdvisoryNotes()`), `internal/project/notes_test.go` (note tests). `cmd/awf/check.go` is unchanged — it already prints `AdvisoryNotes()`.
   - `.awf/config.yaml` (`tags:` re-curation; `contextIgnore:`), every `docs/decisions/NNNN-*.md` and `.awf/docs/pitfalls.yaml` entry (re-tag), `.awf/agents-doc.yaml` (two invariant bullets reworded), and all regenerated surfaces (`AGENTS.md`, `docs/decisions/ACTIVE.md`, domain docs, `.awf/awf.lock`).
   - `docs/decisions/0109-*.md`, `docs/decisions/0110-*.md` (status flips).
 - **Deleted:** none.
