@@ -223,8 +223,12 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   skill part and `.awf/parts/adr-readme/invariants.md` to the unified `invariant:` token and the
   proof/touches marker split (per-language markers); and the AGENTS.md source part's **"Backed
   invariants"** rule for the two markers, the test-scoped proof + source-only fallback, and the
-  backed/unbacked classification with symmetric enforcement. **Do not touch the AGENTS.md `context`
-  rules** (`context-tier1-governs` etc.) — those stay live/enforced until the migration plan flips
+  backed/unbacked classification with symmetric enforcement. Also fix the peripheral `inv:`→`invariant:`
+  token-spelling mentions in the guide sources that co-travel with the rename: `.awf/docs/glossary.yaml`
+  (the invariant term), `.awf/docs/parts/architecture/components.md`, the working-with-awf source part,
+  and any `.awf/docs/pitfalls.yaml` entry naming the token. **Do not touch the AGENTS.md `context`
+  rules** (`context-tier1-governs` etc.) nor the domain current-state narratives under
+  `.awf/domains/parts/*/current-state.md` — those stay live/enforced until the migration plan flips
   ADR-0106; see Notes. Run `./x sync`.
 
 - [ ] **Task 2.9 — Verify and commit (coupled Phase-2 commit).** `./x gate` && `./x check` (clean, no
@@ -232,7 +236,8 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   `cmd/awf/invariants.go`, `internal/project/project.go`, **`internal/project/context.go`** (the
   `DeclaringADRs` return-type consumer, Task 2.1), their tests, every rewritten `docs/decisions/*.md`,
   the changed `.awf/` authoring parts, and the regenerated rendered surfaces (`AGENTS.md`,
-  `docs/decisions/README.md`, the ADR template, the `proposing-adr` skill). Commit:
+  `docs/decisions/README.md`, the ADR template, the `proposing-adr` skill, and the regenerated
+  `docs/glossary.md`, `docs/architecture.md`, `docs/working-with-awf.md`, `docs/pitfalls.md`). Commit:
   `feat(invariants): two-marker backing, testGlobs teeth, classification`.
 
 ## Phase 3 — Backed-aware context
