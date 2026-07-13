@@ -78,6 +78,29 @@ func TestDeclaringADRsUnbackedClass(t *testing.T) {
 	}
 }
 
+// TestDeclaringADRsVerifyWrapped pins that a `Verify:` note wrapped across a
+// bullet's continuation lines is captured whole — not truncated at the first
+// physical line and not misread as a missing note (the ADR template wraps it).
+func TestDeclaringADRsVerifyWrapped(t *testing.T) {
+	dir := t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented",
+		"- `unbacked-invariant: wrapped` — a reasoned contract whose property\n"+
+			"  description runs long. **Verify:** inspect the assembled result and\n"+
+			"  confirm no writer dependency is held.")
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := invariants.DeclaringADRs(adrs)
+	if err != nil {
+		t.Fatalf("DeclaringADRs: %v", err)
+	}
+	want := "inspect the assembled result and confirm no writer dependency is held."
+	if got["wrapped"].Class != invariants.ClassUnbacked || got["wrapped"].Verify != want {
+		t.Errorf("wrapped: want unbacked + full note %q, got %#v", want, got["wrapped"])
+	}
+}
+
 func writeADR(t *testing.T, dir, name, status, invBody string) {
 	t.Helper()
 	content := testsupport.ADR(status, testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),

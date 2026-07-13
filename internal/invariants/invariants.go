@@ -101,17 +101,20 @@ var (
 	// declRe matches an invariant DECLARATION leading a markdown list item
 	// (optionally indented): a backed `invariant: <slug>` or an unbacked
 	// `unbacked-invariant: <slug>` token. Group 1 is the optional `unbacked-`
-	// prefix, group 2 the slug, group 3 the rest of the bullet line (scanned for
-	// the `Verify:` note). Only backticks and spaces may sit between the bullet
+	// prefix, group 2 the slug. Only backticks and spaces may sit between the bullet
 	// and the token, so both the single-backtick form (`- `+"`invariant: x`") and
 	// the double-backtick form ADR-0007 uses to render literal backticks
 	// (`- `+"``  `invariant: x`  ``") are recognised, while a mid-prose
 	// cross-reference to another ADR's slug is not (it does not lead a list item)
 	// — which would otherwise phantom-duplicate that slug.
-	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)(.*)$")
-	// verifyRe matches the `Verify:` note an unbacked declaration must carry;
-	// group 1 is the guidance text following the token (surfaced by ContextFor).
-	verifyRe = regexp.MustCompile(`(?i)\bVerify:\s*(\S.*)`)
+	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)")
+	// verifyRe locates the `Verify:` marker an unbacked declaration must carry; the
+	// guidance text is the (whitespace-normalised) bullet remainder after it, so a
+	// note wrapped across continuation lines is captured whole (surfaced by ContextFor).
+	verifyRe = regexp.MustCompile(`(?i)\bVerify:`)
+	// itemStartRe matches a markdown list-item lead — the boundary a wrapped bullet
+	// runs until (used to group a declaration bullet with its continuation lines).
+	itemStartRe = regexp.MustCompile(`^[ \t]*[-*][ \t]+`)
 	// slugRe matches a proof `invariant: <slug>` marker after a source marker.
 	slugRe = regexp.MustCompile(`^\s*invariant:\s*([a-z0-9-]+)`)
 	// touchesRe matches an advisory `touches-invariant: <slug>[ note]` marker;
@@ -132,7 +135,11 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 		if a.Status != "Implemented" {
 			continue
 		}
-		for _, m := range declRe.FindAllStringSubmatch(a.Sections["Invariants"], -1) {
+		for _, bullet := range invariantBullets(a.Sections["Invariants"]) {
+			m := declRe.FindStringSubmatch(bullet)
+			if m == nil {
+				continue
+			}
 			slug := m[2]
 			if prev, ok := required[slug]; ok {
 				return nil, fmt.Errorf("duplicate inv slug %q (in %s and %s)", slug, prev.ADR, a.Filename)
@@ -141,9 +148,13 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 			if m[1] == "unbacked-" {
 				class = ClassUnbacked
 			}
+			// The `Verify:` note is scanned over the whole bullet — declaration line
+			// plus wrapped continuation lines — so a note spanning lines is captured
+			// whole. An empty note (bare `Verify:`) leaves verify == "", which Check
+			// treats as missing.
 			verify := ""
-			if vm := verifyRe.FindStringSubmatch(m[3]); vm != nil {
-				verify = strings.Trim(vm[1], " *")
+			if loc := verifyRe.FindStringIndex(bullet); loc != nil {
+				verify = strings.Trim(strings.Join(strings.Fields(bullet[loc[1]:]), " "), " *")
 			}
 			required[slug] = Decl{ADR: a.Filename, Class: class, Verify: verify}
 		}
@@ -163,6 +174,35 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 		}
 	}
 	return required, nil
+}
+
+// invariantBullets splits an Invariants section into markdown list items, each
+// joined with its wrapped continuation lines. A bullet starts at a list-item lead
+// and runs until the next list-item lead, a blank line, or the section end — so a
+// declaration's `Verify:` note is scanned over the whole bullet, not just its
+// first physical line.
+func invariantBullets(section string) []string {
+	var bullets []string
+	var cur []string
+	flush := func() {
+		if len(cur) > 0 {
+			bullets = append(bullets, strings.Join(cur, "\n"))
+			cur = nil
+		}
+	}
+	for _, line := range strings.Split(section, "\n") {
+		switch {
+		case strings.TrimSpace(line) == "":
+			flush()
+		case itemStartRe.MatchString(line):
+			flush()
+			cur = []string{line}
+		case len(cur) > 0:
+			cur = append(cur, line)
+		}
+	}
+	flush()
+	return bullets
 }
 
 // Check returns the hard Findings and advisory Notes for a project's invariants.
