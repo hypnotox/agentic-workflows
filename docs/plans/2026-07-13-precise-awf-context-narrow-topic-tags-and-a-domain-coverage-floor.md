@@ -39,7 +39,7 @@ uncovered slug, an advisory `touches-invariant` marker in a docstring, in the fl
   - `.awf/domains/rendering.yaml`, `.awf/domains/config.yaml`, `.awf/domains/tooling.yaml`, `.awf/domains/adr-system.yaml` (domain path folds).
   - `internal/config/config.go` (`ContextIgnore` field), `internal/configspec/*` (its `KeyEntry`), `docs/config-reference.md` (regenerated).
   - `internal/project/context.go` (`Uncovered` rewrite; Tier-2 filter removal; both invariant markers), `internal/project/context_test.go` (renamed proof markers + new coverage cases), `internal/project/check.go` (`tag ≠ domain` gate; tag-health note producers folded into `AdvisoryNotes()`), `internal/project/notes_test.go` (note tests). `cmd/awf/check.go` is unchanged — it already prints `AdvisoryNotes()`.
-  - `.awf/config.yaml` (`tags:` re-curation; `contextIgnore:`), every `docs/decisions/NNNN-*.md` and `.awf/docs/pitfalls.yaml` entry (re-tag), `.awf/agents-doc.yaml` (two invariant bullets reworded), and all regenerated surfaces (`AGENTS.md`, `docs/decisions/ACTIVE.md`, domain docs, `.awf/awf.lock`).
+  - `.awf/config.yaml` (`tags:` re-curation; `contextIgnore:`), every `docs/decisions/NNNN-*.md` and `.awf/docs/pitfalls.yaml` entry (re-tag), `.awf/agents-doc.yaml` (two invariant bullets reworded — tier-2 and uncovered — plus three new invariant bullets added), and all regenerated surfaces (`AGENTS.md`, `docs/decisions/ACTIVE.md`, domain docs, `.awf/awf.lock`).
   - `docs/decisions/0109-*.md`, `docs/decisions/0110-*.md` (status flips).
 - **Deleted:** none.
 
@@ -199,7 +199,11 @@ new slug already backed. This is the deliberate unsliceable exception.
 - [ ] **Task 4.5 — Reword the agent-guide Tier-2 bullet and flip ADR-0109.** In `.awf/agents-doc.yaml`
   reword the `context-tier2-topical` invariant bullet to `context-tier2-precise-tag` (drop the
   "minus any tag naming a domain" clause; keep the `related:`-tail and empty-precise-set clauses) and
-  re-cite ADR-0109. Set `status: Implemented` in `docs/decisions/0109-*.md`.
+  re-cite ADR-0109. Also **add three new invariant bullets** to `.awf/agents-doc.yaml` —
+  `tag-not-domain-name`, `tag-frequency-note`, `tag-coverage-note` — each citing ADR-0109 (these have
+  no existing bullet, and the AGENTS.md invariant list is a hand-maintained convention with no gate,
+  so they must be added by hand or the Implemented-ADR invariants go undocumented). Set
+  `status: Implemented` in `docs/decisions/0109-*.md`.
 - [ ] **Task 4.6 — Verify, regenerate, commit (atomic).** Run `./x sync` (regenerates `AGENTS.md`,
   `ACTIVE.md`, domain docs, lock). Run `./x check` — expect `awf check: clean` and `awf invariants:
   clean` (all four ADR-0109 slugs backed; `context-tier2-topical` retired). Rebuild `/tmp/awf` and
