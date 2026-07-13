@@ -148,9 +148,9 @@
     },
     ".claude/skills/sundial-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:3e37eea4402653b148d2252cf0e96267a0799713c94f03135d237b0c38d8d1f2",
+      "templateHash": "sha256:7d69f968acbaca187c592ab7d919714c359fd1a7ab0675774c67ab474f9b0f4e",
       "configHash": "sha256:7e6c663318cf479ee75541e318a985c95ae4fa6b5ab6298c674cda9f17ecc022",
-      "outputHash": "sha256:cf3b9da86c3d5ac93efb9a12ce1de1960b416e12d64a6bc65d5949fddb8a0a29"
+      "outputHash": "sha256:74484702b2d2745de84480d3de0e4babbe738fcd7879378f1c73f747d9365afc"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:820c43a8b8ae6b488a164b9a477167eaf4a2742c5a4d2627f223626a65d3cfe0"
+      "outputHash": "sha256:ad792d28b176693525dc0ae715e00d88b9e635a7c4467dade076add3b8061652"
     },
     "docs/debugging.md": {
       "templateId": "docs/debugging.md.tmpl",
@@ -244,15 +244,15 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:fe4eeb4590b82b0e9be8d088115be407be849b0f8f3b786f0f4fb5cace00abbf",
+      "templateHash": "sha256:755c3781a3cb4b9e93a3179b627a9a78a4f595282ca22bc5bee0c6ee8c0136d2",
       "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
-      "outputHash": "sha256:bc6c35e56b18a7a411ecb3d04f39126ef3ae08397c41db2a231e423849ee5d02"
+      "outputHash": "sha256:a74e7297ed088ea8de13497f6c513b93bd7045a7b9aea5af4cc4b1f2adfede78"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
-      "templateHash": "sha256:10bad38ecfb0244d4f8d204c33cbf7d00badfc627cdd92712a258a4c9ddcae4e",
-      "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
-      "outputHash": "sha256:1fd173678979c6460621861bb127f863b1d651277bcbc8aa681a1135342b9fdb"
+      "templateHash": "sha256:c71b0fac9e8554673d445e4be69abc13663f9440261b3fe8e2184d06b1a315a4",
+      "configHash": "sha256:7e6c663318cf479ee75541e318a985c95ae4fa6b5ab6298c674cda9f17ecc022",
+      "outputHash": "sha256:962164630e6c66f29935edc82817b04f345a26d78cacbcc9f83fa53e7777576d"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",

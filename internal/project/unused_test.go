@@ -53,28 +53,30 @@ func TestCheckIgnoresEmptyVar(t *testing.T) {
 	}
 }
 
-// The {{=awf:gateCmd}} placeholder channel: no assembled source references
-// .vars.gateCmd in this fixture (refactor-coupling-audit's template does not,
+// The {{=awf:checkCmd}} placeholder channel: no assembled source references
+// .vars.checkCmd in this fixture (refactor-coupling-audit's template does not,
 // agents-doc and workflow are local, hooks/bootstrap are off), so only the
-// PartVarRefs plumbing can mark the var consumed.
+// PartVarRefs plumbing can mark the var consumed. (gateCmd can no longer serve
+// this role: the always-on plans-template singleton now references .vars.gateCmd
+// — ADR-0108 — so it is consumed in every project.)
 func TestPartPlaceholderConsumesVar(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  gateCmd: ./x gate\nskills:\n  - refactor-coupling-audit\nagents: []\n"
+	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - refactor-coupling-audit\nagents: []\n"
 	locals := map[string]string{
 		"agents-doc.yaml": "local: true\n",
 		"workflow.yaml":   "local: true\n",
 	}
 
-	with := map[string]string{"skills/parts/refactor-coupling-audit/notes.md": "Run {{=awf:gateCmd}} before committing.\n"}
+	with := map[string]string{"skills/parts/refactor-coupling-audit/notes.md": "Run {{=awf:checkCmd}} before committing.\n"}
 	for k, v := range locals {
 		with[k] = v
 	}
 	if hits := driftOfKind(checkDrift(t, scaffoldFiles(t, cfg, with)), "unused-var"); len(hits) != 0 {
-		t.Fatalf("gateCmd is consumed via the part placeholder and must not flag, got %#v", hits)
+		t.Fatalf("checkCmd is consumed via the part placeholder and must not flag, got %#v", hits)
 	}
 
 	// Negative control: the same fixture without the part proves the channel.
-	if hits := driftOfKind(checkDrift(t, scaffoldFiles(t, cfg, locals)), "unused-var"); len(hits) != 1 || !strings.Contains(hits[0].Detail, `"gateCmd"`) {
-		t.Fatalf("without the part, gateCmd must flag as unused, got %#v", hits)
+	if hits := driftOfKind(checkDrift(t, scaffoldFiles(t, cfg, locals)), "unused-var"); len(hits) != 1 || !strings.Contains(hits[0].Detail, `"checkCmd"`) {
+		t.Fatalf("without the part, checkCmd must flag as unused, got %#v", hits)
 	}
 }
 

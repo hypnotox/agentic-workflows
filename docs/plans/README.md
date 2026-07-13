@@ -23,8 +23,8 @@ where the date is the day the plan is written (ISO-8601). Example:
 ## What a plan contains
 
 - Frontmatter: `date`, `adrs: []` (the linked ADR numbers), and a two-state `status`.
-- A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the four canonical
-  header sections: Goal, Architecture summary, Tech stack, and File structure (created / modified /
+- A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical
+  header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).
 - Phases of tasks — each task one reviewable, logically-coherent change (a whole new file is one
   task) — as `- [ ]` checkboxes, each naming exact paths, the exact content or diff, and the exact

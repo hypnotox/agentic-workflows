@@ -45,9 +45,9 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
 	}
 
-	// The plans-template singleton renders the ADR-0097 taxonomy: frontmatter
-	// spine + canonical headings, section-assembly markers stripped, no
-	// unresolved template value.
+	// The plans-template singleton renders the ADR-0097 taxonomy, narrowed to the
+	// three-field header by ADR-0108: frontmatter spine + canonical headings,
+	// section-assembly markers stripped, no unresolved template value.
 	// invariant: plans-template-taxonomy
 	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
 	if err != nil {
@@ -55,7 +55,7 @@ func TestEndToEndGolden(t *testing.T) {
 	}
 	for _, want := range []string{
 		"date:", "adrs:", "status:",
-		"# Plan:", "## Goal", "## Architecture summary", "## Tech stack",
+		"# Plan:", "## Goal", "## Architecture summary",
 		"## File structure", "## Phase", "## Verification", "## Notes",
 	} {
 		if !strings.Contains(string(plansTemplate), want) {
@@ -66,6 +66,14 @@ func TestEndToEndGolden(t *testing.T) {
 		if strings.Contains(string(plansTemplate), bad) {
 			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
 		}
+	}
+	// ADR-0108: the gate reference interpolates the configured gateCmd (the
+	// fixture sets `make gate`), never a hard-coded "the gate" literal.
+	if !strings.Contains(string(plansTemplate), "make gate") {
+		t.Errorf("plans-template did not interpolate gateCmd:\n%s", plansTemplate)
+	}
+	if strings.Contains(string(plansTemplate), "the gate") {
+		t.Errorf("plans-template leaked hard-coded gate literal:\n%s", plansTemplate)
 	}
 
 	// A fresh check on the synced tree is clean.

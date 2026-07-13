@@ -20,7 +20,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 - **Path:** `docs/plans/YYYY-MM-DD-<kebab-topic>.md`. The date is today (ISO-8601).
 
 <!-- awf:edit conventions-header — default; create .awf/skills/parts/writing-plans/conventions-header.md to override -->
-- **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the four canonical fields as `## ` sections — Goal, Architecture summary, Tech stack (language version, key packages touched), and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
+- **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical fields as `## ` sections — Goal (stating what the plan achieves and, in one line, its non-goals), Architecture summary, and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
 
 <!-- awf:edit conventions-tasks — default; create .awf/skills/parts/writing-plans/conventions-tasks.md to override -->
 - **Tasks:** one reviewable, logically-coherent change each (a whole new file is a single task), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
@@ -42,7 +42,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan.
 
 <!-- awf:edit plan-template-ref — default; create .awf/skills/parts/writing-plans/plan-template-ref.md to override -->
-Start from the canonical skeleton rather than a blank file: run `sundial new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `docs/plans/template.md`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the four canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
+Start from the canonical skeleton rather than a blank file: run `sundial new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `docs/plans/template.md`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
 
 <!-- awf:edit procedure-write-plan — default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
 2. **Write the plan file in one go.** The plan must be self-contained — every step executable by an agent with no prior conversation context.

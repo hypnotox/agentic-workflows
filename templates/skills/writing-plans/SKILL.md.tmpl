@@ -22,7 +22,7 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 <!-- awf:end -->
 
 <!-- awf:section conventions-header -->
-- **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the four canonical fields as `## ` sections — Goal, Architecture summary, Tech stack (language version, key packages touched), and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
+- **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical fields as `## ` sections — Goal (stating what the plan achieves and, in one line, its non-goals), Architecture summary, and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
 <!-- awf:end -->
 
 <!-- awf:section conventions-tasks -->
@@ -50,7 +50,7 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
-Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `{{ .layout.plansTemplate }}`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the four canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
+Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `{{ .layout.plansTemplate }}`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
 <!-- awf:end -->
 
 <!-- awf:section procedure-write-plan -->

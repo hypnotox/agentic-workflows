@@ -50,7 +50,7 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"`audit.diffThreshold` | int |",
 		"| 400 (default) |",
 		"`bootstrap.enabled`",
-		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, skill tdd.",
+		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, plans-template, skill tdd.",
 		"`checkCmd`",
 		"State: empty — open to-do.",
 		"State: absent — declined; the generic prose renders. Consumed by: agents-doc, doc workflow, skill tdd.", // testCmd

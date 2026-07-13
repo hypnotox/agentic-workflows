@@ -5,25 +5,17 @@ status: Proposed
 ---
 # Plan: Title
 
-<!-- awf:section positioning -->
-One-line statement of what this plan implements. When ADRs drive the work, link them here and in
-`adrs:` above — the design lives in the ADR(s); this plan is the execution record, not a place to
-re-argue design.
-<!-- awf:end -->
-
 <!-- awf:section header -->
 ## Goal
 
-What this plan achieves, in one or two sentences.
+What this plan achieves, in one or two sentences, and — in one line — what it explicitly does not do
+(its non-goals). When ADRs drive the work, link them in `adrs:` above and name them here; the design
+lives in the ADR(s), so this plan is the execution record, not a place to re-argue design.
 
 ## Architecture summary
 
 The execution shape — the structural moves the phases make. Not the rationale (that lives in the
 linked ADR).
-
-## Tech stack
-
-Language version and the key packages/files touched. The gate command run before each commit.
 
 ## File structure
 
@@ -39,8 +31,8 @@ Language version and the key packages/files touched. The gate command run before
   command with its expected output. A task is one reviewable, logically-coherent change (a whole new
   file is one task). For a transformation repeated across 3+ sites, use the batch form (a
   representative diff, an edge diff, the affected-site set, and a post-check).
-- [ ] **Task 1.2 — Verify and commit.** Run the gate; `git add` the exact paths; commit with a
-  Conventional-Commits subject. Every phase's closing commit passes the gate on its own — unless the
+- [ ] **Task 1.2 — Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
+  Conventional-Commits subject. Every phase's closing commit passes {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} on its own — unless the
   change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
   commit, stating why.
 <!-- awf:end -->

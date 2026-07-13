@@ -134,8 +134,8 @@ data:
           text: '**Plan frontmatter validated.** `awf check` fails a plan under `docs/plans/` whose `status:` is outside `{Proposed, Implemented}`, and a plan whose YAML frontmatter is unparseable is a hard check error; the grandfathered frontmatter-less corpus is skipped (`invariant: plan-frontmatter-validated`).'
         - ref: ADR-0098
           text: '**Plan→ADR links resolve.** `awf check` fails a plan whose `adrs:` names an ADR number with no matching file under `docs/decisions/` (`invariant: plan-adr-link-resolved`).'
-        - ref: ADR-0097, ADR-0098
-          text: '**Plans-template taxonomy.** The `plans-template` singleton renders `docs/plans/template.md` with the canonical `date`/`adrs`/`status` frontmatter and the Goal/Architecture/Tech-stack/File-structure header, phases, and Verification/Notes tails, marker- and leak-free (`invariant: plans-template-taxonomy`).'
+        - ref: ADR-0097, ADR-0098, ADR-0108
+          text: '**Plans-template taxonomy.** The `plans-template` singleton renders `docs/plans/template.md` with the canonical `date`/`adrs`/`status` frontmatter and the Goal/Architecture/File-structure header, phases, and Verification/Notes tails, marker- and leak-free (`invariant: plans-template-taxonomy`).'
         - ref: ADR-0098
           text: '**Plan scaffolding is unnumbered.** `awf new plan "<Title>"` scaffolds a date-prefixed `YYYY-MM-DD-slug.md` from the rendered plans template — no sequential number allocated — refusing to overwrite a same-day same-title plan (`invariant: plan-new-unnumbered`).'
         - ref: ADR-0099

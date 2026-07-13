@@ -79,9 +79,11 @@ query a single version or a range.
   transitively like a plan — in both the human and `--json` output, on the same
   read-only `ContextResult`.
 - Plans get a machine-readable spine and a uniform authored shape (ADR-0097,
-  ADR-0098). A new `plans-template` singleton renders `docs/plans/template.md`
+  ADR-0098, ADR-0108). A new `plans-template` singleton renders `docs/plans/template.md`
   — the canonical taxonomy: `date`/`adrs`/`status` frontmatter, a `# Plan:` H1,
-  the Goal/Architecture-summary/Tech-stack/File-structure header, phases, and
+  the Goal/Architecture-summary/File-structure header (Goal carries a one-line non-goals
+  statement; the template interpolates the project's configured gate command, not a
+  hard-coded literal), phases, and
   optional Verification/Notes tails. `awf new plan "<Title>"` scaffolds a
   date-prefixed plan from it (no sequential number). `awf check` now validates
   plan frontmatter (`status` enum; unparseable YAML is a hard error) and
