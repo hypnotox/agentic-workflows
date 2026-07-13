@@ -337,12 +337,15 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```
   Verify: `go build ./internal/project/` succeeds.
 
-- [ ] **Task 1.7 — Test the check wiring.** In `internal/project/check_test.go`, add two tests. The
+- [ ] **Task 1.7 — Test the check wiring.** In `internal/project/check_test.go`, add three tests. The
   first drives `checkPlans` drift (and asserts a bad-scope subject produces no drift — covering the
   `Severity == Error` false branch); the second drives `planCommitScopeNotes` (a note for a bad
-  scope, none for an over-length subject — covering its false branch — and the `ParseDir` error
+  scope, none for an over-length subject — covering its false branch — a frontmatter-less plan
+  skipped — covering the `!HasFrontmatter` continue — and the `ParseDir` error branch); the third
+  drives `AdvisoryNotes` to a `planCommitScopeNotes` error (covering its new error-propagation
   branch). Follow the fixture style of `TestCheckPlansValidatesFrontmatterAndLinks`
-  (`scaffold(t, sampleYAML)`, `testsupport.WriteFile`). Proof markers land in Phase 2.
+  (`scaffold(t, sampleYAML)`, `testsupport.WriteFile`) and, for the wiring test,
+  `TestAdvisoryNotesSurfacesTagHealthError` in `notes_test.go`. Proof markers land in Phase 2.
 
   For a non-empty scope allow-list, use a config with an audit scope. Add this fixture constant near
   the top of the test file:
@@ -406,6 +409,9 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   	fm := "---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: P\n\n"
   	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
   	write("2026-07-14-long.md", fm+"```commit\nfeat(awf): "+strings.Repeat("x", 80)+"\n```\n")
+  	// A frontmatter-less plan is skipped (covers the !HasFrontmatter continue); the
+  	// note count stays 1.
+  	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
   	notes, err := p.planCommitScopeNotes()
   	if err != nil {
@@ -420,6 +426,22 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
   	if _, err := p.planCommitScopeNotes(); err == nil {
   		t.Fatal("expected ParseDir error for malformed frontmatter, got nil")
+  	}
+  }
+
+  // TestAdvisoryNotesSurfacesPlanCommitError covers the planCommitScopeNotes error
+  // propagation wired into AdvisoryNotes. Empty tags keep tagHealthNotes inert (so it
+  // does not error first); a malformed plan makes planCommitScopeNotes' ParseDir fail.
+  func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
+  	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+  	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
+  		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
+  	p, err := Open(root)
+  	if err != nil {
+  		t.Fatal(err)
+  	}
+  	if _, err := p.AdvisoryNotes(); err == nil {
+  		t.Fatal("expected AdvisoryNotes to surface the plan-commit ParseDir error")
   	}
   }
   ```
