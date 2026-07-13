@@ -104,12 +104,12 @@
 - [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) — Implemented
 - [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Implemented
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](0103-governed-tag-vocabulary-and-metadata-revival.md) — Implemented
+- [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Implemented
 
 ## Proposed
 
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
 - [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
-- [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Proposed
 
 ## Superseded
 

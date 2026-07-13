@@ -36,35 +36,55 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 		"domains/beta.yaml":  "paths:\n  - cmd/**\n  - lib/**\n",
 		"domains/gamma.yaml": "paths: []\n",
 	})
-	// A source file backing an invariant marker under cmd/.
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: backed-here\n")
-	// An ADR tagged alpha, declaring an inv slug NOT backed under cmd/ (the
-	// ADR-side half of the invariants join must still surface it).
+	// Markers under cmd/: two whose slug an Implemented ADR declares (Tier 1, one
+	// ADR declaring both → the dedup skip on the 2nd), and one orphan slug no
+	// Implemented ADR declares (the Tier-1 !ok skip).
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"),
+		"package x\n// invariant: gov-slug\n// invariant: gov-slug2\n// invariant: gov-slug3\n// invariant: orphan-slug\n")
+	// 0001 Implemented, declares BOTH present gov slugs; tag `precise` plus the
+	// domain-mirror `alpha` (excluded from the precise set); related: [3, 5] → Tier 1.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
+			testsupport.WithTags("precise", "alpha"), testsupport.WithRelated(3, 5),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `inv: declared-slug` — a contract.\n## Consequences\nc\n")))
-	// An ADR tagged only an unowned domain — excluded.
+			testsupport.WithBody("## Invariants\n- `inv: gov-slug` — a.\n- `inv: gov-slug2` — b.\n## Consequences\nc\n")))
+	// 0002 Proposed, tag `other`, domain beta (owns cmd) → Tier 3 background only.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
-		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-			testsupport.WithTitle("0002: Unrelated"), testsupport.WithDomains("other"),
+		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("other"),
+			testsupport.WithTitle("0002: Unrelated"), testsupport.WithDomains("beta"),
 			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// A second ADR tagged alpha, so the related-ADR set has more than one (the
-	// result is sorted by number).
+	// 0003 Accepted, tag `precise` → Tier 2 (shared precise tag; also related-linked).
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0003-c.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
 			testsupport.WithTitle("0003: Later decision"), testsupport.WithDomains("alpha"),
 			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// Two plans linking alpha-owned ADRs (0001, 0003) → both surfaced, sorted by
-	// filename (also-linked before linked).
+	// 0004 Superseded, tag `precise` → excluded from Tier 2 despite the shared tag;
+	// domain alpha owns cmd → Tier 3 background.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0004-d.md"),
+		testsupport.ADR("Superseded by ADR-0001", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
+			testsupport.WithTitle("0004: Retired"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
+	// 0005 Accepted, tag `nomatch` (no shared tag) but related-linked from 0001 →
+	// Tier 2 via the related: graph, exercising the relatedNum branch alone.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0005-e.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("nomatch"),
+			testsupport.WithTitle("0005: Related only"), testsupport.WithDomains("other"),
+			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
+	// 0006 Implemented, declares the third present gov slug; tag `alpha` is a
+	// domain-mirror (excluded from the precise set) → a second Tier-1 ADR, so the
+	// Governing sort comparator runs.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0006-f.md"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("alpha"),
+			testsupport.WithTitle("0006: Second governor"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Invariants\n- `inv: gov-slug3` — c.\n## Consequences\nc\n")))
+	// Plans: link Tier-1/2 ADRs (0001, 0003) → surfaced, sorted by filename; the
+	// plan linking the Tier-3 ADR 0002 and the frontmatter-less legacy plan do not.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
 		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-also-linked.md"),
 		"---\ndate: 2026-07-12\nadrs: [3]\nstatus: Implemented\n---\n# Plan: Also Linked\n")
-	// A plan linking only ADR 0002 (unowned domain → never surfaced).
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-unlinked.md"),
 		"---\ndate: 2026-07-12\nadrs: [2]\nstatus: Proposed\n---\n# Plan: Unlinked\n")
-	// A grandfathered frontmatter-less plan — skipped even though it exists.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-06-24-legacy.md"),
 		"# Plan: Legacy\n\nNo frontmatter.\n")
 	p, err := Open(root)
@@ -74,6 +94,14 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 	return root, p
 }
 
+// TestContextForAssembles exercises the three-tier assembly: Tier 1 (an ADR
+// declaring a present invariant slug, deduped when it declares two, an orphan
+// present slug skipped), Tier 2 (shared precise tag and related-linked, with the
+// domain-mirror tag excluded and a Superseded ADR dropped), and the Tier-3
+// collapsed background count.
+// invariant: context-tier1-governs
+// invariant: context-tier2-topical
+// invariant: context-tier3-collapsed
 func TestContextForAssembles(t *testing.T) {
 	_, p := ctxProject(t, ctxYAML)
 
@@ -81,46 +109,47 @@ func TestContextForAssembles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A path under two domains → both, sorted; gamma (no paths) never appears.
 	if names := domainNames(res); names != "alpha,beta" {
 		t.Errorf("domains: got %q want %q", names, "alpha,beta")
 	}
 	if res.Domains[0].CurrentState != "docs/domains/alpha.md" {
 		t.Errorf("current-state pointer: got %q", res.Domains[0].CurrentState)
 	}
-	// The marker under cmd/ is surfaced; the ADR-declared slug is NOT in the
-	// path-backed set (it is backed nowhere under cmd/).
-	if strings.Join(res.Invariants, ",") != "backed-here" {
-		t.Errorf("invariants: got %v want [backed-here]", res.Invariants)
+	// Tier 1: 0001 (declares gov-slug + gov-slug2, deduped) and 0006 (gov-slug3),
+	// sorted; the orphan slug maps to no ADR.
+	if len(res.Governing) != 2 || res.Governing[0].Number != "0001" || res.Governing[1].Number != "0006" {
+		t.Fatalf("governing: got %+v, want [0001 0006]", res.Governing)
 	}
-	if len(res.ADRs) != 2 || res.ADRs[0].Number != "0001" || res.ADRs[1].Number != "0003" {
-		t.Fatalf("adrs: got %+v, want [0001 0003] sorted (0002 excluded)", res.ADRs)
+	if res.Governing[0].Title != "Alpha decision" { // "ADR-0001: " prefix stripped
+		t.Errorf("governing title: got %q", res.Governing[0].Title)
 	}
-	a := res.ADRs[0]
-	if a.Title != "Alpha decision" { // "ADR-0001: " prefix stripped
-		t.Errorf("adr title: got %q want %q", a.Title, "Alpha decision")
+	// Tier 2: 0003 (shared precise tag) + 0005 (related-linked, no shared tag),
+	// sorted; 0004 (Superseded) and 0002 (no precise tag, not related) excluded.
+	if len(res.Related) != 2 || res.Related[0].Number != "0003" || res.Related[1].Number != "0005" {
+		t.Fatalf("related: got %+v, want [0003 0005]", res.Related)
 	}
-	if strings.Join(a.Invariants, ",") != "declared-slug" { // ADR-side half, surfaced with provenance
-		t.Errorf("adr invariants: got %v want [declared-slug]", a.Invariants)
+	// Tier 3: 0002 (beta owns cmd) + 0004 (alpha owns cmd), collapsed to a count.
+	if res.Background != 2 {
+		t.Errorf("background: got %d want 2 (0002, 0004)", res.Background)
 	}
 	if len(res.Unowned) != 0 {
 		t.Errorf("unowned: got %v want none", res.Unowned)
 	}
 }
 
-// invariant: context-surfaces-linked-plans
-func TestContextForSurfacesLinkedPlans(t *testing.T) {
+// invariant: context-surfaces-tiered-plans
+func TestContextForSurfacesTieredPlans(t *testing.T) {
 	_, p := ctxProject(t, ctxYAML)
 
 	res, err := p.ContextFor([]string{"cmd/x.go"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The two plans linking surfaced ADRs (0001, 0003) appear, sorted by filename;
-	// the plan linking the unowned ADR 0002 and the frontmatter-less legacy plan
-	// do not.
+	// The two plans linking a Tier-1/Tier-2 ADR (0001 Governing, 0003 Related)
+	// appear, sorted by filename; the plan linking the Tier-3 ADR 0002 and the
+	// frontmatter-less legacy plan do not.
 	if len(res.Plans) != 2 {
-		t.Fatalf("plans: got %+v, want the two alpha-linked plans", res.Plans)
+		t.Fatalf("plans: got %+v, want the two tier-1/2-linked plans", res.Plans)
 	}
 	if res.Plans[0].Filename != "2026-07-12-also-linked.md" || res.Plans[1].Filename != "2026-07-12-linked.md" {
 		t.Errorf("plans not sorted by filename: got %+v", res.Plans)
@@ -131,6 +160,19 @@ func TestContextForSurfacesLinkedPlans(t *testing.T) {
 	}
 	if pl.Status != "Proposed" || len(pl.ADRs) != 1 || pl.ADRs[0] != 1 {
 		t.Errorf("plan ref fields: got %+v", pl)
+	}
+}
+
+// A duplicate inv slug across two Implemented ADRs makes DeclaringADRs error,
+// which ContextFor propagates (the Tier-1 join is the shared one-to-one map).
+func TestContextForDuplicateSlugError(t *testing.T) {
+	root, p := ctxProject(t, ctxYAML)
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0007-dup.md"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+			testsupport.WithTitle("0007: Dup"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Invariants\n- `inv: gov-slug` — clash.\n## Consequences\nc\n")))
+	if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
+		t.Fatal("expected a duplicate inv slug error from DeclaringADRs")
 	}
 }
 
@@ -188,10 +230,12 @@ invariants:
 	}
 }
 
-const ctxPitfallsYAML = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [alpha, beta]\n"
+const ctxPitfallsYAML = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [alpha, beta]\n" +
+	"invariants:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n"
 
 // ctxPitfallsProject scaffolds a tree where alpha owns cmd/**, beta owns lib/**,
-// and the pitfalls sidecar carries the given data.
+// a marker + Implemented ADR under cmd/ produce the precise tag `ptag`, and the
+// pitfalls sidecar carries the given data.
 func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
 	t.Helper()
 	root := scaffoldFiles(t, ctxPitfallsYAML, map[string]string{
@@ -199,6 +243,11 @@ func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
 		"domains/beta.yaml":  "paths:\n  - lib/**\n",
 		"docs/pitfalls.yaml": sidecar,
 	})
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: p-slug\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("ptag"),
+			testsupport.WithTitle("0001: P"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Invariants\n- `inv: p-slug` — x.\n## Consequences\nc\n")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -206,15 +255,15 @@ func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
 	return root, p
 }
 
-// A pitfall whose own domain owns a queried path surfaces (sorted by title); a
-// pitfall owning only an unqueried domain, and a domainless pitfall, do not.
-// invariant: context-surfaces-pitfalls
-func TestContextForSurfacesPitfalls(t *testing.T) {
+// A pitfall sharing the query's precise tag (ptag) surfaces (sorted by title); a
+// pitfall with only a non-matching tag, and an untagged pitfall, do not.
+// invariant: context-surfaces-tiered-pitfalls
+func TestContextForSurfacesTieredPitfalls(t *testing.T) {
 	_, p := ctxPitfallsProject(t, "data:\n  pitfalls:\n"+
-		"    - title: Bravo\n      domains: [alpha]\n      body: b\n"+
-		"    - title: Alfa\n      domains: [alpha]\n      body: b\n"+
-		"    - title: OnlyBeta\n      domains: [beta]\n      body: b\n"+
-		"    - title: Cross\n      body: b\n")
+		"    - title: Bravo\n      tags: [ptag]\n      body: b\n"+
+		"    - title: Alfa\n      tags: [ptag]\n      body: b\n"+
+		"    - title: NoMatch\n      tags: [zzz]\n      body: b\n"+
+		"    - title: Untagged\n      body: b\n")
 	res, err := p.ContextFor([]string{"cmd/x.go"})
 	if err != nil {
 		t.Fatal(err)
@@ -224,9 +273,9 @@ func TestContextForSurfacesPitfalls(t *testing.T) {
 		got = append(got, pf.Title)
 	}
 	if strings.Join(got, ",") != "Alfa,Bravo" {
-		t.Fatalf("pitfalls: got %v want [Alfa Bravo] sorted (OnlyBeta + Cross excluded)", got)
+		t.Fatalf("pitfalls: got %v want [Alfa Bravo] sorted (NoMatch + Untagged excluded)", got)
 	}
-	if res.Pitfalls[0].Path != "docs/pitfalls.md" || strings.Join(res.Pitfalls[0].Domains, ",") != "alpha" {
+	if res.Pitfalls[0].Path != "docs/pitfalls.md" || strings.Join(res.Pitfalls[0].Tags, ",") != "ptag" {
 		t.Errorf("pitfall ref fields wrong: %+v", res.Pitfalls[0])
 	}
 }

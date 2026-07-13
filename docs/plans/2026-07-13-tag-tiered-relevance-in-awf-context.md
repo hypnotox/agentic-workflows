@@ -1,7 +1,7 @@
 ---
 date: 2026-07-13
 adrs: [104]
-status: Proposed
+status: Implemented
 ---
 # Plan: Tag-tiered relevance in awf context
 
@@ -426,4 +426,14 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   narrowing (weight by shared-tag count, ≥2 shared tags). This plan changes only the surfacing model.
 - **Two user-decision ADR findings** were resolved with reasoned defaults and are flagged for review:
   the precise-tag-set domain-mirror exclusion, and the domain-coverage demotion to a follow-up.
-- Record the before/after dogfood output and any coverage-ignore added during Task 2.5 at flip.
+- **Dogfood at flip** (`awf context internal/project/context.go`): Tier 1 (`Governing`) is now
+  precise — ADR-0102 + ADR-0104, the two ADRs whose `context-*`/`uncovered-*` invariants are backed
+  in that file — versus the pre-slice ~90-ADR undifferentiated dump. Tier 3 background is 0 (the file
+  is domain-unowned). **Tier 2 (`Related`) is still broad (~28 ADRs)** because the Tier-1 ADRs carry
+  the high-frequency non-domain-mirror tag `testing`, which the domain-mirror exclusion does not
+  remove. This is the residual risk ADR-0104's Consequences flagged: the precise Tier-1 win lands,
+  but further Tier-2 narrowing (weight by shared-tag count, or ≥2 shared tags) is a worthwhile
+  follow-up. **Flagged for review.**
+- No `coverage-ignore` was added in Task 2.5; the one pre-existing `a.Number` ignore was preserved.
+- No `examples/sundial` regeneration (no template/configspec/catalog change), so the render-fan-out
+  pitfall did not apply this slice.

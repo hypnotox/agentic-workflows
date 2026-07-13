@@ -21,18 +21,21 @@ type ContextResult struct {
 	Paths      []string     `json:"paths"`
 	Domains    []DomainRef  `json:"domains"`
 	Invariants []string     `json:"invariants"`
-	ADRs       []ADRRef     `json:"adrs"`
-	Plans      []PlanRef    `json:"plans"`
-	Pitfalls   []PitfallRef `json:"pitfalls"`
+	Governing  []ADRRef     `json:"governing"`  // Tier 1: invariants backed under the query
+	Related    []ADRRef     `json:"related"`    // Tier 2: precise-tag or related: linked
+	Pitfalls   []PitfallRef `json:"pitfalls"`   // Tier 2: precise-tag match
+	Plans      []PlanRef    `json:"plans"`      // linked to a Tier-1/Tier-2 ADR
+	Background int          `json:"background"` // Tier 3: collapsed domain-ADR count
 	Unowned    []string     `json:"unowned"`
 }
 
-// PitfallRef is a pitfall surfaced because one of its domains: owns a queried
-// path. Path is the docsDir-rooted pitfalls doc; Domains are the entry's own tags.
+// PitfallRef is a pitfall surfaced because it shares a precise tag with the
+// query (ADR-0104 Tier 2). Path is the docsDir-rooted pitfalls doc; Tags are the
+// entry's own tags.
 type PitfallRef struct {
-	Title   string   `json:"title"`
-	Domains []string `json:"domains"`
-	Path    string   `json:"path"`
+	Title string   `json:"title"`
+	Tags  []string `json:"tags"`
+	Path  string   `json:"path"`
 }
 
 // PlanRef is a plan surfaced because its adrs: links an ADR reported for the
@@ -51,16 +54,15 @@ type DomainRef struct {
 	CurrentState string `json:"currentState"`
 }
 
-// ADRRef is an ADR related to the query via an owning domain. Title is the human
-// title with the "ADR-NNNN: " prefix stripped (Number carries it). Invariants
-// are the inv: slugs this ADR declares (its Invariants section), the ADR-side
-// half of the backing-invariants join (ADR-0092 D4).
+// ADRRef is an ADR surfaced in a context tier. Title is the human title with the
+// "ADR-NNNN: " prefix stripped (Number carries it). The per-ADR declared-slug
+// echo was dropped by ADR-0104 (the flat ## Invariants block carries the
+// path-present slugs; the per-ADR list only duplicated it).
 type ADRRef struct {
-	Number     string   `json:"number"`
-	Title      string   `json:"title"`
-	Status     string   `json:"status"`
-	Path       string   `json:"path"`
-	Invariants []string `json:"invariants"`
+	Number string `json:"number"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+	Path   string `json:"path"`
 }
 
 // ContextFor assembles the read-only context for paths. It reads only committed
@@ -111,27 +113,108 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	if err != nil {
 		return ContextResult{}, err
 	}
+
+	// Tier 1 — "governs this code": ADRs declaring an invariant slug present as a
+	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
+	// invariant: context-tier1-governs
+	declaring, err := invariants.DeclaringADRs(adrs)
+	if err != nil {
+		return ContextResult{}, err
+	}
+	byFile := map[string]adr.ADR{}
 	for _, a := range adrs {
+		byFile[a.Filename] = a
+	}
+	tier1 := map[string]bool{}
+	var t1 []adr.ADR
+	for _, slug := range res.Invariants {
+		fn, ok := declaring[slug]
+		if !ok {
+			continue
+		}
+		a := byFile[fn]
+		if tier1[a.Number] {
+			continue
+		}
+		tier1[a.Number] = true
+		t1 = append(t1, a)
+		res.Governing = append(res.Governing, adrRefOf(a, lay))
+	}
+	sort.Slice(res.Governing, func(i, j int) bool { return res.Governing[i].Number < res.Governing[j].Number })
+
+	// Precise tag set: union of Tier-1 tags minus any tag naming a configured
+	// domain (a domain-mirror tag is Tier-3 relatedness, not Tier-2 precision).
+	domainName := map[string]bool{}
+	for _, d := range p.Cfg.Domains {
+		domainName[d] = true
+	}
+	precise := map[string]bool{}
+	relatedNum := map[int]bool{}
+	for _, a := range t1 {
+		for _, tag := range a.Tags {
+			if !domainName[tag] {
+				precise[tag] = true
+			}
+		}
+		for _, n := range a.Related {
+			relatedNum[n] = true
+		}
+	}
+
+	// Tier 2 — "topically related": non-Tier-1, non-Superseded ADRs sharing a
+	// precise tag or named in a Tier-1 ADR's related:.
+	// invariant: context-tier2-topical
+	inTier2 := map[string]bool{}
+	for _, a := range adrs {
+		if tier1[a.Number] || strings.HasPrefix(a.Status, "Superseded") {
+			continue
+		}
+		n, _ := strconv.Atoi(a.Number)
+		if sharesTag(a.Tags, precise) || relatedNum[n] {
+			inTier2[a.Number] = true
+			res.Related = append(res.Related, adrRefOf(a, lay))
+		}
+	}
+	sort.Slice(res.Related, func(i, j int) bool { return res.Related[i].Number < res.Related[j].Number })
+
+	// Tier 2 pitfalls: share a precise tag (only when the pitfalls doc is enabled).
+	// invariant: context-surfaces-tiered-pitfalls
+	if slices.Contains(p.Cfg.Docs, "pitfalls") {
+		sc, err := p.Cfg.Sidecar("docs", "pitfalls")
+		if err != nil {
+			return ContextResult{}, err
+		}
+		entries, err := pitfallEntries(sc.Data["pitfalls"])
+		if err != nil {
+			return ContextResult{}, err
+		}
+		for _, e := range entries {
+			if sharesTag(e.Tags, precise) {
+				res.Pitfalls = append(res.Pitfalls, PitfallRef{Title: e.Title, Tags: e.Tags, Path: lay.DocsDir + "/pitfalls.md"})
+			}
+		}
+		sort.Slice(res.Pitfalls, func(i, j int) bool { return res.Pitfalls[i].Title < res.Pitfalls[j].Title })
+	}
+
+	// Tier 3 — "domain background": domain-membership ADRs in neither Tier 1 nor
+	// Tier 2, reported only as a collapsed count.
+	// invariant: context-tier3-collapsed
+	for _, a := range adrs {
+		if tier1[a.Number] || inTier2[a.Number] {
+			continue
+		}
 		for _, dm := range a.Domains {
 			if owners[dm] {
-				res.ADRs = append(res.ADRs, ADRRef{
-					Number:     a.Number,
-					Title:      strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
-					Status:     a.Status,
-					Path:       lay.DocsDir + "/decisions/" + a.Filename,
-					Invariants: invariants.DeclaredSlugs(a.Sections["Invariants"]),
-				})
+				res.Background++
 				break
 			}
 		}
 	}
-	sort.Slice(res.ADRs, func(i, j int) bool { return res.ADRs[i].Number < res.ADRs[j].Number })
 
-	// Surface plans transitively: a plan whose adrs: links any ADR reported above.
-	// Plans declare adrs: not paths:, so this ADR join is the only clean link.
-	// invariant: context-surfaces-linked-plans
+	// Plans linked to a Tier-1 or Tier-2 ADR.
+	// invariant: context-surfaces-tiered-plans
 	surfaced := map[int]bool{}
-	for _, a := range res.ADRs {
+	for _, a := range append(append([]ADRRef{}, res.Governing...), res.Related...) {
 		if n, err := strconv.Atoi(a.Number); err == nil { // coverage-ignore: a.Number is always a 4-digit numeral from FilenameRe
 			surfaced[n] = true
 		}
@@ -155,33 +238,27 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		}
 	}
 	sort.Slice(res.Plans, func(i, j int) bool { return res.Plans[i].Filename < res.Plans[j].Filename })
-
-	// Surface pitfalls whose own domains: owns a queried path (like ADRs, not
-	// transitively like plans). Only when the toggleable pitfalls doc is enabled.
-	// invariant: context-surfaces-pitfalls
-	if slices.Contains(p.Cfg.Docs, "pitfalls") {
-		sc, err := p.Cfg.Sidecar("docs", "pitfalls")
-		if err != nil {
-			return ContextResult{}, err
-		}
-		entries, err := pitfallEntries(sc.Data["pitfalls"])
-		if err != nil {
-			return ContextResult{}, err
-		}
-		for _, e := range entries {
-			for _, d := range e.Domains {
-				if owners[d] {
-					res.Pitfalls = append(res.Pitfalls, PitfallRef{
-						Title: e.Title, Domains: e.Domains,
-						Path: lay.DocsDir + "/pitfalls.md",
-					})
-					break
-				}
-			}
-		}
-		sort.Slice(res.Pitfalls, func(i, j int) bool { return res.Pitfalls[i].Title < res.Pitfalls[j].Title })
-	}
 	return res, nil
+}
+
+// adrRefOf projects an ADR to its context reference (Title prefix stripped).
+func adrRefOf(a adr.ADR, lay Layout) ADRRef {
+	return ADRRef{
+		Number: a.Number,
+		Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
+		Status: a.Status,
+		Path:   lay.DocsDir + "/decisions/" + a.Filename,
+	}
+}
+
+// sharesTag reports whether any of tags is in set.
+func sharesTag(tags []string, set map[string]bool) bool {
+	for _, t := range tags {
+		if set[t] {
+			return true
+		}
+	}
+	return false
 }
 
 // UncoveredResult is the read-only domain-coverage report for a set of scan roots:

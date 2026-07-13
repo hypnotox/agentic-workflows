@@ -140,11 +140,16 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	for _, s := range res.Invariants {
 		fmt.Fprintf(stdout, "  %s\n", s)
 	}
-	fmt.Fprintln(stdout, "\n## Related ADRs")
-	for _, a := range res.ADRs {
-		fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
-		if len(a.Invariants) > 0 {
-			fmt.Fprintf(stdout, "    invariants: %v\n", a.Invariants)
+	if len(res.Governing) > 0 {
+		fmt.Fprintln(stdout, "\n## Governing ADRs (invariants backed here)")
+		for _, a := range res.Governing {
+			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+		}
+	}
+	if len(res.Related) > 0 {
+		fmt.Fprintln(stdout, "\n## Related ADRs (shared tag)")
+		for _, a := range res.Related {
+			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
 		}
 	}
 	if len(res.Plans) > 0 {
@@ -154,10 +159,13 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		}
 	}
 	if len(res.Pitfalls) > 0 {
-		fmt.Fprintln(stdout, "\n## Related pitfalls")
+		fmt.Fprintln(stdout, "\n## Related pitfalls (shared tag)")
 		for _, pf := range res.Pitfalls {
-			fmt.Fprintf(stdout, "  %s %v — %s\n", pf.Title, pf.Domains, pf.Path)
+			fmt.Fprintf(stdout, "  %s %v — %s\n", pf.Title, pf.Tags, pf.Path)
 		}
+	}
+	if res.Background > 0 {
+		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) — see the domain docs above\n", res.Background)
 	}
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")

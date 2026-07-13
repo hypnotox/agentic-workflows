@@ -9,6 +9,19 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- `awf context <paths>` output is now relevance-tiered (ADR-0104). It no longer
+  dumps every ADR/pitfall sharing a queried path's domain. The human render gains
+  `## Governing ADRs (invariants backed here)` (Tier 1 — ADRs whose invariants are
+  backed under the queried paths), `## Related ADRs (shared tag)` / `## Related
+  pitfalls (shared tag)` (Tier 2 — sharing a finer-than-domain precise tag or
+  `related:`-linked), and a one-line `## Domain background: N more ADR(s)` (Tier 3,
+  collapsed). The `--json` shape changes accordingly: the flat `adrs` array is
+  replaced by `governing` + `related` + an integer `background`; each ADR ref drops
+  its `invariants` echo; and each pitfall ref carries `tags` instead of `domains`.
+  Pitfalls now surface by shared tag, not by domain membership. The
+  `context-surfaces-pitfalls` and `context-surfaces-linked-plans` invariants are
+  retired for tiered successors. Read-only, output-parity, and static-fallback are
+  unchanged.
 - Pitfalls become a structured, domain-tagged sidecar-derived doc (ADR-0099).
   `docs/pitfalls.md` is no longer authored as a free-prose `entries` part; its
   entries now live as a `data.pitfalls` list of `{title, domains, related, body}`

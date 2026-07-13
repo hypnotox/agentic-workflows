@@ -291,13 +291,3 @@ func underAny(rel string, paths []string) bool {
 	}
 	return false
 }
-
-// DeclaredSlugs returns the invariant slugs declared via `inv: <slug>` bullets
-// in an ADR Invariants-section body, in source order.
-func DeclaredSlugs(section string) []string {
-	var out []string
-	for _, m := range declRe.FindAllStringSubmatch(section, -1) {
-		out = append(out, m[1])
-	}
-	return out
-}

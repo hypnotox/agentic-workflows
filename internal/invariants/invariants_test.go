@@ -521,12 +521,3 @@ func TestMarkersUnderReadError(t *testing.T) {
 		t.Error("expected read error for dangling symlink source file")
 	}
 }
-
-func TestDeclaredSlugs(t *testing.T) {
-	if got := invariants.DeclaredSlugs("- `inv: one` — x\n- `inv: two` — y\n"); joined(got) != "one,two" {
-		t.Errorf("two bullets: got %q", joined(got))
-	}
-	if got := invariants.DeclaredSlugs(""); got != nil {
-		t.Errorf("empty section: got %v, want nil", got)
-	}
-}

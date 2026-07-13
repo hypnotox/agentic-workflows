@@ -51,22 +51,33 @@ func ctxFixture(t *testing.T) string {
 	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: backed-here\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: gov-slug\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `inv: declared-slug` — a contract.\n## Consequences\nc\n")))
-	// A plan linking ADR 0001 (alpha-owned → surfaced for cmd/ queries).
+			testsupport.WithBody("## Invariants\n- `inv: gov-slug` — a contract.\n## Consequences\nc\n")))
+	// 0002 shares the precise tag → Tier 2 (Related). 0003 is domain-owned only →
+	// Tier 3 background count. Both exercise their render blocks.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
+			testsupport.WithTitle("0002: Related decision"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0003-c.md"),
+		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("other"),
+			testsupport.WithTitle("0003: Background decision"), testsupport.WithDomains("beta"),
+			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
+	// A plan linking the Tier-1 ADR 0001 → surfaced for cmd/ queries.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
 		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
-	// A pitfall tagged alpha → surfaced for cmd/ queries.
+	// A pitfall sharing the precise tag → surfaced for cmd/ queries.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls.yaml"),
-		"data:\n  pitfalls:\n    - title: Worktree hazard\n      domains: [alpha]\n      body: use a worktree\n")
+		"data:\n  pitfalls:\n    - title: Worktree hazard\n      tags: [precise]\n      body: use a worktree\n")
 	return root
 }
 
-// The human render shows owning domains, path-backed invariants, and related
-// ADRs with their declared slugs; unowned paths get their own section.
+// The human render shows owning domains, path-backed invariants, the Tier-1
+// governing ADR, the linked plan, and the tag-matched pitfall; unowned paths get
+// their own section.
 func TestRunContextHuman(t *testing.T) {
 	root := ctxFixture(t)
 	var out bytes.Buffer
@@ -78,13 +89,16 @@ func TestRunContextHuman(t *testing.T) {
 		"live state for this project",
 		"alpha — docs/domains/alpha.md",
 		"beta — docs/domains/beta.md",
-		"backed-here",
+		"gov-slug",
+		"## Governing ADRs (invariants backed here)",
 		"ADR-0001 (Implemented) Alpha decision — docs/decisions/0001-a.md",
-		"invariants: [declared-slug]",
+		"## Related ADRs (shared tag)",
+		"ADR-0002 (Accepted) Related decision — docs/decisions/0002-b.md",
+		"## Domain background: 1 more ADR(s)",
 		"## Related plans",
 		"2026-07-12-linked.md (Proposed) — docs/plans/2026-07-12-linked.md",
-		"## Related pitfalls",
-		"Worktree hazard [alpha] — docs/pitfalls.md",
+		"## Related pitfalls (shared tag)",
+		"Worktree hazard [precise] — docs/pitfalls.md",
 		"## Unowned paths",
 		"README.md",
 	} {
@@ -109,11 +123,11 @@ func TestRunContextJSONParity(t *testing.T) {
 	if len(res.Domains) != 2 || res.Domains[0].Name != "alpha" || res.Domains[1].Name != "beta" {
 		t.Errorf("json domains: %+v", res.Domains)
 	}
-	if strings.Join(res.Invariants, ",") != "backed-here" {
+	if strings.Join(res.Invariants, ",") != "gov-slug" {
 		t.Errorf("json invariants: %v", res.Invariants)
 	}
-	if len(res.ADRs) != 1 || strings.Join(res.ADRs[0].Invariants, ",") != "declared-slug" {
-		t.Errorf("json adrs: %+v", res.ADRs)
+	if len(res.Governing) != 1 || res.Governing[0].Number != "0001" {
+		t.Errorf("json governing: %+v", res.Governing)
 	}
 	if len(res.Plans) != 1 || res.Plans[0].Filename != "2026-07-12-linked.md" || res.Plans[0].Status != "Proposed" {
 		t.Errorf("json plans: %+v", res.Plans)
@@ -126,7 +140,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha", "beta", "backed-here", "declared-slug", "2026-07-12-linked.md", "Worktree hazard"} {
+	for _, want := range []string{"alpha", "beta", "gov-slug", "2026-07-12-linked.md", "Worktree hazard"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}

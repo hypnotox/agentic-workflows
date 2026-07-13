@@ -4,7 +4,7 @@
 <!-- awf:edit current-state — from .awf/domains/parts/invariants/current-state.md -->
 ## Current state
 
-Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching the project's configured `invariants.sources`. The checker is language-agnostic (anchored path globs matched against slash-separated repo-relative paths per ADR-0077 — `**/*.go` for any depth, `internal/**` to scope a subtree — plus a literal marker) and enforce-by-default: an Implemented ADR with an unbacked — or unconfigured — slug fails `awf check`. Backing is opt-in per bullet; untagged bullets remain textual contracts. Enforcement has a retirement escape (ADR-0031): a successor Implemented ADR can declare `retires_invariants: [<slug>]` in its frontmatter to drop a slug from enforcement when the change removes its backing code, leaving the declaring ADR's record intact; a retirement naming a slug no Implemented ADR declares is a dangling retirement and fails `awf check`.
+Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching the project's configured `invariants.sources`. The checker is language-agnostic (anchored path globs matched against slash-separated repo-relative paths per ADR-0077 — `**/*.go` for any depth, `internal/**` to scope a subtree — plus a literal marker) and enforce-by-default: an Implemented ADR with an unbacked — or unconfigured — slug fails `awf check`. Backing is opt-in per bullet; untagged bullets remain textual contracts. Enforcement has a retirement escape (ADR-0031): a successor Implemented ADR can declare `retires_invariants: [<slug>]` in its frontmatter to drop a slug from enforcement when the change removes its backing code, leaving the declaring ADR's record intact; a retirement naming a slug no Implemented ADR declares is a dangling retirement and fails `awf check`. ADR-0104 exposes the one-to-one Implemented-ADR `slug → declaring-ADR` map (duplicate-refusing, retirement-applying) as `invariants.DeclaringADRs`, shared by `Check` and `awf context`'s Tier-1 relevance join.
 
 
 ## Decisions
@@ -18,8 +18,5 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
-
-### Proposed
-
 - [ADR-0104: Tag-Tiered Relevance in awf context](../decisions/0104-tag-tiered-relevance-in-awf-context.md)
 
