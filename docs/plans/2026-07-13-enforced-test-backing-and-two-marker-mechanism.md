@@ -84,7 +84,10 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   ```
 
   Update the struct doc comment to note `TestGlobs` scopes the proof marker (empty ⇒ source-only
-  fallback, ADR-0105). Add `internal/config/config_test.go` cases: a valid `testGlobs: ['**/*_test.go']`
+  fallback, ADR-0105). `TestGlobs` lands as an **inert optional field within the current schema** — no
+  schema-generation bump and no `minVersionBySchema` entry (ADR-0049), since an absent field degrades
+  to the source-only fallback; this discharges ADR-0105 Decision item 3's delegated schema question.
+  Add `internal/config/config_test.go` cases: a valid `testGlobs: ['**/*_test.go']`
   passes; a basename-only `testGlobs: ['*_test.go']` and a malformed glob each fail with the
   `invariants.testGlobs:` prefix.
 
@@ -123,24 +126,33 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)")
   ```
 
-  `DeclaringADRs` returns `map[string]Decl` where `type Decl struct { ADR string; Class Class }`;
-  duplicate-slug and dangling-retirement logic unchanged. Update its callers minimally: `Check`
-  (this phase) and `ContextFor` (Phase 3 — but keep the return shape stable so `context.go` compiles
-  now; `context.go` reads `.ADR`, and `.Class` is consumed in Phase 3).
+  `DeclaringADRs` returns `map[string]Decl` where
+  `type Decl struct { ADR string; Class Class; VerifyNote bool }` (`VerifyNote` populated in Task
+  2.2); duplicate-slug and dangling-retirement logic unchanged. This changes the return type from the
+  current `map[string]string`, so **both** non-test callers are updated in this phase (they compile
+  against the new shape in the Phase-2 commit, Task 2.7): `Check` (`invariants.go:106`) and
+  `context.go:120` — the latter currently uses the value as an ADR-filename string (`declaring[slug]`
+  → `byFile[fn]` at `context.go:131/135`), so it is edited to read `.ADR` (the `.Class` label is
+  consumed in Phase 3).
 
-- [ ] **Task 2.2 — Require the `Verify:` note on unbacked declarations.** `DeclaringADRs` (or a
-  sibling that also reads the bullet text) records, per unbacked slug, whether its bullet carries a
-  `Verify:` segment. Capture the full bullet line for unbacked declarations and test it against
-  ``regexp.MustCompile(`(?i)\bVerify:\s*\S`)``; a missing/empty `Verify:` is surfaced as a hard
-  finding in Task 2.5.
+- [ ] **Task 2.2 — Require the `Verify:` note on unbacked declarations.** `DeclaringADRs` captures,
+  for each `Unbacked` slug, the full text of its declaration bullet (extend `declRe` or scan the
+  bullet's line range from the `Invariants` section already parsed by `DeclaringADRs`) and sets
+  `Decl.VerifyNote = verifyRe.MatchString(bulletText)` where
+  ``verifyRe = regexp.MustCompile(`(?i)\bVerify:\s*\S`)``. `VerifyNote == false` on an `Unbacked`
+  slug is surfaced as a hard finding in Task 2.5. (`Backed` slugs leave `VerifyNote` unused.)
 
-- [ ] **Task 2.3 — Split proof and touches markers in the scan.** In `scanTags` (`invariants.go:154`)
-  recognise two marker forms after the literal source marker: `invariant: <slug>` (proof) and
-  `touches-invariant: <slug>[ — <note>]` (touches). Return, per file scanned, the set of proof slugs
-  and the set of `(touches-slug, note)` pairs. A proof marker counts toward backing only when the
-  file matches a `TestGlobs` pattern **or** `TestGlobs` is empty (source-only fallback). Extend
-  `slugRe` handling to strip an optional trailing note (everything after the slug, trimmed) for
-  touches markers. Preserve the line-leading rule (`invariants.go:203`).
+- [ ] **Task 2.3 — Split proof and touches markers in the scan.** Change `scanTags`
+  (`invariants.go:154`) to take the full `*config.InvariantConfig` (for `TestGlobs`) instead of only
+  `[]config.InvariantSource`, and to recognise two marker forms after the literal source marker:
+  `invariant: <slug>` (proof) and `touches-invariant: <slug>[ — <note>]` (touches). Its per-file
+  result is `type scanResult struct { proof map[string]bool; touches []touchMark }` with
+  `type touchMark struct { Slug, Note string }` (aggregated across files into the same two
+  collections). A proof slug counts toward backing only when its file matches a `TestGlobs` pattern
+  **or** `TestGlobs` is empty (source-only fallback); track proof slugs seen only in non-test files
+  separately so Task 2.4 can distinguish "unbacked" from "backed elsewhere". Extend `slugRe` handling
+  to strip an optional trailing note (everything after the slug, trimmed) for touches markers.
+  Preserve the line-leading rule (`invariants.go:203`).
 
 - [ ] **Task 2.4 — Enforce backing with the fallback.** In `Check` (`invariants.go:101`) compute the
   proof-backing scope from `cfg.TestGlobs` (non-empty ⇒ test-glob files; empty ⇒ all source files,
@@ -179,24 +191,49 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
   ```
 
   Affected-site set: every leading-bullet `inv:` declaration under `docs/decisions/`, exactly the
-  lines matched by `grep -rnE '^[[:space:]]*[-*][[:space:]]+`*inv: ' docs/decisions/`. Do **not** touch
+  lines matched by the declRe character class (`[`\t ]*` between bullet and token — **must** include
+  the space so ADR-0007's double-backtick-with-space form `` - `` `inv: <slug>` `` `` is caught):
+  `grep -rnE '^[[:space:]]*[-*][[:space:]]+[`[:space:]]*inv: ' docs/decisions/` (287 lines; the
+  backticks-only pattern misses ADR-0007's 5 and would silently drop those slugs). Do **not** touch
   `inv:` appearing mid-prose (non-leading), nor code/other files. (Every current declaration is
   `Backed`; no ADR converts to `unbacked-invariant:` in this plan — that is the migration plan's
   classification work.)
 
-  Post-check (all must hold): `grep -rnE '^[[:space:]]*[-*][[:space:]]+`*inv: ' docs/decisions/ | wc -l`
-  prints `0`; `go test ./internal/invariants/...` passes (declRe recognises `invariant:`); `./x check`
-  is clean (every rewritten slug still backed under source-only fallback).
+  Post-check (all must hold): the same declRe-class grep for remaining `inv:` prints `0`
+  (`grep -rnE '^[[:space:]]*[-*][[:space:]]+[`[:space:]]*inv: ' docs/decisions/ | wc -l` → `0`); the
+  **positive** count `grep -rnE '^[[:space:]]*[-*][[:space:]]+[`[:space:]]*invariant: ' docs/decisions/ | wc -l`
+  equals the pre-rewrite `inv:` total (287), proving no declaration was dropped rather than converted;
+  `go test ./internal/invariants/...` passes (declRe recognises `invariant:`); and `./x check` is
+  clean with **no new `note:` dangling-marker lines** (every rewritten slug still declared and backed
+  under source-only fallback).
 
   Add `internal/invariants/invariants_test.go` cases (synthetic fixtures — awf's corpus has no
   `unbacked-invariant:` yet): backed-with-proof-in-test passes; backed-without-proof fails;
   proof-in-non-test-file with `TestGlobs` set fails; same passes with `TestGlobs` empty (fallback);
   unbacked-with-`Verify` passes; unbacked-without-`Verify` fails; unbacked-with-a-proof-marker fails;
-  dangling-marker and bare-touches each yield a note not a finding.
+  dangling-marker and bare-touches each yield a note not a finding. (No commit yet — the authoring-doc
+  updates in Task 2.8 must co-travel with the token rename in one coupled commit, Task 2.9.)
 
-  `./x gate` && `./x check`. `git add` the changed `internal/invariants/*`, `cmd/awf/check.go`,
-  `cmd/awf/invariants.go`, `internal/project/project.go`, their tests, and every rewritten
-  `docs/decisions/*.md`. Commit: `feat(invariants): two-marker backing, testGlobs teeth, classification`.
+- [ ] **Task 2.8 — Update the backing-model authoring surfaces (co-travel with the token rename).**
+  Because Task 2.7 makes `invariant:` the live declaration token, the surfaces that *instruct* how to
+  declare an invariant must change in the same commit — else a new ADR authored against the stale
+  template would use `inv:`, which `declRe` no longer parses, silently dropping its invariants. Reword,
+  under `.awf/`: the ADR template Invariants guidance to show both forms — ``- `invariant: <slug>` —
+  …`` (backed) and ``- `unbacked-invariant: <slug>` — …. **Verify:** …`` (unbacked); the `proposing-adr`
+  skill part and `.awf/parts/adr-readme/invariants.md` to the unified `invariant:` token and the
+  proof/touches marker split (per-language markers); and the AGENTS.md source part's **"Backed
+  invariants"** rule for the two markers, the test-scoped proof + source-only fallback, and the
+  backed/unbacked classification with symmetric enforcement. **Do not touch the AGENTS.md `context`
+  rules** (`context-tier1-governs` etc.) — those stay live/enforced until the migration plan flips
+  ADR-0106; see Notes. Run `./x sync`.
+
+- [ ] **Task 2.9 — Verify and commit (coupled Phase-2 commit).** `./x gate` && `./x check` (clean, no
+  new `note:` lines). `git add` the changed `internal/invariants/*`, `cmd/awf/check.go`,
+  `cmd/awf/invariants.go`, `internal/project/project.go`, **`internal/project/context.go`** (the
+  `DeclaringADRs` return-type consumer, Task 2.1), their tests, every rewritten `docs/decisions/*.md`,
+  the changed `.awf/` authoring parts, and the regenerated rendered surfaces (`AGENTS.md`,
+  `docs/decisions/README.md`, the ADR template, the `proposing-adr` skill). Commit:
+  `feat(invariants): two-marker backing, testGlobs teeth, classification`.
 
 ## Phase 3 — Backed-aware context
 
@@ -222,29 +259,25 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
 
 - [ ] **Task 3.4 — Verify and commit.** `./x gate` && `./x check`. `git add internal/invariants/*
   internal/project/context.go internal/project/context_test.go` (+ any test fixtures). Commit:
-  `feat(context): backed-aware two-marker context surfacing`.
+  `feat(tooling): backed-aware two-marker context surfacing` (`context` is not an `audit.allowedScopes`
+  member; `tooling` owns the `awf context` command).
 
-## Phase 4 — Standard surfaces and changelog
+## Phase 4 — Changelog
 
-- [ ] **Task 4.1 — Update the ADR authoring surfaces (config parts).** Reword, under `.awf/`, the ADR
-  template Invariants guidance to show both declaration forms — ``- `invariant: <slug>` — …`` (backed)
-  and ``- `unbacked-invariant: <slug>` — …. **Verify:** …`` (unbacked) — and the `proposing-adr` skill
-  part and `.awf/parts/adr-readme/invariants.md` to the unified `invariant:` token, the proof/touches
-  marker split (with per-language markers), and the classification. Reword the AGENTS.md source parts'
-  "Backed invariants" and `context` rules for the two markers, the test-scoped proof + source
-  fallback, the backed/unbacked classification, and `context-tier1-marker-union`. Run `./x sync`;
-  `./x check` must be clean (rendered `AGENTS.md`, `docs/decisions/README.md`, template, skill all
-  regenerate without drift).
+> The backing-model authoring surfaces (ADR template, adr-readme part, `proposing-adr` skill,
+> AGENTS.md "Backed invariants" rule) are updated in Phase 2 (Task 2.8), co-travelling with the token
+> rename. The AGENTS.md/domain `context` invariant wording (`context-tier1-governs` →
+> `context-tier1-marker-union`) is deliberately **not** touched in this plan — that slug is still
+> live/enforced until ADR-0106 flips in the migration plan (see Notes).
 
-- [ ] **Task 4.2 — Joint changelog entry.** Add to `changelog/CHANGELOG.md` `[Unreleased]` a
+- [ ] **Task 4.1 — Joint changelog entry.** Add to `changelog/CHANGELOG.md` `[Unreleased]` a
   Breaking/Features entry covering: the `inv:`→`invariant:` declaration rename; the proof
   `invariant:` + advisory `touches-invariant:` markers; `invariants.testGlobs`; the inline
   backed/unbacked classification with symmetric enforcement; and the backed/unbacked-aware
   `awf context` output incl. the `--json` shape carrying per-invariant class and notes.
 
-- [ ] **Task 4.3 — Verify and commit.** `./x gate` && `./x check`. `git add` the changed `.awf/`
-  parts, the regenerated rendered docs, and `changelog/CHANGELOG.md`. Commit:
-  `docs(invariants): document two-marker model and testGlobs`.
+- [ ] **Task 4.2 — Verify and commit.** `./x gate` && `./x check`. `git add changelog/CHANGELOG.md`.
+  Commit: `docs(invariants): changelog for two-marker model and testGlobs`.
 
 ## Verification
 
@@ -262,8 +295,11 @@ Go 1.26. Packages: `internal/config`, `internal/configspec`, `internal/invariant
 - **Out of scope (migration plan):** classifying awf's existing invariants backed/unbacked, adding
   proof markers on tests for the 73 production-only slugs (+ converting their prod annotations to
   `touches-invariant:`), setting awf's `invariants.testGlobs`, flipping ADR-0105/0106 to
-  `Implemented`, retiring the `context-tier1-governs` marker, and updating the domain current-state
+  `Implemented`, retiring the `context-tier1-governs` marker and swapping the AGENTS.md/domain
+  `context` invariant wording to `context-tier1-marker-union`, and updating the domain current-state
   narratives. That plan carries the enforcement flip and both ADR status flips.
-- The `Check`/`MarkersUnder` signature changes (Tasks 2.5, 3.1) thread through `CheckInvariants`,
-  `runCheck`, `runInvariants`, and `context.go`; each is updated in the same phase that changes the
-  signature, per the self-contained-phase rule.
+- **Signature-threading (self-contained-phase rule).** The `DeclaringADRs` return-type change
+  (Task 2.1: `map[string]string` → `map[string]Decl`) and the `Check` return-shape change (Task 2.5:
+  adds advisory notes) thread through `CheckInvariants`, `runCheck`, `runInvariants`, and
+  `context.go` — all updated within Phase 2 (Task 2.9's commit). The `MarkersUnder` signature change
+  (Task 3.1) is absorbed by `context.go` within Phase 3. No signature change outlives its phase.
