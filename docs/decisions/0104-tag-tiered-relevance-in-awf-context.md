@@ -32,9 +32,12 @@ to `Check` today; this decision exposes it.
 
 Grounding fixed the constraints:
 
-- **The slug→declaring-ADR join is many-to-one and must respect status/retirement.** Multiple
-  Implemented ADRs re-declare a slug (e.g. `config-root`); a present slug's Tier-1 set is *all* its
-  Implemented, non-retired declarers. Superseded ADRs are already excluded by the Implemented filter.
+- **The slug→declaring-ADR join is one-to-one and must respect status/retirement.** `Check` refuses
+  two Implemented ADRs declaring the same slug (`invariants.go` "duplicate inv slug"), so a green
+  gate guarantees each slug has exactly one Implemented, non-retired declarer; re-declaration only
+  ever crosses a supersession boundary (the predecessor is no longer Implemented). The join is thus
+  `slug → single declaring Implemented ADR`, and a query's Tier-1 *set* still holds several ADRs
+  because several distinct present slugs map to distinct declarers.
 - **ADRs and pitfalls now carry `Tags` (ADR-0103); ADRs carry `Related`.** So tag-overlap and the
   `related:` graph are available in-process — no new parsing.
 - **Two surfacing invariants must be reconciled, not silently broken.** `context-surfaces-pitfalls`
@@ -46,11 +49,14 @@ Grounding fixed the constraints:
 - **`context-output-parity` (ADR-0092) must be preserved.** Both the human and `--json` renderings
   derive from one `ContextResult`; the tiered result is still one value, so the invariant stands
   unchanged (not retired).
-- **Tier 3 is only meaningful once packages are owned.** ~42% of production `.go` files carry no
-  invariant marker, and `internal/project` (which holds `context.go` itself) is domain-unowned — so
-  a query there yields no Tier-1 signal and an empty Tier-3. This decision therefore pairs the
-  consumer with a domain-coverage pass (add domains for the unowned production packages, guided by
-  `awf context --uncovered`), executed in the implementation, not decided here.
+- **Tier 1 does not depend on domain ownership; Tier 3 does.** Tier 1 rides invariant markers, which
+  live in source files regardless of whether a domain claims them — so a query in the domain-unowned
+  `internal/project` (which holds `context.go` itself) still resolves Tier 1 from its `context-*`
+  markers. Tier 3 (domain background) is simply empty for an unowned package, which is *honest*, not
+  broken — the query has no domain, so there is no background to collapse. Expanding domain territory
+  to the unowned production packages would *populate* Tier 3 there, but it is an improvement, not a
+  correctness precondition; this ADR records it as a recommended follow-up (Consequences), not a
+  bundled decision, so no domain-model choice is owed here.
 
 ## Decision
 
@@ -63,13 +69,20 @@ Grounding fixed the constraints:
    path — the intersection of `res.Invariants` with the `slug → declaring Implemented ADR` join
    exposed from `internal/invariants` (the `required` map refactored into an exported function that
    `Check` and `ContextFor` share). These ADRs are enumerated individually. The **precise tag set**
-   is the union of their `tags:`.
+   is the union of their `tags:` **minus any tag that names a configured domain** — a domain-mirror
+   tag (`tooling`, `rendering`, `config`, `adr-system`, `invariants` here) carries only domain-level
+   relatedness, which Tier 3 already represents, so excluding it keeps Tier 2 to the finer,
+   cross-cutting tags the domain axis cannot express. The precise tag set is empty when every Tier-1
+   tag is a domain-mirror.
 
 3. **Tier 2 — "topically related".** The Tier-2 set is every non-Tier-1, non-Superseded ADR that
    either shares at least one tag with the precise tag set or is named in a Tier-1 ADR's `related:`,
    plus every pitfall sharing at least one tag with the precise tag set. Each artifact appears in at
    most one tier — Tier 1 wins over Tier 2. Tier 2 is enumerated but presented compactly (see item
-   6). When the precise tag set is empty (no Tier-1 ADR), Tier 2 is empty.
+   6). Because the precise set excludes domain-mirror tags (item 2), Tier-2 tag matches are on the
+   finer cross-cutting tags only — a query governed by a `tooling`-tagged ADR does not pull every
+   `tooling` ADR into Tier 2. When the precise tag set is empty (no Tier-1 ADR, or all Tier-1 tags
+   are domain-mirrors), the only Tier-2 members are the `related:`-linked ADRs of any Tier-1 ADR.
 
 4. **Tier 3 — "domain background".** The ADRs surfaced by domain membership (today's coarse join)
    that fall in neither Tier 1 nor Tier 2 are reported only as a **collapsed background** — a count
@@ -92,12 +105,6 @@ Grounding fixed the constraints:
    (ADR-0092) are unchanged — the assembly reads only committed state and the command mutates
    nothing.
 
-7. **Pair the consumer with domain coverage (execution, not a separate decision).** The
-   implementation adds domain `paths:` territory for the currently-unowned production packages
-   (`internal/project`, and any others `awf context --uncovered` reports), so Tier-3 background is
-   populated and Tier-1 queries in those packages resolve; the exact domain assignments are an
-   implementation task, guided by the ADR-0102 report.
-
 ## Invariants
 
 Each slug below is backed by a `// invariant: <slug>` marker (comment or test) in the implementing
@@ -108,10 +115,12 @@ commit, per the backed-invariants rule (ADR-0008); `awf check` enforces them onc
   Implemented, non-retired ADRs declaring an invariant slug that is present as a marker under a
   queried path (the intersection of the path-present slugs with the shared `slug → declaring
   Implemented ADR` join); no Tier-1 ADR lacks such a slug and no such ADR is omitted.
-- `inv: context-tier2-topical` — a non-Tier-1, non-Superseded ADR is reported in Tier 2 iff it
-  shares a tag with the Tier-1 precise tag set or is named in a Tier-1 ADR's `related:`, and a
-  pitfall is reported in Tier 2 iff it shares a tag with that set; every artifact appears in at most
-  one tier (Tier 1 over Tier 2), and an empty precise tag set yields an empty Tier 2.
+- `inv: context-tier2-topical` — the precise tag set is the union of the Tier-1 ADRs' tags with every
+  tag that names a configured domain removed; a non-Tier-1, non-Superseded ADR is reported in Tier 2
+  iff it shares a tag with that precise set or is named in a Tier-1 ADR's `related:`, and a pitfall
+  is reported in Tier 2 iff it shares a tag with that set; every artifact appears in at most one tier
+  (Tier 1 over Tier 2). An empty precise set yields a Tier 2 of only the Tier-1 ADRs' `related:`
+  links.
 - `inv: context-tier3-collapsed` — a domain-membership ADR in neither Tier 1 nor Tier 2 is reported
   only as part of a collapsed background count with the domain current-state pointers, never as an
   individually enumerated ADR entry.
@@ -137,18 +146,24 @@ Harder / accepted trade-offs:
 - **Recall drops deliberately.** A pitfall or ADR relevant to a domain but not sharing a precise tag
   no longer surfaces; Tier-3 collapse hides the coarse ADR set behind a count. This is the point
   (precision over recall), and the domain pointer + `--uncovered` keep the full background reachable.
-- **Tier 2 can still be broad** when a Tier-1 ADR carries a high-frequency tag (e.g. `config`): tag
-  overlap is finer than domain membership but not surgical. It is deliberately the *secondary* tier,
-  presented compactly and clearly subordinate to Tier 1; tightening it (e.g. weighting by shared-tag
-  count) is left to a future refinement rather than pre-optimised here.
+- **Tier 2 breadth is bounded by excluding domain-mirror tags, not by display.** Without that
+  exclusion the precise set would include high-frequency tags (`tooling` on ~58 ADRs), and Tier 2
+  would re-materialize the whole-corpus dump merely relabelled — the common case, not an edge, for
+  the tooling-heavy packages. Item 2's domain-mirror exclusion narrows the *set* (not just the
+  display) to the finer cross-cutting tags, so Tier 2 stays proportionate. A residual risk remains if
+  a genuinely cross-cutting tag itself grows high-frequency; further narrowing (weight by shared-tag
+  count, require ≥2 shared tags) is a deliberate future refinement, not pre-optimised here.
 - **Two Implemented invariants are retired.** `context-surfaces-pitfalls` (ADR-0099) and
   `context-surfaces-linked-plans` (ADR-0098) are retired via `retires_invariants`; their markers are
   removed in the flip commit, coupling the behaviour change to the status flip (the standard
   retirement coupling). Their sibling invariants in 0098/0099 (`pitfall-*`, `plan-*`) are untouched.
-- **Domain-coverage work rides along.** Making Tier 3 meaningful requires assigning domain territory
-  to unowned packages — a judgement task done in the implementation, not a mechanical consequence.
-- **`internal/project` gaining a domain** means its files start surfacing that domain's background;
-  the assignment must be deliberate (a `project`/`context` domain, or folding into an existing one).
+- **Recommended follow-up: domain coverage for unowned packages.** Tier 1 works without domain
+  ownership (it rides markers), so this ADR does not require it; but expanding domain territory to the
+  currently-unowned production packages (`internal/project` and any others `awf context --uncovered`
+  reports) would populate their Tier-3 background. That is a separate, load-bearing choice — a new
+  domain vs folding into an existing one, with its own current-state part, config-reference row, and
+  ADR-0077 staleness territory — and is deliberately left to a follow-up effort rather than
+  under-decided here.
 
 Ruled out / deferred:
 - **Weighted or ranked Tier 2** (shared-tag count, recency) — deferred; the tier labels carry the
@@ -161,9 +176,10 @@ Ruled out / deferred:
 Downstream work: an implementation plan covering the exported `internal/invariants` join; the
 `ContextResult` tier restructure + `ContextFor` tier assembly; the `printContext`/JSON rendering of
 the tiers with Tier-3 collapse; the two retired markers removed and the tiered successors backed;
-the domain-coverage `paths:` additions for unowned packages; and doc currency (the AGENTS.md
-invariants list — two retired bullets removed, five added — the `tooling`/`invariants` domain
-current-state parts, `config-reference.md` if domains change, and a changelog `[Unreleased]` entry).
+and doc currency (the AGENTS.md invariants list — two retired bullets removed, five added — the
+`tooling`/`invariants` domain current-state parts and a changelog `[Unreleased]` entry). The
+domain-coverage expansion for unowned packages is a separate follow-up (Consequences), not part of
+this plan.
 When this ADR flips to `Implemented`, the same commit regenerates `docs/decisions/ACTIVE.md`.
 
 ## Alternatives Considered
@@ -174,4 +190,5 @@ When this ADR flips to `Implemented`, the same commit regenerates `docs/decision
 | Extend `context-surfaces-pitfalls`/`context-surfaces-linked-plans` in place rather than retire | Their text mandates the old (domain / any-reported-ADR) contract, which the new behaviour violates; leaving a live invariant whose statement is false is exactly what ADR-0031 retirement exists to prevent. Retire + redeclare is the honest move. |
 | Make Tier 1 the only surface (drop Tier 2/3 entirely) | Loses genuinely useful topical and background context; the complaint was *noise*, not *any* secondary context. Tiering keeps it, ranked and collapsed. |
 | Add a `paths:` field to tags or invariants for path precision | Rejected in ADR-0103 as duplicated, stale-prone territory; the invariant-marker → declaring-ADR bridge is free and self-maintaining. |
-| Ship the consumer without the domain-coverage pass | Tier 3 (and Tier 1 for unowned packages like `internal/project`) would be empty for a large share of the tree, making the feature look broken exactly where it is exercised; pairing them is what makes the tiers meaningful. |
+| Include Tier-1 tags verbatim (no domain-mirror exclusion) in the precise set | A domain-mirror tag like `tooling` (~58 ADRs) would flood Tier 2 with the whole coarse set — the dump this rework removes, relabelled. Domain-level relatedness is Tier 3's job; Tier 2 uses the finer tags. |
+| Bundle the domain-coverage expansion into this ADR as a decision | It is a distinct load-bearing choice (new domain vs fold-in, with its own territory/staleness/currency) on a different rationale (coverage, not noise); Tier 1 works without it and empty Tier 3 for an unowned package is honest, so it is a follow-up, not a bundled sub-decision. |
