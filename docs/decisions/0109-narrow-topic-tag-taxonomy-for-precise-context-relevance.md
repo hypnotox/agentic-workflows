@@ -93,10 +93,14 @@ Grounding fixed the boundaries this decision must respect:
 4. **Add a non-failing tag-health note to `awf check`** (a new note producer, distinct from the
    render-pass advisory channel and from the vocabulary `Drift`):
    - **Frequency:** each vocabulary tag carried by more than a fixed default share — **25% of the
-     artifacts carrying at least one vocabulary tag** — yields a note that the tag is coarsening,
-     catching sub-domain-but-still-broad drift the exact gate cannot express. The 25% default is a
-     documented constant (no new config key): it keeps the re-tagged awf corpus quiet while flagging
-     today's domain-scale offenders (`tooling` 55%, `rendering` 44%, `config` 30%).
+     artifacts carrying at least one vocabulary tag** — yields a note that the tag is coarsening. Its
+     job is *prospective*: after the re-tag no tag should approach 25%, so the note stays quiet on a
+     healthy corpus and fires only when a topic tag later drifts toward domain scale — the
+     broad-but-not-domain-named coarsening item 3's exact gate cannot express. (On today's
+     un-re-tagged corpus of 155 tag-bearing artifacts only `tooling` at 48% and `rendering` at 39%
+     cross the line, and both are domain names item 3 already rejects — so the note earns its keep
+     going forward, not on the present state.) The 25% default is a documented constant, no new
+     config key.
    - **Coverage:** each ADR or pitfall carrying zero tags — or, under an empty/free-form vocabulary,
      only tags equal to a configured domain name — yields a note, the backstop against silent
      under-tagging across the hand re-tag. Under a non-empty *governed* vocabulary an artifact tagged
