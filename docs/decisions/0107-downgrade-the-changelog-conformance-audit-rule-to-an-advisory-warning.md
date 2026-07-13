@@ -78,12 +78,14 @@ attention signal, not as a gate.
   part of ADR-0073's prose→blocking-Error move. Mitigations, in order: the Warning keeps it visible at
   the exact review moment; the `awf-retrospective` changelog step (ADR-0041/0067) re-checks it per
   effort; `releasecheck` (ADR-0078) blocks any release on a missing/non-empty `[Unreleased]`. Be honest
-  about the first two: the retrospective step is the *same* prose mechanism ADR-0073's Context records as
-  having already failed (the ADR-0072 effort missed its entry despite it), so the residual is one
-  known-leaky per-effort prose check plus one release-time *structural* check (`releasecheck`, which
-  guards `[Unreleased]` well-formedness — not per-effort entry presence). The accepted trade: a false
-  Error blocking legitimate work is both costlier and more frequent than a missed entry surviving a
-  Warning plus those backstops — and the user explicitly accepted it.
+  about the strength of these: the retrospective step is a *prose* mechanism, and ADR-0073's Context
+  records prose reminders as unreliable at *landing* time — the ADR-0072 entry was missed during the
+  effort and recovered only by this catch-net at the end. So the residual is a leaky-at-landing prose
+  catch (which nonetheless did catch ADR-0072) plus a release-time *structural* check (`releasecheck`,
+  which guards `[Unreleased]` well-formedness — not per-effort entry presence); no deterministic
+  per-effort guarantee remains. The accepted trade: a false Error blocking legitimate work is both
+  costlier and more frequent than a missed entry surviving a Warning plus those backstops — and the user
+  explicitly accepted it.
 - **The exit contract is unchanged.** `repo-audit-error-exit` still holds; only which findings source an
   Error changes, and its proof relocates to an infrastructure-failure test — no behavior change to the
   command's exit semantics.
