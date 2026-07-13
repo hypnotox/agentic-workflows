@@ -658,5 +658,21 @@ project). The escape hatch is an error source `Open` does NOT touch: `ContextFor
 because it also parses ADRs and plans. Before coverage-ignoring such a branch, confirm the assembly
 reads nothing beyond what `Open` validates (2026-07-13).
 
+## A token or convention rename must sweep every rendered doc surface
+
+_Domains: invariants, rendering_
+
+Renaming a token or changing a convention breaks in more places than the authoring
+template. When `inv:`→`invariant:` landed, the doc-currency lens flagged stale `inv:`
+spellings three separate times (plan review, verify pass, resync) because the reword
+touched only the ADR template and the "Backed invariants" rule and missed sibling
+surfaces. Before committing a rename, sweep ALL rendered surfaces that mention the token
+or convention: `.awf/agents-doc.yaml` (AGENTS.md rules AND the `(inv: <slug>)` prose
+citations on every invariant bullet), `.awf/docs/glossary.yaml`, the domain
+`current-state.md` narratives and their citations, `.awf/docs/pitfalls.yaml`, the
+adr-readme part, and the architecture/working-with-awf guide sources — not just the one
+authoring template. A post-rename `grep -rnE '\b<oldtoken>' .awf/` reaching zero is the
+cheap catch (2026-07-13).
+
 <!-- awf:edit append — default; create .awf/docs/parts/pitfalls/append.md to override -->
 
