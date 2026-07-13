@@ -20,3 +20,7 @@ Each machine-enforceable ADR Invariant bullet carries an `inv: <slug>` tag backe
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
 - [ADR-0104: Tag-Tiered Relevance in awf context](../decisions/0104-tag-tiered-relevance-in-awf-context.md)
 
+### Proposed
+
+- [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md)
+
