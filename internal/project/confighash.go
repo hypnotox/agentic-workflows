@@ -41,7 +41,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).
-		// invariant: skills-set-in-confighash
+		// touches-invariant: skills-set-in-confighash — folds the effective skills set into ConfigHash; proof in drift_test.go
 		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes

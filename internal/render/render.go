@@ -38,7 +38,7 @@ type SectionPlan struct {
 // A stub-attributed section rendering its template default gets a distinct
 // pointer so the rendered file itself distinguishes a must-replace default from
 // a valid one (ADR-0070).
-// invariant: section-edit-pointer
+// touches-invariant: section-edit-pointer — awf:edit provenance pointer emission; proof in render_test.go
 func editPointer(name string, stub bool, p SectionPlan) string {
 	if p.HasPart {
 		return fmt.Sprintf("<!-- awf:edit %s — from %s -->\n", name, p.EditPath)
@@ -69,7 +69,7 @@ const SectionDefaultSentinel = "\x00awf:section-default\x00"
 // verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
 // either a sentinel standing in for its part body (restored after Execute) or the
 // template default. Section markers are consumed here and never written.
-// invariant: no-section-marker-leak
+// touches-invariant: no-section-marker-leak — section markers consumed, never written; proof in render_test.go
 func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]string) {
 	var b strings.Builder
 	parts := map[string]string{}
@@ -164,7 +164,7 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 // sentinels) under missingkey=zero, then restores each raw part body verbatim — so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
-// invariant: parts-raw
+// touches-invariant: parts-raw — part bodies restored verbatim, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {

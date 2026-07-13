@@ -26,7 +26,7 @@ type kindDescriptor struct {
 // kind-dispatch-single-table), in `awf list` display order. It is also the sole
 // enumeration of CLI-addressable kinds (ADR-0024 inv: cli-config-kinds, re-homed here).
 // invariant: kind-dispatch-single-table
-// invariant: cli-config-kinds
+// touches-invariant: cli-config-kinds — sole CLI-addressable kind enumeration; proof in kind_test.go
 var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "skills", Singular: "skill",

@@ -547,6 +547,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("init --force failed: %s", errb.String())
 	}
 	// The original is preserved at <path>.awf-bak.
+	// invariant: init-force-backs-up
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
 	}

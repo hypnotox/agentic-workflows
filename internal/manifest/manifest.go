@@ -74,7 +74,7 @@ func LoadOptional(path string) (*Lock, bool, error) {
 // file is best-effort removed. Rename-only durability — no fsync — per
 // ADR-0076 Decision 1; Go's os.Rename replaces an existing destination on
 // every supported OS including Windows.
-// invariant: lock-atomic-save
+// touches-invariant: lock-atomic-save — atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")

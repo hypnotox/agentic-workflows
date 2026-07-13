@@ -33,6 +33,7 @@ func TestRenderDefault(t *testing.T) {
 		!strings.Contains(out, "<!-- awf:edit notes — default;") {
 		t.Errorf("default edit pointers missing:\n%s", out)
 	}
+	// invariant: no-section-marker-leak
 	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
 		t.Errorf("markers leaked into output:\n%s", out)
 	}
@@ -95,6 +96,7 @@ func TestEditPointerStub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: section-edit-pointer
 	if !strings.Contains(out, "<!-- awf:edit notes — stub; replace by creating .awf/x.md -->") {
 		t.Errorf("stub default must render the stub pointer:\n%s", out)
 	}
@@ -189,6 +191,7 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
 	}
 	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}."
+	// invariant: parts-raw
 	if !strings.Contains(out, want) {
 		t.Fatalf("part body must render verbatim (not interpolated)\n got: %q\nwant substring: %q", out, want)
 	}

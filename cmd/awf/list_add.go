@@ -207,7 +207,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 			// full missing forward closure — skills, agents, and docs — in one
 			// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
 			// and subsumes the ADR-0013 doc advisory note.
-			// invariant: add-skill-pairs-agent
+			// touches-invariant: add-skill-pairs-agent — closure plan enables the required agent; proof in list_add_test.go
 			plan = p.ResolveEnable(kind, name)
 		} else {
 			// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the

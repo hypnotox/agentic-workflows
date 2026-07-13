@@ -28,6 +28,7 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 }
 
 func TestKindLookups(t *testing.T) {
+	// invariant: cli-config-kinds
 	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}

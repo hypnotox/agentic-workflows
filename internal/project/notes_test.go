@@ -153,6 +153,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 			stub = append(stub, n)
 		}
 	}
+	// invariant: stub-notes-path-keyed
 	if len(stub) != 2 {
 		t.Fatalf("expected one stub note per target path, got %d: %v", len(stub), notes)
 	}

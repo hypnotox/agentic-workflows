@@ -152,6 +152,7 @@ func TestRunChangelogRangeReversed(t *testing.T) {
 func TestRunChangelogFlagsExclusive(t *testing.T) {
 	var out bytes.Buffer
 	err := runChangelog("0.2.0", "0.3.0", "", &out)
+	// invariant: changelog-flags-exclusive
 	if err == nil {
 		t.Fatal("setting both --version and --since should error")
 	}

@@ -177,6 +177,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 		}
 	}
 	entries := VarEntries()
+	// invariant: configspec-var-derivation
 	if len(entries) != len(want) {
 		t.Errorf("VarEntries returned %d entries, want %d", len(entries), len(want))
 	}

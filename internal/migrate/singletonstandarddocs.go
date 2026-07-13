@@ -15,7 +15,7 @@ import (
 
 // singletonStandardDocNames are the three docs ADR-0043 promotes from
 // toggleable `docs:` catalog entries to always-on singletons.
-// invariant: singleton-doc-migration-relocates-parts
+// touches-invariant: singleton-doc-migration-relocates-parts — the doc set whose parts/sidecars migrate; proof in singletonstandarddocs_test.go
 var singletonStandardDocNames = []string{"workflow", "doc-standard", "agents-md-standard"}
 
 // applySingletonStandardDocs ports each of singletonStandardDocNames from the
@@ -108,7 +108,7 @@ func removeFromDocsArray(path, name string) (bool, error) {
 	if err != nil { // coverage-ignore: the membership check above guarantees name is present under docs:, and yaml.Unmarshal above already validated src parses, so SetArrayMember cannot error here
 		return false, err
 	}
-	// invariant: lock-atomic-save
+	// touches-invariant: lock-atomic-save — atomic temp-file+rename write site; proof in manifest_test.go
 	if err := manifest.WriteFileAtomic(path, updated); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error that the test root bypasses
 		return false, err
 	}

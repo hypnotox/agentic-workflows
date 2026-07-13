@@ -461,6 +461,7 @@ func TestUncovered(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// invariant: uncovered-collapses-directories
 		if join(res.Entries) != "internal/plan/" {
 			t.Errorf("got %v want [internal/plan/]", res.Entries)
 		}
@@ -481,6 +482,7 @@ func TestUncovered(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// invariant: uncovered-lists-unowned-only
 		if join(res.Entries) != "cmd/awf/other.go" {
 			t.Errorf("got %v want [cmd/awf/other.go]", res.Entries)
 		}

@@ -89,7 +89,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 // per output path: artifacts sharing a template id (local artifacts, the domain
 // docs) each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
-// invariant: stub-notes-path-keyed
+// touches-invariant: stub-notes-path-keyed — per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
 	var notes []string
 	for _, f := range files {

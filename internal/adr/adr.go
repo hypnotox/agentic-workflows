@@ -209,7 +209,7 @@ var slugNonAlnumRe = regexp.MustCompile(`[^a-z0-9]+`)
 
 // NextNumber returns the next available 4-digit ADR number for dir: one more
 // than the highest number ParseDir finds, or "0001" for an ADR-less dir.
-// invariant: adr-new-sequential-numbering
+// touches-invariant: adr-new-sequential-numbering — NextNumber returns highest-plus-one; proof in adr_test.go
 func NextNumber(dir string) (string, error) {
 	adrs, err := ParseDir(dir)
 	if err != nil {
@@ -255,8 +255,8 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // rendered template.md with every marker comment stripped and its date and
 // title heading filled in, named NNNN-slug.md. Refuses to overwrite an
 // existing file at that path.
-// invariant: adr-new-strips-markers
-// invariant: adr-new-heading-matches-file
+// touches-invariant: adr-new-strips-markers — NewFile strips every marker comment from the copied template; proof in adr_test.go
+// touches-invariant: adr-new-heading-matches-file — NewFile fills the heading from the allocated file number; proof in adr_test.go
 // touches-invariant: adr-new-no-overwrite — refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
 func NewFile(dir, title string) (string, error) {
 	title = strings.TrimSpace(title)

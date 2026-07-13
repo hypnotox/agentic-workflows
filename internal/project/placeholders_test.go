@@ -112,6 +112,7 @@ func TestSubstitutePlaceholders(t *testing.T) {
 	}
 
 	// Error cases.
+	// invariant: part-placeholder-sandboxed
 	for _, tc := range []struct{ name, body, want string }{
 		{"unknown", "{{=awf:nope}}", "unknown or empty placeholder"},
 		{"two-unknown", "{{=awf:nope}} {{=awf:alsobad}}", "unknown or empty placeholder"},

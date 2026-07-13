@@ -109,7 +109,7 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 			}
 		}
 	}
-	// invariant: repo-audit-error-exit
+	// touches-invariant: repo-audit-error-exit — error-count exit-code branch; proof in main_test.go
 	if errs > 0 {
 		return 1
 	}

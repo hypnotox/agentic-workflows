@@ -261,6 +261,7 @@ func TestSidecarRejectsReplaceWith(t *testing.T) {
 	}
 	c, _ := Load(dir)
 	_, err := c.Sidecar("skills", "tdd")
+	// invariant: no-replacewith
 	if err == nil || !strings.Contains(err.Error(), "replaceWith") {
 		t.Errorf("expected a strict-decoder error mentioning replaceWith, got: %v", err)
 	}
@@ -591,6 +592,7 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
+	// invariant: local-name-validated
 	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)

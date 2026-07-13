@@ -275,6 +275,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}})
+	// invariant: audit-uncommitted-changes
 	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}

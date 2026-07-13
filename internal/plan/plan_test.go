@@ -136,6 +136,7 @@ func TestNewFileHappyPath(t *testing.T) {
 		t.Fatalf("NewFile: %v", err)
 	}
 	want := filepath.Join(dir, "2026-07-12-my-cool-plan.md")
+	// invariant: plan-new-unnumbered
 	if path != want {
 		t.Errorf("NewFile path = %q, want %q", path, want)
 	}

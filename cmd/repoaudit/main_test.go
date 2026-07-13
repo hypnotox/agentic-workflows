@@ -116,6 +116,7 @@ func TestErrorMissingEntry(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
+	// invariant: repo-audit-error-exit
 	if code != 1 || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}

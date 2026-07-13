@@ -458,6 +458,7 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 	if err := runEnable(root, "skill", "reviewing-impl", false, &out); err != nil {
 		t.Fatalf("add skill reviewing-impl: %v", err)
 	}
+	// invariant: add-skill-pairs-agent
 	for _, line := range []string{
 		"plan: + skill reviewing-impl\n",
 		"plan: + skill executing-plans (required by reviewing-impl)\n",

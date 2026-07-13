@@ -22,6 +22,7 @@ func TestMarshalSkeleton(t *testing.T) {
 		"skills:\n  - tdd\n" +
 		"agents: []\n" +
 		"docs:\n  - workflow\n"
+	// invariant: config-serialization-owned
 	if string(out) != want {
 		t.Errorf("MarshalSkeleton:\n got: %q\nwant: %q", out, want)
 	}
@@ -42,6 +43,7 @@ func TestSetArrayMember(t *testing.T) {
 		{"add to flow with items", "skills: [a, b]\n", "skills", "c", true, "skills:\n  - a\n  - b\n  - c\n", false},
 		{"remove from items", "skills:\n  - a\n  - b\n", "skills", "a", false, "skills:\n  - b\n", false},
 		{"remove last empties", "docs:\n  - d\n", "docs", "d", false, "docs: []\n", false},
+		// invariant: remove-block-scoped
 		{"remove block-scoped", "skills:\n  - debugging\ndocs:\n  - debugging\n", "docs", "debugging", false, "skills:\n  - debugging\ndocs: []\n", false},
 		{"remove not found", "skills:\n  - a\n", "skills", "z", false, "", true},
 		{"remove from empty flow", "skills: []\n", "skills", "a", false, "", true},
@@ -63,6 +65,7 @@ func TestSetArrayMember(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+			// invariant: config-mutation-roundtrip
 			if string(got) != tc.want {
 				t.Errorf("SetArrayMember:\n got: %q\nwant: %q", got, tc.want)
 			}
@@ -319,6 +322,7 @@ audit:
 		t.Fatal(err)
 	}
 	s := string(out)
+	// invariant: glob-migration-anchored
 	for _, want := range []string{"**/*.go", "cmd/**", "**/go.mod", "**/package.json"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("output missing %q:\n%s", want, s)

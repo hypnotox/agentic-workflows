@@ -167,7 +167,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
-				// invariant: sync-backs-up-foreign
+				// touches-invariant: sync-backs-up-foreign — foreign-file backup on sync; proof in project_test.go
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
 					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)

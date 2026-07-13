@@ -94,7 +94,7 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // NewFile scaffolds a new plan under dir from the rendered plans template
 // (dir/template.md): today's date filled, marker comments stripped, named
 // YYYY-MM-DD-slug.md. No sequential number is allocated. Refuses to overwrite.
-// invariant: plan-new-unnumbered
+// touches-invariant: plan-new-unnumbered — unnumbered dated plan scaffold; proof in plan_test.go
 func NewFile(dir, title string) (string, error) {
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)

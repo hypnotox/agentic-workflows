@@ -75,6 +75,7 @@ func TestMultiTargetRender(t *testing.T) {
 			bridges++
 		}
 	}
+	// invariant: multi-target-render
 	for _, pair := range [][2]string{
 		{".claude/skills/example-tdd/SKILL.md", ".cursor/skills/example-tdd/SKILL.md"},
 		{".claude/agents/code-reviewer.md", ".cursor/agents/code-reviewer.md"},
@@ -90,6 +91,7 @@ func TestMultiTargetRender(t *testing.T) {
 	if agentsMd != 1 {
 		t.Errorf("AGENTS.md rendered %d times, want 1 (neutral)", agentsMd)
 	}
+	// invariant: cursor-no-bridge
 	if bridges != 1 {
 		t.Errorf("bridge files = %d, want 1 (claude only; cursor has none)", bridges)
 	}

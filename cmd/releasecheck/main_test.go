@@ -55,6 +55,7 @@ func TestRunFailsUnparseable(t *testing.T) {
 
 func TestRunFailsStaleNewestEntry(t *testing.T) {
 	code, _, errb := runOn(t, changelogFS("# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - 2026-01-01\n- old\n"))
+	// invariant: release-changelog-pin
 	if code != 1 || !strings.Contains(errb, "promote [Unreleased] before tagging") {
 		t.Fatalf("want exit 1 with stale-entry error, got %d:\n%s", code, errb)
 	}

@@ -16,7 +16,7 @@ import (
 // runNew scaffolds a new templated artifact: an ADR, or a project-local skill/agent
 // (ADR-0068). ADR takes a single joined title; skill/agent take a name and a
 // separate quoted description.
-// invariant: adr-new-version-gated
+// touches-invariant: adr-new-version-gated — new-command version gate site; proof in gate_test.go
 func runNew(root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":

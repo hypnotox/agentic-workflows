@@ -44,6 +44,7 @@ func TestGateBehindVersionErrors(t *testing.T) {
 	// binary (project.Version), so this stays correct across version bumps.
 	root := gateFixture(t, "99.0.0", migrate.Current())
 	err := gate(root)
+	// invariant: version-compat-gate
 	if err == nil {
 		t.Fatal("expected gate error on behind version")
 	}
@@ -100,6 +101,7 @@ func TestNormalizeSemver(t *testing.T) {
 func TestNewGatesInHandler(t *testing.T) {
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer
+	// invariant: adr-new-version-gated
 	if err := runNew(root, "adr", []string{"x"}, &out); err == nil {
 		t.Error("runNew: expected gate error on ahead schema")
 	}

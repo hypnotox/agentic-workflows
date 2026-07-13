@@ -134,7 +134,7 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 // commit-gate` command (ADR-0036), so neither re-implements the regex, the
 // type/scope allow-lists, or the subject-length limit. Merge commits are exempt.
 // invariant: audit-conventional-commits
-// invariant: commit-gate-shared-rule
+// touches-invariant: commit-gate-shared-rule — shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
 func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
 		return nil
@@ -277,7 +277,7 @@ func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 	return nil
 }
 
-// invariant: audit-domain-doc-staleness
+// touches-invariant: audit-domain-doc-staleness — domain-doc-staleness audit rule; proof in audit_test.go
 func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 	if !in.DomainDocStaleness {
 		return nil
@@ -315,7 +315,7 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-// invariant: audit-undocumented-domain
+// touches-invariant: audit-undocumented-domain — undocumented-domain audit rule; proof in audit_test.go
 func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	if !in.UndocumentedDomain || len(in.ConfiguredDomains) == 0 {
 		return nil

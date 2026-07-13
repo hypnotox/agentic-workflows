@@ -13,6 +13,7 @@ func TestLoadFromEmbed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	// invariant: changelog-embed-decodes
 	if len(entries) == 0 {
 		t.Fatal("no entries parsed from the embedded CHANGELOG.md")
 	}
@@ -115,6 +116,7 @@ func TestRange(t *testing.T) {
 	if len(got) != 1 || got[0].Version != "0.2.0" {
 		t.Errorf("Range(0.2.0..0.2.0) = %+v", got)
 	}
+	// invariant: changelog-range-chronological
 	if _, err := Range(testEntries, "0.3.0", "0.1.0"); err == nil {
 		t.Error("Range with a reversed from/to should error")
 	}

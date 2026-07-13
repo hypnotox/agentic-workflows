@@ -97,6 +97,7 @@ func TestWriteFileAtomicFailureLeavesTargetUntouched(t *testing.T) {
 	if err := WriteFileAtomic(p, []byte("x")); err == nil {
 		t.Fatal("want error renaming onto a directory")
 	}
+	// invariant: lock-atomic-save
 	ents, err := os.ReadDir(dir)
 	if err != nil || len(ents) != 1 {
 		t.Fatalf("temp residue after failure: %v (err %v)", ents, err)

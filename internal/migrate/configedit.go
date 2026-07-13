@@ -23,6 +23,6 @@ func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
 	if err != nil {
 		return err
 	}
-	// invariant: lock-atomic-save
+	// touches-invariant: lock-atomic-save — atomic temp-file+rename write site; proof in manifest_test.go
 	return manifest.WriteFileAtomic(cfgPath, out)
 }

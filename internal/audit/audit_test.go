@@ -288,6 +288,7 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
 	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
+	// invariant: audit-domain-doc-staleness
 	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Commit != "" {
 		t.Fatalf("want 1 branch-level warning, got %v", got)
 	}
@@ -348,6 +349,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 	// ADR tags an unconfigured domain -> 1 warning.
 	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
+	// invariant: audit-undocumented-domain
 	if len(got) != 1 || got[0].Rule != "undocumented-domain" {
 		t.Fatalf("want 1 warning, got %v", got)
 	}

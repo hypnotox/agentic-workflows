@@ -982,6 +982,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 			got = &backups[i]
 		}
 	}
+	// invariant: sync-backs-up-foreign
 	if got == nil {
 		t.Fatalf("foreign ACTIVE.md not backed up; backups=%#v", backups)
 	}

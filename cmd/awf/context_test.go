@@ -165,6 +165,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
+	// invariant: context-output-parity
 	for _, want := range []string{"alpha", "beta", "gov-slug", "2026-07-12-linked.md", "Worktree hazard"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
@@ -180,6 +181,7 @@ func TestRunContextStaticFallback(t *testing.T) {
 	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, false, &human); err != nil {
 		t.Fatalf("static human errored: %v", err)
 	}
+	// invariant: context-static-fallback
 	if !strings.Contains(human.String(), "not inside an awf project") {
 		t.Errorf("static human: %s", human.String())
 	}
@@ -282,6 +284,7 @@ func TestRunContextReadOnly(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// invariant: context-read-only
 	if after := snapshotTree(t, root); after != before {
 		t.Errorf("awf context mutated the tree:\nbefore %s\nafter  %s", before, after)
 	}
@@ -403,6 +406,7 @@ func TestRunContextUncoveredJSONParity(t *testing.T) {
 	if err := runContext(root, nil, false, "", false, true, &human); err != nil {
 		t.Fatal(err)
 	}
+	// invariant: uncovered-output-parity
 	if !strings.Contains(human.String(), "internal/plan/") {
 		t.Errorf("human render diverges from JSON: %s", human.String())
 	}

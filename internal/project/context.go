@@ -294,8 +294,8 @@ type UncoveredResult struct {
 // nothing and reads only the domain sidecars. scanRoots restrict the report to
 // tracked paths at or beneath them, matched on slash-separated segment boundaries
 // (a directory subtree), not raw string prefixes; empty scanRoots scans everything.
-// invariant: uncovered-lists-unowned-only
-// invariant: uncovered-collapses-directories
+// touches-invariant: uncovered-lists-unowned-only — unowned-path reporting; proof in context_test.go
+// touches-invariant: uncovered-collapses-directories — fully-uncovered directory collapse; proof in context_test.go
 func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error) {
 	roots := NormalizeContextPaths(scanRoots)
 	res := UncoveredResult{ScanRoots: roots}

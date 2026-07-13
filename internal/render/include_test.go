@@ -20,6 +20,7 @@ func TestExpandIncludesSplices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// invariant: include-splice
 	if out != "intro\n\nBODY\n\ntail\n" {
 		t.Fatalf("bad splice:\n%q", out)
 	}
@@ -49,6 +50,7 @@ func TestExpandIncludesMultiple(t *testing.T) {
 
 func TestExpandIncludesMissingPartialFails(t *testing.T) {
 	_, err := ExpandIncludes("<!-- awf:include nope -->\n", partialsFS(nil))
+	// invariant: include-missing-fails
 	if err == nil || !strings.Contains(err.Error(), "unknown partial") {
 		t.Fatalf("expected unknown-partial error, got %v", err)
 	}
@@ -57,6 +59,7 @@ func TestExpandIncludesMissingPartialFails(t *testing.T) {
 func TestExpandIncludesNestedFails(t *testing.T) {
 	_, err := ExpandIncludes("<!-- awf:include a -->\n",
 		partialsFS(map[string]string{"a": "x\n<!-- awf:include b -->\n"}))
+	// invariant: include-no-nested
 	if err == nil || !strings.Contains(err.Error(), "nested include") {
 		t.Fatalf("expected nested-include error, got %v", err)
 	}
@@ -65,6 +68,7 @@ func TestExpandIncludesNestedFails(t *testing.T) {
 func TestExpandIncludesSectionMarkerFails(t *testing.T) {
 	_, err := ExpandIncludes("<!-- awf:include a -->\n",
 		partialsFS(map[string]string{"a": "<!-- awf:section x -->\nbody\n<!-- awf:end -->\n"}))
+	// invariant: include-no-sections
 	if err == nil || !strings.Contains(err.Error(), "section marker") {
 		t.Fatalf("expected section-marker error, got %v", err)
 	}

@@ -55,7 +55,7 @@ func MarshalSkeleton(s Skeleton) ([]byte, error) {
 // key (ADR-0026). The edited sequence is normalized to block style, so a flow-style
 // input (`key: [a, b]`) is accepted. Adding a member already present is a no-op;
 // removing a member absent from the key (or a key absent on remove) errors.
-// invariant: config-mutation-roundtrip
+// touches-invariant: config-mutation-roundtrip — yaml.Node add/remove round-trip; proof in edit_test.go
 func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
@@ -79,7 +79,7 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		case idx < 0:
 			return nil, fmt.Errorf("config: no %q entry under %q", name, key)
 		default:
-			// invariant: remove-block-scoped
+			// touches-invariant: remove-block-scoped — block-scoped sequence removal; proof in edit_test.go
 			val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
 		}
 	default: // bare `key:` (null value)
@@ -254,7 +254,7 @@ func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 
 // anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`
 // and reports the rewrites under key.
-// invariant: glob-migration-anchored
+// touches-invariant: glob-migration-anchored — no-slash glob anchoring rewrite; proof in edit_test.go
 func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
 	var rewrites []GlobRewrite
 	for _, n := range seq.Content {
@@ -283,7 +283,7 @@ func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
 // encoder fixed at two-space indentation. Both MarshalSkeleton (construction) and
 // SetArrayMember (mutation) route through it, so the on-disk format has exactly one
 // definition.
-// invariant: config-serialization-owned
+// touches-invariant: config-serialization-owned — single config.yaml serialization funnel; proof in edit_test.go
 func encode(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

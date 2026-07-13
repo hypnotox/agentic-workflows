@@ -47,11 +47,12 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	got := orphanedByPath(drift)
 
 	want := map[string]string{
-		".awf/notes.md":                    unclaimedDetail,
-		".awf/scratch":                     unclaimedDetail,
-		".awf/skills/readme.txt":           unclaimedDetail,
-		".awf/skills/parts/tdd/stray.txt":  unclaimedDetail,
-		".awf/skills/parts/tdd/bogus.md":   "convention part for a section not in the target's declared set",
+		".awf/notes.md":                   unclaimedDetail,
+		".awf/scratch":                    unclaimedDetail,
+		".awf/skills/readme.txt":          unclaimedDetail,
+		".awf/skills/parts/tdd/stray.txt": unclaimedDetail,
+		".awf/skills/parts/tdd/bogus.md":  "convention part for a section not in the target's declared set",
+		// invariant: awf-bak-flagged
 		".awf/config.yaml.awf-bak.2":       bakDetail,
 		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,
 		".awf/skills/debugging.yaml":       "sidecar for an artifact not in the enable list",

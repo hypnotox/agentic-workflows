@@ -35,7 +35,7 @@ type Command struct {
 
 // Commands is the ordered command table — the sole source of the command set,
 // `awf help` order, the usage line, and the gated-command list.
-// invariant: cli-command-spec-single-source
+// touches-invariant: cli-command-spec-single-source — sole command-table source; proof in clispec_test.go
 var Commands = []Command{
 	{
 		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set",

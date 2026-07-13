@@ -60,6 +60,7 @@ func TestWithDefaultData(t *testing.T) {
 				}
 				return
 			}
+			// invariant: sidecar-key-overrides-default
 			if !reflect.DeepEqual(got.Data, tc.want) {
 				t.Fatalf("got %v, want %v", got.Data, tc.want)
 			}

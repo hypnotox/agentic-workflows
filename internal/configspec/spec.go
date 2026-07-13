@@ -44,7 +44,7 @@ func DataKeys() []DataKey { return dataKeys }
 // VarEntries derives the var descriptions from the catalog's config-var
 // descriptors (empty or "var" Target — the init-routing descriptors are not
 // vars: keys), description text verbatim, availability clause attached here.
-// invariant: configspec-var-derivation
+// touches-invariant: configspec-var-derivation — var entries derived from catalog descriptors; proof in spec_test.go
 func VarEntries() []VarEntry {
 	var out []VarEntry
 	for _, d := range catalog.Standard.Vars {

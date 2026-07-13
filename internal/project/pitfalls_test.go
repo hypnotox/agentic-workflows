@@ -107,6 +107,7 @@ func TestPitfallEntriesErrors(t *testing.T) {
 		"tag-not-string":    {[]any{map[string]any{"title": "T", "body": "b", "tags": []any{42}}}, "must be non-empty strings"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			// invariant: pitfall-data-validated
 			_, err := pitfallEntries(tc.raw)
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) || !strings.Contains(err.Error(), pitfallsSidecarPath) {
 				t.Errorf("want error containing %q and %q, got: %v", tc.wantErr, pitfallsSidecarPath, err)

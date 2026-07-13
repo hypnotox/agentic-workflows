@@ -102,6 +102,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	// code-reviewer.md.tmpl carries awf:include directives, so its expanded source differs
 	// from its raw bytes; TemplateHash must be over the expanded source (ADR-0052). A
 	// regression to manifest.Hash(src) would make these equal.
+	// invariant: include-in-templatehash
 	if got == manifest.Hash(raw) {
 		t.Error("TemplateHash equals raw-source hash; expected expanded-source hash")
 	}

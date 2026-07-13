@@ -79,6 +79,7 @@ func TestRunCommitGateRejectsLongSubject(t *testing.T) {
 func TestRunCommitGateRejectsNonConventional(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
+	// invariant: commit-gate-shared-rule
 	if err := runCommitGate(root, writeMsg(t, "just some words\n"), nil, &out); err == nil {
 		t.Fatal("a non-Conventional-Commits subject must be rejected")
 	}

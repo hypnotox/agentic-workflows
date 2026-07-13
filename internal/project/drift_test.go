@@ -324,6 +324,24 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	}
 }
 
+// Editing the skills enable array reflags an artifact whose assembled template
+// reads .skills: the config-hash folds the effective skills set, so the always-on
+// agent guide (which branches on .skills.brainstorming) goes stale when the enable
+// array changes (ADR-0046), mirroring the scopes fold above.
+func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
+	cfg := func(skills string) string {
+		return "prefix: example\nskills:" + skills + "\nagents: []\n"
+	}
+	root := scaffold(t, cfg("\n  - tdd\n  - bugfix"))
+	h0 := configHashOf(t, root, "AGENTS.md")
+	testsupport.WriteAwfConfig(t, root, cfg("\n  - tdd"))
+	h1 := configHashOf(t, root, "AGENTS.md")
+	// invariant: skills-set-in-confighash
+	if h1 == h0 {
+		t.Errorf("editing the skills enable array must change a .skills-referencing artifact's ConfigHash (got %s unchanged)", h0)
+	}
+}
+
 // Editing audit.allowedScopes reflags an artifact whose raw convention part uses
 // a {{=awf:commitScope*}} placeholder — the config-hash folds scope data via the
 // part-body scan, not the template-source scan — while a non-referencing

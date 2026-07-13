@@ -92,6 +92,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			wantSkills[name] = true
 		}
 	}
+	// invariant: scaffold-core-only
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
@@ -256,6 +257,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 			t.Fatalf("read %s: %v", tmplPath, err)
 		}
 		for _, v := range render.ReferencedVars(string(src)) {
+			// invariant: scaffold-seeds-all-vars
 			if _, ok := cfg.Vars[v]; !ok {
 				t.Errorf("scaffold vars missing %q (referenced in %s)", v, tmplPath)
 			}
@@ -358,6 +360,7 @@ func TestScaffoldDefaultIsClosed(t *testing.T) {
 	for _, d := range cfg.Docs {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
+	// invariant: init-set-closed
 	for n := range enabled {
 		for _, r := range catalog.RequiresOf(catalog.Standard, n) {
 			if !enabled[r] {

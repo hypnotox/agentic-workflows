@@ -23,7 +23,7 @@ import (
 
 func main() { os.Exit(run(changelogfs.FS, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
 
-// invariant: release-changelog-pin
+// touches-invariant: release-changelog-pin — changelog ordering/pin enforcement site; proof in main_test.go
 func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	raw, err := fs.ReadFile(fsys, "CHANGELOG.md")
 	if err != nil {

@@ -219,7 +219,7 @@ type renderKindSpec struct {
 
 // skillTID resolves a skill's template id: the shared base template for a
 // synthesized local entry, else the name-derived catalog path (ADR-0068).
-// invariant: local-renders-from-base
+// touches-invariant: local-renders-from-base — skillTID resolves a local skill to the base template; proof in local_test.go
 func (p *Project) skillTID(n string) string {
 	if p.Cat.Skills[n].Base {
 		return baseSkillTID
@@ -239,7 +239,7 @@ func (p *Project) agentTID(n string) string {
 // doc template for a synthesized local doc (its DocEntry.TID), else the Standard
 // doc's own template. Reading p.Cat (not the package global) is what lets a
 // synthesized local doc render at all (ADR-0091).
-// invariant: local-doc-renders-from-base
+// touches-invariant: local-doc-renders-from-base — docTID resolves a local doc to the base template; proof in local_test.go
 func (p *Project) docTID(n string) string {
 	return p.Cat.Docs[n].TID
 }
@@ -292,7 +292,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	}
 	out = append(out, docsRfs...)
 	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
-	// invariant: multi-target-render
+	// touches-invariant: multi-target-render — skills/agents render once per enabled target; proof in target_test.go
 	for _, t := range p.Targets {
 		for _, spec := range []renderKindSpec{
 			{
@@ -341,7 +341,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		// Gated on the agents-doc render above — a local (hand-maintained) AGENTS.md
 		// must not get a bridge pointing at an un-rendered file. cursor has an empty
 		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// invariant: cursor-no-bridge
+		// touches-invariant: cursor-no-bridge — bridge suppression for an empty BridgeFile; proof in target_test.go
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
@@ -516,7 +516,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		Path: outPath, Content: content, TemplateID: tid,
 		// TemplateHash covers the post-expansion source so an edit to an included
 		// partial flags every including artifact stale (ADR-0052).
-		// invariant: include-in-templatehash
+		// touches-invariant: include-in-templatehash — TemplateHash over expanded (post-include) source; proof in golden_test.go
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		assembled: assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
