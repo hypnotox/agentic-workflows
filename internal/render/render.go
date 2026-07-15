@@ -34,10 +34,15 @@ type SectionPlan struct {
 	EditPath    string
 	// InPlace marks a section whose body the adopter edits directly in the
 	// rendered output, preserved across syncs (ADR-0100). Mutually exclusive
-	// with HasPart. InPlaceBody is the content read back from the existing
-	// output file — empty on first render, when the template default is used.
-	InPlace     bool
-	InPlaceBody string
+	// with HasPart. InPlaceFound reports whether the section's region was located
+	// in the existing output (its pointer was present); InPlaceBody is that
+	// region's read-back content (possibly empty — an adopter may empty the
+	// region). When InPlaceFound is false (first render / deleted pointer) the
+	// template default renders instead; a found-but-empty region stays empty, so
+	// emptying a region is not silently reverted to the default (ADR-0100 Decision 2).
+	InPlace      bool
+	InPlaceFound bool
+	InPlaceBody  string
 }
 
 // CommentStyle is the comment syntax a rendered target uses for the surviving
@@ -155,10 +160,11 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 		switch {
 		case p.InPlace:
 			// touches-invariant: in-place-pointer-distinct — distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
-			// The read-back body (or the template default on first render) is
-			// emitted verbatim after the distinct awf:edit-in-place pointer — no
-			// re-templating of adopter-owned interior.
-			if p.InPlaceBody != "" {
+			// A located region's read-back body is emitted verbatim after the
+			// distinct awf:edit-in-place pointer (no re-templating), even when the
+			// adopter emptied it; only an unlocated region (first render / deleted
+			// pointer) falls back to the template default.
+			if p.InPlaceFound {
 				b.WriteString(p.InPlaceBody)
 			} else {
 				b.WriteString(s.Text)

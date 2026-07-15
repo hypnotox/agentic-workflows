@@ -118,8 +118,8 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !plan["s"].InPlace || plan["s"].InPlaceBody != "" {
-		t.Errorf("absent output: want InPlace with empty body, got %#v", plan["s"])
+	if !plan["s"].InPlace || plan["s"].InPlaceFound || plan["s"].InPlaceBody != "" {
+		t.Errorf("absent output: want InPlace, not found, empty body, got %#v", plan["s"])
 	}
 
 	// Present output → the section body is read back from disk.
@@ -134,8 +134,121 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !plan["s"].InPlace || plan["s"].InPlaceBody != "adopter line\n\nsecond line" {
-		t.Errorf("present output: got InPlaceBody %q", plan["s"].InPlaceBody)
+	if !plan["s"].InPlace || !plan["s"].InPlaceFound || plan["s"].InPlaceBody != "adopter line\n\nsecond line" {
+		t.Errorf("present output: got found=%v InPlaceBody %q", plan["s"].InPlaceFound, plan["s"].InPlaceBody)
+	}
+}
+
+// setRegion rewrites the lines of an in-place region — between its
+// `# awf:edit-in-place <section>` pointer and the next `# awf:edit`-family
+// pointer — to body, mimicking an adopter editing the rendered output in place.
+func setRegion(t *testing.T, content, section, body string) string {
+	t.Helper()
+	lines := strings.Split(content, "\n")
+	start, end := -1, -1
+	for i, ln := range lines {
+		tl := strings.TrimSpace(ln)
+		if strings.HasPrefix(tl, "# awf:edit-in-place "+section+" — ") {
+			start = i
+			continue
+		}
+		if start >= 0 && strings.HasPrefix(tl, "# awf:edit") {
+			end = i
+			break
+		}
+	}
+	if start < 0 || end < 0 {
+		t.Fatalf("region %q not found between pointers", section)
+	}
+	out := append([]string{}, lines[:start+1]...)
+	if body != "" {
+		out = append(out, body)
+	}
+	out = append(out, lines[end:]...)
+	return strings.Join(out, "\n")
+}
+
+// End-to-end fixpoint over a real Sync→edit→Sync→Check cycle on the rendered
+// runner: an in-place edit (including emptying the region) survives re-sync and
+// is drift-free, while an edit to an awf-owned region surfaces as drift.
+// invariant: in-place-tamper-drift
+// invariant: in-place-spacing-owned
+func TestRunnerInPlaceFixpoint(t *testing.T) {
+	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xPath := filepath.Join(root, "x")
+	mustSync := func() {
+		t.Helper()
+		if err := p.Sync(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func() string {
+		t.Helper()
+		b, err := os.ReadFile(xPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	// runnerDrift returns the drift entries the full check reports for the runner.
+	runnerDrift := func() []manifest.Drift {
+		t.Helper()
+		all, err := p.Check()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var d []manifest.Drift
+		for _, dr := range all {
+			if dr.Path == "x" {
+				d = append(d, dr)
+			}
+		}
+		return d
+	}
+	mustClean := func(when string) {
+		t.Helper()
+		if d := runnerDrift(); len(d) != 0 {
+			t.Errorf("%s: want no runner drift, got %v", when, d)
+		}
+	}
+	mustSync()
+
+	// (a) An in-place edit to the project verbs survives re-sync and is clean.
+	edited := setRegion(t, read(), "runner-project-verbs", "gate)\n\tgo test ./... ;;")
+	if err := os.WriteFile(xPath, []byte(edited), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustSync()
+	got := read()
+	if !strings.Contains(got, "go test ./... ;;") {
+		t.Errorf("in-place edit not preserved across sync:\n%s", got)
+	}
+	if !strings.Contains(got, `"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`) {
+		t.Errorf("awf-owned dispatch lost:\n%s", got)
+	}
+	mustClean("after in-place edit + sync")
+
+	// (b) Emptying the region stays empty — NOT reverted to the default stubs.
+	if err := os.WriteFile(xPath, []byte(setRegion(t, read(), "runner-project-verbs", "")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustSync()
+	if strings.Contains(read(), "define the 'gate' project verb") {
+		t.Errorf("emptied region reverted to the default stubs:\n%s", read())
+	}
+	mustClean("after emptying the region")
+
+	// (c) Tampering an awf-owned region surfaces as drift.
+	tampered := strings.Replace(read(), "set -euo pipefail", "set -euo pipefail\n# adopter tampering an awf-owned region", 1)
+	if err := os.WriteFile(xPath, []byte(tampered), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if d := runnerDrift(); len(d) == 0 {
+		t.Error("tampering an awf-owned region must surface as drift")
 	}
 }
 
@@ -202,7 +315,7 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 			src = "#!/bin/sh\n" + src
 		}
 		asm, _ := render.Assemble(render.ParseSections(src),
-			map[string]render.SectionPlan{"s": {InPlace: true, InPlaceBody: "x"}}, style)
+			map[string]render.SectionPlan{"s": {InPlace: true, InPlaceFound: true, InPlaceBody: "x"}}, style)
 		var ptrLine string
 		for _, ln := range strings.Split(asm, "\n") {
 			if strings.Contains(ln, "awf:edit-in-place s") {

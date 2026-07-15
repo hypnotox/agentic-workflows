@@ -128,7 +128,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	// A non-empty read-back body is emitted verbatim (internal blank line kept)
 	// after the distinct awf:edit-in-place pointer — no re-templating.
 	body := "line one\n\nline two\n"
-	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: body}}, HTMLComment)
+	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: body}}, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -155,6 +155,20 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	if !strings.Contains(out, "<!-- awf:edit-in-place body —") || !strings.Contains(out, "DEFAULT") {
 		t.Errorf("empty in-place body must fall to the template default:\n%s", out)
 	}
+
+	// A located but emptied region (InPlaceFound, empty body) stays empty — it is
+	// NOT reverted to the template default, so emptying a region is a fixpoint.
+	asm, parts = Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: ""}}, HTMLComment)
+	out, err = Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, "DEFAULT") {
+		t.Errorf("an emptied (found) in-place region must not revert to the default:\n%s", out)
+	}
+	if !strings.Contains(out, "<!-- awf:edit-in-place body —") {
+		t.Errorf("an emptied in-place region must still render its pointer:\n%s", out)
+	}
 }
 
 // The pointer comment style follows the target (ADR-0100 Decision 7): a
@@ -174,7 +188,7 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 	src := "#!/usr/bin/env bash\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\n"
 	segs := ParseSections(src)
 	style := CommentStyleForSource(src)
-	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: "echo hi\n"}}, style)
+	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: "echo hi\n"}}, style)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)

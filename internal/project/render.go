@@ -217,9 +217,10 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 				return nil, fmt.Errorf("read output %s: %w", outPath, rerr)
 			}
 			sp.InPlace = true
-			if body, found := readBackInPlaceBody(out, s, declared, style); found {
-				sp.InPlaceBody = body
-			}
+			// A located region (its pointer present) is used verbatim even when
+			// empty; only an unlocated region falls back to the template default
+			// in Assemble (ADR-0100 in-place-readback).
+			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBody(out, s, declared, style)
 			plan[s] = sp
 			continue
 		}
