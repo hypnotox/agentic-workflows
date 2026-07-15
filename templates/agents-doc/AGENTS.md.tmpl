@@ -1,4 +1,4 @@
-# {{ .prefix }} — Agent Guide
+# {{ .prefix }} Agent Guide
 
 This document is the authoritative reference for AI agents working in the `{{ .prefix }}`
 repository. Read it before taking any action; keep it current as decisions evolve.
@@ -6,36 +6,36 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:section awf-setup -->
 ## Working with awf
 
-This project's rendered skills, agents, and docs — and this guide — are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
+This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
 
-- **Toggle an artifact or adapter** — `awf enable <kind> <name>` / `awf disable <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh` — a checksum-verified installer that prints the path of this project's pinned awf binary for hooks and CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under `.awf/hooks/` — inert scripts you wire into hook setups you own; awf never touches git config. `runner` toggles the co-owned command-runner `x` at the repo root — awf owns the awf-verb dispatch, you fill the project-verb and setup sections in place. `bootstrap`/`hooks`/`runner` are nameless singleton toggles (`awf enable runner`, no name). The workflow-chain skills reference one another by name; `awf enable` enables a skill's full requirement closure and `awf disable` refuses while enabled skills still require it (`--with-dependents` disables the unit together).
-- **Set a variable** — edit `vars` in `.awf/config.yaml`.
-- **Override one section of a target** — drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. Re-inject the default inside your part with the `sectionDefault` placeholder to *extend* it rather than discard it. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
-- **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
+- **Toggle an artifact or adapter:** `awf enable <kind> <name>` / `awf disable <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a checksum-verified installer that prints the path of this project's pinned awf binary for hooks and CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under `.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config. `runner` toggles the co-owned command-runner `x` at the repo root; awf owns the awf-verb dispatch, you fill the project-verb and setup sections in place. `bootstrap`/`hooks`/`runner` are nameless singleton toggles (`awf enable runner`, no name). The workflow-chain skills reference one another by name; `awf enable` enables a skill's full requirement closure and `awf disable` refuses while enabled skills still require it (`--with-dependents` disables the unit together).
+- **Set a variable:** edit `vars` in `.awf/config.yaml`.
+- **Override one section of a target:** drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. Re-inject the default inside your part with the `sectionDefault` placeholder to *extend* it rather than discard it. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
+- **After any config or part edit:** run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
 
-See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for the full usage guide — commands, overrides, placeholders, and the sync/check loop.
+See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 <!-- awf:end -->
 
 <!-- awf:section you-and-this-project -->
 ## You and this project
 
-<!-- Authoring: see agents-md-standard.md — the agent's ownership stance in 2-3 sentences. -->
+<!-- Authoring: see agents-md-standard.md for the agent's ownership stance in 2-3 sentences. -->
 You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.
 <!-- awf:end -->
 
 <!-- awf:section identity stub -->
 ## Identity
 
-`{{ .prefix }}` is a software project. Replace this with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph — what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. See `agents-md-standard.md`.
+`{{ .prefix }}` is a software project. Replace this with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph covering what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. See `agents-md-standard.md`.
 <!-- awf:end -->
 
 <!-- awf:section invariants -->
 ## Invariants
 
-<!-- Authoring: see agents-md-standard.md — hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
+<!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated — never hand-edited.
+- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated, never hand-edited.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
 {{- range .data.invariants }}
@@ -58,7 +58,7 @@ Hard rules every change must respect:
 brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review → retrospective
 ```
 
-Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one — one plan links zero or more ADRs. Each written artifact gets a fresh-context review (`{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `{{ .prefix }}-reviewing-impl` is the terminal review, after which `{{ .prefix }}-retrospective` closes the feedback loop by promoting recurring findings toward deterministic checks.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs. Each written artifact gets a fresh-context review (`{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `{{ .prefix }}-reviewing-impl` is the terminal review, after which `{{ .prefix }}-retrospective` closes the feedback loop by promoting recurring findings toward deterministic checks.
 
 **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`, `{{ .prefix }}-retrospective`.{{ with .taskSkills }} **Task skills** (as needed): {{ . }}.{{ end }}
 
@@ -70,10 +70,10 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
 
-- **Check `.awf/memory/` on demand — when the work calls for it, not as a fixed startup step.** Read it when the request implies earlier work to continue (an explicit "continue"/"resume", or a reference to an in-flight effort), or as a safety net when a fresh or context-compacted session finds `.awf/memory/` non-empty and you cannot otherwise account for that state. Skip it for a self-contained request you can fully serve without prior context. Whenever you do check: if an effort file matches, resume from its recorded `Phase:`/`Next:` lines instead of restarting; if several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume — never silently resume a stale effort.
-- **While working, prefer just-in-time retrieval.** Hold lightweight identifiers — file paths, ADR numbers, doc names — in the memory file and read the sources on demand rather than preloading them.
-- **File skeleton** (a convention, not a schema — no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
-- **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue — delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
+- **Check `.awf/memory/` on demand: when the work calls for it, not as a fixed startup step.** Read it when the request implies earlier work to continue (an explicit "continue"/"resume", or a reference to an in-flight effort), or as a safety net when a fresh or context-compacted session finds `.awf/memory/` non-empty and you cannot otherwise account for that state. Skip it for a self-contained request you can fully serve without prior context. Whenever you do check: if an effort file matches, resume from its recorded `Phase:`/`Next:` lines instead of restarting; if several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume; never silently resume a stale effort.
+- **While working, prefer just-in-time retrieval.** Hold lightweight identifiers (file paths, ADR numbers, doc names) in the memory file and read the sources on demand rather than preloading them.
+- **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
+- **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue. Delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
 <!-- awf:end -->
 
 <!-- awf:section commands -->
@@ -81,15 +81,15 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 
 {{ if .data.commands -}}
 ```
-{{ range .data.commands }}{{ .cmd }} — {{ .desc }}
+{{ range .data.commands }}{{ .cmd }}: {{ .desc }}
 {{ end -}}
 ```
 {{- else -}}
 {{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := or .vars.checkCmd "" -}}
 {{- if or $test $gate $check -}}
-{{ with $test }}- `{{ . }}` — run the test suite
-{{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}` — run the gate before committing
-{{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}` — check rendered files for drift
+{{ with $test }}- `{{ . }}`: run the test suite
+{{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing
+{{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift
 {{ end }}{{- else }}
 <!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf sync. -->
 {{ end -}}
@@ -99,11 +99,11 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 <!-- awf:section document-map -->
 ## Document map
 
-- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}) — architecture decisions and lifecycle.
-- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}) — generated status index; do not hand-edit.
-- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}) — implementation plans for complex work.
-{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
-{{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
-{{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }} — {{ . }}{{ end }}
+- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
+- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}), generated status index; do not hand-edit.
+- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation plans for complex work.
+{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}
 <!-- awf:end -->

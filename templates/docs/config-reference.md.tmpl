@@ -1,8 +1,8 @@
 <!-- awf:section intro -->
 # Configuration Reference
 
-Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:` — with
-its meaning, default, availability, and this project's current state. This file is
+Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:`: its
+meaning, default, availability, and this project's current state. This file is
 generated per-project by `awf sync`: edit `.awf/` and re-render; never edit this file.
 For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, run
 `awf config [<key-or-var>]`.
@@ -13,25 +13,25 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 | Key | Type | Default | Current | Description | Availability |
 |---|---|---|---|---|---|
 {{ range .data.configKeys }}| `{{ .path }}` | {{ .type }} | {{ .default }} | {{ .current }} | {{ .description }} | {{ .availability }} |
-{{ else }}| — | | | | No config keys are described; re-render with a current awf. | |
+{{ else }}| n/a | | | | No config keys are described; re-render with a current awf. | |
 {{ end }}
 ## Vars
 
 Each var is consumed only while an enabled artifact references it. State reads: **set**
-(a value), **empty** (present with no value — an open to-do), **absent** (deliberately
+(a value), **empty** (present with no value, an open to-do), **absent** (deliberately
 declined; the generic prose renders).
 
-{{ range .data.varEntries }}- `{{ .key }}` — {{ .description }} {{ .availability }}
+{{ range .data.varEntries }}- `{{ .key }}`: {{ .description }} {{ .availability }}
   State: {{ .state }}. {{ .consumers }}
 {{ else }}No vars are described for this project.
 {{ end }}
 ## Sidecar fields
 
-{{ range .data.sidecarFields }}- `{{ .path }}` ({{ .type }}) — {{ .description }} {{ .availability }}
+{{ range .data.sidecarFields }}- `{{ .path }}` ({{ .type }}): {{ .description }} {{ .availability }}
 {{ else }}No sidecar fields are described; re-render with a current awf.
 {{ end }}
 ## Per-artifact data keys
 
-{{ range .data.dataKeys }}- `{{ .artifact }}` · `data.{{ .key }}`{{ .state }} — {{ .description }}
+{{ range .data.dataKeys }}- `{{ .artifact }}` · `data.{{ .key }}`{{ .state }}: {{ .description }}
 {{ else }}No enabled artifact exposes overridable data keys.
 {{ end }}

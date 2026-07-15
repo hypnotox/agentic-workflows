@@ -32,9 +32,9 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-adr/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `adr-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — this skill applies directly.
-   - **reasoned** — this skill applies with a one-line rationale.
-   - **user-decision** — present to the user and wait.
+   - **mechanical**: this skill applies directly.
+   - **reasoned**: this skill applies with a one-line rationale.
+   - **user-decision**: present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.

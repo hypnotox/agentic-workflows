@@ -140,6 +140,13 @@ query a single version or a range.
   plans README are reconciled to it. Adopters get it all on their next
   `awf sync`.
 
+### Others
+- Em-dashes are removed from the shipped template prose across every skill,
+  review agent, doc, the agent guide, and the ADR/plan scaffolds, in favour of
+  plain punctuation (colons, semicolons, commas, parentheses). The rendered
+  wording is unchanged in meaning; only the punctuation reads less machine-set.
+  Adopters get the reworded prose on their next `awf sync`.
+
 ## [0.16.0] - 2026-07-11
 
 ### Features

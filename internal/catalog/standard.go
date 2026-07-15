@@ -73,10 +73,10 @@ var Standard = &Catalog{
 			},
 			Data: map[string]any{
 				"adrStates": []any{
-					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable — body and status may both change"},
-					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status field only — body is frozen"},
-					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed in the repository", "mutability": "Status field only — body is frozen"},
-					map[string]any{"name": "Superseded", "meaning": "Replaced by a later ADR; kept for historical record", "mutability": "Status field only — body is frozen"},
+					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
+					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status field only; the body is frozen"},
+					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed in the repository", "mutability": "Status field only; the body is frozen"},
+					map[string]any{"name": "Superseded", "meaning": "Replaced by a later ADR; kept for historical record", "mutability": "Status field only; the body is frozen"},
 				},
 			},
 		},
@@ -159,7 +159,7 @@ var Standard = &Catalog{
 					map[string]any{"name": "test-coverage", "description": "behaviour changes carry tests in the same commit; no assertion is weakened to pass"},
 				},
 				"docCurrencyItems": []any{
-					map[string]any{"check": "the change updates every document that states the old behaviour — same commit"},
+					map[string]any{"check": "the change updates every document that states the old behaviour, in the same commit"},
 				},
 				"reviewSubject": "diff",
 				"readStep":      "Read the diff in full (`git diff baseSha..headSha`). Read every plan, ADR, or state doc referenced by name in the brief.",
@@ -176,7 +176,7 @@ var Standard = &Catalog{
 		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}, TID: "docs/development.md.tmpl"},
 		"debugging":    {Title: "Debugging", Desc: "recipes for common failure modes", Sections: []string{"surfaces", "recipes"}, TID: "docs/debugging.md.tmpl"},
 		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"prepend", "append"}, TID: "docs/pitfalls.md.tmpl"},
-		"releasing":    {Title: "Releasing", Desc: "how to cut a release — versioning, artifacts, and the publish process", Sections: []string{"content"}, TID: "docs/releasing.md.tmpl"},
+		"releasing":    {Title: "Releasing", Desc: "how to cut a release: versioning, artifacts, and the publish process", Sections: []string{"content"}, TID: "docs/releasing.md.tmpl"},
 		// The glossary's table is computed from sidecar data.terms, always
 		// sorted (ADR-0089); prepend/append are empty-default framing slots.
 		"glossary": {Title: "Glossary", Desc: "project jargon and term ownership", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl"},
@@ -199,7 +199,7 @@ var Standard = &Catalog{
 		"working-with-awf": {Mandatory: true, DocumentMap: true, Title: "Working with awf", Desc: "day-to-day usage: commands, overrides, placeholders, and the sync/check loop", Path: "working-with-awf.md", TemplateKey: "workingWithAwf", TID: "docs/working-with-awf.md.tmpl", Sections: []string{
 			"overview", "commands", "config-and-overrides", "placeholders", "sync-and-drift", "upgrading",
 		}},
-		"config-reference": {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key — descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
+		"config-reference": {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
 	},
 	Vars: []VarDescriptor{
 		{Key: "gateCmd", Kind: "string", Description: "Command that runs the full pre-commit gate (tests, lint, coverage).", Default: "", Options: []string{"./x gate", "make gate", "go test ./..."}},
@@ -207,7 +207,7 @@ var Standard = &Catalog{
 		{Key: "checkCmd", Kind: "string", Description: "Command that checks rendered output for drift. Leave empty to have the rendered hook payloads run the pinned awf via the bootstrap shim.", Default: "", Options: []string{"./x check"}},
 		{Key: "commitGateCmd", Kind: "string", Description: "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim.", Default: "", Options: []string{"./x commit-gate"}},
 		{Key: "testCmd", Kind: "string", Description: "Command that runs the test suite.", Default: "", Options: []string{"./x test", "go test ./...", "npm test"}},
-		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes — enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
+		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes and enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
 		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR index (ACTIVE.md).", Default: "", Options: []string{"./x sync", "awf sync"}},
 		{Key: "invariantTestPath", Kind: "string", Description: "Path or glob where invariant-backing tests live.", Default: "", Options: []string{"./internal/..."}},
 		{Key: "skills", Kind: "multiselect", Target: "catalog-skills", Description: "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog."},

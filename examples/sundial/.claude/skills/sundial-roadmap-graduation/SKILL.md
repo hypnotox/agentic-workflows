@@ -39,7 +39,7 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 
 <!-- awf:edit explicit-drop — default; create .awf/skills/parts/roadmap-graduation/explicit-drop.md to override -->
 ### 4. Explicit drop
-Commit with scope and message `docs(roadmap): drop <item> — <one-line reason>`. The reason goes in the commit body, not the file.
+Commit with scope and message `docs(roadmap): drop <item> - <one-line reason>`. The reason goes in the commit body, not the file.
 
 <!-- awf:edit same-commit — default; create .awf/skills/parts/roadmap-graduation/same-commit.md to override -->
 ### 5. Same-commit removal is non-negotiable

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Commit-msg payload: the deterministic commit-message gate. Inert until wired
-# into a hook setup you own — e.g. a .git/hooks/commit-msg stub containing:
+# into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
 {{ if not .vars.commitGateCmd }}

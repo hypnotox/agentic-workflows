@@ -9,13 +9,13 @@ description: >
 # {{ .prefix }}-proposing-adr
 
 <!-- awf:section positioning -->
-Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `{{ .layout.workflowRef }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
+Writes a new ADR to `{{ .layout.adrDir }}/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment: one decision per ADR. See `{{ .layout.workflowRef }}` for the full lifecycle rules and `{{ .prefix }}-adr-lifecycle` for state transitions.
 <!-- awf:end -->
 
 ## When to invoke
 
 <!-- awf:section when-to-invoke -->
-Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
 
 {{ with .data.adrTriggers }}Load-bearing triggers include:
 {{ range . }}- {{ . }}
@@ -27,8 +27,8 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 <!-- awf:section conventions -->
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
-- **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}` — never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index — fill ≥1 before committing when the project configures domain docs; otherwise leave `[]`).
+- **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}`; never hand-copy or shell-copy it yourself.
+- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
 - **Required sections:** {{ with .data.adrSections }}{{ range . }}{{ . }}, {{ end }}in that order. {{ else }}follow the ADR template's section order. {{ end }}Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 <!-- awf:end -->
@@ -46,7 +46,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty — `domains` stays `[]` when the project configures no domain docs.
+   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
@@ -58,7 +58,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 <!-- awf:end -->
 
 <!-- awf:section invariants-rule -->
-5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>` — …`` for a test-proven property, or an ``- `unbacked-invariant: <slug>` — …. **Verify:** …`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug> — <note>` marker records a related production site and never backs. `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run {{ with .vars.gateCmd }}`{{ . }}` and {{ end }}`{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` to confirm.
+5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>`, …`` for a test-proven property, or an ``- `unbacked-invariant: <slug>`, …. **Verify:** …`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment, your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby), on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug>, <note>` marker records a related production site and never backs. `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run {{ with .vars.gateCmd }}`{{ . }}` and {{ end }}`{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` to confirm.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
@@ -66,11 +66,11 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
-7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section autonomous-rule -->
-8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval — once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
@@ -82,7 +82,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only — one ADR per dec
 ## Notes
 
 <!-- awf:section notes -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
+- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
 - `{{ .layout.activeMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
 - For the full ADR lifecycle, see `{{ .layout.workflowRef }}`.

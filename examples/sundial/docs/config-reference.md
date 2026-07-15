@@ -2,8 +2,8 @@
 <!-- awf:edit intro — default; create .awf/parts/config-reference/intro.md to override -->
 # Configuration Reference
 
-Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:` — with
-its meaning, default, availability, and this project's current state. This file is
+Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:`: its
+meaning, default, availability, and this project's current state. This file is
 generated per-project by `awf sync`: edit `.awf/` and re-render; never edit this file.
 For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, run
 `awf config [<key-or-var>]`.
@@ -20,18 +20,18 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 | `docs` | string list | empty at init (the always-on docs are not listed here) | 7 enabled | Enabled toggleable docs (architecture, testing, development, …). The always-on docs — the agent guide, workflow, this reference — render regardless and are not listed here. | Always. |
 | `domains` | string list | none | 2 configured | Freeform domain keys. Each renders a generated `<docsDir>/domains/<name>.md` doc (its per-domain decision index plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`. | Always. |
 | `targets` | string list | claude | `claude` | Enabled adapter runtimes. Skills and agents render once per target into that runtime's layout; docs are runtime-neutral and render once. | Always. |
-| `tags` | key → value map | none | — | A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. ADR `tags:` and pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. An empty or absent vocabulary disables the check (tags are then free-form). Declaring a member no artifact uses is allowed. | Always; the membership check is inert until the vocabulary is non-empty. |
-| `contextIgnore` | string list | none | — | Anchored doublestar globs for tracked paths that no domain should own (config source, docs, the example adopter, top-level non-code files). `awf context --uncovered` treats them as legitimately unowned, alongside awf's own generated outputs, so the report finds only genuinely-unowned code. An empty or absent list adds no exclusion. | Always; only consulted by `awf context --uncovered`. |
+| `tags` | key → value map | none | n/a | A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. ADR `tags:` and pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. An empty or absent vocabulary disables the check (tags are then free-form). Declaring a member no artifact uses is allowed. | Always; the membership check is inert until the vocabulary is non-empty. |
+| `contextIgnore` | string list | none | n/a | Anchored doublestar globs for tracked paths that no domain should own (config source, docs, the example adopter, top-level non-code files). `awf context --uncovered` treats them as legitimately unowned, alongside awf's own generated outputs, so the report finds only genuinely-unowned code. An empty or absent list adds no exclusion. | Always; only consulted by `awf context --uncovered`. |
 | `invariants.disabled` | bool | false | false | Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants — set `sources` or set this true. | Always. |
 | `invariants.sources` | list of {globs, marker} mappings | none — enforcement unconfigured | 1 sources | Where invariant-backing comments live. Each entry pairs path globs with the literal comment marker that prefixes a backing `invariant: <slug>` tag in those files. Non-empty enables enforcement: every tagged invariant in an implemented decision doc must have a matching backing comment. | Always. |
-| `invariants.sources[].globs` | string list | none | — | Anchored path globs matched against slash-separated repo-relative paths: `*.go` is top-level only, any-depth is `**/*.go`. At least one glob per source. | Within each `invariants.sources` entry. |
-| `invariants.sources[].marker` | string | none | — | The literal comment marker (`//`, `#`, `--`, …) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty. | Within each `invariants.sources` entry. |
+| `invariants.sources[].globs` | string list | none | n/a | Anchored path globs matched against slash-separated repo-relative paths: `*.go` is top-level only, any-depth is `**/*.go`. At least one glob per source. | Within each `invariants.sources` entry. |
+| `invariants.sources[].marker` | string | none | n/a | The literal comment marker (`//`, `#`, `--`, …) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty. | Within each `invariants.sources` entry. |
 | `invariants.testGlobs` | string list | none — proof markers fall back to source-glob scope | (none) | Anchored path globs (same dialect as `invariants.sources[].globs`) identifying test files. When non-empty, a proof `invariant: <slug>` marker backs an invariant only in a file matching one of these globs — backing means an executed test line. When empty or absent, backing falls back to source-glob scope. The `touches-invariant:` context marker is unaffected. | Within `invariants`; opt-in teeth for the proof marker. |
 | `audit.baseBranch` | string | main | `main` (default) | The branch `awf audit` compares against when computing the branch's commit range; `--base <ref>` overrides per run. | Read by `awf audit`. |
 | `audit.allowedTypes` | string list | the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test) | 11 types (default) | Commit types `awf commit-gate` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.) | Read by `awf commit-gate` and `awf audit`. |
 | `audit.allowedScopes` | list of scope entries (bare string, or {name, meaning}) | accept any scope | 4 scopes | The project's Conventional Commits scope taxonomy — the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf commit-gate`/`awf audit` and editing them reflags referencing rendered artifacts. | Read by `awf commit-gate`, `awf audit`, and every rendered artifact quoting the scope list. |
-| `audit.allowedScopes[].name` | string | none | — | The scope token as it appears in a commit subject (`feat(<name>): …`). A bare-string list entry is shorthand for a name-only entry. | Within each `audit.allowedScopes` entry. |
-| `audit.allowedScopes[].meaning` | string | empty | — | Optional human meaning for the scope, shown wherever the taxonomy is rendered for people choosing a scope. | Within each `audit.allowedScopes` entry. |
+| `audit.allowedScopes[].name` | string | none | n/a | The scope token as it appears in a commit subject (`feat(<name>): …`). A bare-string list entry is shorthand for a name-only entry. | Within each `audit.allowedScopes` entry. |
+| `audit.allowedScopes[].meaning` | string | empty | n/a | Optional human meaning for the scope, shown wherever the taxonomy is rendered for people choosing a scope. | Within each `audit.allowedScopes` entry. |
 | `audit.subjectMaxLength` | int | 72 | 72 (default) | Maximum commit-subject length `awf commit-gate` and `awf audit` accept. | Read by `awf commit-gate` and `awf audit`. |
 | `audit.dependencyManifests` | string list (anchored path globs) | a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, …) | 19 globs (default) | Globs identifying dependency manifests; `awf audit` flags a manifest change without a lockfile-style co-change. Absent = the default set; explicit empty = the rule is off. | Read by `awf audit`. |
 | `audit.diffThreshold` | int | 400 | 400 (default) | Changed-line count above which `awf audit` advises that a commit likely bundles more than one concern. | Read by `awf audit`. |
@@ -41,67 +41,67 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 | `audit.uncommittedChanges` | bool | true | true (default) | Advisory rule: warn when the working tree carries uncommitted changes at audit time. | Read by `awf audit`. |
 | `bootstrap.enabled` | bool | false (key absent) — awf init scaffolds it true | true | Renders the self-pinning `.awf/bootstrap.sh` installer (pinned to the rendering awf version, checksum-verified) and the `.awf/upgrade.sh` porcelain. Absent and false both mean: do not render. | Always. |
 | `hooks.enabled` | bool | false (key absent) — awf init scaffolds it true | true | Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config — wiring the payloads into your hook setup is yours. | Always. |
-| `runner.enabled` | bool | false (key absent) — opt in via `awf enable runner` | — | Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render. | Always. |
+| `runner.enabled` | bool | false (key absent) — opt in via `awf enable runner` | n/a | Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render. | Always. |
 
 ## Vars
 
 Each var is consumed only while an enabled artifact references it. State reads: **set**
-(a value), **empty** (present with no value — an open to-do), **absent** (deliberately
+(a value), **empty** (present with no value, an open to-do), **absent** (deliberately
 declined; the generic prose renders).
 
-- `gateCmd` — Command that runs the full pre-commit gate (tests, lint, coverage). Consumed while an enabled artifact's template references it, and by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel).
+- `gateCmd`: Command that runs the full pre-commit gate (tests, lint, coverage). Consumed while an enabled artifact's template references it, and by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel).
   State: set (`./x gate`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push, plans-template, skill adr-lifecycle, skill bugfix, skill debugging, skill executing-plans, skill proposing-adr, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill tdd, skill writing-plans.
-- `gateCmdFull` — Command for the full/extended gate tier, if the project has one. Consumed while an enabled artifact's template references it.
+- `gateCmdFull`: Command for the full/extended gate tier, if the project has one. Consumed while an enabled artifact's template references it.
   State: set (`./x gate full`). Consumed by: agents-doc, doc workflow, hooks pre-push, skill bugfix, skill debugging, skill executing-plans, skill subagent-driven-development.
-- `checkCmd` — Command that checks rendered output for drift. Leave empty to have the rendered hook payloads run the pinned awf via the bootstrap shim. Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
+- `checkCmd`: Command that checks rendered output for drift. Leave empty to have the rendered hook payloads run the pinned awf via the bootstrap shim. Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push, skill proposing-adr.
-- `commitGateCmd` — Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim. Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.
+- `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim. Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.
   State: set (`./x commit-gate`). Consumed by: hooks commit-msg.
-- `testCmd` — Command that runs the test suite. Consumed while an enabled artifact's template references it.
+- `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`./x test`). Consumed by: agents-doc, doc workflow, skill tdd.
-- `activeMdRegenCmd` — Command that regenerates the generated ADR index (ACTIVE.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).
+- `activeMdRegenCmd`: Command that regenerates the generated ADR index (ACTIVE.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).
   State: set (`./x sync`). Consumed by: agent adr-reviewer, skill adr-lifecycle, skill executing-plans, skill proposing-adr, skill subagent-driven-development.
-- `invariantTestPath` — Path or glob where invariant-backing tests live. Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).
+- `invariantTestPath`: Path or glob where invariant-backing tests live. Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).
   State: set (`./internal/...`). Consumed by: agent adr-reviewer, skill retrospective.
 
 ## Sidecar fields
 
-- `sidecar.data` (key → value map) — Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does. Keys must be referenced by the artifact's template — an unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).
-- `sidecar.sections` (section-name → override map) — Per-section overrides for the artifact's declared sections. Body replacement is by convention part (a file at the section's parts path); this map holds the structured overrides — currently `drop`. Section names must be catalog-declared for the artifact; unknown names refuse at open. Rejected on domain sidecars.
-- `sidecar.sections.<name>.drop` (bool) — Omits the named section from the rendered artifact entirely. A drop beats a convention part; a data key referenced only inside a dropped section counts as unused. Within a declared section's override entry.
-- `sidecar.local` (bool) — Marks the artifact project-local: awf renders nothing for it and treats your hand-maintained file at the conventional output path as authoritative (frontmatter still validated for skills/agents). A local artifact's convention parts and data keys are unconsumed by construction. Skills, agents, docs, and the always-on singletons; rejected on domain sidecars.
-- `sidecar.paths` (string list (anchored path globs)) — A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part. Domain sidecars only — rejected at open on any other kind.
+- `sidecar.data` (key → value map): Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does. Keys must be referenced by the artifact's template — an unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).
+- `sidecar.sections` (section-name → override map): Per-section overrides for the artifact's declared sections. Body replacement is by convention part (a file at the section's parts path); this map holds the structured overrides — currently `drop`. Section names must be catalog-declared for the artifact; unknown names refuse at open. Rejected on domain sidecars.
+- `sidecar.sections.<name>.drop` (bool): Omits the named section from the rendered artifact entirely. A drop beats a convention part; a data key referenced only inside a dropped section counts as unused. Within a declared section's override entry.
+- `sidecar.local` (bool): Marks the artifact project-local: awf renders nothing for it and treats your hand-maintained file at the conventional output path as authoritative (frontmatter still validated for skills/agents). A local artifact's convention parts and data keys are unconsumed by construction. Skills, agents, docs, and the always-on singletons; rejected on domain sidecars.
+- `sidecar.paths` (string list (anchored path globs)): A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part. Domain sidecars only — rejected at open on any other kind.
 
 ## Per-artifact data keys
 
-- `skill brainstorming` · `data.errorBoundaries` — The error-handling boundaries the design-sections step walks (list); unset, the section keeps its generic boundary prose.
-- `skill brainstorming` · `data.loadBearingExamples` — Project-specific examples of load-bearing decisions for the definitions section (list); unset, the generic examples render.
-- `skill tdd` · `data.testSurfaces` (catalog default) — The project's test surfaces (list of {name, kind, location}) the skill routes new tests to; the default names generic unit/integration/e2e surfaces.
-- `skill adr-lifecycle` · `data.adrStates` (catalog default) — The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the four-state lifecycle.
-- `skill proposing-adr` · `data.adrSections` (catalog default) — The required decision-record section names, in order (list); the default is Context through Alternatives Considered.
-- `skill proposing-adr` · `data.adrTriggers` (catalog default) — The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers.
-- `skill executing-plans` · `data.e2eSuitePaths` — Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders.
-- `agent adr-reviewer` · `data.focusItems` (catalog default) — The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty.
-- `agent adr-reviewer` · `data.docCurrencyItems` (catalog default) — The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration.
-- `agent adr-reviewer` · `data.reviewSubject` (catalog default) — The one-word subject label the review spine addresses (default: the decision record).
-- `agent adr-reviewer` · `data.readStep` (catalog default) — The reviewer's opening read instruction — what to read in full before applying lenses.
-- `agent adr-reviewer` · `data.digestLabel` (catalog default) — The label heading the reviewer's returned digest.
-- `agent adr-reviewer` · `data.digestSummary` (catalog default) — The digest's summary skeleton — the bullet template the reviewer fills per review.
-- `agent plan-reviewer` · `data.focusItems` (catalog default) — The reviewer's project-focus lens items (list of {name, description}); the default focuses step exactness and dependency order.
-- `agent plan-reviewer` · `data.docCurrencyItems` (catalog default) — The doc-currency checks the reviewer applies (list of {check}); the default checks that the plan schedules every doc update its changes invalidate.
-- `agent plan-reviewer` · `data.reviewSubject` (catalog default) — The one-word subject label the review spine addresses (default: the plan).
-- `agent plan-reviewer` · `data.readStep` (catalog default) — The reviewer's opening read instruction — what to read in full before applying lenses.
-- `agent plan-reviewer` · `data.digestLabel` (catalog default) — The label heading the reviewer's returned digest.
-- `agent plan-reviewer` · `data.digestSummary` (catalog default) — The digest's summary skeleton — the bullet template the reviewer fills per review.
-- `agent code-reviewer` · `data.correctnessTraps` (catalog default) — The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions.
-- `agent code-reviewer` · `data.focusItems` (catalog default) — The reviewer's project-focus lens items (list of {name, description}); the default focuses plan adherence and test coverage.
-- `agent code-reviewer` · `data.docCurrencyItems` (catalog default) — The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour.
-- `agent code-reviewer` · `data.reviewSubject` (catalog default) — The one-word subject label the review spine addresses (default: the diff).
-- `agent code-reviewer` · `data.readStep` (catalog default) — The reviewer's opening read instruction — what to read in full before applying lenses.
-- `agent code-reviewer` · `data.digestLabel` (catalog default) — The label heading the reviewer's returned digest.
-- `agent code-reviewer` · `data.digestSummary` (catalog default) — The digest's summary skeleton — the bullet template the reviewer fills per review.
-- `doc glossary` · `data.terms` (overridden) — The glossary's terms as a `term: meaning` map; the table renders always sorted (case-insensitive, pipes escaped), and empty terms or meanings, interior newlines, or case-insensitive duplicates fail the render naming the key. Unset, the doc renders a pointer telling you where to add terms.
-- `doc pitfalls` · `data.pitfalls` (overridden) — The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) drive `awf context` surfacing and must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries.
-- `agents-doc` · `data.commands` (overridden) — Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders.
-- `agents-doc` · `data.docMap` (overridden) — Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render.
-- `agents-doc` · `data.invariants` (overridden) — The project's hard-rules list for the agent guide's Invariants section (list of {ref, text} mappings); unset, the section renders its generic invariants prose.
+- `skill brainstorming` · `data.errorBoundaries`: The error-handling boundaries the design-sections step walks (list); unset, the section keeps its generic boundary prose.
+- `skill brainstorming` · `data.loadBearingExamples`: Project-specific examples of load-bearing decisions for the definitions section (list); unset, the generic examples render.
+- `skill tdd` · `data.testSurfaces` (catalog default): The project's test surfaces (list of {name, kind, location}) the skill routes new tests to; the default names generic unit/integration/e2e surfaces.
+- `skill adr-lifecycle` · `data.adrStates` (catalog default): The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the four-state lifecycle.
+- `skill proposing-adr` · `data.adrSections` (catalog default): The required decision-record section names, in order (list); the default is Context through Alternatives Considered.
+- `skill proposing-adr` · `data.adrTriggers` (catalog default): The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers.
+- `skill executing-plans` · `data.e2eSuitePaths`: Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders.
+- `agent adr-reviewer` · `data.focusItems` (catalog default): The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty.
+- `agent adr-reviewer` · `data.docCurrencyItems` (catalog default): The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration.
+- `agent adr-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the decision record).
+- `agent adr-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction — what to read in full before applying lenses.
+- `agent adr-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
+- `agent adr-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton — the bullet template the reviewer fills per review.
+- `agent plan-reviewer` · `data.focusItems` (catalog default): The reviewer's project-focus lens items (list of {name, description}); the default focuses step exactness and dependency order.
+- `agent plan-reviewer` · `data.docCurrencyItems` (catalog default): The doc-currency checks the reviewer applies (list of {check}); the default checks that the plan schedules every doc update its changes invalidate.
+- `agent plan-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the plan).
+- `agent plan-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction — what to read in full before applying lenses.
+- `agent plan-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
+- `agent plan-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton — the bullet template the reviewer fills per review.
+- `agent code-reviewer` · `data.correctnessTraps` (catalog default): The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions.
+- `agent code-reviewer` · `data.focusItems` (catalog default): The reviewer's project-focus lens items (list of {name, description}); the default focuses plan adherence and test coverage.
+- `agent code-reviewer` · `data.docCurrencyItems` (catalog default): The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour.
+- `agent code-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the diff).
+- `agent code-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction — what to read in full before applying lenses.
+- `agent code-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
+- `agent code-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton — the bullet template the reviewer fills per review.
+- `doc glossary` · `data.terms` (overridden): The glossary's terms as a `term: meaning` map; the table renders always sorted (case-insensitive, pipes escaped), and empty terms or meanings, interior newlines, or case-insensitive duplicates fail the render naming the key. Unset, the doc renders a pointer telling you where to add terms.
+- `doc pitfalls` · `data.pitfalls` (overridden): The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) drive `awf context` surfacing and must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries.
+- `agents-doc` · `data.commands` (overridden): Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders.
+- `agents-doc` · `data.docMap` (overridden): Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render.
+- `agents-doc` · `data.invariants` (overridden): The project's hard-rules list for the agent guide's Invariants section (list of {ref, text} mappings); unset, the section renders its generic invariants prose.

@@ -8,7 +8,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
-1. Emit the digest (see format below). Report findings only — do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
+1. Emit the digest (see format below). Report findings only: do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
 
 ## Digest format
 

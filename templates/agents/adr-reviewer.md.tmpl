@@ -16,22 +16,22 @@ Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`, dispa
 <!-- awf:section universal-lenses -->
 Apply all five lenses to every ADR:
 
-1. **decision-clarity** — each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
 
-1. **invariants-checkability** — each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect.{{ with .vars.invariantTestPath }} When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ . }}`.{{ end }}
+1. **invariants-checkability**: each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect.{{ with .vars.invariantTestPath }} When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ . }}`.{{ end }}
 
-1. **alternatives-honesty** — no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
+1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
-1. **consequences-honesty** — tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
+1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
 
-1. **doc-currency (ADR-level)** — verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
+1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 <!-- awf:end -->
 
 ## Project-specific focus items
 
 <!-- awf:section project-focus -->
 {{ with .data.focusItems }}{{ range . }}
-**{{ .name }}** — {{ .description }}
+**{{ .name }}**: {{ .description }}
 
 {{ end }}{{ end }}
 <!-- awf:end -->

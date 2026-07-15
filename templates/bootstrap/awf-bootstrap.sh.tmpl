@@ -2,7 +2,7 @@
 # Fetches and verifies a pinned awf binary, caches it, and prints its path.
 # A pre-set AWF_VERSION overrides which release is fetched (the upgrade
 # porcelain relies on this); absent one, the pin resolves. Stdout carries
-# exactly one line — the resolved binary path; every diagnostic goes to
+# exactly one line, the resolved binary path; every diagnostic goes to
 # stderr.
 set -euo pipefail
 
@@ -24,11 +24,11 @@ arch="$(uname -m)"
 case "$arch" in
   x86_64|amd64) arch="amd64" ;;
   arm64|aarch64) arch="arm64" ;;
-  *) echo "awf bootstrap: unsupported arch: $arch — install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;
+  *) echo "awf bootstrap: unsupported arch: $arch; install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;
 esac
 case "$os" in
   linux|darwin) ;;
-  *) echo "awf bootstrap: unsupported os: $os — install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;
+  *) echo "awf bootstrap: unsupported os: $os; install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;
 esac
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/awf/${AWF_VERSION}"

@@ -13,7 +13,7 @@ description: >
 Self-contained systematic debugging for awf. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
 
 <!-- awf:edit symptom-list — default; create .awf/skills/parts/debugging/symptom-list.md to override -->
-Use when behaviour is wrong and the cause is not yet known — unexpected output, test failures, state inconsistencies, build failures, or regressions. Skip only for a one-line fix whose failing test already exists and whose cause is obvious.
+Use when behaviour is wrong and the cause is not yet known: unexpected output, test failures, state inconsistencies, build failures, or regressions. Skip only for a one-line fix whose failing test already exists and whose cause is obvious.
 
 
 ## When to invoke
@@ -69,14 +69,14 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 <!-- awf:edit red-flags — default; create .awf/skills/parts/debugging/red-flags.md to override -->
 ## Red flags
 
-These thoughts mean stop — you're rationalizing:
+These thoughts mean stop. You're rationalizing:
 
 | Rationalization | Reality |
 |---|---|
-| "I can see the bug — let me just fix it." | No hypothesis, no fix. Name a falsifiable cause and check it against the real system first. |
+| "I can see the bug, let me just fix it." | No hypothesis, no fix. Name a falsifiable cause and check it against the real system first. |
 | "The error's gone, so it's fixed." | Symptom ≠ root cause. Confirm the underlying cause is addressed, not just silenced. |
-| "The expected value looks wrong — I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
-| "It's just a flaky environment — retry." | Infrastructure down is not a bug to code around. Stop and report it. |
+| "The expected value looks wrong. I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
+| "It's just a flaky environment, retry." | Infrastructure down is not a bug to code around. Stop and report it. |
 
 <!-- awf:edit memory-checkpoint — default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.

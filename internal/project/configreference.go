@@ -177,7 +177,7 @@ func (p *Project) currentValue(path string) string {
 	case "hooks.enabled":
 		return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
 	default: // per-entry leaves (invariants.sources[].…, audit.allowedScopes[].…)
-		return "—"
+		return "n/a"
 	}
 }
 
@@ -187,9 +187,9 @@ func (p *Project) varState(key string) string {
 	v, ok := p.Cfg.Vars[key]
 	switch {
 	case !ok:
-		return "absent — declined; the generic prose renders"
+		return "absent, declined; the generic prose renders"
 	case v == nil || v == "":
-		return "empty — open to-do"
+		return "empty, an open to-do"
 	default:
 		return fmt.Sprintf("set (`%v`)", v)
 	}

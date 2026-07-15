@@ -31,9 +31,9 @@ Every finding must cite a **specific location**; "the ADR generally" is not a va
 
 Classify by what acting on the finding requires, not by severity:
 
-- **mechanical** — the answer is unambiguous from existing rules, docs, or code; the fix is direct.
-- **reasoned** — a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
-- **user-decision** — a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
+- **mechanical**: the answer is unambiguous from existing rules, docs, or code; the fix is direct.
+- **reasoned**: a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
+- **user-decision**: a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
@@ -42,24 +42,24 @@ Severity is informational only; the dispatching skill routes by classification k
 <!-- awf:edit universal-lenses — default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every ADR:
 
-1. **decision-clarity** — each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
 
-1. **invariants-checkability** — each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect. When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `./internal/...`.
+1. **invariants-checkability**: each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect. When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `./internal/...`.
 
-1. **alternatives-honesty** — no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
+1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
-1. **consequences-honesty** — tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
+1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
 
-1. **doc-currency (ADR-level)** — verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
+1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 
 ## Project-specific focus items
 
 <!-- awf:edit project-focus — default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 
-**decision-clarity** — each Decision item is a discrete, implementable commitment a reader could act on without further consultation
+**decision-clarity**: each Decision item is a discrete, implementable commitment a reader could act on without further consultation
 
 
-**consequences-honesty** — trade-offs name real costs and operational implications, not straw men
+**consequences-honesty**: trade-offs name real costs and operational implications, not straw men
 
 
 
@@ -83,7 +83,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
-1. Emit the digest (see format below). Report findings only — do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
+1. Emit the digest (see format below). Report findings only: do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
 
 ## Digest format
 

@@ -11,14 +11,14 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 
 - **Terse.** Managed docs are read repeatedly; every word is a recurring cost. Use the shortest phrasing that stays precise.
 - **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
-- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it — one source of truth per fact.
+- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
 - **Present-tense, authoritative voice.** Describe what is; use the imperative for instructions.
 - **Tool-agnostic, action-first.** Rendered skill and agent prose names the action an agent takes, not the tool one runtime exposes to take it: "dispatch a fresh-context subagent", not a runtime's tool name. Project-specific identifiers (skill names, command names) are not runtime tools and stay.
 - **Reference optional docs only when enabled.** Link a toggleable doc only if it is currently enabled in the project's `docs:` array; the dead-reference gate enforces this mechanically for markdown links.
-- **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a same-`docsDir` sibling doc needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value — using the full value from a file already under `docsDir` doubles the path.
+- **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a same-`docsDir` sibling doc needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value; using the full value from a file already under `docsDir` doubles the path.
 
 <!-- awf:edit structure — default; create .awf/parts/doc-standard/structure.md to override -->
 ## Structure
 
-A managed doc is a sequence of `awf:section` marker blocks whose names match its catalog `sections` list. Each section default holds a content prompt naming what belongs there. Override one section with a convention part at `.awf/docs/parts/<doc>/<section>.md`; the rest inherits the default. Documentation travels with the change that makes it true — update the doc in the same commit.
+A managed doc is a sequence of `awf:section` marker blocks whose names match its catalog `sections` list. Each section default holds a content prompt naming what belongs there. Override one section with a convention part at `.awf/docs/parts/<doc>/<section>.md`; the rest inherits the default. Documentation travels with the change that makes it true. Update the doc in the same commit.

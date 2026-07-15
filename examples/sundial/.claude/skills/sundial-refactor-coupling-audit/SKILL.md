@@ -50,7 +50,7 @@ grep -rn "<MovedSymbol>" <original-package-path>/
 
 Grep your language's test files (e.g. `*_test.go`, `*.spec.ts`) separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
 
-Capture **N** (production call sites) and **M** (test call sites) separately — M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
+Capture **N** (production call sites) and **M** (test call sites) separately. M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
 
 ```bash
 # Search the package's test files only (your language's test-file glob, e.g. *_test.go, *.spec.ts).
@@ -74,7 +74,7 @@ For each subpackage hit, decide: does the subpackage's import path remain valid 
 
 If any code generation refers to the symbols being moved (by path or identifier), the move forces edits to the codegen configuration as well.
 
-Check code-generation that references the moved symbols — Go `go:generate` directives,
+Check code-generation that references the moved symbols: Go `go:generate` directives,
 build scripts, schema/codegen configs, or derived-table generators in your toolchain:
 
 ```bash
@@ -101,16 +101,16 @@ Trace each constructor up to its caller: does the caller's package end up import
 <!-- awf:edit category-6-init-visibility — default; create .awf/skills/parts/refactor-coupling-audit/category-6-init-visibility.md to override -->
 ### 6. Initialization ordering and cross-module visibility
 
-Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
+Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability, e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
 
 ```bash
 # Find functions/methods defined on the moved type (Go method-receiver example shown; adapt).
 grep -rn "<MovedType>" <original-package-path>/
 ```
 
-For each method: is it called from a sibling package? Then it needs to remain reachable — either the type stays exported in its current package, or an interface is introduced in the original package with an implementation in the destination.
+For each method: is it called from a sibling package? Then it needs to remain reachable: either the type stays exported in its current package, or an interface is introduced in the original package with an implementation in the destination.
 
-Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions) — registry seeding and global-state setup are common load-bearing sites.
+Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions); registry seeding and global-state setup are common load-bearing sites.
 
 <!-- awf:edit test-coupling-planning-rule — default; create .awf/skills/parts/refactor-coupling-audit/test-coupling-planning-rule.md to override -->
 ## Test-coupling planning rule
@@ -138,7 +138,7 @@ The audit's output goes into the ADR's **Context** section under a "Coupling aud
 <!-- awf:edit scope-shrink-rule — default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->
 ## Scope shrink rule
 
-If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN — defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
+If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN, defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
 
 <!-- awf:edit notes — default; create .awf/skills/parts/refactor-coupling-audit/notes.md to override -->
 ## Notes

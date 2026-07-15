@@ -9,17 +9,17 @@ description: >
 
 # sundial-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions — status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A task skill for mechanical ADR lifecycle transitions: status transitions, supersedence, and amendment-while-Proposed. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
 <!-- awf:edit states — default; create .awf/skills/parts/adr-lifecycle/states.md to override -->
 | State | Meaning | Mutability |
 |---|---|---|
-| `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable — body and status may both change |
-| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status field only — body is frozen |
-| `Implemented` | Design and implementation have both landed in the repository | Status field only — body is frozen |
-| `Superseded` | Replaced by a later ADR; kept for historical record | Status field only — body is frozen |
+| `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
+| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status field only; the body is frozen |
+| `Implemented` | Design and implementation have both landed in the repository | Status field only; the body is frozen |
+| `Superseded` | Replaced by a later ADR; kept for historical record | Status field only; the body is frozen |
 
 
 ## Transitions
@@ -47,7 +47,7 @@ The successor replaces the predecessor wholesale. Apply when most of the predece
 The successor overrides specific Decision items or Invariants of the predecessor without replacing it as a whole. Apply when most of the predecessor still holds and only one decision needs revisiting.
 
 - Successor frontmatter: `related: [predecessor-number]` (NOT `supersedes:`).
-- Predecessor's `status` field is **NOT** flipped — stays `Accepted`/`Implemented`.
+- Predecessor's `status` field is **NOT** flipped; it stays `Accepted`/`Implemented`.
 - Successor's prose **explicitly cites the overridden items** (e.g. "Supersedes predecessor Decision item M and Invariant N").
 - `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the override information lives in the successor's prose and `related:` linkage.
 
@@ -56,16 +56,16 @@ The successor overrides specific Decision items or Invariants of the predecessor
 Pick the status transition, then:
 
 <!-- awf:edit procedure-status-edit — default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
-1. **Edit the ADR's frontmatter `status` field** in place. This is the only allowed in-place edit on a live ADR — body remains append-only once the ADR leaves `Proposed`.
+1. **Edit the ADR's frontmatter `status` field** in place. This is the only allowed in-place edit on a live ADR; the body remains append-only once the ADR leaves `Proposed`.
 
 <!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
 2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/adr-lifecycle/state-doc-update.md to override -->
-3. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field — set that field; do not hand-maintain a decisions table. Include any prose change in the same commit.
+3. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field; set that field, and do not hand-maintain a decisions table. Include any prose change in the same commit.
 
 <!-- awf:edit procedure-regen — default; create .awf/skills/parts/adr-lifecycle/procedure-regen.md to override -->
-4. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md` — always regenerate and commit it alongside any ADR status change.
+4. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md`; always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate — default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
 5. **Run the gate (`./x gate`).** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
@@ -75,9 +75,9 @@ Pick the status transition, then:
 
 Use these subjects for each transition type:
 
-- `docs(adr): accept NNNN <short title>` — `Proposed → Accepted`
-- `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` — `Accepted → Implemented` in the final implementation commit
-- `docs(adr): supersede NNNN with MMMM <short title>` — in the successor's introducing commit; predecessor flip lands here
+- `docs(adr): accept NNNN <short title>` for `Proposed → Accepted`
+- `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` for `Accepted → Implemented` in the final implementation commit
+- `docs(adr): supersede NNNN with MMMM <short title>` in the successor's introducing commit; predecessor flip lands here
 
 <!-- awf:edit amendment-while-proposed — default; create .awf/skills/parts/adr-lifecycle/amendment-while-proposed.md to override -->
 ## Amendment-while-Proposed
@@ -85,9 +85,9 @@ Use these subjects for each transition type:
 While `status: Proposed`, all sections may be amended freely as edge cases or scope refinements surface. Two flavours:
 
 - **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
-- **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why — commit as `docs(adr): amend NNNN — defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
+- **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
 
-Once `Accepted` or `Implemented`, the body is frozen — only the `status` field is editable in place.
+Once `Accepted` or `Implemented`, the body is frozen; only the `status` field is editable in place.
 
 ## Notes
 

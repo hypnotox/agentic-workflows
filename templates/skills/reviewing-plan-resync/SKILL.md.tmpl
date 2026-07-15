@@ -30,11 +30,11 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:section classify-route-findings -->
 2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — this skill applies directly.
-   - **reasoned** — this skill applies with a one-line rationale.
-   - **user-decision** — present to the user and wait.
+   - **mechanical**: this skill applies directly.
+   - **reasoned**: this skill applies with a one-line rationale.
+   - **user-decision**: present to the user and wait.
 
-   **Return edge:** when a finding implicates the ADR itself — the plan is right and the still-`Proposed` decision text is wrong — do not bend the plan to stale decision text. Amend the ADR ({{ if index .skills "adr-lifecycle" }}via `{{ .prefix }}-adr-lifecycle`'s amendment-while-Proposed procedure{{ else }}an amendment-while-Proposed edit{{ end }}), re-run `{{ .prefix }}-reviewing-adr` on the amended ADR, then re-run this resync — looping until plan and ADR(s) converge.
+   **Return edge:** when a finding implicates the ADR itself (the plan is right and the still-`Proposed` decision text is wrong), do not bend the plan to stale decision text. Amend the ADR ({{ if index .skills "adr-lifecycle" }}via `{{ .prefix }}-adr-lifecycle`'s amendment-while-Proposed procedure{{ else }}an amendment-while-Proposed edit{{ end }}), re-run `{{ .prefix }}-reviewing-adr` on the amended ADR, then re-run this resync, looping until plan and ADR(s) converge.
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
@@ -42,7 +42,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items — an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
+4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items, an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-impl -->

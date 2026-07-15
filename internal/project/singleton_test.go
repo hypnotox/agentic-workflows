@@ -39,13 +39,13 @@ func TestAgentsDocCommandsPlaceholderAndDedupe(t *testing.T) {
 		t.Errorf("empty Commands section missing the placeholder:\n%s", empty)
 	}
 	dup := agentsDocContent(t, "prefix: example\nvars:\n  testCmd: make test\n  gateCmd: make test\n  checkCmd: make check\nskills: []\nagents: []\n")
-	if got := strings.Count(dup, "- `make test` — run the test suite"); got != 1 {
+	if got := strings.Count(dup, "- `make test`: run the test suite"); got != 1 {
 		t.Errorf("testCmd line rendered %d times, want 1:\n%s", got, dup)
 	}
-	if strings.Contains(dup, "— run the gate before committing") {
+	if strings.Contains(dup, ": run the gate before committing") {
 		t.Errorf("gateCmd identical to testCmd must not render its own Commands line:\n%s", dup)
 	}
-	if !strings.Contains(dup, "`make check` — check rendered files for drift") {
+	if !strings.Contains(dup, "`make check`: check rendered files for drift") {
 		t.Errorf("distinct checkCmd line missing:\n%s", dup)
 	}
 }

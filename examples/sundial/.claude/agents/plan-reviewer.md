@@ -31,9 +31,9 @@ Every finding must cite a **specific location**; "the plan generally" is not a v
 
 Classify by what acting on the finding requires, not by severity:
 
-- **mechanical** — the answer is unambiguous from existing rules, docs, or code; the fix is direct.
-- **reasoned** — a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
-- **user-decision** — a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
+- **mechanical**: the answer is unambiguous from existing rules, docs, or code; the fix is direct.
+- **reasoned**: a good answer can be reached by reading the relevant code or docs, but judgment is required; a one-line rationale is warranted. For deferred-to-follow-up cases, the rationale is prefixed with `Deferred to <name>:`.
+- **user-decision**: a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
@@ -42,24 +42,24 @@ Severity is informational only; the dispatching skill routes by classification k
 <!-- awf:edit universal-lenses — default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every plan:
 
-1. **scope-completeness** — every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
+1. **scope-completeness**: every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
 
-1. **executability** — no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step, and each phase's closing commit passes the project's gate on its own — flag any definition whose first production use lands in a later phase, unless the plan marks a coupled-phase group that genuinely cannot be sliced and states why; each task is one reviewable, logically-coherent change (a whole new file is one task); code changes shown as exact diff not prose.
+1. **executability**: no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step, and each phase's closing commit passes the project's gate on its own; flag any definition whose first production use lands in a later phase, unless the plan marks a coupled-phase group that genuinely cannot be sliced and states why; each task is one reviewable, logically-coherent change (a whole new file is one task); code changes shown as exact diff not prose.
 
-1. **doc-currency (plan-level)** — same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
+1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
 
-1. **convention-alignment** — Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
+1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
-1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 
 ## Project-specific focus items
 
 <!-- awf:edit project-focus — default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
-**step-exactness** — every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)
+**step-exactness**: every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)
 
 
-**dependency-order** — tasks are ordered so each builds only on already-completed work
+**dependency-order**: tasks are ordered so each builds only on already-completed work
 
 
 
@@ -88,7 +88,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
-1. Emit the digest (see format below). Report findings only — do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
+1. Emit the digest (see format below). Report findings only: do not edit, commit, or re-review the artifact; the dispatching skill applies fixes and runs a single verify pass.
 
 ## Digest format
 

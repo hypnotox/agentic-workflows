@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-push payload: the fullest gate tier the project configures. Inert until
-# wired into a hook setup you own — e.g. a .git/hooks/pre-push stub containing:
+# wired into a hook setup you own, e.g. a .git/hooks/pre-push stub containing:
 #   exec bash .awf/hooks/pre-push.sh "$@"
 set -euo pipefail
 {{ if not (or .vars.gateCmdFull .vars.gateCmd .vars.checkCmd) }}

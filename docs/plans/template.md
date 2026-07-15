@@ -9,13 +9,13 @@ status: Proposed
 <!-- awf:edit header — default; create .awf/parts/plans-template/header.md to override -->
 ## Goal
 
-What this plan achieves, in one or two sentences, and — in one line — what it explicitly does not do
+What this plan achieves, in one or two sentences, and, in one line, what it explicitly does not do
 (its non-goals). When ADRs drive the work, link them in `adrs:` above and name them here; the design
 lives in the ADR(s), so this plan is the execution record, not a place to re-argue design.
 
 ## Architecture summary
 
-The execution shape — the structural moves the phases make. Not the rationale (that lives in the
+The execution shape: the structural moves the phases make. Not the rationale (that lives in the
 linked ADR).
 
 ## File structure
@@ -25,23 +25,23 @@ linked ADR).
 - **Deleted:** removed files (or `none`).
 
 <!-- awf:edit phases — default; create .awf/parts/plans-template/phases.md to override -->
-## Phase 1 — <name>
+## Phase 1: <name>
 
-- [ ] **Task 1.1 — <what>.** Exact paths, the exact new-file content or diff, and the exact verify
+- [ ] **Task 1.1: <what>.** Exact paths, the exact new-file content or diff, and the exact verify
   command with its expected output. A task is one reviewable, logically-coherent change (a whole new
   file is one task). For a transformation repeated across 3+ sites, use the batch form (a
   representative diff, an edge diff, the affected-site set, and a post-check).
-- [ ] **Task 1.2 — Verify and commit.** Run `./x gate`; `git add` the exact paths; commit with a
+- [ ] **Task 1.2: Verify and commit.** Run `./x gate`; `git add` the exact paths; commit with a
   Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
   validates its length and type before you commit (tag a display-only example `commit awf-ignore`
-  to skip it). Every phase's closing commit passes `./x gate` on its own — unless the
+  to skip it). Every phase's closing commit passes `./x gate` on its own, unless the
   change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
   commit, stating why.
 
 <!-- awf:edit verification — default; create .awf/parts/plans-template/verification.md to override -->
 ## Verification (optional)
 
-Whole-effort end-state checks beyond the per-phase gates — the acceptance criteria for "done".
+Whole-effort end-state checks beyond the per-phase gates: the acceptance criteria for "done".
 
 <!-- awf:edit notes — default; create .awf/parts/plans-template/notes.md to override -->
 ## Notes (optional)

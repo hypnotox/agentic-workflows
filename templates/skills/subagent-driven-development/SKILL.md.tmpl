@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-subagent-driven-development
-description: Use to execute a written {{ .prefix }} plan by dispatching one subagent per task (fresh context per task) when the plan's tasks are mostly independent. Sequential dispatch only — never parallel. Per-task review after each implementer. Terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-executing-plans.
+description: Use to execute a written {{ .prefix }} plan by dispatching one subagent per task (fresh context per task) when the plan's tasks are mostly independent. Sequential dispatch only, never parallel. Per-task review after each implementer. Terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-executing-plans.
 ---
 
 # {{ .prefix }}-subagent-driven-development
@@ -10,7 +10,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.work
 <!-- awf:end -->
 
 <!-- awf:section per-task-review-note -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task — catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task; catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate; no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -18,7 +18,7 @@ The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.work
 
 Invoke when:
 - A plan exists under `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
-- Plan tasks are mostly independent — each task can be implemented without seeing prior tasks' context, AND
+- Plan tasks are mostly independent: each task can be implemented without seeing prior tasks' context, AND
 - Fresh context per task is valuable (each task touches a distinct subsystem; the main session stays the orchestrator, holding coordination context across tasks).
 
 The agent picks between this skill and `{{ .prefix }}-executing-plans` by inspecting the plan's phase structure and task coupling. For tightly-coupled sequential plans where state flows between tasks, use `{{ .prefix }}-executing-plans` instead.
@@ -29,11 +29,11 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 ## Procedure
 
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented` — independent of any linked ADR's status.
+1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented`, independent of any linked ADR's status.
 <!-- awf:end -->
 
 <!-- awf:section procedure-raise-concerns -->
-2. **Read the plan, raise concerns before dispatching.** Critical gaps — missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N") — surface to the user before any subagent runs. Do not guess.
+2. **Read the plan, raise concerns before dispatching.** Critical gaps surface to the user before any subagent runs: missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N"). Do not guess.
 <!-- awf:end -->
 
 <!-- awf:section procedure-extract-context -->
@@ -45,7 +45,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section dispatch-conventions -->
-4. **Per task — dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
+4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **{{ with .vars.gateCmd }}`{{ . }}`{{ else }}Gate{{ end }} per commit.** Fast tier by default{{ with .vars.gateCmdFull }}; `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
@@ -62,11 +62,11 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section per-task-review -->
-6. **After a `DONE` implementer reports — dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section — named explicitly in the dispatched task prompt, the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it — the ADR commit runs the gate, so the drift test must pass.
+7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
@@ -78,7 +78,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 ## Notes
 
 <!-- awf:section notes -->
-- **Sequential dispatch only — never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
+- **Sequential dispatch only, never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
 - The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
 - One concern per commit; auto-commit when green.
 - **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.
@@ -87,12 +87,12 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section red-flags -->
 ## Red flags
 
-These thoughts mean stop — you're rationalizing:
+These thoughts mean stop; you're rationalizing:
 
 | Rationalization | Reality |
 |---|---|
 | "I'll dispatch the tasks in parallel to save time." | Sequential only. Parallel dispatch races on files and the ADR flip. |
-| "The implementer reported DONE — advance." | DONE is a claim, not a verification. Run the per-task review first. |
-| "It came back BLOCKED — retry the same prompt." | Never blindly retry. Change the context, task size, or model. |
-| "Per-task review is optional — skip it to move faster." | Then the terminal review is the only gate, and it absorbs everything you skipped. |
+| "The implementer reported DONE; advance." | DONE is a claim, not a verification. Run the per-task review first. |
+| "It came back BLOCKED; retry the same prompt." | Never blindly retry. Change the context, task size, or model. |
+| "Per-task review is optional; skip it to move faster." | Then the terminal review is the only gate, and it absorbs everything you skipped. |
 <!-- awf:end -->

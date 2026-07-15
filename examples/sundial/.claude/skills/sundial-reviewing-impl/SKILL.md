@@ -13,7 +13,7 @@ Invoked as the independent review step of the implementation phase. Dispatches t
 <!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of sundial-executing-plans or sundial-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only** — every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+**Skip when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
 
 ## Procedure
 
@@ -28,19 +28,19 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-3. **Dispatch the `code-reviewer` subagent — an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
+3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
-   - The affected context — paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})` — so the doc-currency and convention lenses know the owning domains, backed invariants, and related ADRs without re-deriving them.
+   - The affected context (paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, backed invariants, and related ADRs without re-deriving them.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
-   - **mechanical** — this skill applies directly.
-   - **reasoned** — this skill applies with a one-line rationale.
-   - **user-decision** — present to the user and wait.
+   - **mechanical**: this skill applies directly.
+   - **reasoned**: this skill applies with a one-line rationale.
+   - **user-decision**: present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using a Conventional-Commits scope from `almanac`, `schedule`, `cli`, `docs`; `./x gate` passes before each commit.
@@ -48,7 +48,7 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 <!-- awf:edit run-audit — default; create .awf/skills/parts/reviewing-impl/run-audit.md to override -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
    `awf audit` (or this project's runner alias for it) over the branch. `Error` findings block
-   this review from concluding — resolve them or escalate them as user-decision items before
+   this review from concluding: resolve them or escalate them as user-decision items before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.
 
@@ -64,5 +64,5 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 
 <!-- awf:edit notes — default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `sundial-executing-plans` / `sundial-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed — this skill does not flip it.
+- The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `sundial-executing-plans` / `sundial-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed; this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

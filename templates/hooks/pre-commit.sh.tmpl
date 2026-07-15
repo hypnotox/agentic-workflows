@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit payload: drift check, then the project gate. Inert until wired
-# into a hook setup you own — e.g. a .git/hooks/pre-commit stub containing:
+# into a hook setup you own, e.g. a .git/hooks/pre-commit stub containing:
 #   exec bash .awf/hooks/pre-commit.sh "$@"
 set -euo pipefail
 {{ if not .vars.checkCmd }}

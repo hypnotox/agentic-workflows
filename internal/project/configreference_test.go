@@ -52,9 +52,9 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"`bootstrap.enabled`",
 		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, plans-template, skill tdd.",
 		"`checkCmd`",
-		"State: empty — open to-do.",
-		"State: absent — declined; the generic prose renders. Consumed by: agents-doc, doc workflow, skill tdd.", // testCmd
-		"Dormant: no enabled artifact references it; enabling agent adr-reviewer, skill retrospective would.",    // invariantTestPath
+		"State: empty, an open to-do.",
+		"State: absent, declined; the generic prose renders. Consumed by: agents-doc, doc workflow, skill tdd.", // testCmd
+		"Dormant: no enabled artifact references it; enabling agent adr-reviewer, skill retrospective would.",   // invariantTestPath
 		"`skill tdd` · `data.testSurfaces` (catalog default)",
 		"`agent code-reviewer` · `data.correctnessTraps` (catalog default)",
 		"`agents-doc` · `data.invariants`",
@@ -92,7 +92,7 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 		t.Errorf("empty-state reference missing live-state prose:\n%s", got)
 	}
 	// The vars section still lists every catalog var (all absent).
-	if !strings.Contains(got, "`gateCmd`") || !strings.Contains(got, "absent — declined") {
+	if !strings.Contains(got, "`gateCmd`") || !strings.Contains(got, "absent, declined") {
 		t.Errorf("empty-state reference lost the var catalog:\n%s", got)
 	}
 }

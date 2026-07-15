@@ -4,7 +4,7 @@
 <!-- awf:edit intro — default; create .awf/parts/plans-readme/intro.md to override -->
 A plan is the step-by-step execution record for a complex change: reviewable tasks, exact file
 paths, exact content or diffs, and the commands that verify each step. The design rationale lives in
-the linked ADR (when one exists) — a plan links to it (structurally, via its `adrs:` frontmatter)
+the linked ADR (when one exists); a plan links to it (structurally, via its `adrs:` frontmatter)
 rather than restating it.
 
 <!-- awf:edit naming — default; create .awf/parts/plans-readme/naming.md to override -->
@@ -26,8 +26,8 @@ where the date is the day the plan is written (ISO-8601). Example:
 - A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical
   header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).
-- Phases of tasks — each task one reviewable, logically-coherent change (a whole new file is one
-  task) — as `- [ ]` checkboxes, each naming exact paths, the exact content or diff, and the exact
+- Phases of tasks, each task one reviewable, logically-coherent change (a whole new file is one
+  task), as `- [ ]` checkboxes, each naming exact paths, the exact content or diff, and the exact
   verifying command with its expected output.
 - For a transformation repeated across many sites, a task may take the *batch* form instead of N
   near-identical diffs: a representative site shown as an exact diff, an edge site (unless the shape
@@ -40,6 +40,6 @@ where the date is the day the plan is written (ISO-8601). Example:
   checks) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation).
 
 A plan carries its own two-state lifecycle, independent of any linked ADR: it is mutable while
-`status: Proposed` — through review and implementation, where findings are noted as they surface —
+`status: Proposed` (through review and implementation, where findings are noted as they surface)
 and freezes at `status: Implemented`, flipped in the implementation's final commit. Plans stay in the
 repository permanently as the historical record of how a change rolled out.

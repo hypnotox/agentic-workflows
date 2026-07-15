@@ -10,12 +10,12 @@ description: >
 # sundial-proposing-adr
 
 <!-- awf:edit positioning — default; create .awf/skills/parts/proposing-adr/positioning.md to override -->
-Writes a new ADR to `docs/decisions/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment — one decision per ADR. See `docs/workflow.md` for the full lifecycle rules and `sundial-adr-lifecycle` for state transitions.
+Writes a new ADR to `docs/decisions/NNNN-kebab-title.md` (status `Proposed`) and commits it. Scope each record to a single load-bearing commitment: one decision per ADR. See `docs/workflow.md` for the full lifecycle rules and `sundial-adr-lifecycle` for state transitions.
 
 ## When to invoke
 
 <!-- awf:edit when-to-invoke — default; create .awf/skills/parts/proposing-adr/when-to-invoke.md to override -->
-Per `docs/workflow.md`: load-bearing decisions only — one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
+Per `docs/workflow.md`: load-bearing decisions only, one ADR per decision. Bugfixes and routine refactors do not need an ADR. When in doubt, write the ADR.
 
 Load-bearing triggers include:
 - Introducing or moving a module/package boundary
@@ -30,8 +30,8 @@ Load-bearing triggers include:
 <!-- awf:edit conventions — default; create .awf/skills/parts/proposing-adr/conventions.md to override -->
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
-- **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md` — never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed` — initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `docs/domains/<domain>.md` index — fill ≥1 before committing when the project configures domain docs; otherwise leave `[]`).
+- **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md`; never hand-copy or shell-copy it yourself.
+- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `docs/domains/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
 - **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
@@ -47,7 +47,7 @@ Load-bearing triggers include:
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty — `domains` stays `[]` when the project configures no domain docs.
+   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
 
 <!-- awf:edit state-doc-update — default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
 3. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
@@ -56,16 +56,16 @@ Load-bearing triggers include:
 4. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
 
 <!-- awf:edit invariants-rule — default; create .awf/skills/parts/proposing-adr/invariants-rule.md to override -->
-5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>` — …`` for a test-proven property, or an ``- `unbacked-invariant: <slug>` — …. **Verify:** …`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug> — <note>` marker records a related production site and never backs. `./x check` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
+5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>`, …`` for a test-proven property, or an ``- `unbacked-invariant: <slug>`, …. **Verify:** …`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment, your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby), on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug>, <note>` marker records a related production site and never backs. `./x check` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.
 
 <!-- awf:edit procedure-regen — default; create .awf/skills/parts/proposing-adr/procedure-regen.md to override -->
 6. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
 
 <!-- awf:edit procedure-commit — default; create .awf/skills/parts/proposing-adr/procedure-commit.md to override -->
-7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass — if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
 <!-- awf:edit autonomous-rule — default; create .awf/skills/parts/proposing-adr/autonomous-rule.md to override -->
-8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval — once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
 
 <!-- awf:edit terminal-step — default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
 9. **Terminal step: invoke `sundial-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
@@ -75,7 +75,7 @@ Load-bearing triggers include:
 ## Notes
 
 <!-- awf:edit notes — default; create .awf/skills/parts/proposing-adr/notes.md to override -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit — that is handled by `sundial-adr-lifecycle`, not this skill.
+- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `sundial-adr-lifecycle`, not this skill.
 - `docs/decisions/ACTIVE.md` is never hand-edited; it is always regenerated via `./x sync`.
 - Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
 - For the full ADR lifecycle, see `docs/workflow.md`.

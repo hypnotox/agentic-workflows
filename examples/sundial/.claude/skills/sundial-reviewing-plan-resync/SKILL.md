@@ -29,17 +29,17 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-plan-resync/classify-route-findings.md to override -->
 2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-   - **mechanical** — this skill applies directly.
-   - **reasoned** — this skill applies with a one-line rationale.
-   - **user-decision** — present to the user and wait.
+   - **mechanical**: this skill applies directly.
+   - **reasoned**: this skill applies with a one-line rationale.
+   - **user-decision**: present to the user and wait.
 
-   **Return edge:** when a finding implicates the ADR itself — the plan is right and the still-`Proposed` decision text is wrong — do not bend the plan to stale decision text. Amend the ADR (via `sundial-adr-lifecycle`'s amendment-while-Proposed procedure), re-run `sundial-reviewing-adr` on the amended ADR, then re-run this resync — looping until plan and ADR(s) converge.
+   **Return edge:** when a finding implicates the ADR itself (the plan is right and the still-`Proposed` decision text is wrong), do not bend the plan to stale decision text. Amend the ADR (via `sundial-adr-lifecycle`'s amendment-while-Proposed procedure), re-run `sundial-reviewing-adr` on the amended ADR, then re-run this resync, looping until plan and ADR(s) converge.
 
 <!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
 3. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `almanac`, `schedule`, `cli`, `docs`. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
 
 <!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-plan-resync/re-review-loop.md to override -->
-4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items — an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
+4. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass (resync mode) to confirm the fixes resolved the findings without new drift. Escalate any residual structural findings as `user-decision` items, an ADR-implicating residual included: the step-2 return edge applies to initial-dispatch findings only. Do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off-to-impl — default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `sundial-executing-plans` (for inline execution) or `sundial-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.

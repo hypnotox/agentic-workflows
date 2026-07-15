@@ -336,7 +336,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to subagent-driven-development
 	loadBearing := []string{
 		"one subagent per task",
-		"Sequential dispatch only — never parallel",
+		"Sequential dispatch only, never parallel",
 		"fresh context per task",
 		"example-reviewing-impl",
 		"example-executing-plans",
@@ -1017,7 +1017,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only — never parallel"},
+		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

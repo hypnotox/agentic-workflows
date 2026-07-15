@@ -24,17 +24,17 @@ further consultation.
 
 ## Invariants
 
-Checkable constraints that must hold as long as this decision stands — conditions that
+Checkable constraints that must hold as long as this decision stands: conditions that
 should trigger a new ADR if violated. Declare each machine-enforceable bullet with a slug in one of
 two forms and, for a backed one, add a proof marker (`<your marker> invariant: <slug>`, e.g.
 `// invariant: <slug>` or `# invariant: <slug>`) on a test file matching your `.awf/config.yaml`
-`invariants.testGlobs` — or, when `testGlobs` is unset, any source file matching `invariants.sources`.
-An advisory `<your marker> touches-invariant: <slug> — <note>` marker records a related code site and
+`invariants.testGlobs`, or, when `testGlobs` is unset, any source file matching `invariants.sources`.
+An advisory `<your marker> touches-invariant: <slug> (<note>)` marker records a related code site and
 never backs. `awf check` enforces declared slugs once the ADR is `Implemented`; untagged bullets are
 textual contracts.
 
-- `` `invariant: <slug>` `` — a test-backed property. Requires a proof marker.
-- `` `unbacked-invariant: <slug>` `` — a reasoned contract with no automatic test. **Verify:** how to
+- `` `invariant: <slug>` ``: a test-backed property. Requires a proof marker.
+- `` `unbacked-invariant: <slug>` ``: a reasoned contract with no automatic test. **Verify:** how to
   confirm it by hand.
 
 ## Consequences

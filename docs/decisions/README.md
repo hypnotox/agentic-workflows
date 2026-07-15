@@ -35,7 +35,7 @@ Every ADR starts with YAML frontmatter:
 ---
 status: Proposed | Accepted | Implemented | Superseded
 date: YYYY-MM-DD
-supersedes: []        # list of ADR numbers this replaces, e.g. [1] — bare ints; zero-padded 0001 reads as octal YAML
+supersedes: []        # list of ADR numbers this replaces, e.g. [1], bare ints; zero-padded 0001 reads as octal YAML
 superseded_by: ""     # ADR number that replaced this (empty if still active)
 tags: [tooling]
 related: []           # related ADR numbers

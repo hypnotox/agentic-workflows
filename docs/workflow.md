@@ -4,7 +4,7 @@
 <!-- awf:edit principles — default; create .awf/parts/workflow/principles.md to override -->
 ## Principles
 
-You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change — reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
+You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
 <!-- awf:edit chain — default; create .awf/parts/workflow/chain.md to override -->
 ## The chain
@@ -15,9 +15,9 @@ Non-trivial work follows one canonical chain:
 brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review → retrospective
 ```
 
-Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs, and planning that surfaces a new load-bearing decision loops back to propose or amend one. Each written artifact gets a fresh-context review; when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. Implementation review is the terminal gate; a main-thread **retrospective** then closes the feedback loop, promoting any recurring, codifiable finding toward a deterministic check. Throughout, each chain skill checkpoints its position — and brainstorming its evolving design brief — to a working-memory file under `.awf/memory/` (see the agent guide's working-memory section), so a session death or context compaction resumes instead of restarting; the retrospective deletes the file.
+Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness*: a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity*: multi-commit or interdependent steps. Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs, and planning that surfaces a new load-bearing decision loops back to propose or amend one. Each written artifact gets a fresh-context review; when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. Implementation review is the terminal gate; a main-thread **retrospective** then closes the feedback loop, promoting any recurring, codifiable finding toward a deterministic check. Throughout, each chain skill checkpoints its position (and brainstorming its evolving design brief) to a working-memory file under `.awf/memory/` (see the agent guide's working-memory section), so a session death or context compaction resumes instead of restarting; the retrospective deletes the file.
 
-For the detailed criteria of when a decision is load-bearing enough to warrant an ADR — and the ADR format itself — see [`docs/decisions/README.md`](decisions/README.md).
+For the detailed criteria of when a decision is load-bearing enough to warrant an ADR (and the ADR format itself), see [`docs/decisions/README.md`](decisions/README.md).
 
 <!-- awf:edit commit-discipline — from .awf/parts/workflow/commit-discipline.md -->
 ## Commit discipline
@@ -43,7 +43,7 @@ The code scopes mirror the domain vocabulary in `.awf/config.yaml` — see [the 
 <!-- awf:edit doc-currency — default; create .awf/parts/workflow/doc-currency.md to override -->
 ## Documentation currency
 
-Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit.
+Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, ADRs, and any reference tables) in the same commit.
 
 <!-- awf:edit composing-the-gate — from .awf/parts/workflow/composing-the-gate.md -->
 ## Composing the gate
@@ -70,4 +70,4 @@ This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-c
 <!-- awf:edit ci — default; create .awf/parts/workflow/ci.md to override -->
 ## Continuous integration
 
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints — `"$(bash .awf/bootstrap.sh)" check` — instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.

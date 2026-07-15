@@ -12,8 +12,8 @@ The fix-and-verify task skill. Companion to `sundial-debugging`: where debugging
 
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
-- **Trivial bugfix that validly skips the chain** — the narrow exception in `docs/workflow.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
-- **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair (`sundial-reviewing-impl`).
+- **Trivial bugfix that validly skips the chain**: the narrow exception in `docs/workflow.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
+- **Non-trivial bugfix that ran the chain upstream**: `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair (`sundial-reviewing-impl`).
 
 If the root cause is not yet known, invoke `sundial-debugging` first.
 
@@ -21,7 +21,7 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 1. **Ensure a regression test exists that fails for the right reason.** Invoke `sundial-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.
 
-2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along — one concern per commit. No speculative shims.
+2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:edit pitfalls-check — default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
    Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
@@ -29,7 +29,7 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 3. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
-4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
+4. **Commit** with Conventional Commits, typically `fix(<scope>): …`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
 5. **Invoke `sundial-reviewing-impl` as the terminal step.**
 
@@ -51,4 +51,4 @@ The oracle is non-negotiable. A fix that adjusts expected output instead of the 
 ## Notes
 
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
-- Doc-currency rule: if the fix invalidates anything documented in the project's docs — update it in the same commit.
+- Doc-currency rule: if the fix invalidates anything documented in the project's docs, update it in the same commit.
