@@ -33,14 +33,6 @@ Build the primitive first (render + project + check layers), then the runner con
 6. Enable + migrate the `examples/sundial` runner; awf-the-repo stays opted out.
 7. Back all twelve invariant slugs (per phase) and flip both ADRs to Implemented in the final commit.
 
-## Tech stack
-
-Go 1.26. Packages touched: `internal/render` (section marker, `Segment`, `SectionPlan`, `Assemble`,
-`editPointer`), `internal/project` (`RenderedFile`, `planSections`, `RenderAll`, `check.go`,
-`project.go`), `internal/config` (`RunnerConfig` toggle), `internal/catalog` (unchanged — the runner
-is *not* a `DocEntry`), `templates/` (embedded FS: new `runner/x.tmpl`), `examples/sundial`. Gate:
-`./x gate` before every commit; `./x check` for drift; 100% statement coverage required.
-
 ## File structure
 
 - **Created:** `templates/runner/x.tmpl`; new test files as needed (`internal/render/*_test.go`
@@ -99,8 +91,14 @@ synthetic in-place sections (no runner template yet).
   ```
   The `awf:edit-in-place` token must not trip `no-section-marker-leak`/`no-residual-section-marker`
   (`residualMarkerRE` anchors on `awf:(section|end)\b`, so `awf:edit-in-place` is safe — assert in
-  the test). Tag `editPointer`'s `inv: section-edit-pointer` comment unchanged; add
-  `// invariant: in-place-pointer-distinct` on the new branch or the `Assemble` in-place path.
+  the test). **Backing marker placement (ADR-0105, test-scoped):** this repo sets
+  `invariants.testGlobs: ['**/*_test.go']`, so a proof `// invariant: <slug>` marker backs a slug
+  ONLY when it opens a line inside a `*_test.go` file matching that glob — a production-site marker
+  is out of scope and does not back. Put the proof `// invariant: in-place-pointer-distinct` on a
+  line inside the Task 1.4 test in `internal/render/render_test.go` (not at the production branch);
+  optionally add an advisory `// touches-invariant: in-place-pointer-distinct — <note>; proof in
+  render_test.go` at the production site, mirroring the existing `touches-invariant:` markers at
+  render.go:41/72/167. Leave `editPointer`'s existing `section-edit-pointer` marker unchanged.
 - [ ] **Task 1.4 — Test the pointer + splice.** In `internal/render/render_test.go`: `Assemble`
   with an in-place section and a non-empty `InPlaceBody` emits the `awf:edit-in-place` pointer then
   the body verbatim (including an internal blank line); with empty `InPlaceBody` emits the template
@@ -108,7 +106,7 @@ synthetic in-place sections (no runner template yet).
   `go test ./internal/render/ -count=1` → `ok`.
 - [ ] **Task 1.5 — Verify and commit.** `./x gate`; `git add internal/render/section.go
   internal/render/render.go internal/render/section_test.go internal/render/render_test.go`;
-  commit `feat(rendering): parse inplace section attribute and awf:edit-in-place pointer`.
+  commit `feat(rendering): parse inplace attribute and edit-in-place pointer` (≤72 chars).
 
 ## Phase 2 — `RegenChecked` attribute and generated-index exclusion migration
 
@@ -119,14 +117,14 @@ triplicated hardcoded generated-index test onto one attribute. No new drift beha
   `RegenChecked bool` to `RenderedFile` (struct lines 38–61; doc: "excluded from the frozen-
   OutputHash compare; drift is checked by regeneration — ADR-0100"). Set `RegenChecked: true` on the
   generated indexes where their `RenderedFile`s are built: `generateActiveMD`, `generateDomainDocs`,
-  `generateConfigReference` (the functions producing `amd`, `dds`, `cref` — called at check.go:403/
-  409/415 and in `SyncReport`). Add one helper, e.g. `func regenCheckedPaths(files ...[]RenderedFile)
+  `generateConfigReference` (the functions producing `amd`, `dds`, `cref` — called at check.go:489/
+  495/501 and in `SyncReport`). Add one helper, e.g. `func regenCheckedPaths(files ...[]RenderedFile)
   map[string]bool`, or thread the flag through the lock as below.
-- [ ] **Task 2.2 — Migrate `checkLockedFiles` (check.go:464–511).** Replace the hardcoded condition
-  at line 478 (`path == activeMdRel || path == crefRel || strings.HasPrefix(path, domainsPrefix)`)
+- [ ] **Task 2.2 — Migrate `checkLockedFiles` (check.go:566).** Replace the hardcoded condition
+  at line 574 (`path == activeMdRel || path == crefRel || strings.HasPrefix(path, domainsPrefix)`)
   with an attribute-derived membership test built from the regen-checked `RenderedFile` set that
   `Check()` already assembles (`amd`, `dds`, `cref`). The three `activeMdRel/domainsPrefix/crefRel`
-  params (derived at check.go:382–388) are removed once nothing else needs them, or kept if the
+  params (derived at check.go:469–471) are removed once nothing else needs them, or kept if the
   regen checkers still take them — minimise the signature churn, but the *exclusion decision* must
   read the attribute, not the literals.
 - [ ] **Task 2.3 — Migrate `isGeneratedIndex` (project.go:276–279) and the `TemplateHash == ""`
@@ -146,11 +144,14 @@ triplicated hardcoded generated-index test onto one attribute. No new drift beha
   the generated indexes carry `RegenChecked==true` and a non-generated rendered file carries
   `false`, and that a hand-edited generated index is still *not* flagged `hand-edited` (it is a
   regen `stale`, via the separate checkers). Verify: `go test ./internal/project/ -count=1` → `ok`.
-  Add `// invariant: regeneration-checked-attribute` at the predicate's definition.
+  Put the proof `// invariant: regeneration-checked-attribute` on a line inside this test (a
+  `*_test.go` file — the only backing scope under `invariants.testGlobs`), not at the production
+  predicate; optionally add an advisory `// touches-invariant: regeneration-checked-attribute` at
+  the predicate. (Phase 4 completes this slug's coverage for the in-place, in-`rendered` case.)
 - [ ] **Task 2.6 — Verify and commit.** `./x gate`; `git add internal/project/render.go
   internal/project/check.go internal/project/project.go internal/manifest/manifest.go
   internal/project/*_test.go`; commit `refactor(rendering): first-class regeneration-checked
-  attribute replacing hardcoded index paths`.
+  attribute` (≤72 chars).
 
 ## Phase 3 — In-place read-back sourcing (project layer)
 
@@ -177,8 +178,11 @@ Backs `inv: in-place-readback`, `inv: section-source-exclusive`, `inv: in-place-
   boundary test where the in-place body contains a line resembling `<!-- awf:edit next — … -->` for
   a *non-registered* name and is NOT truncated; (d) leading/trailing blank lines are trimmed
   (framing owned); (e) a part file present for an in-place section errors. Verify:
-  `go test ./internal/project/ -run 'InPlace' -count=1` → `ok`. Tag the three invariant slugs at
-  their implementing functions.
+  `go test ./internal/project/ -run 'InPlace' -count=1` → `ok`. Put the proof `// invariant:
+  <slug>` markers for the three slugs (`in-place-readback`, `section-source-exclusive`,
+  `in-place-spacing-owned`) on lines inside the tests in `internal/project/inplace_test.go` — the
+  backing scope under `invariants.testGlobs` — not at the implementing functions; add advisory
+  `// touches-invariant: <slug>` markers at the production sites if useful.
 - [ ] **Task 3.4 — Verify and commit.** `./x gate`; `git add internal/project/render.go
   internal/project/inplace_test.go`; commit `feat(rendering): read in-place section bodies back
   from rendered output`.
@@ -200,8 +204,9 @@ in-place, in-`rendered` case).
   file with an in-place section, sync it, then (a) edit the in-place interior → `check` reports no
   drift (read-back matches); (b) edit an awf-owned region → `check` reports `hand-edited`/drift and
   the next sync overwrites it; (c) idempotence: a second `sync` with no edit is a no-op and `check`
-  is clean (fixpoint). Verify: `go test ./internal/project/ -count=1` → `ok`. Tag `// invariant:
-  in-place-tamper-drift`.
+  is clean (fixpoint). Verify: `go test ./internal/project/ -count=1` → `ok`. Put the proof
+  `// invariant: in-place-tamper-drift` on a line inside this test (a `*_test.go` file — the backing
+  scope under `invariants.testGlobs`), not at the production compare site.
 - [ ] **Task 4.3 — Verify and commit.** `./x gate`; `git add internal/project/check.go
   internal/project/render.go internal/project/*_test.go`; commit `feat(rendering): regeneration-
   with-read-back drift for in-place files`.
@@ -212,19 +217,25 @@ Backs `inv: runner-singleton-toggle`, `inv: runner-awf-verbs-owned`, `inv: runne
 `inv: runner-render-publication-safe`, `inv: singleton-kinds-complete`.
 
 - [ ] **Task 5.1 — `RunnerConfig` toggle.** In `internal/config/config.go` add, mirroring
-  `HooksConfig` (lines 90–99): `type RunnerConfig struct { Enabled bool `yaml:"enabled"` }` with the
-  nil-or-false-means-disabled doc comment, and the pointer field `Runner *RunnerConfig
-  `yaml:"runner"`` on `Config` (after `Hooks`, line 55). No defaulting in `Load`. Additive and
-  default-off — **no migration, no schema bump** (confirmed: `migrate.Current()` is bumped only by a
-  new registry entry; `KnownFields(true)` accepts an absent `runner:` as nil). Add a config-spec
-  entry if `internal/configspec` requires one for reflection parity (ADR-0088) — check and add if the
-  gate demands it.
+  `HooksConfig` (type at line 107; `BootstrapConfig` is at 96): `type RunnerConfig struct { Enabled
+  bool `yaml:"enabled"` }` with the nil-or-false-means-disabled doc comment, and the pointer field
+  `Runner *RunnerConfig `yaml:"runner"`` on `Config` (after `Hooks`, which is at line 57). No
+  defaulting in `Load`. Additive and default-off — **no migration, no schema bump** (confirmed:
+  `migrate.Current()` is bumped only by a new registry entry; `KnownFields(true)` accepts an absent
+  `runner:` as nil). **Config-reference parity is required, not optional (ADR-0088):** the
+  reflection-parity check makes an unregistered config key a hard gate failure, so add a
+  `runner.enabled` descriptor to `internal/configspec/spec.go` (mirroring the `invariants.testGlobs`
+  entry at spec.go:147 — Path/Type/Default) and regenerate `docs/config-reference.md` via `./x sync`;
+  stage the regenerated reference. This is a mandatory sub-step of this task and Task 5.5's commit.
 - [ ] **Task 5.2 — The runner template.** Create `templates/runner/x.tmpl` (embedded FS). Structure:
   a `# GENERATED by awf` banner, `set -euo pipefail`, an `awf:section runner-setup inplace` block
-  (in-place; seeded default: `awf_bin() { bash {{.dirName}}/bootstrap.sh; }` helper — use the same
-  `config.DirName` the bootstrap/hooks templates use), the `case "$cmd" in` opener, awf-owned arms
-  for `sync | check | invariants | audit | context | commit-gate | new)` running
-  `"$(awf_bin)" "$cmd" "$@"`, an `awf:section runner-project-verbs inplace` block (in-place; seeded
+  (in-place; seeded default: the same pinned-binary resolver the hooks templates use — an `awf()`
+  shell function hard-coding the literal `.awf/bootstrap.sh`, verbatim from
+  `templates/hooks/pre-commit.sh.tmpl:8`: `awf() { local pinned; if [ -f .awf/bootstrap.sh ] &&
+  pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }`
+  — no `{{.dirName}}` var; the bootstrap/hooks templates hard-code the path), the `case "$cmd" in`
+  opener, awf-owned arms for `sync | check | invariants | audit | context | commit-gate | new)`
+  running `awf "$cmd" "$@"`, an `awf:section runner-project-verbs inplace` block (in-place; seeded
   default: a `gate)`/`test)` starter), the `*)` usage arm, and `esac`. Every var reference must
   degrade (publication-safe, ADR-0045). The two `inplace` sections are the only adopter-editable
   regions. Keep the awf-verb arm list exactly `sync check invariants audit context commit-gate new`
@@ -246,16 +257,21 @@ Backs `inv: runner-singleton-toggle`, `inv: runner-awf-verbs-owned`, `inv: runne
   `unified_doc_model_test.go` stay green. Note: the runner passes sections through `renderTarget`
   directly (not `renderKind`), like the section-less singletons but *with* a section list.
 - [ ] **Task 5.4 — Tests + golden.** In `internal/project/runner_test.go`: enabled → exactly one
-  `x` at root, containing the awf-owned arms (assert each verb delegates via `awf_bin`) and the two
+  `x` at root, containing the awf-owned arms (assert each verb delegates via the `awf` helper) and the two
   `awf:edit-in-place` pointers; disabled/absent → no `x`. Publication-safe: render under empty data,
   no unresolved token, no marker residue (reuse the catalog-derived sweep pattern or a direct
   assertion). Assert `catalog.SingletonKinds()` is unchanged (the existing
   `TestUnifiedDocModelProjections` already guards this — add an explicit runner-not-in-SingletonKinds
-  assertion for `singleton-kinds-complete`). Tag all five invariant slugs at their sites. Verify:
+  assertion for `singleton-kinds-complete`). Put the proof `// invariant: <slug>` markers for all
+  five slugs (`runner-singleton-toggle`, `runner-awf-verbs-owned`, `runner-project-verbs-in-place`,
+  `runner-render-publication-safe`, `singleton-kinds-complete`) on lines inside the tests in
+  `internal/project/runner_test.go` (and `internal/config/*_test.go` for the toggle) — the backing
+  scope under `invariants.testGlobs` — not at production sites. Verify:
   `go test ./internal/project/ ./internal/config/ -count=1` → `ok`.
 - [ ] **Task 5.5 — Verify and commit.** `./x gate`; `git add internal/config/config.go
-  templates/runner/x.tmpl internal/project/render.go internal/project/runner_test.go` (+ configspec
-  if touched); commit `feat(config): managed command-runner singleton`.
+  internal/configspec/spec.go docs/config-reference.md templates/runner/x.tmpl
+  internal/project/render.go internal/project/runner_test.go`; commit `feat(config): managed
+  command-runner singleton`.
 
 ## Phase 6 — Example adopter adopts the runner; awf opts out
 
@@ -274,12 +290,16 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
   actual verbs — port the old bodies: `gate)` → `go test ./...` then `go vet ./...` (with the `full`
   comment), and `test)` → `go test ./... "$@"`. Run `./x sync` again (reads the in-place body back →
   preserved). The `context` verb is now present for free via the awf-owned dispatch — the drift
-  ADR-0092 introduced is fixed. The `runner-setup` in-place section keeps its seeded `awf_bin` helper
+  ADR-0092 introduced is fixed. The `runner-setup` in-place section keeps its seeded `awf()` helper
   (sundial already resolves the pinned binary via `.awf/bootstrap.sh`).
 - [ ] **Task 6.3 — Verify zero-notes and green.** Run `./x check` — sundial must be drift-free,
   invariant-clean, and emit **no `note:` lines** (ADR-0090; the `./x check` step greps for `^note: `
   and fails on any). Run `(cd examples/sundial && go test ./...)` → `ok`. Confirm the rendered
   `examples/sundial/x` contains a `context` arm and passes `bash -n examples/sundial/x` (syntax).
+  Back `runner-example-adopted` with a proof marker: add an assertion in
+  `internal/project/example_wiring_test.go` (where `example-adopter-checked`/`example-zero-notes`
+  are backed) that the sundial example enables the runner and renders `examples/sundial/x`, and put
+  `// invariant: runner-example-adopted` on a line inside that test (the `**/*_test.go` backing scope).
 - [ ] **Task 6.4 — Commit.** `./x gate`; `git add examples/sundial/.awf/config.yaml examples/sundial/x`
   and `git rm` the old path if git tracks the delete as a modify+rename; commit `feat(config): adopt
   the managed runner in the sundial example`.
@@ -290,25 +310,35 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
   current-state parts (`.awf/domains/parts/config/current-state.md`,
   `.awf/domains/parts/rendering/current-state.md`) to mention the in-place-editable-section primitive
   and the runner singleton; update `docs/architecture.md` / `docs/working-with-awf.md` sections (via
-  their `.awf/docs/parts/...` parts) where the singleton set or override channels are enumerated. Run
-  `./x sync` and stage the regenerated docs. (Do not hand-edit generated outputs.)
-- [ ] **Task 7.2 — Confirm every invariant is backed.** Grep each of the twelve slugs has a matching
-  `// invariant: <slug>` in source:
-  ```
-  for s in in-place-pointer-distinct in-place-readback in-place-tamper-drift section-source-exclusive \
-    in-place-spacing-owned regeneration-checked-attribute runner-singleton-toggle runner-awf-verbs-owned \
-    runner-project-verbs-in-place runner-render-publication-safe runner-example-adopted singleton-kinds-complete; do
-    grep -rq "invariant: $s" internal/ || echo "UNBACKED: $s"; done
-  ```
-  Expected output: empty (all backed). Fix any gap in the owning phase's file.
+  their `.awf/docs/parts/...` parts) where the singleton set or override channels are enumerated.
+  Also update the agent-guide part backing the "Unified compile-time doc model" invariant bullet
+  (which enumerates the config-tree render units deliberately outside the doc collection — currently
+  "the bootstrap, the hook payloads, and the working-memory `.gitignore`") to name the runner as a
+  fourth such unit; the runner is not a `DocEntry`, so this enumeration would otherwise go stale. Run
+  `./x sync` and stage the regenerated docs (incl. AGENTS.md). (Do not hand-edit generated outputs.)
+- [ ] **Task 7.2 — Confirm every invariant is backed.** Run the real backing oracle — a plain
+  `grep` is NOT faithful under ADR-0105 (it matches out-of-scope production markers, and
+  `invariant: <slug>` is a substring of an advisory `touches-invariant: <slug>`). Use `./x invariants`
+  (equivalently the invariant portion of `./x check`), which enforces the test-scoped proof rule
+  (`invariants.testGlobs: ['**/*_test.go']`). It must report all twelve slugs backed:
+  in-place-pointer-distinct, in-place-readback, in-place-tamper-drift, section-source-exclusive,
+  in-place-spacing-owned, regeneration-checked-attribute, runner-singleton-toggle,
+  runner-awf-verbs-owned, runner-project-verbs-in-place, runner-render-publication-safe,
+  runner-example-adopted, singleton-kinds-complete. Fix any "declared backed but no proof marker in
+  backing scope" finding by adding the proof `// invariant: <slug>` to the owning phase's `*_test.go`.
 - [ ] **Task 7.3 — Flip both ADRs to Implemented and freeze the plan.** In
   `docs/decisions/0100-*.md` and `docs/decisions/0101-*.md` set `status: Implemented`; set this
-  plan's frontmatter `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`
-  and the domain ADR indexes. `./x check` must now enforce all twelve backed invariants and pass.
+  plan's frontmatter `status: Implemented`. Add the partial-supersession back-pointer: append `101`
+  to ADR-0002's `related:` (currently `[]`) — the established convention when an ADR partially
+  supersedes another (cf. ADR-0097/0098 each gaining `108`); ADR-0101 already lists `2`, so this
+  makes the link bidirectional and `adr-related-link-resolved` stays green. Run `./x sync` to
+  regenerate `docs/decisions/ACTIVE.md` and the domain ADR indexes. `./x check` must now enforce all
+  twelve backed invariants and pass.
 - [ ] **Task 7.4 — Final verify and commit.** `./x gate` and `./x check` (both must pass, including
-  the sundial example check and its `go test`). `git add` the two ADRs, the plan, `ACTIVE.md`, the
-  regenerated domain docs, any doc parts, and `.awf/awf.lock`; commit `feat(rendering): implement
-  in-place-editable sections and the managed runner (ADR-0100, ADR-0101)`.
+  the sundial example check and its `go test`). `git add` the two flipped ADRs (0100, 0101), the
+  ADR-0002 back-pointer edit, the plan, `ACTIVE.md`, the regenerated domain docs (incl. AGENTS.md),
+  any doc parts, and `.awf/awf.lock`; commit `feat(rendering): in-place-
+  editable sections and managed runner` (≤72 chars; cite ADR-0100/ADR-0101 in the body).
 
 ## Verification
 
