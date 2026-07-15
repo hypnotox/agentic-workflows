@@ -149,7 +149,7 @@ func TestHasMarkerLine(t *testing.T) {
 		"inline quote":          {"the `<!-- awf:section -->` form opens a section\n", false},
 		"bare token":            {"a bare `awf:section` mention\n", false},
 		"stub marker":           {"<!-- awf:stub -->\n", false},
-		"other awf comment":     {"<!-- awf:edit x — default -->\n", false},
+		"other awf comment":     {"<!-- awf:edit x: default -->\n", false},
 		"empty body":            {"", false},
 	}
 	for name, c := range cases {

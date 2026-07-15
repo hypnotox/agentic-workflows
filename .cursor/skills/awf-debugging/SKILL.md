@@ -12,7 +12,7 @@ description: >
 
 Self-contained systematic debugging for awf. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then isolate with a failing test before touching any fix.
 
-<!-- awf:edit symptom-list — default; create .awf/skills/parts/debugging/symptom-list.md to override -->
+<!-- awf:edit symptom-list: default; create .awf/skills/parts/debugging/symptom-list.md to override -->
 Use when behaviour is wrong and the cause is not yet known: unexpected output, test failures, state inconsistencies, build failures, or regressions. Skip only for a one-line fix whose failing test already exists and whose cause is obvious.
 
 
@@ -26,7 +26,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
-<!-- awf:edit debugging-surfaces — from .awf/skills/parts/debugging/debugging-surfaces.md -->
+<!-- awf:edit debugging-surfaces: from .awf/skills/parts/debugging/debugging-surfaces.md -->
 3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Go-specific surfaces to consider:
 
    - **`go test -run TestX -v ./pkg/...`**: run a single test verbosely; the output shows which assertion failed and what was expected vs. actual.
@@ -41,7 +41,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
    Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
 
-<!-- awf:edit test-isolation — default; create .awf/skills/parts/debugging/test-isolation.md to override -->
+<!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
 4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
 
 
@@ -49,13 +49,13 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 6. **Hand off.** When the root cause is confirmed and the failing test is in place, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.
 
-<!-- awf:edit oracle-invariant — default; create .awf/skills/parts/debugging/oracle-invariant.md to override -->
+<!-- awf:edit oracle-invariant: default; create .awf/skills/parts/debugging/oracle-invariant.md to override -->
 ## Oracle invariant
 
 The oracle defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
 
 
-<!-- awf:edit devdb-note — default; create .awf/skills/parts/debugging/devdb-note.md to override -->
+<!-- awf:edit devdb-note: default; create .awf/skills/parts/debugging/devdb-note.md to override -->
 ## Dev environment note
 
 Development data stores are disposable. Do not attempt to preserve or restore dev state when investigating; rebuild from a known-good baseline if the environment becomes inconsistent.
@@ -66,7 +66,7 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
 
-<!-- awf:edit red-flags — default; create .awf/skills/parts/debugging/red-flags.md to override -->
+<!-- awf:edit red-flags: default; create .awf/skills/parts/debugging/red-flags.md to override -->
 ## Red flags
 
 These thoughts mean stop. You're rationalizing:
@@ -78,5 +78,5 @@ These thoughts mean stop. You're rationalizing:
 | "The expected value looks wrong. I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
 | "It's just a flaky environment, retry." | Infrastructure down is not a bug to code around. Stop and report it. |
 
-<!-- awf:edit memory-checkpoint — default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
+<!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.

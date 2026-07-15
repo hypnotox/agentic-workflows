@@ -4,7 +4,7 @@
 This document is the authoritative reference for AI agents working in the `sundial`
 repository. Read it before taking any action; keep it current as decisions evolve.
 
-<!-- awf:edit awf-setup — default; create .awf/parts/agents-doc/awf-setup.md to override -->
+<!-- awf:edit awf-setup: default; create .awf/parts/agents-doc/awf-setup.md to override -->
 ## Working with awf
 
 This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
@@ -16,13 +16,13 @@ This project's rendered skills, agents, and docs (and this guide) are produced b
 
 See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 
-<!-- awf:edit you-and-this-project — default; create .awf/parts/agents-doc/you-and-this-project.md to override -->
+<!-- awf:edit you-and-this-project: default; create .awf/parts/agents-doc/you-and-this-project.md to override -->
 ## You and this project
 
 <!-- Authoring: see agents-md-standard.md for the agent's ownership stance in 2-3 sentences. -->
 You are a developer on `sundial`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.
 
-<!-- awf:edit identity — from .awf/parts/agents-doc/identity.md -->
+<!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
 `sundial` is a tiny Go CLI that prints a week of approximate sunrise and sunset
@@ -32,7 +32,7 @@ enclosing awf repository. The fiction is deliberately small (two internal packag
 and a `main`) so the workflow artifacts around it stay legible.
 
 
-<!-- awf:edit invariants — default; create .awf/parts/agents-doc/invariants.md to override -->
+<!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
 ## Invariants
 
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
@@ -45,7 +45,7 @@ Hard rules every change must respect:
 - **Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists. (ADR-0002)
 - **Conventional Commits, scopes `almanac`, `schedule`, `cli`, `docs`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
 
-<!-- awf:edit workflow — default; create .awf/parts/agents-doc/workflow.md to override -->
+<!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
 Canonical chain for non-trivial work:
@@ -60,7 +60,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
-<!-- awf:edit working-memory — default; create .awf/parts/agents-doc/working-memory.md to override -->
+<!-- awf:edit working-memory: default; create .awf/parts/agents-doc/working-memory.md to override -->
 ## Working memory
 
 Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
@@ -70,14 +70,14 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 - **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
 - **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue. Delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
 
-<!-- awf:edit commands — default; create .awf/parts/agents-doc/commands.md to override -->
+<!-- awf:edit commands: default; create .awf/parts/agents-doc/commands.md to override -->
 ## Commands
 
 ```
 go run ./cmd/sundial 52.5 13.4: print this week's sun table for Berlin
 ```
 
-<!-- awf:edit document-map — default; create .awf/parts/agents-doc/document-map.md to override -->
+<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->
 ## Document map
 
 - **ADR index:** [docs/decisions/README.md](docs/decisions/README.md), architecture decisions and lifecycle.

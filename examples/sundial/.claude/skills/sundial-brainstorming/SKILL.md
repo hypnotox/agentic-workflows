@@ -6,22 +6,22 @@ description: Use before any non-trivial sundial work (new feature, refactor, bug
 
 # sundial-brainstorming
 
-<!-- awf:edit preamble — default; create .awf/skills/parts/brainstorming/preamble.md to override -->
+<!-- awf:edit preamble: default; create .awf/skills/parts/brainstorming/preamble.md to override -->
 The project's brainstorming skill. The design lands in the ADR (if load-bearing) or the plan (if not), never in a separate spec document.
 
-<!-- awf:edit when-to-invoke — default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
+<!-- awf:edit when-to-invoke: default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
 ## When to invoke
 
 Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exceptions: typo/formatting fix, one-line bugfix with an already-failing test, mechanical follow-up to a just-merged plan.
 
-<!-- awf:edit procedure — default; create .awf/skills/parts/brainstorming/procedure.md to override -->
+<!-- awf:edit procedure: default; create .awf/skills/parts/brainstorming/procedure.md to override -->
 ## Procedure
 
 Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles; create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
 
 1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
 
-<!-- awf:edit example-clarifying-questions — from .awf/skills/parts/brainstorming/example-clarifying-questions.md -->
+<!-- awf:edit example-clarifying-questions: from .awf/skills/parts/brainstorming/example-clarifying-questions.md -->
 2. **Ask clarifying questions, one at a time.** For sundial that usually means:
    which surface moves (model, schedule, CLI), does accuracy change (ADR-0001 caps
    it at minutes), and would a new dependency arrive (ADR-0001's zero-dependency
@@ -31,13 +31,13 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
-<!-- awf:edit design-sections — default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
+<!-- awf:edit design-sections: default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
 4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries as relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
 
-<!-- awf:edit no-spec-rule — default; create .awf/skills/parts/brainstorming/no-spec-rule.md to override -->
+<!-- awf:edit no-spec-rule: default; create .awf/skills/parts/brainstorming/no-spec-rule.md to override -->
 5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `docs/decisions/README.md` for when an ADR is warranted.
 
-<!-- awf:edit grounding-check-output-format — default; create .awf/skills/parts/brainstorming/grounding-check-output-format.md to override -->
+<!-- awf:edit grounding-check-output-format: default; create .awf/skills/parts/brainstorming/grounding-check-output-format.md to override -->
 6. **Run a single grounding-check subagent.** Once the user has agreed the design, dispatch ONE fresh-context subagent for exploration (read-only by default; allow it to run a command only when the grounding-check needs to execute one rather than read files). The subagent does NOT see this conversation; it works from a self-contained brief and returns findings. Synthesise the dispatch brief inline in the subagent prompt. Do NOT write it to a file; the only on-disk record of the brainstorm is the evolving design brief in the working-memory file.
 
    Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the touched files/packages plus their owning domains, backed invariants, and related ADRs (paste the output of `awf context <touched paths>` rather than reconstructing it), the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
@@ -53,10 +53,10 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 
    Advisory and single-pass: never gates, rewrites, or commits. No automated re-review loop. Skip only for the narrow exceptions at the top.
 
-<!-- awf:edit grounding-check-dispatch-template — default; create .awf/skills/parts/brainstorming/grounding-check-dispatch-template.md to override -->
+<!-- awf:edit grounding-check-dispatch-template: default; create .awf/skills/parts/brainstorming/grounding-check-dispatch-template.md to override -->
 
 
-<!-- awf:edit terminal-step — default; create .awf/skills/parts/brainstorming/terminal-step.md to override -->
+<!-- awf:edit terminal-step: default; create .awf/skills/parts/brainstorming/terminal-step.md to override -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
    - **Load-bearing + complex** → invoke `sundial-proposing-adr` first (which chains through `sundial-reviewing-adr`); once the ADR(s) are settled, invoke `sundial-writing-plans`.
    - **Load-bearing + simple** → invoke `sundial-proposing-adr` only; implement directly after the ADR is committed, then invoke `sundial-reviewing-impl`.
@@ -65,13 +65,13 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
-<!-- awf:edit definitions — default; create .awf/skills/parts/brainstorming/definitions.md to override -->
+<!-- awf:edit definitions: default; create .awf/skills/parts/brainstorming/definitions.md to override -->
 ## Definitions
 
 - **"Load-bearing"** means the project must remember this decision: new package boundary, auth model change, non-trivial new dependency, workflow rule change, new top-level directory. See `docs/decisions/README.md` "When to write an ADR".
 - **"Complex"** means multi-commit implementation, interdependent steps, or any change where a future reader (or you on session resume) would benefit from knowing the per-step sequence. See `docs/workflow.md`.
 
-<!-- awf:edit anti-patterns — default; create .awf/skills/parts/brainstorming/anti-patterns.md to override -->
+<!-- awf:edit anti-patterns: default; create .awf/skills/parts/brainstorming/anti-patterns.md to override -->
 ## Anti-patterns to avoid
 
 - Diving into code before the brainstorm completes.

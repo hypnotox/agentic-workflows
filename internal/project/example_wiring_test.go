@@ -61,7 +61,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 		`"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`, // awf-owned dispatch
 		"context",      // the verb the hand-written runner was missing (ADR-0092)
 		"go vet ./...", // sundial's ported gate verb, preserved in the in-place section
-		"# awf:edit-in-place runner-project-verbs — ",
+		"# awf:edit-in-place runner-project-verbs: ",
 	} {
 		if !strings.Contains(x, want) {
 			t.Errorf("rendered examples/sundial/x missing %q", want)

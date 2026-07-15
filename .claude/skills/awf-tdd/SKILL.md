@@ -8,7 +8,7 @@ description: Use to write the failing test before the implementation change in a
 
 The test-first discipline as a project-owned task skill.
 
-<!-- awf:edit surfaces — default; create .awf/skills/parts/tdd/surfaces.md to override -->
+<!-- awf:edit surfaces: default; create .awf/skills/parts/tdd/surfaces.md to override -->
 ## Pick the right test surface
 - **Package unit tests** → Go _test.go in `internal/<pkg>`
 - **Template golden tests** → render assertions in `internal/project/spine_test.go`
@@ -22,11 +22,11 @@ The test-first discipline as a project-owned task skill.
 3. Implement the minimal change to pass.
 4. Run the gate: `./x gate`.
 
-<!-- awf:edit notes — default; create .awf/skills/parts/tdd/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/tdd/notes.md to override -->
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
 
-<!-- awf:edit red-flags — default; create .awf/skills/parts/tdd/red-flags.md to override -->
+<!-- awf:edit red-flags: default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags
 
 These thoughts mean stop; you're rationalizing:

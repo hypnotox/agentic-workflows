@@ -39,7 +39,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Universal lenses
 
-<!-- awf:edit universal-lenses — default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every plan:
 
 1. **scope-completeness**: every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
@@ -54,7 +54,7 @@ Apply all five lenses to every plan:
 
 ## Project-specific focus items
 
-<!-- awf:edit project-focus — default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
+<!-- awf:edit project-focus: default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
 **step-exactness**: every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)
 
@@ -77,7 +77,7 @@ Apply all five lenses to every plan:
 
 ## Doc-currency checklist
 
-<!-- awf:edit doc-currency — default; create .awf/agents/parts/plan-reviewer/doc-currency.md to override -->
+<!-- awf:edit doc-currency: default; create .awf/agents/parts/plan-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the plan does not include a same-commit task to update the listed artifact:
 
 - docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
@@ -86,7 +86,7 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 
 ## Resync mode
 
-<!-- awf:edit resync-note — default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
+<!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
 When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The other three lenses (`executability`, `convention-alignment`, `testing-discipline`) already ran during the initial plan review and need not re-run unless explicitly requested.
 
 Resync mode is triggered by the `awf-reviewing-plan-resync` skill after the linked ADR review converges. Its purpose is to catch plan-vs-finalised-ADR drift introduced by changes the ADR review made before settling.

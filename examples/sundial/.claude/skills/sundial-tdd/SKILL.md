@@ -8,7 +8,7 @@ description: Use to write the failing test before the implementation change in s
 
 The test-first discipline as a project-owned task skill.
 
-<!-- awf:edit surfaces — default; create .awf/skills/parts/tdd/surfaces.md to override -->
+<!-- awf:edit surfaces: default; create .awf/skills/parts/tdd/surfaces.md to override -->
 ## Pick the right test surface
 - **Unit** → fast isolated test in `beside the code under test`
 - **Integration** → cross-component test in `the project's integration suite`
@@ -22,7 +22,7 @@ The test-first discipline as a project-owned task skill.
 3. Implement the minimal change to pass.
 4. Run the gate: `./x gate`.
 
-<!-- awf:edit notes — from .awf/skills/parts/tdd/notes.md -->
+<!-- awf:edit notes: from .awf/skills/parts/tdd/notes.md -->
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
 
@@ -30,7 +30,7 @@ Sundial-specific: the almanac model is pure; every model change starts with a
 failing table-driven case in `internal/almanac`, no exceptions.
 
 
-<!-- awf:edit red-flags — default; create .awf/skills/parts/tdd/red-flags.md to override -->
+<!-- awf:edit red-flags: default; create .awf/skills/parts/tdd/red-flags.md to override -->
 ## Red flags
 
 These thoughts mean stop; you're rationalizing:

@@ -10,24 +10,24 @@ Invoked as the independent review step of the implementation phase. Dispatches t
 
 ## When this skill fires
 
-<!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
+<!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of awf-executing-plans or awf-subagent-driven-development, after all code-touching commits have landed.
 
 **Skip when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
 
 ## Procedure
 
-<!-- awf:edit sha-range-detection — default; create .awf/skills/parts/reviewing-impl/sha-range-detection.md to override -->
+<!-- awf:edit sha-range-detection: default; create .awf/skills/parts/reviewing-impl/sha-range-detection.md to override -->
 1. **Determine the session SHA range.**
    - `headSha` = `git rev-parse HEAD`.
    - `baseSha` = commit before the first implementation commit of this session.
    - If `git log ${baseSha}..${headSha} --oneline | wc -l` returns more than 20, prompt the user for the actual session boundary.
    - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^docs/plans/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
 
-<!-- awf:edit docs-only-check — default; create .awf/skills/parts/reviewing-impl/docs-only-check.md to override -->
+<!-- awf:edit docs-only-check: default; create .awf/skills/parts/reviewing-impl/docs-only-check.md to override -->
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
-<!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
+<!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
 3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
@@ -36,16 +36,16 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
    The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
-<!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
+<!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
    - **user-decision**: present to the user and wait.
 
-<!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
+<!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit.
 
-<!-- awf:edit run-audit — from .awf/skills/parts/reviewing-impl/run-audit.md -->
+<!-- awf:edit run-audit: from .awf/skills/parts/reviewing-impl/run-audit.md -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
    `awf audit` (or this project's runner alias for it) over the branch. `Error` findings block
    this review from concluding: resolve them or escalate them as user-decision items before
@@ -61,17 +61,17 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    not run the gate.
 
 
-<!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
+<!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
 7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
-<!-- awf:edit hand-off — default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
+<!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Invoke `awf-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.
 
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 
-<!-- awf:edit notes — default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `awf-executing-plans` / `awf-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed; this skill does not flip it.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

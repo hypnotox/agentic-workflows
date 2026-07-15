@@ -10,49 +10,49 @@ description: >
 
 # sundial-reviewing-adr
 
-<!-- awf:edit when-fires — default; create .awf/skills/parts/reviewing-adr/when-fires.md to override -->
+<!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-adr/when-fires.md to override -->
 ## When this skill fires
 
 Terminal step of `sundial-proposing-adr`. Invoked once the ADR file is written and committed (status `Proposed`). The `adr-reviewer` subagent is a report-only judge: it reads the ADR, runs its internal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
 ## Procedure
 
-<!-- awf:edit procedure — default; create .awf/skills/parts/reviewing-adr/procedure.md to override -->
+<!-- awf:edit procedure: default; create .awf/skills/parts/reviewing-adr/procedure.md to override -->
 1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `docs/decisions/` matching the `NNNN-*.md` pattern.
 
-<!-- awf:edit artifact-path-detection — default; create .awf/skills/parts/reviewing-adr/artifact-path-detection.md to override -->
+<!-- awf:edit artifact-path-detection: default; create .awf/skills/parts/reviewing-adr/artifact-path-detection.md to override -->
 2. **Path detection detail.** When no explicit path is given: list `docs/decisions/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
-<!-- awf:edit dispatch-subagent — default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
+<!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
 3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
 
-<!-- awf:edit classify-route-findings — default; create .awf/skills/parts/reviewing-adr/classify-route-findings.md to override -->
+<!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-adr/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `adr-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
    - **mechanical**: this skill applies directly.
    - **reasoned**: this skill applies with a one-line rationale.
    - **user-decision**: present to the user and wait.
 
-<!-- awf:edit apply-fixes-commit — default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
+<!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `almanac`, `schedule`, `cli`, `docs`.
 
-<!-- awf:edit re-review-loop — default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
+<!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
 6. **Verify pass.** After applying fixes, dispatch exactly one fresh `adr-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
-<!-- awf:edit status-flip — default; create .awf/skills/parts/reviewing-adr/status-flip.md to override -->
+<!-- awf:edit status-flip: default; create .awf/skills/parts/reviewing-adr/status-flip.md to override -->
 7. **Do not flip the ADR status here.** The ADR stays `Proposed` through the implementation sequence; the flip to `Accepted`/`Implemented` is owned by the implementation step's final commit (`sundial-executing-plans` / `sundial-subagent-driven-development`, or `sundial-adr-lifecycle` for the no-plan direct-implementation case). "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 
-<!-- awf:edit hand-off-to-resync — default; create .awf/skills/parts/reviewing-adr/hand-off-to-resync.md to override -->
+<!-- awf:edit hand-off-to-resync: default; create .awf/skills/parts/reviewing-adr/hand-off-to-resync.md to override -->
 8. **Hand off to plan resync.** After the ADR review converges (the ADR remains `Proposed`), check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `sundial-reviewing-plan-resync` against that plan. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): invoke `sundial-writing-plans` when planning is warranted, else proceed directly to implementation.
 
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 
-<!-- awf:edit notes — default; create .awf/skills/parts/reviewing-adr/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/reviewing-adr/notes.md to override -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `docs/workflow.md` for full ADR lifecycle rules and the canonical workflow chain.
 - The `adr-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.

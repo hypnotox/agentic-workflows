@@ -6,13 +6,13 @@ description: Use to execute a written sundial plan by dispatching one subagent p
 
 # sundial-subagent-driven-development
 
-<!-- awf:edit positioning — default; create .awf/skills/parts/subagent-driven-development/positioning.md to override -->
+<!-- awf:edit positioning: default; create .awf/skills/parts/subagent-driven-development/positioning.md to override -->
 The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `sundial-executing-plans`.
 
-<!-- awf:edit per-task-review-note — default; create .awf/skills/parts/subagent-driven-development/per-task-review-note.md to override -->
+<!-- awf:edit per-task-review-note: default; create .awf/skills/parts/subagent-driven-development/per-task-review-note.md to override -->
 **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task; catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `sundial-reviewing-impl` as the only quality gate; no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
 
-<!-- awf:edit when-to-invoke — default; create .awf/skills/parts/subagent-driven-development/when-to-invoke.md to override -->
+<!-- awf:edit when-to-invoke: default; create .awf/skills/parts/subagent-driven-development/when-to-invoke.md to override -->
 ## When to invoke
 
 Invoke when:
@@ -26,20 +26,20 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 
 ## Procedure
 
-<!-- awf:edit procedure-resolve-plan — default; create .awf/skills/parts/subagent-driven-development/procedure-resolve-plan.md to override -->
+<!-- awf:edit procedure-resolve-plan: default; create .awf/skills/parts/subagent-driven-development/procedure-resolve-plan.md to override -->
 1. **Resolve the plan path.** Use the most-recent mutable plan under `docs/plans/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented`, independent of any linked ADR's status.
 
-<!-- awf:edit procedure-raise-concerns — default; create .awf/skills/parts/subagent-driven-development/procedure-raise-concerns.md to override -->
+<!-- awf:edit procedure-raise-concerns: default; create .awf/skills/parts/subagent-driven-development/procedure-raise-concerns.md to override -->
 2. **Read the plan, raise concerns before dispatching.** Critical gaps surface to the user before any subagent runs: missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N"). Do not guess.
 
-<!-- awf:edit procedure-extract-context — default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
+<!-- awf:edit procedure-extract-context: default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
 3. **Extract each task's full text + scene-setting context.** The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
    - The project conventions the subagent must follow (see next step).
 
-<!-- awf:edit dispatch-conventions — default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
+<!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
 4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **`./x gate` per commit.** Fast tier by default; `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `docs/workflow.md`.
@@ -47,33 +47,33 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 
-<!-- awf:edit procedure-status-handling — default; create .awf/skills/parts/subagent-driven-development/procedure-status-handling.md to override -->
+<!-- awf:edit procedure-status-handling: default; create .awf/skills/parts/subagent-driven-development/procedure-status-handling.md to override -->
 5. **Handle the implementer's status:**
    - **`DONE`** → run the per-task review if present, then advance to the next task.
    - **`DONE_WITH_CONCERNS`** → read the concerns before proceeding. If they are about correctness or scope, address them before review. If they are observations, note them and proceed.
    - **`NEEDS_CONTEXT`** → provide the missing context and re-dispatch the implementer.
    - **`BLOCKED`** → assess: context gap → re-dispatch with more context; task too large → escalate; reasoning failure → re-dispatch with a more capable model, or escalate. Never blindly retry without changes.
 
-<!-- awf:edit per-task-review — default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
+<!-- awf:edit per-task-review: default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
 6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 
-<!-- awf:edit final-task-adr-flip — default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
+<!-- awf:edit final-task-adr-flip: default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
 7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it; the ADR commit runs the gate, so the drift test must pass.
 
-<!-- awf:edit terminal-step — default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
+<!-- awf:edit terminal-step: default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
 8. **Terminal step: invoke `sundial-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 
-<!-- awf:edit notes — default; create .awf/skills/parts/subagent-driven-development/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/subagent-driven-development/notes.md to override -->
 - **Sequential dispatch only, never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
 - The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
 - One concern per commit; auto-commit when green.
 - **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.
 
-<!-- awf:edit red-flags — default; create .awf/skills/parts/subagent-driven-development/red-flags.md to override -->
+<!-- awf:edit red-flags: default; create .awf/skills/parts/subagent-driven-development/red-flags.md to override -->
 ## Red flags
 
 These thoughts mean stop; you're rationalizing:

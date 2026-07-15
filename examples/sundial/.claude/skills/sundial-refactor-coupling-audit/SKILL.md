@@ -12,7 +12,7 @@ description: >
 
 A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
 
-<!-- awf:edit when-to-invoke — default; create .awf/skills/parts/refactor-coupling-audit/when-to-invoke.md to override -->
+<!-- awf:edit when-to-invoke: default; create .awf/skills/parts/refactor-coupling-audit/when-to-invoke.md to override -->
 ## When to invoke
 
 Before finalising the Context section of a refactor ADR that:
@@ -27,12 +27,12 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 
 ## Procedure
 
-<!-- awf:edit audit-shape-selection — default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
+<!-- awf:edit audit-shape-selection: default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
 ### Audit shape
 
 **Pick the audit shape.** For a small-scope refactor (1–3 files), run the audit inline as a sequence of `grep` and file reads in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single fresh-context exploration subagent to absorb the grep transcript noise.
 
-<!-- awf:edit category-1-top-level-files — default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
+<!-- awf:edit category-1-top-level-files: default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
 ### 1. Top-level package files
 
 Grep the **original** package for concrete type references, function calls, and method invocations against each symbol being moved.
@@ -45,7 +45,7 @@ For each hit, decide: does this caller need to update its import path after the 
 grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 
-<!-- awf:edit category-2-sibling-tests — default; create .awf/skills/parts/refactor-coupling-audit/category-2-sibling-tests.md to override -->
+<!-- awf:edit category-2-sibling-tests: default; create .awf/skills/parts/refactor-coupling-audit/category-2-sibling-tests.md to override -->
 ### 2. Sibling test files
 
 Grep your language's test files (e.g. `*_test.go`, `*.spec.ts`) separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
@@ -57,7 +57,7 @@ Capture **N** (production call sites) and **M** (test call sites) separately. M 
 grep -rn "<MovedSymbol>" <original-package-path>/ --include="<test-file-glob>"
 ```
 
-<!-- awf:edit category-3-subpackages — default; create .awf/skills/parts/refactor-coupling-audit/category-3-subpackages.md to override -->
+<!-- awf:edit category-3-subpackages: default; create .awf/skills/parts/refactor-coupling-audit/category-3-subpackages.md to override -->
 ### 3. Subpackages
 
 Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
@@ -69,7 +69,7 @@ grep -rn "<module-prefix>/<original-package-path>" <original-package-path>/
 
 For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).
 
-<!-- awf:edit category-4-codegen — default; create .awf/skills/parts/refactor-coupling-audit/category-4-codegen.md to override -->
+<!-- awf:edit category-4-codegen: default; create .awf/skills/parts/refactor-coupling-audit/category-4-codegen.md to override -->
 ### 4. Codegen emit sites
 
 If any code generation refers to the symbols being moved (by path or identifier), the move forces edits to the codegen configuration as well.
@@ -84,7 +84,7 @@ grep -rn "go:generate" | grep -i "<symbol-or-package>"
 
 <!-- customise: project-specific codegen tables, emit-site files, or derived-table regeneration commands that reference symbols by name -->
 
-<!-- awf:edit category-5-constructors — default; create .awf/skills/parts/refactor-coupling-audit/category-5-constructors.md to override -->
+<!-- awf:edit category-5-constructors: default; create .awf/skills/parts/refactor-coupling-audit/category-5-constructors.md to override -->
 ### 5. Constructor-init paths
 
 Symbols called from constructors or initialisation paths create **transitive** imports that the destination package may not be allowed to add (a new import could introduce a cycle).
@@ -98,7 +98,7 @@ Trace each constructor up to its caller: does the caller's package end up import
 
 <!-- customise: project-specific constructor or application-wiring entry points to check for transitive import risks -->
 
-<!-- awf:edit category-6-init-visibility — default; create .awf/skills/parts/refactor-coupling-audit/category-6-init-visibility.md to override -->
+<!-- awf:edit category-6-init-visibility: default; create .awf/skills/parts/refactor-coupling-audit/category-6-init-visibility.md to override -->
 ### 6. Initialization ordering and cross-module visibility
 
 Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability, e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
@@ -112,14 +112,14 @@ For each method: is it called from a sibling package? Then it needs to remain re
 
 Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions); registry seeding and global-state setup are common load-bearing sites.
 
-<!-- awf:edit test-coupling-planning-rule — default; create .awf/skills/parts/refactor-coupling-audit/test-coupling-planning-rule.md to override -->
+<!-- awf:edit test-coupling-planning-rule: default; create .awf/skills/parts/refactor-coupling-audit/test-coupling-planning-rule.md to override -->
 ## Test-coupling planning rule
 
 When moving a source file with **N** tests co-located, also enumerate the **M** tests in *other* files that use the moved symbols as setup helpers. **M is typically larger than N.** A common surprise: production code moves cleanly (N small), test code explodes (M large), and the refactor ships with a sprawling test diff that was not on the radar.
 
 Capture both numbers in the ADR Context section.
 
-<!-- awf:edit output-format — default; create .awf/skills/parts/refactor-coupling-audit/output-format.md to override -->
+<!-- awf:edit output-format: default; create .awf/skills/parts/refactor-coupling-audit/output-format.md to override -->
 ## Output
 
 The audit's output goes into the ADR's **Context** section under a "Coupling audit" subsection listing each category before the Decision is drafted:
@@ -135,12 +135,12 @@ The audit's output goes into the ADR's **Context** section under a "Coupling aud
 - Cross-package methods / init(): <list or "none">
 ```
 
-<!-- awf:edit scope-shrink-rule — default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->
+<!-- awf:edit scope-shrink-rule: default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->
 ## Scope shrink rule
 
 If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN, defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
 
-<!-- awf:edit notes — default; create .awf/skills/parts/refactor-coupling-audit/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/refactor-coupling-audit/notes.md to override -->
 ## Notes
 
 1. This skill is the authoritative source for the audit categories.

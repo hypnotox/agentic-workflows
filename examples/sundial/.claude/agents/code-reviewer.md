@@ -37,7 +37,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Universal lenses
 
-<!-- awf:edit universal-lenses — default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
@@ -52,7 +52,7 @@ Apply all five lenses to every implementation diff:
 
 ## Project-specific focus items
 
-<!-- awf:edit project-focus — default; create .awf/agents/parts/code-reviewer/project-focus.md to override -->
+<!-- awf:edit project-focus: default; create .awf/agents/parts/code-reviewer/project-focus.md to override -->
 
 - error paths: every returned error is checked or explicitly ignored with a stated reason
 
@@ -68,7 +68,7 @@ Apply all five lenses to every implementation diff:
 
 ## Doc-currency checklist
 
-<!-- awf:edit doc-currency — default; create .awf/agents/parts/code-reviewer/doc-currency.md to override -->
+<!-- awf:edit doc-currency: default; create .awf/agents/parts/code-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the diff does not include a same-commit update of the listed artifact:
 
 - the change updates every document that states the old behaviour, in the same commit

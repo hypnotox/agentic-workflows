@@ -8,14 +8,14 @@ description: Terminal step of an implementation, run by the main thread. Reflect
 
 The closing step of the implementation phase, run by the **main thread** (not a dispatched subagent) because it depends on the full session: the review findings, the friction hit while implementing, and which issues recurred. It closes the feedback loop by turning a recurring, codifiable finding into a durable check instead of letting it resurface every session.
 
-<!-- awf:edit when-fires — default; create .awf/skills/parts/retrospective/when-fires.md to override -->
+<!-- awf:edit when-fires: default; create .awf/skills/parts/retrospective/when-fires.md to override -->
 ## When this skill fires
 
 Terminal step of the implementation phase, after `sundial-reviewing-impl` has concluded. It runs in the main thread and sees the whole session, so it catches what a fresh-context review cannot.
 
 **Skip a trivial session**: a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
 
-<!-- awf:edit procedure — default; create .awf/skills/parts/retrospective/procedure.md to override -->
+<!-- awf:edit procedure: default; create .awf/skills/parts/retrospective/procedure.md to override -->
 ## Procedure
 
 1. **Reflect on the session.** Gather its signals: the `sundial-reviewing-impl` findings, the pitfalls or friction hit while implementing, and any issue that came up more than once.
@@ -28,12 +28,12 @@ Terminal step of the implementation phase, after `sundial-reviewing-impl` has co
 
 5. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists: the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
 
-<!-- awf:edit recurrence-signal — default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
+<!-- awf:edit recurrence-signal: default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
 ## Recurrence signal
 
 An observation is a **promotion candidate** when the main thread saw it recur within this session, or when it matches something already recorded (`docs/pitfalls.md` or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
 
-<!-- awf:edit promotion-ladder — default; create .awf/skills/parts/retrospective/promotion-ladder.md to override -->
+<!-- awf:edit promotion-ladder: default; create .awf/skills/parts/retrospective/promotion-ladder.md to override -->
 ## The promotion ladder
 
 Route each recurring, codifiable observation to the **strongest** rung it can support:
@@ -43,7 +43,7 @@ Route each recurring, codifiable observation to the **strongest** rung it can su
 3. **Code-review focus item**: a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
 4. **Pitfalls note**: tricky knowledge that is not mechanically checkable. Add an entry to `docs/pitfalls.md`.
 
-<!-- awf:edit control — default; create .awf/skills/parts/retrospective/control.md to override -->
+<!-- awf:edit control: default; create .awf/skills/parts/retrospective/control.md to override -->
 ## Control
 
 The main thread controls the promotion effort, never an unverified auto-promotion, never delegated to a subagent:
@@ -51,7 +51,7 @@ The main thread controls the promotion effort, never an unverified auto-promotio
 - **Codify now** when the rung is cheap: a gate test, a focus item, a pitfalls note.
 - **Defer as a follow-up** when the rung is expensive. A rung-1 (invariant) promotion is almost always deferred, because it spins the full decision-to-implementation chain; record it as an explicit follow-up rather than derailing the current session.
 
-<!-- awf:edit notes — default; create .awf/skills/parts/retrospective/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/retrospective/notes.md to override -->
 ## Notes
 
 - Reflection is cheap; promotion is deliberate. Most sessions record a thing or two and promote nothing; that is the expected steady state.

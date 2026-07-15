@@ -83,7 +83,7 @@ func TestRunnerStructure(t *testing.T) {
 	// The two adopter regions are #-comment in-place pointers (shell comment
 	// style), never HTML.
 	for _, name := range []string{"runner-setup", "runner-project-verbs"} {
-		want := "# awf:edit-in-place " + name + " — "
+		want := "# awf:edit-in-place " + name + ": "
 		if !strings.Contains(c, want) {
 			t.Errorf("missing #-style in-place pointer for %q:\n%s", name, c)
 		}

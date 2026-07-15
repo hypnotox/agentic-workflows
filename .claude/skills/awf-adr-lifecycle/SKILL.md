@@ -13,7 +13,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 
 ## The states
 
-<!-- awf:edit states — default; create .awf/skills/parts/adr-lifecycle/states.md to override -->
+<!-- awf:edit states: default; create .awf/skills/parts/adr-lifecycle/states.md to override -->
 | State | Meaning | Mutability |
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
@@ -24,7 +24,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 
 ## Transitions
 
-<!-- awf:edit transitions — default; create .awf/skills/parts/adr-lifecycle/transitions.md to override -->
+<!-- awf:edit transitions: default; create .awf/skills/parts/adr-lifecycle/transitions.md to override -->
 - `Proposed → Accepted` lands in the commit that finalises the design.
 - `Accepted → Implemented` lands in the final commit of the implementation sequence.
 - `Proposed → Implemented` directly (skipping `Accepted`) is allowed when design and implementation land together in a single commit.
@@ -32,7 +32,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 
 ## Supersedence flavours
 
-<!-- awf:edit supersedence-full — default; create .awf/skills/parts/adr-lifecycle/supersedence-full.md to override -->
+<!-- awf:edit supersedence-full: default; create .awf/skills/parts/adr-lifecycle/supersedence-full.md to override -->
 ### Full supersedence
 
 The successor replaces the predecessor wholesale. Apply when most of the predecessor is mechanically obsolete.
@@ -41,7 +41,7 @@ The successor replaces the predecessor wholesale. Apply when most of the predece
 - Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; the only allowed edit on a non-Proposed ADR).
 - `docs/decisions/ACTIVE.md` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
 
-<!-- awf:edit supersedence-partial — default; create .awf/skills/parts/adr-lifecycle/supersedence-partial.md to override -->
+<!-- awf:edit supersedence-partial: default; create .awf/skills/parts/adr-lifecycle/supersedence-partial.md to override -->
 ### Partial-item supersedence
 
 The successor overrides specific Decision items or Invariants of the predecessor without replacing it as a whole. Apply when most of the predecessor still holds and only one decision needs revisiting.
@@ -55,22 +55,22 @@ The successor overrides specific Decision items or Invariants of the predecessor
 
 Pick the status transition, then:
 
-<!-- awf:edit procedure-status-edit — default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
+<!-- awf:edit procedure-status-edit: default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
 1. **Edit the ADR's frontmatter `status` field** in place. This is the only allowed in-place edit on a live ADR; the body remains append-only once the ADR leaves `Proposed`.
 
-<!-- awf:edit procedure-predecessor-flip — default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
+<!-- awf:edit procedure-predecessor-flip: default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
 2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
 
-<!-- awf:edit state-doc-update — default; create .awf/skills/parts/adr-lifecycle/state-doc-update.md to override -->
+<!-- awf:edit state-doc-update: default; create .awf/skills/parts/adr-lifecycle/state-doc-update.md to override -->
 3. **Update any domain doc** under `docs/domains` whose domain this ADR materially shifts: refresh the Current state prose if the domain's position has moved. The `## Decisions` index is generated from each ADR's `domains:` field; set that field, and do not hand-maintain a decisions table. Include any prose change in the same commit.
 
-<!-- awf:edit procedure-regen — default; create .awf/skills/parts/adr-lifecycle/procedure-regen.md to override -->
+<!-- awf:edit procedure-regen: default; create .awf/skills/parts/adr-lifecycle/procedure-regen.md to override -->
 4. **Regenerate ACTIVE.md.** Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. Stage the result. Do not hand-edit `ACTIVE.md`; always regenerate and commit it alongside any ADR status change.
 
-<!-- awf:edit procedure-gate — default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
+<!-- awf:edit procedure-gate: default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
 5. **Run the gate (`./x gate`).** The gate's drift test validates that `ACTIVE.md` is in sync with the current ADR frontmatter. If it fails, regenerate and re-stage `ACTIVE.md` before retrying.
 
-<!-- awf:edit commit-templates — default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
+<!-- awf:edit commit-templates: default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
 ## Commit subject templates
 
 Use these subjects for each transition type:
@@ -79,7 +79,7 @@ Use these subjects for each transition type:
 - `<feat|fix|refactor>(<scope>): <subject> (implements NNNN)` for `Accepted → Implemented` in the final implementation commit
 - `docs(adr): supersede NNNN with MMMM <short title>` in the successor's introducing commit; predecessor flip lands here
 
-<!-- awf:edit amendment-while-proposed — default; create .awf/skills/parts/adr-lifecycle/amendment-while-proposed.md to override -->
+<!-- awf:edit amendment-while-proposed: default; create .awf/skills/parts/adr-lifecycle/amendment-while-proposed.md to override -->
 ## Amendment-while-Proposed
 
 While `status: Proposed`, all sections may be amended freely as edge cases or scope refinements surface. Two flavours:
@@ -91,7 +91,7 @@ Once `Accepted` or `Implemented`, the body is frozen; only the `status` field is
 
 ## Notes
 
-<!-- awf:edit notes — default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
+<!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 - **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
 - **`docs/decisions/ACTIVE.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.

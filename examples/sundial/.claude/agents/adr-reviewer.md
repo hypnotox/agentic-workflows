@@ -39,7 +39,7 @@ Severity is informational only; the dispatching skill routes by classification k
 
 ## Universal lenses
 
-<!-- awf:edit universal-lenses — default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
+<!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every ADR:
 
 1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
@@ -54,7 +54,7 @@ Apply all five lenses to every ADR:
 
 ## Project-specific focus items
 
-<!-- awf:edit project-focus — default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
+<!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->
 
 **decision-clarity**: each Decision item is a discrete, implementable commitment a reader could act on without further consultation
 
@@ -65,7 +65,7 @@ Apply all five lenses to every ADR:
 
 ## Doc-currency checklist
 
-<!-- awf:edit doc-currency — default; create .awf/agents/parts/adr-reviewer/doc-currency.md to override -->
+<!-- awf:edit doc-currency: default; create .awf/agents/parts/adr-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the ADR does not commit (in its body) to a same-commit update of the listed artifact:
 
 - every document that states the behaviour this ADR changes is updated in the same commit

@@ -29,8 +29,8 @@ func TestRenderDefault(t *testing.T) {
 		!strings.Contains(out, "run go test ./...") || !strings.Contains(out, "NOTE") {
 		t.Errorf("unexpected output:\n%s", out)
 	}
-	if !strings.Contains(out, "<!-- awf:edit surfaces — default;") ||
-		!strings.Contains(out, "<!-- awf:edit notes — default;") {
+	if !strings.Contains(out, "<!-- awf:edit surfaces: default;") ||
+		!strings.Contains(out, "<!-- awf:edit notes: default;") {
 		t.Errorf("default edit pointers missing:\n%s", out)
 	}
 	// invariant: no-section-marker-leak
@@ -64,7 +64,7 @@ func TestRenderConventionPart(t *testing.T) {
 	if !strings.Contains(out, "CUSTOM {{ .prefix }}") || strings.Contains(out, "NOTE") {
 		t.Errorf("convention part substitution failed:\n%s", out)
 	}
-	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
+	if !strings.Contains(out, "<!-- awf:edit notes: from .awf/x.md -->") {
 		t.Errorf("convention part pointer missing:\n%s", out)
 	}
 }
@@ -78,7 +78,7 @@ func TestEmptyPartRendersEmptyNotDropped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
+	if !strings.Contains(out, "<!-- awf:edit notes: from .awf/x.md -->") {
 		t.Errorf("empty part must keep the section pointer (not dropped):\n%s", out)
 	}
 	if strings.Contains(out, "NOTE") {
@@ -97,7 +97,7 @@ func TestEditPointerStub(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invariant: section-edit-pointer
-	if !strings.Contains(out, "<!-- awf:edit notes — stub; replace by creating .awf/x.md -->") {
+	if !strings.Contains(out, "<!-- awf:edit notes: stub; replace by creating .awf/x.md -->") {
 		t.Errorf("stub default must render the stub pointer:\n%s", out)
 	}
 	asm, parts = Assemble(ParseSections(stubTmpl),
@@ -106,7 +106,7 @@ func TestEditPointerStub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "<!-- awf:edit notes — from .awf/x.md -->") {
+	if !strings.Contains(out, "<!-- awf:edit notes: from .awf/x.md -->") {
 		t.Errorf("part-backed stub section must keep the from-pointer:\n%s", out)
 	}
 	// Non-stub default pointer unchanged (also asserted by TestRenderDefault).
@@ -115,7 +115,7 @@ func TestEditPointerStub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "<!-- awf:edit notes — default;") {
+	if !strings.Contains(out, "<!-- awf:edit notes: default;") {
 		t.Errorf("non-stub default pointer changed:\n%s", out)
 	}
 }
@@ -126,14 +126,14 @@ func TestAssembleInPlaceSection(t *testing.T) {
 
 	// invariant: in-place-pointer-distinct
 	// A non-empty read-back body is emitted verbatim (internal blank line kept)
-	// after the distinct awf:edit-in-place pointer — no re-templating.
+	// after the distinct awf:edit-in-place pointer: no re-templating.
 	body := "line one\n\nline two\n"
 	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: body}}, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "<!-- awf:edit-in-place body — your edits below are preserved across syncs; awf owns the rest -->") {
+	if !strings.Contains(out, "<!-- awf:edit-in-place body: your edits below are preserved across syncs; awf owns the rest -->") {
 		t.Errorf("in-place section must render the awf:edit-in-place pointer:\n%s", out)
 	}
 	if !strings.Contains(out, body) {
@@ -152,7 +152,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "<!-- awf:edit-in-place body —") || !strings.Contains(out, "DEFAULT") {
+	if !strings.Contains(out, "<!-- awf:edit-in-place body:") || !strings.Contains(out, "DEFAULT") {
 		t.Errorf("empty in-place body must fall to the template default:\n%s", out)
 	}
 
@@ -166,7 +166,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	if strings.Contains(out, "DEFAULT") {
 		t.Errorf("an emptied (found) in-place region must not revert to the default:\n%s", out)
 	}
-	if !strings.Contains(out, "<!-- awf:edit-in-place body —") {
+	if !strings.Contains(out, "<!-- awf:edit-in-place body:") {
 		t.Errorf("an emptied in-place region must still render its pointer:\n%s", out)
 	}
 }
@@ -193,7 +193,7 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "# awf:edit-in-place body — your edits below are preserved across syncs; awf owns the rest\n") {
+	if !strings.Contains(out, "# awf:edit-in-place body: your edits below are preserved across syncs; awf owns the rest\n") {
 		t.Errorf("shell target must render a #-comment in-place pointer:\n%s", out)
 	}
 	if strings.Contains(out, "<!-- awf:edit-in-place") {
@@ -213,13 +213,13 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 	}{
 		{"from-part", "<!-- awf:section s -->\nD\n<!-- awf:end -->\n",
 			map[string]SectionPlan{"s": {HasPart: true, PartBody: "P", EditPath: ".awf/s.md"}},
-			"awf:edit s — from .awf/s.md"},
+			"awf:edit s: from .awf/s.md"},
 		{"stub", "<!-- awf:section s stub -->\nD\n<!-- awf:end -->\n",
 			map[string]SectionPlan{"s": {EditPath: ".awf/s.md"}},
-			"awf:edit s — stub; replace by creating .awf/s.md"},
+			"awf:edit s: stub; replace by creating .awf/s.md"},
 		{"default", "<!-- awf:section s -->\nD\n<!-- awf:end -->\n",
 			map[string]SectionPlan{},
-			"awf:edit s — default; create .awf/s.md to override"},
+			"awf:edit s: default; create .awf/s.md to override"},
 	}
 	for _, v := range variants {
 		vsegs := ParseSections(v.tmpl)

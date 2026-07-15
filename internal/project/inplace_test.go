@@ -17,9 +17,9 @@ func TestReadBackInPlaceBody(t *testing.T) {
 	// invariant: in-place-readback
 	t.Run("exact interior, internal blank preserved", func(t *testing.T) {
 		out := "head\n" +
-			"<!-- awf:edit-in-place body — your edits -->\n" +
+			"<!-- awf:edit-in-place body: your edits -->\n" +
 			"line one\n\nline two\n" +
-			"<!-- awf:edit next — default; create y -->\n" +
+			"<!-- awf:edit next: default; create y -->\n" +
 			"tail\n"
 		got, ok := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
 		if !ok || got != "line one\n\nline two" {
@@ -34,11 +34,11 @@ func TestReadBackInPlaceBody(t *testing.T) {
 	})
 
 	t.Run("a pointer-shaped line for a non-registered name does not truncate", func(t *testing.T) {
-		out := "<!-- awf:edit-in-place body — x -->\n" +
-			"before\n<!-- awf:edit bogus — not a registered section -->\nafter\n" +
-			"<!-- awf:edit next — default -->\ntail\n"
+		out := "<!-- awf:edit-in-place body: x -->\n" +
+			"before\n<!-- awf:edit bogus: not a registered section -->\nafter\n" +
+			"<!-- awf:edit next: default -->\ntail\n"
 		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
-		want := "before\n<!-- awf:edit bogus — not a registered section -->\nafter"
+		want := "before\n<!-- awf:edit bogus: not a registered section -->\nafter"
 		if got != want {
 			t.Errorf("boundary matched a non-registered pointer shape\ngot  %q\nwant %q", got, want)
 		}
@@ -46,7 +46,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 
 	// invariant: in-place-spacing-owned
 	t.Run("leading and trailing blank framing trimmed", func(t *testing.T) {
-		out := "<!-- awf:edit-in-place body — x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next — d -->\ntail\n"
+		out := "<!-- awf:edit-in-place body: x -->\n\n \nCONTENT\n\n\n<!-- awf:edit next: d -->\ntail\n"
 		got, _ := readBackInPlaceBody(out, "body", []string{"body", "next"}, render.HTMLComment)
 		if got != "CONTENT" {
 			t.Errorf("framing not trimmed: got %q", got)
@@ -54,7 +54,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 	})
 
 	t.Run("last section reads to EOF", func(t *testing.T) {
-		out := "<!-- awf:edit-in-place body — x -->\nonly content\n"
+		out := "<!-- awf:edit-in-place body: x -->\nonly content\n"
 		got, ok := readBackInPlaceBody(out, "body", []string{"body"}, render.HTMLComment)
 		if !ok || got != "only content" {
 			t.Errorf("got %q ok=%v, want %q", got, ok, "only content")
@@ -65,12 +65,12 @@ func TestReadBackInPlaceBody(t *testing.T) {
 	// #-style pointer and is not truncated by a #-pointer-shaped adopter line.
 	t.Run("hash-comment target", func(t *testing.T) {
 		out := "#!/usr/bin/env bash\n" +
-			"# awf:edit-in-place setup — your edits\n" +
-			"helper() { :; }\n# awf:edit bogus — nope\n" +
-			"# awf:edit dispatch — default; create z\n" +
+			"# awf:edit-in-place setup: your edits\n" +
+			"helper() { :; }\n# awf:edit bogus: nope\n" +
+			"# awf:edit dispatch: default; create z\n" +
 			"case x in esac\n"
 		got, _ := readBackInPlaceBody(out, "setup", []string{"setup", "dispatch"}, render.HashComment)
-		want := "helper() { :; }\n# awf:edit bogus — nope"
+		want := "helper() { :; }\n# awf:edit bogus: nope"
 		if got != want {
 			t.Errorf("hash-style read-back\ngot  %q\nwant %q", got, want)
 		}
@@ -124,9 +124,9 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 
 	// Present output → the section body is read back from disk.
 	out := "banner\n" +
-		"<!-- awf:edit-in-place s — your edits -->\n" +
+		"<!-- awf:edit-in-place s: your edits -->\n" +
 		"adopter line\n\nsecond line\n" +
-		"<!-- awf:edit next — default; create x -->\nN\n"
+		"<!-- awf:edit next: default; create x -->\nN\n"
 	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func setRegion(t *testing.T, content, section, body string) string {
 	start, end := -1, -1
 	for i, ln := range lines {
 		tl := strings.TrimSpace(ln)
-		if strings.HasPrefix(tl, "# awf:edit-in-place "+section+" — ") {
+		if strings.HasPrefix(tl, "# awf:edit-in-place "+section+": ") {
 			start = i
 			continue
 		}
@@ -271,7 +271,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	canonical := "#!/bin/sh\n# awf:edit-in-place s — your edits\nadopter line\n"
+	canonical := "#!/bin/sh\n# awf:edit-in-place s: your edits\nadopter line\n"
 	xPath := filepath.Join(root, "x")
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		"x": {RegenChecked: true, OutputHash: manifest.Hash([]byte(canonical))},
@@ -287,7 +287,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	}
 
 	// An awf-owned region edited on disk → regenerated content differs → hand-edited.
-	tampered := "#!/bin/sh\n# awf owns this and it was TAMPERED\n# awf:edit-in-place s — your edits\nadopter line\n"
+	tampered := "#!/bin/sh\n# awf owns this and it was TAMPERED\n# awf:edit-in-place s: your edits\nadopter line\n"
 	if err := os.WriteFile(xPath, []byte(tampered), 0o644); err != nil {
 		t.Fatal(err)
 	}

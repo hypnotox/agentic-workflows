@@ -23,7 +23,7 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
-<!-- awf:edit pitfalls-check — default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
+<!-- awf:edit pitfalls-check: default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
    Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
@@ -33,19 +33,19 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 5. **Invoke `sundial-reviewing-impl` as the terminal step.**
 
-<!-- awf:edit test-tiers — default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
+<!-- awf:edit test-tiers: default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers
 
 The specific test tiers (unit, integration, e2e, etc.) and their locations are project-specific. Refer to your project's testing guide.
 
 
-<!-- awf:edit oracle-note — default; create .awf/skills/parts/bugfix/oracle-note.md to override -->
+<!-- awf:edit oracle-note: default; create .awf/skills/parts/bugfix/oracle-note.md to override -->
 ## Oracle invariant
 
 The oracle is non-negotiable. A fix that adjusts expected output instead of the root cause is itself a regression.
 
 
-<!-- awf:edit memory-checkpoint — default; create .awf/skills/parts/bugfix/memory-checkpoint.md to override -->
+<!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/bugfix/memory-checkpoint.md to override -->
 **Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
