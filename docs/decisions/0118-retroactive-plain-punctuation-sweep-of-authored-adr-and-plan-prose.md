@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [doc-standard, adr-lifecycle, plan-taxonomy, active-md, verification-discipline]
-related: [28, 113, 115, 116, 117]
+related: [28, 113, 115, 116, 117, 119]
 domains: [adr-system, rendering, tooling]
 ---
 # ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose

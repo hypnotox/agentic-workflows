@@ -121,6 +121,10 @@
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) (Implemented)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md) (Implemented)
 
+## Proposed
+
+- [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)

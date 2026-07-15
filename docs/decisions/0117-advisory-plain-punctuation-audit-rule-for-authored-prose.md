@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [audit-rules, doc-standard, commit-conformance]
-related: [17, 107, 113, 115]
+related: [17, 107, 113, 115, 119]
 domains: [tooling, adr-system]
 ---
 # ADR-0117: Advisory plain-punctuation audit rule for authored prose
