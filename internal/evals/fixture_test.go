@@ -43,8 +43,8 @@ func writeList(b *strings.Builder, key string, vals []string) {
 }
 
 // fullCatalogConfig builds a .awf/config.yaml enabling every catalog skill,
-// agent, and doc — the deliberate inverse of the curated awf init default
-// (ADR-0022) — so the rendered set exercises every workflow-chain seam. The
+// agent, and doc - the deliberate inverse of the curated awf init default
+// (ADR-0022) - so the rendered set exercises every workflow-chain seam. The
 // enabled set is derived from the catalog (never hand-listed) so it cannot
 // silently rot as the catalog grows (ADR-0053).
 func fullCatalogConfig(cat *catalog.Catalog) string {

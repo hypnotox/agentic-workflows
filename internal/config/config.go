@@ -18,7 +18,7 @@ import (
 
 // SectionOverride is a sidecar's per-section override. Body replacement is by
 // convention part only; the field set is deliberately just Drop.
-// touches-invariant: no-replacewith — SectionOverride field set omits replaceWith; proof in config_test.go
+// touches-invariant: no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go
 type SectionOverride struct {
 	Drop bool `yaml:"drop"`
 }
@@ -73,7 +73,7 @@ func (c *Config) Source() []byte { return c.raw }
 // non-empty, a proof marker backs a slug only in a file matching one of these
 // anchored globs; when empty or absent, backing falls back to source-glob scope
 // (the pre-ADR-0105 semantics). TestGlobs is an inert optional field within the
-// current schema — an absent value degrades to the fallback, so it needs no
+// current schema - an absent value degrades to the fallback, so it needs no
 // schema-generation bump.
 type InvariantConfig struct {
 	Disabled  bool              `yaml:"disabled"`
@@ -92,7 +92,7 @@ type InvariantSource struct {
 // BootstrapConfig configures the rendered .awf/bootstrap.sh singleton (ADR-0040,
 // relocated by ADR-0047). A
 // nil *BootstrapConfig (key absent) and Enabled false both mean "do not render";
-// only Enabled true renders the artifact — a nested enable entry rather than a
+// only Enabled true renders the artifact - a nested enable entry rather than a
 // top-level scalar bool (the Alternatives table rejected the bare bool).
 type BootstrapConfig struct {
 	Enabled bool `yaml:"enabled"`
@@ -103,7 +103,7 @@ type BootstrapConfig struct {
 // BootstrapConfig semantics: a nil *HooksConfig (key absent) and Enabled false
 // both mean "do not render"; only Enabled true renders the payloads. The key
 // reuses the name the schema-4 drop-hooks migration stripped (ADR-0032); the
-// legacy array shape never reaches this struct — gated commands migrate first,
+// legacy array shape never reaches this struct - gated commands migrate first,
 // ungated ones fail loudly on the strict parser's type error.
 type HooksConfig struct {
 	Enabled bool `yaml:"enabled"`
@@ -114,7 +114,7 @@ type HooksConfig struct {
 // verbs live in in-place-editable sections the adopter fills. Like the
 // bootstrap/hooks toggles, a nil *RunnerConfig (key absent) and Enabled false both
 // mean "do not render"; only Enabled true renders the runner. Additive and
-// default-off — no schema-generation migration, and adopters opt in explicitly.
+// default-off - no schema-generation migration, and adopters opt in explicitly.
 type RunnerConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
@@ -200,7 +200,7 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	return s, nil
 }
 
-// HasSidecar reports whether a declaring sidecar file exists for an artifact —
+// HasSidecar reports whether a declaring sidecar file exists for an artifact -
 // the presence signal that marks a non-catalog name as an intentional local
 // artifact rather than a typo (ADR-0068).
 func (c *Config) HasSidecar(kind, name string) (bool, error) {
@@ -276,7 +276,7 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	// Targets: sanity only — the unknown-adapter-name check lives in project.Open
+	// Targets: sanity only - the unknown-adapter-name check lives in project.Open
 	// (resolveTargets), where the adapter registry is, to keep config free of a
 	// project import cycle (ADR-0037).
 	if len(c.Targets) == 0 {
@@ -305,11 +305,11 @@ func ValidateDomainName(name string) error {
 
 // ValidateArtifactName reports whether name is usable as a local skill/agent
 // name (ADR-0068): non-empty lowercase kebab-case (letters, digits, hyphens).
-// The charset is frontmatter-safe — it excludes the path separators and ".." the
+// The charset is frontmatter-safe - it excludes the path separators and ".." the
 // invariant requires, awf's reserved "_" namespace, and the colon/space/quote
 // characters that would otherwise interpolate into the base template's name: line
 // and break its YAML frontmatter. It mirrors every catalog artifact's naming.
-// touches-invariant: local-name-validated — local skill/agent name charset validation; proof in config_test.go
+// touches-invariant: local-name-validated - local skill/agent name charset validation; proof in config_test.go
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
@@ -328,7 +328,7 @@ func ValidateArtifactName(kind, name string) error {
 // lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
 // leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
 // "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
-// touches-invariant: local-doc-name-path-validated — path-aware local doc name validation; proof in docname_test.go
+// touches-invariant: local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
 func ValidateDocName(name string) error {
 	if name == "" {
 		return errors.New("doc name must not be empty")
@@ -365,7 +365,7 @@ func ValidateDocName(name string) error {
 	return nil
 }
 
-// hasPathSep reports whether s contains a path separator or a ".." segment — the
+// hasPathSep reports whether s contains a path separator or a ".." segment - the
 // shared reject condition for prefix/target/domain names.
 func hasPathSep(s string) bool {
 	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")

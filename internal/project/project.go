@@ -21,7 +21,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 )
 
-// Version is the awf release version — the single version authority
+// Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
 const Version = "0.17.0"
@@ -82,11 +82,11 @@ type Backup struct {
 // Change records a sync-written file whose rendered output differs from the
 // prior lock's, with the cause the lock's hashes can attribute: "template"
 // (the upstream template source moved), "config" (the project's effective
-// inputs — vars, sidecar, parts — moved), "template+config" (both),
+// inputs - vars, sidecar, parts - moved), "template+config" (both),
 // "internal" (hashes unmoved: a non-hashed input such as the binary's version
 // stamp), "regenerated" (a generated index, which carries no hashes to
 // attribute), or "added" (no prior entry). The provenance triage signal for
-// reviewing a large sync diff — upstream churn vs the project's own inputs.
+// reviewing a large sync diff - upstream churn vs the project's own inputs.
 type Change struct {
 	Path  string
 	Cause string
@@ -97,7 +97,7 @@ type Change struct {
 // it, and returning those backups (ADR-0035) plus the per-file provenance of
 // output that changed against the prior lock and the lock-relative paths of the
 // files its prune actually removed (both path-sorted; a file whose output is
-// byte-identical, and a first sync with no prior lock, report no change — a
+// byte-identical, and a first sync with no prior lock, report no change - a
 // routine re-sync stays silent).
 func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	// Refuse before rendering or writing anything: a corrupt lock must never
@@ -133,10 +133,10 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	rfs := files // the RenderAll set — the consumption input for the config reference
+	rfs := files // the RenderAll set - the consumption input for the config reference
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+	if err != nil { // coverage-ignore: unreachable - generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
 		return nil, nil, nil, err
 	}
 	files = append(files, dds...)
@@ -167,7 +167,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
-				// touches-invariant: sync-backs-up-foreign — foreign-file backup on sync; proof in project_test.go
+				// touches-invariant: sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
 					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
@@ -178,9 +178,9 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 			}
 		}
 		// A rendered #!-shebang script is written executable (ADR-0100 Decision 8),
-		// so the runner is runnable as ./x. The mode is enforced on every sync — a
+		// so the runner is runnable as ./x. The mode is enforced on every sync - a
 		// pre-existing file's mode is corrected too, since os.WriteFile applies perm
-		// only at creation — hence the explicit Chmod.
+		// only at creation - hence the explicit Chmod.
 		perm := os.FileMode(0o644)
 		if strings.HasPrefix(f.Content, "#!") {
 			perm = 0o755
@@ -209,7 +209,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		want[rel] = true
 	}
 	// Prune files from the previous lock that are no longer produced, then remove
-	// every directory left empty — walking all ancestors deepest-first, not just the
+	// every directory left empty - walking all ancestors deepest-first, not just the
 	// immediate parent, so dropping a target clears its whole tree (inv:
 	// target-prune-ancestors; reuses Uninstall's idiom).
 	// invariant: target-prune-ancestors
@@ -226,7 +226,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 				continue
 			}
 			file := filepath.Join(p.Root, path)
-			// Report only an actual removal — a path whose file is already gone
+			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned.
 			if os.Remove(file) == nil {
 				pruned = append(pruned, path)
@@ -244,7 +244,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	slices.Sort(pruned) // lock-map iteration order is random; output must not be
 	// Provenance: classify each written file whose output moved against the
 	// prior lock, from the final lock state (one entry per path by
-	// construction). A first sync has no baseline — report nothing rather
+	// construction). A first sync has no baseline - report nothing rather
 	// than flood a fresh adoption with "added" lines.
 	var changes []Change
 	if old != nil {
@@ -343,7 +343,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 // NewADR scaffolds a new ADR file under the project's decisions dir: the next
 // sequential number, the rendered template with its title/date filled in and
 // marker comments stripped, refusing to overwrite an existing file. Mirrors
-// the CheckInvariants/Audit pattern — cmd/awf reaches this only through this
+// the CheckInvariants/Audit pattern - cmd/awf reaches this only through this
 // exported method, never internal/project.Layout directly.
 func (p *Project) NewADR(title string) (string, error) {
 	return adr.NewFile(p.decisionsDir(), title)

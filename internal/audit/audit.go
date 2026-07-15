@@ -1,6 +1,6 @@
 // Package audit reports workflow-conformance findings over a branch's git
 // history. The range rules are advisory (ADR-0017): standalone, never wired into
-// the gate. The shared CheckConventionalCommit rule is the exception — it is also
+// the gate. The shared CheckConventionalCommit rule is the exception - it is also
 // consumed at commit time by the commit-gate and at plan time by `awf check`
 // (ADR-0111). Most rules are pure over the commit range; the uncommitted-changes
 // rule (ADR-0025) additionally inspects the live working tree.
@@ -132,12 +132,12 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 
 // CheckConventionalCommit validates one commit's subject against the Conventional
 // Commits settings and returns any violations. It is the single definition of the
-// rule — consumed by the audit range loop above, by the blocking `awf commit-gate`
+// rule - consumed by the audit range loop above, by the blocking `awf commit-gate`
 // command (ADR-0036), and by the plan-time planned-subject check
-// (CheckPlannedSubject, ADR-0111) — so none re-implements the regex, the type/scope
+// (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
 // allow-lists, or the subject-length limit. Merge commits are exempt.
 // invariant: audit-conventional-commits
-// touches-invariant: commit-gate-shared-rule — shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
+// touches-invariant: commit-gate-shared-rule - shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
 func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, Error)
 }
@@ -212,7 +212,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			if !ok || st == "" {
 				continue // unparseable new frontmatter is ruleADRFrontmatter's finding
 			}
-			// An unparseable old side cannot witness a transition — skip rather
+			// An unparseable old side cannot witness a transition - skip rather
 			// than read garbage as a status change.
 			oldSt, oldOK := statusOf(ch.OldText)
 			if ch.Action == Added || (oldOK && oldSt != st) {
@@ -294,7 +294,7 @@ func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 	return nil
 }
 
-// touches-invariant: audit-domain-doc-staleness — domain-doc-staleness audit rule; proof in audit_test.go
+// touches-invariant: audit-domain-doc-staleness - domain-doc-staleness audit rule; proof in audit_test.go
 func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 	if !in.DomainDocStaleness {
 		return nil
@@ -332,7 +332,7 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-// touches-invariant: audit-undocumented-domain — undocumented-domain audit rule; proof in audit_test.go
+// touches-invariant: audit-undocumented-domain - undocumented-domain audit rule; proof in audit_test.go
 func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	if !in.UndocumentedDomain || len(in.ConfiguredDomains) == 0 {
 		return nil
@@ -422,7 +422,7 @@ func isADRFile(path, adrDir string) bool {
 }
 
 // statusOf extracts the frontmatter status; ok is false only when frontmatter
-// is present but does not parse — absent frontmatter is a legitimate ("", true).
+// is present but does not parse - absent frontmatter is a legitimate ("", true).
 func statusOf(text string) (string, bool) {
 	if text == "" {
 		return "", true

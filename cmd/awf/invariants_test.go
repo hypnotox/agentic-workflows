@@ -16,7 +16,7 @@ const invariantsNoteYAML = "prefix: example\ninvariants:\n  sources:\n    - glob
 
 // backedPlusDangling scaffolds a synced project whose sole Implemented ADR
 // declares a backed slug (backed by a root .go marker) plus a dangling proof
-// marker naming an undeclared slug — the advisory-note fixture shared by the
+// marker naming an undeclared slug - the advisory-note fixture shared by the
 // runInvariants and runCheck note-channel tests.
 func backedPlusDangling(t *testing.T) string {
 	t.Helper()

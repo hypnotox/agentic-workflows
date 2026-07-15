@@ -250,7 +250,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 }
 
 // Note: a convention part containing template-shaped text no longer makes
-// RenderAll fail — parts are raw input (ADR-0034), rendered verbatim. The
+// RenderAll fail - parts are raw input (ADR-0034), rendered verbatim. The
 // render.Execute error branches are unit-tested directly in internal/render.
 
 // --- renderTarget: template-read error (direct) ---
@@ -440,7 +440,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	}
 	// A regular file where the .awf/domains sidecar dir would be. The old orphan
 	// scan surfaced this as a ReadDir error; the closed-tree sweep (ADR-0086)
-	// reports it as unclaimed drift instead — the file is simply not claimable.
+	// reports it as unclaimed drift instead - the file is simply not claimable.
 	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 
 // A leading-/ target is repo-root-relative (not joined under the linking
 // file's directory), and a target escaping the repo root is dead by
-// definition — never validated against host paths outside the repo.
+// definition - never validated against host paths outside the repo.
 func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		// agents-doc renders at the repo root; workflow doc at docs/workflow.md.
@@ -687,7 +687,7 @@ func TestProjectNewADR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// docs/decisions/template.md is a rendered singleton (ADR-0021) — it only
+	// docs/decisions/template.md is a rendered singleton (ADR-0021) - it only
 	// exists on disk after a sync, unlike CheckInvariants/Audit above which read
 	// hand-written fixture ADRs directly.
 	if err := p.Sync(); err != nil {

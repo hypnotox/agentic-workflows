@@ -25,11 +25,11 @@ type pitfallEntry struct {
 
 // pitfallEntries validates data.pitfalls into the ordered entry list. An absent or
 // null key yields nil, nil (the template's else branch renders the placeholder).
-// Structural violations — a non-list value, a non-mapping element, an
-// empty/newline-bearing title, an empty body, a wrong-typed field — are hard errors
+// Structural violations - a non-list value, a non-mapping element, an
+// empty/newline-bearing title, an empty body, a wrong-typed field - are hard errors
 // naming the sidecar. Domain and ADR-link resolution is checkPitfalls' job (it
 // needs the project's domains and ADRs); this validates shape only.
-// touches-invariant: pitfall-data-validated — pitfall shape validation; proof in pitfalls_test.go
+// touches-invariant: pitfall-data-validated - pitfall shape validation; proof in pitfalls_test.go
 func pitfallEntries(raw any) ([]pitfallEntry, error) {
 	if raw == nil {
 		return nil, nil
@@ -162,7 +162,7 @@ func pitfallInts(i int, title string, m map[string]any, key string) ([]int, erro
 	return out, nil
 }
 
-// pitfallsTransform replaces data.pitfalls — the authored entry list — with the
+// pitfallsTransform replaces data.pitfalls - the authored entry list - with the
 // finished markdown, mirroring glossaryTransform (ADR-0089). An absent key is left
 // untouched; a null/empty list yields "" so the template's else branch renders the
 // placeholder.
@@ -182,7 +182,7 @@ func pitfallsTransform(sc config.Sidecar) (config.Sidecar, error) {
 }
 
 // pitfallsMarkdown renders entries in authored order (a YAML sequence is already
-// deterministic — no sort needed, unlike the glossary map). Each entry is a
+// deterministic - no sort needed, unlike the glossary map). Each entry is a
 // `## <title>` section, an optional italic Domains line, an optional italic Related
 // line of plain ADR-NNNN references (the transform cannot resolve numbers to
 // filenames, so these are text not links), and the body.

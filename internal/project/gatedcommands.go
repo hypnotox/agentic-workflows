@@ -8,7 +8,7 @@ import (
 
 // gatedCommandsDisplay renders the gated-command list as a backticked, comma-joined
 // list from the single clispec source (ADR-0094 Decision 6). It is a tool constant
-// (identical for every adopter — the same awf binary), so it takes no config input.
+// (identical for every adopter - the same awf binary), so it takes no config input.
 // invariant: gated-commands-generated
 func gatedCommandsDisplay() string {
 	names := clispec.GatedCommandNames()

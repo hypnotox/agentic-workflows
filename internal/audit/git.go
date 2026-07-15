@@ -16,12 +16,12 @@ import (
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
 // (ADR-0025). It reads live working-tree state via go-git's Worktree().Status(),
-// injecting the user's global and system gitignore patterns — which Status() does
+// injecting the user's global and system gitignore patterns - which Status() does
 // not consult on its own (it honours only the repo's .gitignore and
-// .git/info/exclude) — so the rule mirrors `git status` and does not false-positive
+// .git/info/exclude) - so the rule mirrors `git status` and does not false-positive
 // on globally-ignored files. Run evaluates it (it holds the repo root); it is
 // range-independent, unlike the commit-history rules in evaluate.
-// touches-invariant: audit-uncommitted-changes — uncommitted-changes live-state rule; proof in git_test.go
+// touches-invariant: audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
 func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	if !in.UncommittedChanges {
 		return nil
@@ -126,7 +126,7 @@ func toCommit(c *object.Commit) (Commit, error) {
 	}
 	if nc.IsMerge {
 		// A merge's first-parent diff is the other side's work (typically main
-		// merged into the branch), not this branch's — attributing it makes every
+		// merged into the branch), not this branch's - attributing it makes every
 		// file-based rule fire on foreign changes. The branch's own work is
 		// carried by its non-merge commits, so a merge contributes no Changes.
 		return nc, nil

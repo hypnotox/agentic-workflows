@@ -20,13 +20,13 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// invocationVerb matches a workflow-chain invocation instruction — the verb that
+// invocationVerb matches a workflow-chain invocation instruction - the verb that
 // makes a line a handoff/dispatch rather than an incidental mention (ADR-0054).
 // Case-insensitive so "invoke"/"Invoke"/"Dispatch"/"chains through" all anchor.
 var invocationVerb = regexp.MustCompile(`(?i)(invoke|dispatch|hands off|chains through)`)
 
 // namesOnInvocationLine reports whether body has a line carrying both an
-// invocation verb and the token as a whole skill/agent name — i.e. the token is
+// invocation verb and the token as a whole skill/agent name - i.e. the token is
 // named in an actual instruction, not merely present somewhere in the prose
 // (ADR-0053 owns mere presence) and not just as an existing target (ADR-0046
 // owns that). The trailing boundary ([^-\w] or line end) stops
@@ -42,7 +42,7 @@ func namesOnInvocationLine(body, token string) bool {
 }
 
 // assertHandoff asserts the rendered `from` skill names the prefixed `to` skill
-// on an invocation-verb line — the successor sits in a real handoff instruction.
+// on an invocation-verb line - the successor sits in a real handoff instruction.
 func assertHandoff(t *testing.T, root, from, to string) {
 	t.Helper()
 	body := read(t, skillPath(root, from))
@@ -53,7 +53,7 @@ func assertHandoff(t *testing.T, root, from, to string) {
 }
 
 // nonHandoffRequires pins the catalog requiresSkills pairs that are
-// deliberately not handoffs — the reference is real (ADR-0080's sweep demands
+// deliberately not handoffs - the reference is real (ADR-0080's sweep demands
 // the declaration) but sits in companion mentions, lifecycle citations, or
 // arrival-context prose rather than on an invocation-verb line. Entries fail
 // when stale: a pair that starts holding as a handoff must be removed so the
@@ -143,7 +143,7 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 
 // chainNodes is the pinned forward-chain progression node set (ADR-0054 item 3).
 // chainTerminal is the sole terminal (exempt from the outgoing-edge requirement).
-// Task skills bugfix/debugging are deliberately NOT nodes — their handoffs are
+// Task skills bugfix/debugging are deliberately NOT nodes - their handoffs are
 // covered by the per-edge positional check above.
 var chainNodes = []string{
 	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
@@ -157,7 +157,7 @@ const (
 )
 
 // The catalog's Chain flags and this suite's pinned node set are the same
-// classification — a new chain skill must land in both, or the guide's
+// classification - a new chain skill must land in both, or the guide's
 // task-skills derivation and the connectivity graph disagree.
 func TestChainFlagsMatchPinnedNodes(t *testing.T) {
 	var flagged []string
@@ -196,7 +196,7 @@ func chainEdges(t *testing.T, root string) map[string][]string {
 // TestChainConnectivity asserts the forward-chain handoff graph has no orphaned
 // node (every non-terminal node emits >=1 outgoing invocation edge) and every
 // node is reachable from the root brainstorming (ADR-0054 item 3). This catches a
-// skill that loses all its handoff instructions — a whole-node failure the
+// skill that loses all its handoff instructions - a whole-node failure the
 // per-edge positional check cannot see.
 func TestChainConnectivity(t *testing.T) {
 	cat := loadCatalog(t)

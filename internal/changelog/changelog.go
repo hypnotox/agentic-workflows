@@ -22,7 +22,7 @@ type Entry struct {
 var headerRe = regexp.MustCompile(`^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$`)
 
 // Load reads "CHANGELOG.md" from fsys and parses it.
-// touches-invariant: changelog-embed-decodes — embedded CHANGELOG.md decode; proof in changelog_test.go
+// touches-invariant: changelog-embed-decodes - embedded CHANGELOG.md decode; proof in changelog_test.go
 func Load(fsys fs.FS) ([]Entry, error) {
 	b, err := fs.ReadFile(fsys, "CHANGELOG.md")
 	if err != nil {
@@ -33,7 +33,7 @@ func Load(fsys fs.FS) ([]Entry, error) {
 
 // Parse splits raw CHANGELOG.md content into ordered entries (newest first, matching
 // file order). Content before the first header (the title and intro prose) is
-// discarded — callers wanting the whole file read it directly instead. Parse errors
+// discarded - callers wanting the whole file read it directly instead. Parse errors
 // if no version header is found.
 func Parse(raw []byte) ([]Entry, error) {
 	lines := strings.Split(string(raw), "\n")
@@ -65,7 +65,7 @@ func Parse(raw []byte) ([]Entry, error) {
 }
 
 // normalize returns v in the single-leading-v form x/mod/semver requires, so callers
-// may pass either "0.5.1" or "v0.5.1". Mirrors cmd/awf's own normalizeSemver — kept
+// may pass either "0.5.1" or "v0.5.1". Mirrors cmd/awf's own normalizeSemver - kept
 // as a local four-line duplicate rather than a cross-package move (ADR-0041 Decision 2).
 func normalize(v string) (string, bool) {
 	sv := "v" + strings.TrimPrefix(v, "v")
@@ -111,7 +111,7 @@ func Since(entries []Entry, v string) ([]Entry, error) {
 // Range returns every entry in [from, to] inclusive, newest first. from must be
 // chronologically older than or equal to the to end (git range convention:
 // from..to); a reversed pair errors rather than silently reordering.
-// touches-invariant: changelog-range-chronological — chronological range selection; proof in changelog_test.go
+// touches-invariant: changelog-range-chronological - chronological range selection; proof in changelog_test.go
 func Range(entries []Entry, from, to string) ([]Entry, error) {
 	fromIdx, err := indexOf(entries, from)
 	if err != nil {

@@ -182,7 +182,7 @@ func TestCheckProfileGetwdError(t *testing.T) {
 func TestCheckProfileNoModule(t *testing.T) {
 	// No go.mod anywhere up the walk -> moduleRoot reaches the filesystem root and
 	// errors. Stub hasGoMod (rather than rely on t.TempDir() having no go.mod
-	// ancestor) so the root-reached branch is exercised hermetically — a stray
+	// ancestor) so the root-reached branch is exercised hermetically - a stray
 	// go.mod under /tmp must not short-circuit the walk.
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	testsupport.SwapVar(t, &hasGoMod, func(string) bool { return false })
@@ -229,7 +229,7 @@ func TestPercentEmptyIs100(t *testing.T) {
 // invariant: covered-profile-honors-ignores
 func TestFilterDropsIgnoredKeepsRest(t *testing.T) {
 	// Line 2 carries the directive; its block must be dropped from the emitted
-	// profile, and the line-3 block must survive verbatim — the "covered" report
+	// profile, and the line-3 block must survive verbatim - the "covered" report
 	// contains exactly the blocks the ADR-0012 gate holds accountable.
 	src := "package m\nvar x = 1 //" + " coverage-ignore: defensive\nvar y = 2\n"
 	root, modPath := module(t, src)
@@ -267,8 +267,8 @@ func TestFilterMergesDuplicatesAndSortsDeterministically(t *testing.T) {
 }
 
 func TestFilterSortsAcrossFilesAndSpans(t *testing.T) {
-	// Exercises both sort tiebreaks: ordering across distinct files, and — within
-	// one file, at the same start line — ordering by span.
+	// Exercises both sort tiebreaks: ordering across distinct files, and - within
+	// one file, at the same start line - ordering by span.
 	root := t.TempDir()
 	modPath := "example.com/m"
 	testsupport.WriteGoModule(t, root, modPath, "package m\nfunc F() {}\n") // writes f.go

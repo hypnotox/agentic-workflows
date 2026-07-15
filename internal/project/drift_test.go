@@ -129,7 +129,7 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Enable an agent by hand-editing config — the documented flow — without syncing.
+	// Enable an agent by hand-editing config - the documented flow - without syncing.
 	testsupport.WriteAwfConfig(t, root, cfg("\n  - code-reviewer"))
 	p2, err := Open(root)
 	if err != nil {
@@ -247,7 +247,7 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 
 // chainClosureConfig derives the chain-unit enabled set from the catalog via
 // the production forward walk: the Chain-flagged skills' full closure (ADR-0080
-// Decision 5, walk unified by ADR-0081) — never a hand list.
+// Decision 5, walk unified by ADR-0081) - never a hand list.
 func chainClosureConfig(scope string) string {
 	var seeds []catalog.Node
 	for name, spec := range catalog.Standard.Skills {
@@ -343,8 +343,8 @@ func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
 }
 
 // Editing audit.allowedScopes reflags an artifact whose raw convention part uses
-// a {{=awf:commitScope*}} placeholder — the config-hash folds scope data via the
-// part-body scan, not the template-source scan — while a non-referencing
+// a {{=awf:commitScope*}} placeholder - the config-hash folds scope data via the
+// part-body scan, not the template-source scan - while a non-referencing
 // artifact stays in sync (ADR-0057).
 // invariant: part-scopes-in-confighash
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
@@ -378,7 +378,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	if !flagged["docs/workflow.md"] {
 		t.Errorf("scopes edit did not reflag the placeholder-using part artifact; drift = %v", drift)
 	}
-	// The ADR readme references no scopes in template or part — it must not reflag.
+	// The ADR readme references no scopes in template or part - it must not reflag.
 	if flagged["docs/decisions/README.md"] {
 		t.Error("scopes edit reflagged a non-referencing artifact (docs/decisions/README.md)")
 	}

@@ -39,7 +39,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	}
 	// Pre-prompt probe (conservative): refuse collisions before asking a single
 	// question or writing anything. The post-answer InitCollisions below stays
-	// as the accurate second line — a trim answer can enable non-core artifacts
+	// as the accurate second line - a trim answer can enable non-core artifacts
 	// this curated-core probe set does not cover. --force skips the probe.
 	if !force {
 		collisions, err := probeCollisions(root)
@@ -116,7 +116,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		return err
 	}
 	// Under --force, the chained runSync backs up every foreign file via the shared
-	// BackupFile mechanism (ADR-0035) — one backup path for init and sync alike.
+	// BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
 	if err := runSync(root, stdout); err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		return err
 	}
 	notes, err := np.AdvisoryNotes()
-	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs — both AdvisoryNotes inputs succeeded moments ago
+	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
 		return err
 	}
 	for _, n := range notes {

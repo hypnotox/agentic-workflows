@@ -146,7 +146,7 @@ func TestGenerateDomainDocsPropagatesIndexError(t *testing.T) {
 
 func TestDomainPartOrphan(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
-		// A part for the forced-body index section — deliberately not declared.
+		// A part for the forced-body index section - deliberately not declared.
 		"domains/parts/rendering/decisions.md": "shadow\n",
 		// A part for an undeclared section.
 		"domains/parts/rendering/bogus.md": "nope\n",

@@ -79,7 +79,7 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 }
 
 // Every reviewing skill is a thin dispatcher around one reviewer agent; the
-// catalog must pair them so the ADR-0050 validation can enforce it — the
+// catalog must pair them so the ADR-0050 validation can enforce it - the
 // prefix anchor keeps a future reviewing skill from reopening the blind spot.
 // invariant: reviewing-skill-specs-paired
 func TestReviewingSkillSpecsArePaired(t *testing.T) {
@@ -103,7 +103,7 @@ func TestReviewingSkillSpecsArePaired(t *testing.T) {
 
 // TestRequiresSkillsDeclarationsValid rejects a RequiresSkills entry naming a
 // non-catalog skill or the artifact itself, and any RequiresSkills on the
-// domain-doc spec — today the only TargetSpec use outside the agents map; the
+// domain-doc spec - today the only TargetSpec use outside the agents map; the
 // field is meaningless there and a silent no-op would invite drift (ADR-0080
 // Decision 1). The self-naming rejection is an exactness corollary of Decision
 // 7: a self-entry could never fail as stale (the frontmatter name always marks

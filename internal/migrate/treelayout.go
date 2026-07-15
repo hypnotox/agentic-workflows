@@ -29,7 +29,7 @@ func applyTreeLayout(root string, _ io.Writer) error {
 	}
 	awfDir := filepath.Join(claudeDir, "awf")
 
-	// config.yaml skeleton — only fields the new config.Config accepts.
+	// config.yaml skeleton - only fields the new config.Config accepts.
 	skeleton := map[string]any{"prefix": lc.Prefix}
 	if lc.DocsDir != "" && lc.DocsDir != "docs" {
 		skeleton["docsDir"] = lc.DocsDir // carry a non-default docs root through (ADR-0009 Decision 2)
@@ -117,7 +117,7 @@ func portSectionOverrides(sections map[string]legacySectionOverride, awfDir stri
 
 // portAgentsDoc re-models the agents-doc singleton: the ownership/identity
 // scalars become convention parts (with their `## ` headings, so the rendered
-// AGENTS.md stays byte-identical — the section body the template emits includes
+// AGENTS.md stays byte-identical - the section body the template emits includes
 // the heading), explicit replaceWith sections become convention parts under
 // parts/agents-doc/, and the remaining data/drops land in agents-doc.yaml.
 func portAgentsDoc(awfDir string, ad legacySidecar) error {

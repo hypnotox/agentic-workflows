@@ -4,7 +4,7 @@
 // the Release workflow runs it before GoReleaser, and the release runbook runs it
 // locally as the pre-tag rehearsal. It fails unless the newest embedded changelog
 // entry equals project.Version and a standing [Unreleased] section is present and
-// empty modulo whitespace — so a tag can neither ship without its own release notes
+// empty modulo whitespace - so a tag can neither ship without its own release notes
 // nor strand late entries under [Unreleased].
 package main
 
@@ -23,7 +23,7 @@ import (
 
 func main() { os.Exit(run(changelogfs.FS, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
 
-// touches-invariant: release-changelog-pin — changelog ordering/pin enforcement site; proof in main_test.go
+// touches-invariant: release-changelog-pin - changelog ordering/pin enforcement site; proof in main_test.go
 func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	raw, err := fs.ReadFile(fsys, "CHANGELOG.md")
 	if err != nil {
@@ -42,7 +42,7 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 		fails++
 	}
 	// Ordering is the gate test's job (inv: changelog-monotonic), but release CI
-	// runs no tests — re-check it here so a mis-sorted file cannot make a stray
+	// runs no tests - re-check it here so a mis-sorted file cannot make a stray
 	// newer entry pass as pinned merely because entries[0] matched.
 	for i := 0; i+1 < len(entries); i++ {
 		if semver.Compare("v"+entries[i].Version, "v"+entries[i+1].Version) <= 0 {

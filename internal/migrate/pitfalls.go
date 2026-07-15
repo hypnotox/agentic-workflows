@@ -17,7 +17,7 @@ import (
 // `## ` headings outside fenced code into {title, body} entries, writes
 // docs/pitfalls.yaml atomically, deletes the part (and its now-empty dir), and
 // prints one provenance line per created entry plus a review instruction. An
-// absent part is a no-op — so a re-run after a prior split (the part gone, the
+// absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
 func applyPitfallsData(root string, out io.Writer) error {
 	awfDir := config.RootDir(root)

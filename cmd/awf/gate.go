@@ -27,12 +27,12 @@ func normalizeSemver(s string) (string, bool) {
 // behind binary) → "run awf upgrade"; "ahead" (config ahead of binary) → "update
 // your pinned awf" (ADR-0039); "autobump" proceeds and the subsequent sync stamps
 // the current schema. On the release-version axis: after the schema check it loads
-// .awf/awf.lock and compares lock.AWFVersion vs awfVersion() — a lock semver-newer
+// .awf/awf.lock and compares lock.AWFVersion vs awfVersion() - a lock semver-newer
 // than the binary (binary behind) errors; a binary at-or-ahead is the permitted
 // pre-upgrade state. The version sub-check is skipped (never errors) on an absent,
 // unparseable, empty, or non-normalizable version, mirroring Generation's no-lock
 // tolerance.
-// touches-invariant: version-compat-gate — binary-vs-config version gate; proof in gate_test.go
+// touches-invariant: version-compat-gate - binary-vs-config version gate; proof in gate_test.go
 func gate(root string) error {
 	state, gen, err := migrate.GateState(root)
 	if err != nil {
@@ -47,7 +47,7 @@ func gate(root string) error {
 	}
 	lockV, binV, ok, err := lockVsBinary(root)
 	if err != nil {
-		// Reachable without any race: a corrupt lock beside no config layout —
+		// Reachable without any race: a corrupt lock beside no config layout -
 		// Generation stats no config file and never loads the lock, so this
 		// version sub-check is the first reader to hit it (ADR-0076).
 		return err
@@ -73,7 +73,7 @@ func schemaAheadError(gen int) error {
 // lockVsBinary returns the normalized lock awfVersion and binary version for the
 // release-version sub-check. The surviving skip set (ok=false, nil error): an
 // absent lock; an absent or empty awfVersion field; an awfVersion failing semver
-// normalization — all still skip rather than error. A present-but-unparseable
+// normalization - all still skip rather than error. A present-but-unparseable
 // lock now errors upstream via the LoadOptional choke point (ADR-0076 partially
 // supersedes ADR-0039 Decision 5).
 func lockVsBinary(root string) (lockV, binV string, ok bool, err error) {

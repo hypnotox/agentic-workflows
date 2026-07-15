@@ -42,7 +42,7 @@ func containsLine(s, line string) bool {
 }
 
 // TestHandlerRegistryParity asserts the handler registry and the clispec table
-// name exactly the same top-level commands — no command without a handler, no
+// name exactly the same top-level commands - no command without a handler, no
 // handler without a command. Group children (new/adr…) are not separate keys.
 func TestHandlerRegistryParity(t *testing.T) {
 	for _, c := range clispec.Commands {

@@ -92,8 +92,8 @@ func TestRunCheckAheadNotice(t *testing.T) {
 
 // TestRunCheckSurfacesInvariantError covers the CheckInvariants error path in
 // runCheck: a clean project (p.Check passes) whose decisions hold two Implemented
-// ADRs declaring the same `inv:` slug. p.Check does not detect the collision —
-// only invariants.Check does — so its error must propagate out of runCheck.
+// ADRs declaring the same `inv:` slug. p.Check does not detect the collision -
+// only invariants.Check does - so its error must propagate out of runCheck.
 func TestRunCheckSurfacesInvariantError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)

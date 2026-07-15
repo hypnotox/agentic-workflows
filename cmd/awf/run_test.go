@@ -559,7 +559,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Errorf("expected backup report on stdout, got %q", out.String())
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
-	// ADR-0035), so the colliding file is backed up exactly once — no double-backup.
+	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
 	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md.awf-bak.1")); !os.IsNotExist(err) {
 		t.Error("expected exactly one backup; CLAUDE.md.awf-bak.1 should not exist")
 	}
@@ -646,7 +646,7 @@ func TestInitCollisionsOpenError(t *testing.T) {
 		t.Fatal("expected init to fail when project.Open errors")
 	}
 	// --force skips the probe, so the same malformed config now fails at
-	// runInit's own post-scaffold project.Open — keeping that branch covered.
+	// runInit's own post-scaffold project.Open - keeping that branch covered.
 	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
 		t.Fatal("expected init --force to fail when project.Open errors")
 	}

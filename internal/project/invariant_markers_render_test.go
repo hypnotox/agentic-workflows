@@ -13,7 +13,7 @@ import (
 // from invariants.sources via the template default's .invariantMarkers key, and
 // degrades to marker-agnostic prose when no sources are configured (ADR-0064).
 func TestInvariantMarkersRenderedFromSources(t *testing.T) {
-	// Multi-source (polyglot) config — awf's own dogfood is single-source, so the
+	// Multi-source (polyglot) config - awf's own dogfood is single-source, so the
 	// multi-marker rendering must be covered explicitly (ADR-0064 Consequences).
 	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
 		"invariants:\n  sources:\n" +
@@ -68,8 +68,8 @@ func renderedByPath(t *testing.T, files []RenderedFile, path string) string {
 // invariant: invariant-markers-in-confighash (regression on both hash-fold paths)
 //
 // Editing invariants.sources reflags an artifact that references the marker
-// mapping — via the template default's .invariantMarkers key or an override
-// part's {{=awf:invariantMarker*}} placeholder — stale in Check (ADR-0064).
+// mapping - via the template default's .invariantMarkers key or an override
+// part's {{=awf:invariantMarker*}} placeholder - stale in Check (ADR-0064).
 func TestInvariantMarkersEditReflags(t *testing.T) {
 	cfg := func(marker string) string {
 		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +

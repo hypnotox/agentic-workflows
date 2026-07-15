@@ -139,9 +139,9 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	}
 }
 
-// setRegion rewrites the lines of an in-place region — between its
+// setRegion rewrites the lines of an in-place region - between its
 // `# awf:edit-in-place <section>` pointer and the next `# awf:edit`-family
-// pointer — to body, mimicking an adopter editing the rendered output in place.
+// pointer - to body, mimicking an adopter editing the rendered output in place.
 func setRegion(t *testing.T, content, section, body string) string {
 	t.Helper()
 	lines := strings.Split(content, "\n")
@@ -232,7 +232,7 @@ func TestRunnerInPlaceFixpoint(t *testing.T) {
 	}
 	mustClean("after in-place edit + sync")
 
-	// (b) Emptying the region stays empty — NOT reverted to the default stubs.
+	// (b) Emptying the region stays empty - NOT reverted to the default stubs.
 	if err := os.WriteFile(xPath, []byte(setRegion(t, read(), "runner-project-verbs", "")), 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -28,7 +28,7 @@ func docDataTransform(name string, sc config.Sidecar) (config.Sidecar, error) {
 	}
 }
 
-// glossaryTransform replaces data.terms — the authored term→meaning map — with
+// glossaryTransform replaces data.terms - the authored term→meaning map - with
 // the finished, always-sorted markdown table rows (ADR-0089). An absent key is
 // left untouched and a null or empty map yields "", so the template's else
 // branch renders the coherent placeholder either way. Content violations are

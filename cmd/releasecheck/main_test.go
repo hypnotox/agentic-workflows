@@ -85,7 +85,7 @@ func TestRunFailsNonEmptyUnreleased(t *testing.T) {
 }
 
 // TestUnreleasedBodyAtEOF covers the header-is-last-section shape: [Unreleased]
-// found but no later "## [" header — body runs to EOF and found stays true.
+// found but no later "## [" header - body runs to EOF and found stays true.
 func TestUnreleasedBodyAtEOF(t *testing.T) {
 	body, found := unreleasedBody("# Changelog\n\n## [Unreleased]\n- tail entry\n")
 	if !found || !strings.Contains(body, "tail entry") {
@@ -93,7 +93,7 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 	}
 }
 
-// TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) — the
+// TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) - the
 // Release workflow must run the ancestry check, ./x gate, and ./x check before
 // the GoReleaser step, so an untested or off-main tag cannot publish.
 // invariant: release-gate-on-tag
@@ -124,7 +124,7 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 }
 
 // TestReleaseWorkflowRunsReleasecheck backs the wiring half of
-// inv: release-changelog-pin — the Release workflow must invoke releasecheck
+// inv: release-changelog-pin - the Release workflow must invoke releasecheck
 // before the GoReleaser step, so unwiring the check fails the gate.
 func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
@@ -146,7 +146,7 @@ func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 }
 
 // TestReleaseNotesFromCuratedChangelog backs inv: release-notes-from-changelog
-// (ADR-0096) — the Release workflow must extract the tagged version's section from
+// (ADR-0096) - the Release workflow must extract the tagged version's section from
 // the curated changelog via `awf changelog --version` before the GoReleaser step and
 // pass it through `--release-notes`, and `.goreleaser.yaml` must disable GoReleaser's
 // commit-derived changelog, so a commit subject can no longer reach the release notes.
@@ -172,7 +172,7 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	// the release body silently diverges from what was written. Assert the extraction line
 	// redirects to a RUNNER_TEMP-scoped release-notes.md (outside the worktree, so
 	// GoReleaser's dirty-tree check passes) and that the --release-notes arg names the same
-	// basename — checking the components rather than one pinned interpolation form.
+	// basename - checking the components rather than one pinned interpolation form.
 	const notesFile = "release-notes.md"
 	extractLine := wf[extract:]
 	if nl := strings.IndexByte(extractLine, '\n'); nl >= 0 {

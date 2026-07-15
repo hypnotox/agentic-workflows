@@ -21,9 +21,9 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
-// AdvisoryNotes returns the non-failing render advisories in print order — the
+// AdvisoryNotes returns the non-failing render advisories in print order - the
 // ADR-0045 unset-var notes, the ADR-0070 stub notes, then the ADR-0083 part-
-// marker notes — computed from one RenderAll pass plus the domain-doc
+// marker notes - computed from one RenderAll pass plus the domain-doc
 // generation, which renders outside it.
 func (p *Project) AdvisoryNotes() ([]string, error) {
 	files, err := p.RenderAll()
@@ -66,7 +66,7 @@ const tagFrequencyThreshold = 0.25
 // of the tag-bearing artifacts (the coarsening the exact tag≠domain gate cannot
 // express), and a coverage note for any ADR or pitfall carrying zero tags (the
 // under-tagging backstop). Inert under an empty/absent vocabulary, so an
-// un-curated adopter — and the example — stays note-free.
+// un-curated adopter - and the example - stays note-free.
 // invariant: tag-frequency-note
 // invariant: tag-coverage-note
 func (p *Project) tagHealthNotes() ([]string, error) {
@@ -102,7 +102,7 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 			notes = append(notes, art.label+" carries no tags — add a narrow topic tag")
 			continue
 		}
-		// Count only vocabulary members — both the numerator and the denominator.
+		// Count only vocabulary members - both the numerator and the denominator.
 		// The invariant speaks of "vocabulary tags" and "artifacts carrying at
 		// least one vocabulary tag", and a non-member tag is already a hard
 		// checkTagVocabulary failure, so it must not skew the coarsening signal.
@@ -132,7 +132,7 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 }
 
 // unsetVarNotes reports, per rendered artifact, the vars its assembled template
-// references whose key is present in config with an empty or null value — the
+// references whose key is present in config with an empty or null value - the
 // non-failing render-completeness advisory (ADR-0045 item 4, narrowed by
 // ADR-0087: an absent key is the deliberate, git-auditable decline and produces
 // no note; deleting the key is the acknowledgement). One line per artifact with
@@ -170,12 +170,12 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	return notes
 }
 
-// stubNotes reports, per rendered artifact, its unauthored stub content —
+// stubNotes reports, per rendered artifact, its unauthored stub content -
 // stub-attributed sections still at default and awf:stub-marked parts. One line
 // per output path: artifacts sharing a template id (local artifacts, the domain
 // docs) each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
-// touches-invariant: stub-notes-path-keyed — per-output-path stub note; proof in notes_test.go
+// touches-invariant: stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
 	var notes []string
 	for _, f := range files {
@@ -197,7 +197,7 @@ func stubNotes(files []RenderedFile) []string {
 }
 
 // markerNotes reports each convention part whose raw body carries a whole-line
-// section-marker residue — the ADR-0083 advisory. Keyed by the part path, a
+// section-marker residue - the ADR-0083 advisory. Keyed by the part path, a
 // deliberate deviation from stubNotes' output-path keying (the actionable file
 // is the part itself), and deduplicated: multi-target rendering consumes the
 // same part once per target and must not repeat its note.
@@ -218,11 +218,11 @@ func markerNotes(files []RenderedFile) []string {
 }
 
 // unusedVarDrift reports each non-empty vars: key referenced by no rendered
-// artifact — neither a .vars.X reference in any assembled source (RenderAll
+// artifact - neither a .vars.X reference in any assembled source (RenderAll
 // output and the generated domain docs, passed concatenated) nor a
 // gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
 // exempt: they are the ADR-0022 seeded open-to-do state, which the unset-var
-// note owns nudging (ADR-0087 — presence, not emptiness, is that note's
+// note owns nudging (ADR-0087 - presence, not emptiness, is that note's
 // trigger; this exemption keeps the seed-all-vars scaffold legal). A bare
 // .vars reference conservatively consumes every key.
 // invariant: unused-var-drift
@@ -254,7 +254,7 @@ func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 
 // unusedDataDrift reports, per enabled artifact, the sidecar data: keys its
 // assembled sources reference nowhere, unioned across enabled targets
-// (ADR-0086 Decision 4). Domains are excluded — their sidecars are rejected
+// (ADR-0086 Decision 4). Domains are excluded - their sidecars are rejected
 // as paths-only at open. A local: true sidecar renders nothing, so every
 // key reports. A key referenced only inside a dropped section counts as
 // unused: the drop makes it configuration that does nothing.
@@ -326,7 +326,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 
 // artifactLabel derives a human label from a template id: catalog kinds get
 // "<kind> <name>" ("skill tdd", "agent code-reviewer", "doc testing"), hook
-// payloads their script ("hooks pre-commit" — ADR-0048); the singletons read
+// payloads their script ("hooks pre-commit" - ADR-0048); the singletons read
 // as their kind ("agents-doc").
 func artifactLabel(tid string) string {
 	segs := strings.Split(tid, "/")
@@ -358,7 +358,7 @@ func localLabel(tid, path string) string {
 }
 
 // localOutPaths returns the conventional output paths awf would render a local
-// skill/agent to — one per enabled target (the same formulas RenderAll uses); nil
+// skill/agent to - one per enabled target (the same formulas RenderAll uses); nil
 // for neutral kinds. A local artifact must exist at every target's path (ADR-0037),
 // so no target carries an unchecked hand-authored file.
 func (p *Project) localOutPaths(kind, name string) []string {
@@ -443,7 +443,7 @@ func (p *Project) declaredSections(kind, name string) []string {
 // markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
 // RenderAll produces except the CLAUDE.md bridge and the non-markdown render units
 // (the bootstrap unit's shell scripts, the git-hook payloads, and the memory
-// gitignore — ADR-0040/0085, ADR-0048, ADR-0069).
+// gitignore - ADR-0040/0085, ADR-0048, ADR-0069).
 func isManagedMarkdown(tid string) bool {
 	return tid != bridgeTID && tid != memoryTID &&
 		!strings.HasPrefix(tid, "bootstrap/") && !strings.HasPrefix(tid, "hooks/")
@@ -493,7 +493,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	drift = append(drift, p.checkActiveMD(activeMdRel, amd)...)
 
 	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable — the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
+	if err != nil { // coverage-ignore: unreachable - the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
 		return nil, err
 	}
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
@@ -558,11 +558,11 @@ func (p *Project) checkConfigReference(lock *manifest.Lock, crefRel string, cref
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
-// regeneration-checked artifacts — the generated ACTIVE.md / domain docs / config
+// regeneration-checked artifacts - the generated ACTIVE.md / domain docs / config
 // reference) against the freshly-rendered output and the on-disk file: orphaned,
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
-// checked too: a rendered path with no lock entry — an artifact enabled since the
-// last sync — is flagged unsynced rather than silently skipped.
+// checked too: a rendered path with no lock entry - an artifact enabled since the
+// last sync - is flagged unsynced rather than silently skipped.
 func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile) []manifest.Drift {
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
@@ -575,7 +575,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		rf, ok := rendered[path]
 		if e.RegenChecked {
 			// A regeneration-checked entry not in the RenderAll set is a generated
-			// index — checked separately by its regen checker. One that IS in the
+			// index - checked separately by its regen checker. One that IS in the
 			// set is an in-place file: drift by regeneration-with-read-back. The
 			// freshly rendered content already read the in-place body back from
 			// disk, so an edit confined to an in-place section matches and an edit
@@ -589,7 +589,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				continue
 			}
 			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
-				// touches-invariant: in-place-tamper-drift — awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
+				// touches-invariant: in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
 				drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
 			}
 			continue
@@ -600,7 +600,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 		if rf.TemplateHash != e.TemplateHash || rf.ConfigHash != e.ConfigHash {
 			// stale takes precedence: a re-sync overwrites any hand-edit, so it
-			// is the actionable signal — one drift entry per path.
+			// is the actionable signal - one drift entry per path.
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf sync"})
 			continue
 		}
@@ -614,7 +614,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate
-		// to the hash kinds above — a re-sync is the fix for those).
+		// to the hash kinds above - a re-sync is the fix for those).
 		if isSkillOrAgent(rf.TemplateID) {
 			if err := validateFrontmatter(onDisk); err != nil {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()})
@@ -717,7 +717,7 @@ func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []Re
 		base := filepath.Dir(f.Path)
 		for _, target := range refs.Links(f.Content) {
 			// A leading-/ target is repo-root-relative; everything else resolves
-			// file-relative. A target escaping the root is dead by definition —
+			// file-relative. A target escaping the root is dead by definition -
 			// a host path outside the repo must never validate it.
 			resolved := filepath.Join(p.Root, base, target)
 			if strings.HasPrefix(target, "/") {
@@ -916,7 +916,7 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 }
 
 // pitfallTagEntries returns the pitfall entries when the pitfalls doc is
-// enabled, else nil — factored so checkTagVocabulary reads tags without
+// enabled, else nil - factored so checkTagVocabulary reads tags without
 // duplicating checkPitfalls' sidecar plumbing.
 func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
@@ -930,7 +930,7 @@ func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 }
 
 // checkADRRelatedLinks fails an ADR whose related: names an ADR number with no
-// matching file under the decisions dir — structurally identical to the
+// matching file under the decisions dir - structurally identical to the
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
 // invariant: adr-related-link-resolved
 func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {

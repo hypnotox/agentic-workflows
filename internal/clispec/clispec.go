@@ -2,7 +2,7 @@
 // every command's flags, positional bounds, gating, help text, and (for a group
 // command) its subcommands. cmd/awf builds its runtime dispatcher by attaching
 // handler funcs to these specs; internal/project reads the gated set to generate
-// docs. Data only — no handler funcs and no import of cmd/awf or internal/project,
+// docs. Data only - no handler funcs and no import of cmd/awf or internal/project,
 // so it stays an importable leaf.
 package clispec
 
@@ -33,9 +33,9 @@ type Command struct {
 	Children   []Command
 }
 
-// Commands is the ordered command table — the sole source of the command set,
+// Commands is the ordered command table - the sole source of the command set,
 // `awf help` order, the usage line, and the gated-command list.
-// touches-invariant: cli-command-spec-single-source — sole command-table source; proof in clispec_test.go
+// touches-invariant: cli-command-spec-single-source - sole command-table source; proof in clispec_test.go
 var Commands = []Command{
 	{
 		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set",
@@ -307,7 +307,7 @@ func Names() []string {
 func UsageLine() string { return "awf <" + strings.Join(Names(), "|") + ">" }
 
 // GatedCommandNames returns, in table order, every top-level command that runs
-// the binary-version gate — the driver-gated commands plus the ones that gate
+// the binary-version gate - the driver-gated commands plus the ones that gate
 // in-handler (config/context after their static fallback, new after name
 // validation). Ungated commands are excluded; a group contributes only its own
 // token. This is the single source of the doc-published gated-command list.

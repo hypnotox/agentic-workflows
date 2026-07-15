@@ -61,7 +61,7 @@ type PlanRef struct {
 }
 
 // DomainRef is an owning domain and its rendered current-state doc path, derived
-// by convention (never a sidecar field — ADR-0086).
+// by convention (never a sidecar field - ADR-0086).
 type DomainRef struct {
 	Name         string `json:"name"`
 	CurrentState string `json:"currentState"`
@@ -128,12 +128,12 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		return ContextResult{}, err
 	}
 
-	// Tier 1 — "governs this code": ADRs declaring an invariant slug present as a
+	// Tier 1 - "governs this code": ADRs declaring an invariant slug present as a
 	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
 	// Each surfaced slug is labelled backed/unbacked from its declaring ADR's
 	// ADR-0105 class, with an unbacked invariant's `Verify:` guidance and any
 	// touches-marker site note carried on the InvariantRef (ADR-0106).
-	// touches-invariant: context-tier1-marker-union — Tier-1 union-scan join site; proof in invariants_test.go
+	// touches-invariant: context-tier1-marker-union - Tier-1 union-scan join site; proof in invariants_test.go
 	declaring, err := invariants.DeclaringADRs(adrs)
 	if err != nil {
 		return ContextResult{}, err
@@ -165,7 +165,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	// Precise tag set: the plain union of the Tier-1 ADRs' tags. Tags are
 	// narrow sub-domain topics that cannot name a configured domain (enforced by
 	// the tag-not-domain-name gate, ADR-0109), so no domain-mirror filtering is
-	// needed — a shared narrow tag is precise relatedness.
+	// needed - a shared narrow tag is precise relatedness.
 	precise := map[string]bool{}
 	relatedNum := map[int]bool{}
 	for _, a := range t1 {
@@ -177,7 +177,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		}
 	}
 
-	// Tier 2 — "topically related": non-Tier-1, non-Superseded ADRs sharing a
+	// Tier 2 - "topically related": non-Tier-1, non-Superseded ADRs sharing a
 	// precise tag or named in a Tier-1 ADR's related:.
 	// invariant: context-tier2-precise-tag
 	inTier2 := map[string]bool{}
@@ -212,7 +212,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		sort.Slice(res.Pitfalls, func(i, j int) bool { return res.Pitfalls[i].Title < res.Pitfalls[j].Title })
 	}
 
-	// Tier 3 — "domain background": domain-membership ADRs in neither Tier 1 nor
+	// Tier 3 - "domain background": domain-membership ADRs in neither Tier 1 nor
 	// Tier 2, reported only as a collapsed count.
 	// invariant: context-tier3-collapsed
 	for _, a := range adrs {
@@ -290,8 +290,8 @@ type UncoveredResult struct {
 // nothing and reads only the domain sidecars. scanRoots restrict the report to
 // tracked paths at or beneath them, matched on slash-separated segment boundaries
 // (a directory subtree), not raw string prefixes; empty scanRoots scans everything.
-// touches-invariant: uncovered-lists-unowned-unignored — unowned-path reporting; proof in context_test.go
-// touches-invariant: uncovered-collapses-directories — fully-uncovered directory collapse; proof in context_test.go
+// touches-invariant: uncovered-lists-unowned-unignored - unowned-path reporting; proof in context_test.go
+// touches-invariant: uncovered-collapses-directories - fully-uncovered directory collapse; proof in context_test.go
 func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error) {
 	roots := NormalizeContextPaths(scanRoots)
 	res := UncoveredResult{ScanRoots: roots}
@@ -307,7 +307,7 @@ func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error
 	}
 
 	// Generated outputs (every rendered artifact) and configured contextIgnore
-	// globs are legitimately unowned — subtracted alongside domain coverage so the
+	// globs are legitimately unowned - subtracted alongside domain coverage so the
 	// report finds only genuinely-unowned code, and stays correct as targets and
 	// artifacts change without a hand edit.
 	planned, err := p.PlannedOutputs()
@@ -396,8 +396,8 @@ func (p *Project) Uncovered(tracked, scanRoots []string) (UncoveredResult, error
 	return res, nil
 }
 
-// ancestors returns path's directory ancestors from the top down — "." then each
-// strict directory prefix — excluding path itself.
+// ancestors returns path's directory ancestors from the top down - "." then each
+// strict directory prefix - excluding path itself.
 func ancestors(path string) []string {
 	out := []string{"."}
 	segs := strings.Split(path, "/")

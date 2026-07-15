@@ -24,7 +24,7 @@ func (p *Project) validateAgainstCatalog() error {
 	}
 	// Domain sidecars are paths-only (ADR-0086 Decision 5): domain rendering
 	// passes an empty sidecar and injects its own data map, so an authored
-	// data:, sections:, or local: entry silently does nothing — and the
+	// data:, sections:, or local: entry silently does nothing - and the
 	// domain template's own .data.domain reference would mask a data: block
 	// from the consumption check.
 	for _, name := range p.Cfg.Domains {
@@ -98,7 +98,7 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		}
 		// Inert-field rejection (ADR-0086 Decision 5): paths: is read only from
 		// domain sidecars (ADR-0077), so on any other kind it is configuration
-		// that silently does nothing. Checked before the local: skip — a local
+		// that silently does nothing. Checked before the local: skip - a local
 		// sidecar cannot carry it either.
 		// invariant: inert-sidecar-field-rejected
 		if len(sc.Paths) > 0 {
@@ -111,7 +111,7 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 			return fmt.Errorf("%s %q is not in the catalog", d.Singular, name)
 		}
 		// Closure validation (ADR-0081): every enabled, non-local artifact's
-		// direct catalog requirements are enabled — transitive closure follows
+		// direct catalog requirements are enabled - transitive closure follows
 		// by induction. Generalizes the ADR-0050 RequiresAgent pairing (that
 		// edge is now one case of the same loop); a silently-thinner chain is
 		// the failure mode the workflow exists to prevent.

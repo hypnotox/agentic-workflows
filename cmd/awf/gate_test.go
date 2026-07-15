@@ -97,7 +97,7 @@ func TestNormalizeSemver(t *testing.T) {
 }
 
 // TestNewGatesInHandler confirms runNew (GatedInHandler) surfaces the gate error
-// itself — after name validation, not via the driver — on an ahead-schema project.
+// itself - after name validation, not via the driver - on an ahead-schema project.
 func TestNewGatesInHandler(t *testing.T) {
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer

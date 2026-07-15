@@ -68,8 +68,8 @@ const stubMarkerLine = "<!-- awf:stub -->"
 
 // HasStubMarker reports whether a part body contains a line that is exactly the
 // awf:stub marker (modulo surrounding whitespace). Detection never mutates the
-// body — parts render byte-for-byte verbatim, marker included (ADR-0034, ADR-0070).
-// touches-invariant: stub-part-verbatim — stub-marker detection without mutation; proof in section_test.go
+// body - parts render byte-for-byte verbatim, marker included (ADR-0034, ADR-0070).
+// touches-invariant: stub-part-verbatim - stub-marker detection without mutation; proof in section_test.go
 func HasStubMarker(body string) bool {
 	for _, line := range strings.Split(body, "\n") {
 		if strings.TrimSpace(line) == stubMarkerLine {
@@ -84,14 +84,14 @@ func HasStubMarker(body string) bool {
 var markerLineRE = regexp.MustCompile(`^<!--\s*awf:(section|end)\b`)
 
 // HasMarkerLine reports whether body contains a line that, after trimming,
-// begins with a marker-shaped `awf:section`/`awf:end` comment opener — the
+// begins with a marker-shaped `awf:section`/`awf:end` comment opener - the
 // ADR-0083 whole-line detection behind the part-marker advisory. The prefix
 // anchor covers the exact closed marker, an unclosed opener, and a marker with
 // trailing text: none has a legitimate quoter, since prose quoting the form
 // always precedes it on the line. Inline quoting never fires; the awf:stub
 // part marker is out of scope by construction (the pattern names only
 // section/end). Callers exclude fenced code before the scan.
-// touches-invariant: part-marker-advisory — whole-line section-marker residue detection; proof in section_test.go
+// touches-invariant: part-marker-advisory - whole-line section-marker residue detection; proof in section_test.go
 func HasMarkerLine(body string) bool {
 	for _, line := range strings.Split(body, "\n") {
 		if markerLineRE.MatchString(strings.TrimSpace(line)) {
@@ -103,17 +103,17 @@ func HasMarkerLine(body string) bool {
 
 // residualMarkerRE matches a marker-shaped comment opener that survived section
 // assembly: `<!--` + optional whitespace + awf:section/awf:end. Comment-anchored,
-// never a bare-identifier scan — a section default may legally quote the bare
+// never a bare-identifier scan - a section default may legally quote the bare
 // token in prose (ADR-0070 Decision 5).
 var residualMarkerRE = regexp.MustCompile(`<!--\s*awf:(section|end)\b`)
 
 // CheckResidualMarkers hard-errors when an assembled skeleton still contains a
-// marker-shaped awf:section/awf:end token — a malformed marker (unknown
+// marker-shaped awf:section/awf:end token - a malformed marker (unknown
 // attribute, missing name) that ParseSections could not consume and that would
 // otherwise leak verbatim into rendered output. It runs pre-Execute: part bodies
 // are NUL sentinels and data is uninterpolated, so parts and data that quote the
 // full comment form stay out of scope.
-// touches-invariant: no-residual-section-marker — hard error on surviving marker residue; proof in section_test.go
+// touches-invariant: no-residual-section-marker - hard error on surviving marker residue; proof in section_test.go
 func CheckResidualMarkers(assembled string) error {
 	if m := residualMarkerRE.FindString(assembled); m != "" {
 		return fmt.Errorf("assembled template still contains a section marker (%q) — malformed awf:section/awf:end marker", m)

@@ -101,7 +101,7 @@ func TestSweepFlagsLocalArtifactParts(t *testing.T) {
 
 // The ADR-0068 effective-catalog pin: a synthesized local artifact's declared
 // content section resolves against the effective catalog, so its part is
-// claimed — a future declaredSections change to catalog.Standard would
+// claimed - a future declaredSections change to catalog.Standard would
 // otherwise silently flag every local artifact's parts.
 func TestSweepClaimsSynthesizedLocalParts(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-local\nagents: []\n", map[string]string{

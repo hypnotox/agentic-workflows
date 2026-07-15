@@ -7,7 +7,7 @@ import (
 )
 
 // A rendered #!-shebang script is written executable (0755); every other rendered
-// file stays 0644. The mode is enforced on every sync — a pre-existing file's mode
+// file stays 0644. The mode is enforced on every sync - a pre-existing file's mode
 // is corrected, not only set at creation (ADR-0100 Decision 8).
 // invariant: shebang-rendered-executable
 func TestShebangRenderedExecutable(t *testing.T) {

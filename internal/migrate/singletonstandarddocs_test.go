@@ -106,7 +106,7 @@ func TestRelocateRefusesExistingDestination(t *testing.T) {
 	}
 }
 
-// A partial prior migration — old and new sidecar location both present — is a
+// A partial prior migration - old and new sidecar location both present - is a
 // realistic adopter tree; the migration must surface relocate's refusal rather
 // than silently overwrite (the by-design branch its call site propagates).
 func TestSingletonStandardDocsRefusesPartialPriorMigration(t *testing.T) {

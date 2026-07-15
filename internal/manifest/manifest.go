@@ -17,7 +17,7 @@ type Entry struct {
 	ConfigHash   string `json:"configHash"`
 	OutputHash   string `json:"outputHash"`
 	// RegenChecked marks an entry whose drift is checked by regeneration rather
-	// than by the frozen OutputHash — the generated indexes (ACTIVE.md, per-domain
+	// than by the frozen OutputHash - the generated indexes (ACTIVE.md, per-domain
 	// docs, the config reference) and in-place-editable files (ADR-0100). Omitted
 	// when false so a plain entry's serialization is unchanged.
 	RegenChecked bool `json:"regenChecked,omitempty"`
@@ -76,10 +76,10 @@ func LoadOptional(path string) (*Lock, bool, error) {
 // WriteFileAtomic writes data to path via a same-directory temp file renamed
 // into place, so a crash can never leave a truncated file at path. Mode is
 // 0o644 (CreateTemp's 0o600 is widened before the rename). On error the temp
-// file is best-effort removed. Rename-only durability — no fsync — per
+// file is best-effort removed. Rename-only durability - no fsync - per
 // ADR-0076 Decision 1; Go's os.Rename replaces an existing destination on
 // every supported OS including Windows.
-// touches-invariant: lock-atomic-save — atomic temp-file+rename write site; proof in manifest_test.go
+// touches-invariant: lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")

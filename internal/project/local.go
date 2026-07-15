@@ -19,7 +19,7 @@ const (
 )
 
 // ScaffoldVarRefs returns the vars referenced by the base template a new local
-// artifact of kind ("skill"/"agent") renders from — `awf new`'s seeding surface
+// artifact of kind ("skill"/"agent") renders from - `awf new`'s seeding surface
 // (ADR-0087 Decision 4). Parts are raw (ADR-0034), so the base template is a
 // local artifact's only var channel; today both bases are varless and this
 // returns empty, but a future base gaining a var reference is seeded correct
@@ -41,20 +41,20 @@ func ScaffoldVarRefs(kind string) ([]string, error) {
 }
 
 // effectiveCatalog returns a per-project clone of catalog.Standard augmented with
-// a synthesized entry for every enabled local (non-Standard) skill/agent — a name
+// a synthesized entry for every enabled local (non-Standard) skill/agent - a name
 // outside the standard pool that carries a declaring sidecar. The package global
 // is never mutated: the maps are cloned before any insert, and existing values
 // are only read (ADR-0068).
-// touches-invariant: local-catalog-clone — effectiveCatalog clones the skill/agent maps before any insert; proof in local_test.go
+// touches-invariant: local-catalog-clone - effectiveCatalog clones the skill/agent maps before any insert; proof in local_test.go
 func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	// Start from a full struct copy so any Catalog field (present or future) is
 	// carried unchanged, then replace only the two maps synthesis mutates with
-	// fresh clones. The remaining fields stay shared with the global by value —
+	// fresh clones. The remaining fields stay shared with the global by value -
 	// synthesis never touches them (ADR-0068).
 	clone := *catalog.Standard
 	clone.Skills = maps.Clone(catalog.Standard.Skills)
 	clone.Agents = maps.Clone(catalog.Standard.Agents)
-	// touches-invariant: local-doc-catalog-clone — the Docs map is cloned before doc synthesis; proof in local_test.go
+	// touches-invariant: local-doc-catalog-clone - the Docs map is cloned before doc synthesis; proof in local_test.go
 	clone.Docs = maps.Clone(catalog.Standard.Docs)
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
@@ -79,7 +79,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 	for _, name := range enabled {
 		if _, ok := pool[name]; ok {
 			// A standard entry is never overwritten by a local synthesis.
-			// touches-invariant: local-no-shadow — a standard skill/agent is never overwritten by local synthesis; proof in local_test.go
+			// touches-invariant: local-no-shadow - a standard skill/agent is never overwritten by local synthesis; proof in local_test.go
 			continue
 		}
 		has, err := p.Cfg.HasSidecar(kind, name)
@@ -89,7 +89,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 		if !has {
 			// Undeclared non-standard name: leave it absent so validateAgainstCatalog
 			// rejects it as a typo.
-			// touches-invariant: local-requires-declaration — an undeclared name is left absent to fail open; proof in local_test.go
+			// touches-invariant: local-requires-declaration - an undeclared name is left absent to fail open; proof in local_test.go
 			continue
 		}
 		sc, err := p.Cfg.Sidecar(kind, name)
@@ -97,7 +97,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 			return err
 		}
 		if sc.Local {
-			continue // hand-authored opt-out — render and validate already skip it.
+			continue // hand-authored opt-out - render and validate already skip it.
 		}
 		if err := config.ValidateArtifactName(kind, name); err != nil {
 			return err
@@ -162,7 +162,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 	for _, name := range enabled {
 		if _, ok := pool[name]; ok {
 			// A standard doc is never overwritten by a local synthesis.
-			// touches-invariant: local-doc-no-shadow — a standard doc is never overwritten by local synthesis; proof in local_test.go
+			// touches-invariant: local-doc-no-shadow - a standard doc is never overwritten by local synthesis; proof in local_test.go
 			continue
 		}
 		has, err := p.Cfg.HasSidecar("docs", name)
@@ -171,7 +171,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 		}
 		if !has {
 			// Undeclared non-standard name: leave it absent so validateAgainstCatalog rejects it.
-			// touches-invariant: local-doc-requires-declaration — an undeclared doc name is left absent to fail open; proof in local_test.go
+			// touches-invariant: local-doc-requires-declaration - an undeclared doc name is left absent to fail open; proof in local_test.go
 			continue
 		}
 		sc, err := p.Cfg.Sidecar("docs", name)
@@ -179,7 +179,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 			return err
 		}
 		if sc.Local {
-			continue // hand-authored opt-out — render and validate already skip it.
+			continue // hand-authored opt-out - render and validate already skip it.
 		}
 		if err := config.ValidateDocName(name); err != nil {
 			return err
@@ -192,7 +192,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 		if desc == "" {
 			desc = defaultLocalDocDesc
 		}
-		// touches-invariant: local-doc-map-fields — synthesized DocEntry carries title/desc for the document map; proof in local_test.go
+		// touches-invariant: local-doc-map-fields - synthesized DocEntry carries title/desc for the document map; proof in local_test.go
 		pool[name] = catalog.DocEntry{
 			Title:    title,
 			Desc:     desc,

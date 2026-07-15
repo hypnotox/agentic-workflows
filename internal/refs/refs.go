@@ -1,12 +1,12 @@
 // Package refs extracts internal markdown link targets from rendered content.
-// It is pure and stdlib-only: it performs no I/O and resolves no paths — callers
+// It is pure and stdlib-only: it performs no I/O and resolves no paths - callers
 // resolve and stat the returned targets. (ADR-0020)
 package refs
 
 import "strings"
 
-// Links returns the relative-path targets of inline markdown links — [text](target)
-// — in content, in order of appearance. Image-link destinations (![alt](target)) are
+// Links returns the relative-path targets of inline markdown links - [text](target)
+// - in content, in order of appearance. Image-link destinations (![alt](target)) are
 // extracted too, so a dead image counts as a dead reference. It skips: external
 // targets (http://, https://, mailto:, tel:) and bare #fragment anchors; links inside
 // a fenced code block (opened by ``` or ~~~); and links inside an inline code span
@@ -22,7 +22,7 @@ func Links(content string) []string {
 }
 
 // WithoutFences returns content minus fenced-code-block lines (opened by ``` or
-// ~~~; delimiter lines dropped too). Inline code spans are deliberately kept —
+// ~~~; delimiter lines dropped too). Inline code spans are deliberately kept -
 // scanners like the skill-reference check (ADR-0046) match tokens that
 // legitimately render inside single-backtick spans.
 func WithoutFences(content string) string {
@@ -49,8 +49,8 @@ func WithoutFences(content string) string {
 	return strings.Join(kept, "\n")
 }
 
-// stripCodeSpans removes the content of inline code spans — text between paired
-// `-backtick delimiters — so link syntax inside a code span is not parsed as a link.
+// stripCodeSpans removes the content of inline code spans - text between paired
+// `-backtick delimiters - so link syntax inside a code span is not parsed as a link.
 // An unpaired trailing backtick is not a span: its segment is kept intact.
 func stripCodeSpans(line string) string {
 	parts := strings.Split(line, "`")
@@ -60,16 +60,16 @@ func stripCodeSpans(line string) string {
 		case i%2 == 0:
 			b.WriteString(p) // outside any span
 		case i == len(parts)-1:
-			b.WriteString("`" + p) // unpaired trailing backtick — keep literally
+			b.WriteString("`" + p) // unpaired trailing backtick - keep literally
 		}
-		// odd index that is not the last: inside a paired span — dropped
+		// odd index that is not the last: inside a paired span - dropped
 	}
 	return b.String()
 }
 
 // lineLinks extracts the target of every [text](target) on a single line. The
 // closing ] is matched with bracket nesting so a link whose text is itself a
-// link — a badge, [![alt](img)](target) — yields both the inner image target
+// link - a badge, [![alt](img)](target) - yields both the inner image target
 // and the outer destination, not just the inner one.
 func lineLinks(line string) []string {
 	var out []string
@@ -81,7 +81,7 @@ func lineLinks(line string) []string {
 		open += i
 		closing := matchingBracket(line, open)
 		if closing < 0 || closing+1 >= len(line) || line[closing+1] != '(' {
-			i = open + 1 // not a link — nested candidates start after this [
+			i = open + 1 // not a link - nested candidates start after this [
 			continue
 		}
 		end := strings.IndexByte(line[closing+2:], ')')
@@ -123,7 +123,7 @@ func normalizeTarget(dest string) string {
 	dest = strings.TrimSpace(dest)
 	if strings.HasPrefix(dest, "<") {
 		// A <...> destination is markdown's only way to write a target containing
-		// spaces — unwrap it before the whitespace/title cut, not after.
+		// spaces - unwrap it before the whitespace/title cut, not after.
 		dest = dest[1:]
 		if end := strings.IndexByte(dest, '>'); end >= 0 {
 			dest = dest[:end]

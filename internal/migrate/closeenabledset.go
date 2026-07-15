@@ -14,12 +14,12 @@ import (
 
 // applyCloseEnabledSet ports a tree to the enforced dependency graph
 // (ADR-0081 Decision 8), in two ordered steps: first every dormant doc-gated
-// skill — enabled while its doc is disabled, the pre-schema-8 valid
-// silent-suppression state — is dropped, preserving the adopter's observed
+// skill - enabled while its doc is disabled, the pre-schema-8 valid
+// silent-suppression state - is dropped, preserving the adopter's observed
 // rendered output (the drop skips `local:`-owned skills, symmetric with the
 // validator: a local doc-gated skill renders today even without its doc);
 // then an additive fixed point over all three Requires* edge kinds enables
-// every remaining enabled artifact's missing skills, agents, and docs — so a
+// every remaining enabled artifact's missing skills, agents, and docs - so a
 // dormant skill something still requires re-enters with its doc. Idempotent;
 // every addition and drop is printed; the config write is atomic.
 // invariant: close-enabled-set-migration
@@ -28,7 +28,7 @@ func applyCloseEnabledSet(root string, out io.Writer) error {
 }
 
 // closeEnabledSet is the catalog-parameterized seam behind applyCloseEnabledSet,
-// so the demanded-dormant re-add interplay (unreachable in the shipped catalog —
+// so the demanded-dormant re-add interplay (unreachable in the shipped catalog -
 // nothing requires a doc-gated skill today) stays testable synthetically.
 func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {

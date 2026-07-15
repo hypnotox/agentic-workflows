@@ -55,7 +55,7 @@ func TestRuleConventionalCommits(t *testing.T) {
 	}
 }
 
-// The subject-length limit counts characters, not bytes — a multi-byte subject
+// The subject-length limit counts characters, not bytes - a multi-byte subject
 // within the limit must not be flagged.
 func TestSubjectLengthCountsRunes(t *testing.T) {
 	s := Settings{SubjectMaxLength: 72}

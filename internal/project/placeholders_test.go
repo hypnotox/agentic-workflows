@@ -27,7 +27,7 @@ func projectWithScopes(t *testing.T) *Project {
 }
 
 // projectAcceptAny opens a scaffolded project with no audit config (accept-any
-// scopes) and no gate vars — the scope keys and gate keys are all absent.
+// scopes) and no gate vars - the scope keys and gate keys are all absent.
 func projectAcceptAny(t *testing.T) *Project {
 	t.Helper()
 	p, err := Open(scaffold(t, "prefix: bare\nvars: {}\nskills: []\nagents: []\n"))

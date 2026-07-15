@@ -229,7 +229,7 @@ func TestNewFileErrorsOnDriftedTemplate(t *testing.T) {
 
 func TestNewFileErrorsOnMissingTitlePlaceholder(t *testing.T) {
 	dir := t.TempDir()
-	// Has date: but no "# Plan: Title" heading — the second replaceOnce trips.
+	// Has date: but no "# Plan: Title" heading - the second replaceOnce trips.
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte("---\ndate: YYYY-MM-DD\n---\n# Wrong Heading\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

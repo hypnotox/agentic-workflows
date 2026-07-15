@@ -9,8 +9,8 @@ import (
 )
 
 // runUpgrade applies every registered migration past the project's current
-// schema generation, then always runs a normal sync — even when no migration
-// applies — so a same-schema binary bump still re-renders every managed file
+// schema generation, then always runs a normal sync - even when no migration
+// applies - so a same-schema binary bump still re-renders every managed file
 // and re-pins the bootstrap (ADR-0085 Decision 4). Truthful edge states
 // (ADR-0076 Decision 4): no config layout at all → the awf init hint; a tree
 // whose schema is ahead of this binary → the version-gate guidance.

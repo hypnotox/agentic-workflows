@@ -47,8 +47,8 @@ const (
 	ClassUnbacked Class = "unbacked"
 )
 
-// Decl is a declared invariant slug's declaring ADR, its backing class, and —
-// for an unbacked declaration — the `Verify:` guidance text its bullet carries
+// Decl is a declared invariant slug's declaring ADR, its backing class, and -
+// for an unbacked declaration - the `Verify:` guidance text its bullet carries
 // (empty when absent). Check treats an empty Verify on an unbacked declaration as
 // a MissingVerify finding; ContextFor surfaces the text as the site note.
 type Decl struct {
@@ -106,13 +106,13 @@ var (
 	// the double-backtick form ADR-0007 uses to render literal backticks
 	// (`- `+"``  `invariant: x`  ``") are recognised, while a mid-prose
 	// cross-reference to another ADR's slug is not (it does not lead a list item)
-	// — which would otherwise phantom-duplicate that slug.
+	// - which would otherwise phantom-duplicate that slug.
 	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)")
 	// verifyRe locates the `Verify:` marker an unbacked declaration must carry; the
 	// guidance text is the (whitespace-normalised) bullet remainder after it, so a
 	// note wrapped across continuation lines is captured whole (surfaced by ContextFor).
 	verifyRe = regexp.MustCompile(`(?i)\bVerify:`)
-	// itemStartRe matches a markdown list-item lead — the boundary a wrapped bullet
+	// itemStartRe matches a markdown list-item lead - the boundary a wrapped bullet
 	// runs until (used to group a declaration bullet with its continuation lines).
 	itemStartRe = regexp.MustCompile(`^[ \t]*[-*][ \t]+`)
 	// slugRe matches a proof `invariant: <slug>` marker after a source marker.
@@ -148,8 +148,8 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 			if m[1] == "unbacked-" {
 				class = ClassUnbacked
 			}
-			// The `Verify:` note is scanned over the whole bullet — declaration line
-			// plus wrapped continuation lines — so a note spanning lines is captured
+			// The `Verify:` note is scanned over the whole bullet - declaration line
+			// plus wrapped continuation lines - so a note spanning lines is captured
 			// whole. An empty note (bare `Verify:`) leaves verify == "", which Check
 			// treats as missing.
 			verify := ""
@@ -178,7 +178,7 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 
 // invariantBullets splits an Invariants section into markdown list items, each
 // joined with its wrapped continuation lines. A bullet starts at a list-item lead
-// and runs until the next list-item lead, a blank line, or the section end — so a
+// and runs until the next list-item lead, a blank line, or the section end - so a
 // declaration's `Verify:` note is scanned over the whole bullet, not just its
 // first physical line.
 func invariantBullets(section string) []string {
@@ -297,8 +297,8 @@ func advisoryNotes(required map[string]Decl, scan scanResult) []Note {
 			notes = append(notes, Note{Slug: tm.Slug, Text: fmt.Sprintf("touches-invariant marker for %q carries no note", tm.Slug)})
 		}
 	}
-	// Each slug yields at most one note (a slug is either declared — bare-touches,
-	// deduped — or undeclared — dangling, deduped), so slug order is total.
+	// Each slug yields at most one note (a slug is either declared - bare-touches,
+	// deduped - or undeclared - dangling, deduped), so slug order is total.
 	sort.Slice(notes, func(i, j int) bool { return notes[i].Slug < notes[j].Slug })
 	return notes
 }
@@ -349,11 +349,11 @@ func scanTags(root string, cfg *config.InvariantConfig) (scanResult, error) {
 			case ".git", "vendor", "node_modules":
 				return fs.SkipDir
 			}
-			// A subdirectory with its own .git entry — a directory in a
+			// A subdirectory with its own .git entry - a directory in a
 			// primary clone, a gitdir-pointer file in a linked worktree or
-			// submodule — is another repository's working tree; a subdirectory
-			// carrying its own .awf tree — a nested adopter (e.g. an embedded
-			// example project) — is another awf project. Either way its markers
+			// submodule - is another repository's working tree; a subdirectory
+			// carrying its own .awf tree - a nested adopter (e.g. an embedded
+			// example project) - is another awf project. Either way its markers
 			// back its own ADRs and must not back this project's invariants.
 			if path != root {
 				if _, lerr := os.Lstat(filepath.Join(path, ".git")); lerr == nil {
@@ -391,8 +391,8 @@ func scanTags(root string, cfg *config.InvariantConfig) (scanResult, error) {
 		}
 		for _, line := range strings.Split(string(data), "\n") {
 			// Only a marker opening its line (after indentation) counts: a
-			// mid-line match may sit inside a string literal — e.g. a test
-			// fixture's source-code string — and must not count.
+			// mid-line match may sit inside a string literal - e.g. a test
+			// fixture's source-code string - and must not count.
 			trimmed := strings.TrimLeft(line, " \t")
 			for _, marker := range markers {
 				if !strings.HasPrefix(trimmed, marker) {
@@ -425,8 +425,8 @@ func matchesAnyGlob(globs []string, relSlash string) bool {
 }
 
 // MarkerHit is an invariant slug found under a queried path: the marker kind(s)
-// that surfaced it — a proof `invariant:` marker, a `touches-invariant:` marker,
-// or both — and, for touches markers, the deduped, sorted, non-empty site notes.
+// that surfaced it - a proof `invariant:` marker, a `touches-invariant:` marker,
+// or both - and, for touches markers, the deduped, sorted, non-empty site notes.
 // (ADR-0106: both marker kinds count as present under a path.)
 type MarkerHit struct {
 	Slug    string
@@ -529,8 +529,8 @@ func MarkersUnder(root string, cfg *config.InvariantConfig, paths []string) ([]M
 }
 
 // markersFor returns the deduped comment markers to scan for in the file at
-// relSlash: the marker of every source whose glob matches, plus — when the file
-// matches a `cfg.TestGlobs` glob (the union scan) — every source marker, so a
+// relSlash: the marker of every source whose glob matches, plus - when the file
+// matches a `cfg.TestGlobs` glob (the union scan) - every source marker, so a
 // test file matched only by testGlobs is still scanned with the known markers.
 func markersFor(cfg *config.InvariantConfig, relSlash string) []string {
 	seen := map[string]bool{}

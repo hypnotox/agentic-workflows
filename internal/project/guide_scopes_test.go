@@ -16,7 +16,7 @@ import (
 // invariant: guide-scopes-derived
 //
 // The agent guide renders its commit-scope mention from the $.commitScopes
-// render key — never a hand-written token list — and degrades to generic
+// render key - never a hand-written token list - and degrades to generic
 // Conventional-Commits prose when scopes are accept-any (ADR-0055, ADR-0045).
 // The invariants are read from awf's OWN .awf/agents-doc.yaml, not a synthetic
 // fixture: a re-introduced hand-written scope entry surfaces as a second
@@ -45,7 +45,7 @@ func TestGuideScopesDerived(t *testing.T) {
 	}
 
 	// Accept-any (scopes unset): the whole scope apparatus collapses to generic
-	// prose — no scope list, no audit.allowedScopes clause, no dangling comma.
+	// prose - no scope list, no audit.allowedScopes clause, no dangling comma.
 	empty := renderGuide(t, base(""))
 	wantEmpty := "- **Conventional Commits.** One concern per commit; stage explicitly, no `git add -A`."
 	if got := conventionalCommitsBullet(t, empty); got != wantEmpty {
@@ -83,7 +83,7 @@ func renderGuide(t *testing.T, data map[string]any) string {
 }
 
 // conventionalCommitsBullet returns the single invariant bullet opening with
-// "**Conventional Commits" and fails if there is not exactly one — a second
+// "**Conventional Commits" and fails if there is not exactly one - a second
 // would mean a hand-written scope entry returned to agents-doc.yaml.
 func conventionalCommitsBullet(t *testing.T, out string) string {
 	t.Helper()

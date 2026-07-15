@@ -854,13 +854,13 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 
 // TestUnsetFallbackRenders pins the graceful-fallback branches the empty-init
 // oracle never renders (ADR-0045/ADR-0046): the non-core skills are absent from
-// a curated init, and the reviewer agents ship catalog default data there — so
+// a curated init, and the reviewer agents ship catalog default data there - so
 // without these assertions a reverted guard in any of them passes the suite.
 // Every template renders with empty vars, empty data, and an empty skills set;
 // renderGolden's assertNoLeaks supplies the <no value> net.
 // fallbackCase pins one template's hand-authored degraded output: want
 // phrases must render under empty data, ban phrases must not; docs (when
-// set) replaces the layout docs map — used by RequiresDoc-gated templates
+// set) replaces the layout docs map - used by RequiresDoc-gated templates
 // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
 // requires an entry per conditional catalog template (ADR-0080).
 type fallbackCase struct {
@@ -909,7 +909,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		// Every conditional rung/reference degrades to generic prose when its
-		// skill/var/doc is absent — no empty inline code, no dangling reference
+		// skill/var/doc is absent - no empty inline code, no dangling reference
 		// (ADR-0045/ADR-0020 publication-safety; ADR-0067 rung-4 pitfalls obligation).
 		tmpl: "skills/retrospective/SKILL.md.tmpl",
 		want: []string{
@@ -1101,7 +1101,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 }
 
 // The AGENTS.md task-skills sentence derives from the catalog's enabled
-// non-Chain skills — every catalog task skill appears iff enabled (a hand
+// non-Chain skills - every catalog task skill appears iff enabled (a hand
 // enumeration could never mention a newer one like refactor-coupling-audit),
 // and disabled ones stay absent (ADR-0046 follow-up sweep).
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
@@ -1141,7 +1141,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 
 // TestGlossaryTemplate is the glossary doc's golden (nonArtifactGoldens-listed:
 // docs sit outside the ADR-0080 skills/agents completeness walk). The terms
-// value arrives pre-transformed — renderGolden bypasses the project-layer
+// value arrives pre-transformed - renderGolden bypasses the project-layer
 // transform, whose behavior glossary_test.go owns.
 func TestGlossaryTemplate(t *testing.T) {
 	data := map[string]any{

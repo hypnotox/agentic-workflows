@@ -93,7 +93,7 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 }
 
 // The effective set is exactly the enabled set (ADR-0081 amended ADR-0046's
-// semantics: enabled means rendered — the ADR-0013 doc-gate suppression is
+// semantics: enabled means rendered - the ADR-0013 doc-gate suppression is
 // gone), local-declared skills included. Dropping the doc post-Open no longer
 // changes membership; the invalid state is refused at Open instead.
 // invariant: skills-context-effective-set

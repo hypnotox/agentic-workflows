@@ -9,7 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// residueADRRe matches a concrete awf ADR citation — `ADR-` followed by four
+// residueADRRe matches a concrete awf ADR citation - `ADR-` followed by four
 // digits. The `ADR-NNNN` authoring placeholder never matches.
 var residueADRRe = regexp.MustCompile(`ADR-[0-9]{4}`)
 
@@ -28,8 +28,8 @@ var identityExempt = map[string]bool{
 // identityLiterals are the banned repo-identity tokens.
 var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 
-// TestTemplateSourceResidue scans every embedded template source — all
-// branches of every conditional, which no render-based sweep can cover — and
+// TestTemplateSourceResidue scans every embedded template source - all
+// branches of every conditional, which no render-based sweep can cover - and
 // fails on a concrete awf ADR citation or on a repo-identity literal outside
 // the explicit exemption list (ADR-0082).
 // invariant: template-source-residue

@@ -79,7 +79,7 @@ func TestDeclaringADRsUnbackedClass(t *testing.T) {
 }
 
 // TestDeclaringADRsVerifyWrapped pins that a `Verify:` note wrapped across a
-// bullet's continuation lines is captured whole — not truncated at the first
+// bullet's continuation lines is captured whole - not truncated at the first
 // physical line and not misread as a missing note (the ADR template wraps it).
 func TestDeclaringADRsVerifyWrapped(t *testing.T) {
 	dir := t.TempDir()
@@ -227,7 +227,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 func TestCheckUnbackedWithVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-ok` — a contract. **Verify:** inspect by hand.")
-	goSrc(t, root, "package x\n// touches-invariant: u-ok — the reasoned site.\n")
+	goSrc(t, root, "package x\n// touches-invariant: u-ok - the reasoned site.\n")
 	f, notes, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +302,7 @@ func TestCheckDanglingMarkerNote(t *testing.T) {
 		"// invariant: real\n"+ // backs the declared slug
 		"// invariant: ghost\n"+ // undeclared proof marker → dangling
 		"// touches-invariant: ghost\n"+ // same ghost via touches → deduped
-		"// touches-invariant: phantom — a note\n") // undeclared touches → dangling
+		"// touches-invariant: phantom - a note\n") // undeclared touches → dangling
 	f, notes, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -357,7 +357,7 @@ func TestCheckPlainCommentIgnored(t *testing.T) {
 	}
 }
 
-// Anchored scope (ADR-0077): a slashed glob confines the scan to its subtree —
+// Anchored scope (ADR-0077): a slashed glob confines the scan to its subtree -
 // a tag outside it does not back the slug, with no basename fallback.
 func TestCheckAnchoredGlobScope(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
@@ -382,7 +382,7 @@ func TestCheckMarkerMustOpenLine(t *testing.T) {
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-literal` — x.\n- `invariant: fixture-indented` — y.")
 	goSrc(t, root, "package x\n"+
 		"var s = \"src\\n// invariant: fixture-literal\\n\"\n"+ // mid-line, inside a literal
-		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment — still backs
+		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment - still backs
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -508,7 +508,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 // TestCheckRecognisesDoubleBacktickDeclaration pins that the double-backtick
 // declaration form ADR-0007 uses (a bullet whose tag is wrapped in double
 // backticks so the inner single backticks render literally) is still recognised
-// as a declaration — see the fixture body for the exact shape.
+// as a declaration - see the fixture body for the exact shape.
 func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `invariant: dbl-slug` `` — declared with double backticks.")
@@ -616,8 +616,8 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 	}
 }
 
-// A nested checkout — a subdirectory carrying its own .git entry, a directory
-// in a primary clone or a gitdir-pointer file in a linked worktree/submodule —
+// A nested checkout - a subdirectory carrying its own .git entry, a directory
+// in a primary clone or a gitdir-pointer file in a linked worktree/submodule -
 // is another repository's working tree: a marker inside it must not back this
 // project's invariants (stale session worktrees under .claude/worktrees/ were
 // silently keeping deleted markers "backed"). The root's own .git entry must
@@ -643,8 +643,8 @@ func TestCheckSkipsNestedCheckouts(t *testing.T) {
 	}
 }
 
-// A nested awf adopter — a subdirectory carrying its own .awf tree (e.g. an
-// embedded example project) — is another awf project: a marker inside it backs
+// A nested awf adopter - a subdirectory carrying its own .awf tree (e.g. an
+// embedded example project) - is another awf project: a marker inside it backs
 // its own ADRs and must not back this project's invariants, nor surface as a
 // dangling advisory here.
 func TestCheckSkipsNestedAwfProject(t *testing.T) {
@@ -679,7 +679,7 @@ func TestCheckScanWalkError(t *testing.T) {
 
 // TestCheckScanReadError pins that an unreadable matched source file surfaces the
 // read error. A dangling symlink whose name matches a glob is used so the scan
-// matches the path but os.ReadFile (which follows the link) fails — no chmod
+// matches the path but os.ReadFile (which follows the link) fails - no chmod
 // fixtures, which are unportable and root-fragile.
 func TestCheckScanReadError(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
@@ -802,11 +802,11 @@ func TestMarkersUnder(t *testing.T) {
 func TestMarkersUnderTwoMarkers(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "cmd", "proof.go"), "package x\n// invariant: proof-only\n")
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "touch.go"), "package x\n// touches-invariant: touch-only — a site note.\n")
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "touch.go"), "package x\n// touches-invariant: touch-only - a site note.\n")
 	testsupport.WriteFile(t, filepath.Join(root, "cmd", "both.go"), "package x\n"+
 		"// invariant: both\n"+
-		"// touches-invariant: both — first note.\n"+
-		"// touches-invariant: both — first note.\n"+ // duplicate note → deduped
+		"// touches-invariant: both - first note.\n"+
+		"// touches-invariant: both - first note.\n"+ // duplicate note → deduped
 		"// touches-invariant: both\n") // bare touches → no note
 	hits, err := invariants.MarkersUnder(root, goSrcConfig(), []string{"cmd"})
 	if err != nil {

@@ -27,7 +27,7 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 	}
 	subject := cleanCommitSubject(string(raw))
 	// An empty subject (git aborts the commit itself) or a git-generated merge /
-	// autosquash subject is exempt — never block what git produced or will rewrite.
+	// autosquash subject is exempt - never block what git produced or will rewrite.
 	if subject == "" || isExemptSubject(subject) {
 		return nil
 	}
@@ -67,8 +67,8 @@ func cleanCommitSubject(raw string) string {
 	return ""
 }
 
-// isExemptSubject reports whether a subject is one git itself generates — a merge
-// or an autosquash (fixup!/squash!/amend!) — which the gate must not block.
+// isExemptSubject reports whether a subject is one git itself generates - a merge
+// or an autosquash (fixup!/squash!/amend!) - which the gate must not block.
 func isExemptSubject(s string) bool {
 	return strings.HasPrefix(s, "Merge ") ||
 		strings.HasPrefix(s, "fixup!") ||

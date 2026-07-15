@@ -45,7 +45,7 @@ func TestNoDocPathVarsInTemplates(t *testing.T) {
 
 // TestCommitScopeSingleStorage asserts commit scopes have one storage
 // (ADR-0051): no template references .vars.commitScope and the catalog vars
-// block carries no commitScope descriptor — every rendered scope mention
+// block carries no commitScope descriptor - every rendered scope mention
 // derives from audit.allowedScopes via the commitScopes render-context key.
 // invariant: commit-scope-single-storage
 func TestCommitScopeSingleStorage(t *testing.T) {

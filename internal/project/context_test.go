@@ -42,7 +42,7 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"),
 		"package x\n// invariant: gov-slug\n// invariant: gov-slug2\n// invariant: gov-slug3\n// invariant: orphan-slug\n")
 	// 0001 Implemented, declares BOTH present gov slugs; tag `precise` plus `alpha`
-	// (now in the precise set — no domain-name filtering); related: [3, 5] → Tier 1.
+	// (now in the precise set - no domain-name filtering); related: [3, 5] → Tier 1.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
 			testsupport.WithTags("precise", "alpha"), testsupport.WithRelated(3, 5),
@@ -97,7 +97,7 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 // TestContextForAssembles exercises the three-tier assembly: Tier 1 (an ADR
 // declaring a present invariant slug, deduped when it declares two, an orphan
 // present slug skipped), Tier 2 (shared precise tag and related-linked, with a
-// Superseded ADR dropped; the precise set is the plain union of Tier-1 tags — no
+// Superseded ADR dropped; the precise set is the plain union of Tier-1 tags - no
 // domain-name filtering, since the tag-not-domain-name gate forbids a tag naming
 // a domain), and the Tier-3 collapsed background count.
 // invariant: context-tier2-precise-tag

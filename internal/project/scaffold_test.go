@@ -98,8 +98,8 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
 	}
 
-	// No doc remains core (ADR-0043 promoted the only three core docs — workflow,
-	// doc-standard, agents-md-standard — to mandatory singletons outside cat.Docs).
+	// No doc remains core (ADR-0043 promoted the only three core docs - workflow,
+	// doc-standard, agents-md-standard - to mandatory singletons outside cat.Docs).
 	if len(cfg.Docs) != 0 {
 		t.Errorf("scaffold docs = %v, want none (no core docs remain)", cfg.Docs)
 	}
@@ -223,7 +223,7 @@ func TestScaffoldEnablesAllCatalogAgents(t *testing.T) {
 }
 
 // TestScaffoldVarsCoverAllReferenced asserts the scaffolded vars block seeds every
-// var referenced by any catalog template family — skills, agents, and docs —
+// var referenced by any catalog template family - skills, agents, and docs -
 // backing inv: scaffold-seeds-all-vars. The expected set is re-derived from the
 // templates here, independently of ScaffoldConfig's own collection, so an unseeded
 // future var (e.g. a new doc var) fails this test.

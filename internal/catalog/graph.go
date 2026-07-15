@@ -7,7 +7,7 @@ type Node struct {
 	Name string
 }
 
-// RequiresOf enumerates n's direct requirement edges declared in cat — the
+// RequiresOf enumerates n's direct requirement edges declared in cat - the
 // single source of edge truth (ADR-0081 Decision 1). An unknown name yields
 // a zero-value spec and therefore no edges: project-local artifacts
 // (ADR-0068) are leaves.

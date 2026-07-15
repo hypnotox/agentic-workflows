@@ -18,10 +18,10 @@ var includeRE = regexp.MustCompile(`(?m)^[ \t]*<!-- awf:include (\S+) -->[ \t]*\
 // template text. Three conditions are hard errors: a missing partial, a partial that itself
 // contains an awf:include (nested includes are unsupported), and a partial that contains an
 // awf:section/awf:end marker (overlay across a splice boundary is unspecified).
-// touches-invariant: include-splice — include-directive splice site; proof in include_test.go
-// touches-invariant: include-missing-fails — missing-partial hard error; proof in include_test.go
-// touches-invariant: include-no-nested — nested-include rejection; proof in include_test.go
-// touches-invariant: include-no-sections — section-marker-in-partial rejection; proof in include_test.go
+// touches-invariant: include-splice - include-directive splice site; proof in include_test.go
+// touches-invariant: include-missing-fails - missing-partial hard error; proof in include_test.go
+// touches-invariant: include-no-nested - nested-include rejection; proof in include_test.go
+// touches-invariant: include-no-sections - section-marker-in-partial rejection; proof in include_test.go
 func ExpandIncludes(src string, partialFS fs.FS) (string, error) {
 	locs := includeRE.FindAllStringSubmatchIndex(src, -1)
 	if locs == nil {

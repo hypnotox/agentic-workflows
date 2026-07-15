@@ -61,7 +61,7 @@ func TestPitfallEntriesValid(t *testing.T) {
 	}
 }
 
-// An absent (nil) value yields nil, nil — the template's else branch renders.
+// An absent (nil) value yields nil, nil - the template's else branch renders.
 func TestPitfallEntriesNil(t *testing.T) {
 	entries, err := pitfallEntries(nil)
 	if err != nil || entries != nil {

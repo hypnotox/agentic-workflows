@@ -100,7 +100,7 @@ func TestPitfallsDataEmptyList(t *testing.T) {
 	}
 }
 
-// An absent part is a clean no-op — no output, no sidecar written — so a re-run
+// An absent part is a clean no-op - no output, no sidecar written - so a re-run
 // after a prior split does nothing.
 func TestPitfallsDataNoOp(t *testing.T) {
 	root := t.TempDir()

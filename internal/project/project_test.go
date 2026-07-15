@@ -21,8 +21,8 @@ func scaffold(t *testing.T, configYAML string) string {
 	return scaffoldFiles(t, configYAML, nil)
 }
 
-// testLayout returns a complete .layout template map — every key
-// Layout.templateMap produces, with canonical docs/-rooted values — so a test
+// testLayout returns a complete .layout template map - every key
+// Layout.templateMap produces, with canonical docs/-rooted values - so a test
 // that renders a template directly doesn't need to hand-pick which keys that
 // template happens to reference today. A future Layout field addition only
 // needs updating here, not at every hand-built fixture across the package.
@@ -130,7 +130,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := p2.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// The whole .cursor/ tree is gone — every empty ancestor, not just the leaf parent.
+	// The whole .cursor/ tree is gone - every empty ancestor, not just the leaf parent.
 	for _, dir := range []string{".cursor/skills/example-tdd", ".cursor/skills", ".cursor/agents", ".cursor"} {
 		if _, err := os.Stat(filepath.Join(root, dir)); !os.IsNotExist(err) {
 			t.Errorf("expected %s removed, stat err = %v", dir, err)
@@ -244,7 +244,7 @@ agents:
 // TestSyncKeepsLocalConvertedSkill guards the managed→local prune bug: converting
 // a previously-managed skill to local must not delete its on-disk file. RenderAll
 // skips local artifacts, so without protection Sync's prune treats the (now hand-
-// authored) file as a stale managed output and removes it — breaking every later
+// authored) file as a stale managed output and removes it - breaking every later
 // sync/check with "local skill file absent".
 func TestSyncKeepsLocalConvertedSkill(t *testing.T) {
 	cfg := `prefix: example
@@ -455,7 +455,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 }
 
 // TestSyncReportClassifiesChangedOutput stages every provenance cause by
-// authoring the prior lock directly — the classification compares the old
+// authoring the prior lock directly - the classification compares the old
 // entry against the fresh render, so a tweaked stored hash simulates the
 // corresponding real change (an upstream template edit, a config edit, a
 // non-hashed input) without mutating the embedded templates.
@@ -709,7 +709,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	}
 	// templateMap reproduces the historical .layout map by literal value (ConfigHash
 	// stability). The fixed directory keys are hand-built; the mandatory-singleton
-	// keys derive from the catalog (ADR-0061) — assert each one's exact value so a
+	// keys derive from the catalog (ADR-0061) - assert each one's exact value so a
 	// wrong derivation is caught, not just a present key.
 	tm := l.templateMap()
 	wantTM := map[string]string{
@@ -747,7 +747,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 }
 
 // A doc-gated skill always renders while enabled: the ADR-0013 render-time
-// suppression is gone (ADR-0081 Decision 7) — the doc-less state is refused
+// suppression is gone (ADR-0081 Decision 7) - the doc-less state is refused
 // at Open instead (TestOpenRefusesUnclosedEnabledSet), so enabled means
 // rendered even when the doc is dropped post-Open.
 func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
@@ -1080,7 +1080,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			continue
 		}
 		mapped++
-		// Assert the whole rendered line — title, link, and catalog desc — so a
+		// Assert the whole rendered line - title, link, and catalog desc - so a
 		// mandatory doc is cited with its data-driven title/desc, not just linked.
 		line := fmt.Sprintf("- **%s:** [docs/%s](docs/%s), %s", e.Title, e.Path, e.Path, e.Desc)
 		if !strings.Contains(got, line) {
@@ -1092,7 +1092,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 	}
 }
 
-// A reviewing skill enabled without its dispatched agent fails project open —
+// A reviewing skill enabled without its dispatched agent fails project open -
 // the error names both sides and the fix. The fixture carries reviewing-impl's
 // skill closure so the agent edge is the failing one (ADR-0050, generalized by
 // ADR-0081's closure validation).
@@ -1117,7 +1117,7 @@ func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
 }
 
 // Every enabled, non-local artifact's direct catalog requirements must be
-// enabled — a violation fails open with a repair hint (ADR-0081 Decision 3).
+// enabled - a violation fails open with a repair hint (ADR-0081 Decision 3).
 // invariant: enabled-set-closed
 func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	cases := []struct {

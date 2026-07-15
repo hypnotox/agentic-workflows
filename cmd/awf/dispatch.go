@@ -32,7 +32,7 @@ type cmdCtx struct {
 // handler runs one resolved command against its parsed invocation.
 type handler func(*cmdCtx) error
 
-// firstPos returns the first positional or "" — the optional-argument shape of
+// firstPos returns the first positional or "" - the optional-argument shape of
 // list, config, and commit-gate.
 func firstPos(pos []string) string {
 	if len(pos) > 0 {
@@ -91,11 +91,11 @@ var handlers = map[string]handler{
 	"version": func(c *cmdCtx) error { runVersion(c.stdout); return nil },
 }
 
-// enableDisableArgs resolves the shared positional forms of enable/disable —
-// `<kind> <name>` or a nameless singleton (bootstrap/hooks) — into a kind and
+// enableDisableArgs resolves the shared positional forms of enable/disable -
+// `<kind> <name>` or a nameless singleton (bootstrap/hooks) - into a kind and
 // name, or a usage error. isEnable selects the verb, the enable-only "requires a
 // kind" hint, and the per-command usage line. A singleton handed a name, and a
-// lone kind token missing its name, are distinct usage errors — not silently
+// lone kind token missing its name, are distinct usage errors - not silently
 // dropped input (the singleton) or a misattributed "requires a kind" hint (the
 // kind token).
 func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err error) {
@@ -120,11 +120,11 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 	}
 }
 
-// isKindToken reports whether s names a CLI kind that takes a <name> — a
+// isKindToken reports whether s names a CLI kind that takes a <name> - a
 // descriptor kind (skill/agent/doc/domain, via the one kind table that
 // kind-dispatch-single-table guards) or the target adapter (which has no
 // descriptor). It lets enableDisableArgs tell "forgot the name" from "forgot the
-// kind". bootstrap/hooks/runner are excluded — they are nameless singletons
+// kind". bootstrap/hooks/runner are excluded - they are nameless singletons
 // handled before this check.
 func isKindToken(s string) bool {
 	if s == "target" {
@@ -139,7 +139,7 @@ func isKindToken(s string) bool {
 // validates against the child's flag spec and --help prints the child help),
 // with sub set to the child token and rest the tokens after it. A leaf, or a
 // group with no or an unknown child, returns itself as cmd with sub "" and rest
-// args[1:] — the group's handler then owns the missing/unknown-child messages.
+// args[1:] - the group's handler then owns the missing/unknown-child messages.
 // top is always the top-level command (== cmd for a leaf, the group for a
 // resolved child); the driver reads gating and the handler key from top, since
 // both are top-level properties a child never overrides.

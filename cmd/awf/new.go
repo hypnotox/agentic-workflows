@@ -16,7 +16,7 @@ import (
 // runNew scaffolds a new templated artifact: an ADR, or a project-local skill/agent
 // (ADR-0068). ADR takes a single joined title; skill/agent take a name and a
 // separate quoted description.
-// touches-invariant: adr-new-version-gated — new-command version gate site; proof in gate_test.go
+// touches-invariant: adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":
@@ -70,7 +70,7 @@ func newPlan(root string, titleWords []string, stdout io.Writer) error {
 
 // newLocal scaffolds a project-local artifact (ADR-0068, ADR-0091): a skill,
 // agent, or doc. It validates the name (path-aware for doc), writes a declaring
-// sidecar carrying the description — plus a derived title for a doc — and a
+// sidecar carrying the description - plus a derived title for a doc - and a
 // starter content part, enables the name in config (seeding a skill/agent's
 // referenced vars), and re-renders. The kind parameterizes the two differences:
 // the name validator + stub, and the doc-only title / no var-seeding.
@@ -155,7 +155,7 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 }
 
 // seedScaffoldVars seeds each of the scaffolded template's referenced vars as
-// an empty key when absent from cfgSrc — the creation-time open to-do
+// an empty key when absent from cfgSrc - the creation-time open to-do
 // (ADR-0087 Decision 4). A present key, and a deleted one, are never touched.
 // invariant: new-seeds-scaffold-vars
 func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
@@ -168,7 +168,7 @@ func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
 	return cfgSrc, nil
 }
 
-// localPartStub is the starter body for a new local artifact's content part —
+// localPartStub is the starter body for a new local artifact's content part -
 // plain prose only (no live {{=awf:…}} placeholder, which would hard-error if its
 // value were unset this render). The leading awf:stub marker line declares the
 // part unauthored (ADR-0070): awf check reports it until the author deletes the
@@ -180,7 +180,7 @@ const localPartStub = "<!-- awf:stub -->\n" +
 	"the placeholder syntax.\n"
 
 // localDocPartStub is the starter body for a new local doc's content part. The
-// doc-standard pointer is prose, not a markdown link — a file-relative link would
+// doc-standard pointer is prose, not a markdown link - a file-relative link would
 // resolve dead from a nested doc's directory (ADR-0020). The leading awf:stub
 // marker declares the part unauthored (ADR-0070).
 const localDocPartStub = "<!-- awf:stub -->\n" +

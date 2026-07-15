@@ -34,11 +34,11 @@ func versionLine(info *debug.BuildInfo, ok bool) string {
 // authority (ADR-0049): no ldflags var or module build info feeds version
 // gating, lock stamping, or bootstrap pinning.
 func awfVersion() string {
-	// touches-invariant: single-version-authority — sole version-authority return; proof in version_test.go
+	// touches-invariant: single-version-authority - sole version-authority return; proof in version_test.go
 	return project.Version
 }
 
-// formatProvenance renders display-only build metadata — the module version
+// formatProvenance renders display-only build metadata - the module version
 // when it adds information beyond the const, and the short VCS revision
 // (ADR-0049 Decision 2).
 func formatProvenance(info *debug.BuildInfo) string {

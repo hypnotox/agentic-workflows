@@ -16,13 +16,13 @@ type SectionPlan struct {
 	Drop     bool
 	HasPart  bool
 	PartBody string
-	// PartStub marks a part body carrying the whole-line awf:stub marker —
+	// PartStub marks a part body carrying the whole-line awf:stub marker -
 	// declared-unauthored starter content (ADR-0070). Set by the project layer,
 	// which reads part bodies; consumed by StubSections.
 	PartStub bool
 	// PartMarker marks a part whose raw, fence-excluded body carries a
 	// whole-line section-marker residue (ADR-0083). Set by the project layer
-	// over the on-disk bytes — pre placeholder substitution, whose multi-line
+	// over the on-disk bytes - pre placeholder substitution, whose multi-line
 	// values must never create or mask a match; consumed part-keyed by the
 	// marker advisory.
 	PartMarker bool
@@ -36,7 +36,7 @@ type SectionPlan struct {
 	// rendered output, preserved across syncs (ADR-0100). Mutually exclusive
 	// with HasPart. InPlaceFound reports whether the section's region was located
 	// in the existing output (its pointer was present); InPlaceBody is that
-	// region's read-back content (possibly empty — an adopter may empty the
+	// region's read-back content (possibly empty - an adopter may empty the
 	// region). When InPlaceFound is false (first render / deleted pointer) the
 	// template default renders instead; a found-but-empty region stays empty, so
 	// emptying a region is not silently reverted to the default (ADR-0100 Decision 2).
@@ -109,7 +109,7 @@ func PointerLinePrefixes(name string, style CommentStyle) []string {
 // output (unlike structural markers) and bounds the read-back region without
 // tripping the residual-marker guards (ADR-0100). Only the comment delimiters
 // vary by style; the token and phrasing are constant.
-// touches-invariant: section-edit-pointer — awf:edit provenance pointer emission; proof in render_test.go
+// touches-invariant: section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
 func editPointer(name string, stub bool, p SectionPlan, style CommentStyle) string {
 	switch {
 	case p.InPlace:
@@ -143,7 +143,7 @@ const SectionDefaultSentinel = "\x00awf:section-default\x00"
 // verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
 // either a sentinel standing in for its part body (restored after Execute) or the
 // template default. Section markers are consumed here and never written.
-// touches-invariant: no-section-marker-leak — section markers consumed, never written; proof in render_test.go
+// touches-invariant: no-section-marker-leak - section markers consumed, never written; proof in render_test.go
 func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
 	var b strings.Builder
 	parts := map[string]string{}
@@ -159,7 +159,7 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 		b.WriteString(editPointer(s.Name, s.Stub, p, style))
 		switch {
 		case p.InPlace:
-			// touches-invariant: in-place-pointer-distinct — distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
+			// touches-invariant: in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
 			// A located region's read-back body is emitted verbatim after the
 			// distinct awf:edit-in-place pointer (no re-templating), even when the
 			// adopter emptied it; only an unlocated region (first render / deleted
@@ -180,7 +180,7 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 
 // writePartBody emits a section's part into the skeleton. When the part re-injects its
 // section default via the sectionDefault split marker (ADR-0072), it is split at each
-// marker into verbatim fragments — distinct sentinels restored after Execute —
+// marker into verbatim fragments - distinct sentinels restored after Execute -
 // interleaved with the section's raw default source (s.Text), which Execute templates in
 // place. A part without the marker emits a single sentinel for the whole body, the
 // pre-ADR-0072 behaviour.
@@ -247,10 +247,10 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 }
 
 // Execute runs text/template over the awf-owned skeleton (part bodies stood in by
-// sentinels) under missingkey=zero, then restores each raw part body verbatim — so
+// sentinels) under missingkey=zero, then restores each raw part body verbatim - so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
-// touches-invariant: parts-raw — part bodies restored verbatim, never templated; proof in render_test.go
+// touches-invariant: parts-raw - part bodies restored verbatim, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {

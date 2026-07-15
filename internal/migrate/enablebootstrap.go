@@ -12,7 +12,7 @@ import (
 // gets the new default. It writes `bootstrap:\n  enabled: true` via
 // config.SetMappingScalar so config.yaml serialization stays owned by
 // internal/config (ADR-0026). A config absent on disk is a no-op (idempotent
-// re-run safe), and a config that already carries a bootstrap key made a choice —
+// re-run safe), and a config that already carries a bootstrap key made a choice -
 // a replay from a degraded lock must not override a deliberate opt-out.
 func applyEnableBootstrap(root string, _ io.Writer) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {

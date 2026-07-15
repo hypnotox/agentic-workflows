@@ -94,7 +94,7 @@ func TestRunnerStructure(t *testing.T) {
 }
 
 // The runner renders leak-free (no unresolved token, no stray section/marker
-// residue) — the publication-safety contract every awf template meets.
+// residue) - the publication-safety contract every awf template meets.
 // invariant: runner-render-publication-safe
 func TestRunnerPublicationSafe(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
@@ -112,7 +112,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 }
 
 // The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
-// stays out of SingletonKinds() — the unified-doc-model completeness set is
+// stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
 // invariant: singleton-kinds-complete
 func TestRunnerNotASingletonKind(t *testing.T) {

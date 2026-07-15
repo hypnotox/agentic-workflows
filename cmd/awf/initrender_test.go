@@ -68,7 +68,7 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The fresh tree must also pass check, with notes only (advisory, exit 0) —
+	// The fresh tree must also pass check, with notes only (advisory, exit 0) -
 	// in particular zero dead-skill-reference findings on the curated default.
 	// invariant: curated-init-skill-refs-clean
 	var checkOut bytes.Buffer
@@ -81,7 +81,7 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 }
 
 // unpairedDoubleBacktickRun reports whether the line holds an odd number of
-// >=2-backtick runs — an unpaired double run is the residue of an empty-var
+// >=2-backtick runs - an unpaired double run is the residue of an empty-var
 // span, while a legitimate double-backtick-delimited span (and an inline
 // triple-backtick run) contributes a pair.
 func unpairedDoubleBacktickRun(line string) bool {

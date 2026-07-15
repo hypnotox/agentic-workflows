@@ -116,7 +116,7 @@ func TestRunContextHuman(t *testing.T) {
 	}
 }
 
-// The JSON render carries the same assembled set as the human render — one
+// The JSON render carries the same assembled set as the human render - one
 // assembler feeds both (inv: context-output-parity).
 func TestRunContextJSONParity(t *testing.T) {
 	root := ctxFixture(t)
@@ -174,7 +174,7 @@ func TestRunContextJSONParity(t *testing.T) {
 }
 
 // Outside an adopted tree the command prints the static pre-adoption notice and
-// succeeds — never refuses (inv: context-static-fallback). The JSON variant
+// succeeds - never refuses (inv: context-static-fallback). The JSON variant
 // emits the paths-only result.
 func TestRunContextStaticFallback(t *testing.T) {
 	var human bytes.Buffer
@@ -266,7 +266,7 @@ func TestRunContextDispatch(t *testing.T) {
 	}
 }
 
-// inv: context-read-only — awf context writes nothing: file mtimes and the lock
+// inv: context-read-only - awf context writes nothing: file mtimes and the lock
 // bytes are byte-identical before and after runs across the command's branches.
 func TestRunContextReadOnly(t *testing.T) {
 	root := ctxFixture(t)
@@ -348,7 +348,7 @@ invariants:
 
 // uncoveredCmdFixture builds an adopted tree that is ALSO a git repo (so
 // TrackedPaths resolves): a domain owning internal/render/**, a current lock, and
-// two committed files — one covered (internal/render/r.go), one not
+// two committed files - one covered (internal/render/r.go), one not
 // (internal/plan/p.go).
 func uncoveredCmdFixture(t *testing.T) string {
 	t.Helper()
@@ -387,7 +387,7 @@ func TestRunContextUncoveredHuman(t *testing.T) {
 	}
 }
 
-// The --uncovered JSON render carries the same uncovered set as the human render —
+// The --uncovered JSON render carries the same uncovered set as the human render -
 // one assembled UncoveredResult feeds both (inv: uncovered-output-parity).
 func TestRunContextUncoveredJSONParity(t *testing.T) {
 	root := uncoveredCmdFixture(t)

@@ -18,7 +18,7 @@ import (
 
 // marker is the ignore directive in its comment form. It is assembled by
 // concatenation so this source line does not itself contain the literal
-// directive — otherwise the scanner, when reading this very file out of a
+// directive - otherwise the scanner, when reading this very file out of a
 // coverprofile, would treat this line as a reasonless directive and error.
 const marker = "//" + " coverage-ignore"
 
@@ -73,7 +73,7 @@ func CheckProfile(profilePath string) (Report, error) {
 // A profile produced by `go test ./... -coverpkg=./...` emits each instrumented
 // block once per test binary, so the same block recurs many times with differing
 // counts. Blocks are first merged by identity (file + span), OR-ing the counts
-// (mode: set), exactly as `go tool cover` does — otherwise the denominator is
+// (mode: set), exactly as `go tool cover` does - otherwise the denominator is
 // inflated by the duplication.
 func Check(profilePath, srcRoot, modPath string) (Report, error) {
 	blocks, err := parseProfile(profilePath)
@@ -136,7 +136,7 @@ func FilterProfile(profilePath string) (string, error) {
 }
 
 // Filter returns a coverprofile containing exactly the blocks of the profile at
-// profilePath that are NOT dropped by a coverage-ignore directive — the same
+// profilePath that are NOT dropped by a coverage-ignore directive - the same
 // blocks the ADR-0012 gate holds accountable, sharing ignoredLines verbatim so the
 // two can never disagree on what "ignored" means (ADR-0065's covered report). The
 // output carries a "mode: set" header (the mode parseProfile discards; awf's gate
@@ -179,7 +179,7 @@ func Filter(profilePath, srcRoot, modPath string) (string, error) {
 // block is one parsed coverprofile line.
 type block struct {
 	file      string // module-qualified source path, e.g. mod/pkg/file.go
-	span      string // raw "startLine.col,endLine.col" — block identity within a file
+	span      string // raw "startLine.col,endLine.col" - block identity within a file
 	startLine int
 	numStmt   int
 	count     int

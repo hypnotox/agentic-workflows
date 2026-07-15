@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// ADR-0090: the committed example adopter is kept deterministic through ./x —
+// ADR-0090: the committed example adopter is kept deterministic through ./x -
 // sync re-renders it from source; check drift-, invariant-, note-, and
 // test-gates it. The example is its own Go module so the enclosing ./...
 // sweeps never see it; this test pins the wiring so it cannot be silently

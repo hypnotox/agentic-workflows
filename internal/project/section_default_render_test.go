@@ -6,8 +6,8 @@ import (
 )
 
 // End-to-end coverage for the ADR-0072 splice. The feature's two halves meet
-// only at a shared constant — token→sentinel in placeholders.go, sentinel→splice
-// in internal/render — so a part file carrying {{=awf:sectionDefault}} is driven
+// only at a shared constant - token→sentinel in placeholders.go, sentinel→splice
+// in internal/render - so a part file carrying {{=awf:sectionDefault}} is driven
 // through the full Open→RenderAll pipeline here: a renderTarget call-order
 // regression (substitution after Assemble, or the stub check hoisted before
 // planSections) would pass both unit halves but fail this.

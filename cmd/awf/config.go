@@ -77,7 +77,7 @@ func staticModel() (map[string]any, error) {
 		switch d.Artifact {
 		case "agents-doc":
 			artifact = "agents-doc"
-		case "_base": // internal token — adopters know these as their local artifacts
+		case "_base": // internal token - adopters know these as their local artifacts
 			artifact = "local " + d.Kind
 		}
 		dataKeys = append(dataKeys, map[string]any{
@@ -92,7 +92,7 @@ func staticModel() (map[string]any, error) {
 
 // printConfigReference prints the model (or the static catalog reference when
 // model is nil): every section, or the single entry matching key. An unknown
-// key is an error (exit 1 — the CLI shape was valid).
+// key is an error (exit 1 - the CLI shape was valid).
 func printConfigReference(stdout io.Writer, key string, model map[string]any, header string) error {
 	if model == nil {
 		m, err := staticModel()

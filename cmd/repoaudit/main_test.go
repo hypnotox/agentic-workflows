@@ -42,7 +42,7 @@ func TestSeverityLabel(t *testing.T) {
 
 func TestGitErrorSurfacesStderr(t *testing.T) {
 	// .Output() captures stderr on *exec.ExitError, but %v prints only
-	// "exit status N" — the decoration is what makes a git-failure finding
+	// "exit status N" - the decoration is what makes a git-failure finding
 	// diagnosable (e.g. "unknown revision 'origin/main'").
 	_, err := exec.Command("sh", "-c", "echo bad rev >&2; exit 3").Output()
 	if got := gitError(err); got == nil || !strings.Contains(got.Error(), "bad rev") {
@@ -93,7 +93,7 @@ func TestRejectsMalformedRanges(t *testing.T) {
 func TestCleanNonAdopterFacing(t *testing.T) {
 	// Default range (no arg) + changes outside the allowlist → clean, exit 0. The
 	// blank line between the two paths also exercises changelogRule's empty-token
-	// `continue` — the sole branch no other test reaches (100%-coverage gate).
+	// `continue` - the sole branch no other test reaches (100%-coverage gate).
 	g := fakeGit{
 		"merge-base origin/main HEAD": {out: "origin/main\n"},
 		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 origin/main HEAD -- *.go": {out: ""},
@@ -157,7 +157,7 @@ func TestTestFilesAreNotAdopterFacing(t *testing.T) {
 
 func TestCatalogIsAdopterFacing(t *testing.T) {
 	// Since ADR-0068 a new shipped skill/agent can land as a pure catalog entry,
-	// with no diff under templates/ — the allowlist must catch it.
+	// with no diff under templates/ - the allowlist must catch it.
 	same := changelog("\n")
 	g := fakeGit{
 		"merge-base b h": {out: "b\n"},
@@ -174,7 +174,7 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 
 func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 	// Regression: base has moved past the fork point (upstream pushed). The rule must
-	// diff and compare [Unreleased] from the merge base — endpoint semantics would
+	// diff and compare [Unreleased] from the merge base - endpoint semantics would
 	// blame upstream files on the effort and let an upstream changelog entry mask the
 	// effort's own missing one. The fake maps only merge-base-side keys, so any
 	// endpoint-side git call fails the test as an unexpected call.
@@ -262,7 +262,7 @@ func TestNoUnreleasedSection(t *testing.T) {
 const testMarker = "//" + " coverage-ignore"
 
 func TestCoverageIgnoreAddedWarns(t *testing.T) {
-	// An added directive in a production file warns (exit stays 0 — Warning
+	// An added directive in a production file warns (exit stays 0 - Warning
 	// only); an added directive in a _test.go and a bare prose mention do not.
 	diff := "+++ b/internal/foo/foo.go\n" +
 		"+\tif err != nil { " + testMarker + ": impossible per X\n" +
@@ -298,7 +298,7 @@ func TestCoverageIgnoreAddedWarns(t *testing.T) {
 }
 
 func TestCoverageIgnoreDiffFails(t *testing.T) {
-	// The rule cannot verify on a git failure — loud Error, like the changelog rule.
+	// The rule cannot verify on a git failure - loud Error, like the changelog rule.
 	g := fakeGit{
 		"merge-base b h":       {out: "b\n"},
 		"diff --name-only b h": {out: "docs/x.md\n"},

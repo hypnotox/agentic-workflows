@@ -129,7 +129,7 @@ func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 // [extensions] config section from go-git's own extension-support check
 // (repository_extensions.go verifyExtensions). That check has an upstream bug:
 // it lowercases the incoming extension name ("worktreeconfig") before comparing
-// it against its allow-list, whose key is mixed-case ("worktreeConfig") — the
+// it against its allow-list, whose key is mixed-case ("worktreeConfig") - the
 // lookup never matches, so PlainOpen rejects any repo with
 // `extensions.worktreeConfig` set (a flag `git worktree add` can leave behind
 // even after the worktree is removed) regardless of repositoryformatversion.
@@ -137,8 +137,8 @@ func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 // is safe.
 //
 // Unlike git.PlainOpen with default options, this also resolves a `.git`
-// *file* — the `gitdir:` pointer `git worktree add` leaves at a linked
-// worktree's root (and the submodule layout) — mirroring what
+// *file* - the `gitdir:` pointer `git worktree add` leaves at a linked
+// worktree's root (and the submodule layout) - mirroring what
 // PlainOpenWithOptions' EnableDotGitCommonDir does, so awf's git-reading
 // commands work from a linked worktree. The manual storage construction (over
 // PlainOpenWithOptions) exists solely so the storer wrapper above can be
@@ -152,8 +152,8 @@ func OpenRepo(repoRoot string) (*gogit.Repository, error) {
 	return gogit.Open(noExtensionsStorer{st}, osfs.New(repoRoot))
 }
 
-// dotGitFs resolves repoRoot's .git — a directory in a primary checkout, a
-// `gitdir:` pointer file in a linked worktree or submodule — to the filesystem
+// dotGitFs resolves repoRoot's .git - a directory in a primary checkout, a
+// `gitdir:` pointer file in a linked worktree or submodule - to the filesystem
 // go-git should treat as the repository's dotgit. For a gitdir carrying a
 // `commondir` file (the linked-worktree layout), the returned filesystem
 // routes worktree-private files (HEAD, index) to the worktree's own gitdir and
@@ -165,7 +165,7 @@ func dotGitFs(repoRoot string) (billy.Filesystem, error) {
 	if fi, err := os.Stat(dotPath); err == nil && !fi.IsDir() {
 		return gitfileFs(repoRoot, dotPath)
 	}
-	// A directory (primary checkout) or missing entirely — go-git reports its
+	// A directory (primary checkout) or missing entirely - go-git reports its
 	// canonical not-a-repository error downstream.
 	return osfs.New(dotPath), nil
 }
@@ -192,7 +192,7 @@ func gitfileFs(repoRoot, dotPath string) (billy.Filesystem, error) {
 		return dotgit.NewRepositoryFilesystem(dot, osfs.New(common)), nil
 	}
 	// No commondir: the gitdir is self-contained (submodule layout). An
-	// unreadable one degrades the same way — go-git then errors canonically on
+	// unreadable one degrades the same way - go-git then errors canonically on
 	// the refs it cannot find.
 	return dot, nil
 }

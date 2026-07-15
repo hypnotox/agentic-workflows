@@ -2,9 +2,9 @@
 // mirroring awf audit's finding contract (Warning/Error severity; non-zero exit only
 // on an Error finding) but deliberately NOT part of the shipped awf standard: it is
 // repo-local dev tooling wired as `./x audit-local` and invoked by awf-reviewing-impl
-// (ADR-0073). It never runs the gate. Two rules: changelog conformance — an
+// (ADR-0073). It never runs the gate. Two rules: changelog conformance - an
 // adopter-facing change in the range with no CHANGELOG [Unreleased] entry is an
-// Error — and coverage-ignore re-evaluation — an added or touched coverage-ignore
+// Error - and coverage-ignore re-evaluation - an added or touched coverage-ignore
 // directive in a production Go file is a Warning prompting a reachability re-check.
 package main
 
@@ -18,7 +18,7 @@ import (
 )
 
 // severity mirrors internal/audit's contract (Warning=0, Error=1) without importing
-// it — repoaudit is standalone repo tooling.
+// it - repoaudit is standalone repo tooling.
 type severity int
 
 const (
@@ -39,14 +39,14 @@ type finding struct {
 	detail string
 }
 
-// gitFunc runs git and returns stdout — the seam that keeps runWith testable.
+// gitFunc runs git and returns stdout - the seam that keeps runWith testable.
 type gitFunc func(args ...string) (string, error)
 
 func realGit(args ...string) (string, error) { // coverage-ignore: os/exec boundary; runWith is tested with a fake gitFunc
 	// Single-block body: the trailing coverage-ignore drops the block whose start
 	// line is this signature line. A multi-line body with an `if err` branch would
 	// leave the branch and final-return blocks (later start lines) UNignored and
-	// uncovered — realGit runs no test — failing the 100% gate. Callers check err
+	// uncovered - realGit runs no test - failing the 100% gate. Callers check err
 	// before using the string, so returning it unconditionally is equivalent.
 	out, err := exec.Command("git", args...).Output()
 	return string(out), gitError(err)
@@ -68,9 +68,9 @@ func main() { os.Exit(runWith(os.Args, os.Stdout, os.Stderr, realGit)) } // cove
 const changelogPath = "changelog/CHANGELOG.md"
 
 // adopterFacingPrefixes are the path roots whose change is adopter-visible (rendered
-// templates, the shipped CLI, the config/lock schema, and the artifact catalog — since
+// templates, the shipped CLI, the config/lock schema, and the artifact catalog - since
 // ADR-0068 a new shipped skill/agent can land as a pure catalog entry). Conservative
-// and logged — a render-logic-only change under internal/render can slip it (ADR-0073).
+// and logged - a render-logic-only change under internal/render can slip it (ADR-0073).
 // Test files under these roots are excluded: tests are not adopter-visible.
 var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/", "internal/catalog/"}
 
@@ -91,7 +91,7 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 	// Cut mangles a three-dot range (head "."-prefixed) or a multi-".." input
 	// (head contains ".."); both would reach git as a bogus rev. A "-"-prefixed
 	// side would reach git as an option-like argument. Dots inside a rev
-	// (v0.10.0) are fine — git forbids "."-leading, ".."-containing, and
+	// (v0.10.0) are fine - git forbids "."-leading, ".."-containing, and
 	// "-"-leading refs, so no valid rev is rejected.
 	if !ok || base == "" || head == "" || strings.HasPrefix(head, ".") || strings.Contains(head, "..") ||
 		strings.HasPrefix(base, "-") || strings.HasPrefix(head, "-") {
@@ -109,7 +109,7 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 			}
 		}
 	}
-	// touches-invariant: repo-audit-error-exit — error-count exit-code branch; proof in main_test.go
+	// touches-invariant: repo-audit-error-exit - error-count exit-code branch; proof in main_test.go
 	if errs > 0 {
 		return 1
 	}
@@ -123,9 +123,9 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 
 // changelogRule flags an adopter-facing change in base..head that lacks a CHANGELOG
 // [Unreleased] entry. It logs the adopter-facing files it considered. The conformance
-// verdict is an advisory Warning (ADR-0107) — the path heuristic cannot tell a benign
+// verdict is an advisory Warning (ADR-0107) - the path heuristic cannot tell a benign
 // change from a behavioral one, so it informs rather than blocks. A git or parse failure
-// is an Error — it cannot verify conformance, so it fails loud.
+// is an Error - it cannot verify conformance, so it fails loud.
 func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	// Judge from the merge base, not the base tip: once base moves past the fork
 	// point, endpoint semantics would blame upstream files on the effort (false
@@ -167,7 +167,7 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	if baseBody == headBody {
 		// Advisory, not blocking (ADR-0107): the path heuristic cannot tell a benign
 		// change (a refactor, a comment/marker relocation) from a behavioral one, so a
-		// blocking Error over-fires. A git/read failure above stays an Error — that means
+		// blocking Error over-fires. A git/read failure above stays an Error - that means
 		// the rule cannot verify conformance and must fail loud.
 		return []finding{{warning, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged — add an entry", base, head, changelogPath)}}
 	}
@@ -183,7 +183,7 @@ const coverageIgnoreMarker = "//" + " coverage-ignore"
 // directive in a non-test Go file over the range: every ignore states a
 // reachability claim, and three factually false claims surfaced on 2026-07-08
 // alone, so each new one gets a deterministic re-evaluation prompt at review
-// time. Warnings never affect the exit code; a git failure is an Error — the
+// time. Warnings never affect the exit code; a git failure is an Error - the
 // rule cannot verify, so it fails loud like the changelog rule.
 func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding {
 	mb, err := git("merge-base", base, head)
@@ -204,7 +204,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 	for _, ln := range strings.Split(diff, "\n") {
 		// Known limitation: an added content line that itself starts "++ "
 		// (a diff fixture embedded in a raw string in production Go) renders as
-		// "+++ …" and would be misparsed as a header — contrived for *.go
+		// "+++ …" and would be misparsed as a header - contrived for *.go
 		// content and warning-only, so tolerated.
 		if rest, ok := strings.CutPrefix(ln, "+++ "); ok {
 			file = ""
@@ -225,7 +225,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 }
 
 // unreleasedSection returns the body of the ## [Unreleased] section of the changelog at
-// rev — the lines between the [Unreleased] header and the next top-level "## [" header.
+// rev - the lines between the [Unreleased] header and the next top-level "## [" header.
 func unreleasedSection(git gitFunc, rev string) (string, error) {
 	content, err := git("show", rev+":"+changelogPath)
 	if err != nil {

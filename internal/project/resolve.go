@@ -16,7 +16,7 @@ type PlanOp struct {
 }
 
 // ResolveEnable plans enabling (kind, name): the node plus its missing forward
-// closure. An already-enabled dependency is skipped along with its subtree —
+// closure. An already-enabled dependency is skipped along with its subtree -
 // the open-time validation invariant guarantees enabled implies closed.
 // invariant: add-applies-closure-plan
 func (p *Project) ResolveEnable(kind, name string) []PlanOp {
@@ -74,7 +74,7 @@ func (p *Project) ResolveDisable(kind, name string) []PlanOp {
 }
 
 // enabledGraphNodes returns the enabled skills and agents that carry catalog
-// edges — non-local only, mirroring validate's skip. Docs are sinks and
+// edges - non-local only, mirroring validate's skip. Docs are sinks and
 // never depend on anything.
 func (p *Project) enabledGraphNodes() []catalog.Node {
 	var out []catalog.Node

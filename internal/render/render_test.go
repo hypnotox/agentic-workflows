@@ -156,7 +156,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 		t.Errorf("empty in-place body must fall to the template default:\n%s", out)
 	}
 
-	// A located but emptied region (InPlaceFound, empty body) stays empty — it is
+	// A located but emptied region (InPlaceFound, empty body) stays empty - it is
 	// NOT reverted to the template default, so emptying a region is a fixpoint.
 	asm, parts = Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceFound: true, InPlaceBody: ""}}, HTMLComment)
 	out, err = Execute(asm, sampleData(), parts, "test")
@@ -184,7 +184,7 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 
 	// invariant: in-place-pointer-distinct
 	// The distinct awf:edit-in-place pointer renders in the target's comment
-	// syntax — # for a shebang target, <!-- --> otherwise.
+	// syntax - # for a shebang target, <!-- --> otherwise.
 	src := "#!/usr/bin/env bash\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\n"
 	segs := ParseSections(src)
 	style := CommentStyleForSource(src)

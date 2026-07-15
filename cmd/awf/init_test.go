@@ -79,7 +79,7 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 }
 
 // TestInitNonInteractiveDefault asserts the silent (non-TTY, no-answers) path
-// seeds every var empty and writes no invariants config — byte-identical to the
+// seeds every var empty and writes no invariants config - byte-identical to the
 // pre-feature seed-empty output.
 // invariant: init-noninteractive-default
 func TestInitNonInteractiveDefault(t *testing.T) {
@@ -181,7 +181,7 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 }
 
 // awf init over an existing config must not prompt for descriptor answers it
-// then discards — the config is kept, init says so, and only the sync runs.
+// then discards - the config is kept, init says so, and only the sync runs.
 func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

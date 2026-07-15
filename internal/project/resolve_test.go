@@ -40,7 +40,7 @@ func TestResolveDisableCascadeSizes(t *testing.T) {
 	}
 }
 
-// The add plan on an empty config is the seed's full forward closure — the
+// The add plan on an empty config is the seed's full forward closure - the
 // 11-skill chain unit plus its three agents from the brainstorming seed.
 // invariant: add-applies-closure-plan
 func TestResolveEnableClosurePlan(t *testing.T) {

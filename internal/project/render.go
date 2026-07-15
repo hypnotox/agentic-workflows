@@ -88,8 +88,8 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 	}
 }
 
-// taskSkillsDisplay returns the enabled catalog task skills — standard,
-// non-Chain entries of the effective set — as "`<prefix>-<name>`, …", or ""
+// taskSkillsDisplay returns the enabled catalog task skills - standard,
+// non-Chain entries of the effective set - as "`<prefix>-<name>`, …", or ""
 // when none are enabled. Derived from the catalog so a new task skill cannot
 // be dropped from the guide's sentence by a forgotten template edit.
 func (p *Project) taskSkillsDisplay() string {
@@ -104,9 +104,9 @@ func (p *Project) taskSkillsDisplay() string {
 }
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list
-// (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes — the same
+// (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes - the same
 // audit.Resolve path awf commit-gate reads, so prose and gate agree by
-// construction — or "" when scopes are accept-any (ADR-0051).
+// construction - or "" when scopes are accept-any (ADR-0051).
 func (p *Project) commitScopesDisplay() string {
 	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
 	if len(scopes) == 0 {
@@ -121,7 +121,7 @@ func (p *Project) commitScopesDisplay() string {
 
 // invariantMarkersDisplay returns the inline glob→marker mapping derived from
 // invariants.sources (e.g. "`*.go` → `//`, `*.py` → `#`"), the invariant-tagging
-// analog of commitScopesDisplay — or "" when no sources are configured (ADR-0064).
+// analog of commitScopesDisplay - or "" when no sources are configured (ADR-0064).
 func (p *Project) invariantMarkersDisplay() string {
 	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
 		return ""
@@ -138,7 +138,7 @@ func (p *Project) invariantMarkersDisplay() string {
 }
 
 // effectiveSkills returns the skill names whose files exist on disk under
-// awf's model: exactly the enabled set — closure validation (ADR-0081) makes
+// awf's model: exactly the enabled set - closure validation (ADR-0081) makes
 // enabled mean rendered, and local-declared names are hand-maintained but
 // present. The sidecar read stays as the validation choke point Open relies
 // on (amended semantics; formerly enabled minus ADR-0013 doc-gate-suppressed).
@@ -184,7 +184,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		}
 	}
 	// The existing output is read at most once, lazily, and only when the template
-	// actually declares an in-place section — every other artifact avoids the read.
+	// actually declares an in-place section - every other artifact avoids the read.
 	var output string
 	outputRead := false
 	readOutput := func() (string, error) {
@@ -206,7 +206,7 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		}
 		if inPlace[s] {
 			// section-source-exclusive: an in-place section must not also carry a
-			// convention part — the two override channels are mutually exclusive.
+			// convention part - the two override channels are mutually exclusive.
 			if _, statErr := os.Stat(p.Cfg.PartPath(kind, artifact, s)); statErr == nil {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
 			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat errors only on a permission/IO fault that root bypasses
@@ -248,15 +248,15 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // readBackInPlaceBody extracts the current body of the in-place section `name`
 // from the existing rendered `output`. The region runs from just after `name`'s
 // awf:edit-in-place pointer line to the first later line that is the pointer of
-// any *other* registered (declared) section — matched by that section's expected
+// any *other* registered (declared) section - matched by that section's expected
 // pointer prefix in the target's comment style, never a generic pointer shape, so
 // a pointer-shaped line for a non-registered name in adopter text cannot truncate
-// it — or end-of-file when none follows. Leading/trailing blank lines (awf-owned
+// it - or end-of-file when none follows. Leading/trailing blank lines (awf-owned
 // framing) are trimmed; the interior, including internal blank lines, is returned
 // verbatim. Returns ("", false) when `name`'s own pointer is absent (first render
 // or a deleted anchor), so the caller falls back to the template default.
-// touches-invariant: in-place-readback — read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
-// touches-invariant: in-place-spacing-owned — verbatim interior, trimmed framing; proof in inplace_test.go
+// touches-invariant: in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
+// touches-invariant: in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
 func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
@@ -286,8 +286,8 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	return trimBlankFraming(lines[start+1 : end]), true
 }
 
-// trimBlankFraming drops leading and trailing blank (whitespace-only) lines — the
-// awf-owned framing — and returns the interior lines joined verbatim.
+// trimBlankFraming drops leading and trailing blank (whitespace-only) lines - the
+// awf-owned framing - and returns the interior lines joined verbatim.
 func trimBlankFraming(lines []string) string {
 	lo, hi := 0, len(lines)
 	for lo < hi && strings.TrimSpace(lines[lo]) == "" {
@@ -299,7 +299,7 @@ func trimBlankFraming(lines []string) string {
 	return strings.Join(lines[lo:hi], "\n")
 }
 
-// anyInPlace reports whether a section plan contains an in-place-editable section —
+// anyInPlace reports whether a section plan contains an in-place-editable section -
 // the property that makes a rendered file regeneration-checked (ADR-0100).
 func anyInPlace(plan map[string]render.SectionPlan) bool {
 	for _, sp := range plan {
@@ -349,7 +349,7 @@ type renderKindSpec struct {
 
 // skillTID resolves a skill's template id: the shared base template for a
 // synthesized local entry, else the name-derived catalog path (ADR-0068).
-// touches-invariant: local-renders-from-base — skillTID resolves a local skill to the base template; proof in local_test.go
+// touches-invariant: local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
 func (p *Project) skillTID(n string) string {
 	if p.Cat.Skills[n].Base {
 		return baseSkillTID
@@ -369,7 +369,7 @@ func (p *Project) agentTID(n string) string {
 // doc template for a synthesized local doc (its DocEntry.TID), else the Standard
 // doc's own template. Reading p.Cat (not the package global) is what lets a
 // synthesized local doc render at all (ADR-0091).
-// touches-invariant: local-doc-renders-from-base — docTID resolves a local doc to the base template; proof in local_test.go
+// touches-invariant: local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
 func (p *Project) docTID(n string) string {
 	return p.Cat.Docs[n].TID
 }
@@ -408,7 +408,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		return nil, err
 	}
 	p.effSkills = eff
-	// Neutral: docs render once — the output path is docsDir-relative, not adapter-placed.
+	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
 		tid:       p.docTID,
@@ -422,7 +422,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 	}
 	out = append(out, docsRfs...)
 	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
-	// touches-invariant: multi-target-render — skills/agents render once per enabled target; proof in target_test.go
+	// touches-invariant: multi-target-render - skills/agents render once per enabled target; proof in target_test.go
 	for _, t := range p.Targets {
 		for _, spec := range []renderKindSpec{
 			{
@@ -447,7 +447,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			out = append(out, rfs...)
 		}
 	}
-	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral — once.
+	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral - once.
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
 	if err != nil {
 		return nil, err
@@ -468,10 +468,10 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rf)
 		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
-		// Gated on the agents-doc render above — a local (hand-maintained) AGENTS.md
+		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
 		// must not get a bridge pointing at an un-rendered file. cursor has an empty
 		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// touches-invariant: cursor-no-bridge — bridge suppression for an empty BridgeFile; proof in target_test.go
+		// touches-invariant: cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
@@ -502,7 +502,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		out = append(out, rfs...)
 	}
 	// .awf/bootstrap.sh + .awf/upgrade.sh (neutral config-tree singleton; rendered
-	// as a unit only when enabled — ADR-0040 for the pinned installer, relocated by
+	// as a unit only when enabled - ADR-0040 for the pinned installer, relocated by
 	// ADR-0047; ADR-0085 for the upgrade porcelain). No catalog spec / no
 	// overridable sections, like the CLAUDE.md bridge.
 	// invariant: bootstrap-two-files
@@ -520,7 +520,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 	}
 	// .awf/hooks/*.sh git-hook payloads (neutral config-tree singleton; rendered
-	// as a unit only when enabled — ADR-0048). No catalog spec / no overridable
+	// as a unit only when enabled - ADR-0048). No catalog spec / no overridable
 	// sections, like the bootstrap; awf never activates them.
 	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
 		for _, name := range hookNames {
@@ -533,7 +533,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 	}
 	// The command-runner `x` at the repo root (config-tree singleton rendered only
-	// when enabled — ADR-0101; a co-owned in-place file per ADR-0100, not a catalog
+	// when enabled - ADR-0101; a co-owned in-place file per ADR-0100, not a catalog
 	// DocEntry, so it stays out of SingletonKinds()). awf-the-repo leaves it disabled.
 	// invariant: runner-singleton-toggle
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
@@ -544,7 +544,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		}
 		out = append(out, rrf)
 	}
-	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered —
+	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered -
 	// ADR-0069, no config gate unlike bootstrap/hooks). Self-ignoring, so the
 	// working-memory convention's ephemerality is mechanical, not remembered.
 	// Deliberately non-configurable: no catalog spec, no sections, no CLI kind.
@@ -561,7 +561,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 }
 
 // assertNoDuplicateOutputPaths fails loudly when two rendered artifacts resolve
-// to the same output path — a silent last-write-wins overwrite otherwise. Path-
+// to the same output path - a silent last-write-wins overwrite otherwise. Path-
 // aware local doc names (ADR-0091) make this reachable: a name like
 // `domains/<x>` or `decisions/template` can collide with awf's reserved output
 // territory, which the name validator deliberately does not pre-reserve.
@@ -594,7 +594,7 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 	}
 	paths = append(paths, amd.Path)
 	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+	if err != nil { // coverage-ignore: unreachable - generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
 		return nil, err
 	}
 	for _, dd := range dds {
@@ -659,7 +659,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		Path: outPath, Content: content, TemplateID: tid,
 		// TemplateHash covers the post-expansion source so an edit to an included
 		// partial flags every including artifact stale (ADR-0052).
-		// touches-invariant: include-in-templatehash — TemplateHash over expanded (post-include) source; proof in golden_test.go
+		// touches-invariant: include-in-templatehash - TemplateHash over expanded (post-include) source; proof in golden_test.go
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
@@ -671,7 +671,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 
 // generateActiveMD renders the ADR index for the project's decisions directory.
 // It always produces a file: a populated index when ADRs exist, else a placeholder
-// (ADR-0020 Decision 6 — partial-item supersedence of ADR-0005/ADR-0006).
+// (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
 func (p *Project) generateActiveMD() (RenderedFile, error) {
 	content, err := adr.RenderActiveMD(p.decisionsDir())
 	if err != nil {
@@ -684,7 +684,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 // generateDomainDocs renders one content-only doc per declared domain
 // (<docsDir>/domains/<name>.md): the domain template + its convention parts, with
 // the per-domain ADR index injected as .data.decisions. Like ACTIVE.md, the result
-// carries no TemplateID/Hash — drift is checked by regeneration, since the index
+// carries no TemplateID/Hash - drift is checked by regeneration, since the index
 // depends on external ADR frontmatter state.
 func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 	decisionsDir := p.decisionsDir()

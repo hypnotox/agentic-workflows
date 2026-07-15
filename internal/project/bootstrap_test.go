@@ -183,7 +183,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Exactly two files render under the singleton — both directions: the
+	// Exactly two files render under the singleton - both directions: the
 	// pair is present, and no third file joins the unit unnoticed.
 	var unit []string
 	for _, rf := range out {

@@ -8,7 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
-// Every command answers --help and -h with exit 0 and its own usage line —
+// Every command answers --help and -h with exit 0 and its own usage line -
 // guaranteeing no command is missing structured help.
 func TestPerCommandHelp(t *testing.T) {
 	for _, c := range clispec.Commands {
@@ -49,7 +49,7 @@ func TestGlobalHelpListsAllCommands(t *testing.T) {
 }
 
 // The top-level usage line, `awf help` overview order, and the command set all
-// derive from clispec — no parallel enumeration in cmd/awf.
+// derive from clispec - no parallel enumeration in cmd/awf.
 // (inv: cli-command-spec-single-source, backed in internal/clispec.)
 func TestCliCommandSpecSingleSource(t *testing.T) {
 	// globalHelp lists commands in clispec order; assert each name appears and in

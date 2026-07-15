@@ -84,7 +84,7 @@ var functionalVarKeys = []string{
 
 // TestVarDescriptorSetPinned asserts the catalog's value-carrying descriptors
 // (every kind but the catalog-trim multiselects) are exactly the pinned
-// functional set, and the multiselects are exactly the two catalog trims — so
+// functional set, and the multiselects are exactly the two catalog trims - so
 // a prose knob cannot re-enter under any kind without a successor ADR.
 // Extending this pin is also where ADR-0087's seed-on-introduction contract
 // bites: the release adding a catalog var must ship a one-time schema-migration

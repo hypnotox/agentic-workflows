@@ -16,7 +16,7 @@ import (
 // is either claimed here or drift. files holds claimed file paths
 // (project-relative, slash-separated); dirs holds structural directories
 // legal even when empty; enabled/singletons index the artifact facts the
-// classifier needs to keep the pre-ADR-0086 detail strings — locality is
+// classifier needs to keep the pre-ADR-0086 detail strings - locality is
 // never stored, because an enabled-but-unclaimed parts dir already implies
 // local: true (buildClaimedModel claims every non-local artifact's parts).
 type claimedModel struct {
@@ -43,7 +43,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 
 // buildClaimedModel computes the claimed-path model from config, catalog,
 // and the RenderAll output (whose .awf/-prefixed paths are exactly the
-// enabled config-tree render units — the model derives from the same code
+// enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
 func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error) {
 	m := &claimedModel{
@@ -77,7 +77,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 				return nil, err
 			}
 			// A local: true artifact renders nothing, so its parts are
-			// dead weight — deliberately unclaimed (ADR-0086 Decision 1).
+			// dead weight - deliberately unclaimed (ADR-0086 Decision 1).
 			// A local: true domain sidecar cannot reach here: open-time
 			// validation rejects any non-paths: domain field (Decision 5).
 			if sc.Local {
@@ -105,7 +105,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 		}
 	}
 	// The runner is a section-bearing config-tree unit but not a SingletonKind, so
-	// its convention-part territory is claimed here when enabled — the two awf-owned
+	// its convention-part territory is claimed here when enabled - the two awf-owned
 	// sections whose `awf:edit … create <part> to override` pointer invites a part
 	// (the two in-place sections instead error via section-source-exclusive if a part
 	// appears), so render and the closed-tree sweep agree (ADR-0086/0101).
@@ -124,7 +124,7 @@ var awfBakRE = regexp.MustCompile(`\.awf-bak(\.\d+)?$`)
 // their ADR-0011 detail strings byte-identical, sync-written backups get
 // the stale-backup detail (inv: awf-bak-flagged), local-managed artifacts'
 // parts their own, and everything else is unclaimed.
-// touches-invariant: awf-bak-flagged — stale awf-bak backup classification; proof in sweep_test.go
+// touches-invariant: awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
 func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	const localDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 	d := manifest.Drift{Path: rel, Kind: "orphaned"}

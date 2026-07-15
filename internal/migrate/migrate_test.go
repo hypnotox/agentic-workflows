@@ -108,7 +108,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 	}
 
 	// A .awf/ tree with no lock yet (a fresh awf init, or a just-upgraded project
-	// before its terminal sync) reports Current() and must not gate — otherwise
+	// before its terminal sync) reports Current() and must not gate - otherwise
 	// sync/check would falsely block the very command that stamps the lock.
 	noLock := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(noLock, ".awf", "config.yaml"), "prefix: ex\n")
@@ -138,7 +138,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 
 // A lockless pre-relocation .claude/awf/ tree is the tree-layout port's output
 // (the port deletes the legacy lock), so Upgrade must still run every later
-// migration — most importantly the To:3 relocation. The old Current()-1
+// migration - most importantly the To:3 relocation. The old Current()-1
 // generation drifted upward as later migrations registered, leaving such a
 // tree permanently gated while Upgrade only ran post-relocation no-ops.
 func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
@@ -164,7 +164,7 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 		t.Fatalf("Upgrade: %v", err)
 	}
 	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
-	// (a no-op here — tree-layout already ports replaceWith parts), then
+	// (a no-op here - tree-layout already ports replaceWith parts), then
 	// awf-dir-relocation, which moves the finished tree to .awf/.
 	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data" {
 		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation drop-hooks enable-bootstrap singleton-standard-docs anchored-globs close-enabled-set pitfalls-data]", applied)
@@ -756,7 +756,7 @@ func TestEnableBootstrapAdds(t *testing.T) {
 	}
 }
 
-// A config already carrying a bootstrap key made a choice — a replay from a
+// A config already carrying a bootstrap key made a choice - a replay from a
 // degraded lock must not override a deliberate opt-out with the upgrade
 // default. The genuine 4→5 path has no bootstrap key and still gets true.
 func TestEnableBootstrapKeepsExplicitOptOut(t *testing.T) {
@@ -911,7 +911,7 @@ func TestDropReplaceWithMalformedSidecar(t *testing.T) {
 }
 
 // mustGeneration / mustGateState assert the error-free path for fixtures whose
-// locks are readable or absent — the pre-ADR-0076 call shape.
+// locks are readable or absent - the pre-ADR-0076 call shape.
 func mustGeneration(t *testing.T, root string) int {
 	t.Helper()
 	gen, err := Generation(root)

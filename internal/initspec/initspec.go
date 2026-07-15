@@ -100,7 +100,7 @@ func MergeSetFlags(base map[string]string, sets []string) error {
 }
 
 // promptReader wraps the prompt input and latches EOF, so Resolve stops
-// prompting (and stops emitting prompt text) once the input is exhausted —
+// prompting (and stops emitting prompt text) once the input is exhausted -
 // an init reading /dev/null or a closed stdin degrades to the silent path
 // instead of streaming every remaining prompt to nobody.
 type promptReader struct {
@@ -108,7 +108,7 @@ type promptReader struct {
 	eof bool
 }
 
-// line reads one line; EOF is latched, not returned — the partial line (or
+// line reads one line; EOF is latched, not returned - the partial line (or
 // empty string) read alongside it is still the answer.
 func (pr *promptReader) line() (string, error) {
 	s, err := pr.r.ReadString('\n')
@@ -123,7 +123,7 @@ func (pr *promptReader) line() (string, error) {
 }
 
 // Resolve maps descriptors + answers to a vars map, an optional catalog trim, and
-// the resolved commit-scope list. Multiselect descriptors resolve first — the
+// the resolved commit-scope list. Multiselect descriptors resolve first - the
 // trim decides which var prompts are worth asking (ADR-0086 Decision 6), so
 // artifact selection precedes var entry. For a string/enum descriptor the value
 // is: the explicit answer if present; otherwise an interactive prompt (when

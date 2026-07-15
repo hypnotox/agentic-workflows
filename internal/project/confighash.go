@@ -29,7 +29,7 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
-// and the bytes of every convention part it consumed — in deterministic order.
+// and the bytes of every convention part it consumed - in deterministic order.
 func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
@@ -41,7 +41,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).
-		// touches-invariant: skills-set-in-confighash — folds the effective skills set into ConfigHash; proof in drift_test.go
+		// touches-invariant: skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
 		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes

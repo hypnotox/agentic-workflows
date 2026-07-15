@@ -1,6 +1,6 @@
 // Command pincheck is the workflow supply-chain pin gate (ADR-0079). Every
 // remote `uses:` reference under .github/workflows must pin a full 40-hex
-// commit SHA (repo-local `./` references are exempt — they are repo code;
+// commit SHA (repo-local `./` references are exempt - they are repo code;
 // `docker://` references must pin an image digest), and every
 // goreleaser-action `version:` input must be an exact semver version, so
 // neither a moved tag nor a re-floated tool range can inject unreviewed code
@@ -24,7 +24,7 @@ var (
 	exactSemver = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 )
 
-// touches-invariant: workflow-actions-sha-pinned — workflow uses:-pin scan site; proof in main_test.go
+// touches-invariant: workflow-actions-sha-pinned - workflow uses:-pin scan site; proof in main_test.go
 func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {
@@ -64,7 +64,7 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 func checkFile(name, content string, stderr io.Writer) int {
 	fails := 0
 	lastUses := ""
-	// Line of a goreleaser-action uses: still awaiting its version: key — a step
+	// Line of a goreleaser-action uses: still awaiting its version: key - a step
 	// without one floats the tool to latest, the same hole as a floated range.
 	pendingVersion := 0
 	flushPending := func() {

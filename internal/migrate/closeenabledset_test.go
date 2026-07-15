@@ -80,7 +80,7 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 }
 
 // A local:-owned doc-gated skill renders today even without its doc, so the
-// dormancy drop skips it — symmetric with the validator's local skip.
+// dormancy drop skips it - symmetric with the validator's local skip.
 func TestCloseEnabledSetKeepsLocalDormantSkill(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: [roadmap-graduation]\nagents: []\n",
 		map[string]string{"skills/roadmap-graduation.yaml": "local: true\n"})
@@ -112,7 +112,7 @@ func TestCloseEnabledSetMalformedConfig(t *testing.T) {
 }
 
 // A dormant doc-gated skill something enabled still requires re-enters WITH
-// its doc — the closure demand outranks the dormancy drop (ADR-0081 Decision
+// its doc - the closure demand outranks the dormancy drop (ADR-0081 Decision
 // 8). Unreachable in the shipped catalog (nothing requires a doc-gated
 // skill), so a synthetic catalog exercises the interplay via the seam.
 func TestCloseEnabledSetReAddsDemandedDormantSkillWithDoc(t *testing.T) {

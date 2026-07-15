@@ -266,7 +266,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 		t.Fatalf("clean tree should yield no finding, got %#v", f)
 	}
 
-	// Dirty tree — a modified tracked file (tracked count) plus an untracked file
+	// Dirty tree - a modified tracked file (tracked count) plus an untracked file
 	// (untracked count): one Error finding.
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
 		t.Fatal(err)

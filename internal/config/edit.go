@@ -11,7 +11,7 @@ import (
 
 // Skeleton is the input to MarshalSkeleton: the fields a freshly-scaffolded
 // .awf/config.yaml carries. Vars is typed map[string]string (not map[string]any)
-// so a nil/null var value is unrepresentable — the scaffold seeds each var with an
+// so a nil/null var value is unrepresentable - the scaffold seeds each var with an
 // empty string, which marshals as `x: ""`. A nil interface would marshal as
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
@@ -28,15 +28,15 @@ type Skeleton struct {
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
-// allowedScopes — the one audit field init collects. Deliberately not
+// allowedScopes - the one audit field init collects. Deliberately not
 // *AuditConfig, whose zero-value fields would serialize as explicit settings.
 type SkeletonAudit struct {
 	AllowedScopes []string `yaml:"allowedScopes"`
 }
 
 // CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
-// enables (ADR-0029 catalog trim). A nil *CatalogTrim — or a nil dimension within
-// it — means "no selection: keep the curated-core default"; a non-nil dimension is
+// enables (ADR-0029 catalog trim). A nil *CatalogTrim - or a nil dimension within
+// it - means "no selection: keep the curated-core default"; a non-nil dimension is
 // the verbatim, fully-deselectable enable set (an empty slice deselects all).
 type CatalogTrim struct {
 	Skills *[]string
@@ -55,7 +55,7 @@ func MarshalSkeleton(s Skeleton) ([]byte, error) {
 // key (ADR-0026). The edited sequence is normalized to block style, so a flow-style
 // input (`key: [a, b]`) is accepted. Adding a member already present is a no-op;
 // removing a member absent from the key (or a key absent on remove) errors.
-// touches-invariant: config-mutation-roundtrip — yaml.Node add/remove round-trip; proof in edit_test.go
+// touches-invariant: config-mutation-roundtrip - yaml.Node add/remove round-trip; proof in edit_test.go
 func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
@@ -79,7 +79,7 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		case idx < 0:
 			return nil, fmt.Errorf("config: no %q entry under %q", name, key)
 		default:
-			// touches-invariant: remove-block-scoped — block-scoped sequence removal; proof in edit_test.go
+			// touches-invariant: remove-block-scoped - block-scoped sequence removal; proof in edit_test.go
 			val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
 		}
 	default: // bare `key:` (null value)
@@ -94,7 +94,7 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 // SetArray sets the sequence under key to exactly values, creating the key if it
 // is absent and replacing it otherwise, via a yaml.Node round-trip that preserves
 // comments and every untouched key (ADR-0026). Used where the whole list is
-// computed rather than edited member-by-member — the targets array carries a Load
+// computed rather than edited member-by-member - the targets array carries a Load
 // default, so an absent on-disk key must be materialized as the full resolved list,
 // not appended to (ADR-0037).
 func SetArray(src []byte, key string, values []string) ([]byte, error) {
@@ -175,8 +175,8 @@ func boolScalar(v string) *yaml.Node {
 
 // SeedVarKey adds `name: ""` under the top-level vars: mapping when the key is
 // absent, creating the mapping if needed, via the same comment-preserving
-// yaml.Node round-trip as SetArrayMember (ADR-0026). A present key — set,
-// empty, or null — is left untouched and src is returned unchanged: presence
+// yaml.Node round-trip as SetArrayMember (ADR-0026). A present key - set,
+// empty, or null - is left untouched and src is returned unchanged: presence
 // is the open-to-do signal and absence the deliberate decline (ADR-0087), so
 // seeding must never overwrite either state.
 func SeedVarKey(src []byte, name string) ([]byte, error) {
@@ -204,7 +204,7 @@ func SeedVarKey(src []byte, name string) ([]byte, error) {
 	return encode(doc)
 }
 
-// emptyStrScalar marshals as `""` — the seeded open-to-do value; a bare scalar
+// emptyStrScalar marshals as `""` - the seeded open-to-do value; a bare scalar
 // would decode as null and violate ADR-0026 Decision 3.
 func emptyStrScalar() *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "", Style: yaml.DoubleQuotedStyle}
@@ -223,7 +223,7 @@ type GlobRewrite struct {
 // preserving comments and untouched keys (ADR-0026) and reporting the rewrites
 // performed. Slashed patterns are left alone, so the rewrite is idempotent;
 // absent keys are a no-op. It is the nested-sequence editor the schema-7
-// anchored-globs migration (ADR-0077) consumes — the sequence analog of
+// anchored-globs migration (ADR-0077) consumes - the sequence analog of
 // SetMappingScalar.
 func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 	doc, root, err := parseMapping(src)
@@ -254,7 +254,7 @@ func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 
 // anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`
 // and reports the rewrites under key.
-// touches-invariant: glob-migration-anchored — no-slash glob anchoring rewrite; proof in edit_test.go
+// touches-invariant: glob-migration-anchored - no-slash glob anchoring rewrite; proof in edit_test.go
 func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
 	var rewrites []GlobRewrite
 	for _, n := range seq.Content {
@@ -267,7 +267,7 @@ func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
 }
 
 // parseMapping decodes src into a YAML document and returns the document plus its
-// root mapping node — the shared preamble of every awf-owned config.yaml edit.
+// root mapping node - the shared preamble of every awf-owned config.yaml edit.
 func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
 	doc := &yaml.Node{}
 	if err := yaml.Unmarshal(src, doc); err != nil {
@@ -283,7 +283,7 @@ func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
 // encoder fixed at two-space indentation. Both MarshalSkeleton (construction) and
 // SetArrayMember (mutation) route through it, so the on-disk format has exactly one
 // definition.
-// touches-invariant: config-serialization-owned — single config.yaml serialization funnel; proof in edit_test.go
+// touches-invariant: config-serialization-owned - single config.yaml serialization funnel; proof in edit_test.go
 func encode(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

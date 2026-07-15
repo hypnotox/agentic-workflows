@@ -402,7 +402,7 @@ func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 // invariant: targets-default-claude
 func TestTargetsDefaultAndValidation(t *testing.T) {
 	// An absent targets: key loads as ["claude"] (the unknown-name check itself
-	// lives in project.Open/resolveTargets — config stays registry-free).
+	// lives in project.Open/resolveTargets - config stays registry-free).
 	dir := writeConfig(t, "prefix: example\nskills: []\n")
 	c, err := Load(dir)
 	if err != nil {
@@ -495,7 +495,7 @@ func TestInvariantTestGlobsValidation(t *testing.T) {
 		t.Errorf("valid anchored testGlobs rejected: %v", err)
 	}
 	// A no-slash pattern is a valid anchored glob under ADR-0077 (top-level only),
-	// so it is accepted like any source glob — validation rejects only malformed
+	// so it is accepted like any source glob - validation rejects only malformed
 	// patterns, matching the source-glob rule.
 	topLevel := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
 		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},

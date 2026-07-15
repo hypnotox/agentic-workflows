@@ -31,7 +31,7 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 		t.Fatalf("RenderDomainIndex: %v", err)
 	}
 
-	// invariant: domain-index-matches-domains — exactly the ADRs tagged with the
+	// invariant: domain-index-matches-domains - exactly the ADRs tagged with the
 	// queried domain appear; one tagged only "config" must not.
 	for _, want := range []string{"ADR-0001: First", "ADR-0002: Second", "ADR-0004: Fourth", "ADR-0005: Fifth"} {
 		if !strings.Contains(got, want) {
@@ -116,7 +116,7 @@ func TestRenderDomainIndexPlaceholder(t *testing.T) {
 // producing output.
 func TestRenderDomainIndexParseError(t *testing.T) {
 	dir := t.TempDir()
-	// Deliberately malformed frontmatter — ADR() only emits valid YAML, so this
+	// Deliberately malformed frontmatter - ADR() only emits valid YAML, so this
 	// negative-test input stays a raw literal.
 	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
 	testsupport.WriteFile(t, filepath.Join(dir, "0001-broken.md"), content)

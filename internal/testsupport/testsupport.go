@@ -1,9 +1,9 @@
 // Package testsupport provides shared test-fixture helpers used across awf's
 // test suites: TestMain HOME isolation, project-config scaffolding, ADR
 // frontmatter fixtures, file-writing primitives, and the seam-swap idiom. It
-// is a leaf package —
+// is a leaf package -
 // only the Go standard library may be imported here (see the gitfixture
-// subpackage for the go-git-dependent helpers) — so it is safe to import from
+// subpackage for the go-git-dependent helpers) - so it is safe to import from
 // any package's tests without risking an import cycle (ADR-0044). deps_test.go
 // enforces the zero-internal-deps constraint mechanically.
 package testsupport
@@ -29,7 +29,7 @@ func WriteFile(t *testing.T, path, content string) {
 	}
 }
 
-// WriteAwfConfig writes <root>/.awf/config.yaml with the given content — the
+// WriteAwfConfig writes <root>/.awf/config.yaml with the given content - the
 // project-fixture seed step every scaffold-style helper across awf's test
 // suites starts from.
 func WriteAwfConfig(t *testing.T, root, yamlContent string) {
@@ -81,12 +81,12 @@ type adrOpts struct {
 	body              string
 }
 
-// WithTitle sets the ADR's number+title heading text — the part after
+// WithTitle sets the ADR's number+title heading text - the part after
 // "# ADR-", e.g. "0001: My Title". Defaults to "0001: T".
 func WithTitle(title string) ADROption { return func(o *adrOpts) { o.title = title } }
 
 // WithDate sets the frontmatter date field. Omitted from the frontmatter
-// entirely when never called — some fixtures deliberately carry no date.
+// entirely when never called - some fixtures deliberately carry no date.
 func WithDate(date string) ADROption { return func(o *adrOpts) { o.date = date } }
 
 // WithTags sets the frontmatter tags array.
@@ -104,7 +104,7 @@ func WithRetiresInvariants(slugs ...string) ADROption {
 }
 
 // WithSupersededBy sets the frontmatter superseded_by field to an ADR number,
-// e.g. "0002" — emitted YAML-quoted by ADR. Omitted from the frontmatter
+// e.g. "0002" - emitted YAML-quoted by ADR. Omitted from the frontmatter
 // entirely when never called.
 func WithSupersededBy(number string) ADROption {
 	return func(o *adrOpts) { o.supersededBy = number }
@@ -117,7 +117,7 @@ func WithBody(body string) ADROption { return func(o *adrOpts) { o.body = body }
 // ADR builds a ---delimited ADR frontmatter fixture as a raw string: a status
 // field plus any of date/tags/domains/retires_invariants/superseded_by
 // supplied via opts, a "# ADR-<title>" heading, and an optional trailing body. It intentionally
-// does not import internal/adr and marshal its real frontmatter struct —
+// does not import internal/adr and marshal its real frontmatter struct -
 // doing so would break this package's zero-internal-deps invariant (see
 // ADR-0044's Consequences).
 func ADR(status string, opts ...ADROption) string {

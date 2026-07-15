@@ -94,7 +94,7 @@ func TestConfigspecKeyParity(t *testing.T) {
 }
 
 // expandedTemplate reads a template id from the embedded FS with includes
-// expanded — the per-artifact source whose .data references define the
+// expanded - the per-artifact source whose .data references define the
 // describable data-key universe.
 func expandedTemplate(t *testing.T, tid string) string {
 	t.Helper()

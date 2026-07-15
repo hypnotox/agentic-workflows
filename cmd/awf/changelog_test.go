@@ -15,8 +15,8 @@ import (
 // TestChangelogMonotonicOrder keeps the changelog ordered without pinning it to the
 // version const (ADR-0078): entries must be strictly descending by semver and the
 // newest entry must not exceed project.Version. Mid-cycle the const may run ahead of
-// the changelog — entries accumulate under [Unreleased] until the release-prep
-// promotion — and the exact match is enforced at release time by cmd/releasecheck.
+// the changelog - entries accumulate under [Unreleased] until the release-prep
+// promotion - and the exact match is enforced at release time by cmd/releasecheck.
 // invariant: changelog-monotonic
 func TestChangelogMonotonicOrder(t *testing.T) {
 	entries, err := changelog.Load(changelogfs.FS)

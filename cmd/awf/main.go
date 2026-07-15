@@ -24,7 +24,7 @@ var isInteractive = func() bool {
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
-// so the overview and the per-command `awf <cmd> --help` texts share one source —
+// so the overview and the per-command `awf <cmd> --help` texts share one source -
 // the internal/clispec table (inv: cli-command-spec-single-source).
 func globalHelp() string {
 	var b strings.Builder
@@ -40,7 +40,7 @@ func globalHelp() string {
 
 // run is the CLI driver: it resolves args to a clispec command, prints help,
 // parses the arguments once, applies the gating classification, and dispatches
-// to the command's handler — a single parse-once path shared by every command.
+// to the command's handler - a single parse-once path shared by every command.
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage:", clispec.UsageLine(), "[args]")
@@ -74,7 +74,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
 	}
-	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` — intercept before parseArgs rejects it
+	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` - intercept before parseArgs rejects it
 		fmt.Fprint(stdout, cmd.HelpBody)
 		return 0
 	}
@@ -93,7 +93,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	// The registry key is the top-level command name even when resolve returned a
-	// child spec — the child drives parse/help, the group's handler drives
+	// child spec - the child drives parse/help, the group's handler drives
 	// dispatch via sub.
 	if err := handlers[top.Name](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
 		return dispatchErr(stderr, err)

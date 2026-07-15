@@ -175,7 +175,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 
 // The two methods' adr.ParseDir branches are reachable via direct calls (they
 // are pre-empted only inside full Check() by checkPlans), so they are tested,
-// not coverage-ignored — mirroring TestCheckPitfallsADRParseError.
+// not coverage-ignored - mirroring TestCheckPitfallsADRParseError.
 func TestCheckTagVocabularyADRParseError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: x\n", nil)
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
@@ -204,7 +204,7 @@ func TestCheckADRRelatedLinksParseError(t *testing.T) {
 
 // checkTagVocabulary's pitfallTagEntries branch surfaces a malformed pitfalls
 // sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
-// method proceeds past the len==0 guard) — reachable, tested not ignored.
+// method proceeds past the len==0 guard) - reachable, tested not ignored.
 func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  rendering: x\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})

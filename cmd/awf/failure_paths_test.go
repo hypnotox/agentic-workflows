@@ -78,7 +78,7 @@ func TestLockVsBinaryCorruptLockErrors(t *testing.T) {
 func TestGateCorruptLockWithoutConfigLayout(t *testing.T) {
 	// A corrupt lock beside NO config layout: Generation stats no config file
 	// and never loads the lock, so gate()'s version sub-check is the first
-	// reader to hit it — the error must propagate, not be swallowed (ADR-0076).
+	// reader to hit it - the error must propagate, not be swallowed (ADR-0076).
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)

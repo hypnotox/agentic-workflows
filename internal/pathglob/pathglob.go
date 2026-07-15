@@ -1,6 +1,6 @@
 // Package pathglob is awf's single glob dialect (ADR-0077): anchored full-path
 // doublestar matching against slash-separated repo-relative paths. There is
-// deliberately no basename mode — `*.go` matches only top-level .go files;
+// deliberately no basename mode - `*.go` matches only top-level .go files;
 // any-depth is written `**/*.go`. Leaf package: imports nothing from awf.
 package pathglob
 
@@ -19,9 +19,9 @@ func Validate(pattern string) error {
 }
 
 // Match reports whether the slash-separated repo-relative path matches the
-// anchored pattern. A malformed pattern matches nothing — Validate at config
+// anchored pattern. A malformed pattern matches nothing - Validate at config
 // load / audit-input building keeps that branch cold in practice.
-// touches-invariant: pathglob-anchored — anchored full-path match; proof in pathglob_test.go
+// touches-invariant: pathglob-anchored - anchored full-path match; proof in pathglob_test.go
 func Match(pattern, relPath string) bool {
 	ok, err := doublestar.Match(pattern, relPath)
 	return err == nil && ok

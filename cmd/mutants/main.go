@@ -39,7 +39,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	// ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
-	// caller error — never a clean run. Only a present-but-empty file means an
+	// caller error - never a clean run. Only a present-but-empty file means an
 	// empty run (gremlins wrote nothing into the pre-created file).
 	data, err := os.ReadFile(args[1])
 	if err != nil {

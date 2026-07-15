@@ -26,7 +26,7 @@ type kindDescriptor struct {
 // kind-dispatch-single-table), in `awf list` display order. It is also the sole
 // enumeration of CLI-addressable kinds (ADR-0024 inv: cli-config-kinds, re-homed here).
 // invariant: kind-dispatch-single-table
-// touches-invariant: cli-config-kinds — sole CLI-addressable kind enumeration; proof in kind_test.go
+// touches-invariant: cli-config-kinds - sole CLI-addressable kind enumeration; proof in kind_test.go
 var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "skills", Singular: "skill",
@@ -59,7 +59,7 @@ var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "domains", Singular: "domain",
 		enable:    func(c *config.Config) []string { return c.Domains },
-		poolNames: nil, // freeform — no catalog pool
+		poolNames: nil, // freeform - no catalog pool
 		sections:  func(c *catalog.Catalog, _ string) ([]string, bool) { return c.DomainDoc.Sections, false },
 		outPath:   nil,
 		tid:       func(string) string { return "domains/domain.md.tmpl" },

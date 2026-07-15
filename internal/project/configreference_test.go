@@ -36,7 +36,7 @@ func syncedProject(t *testing.T, configYAML string, files map[string]string) (st
 
 // The generated reference renders per-project state: key rows with resolved
 // defaults, the three-way var states, consumer/dormant hints, per-artifact
-// data keys — and the document map cites it.
+// data keys - and the document map cites it.
 func TestConfigReferenceGolden(t *testing.T) {
 	root, _ := syncedProject(t, crefYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
@@ -76,7 +76,7 @@ func TestConfigReferenceGolden(t *testing.T) {
 	}
 }
 
-// A minimal project still renders coherent prose — no empty table skeletons,
+// A minimal project still renders coherent prose - no empty table skeletons,
 // no unresolved tokens (the publication-safe degradation for generated docs).
 func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 	root, _ := syncedProject(t, "prefix: example\n", nil)
@@ -127,7 +127,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 	}
 	assertDrift("missing", "absent")
 
-	// local: after a sync — generation stops, the lock entry reports orphaned.
+	// local: after a sync - generation stops, the lock entry reports orphaned.
 	if err := os.WriteFile(filepath.Join(root, ".awf/config-reference.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +150,8 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 	}
 }
 
-// The reference template consumes only dedicated data keys — a bare .vars or
-// .data range would neutralize the consumption checks project-wide — and no
+// The reference template consumes only dedicated data keys - a bare .vars or
+// .data range would neutralize the consumption checks project-wide - and no
 // partial references .vars, keeping the raw-source dormancy scan sound.
 // invariant: config-reference-no-bare-vars (backing test)
 func TestConfigReferenceNoBareVars(t *testing.T) {
@@ -254,7 +254,7 @@ invariants:
 		}
 	}
 
-	// local: from the very first sync — no lock entry, no drift, no file.
+	// local: from the very first sync - no lock entry, no drift, no file.
 	root2, p2 := syncedProject(t, crefYAML, map[string]string{"config-reference.yaml": "local: true\n"})
 	if _, err := os.Stat(filepath.Join(root2, "docs/config-reference.md")); err == nil {
 		t.Error("local: config reference must not render")
@@ -271,7 +271,7 @@ invariants:
 }
 
 // A part-read fault at the reference's intro (a directory where the part file
-// may sit) surfaces from every generation call site — the reference renders
+// may sit) surfaces from every generation call site - the reference renders
 // outside RenderAll, so these branches are reachable, not theoretical.
 func TestConfigReferencePartReadFault(t *testing.T) {
 	root, p := syncedProject(t, crefYAML, nil)

@@ -19,7 +19,7 @@ import (
 // reports a nested "example-reviewing-plan").
 var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 
-// doubleBacktickRe matches a double backtick not adjacent to a third — an
+// doubleBacktickRe matches a double backtick not adjacent to a third - an
 // empty inline-code span or a literal double-backtick quoting span, never a
 // triple-backtick code fence. (Spelled out because gofmt rewrites a literal
 // double-backtick pair in a doc comment into a curly quote.)
@@ -97,7 +97,7 @@ var conditionalActionRe = regexp.MustCompile(`\{\{-?\s*(if|with|range)\b`)
 
 // TestConditionalTemplatesHaveFallbackCases requires a hand-authored
 // unset-data case for every catalog template whose post-include-expansion
-// source contains a conditional action — only a human knows what the degraded
+// source contains a conditional action - only a human knows what the degraded
 // prose should say, so its presence is machine-forced (ADR-0080 Decision 3).
 // invariant: conditional-fallback-case-guard
 func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
@@ -138,7 +138,7 @@ func kebabToCamel(name string) string {
 
 // TestEveryCatalogArtifactHasGoldenTest asserts a per-artifact golden test
 // func exists in this package's test source for every catalog skill and
-// agent — the goldens live in spine_test.go by convention (source-scan
+// agent - the goldens live in spine_test.go by convention (source-scan
 // mechanic, precedent TestArchitectureDocNamesEveryCmd; ADR-0080 Decision 4).
 // invariant: golden-test-completeness
 func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {

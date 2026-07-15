@@ -15,7 +15,7 @@ import (
 )
 
 // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-// 0 docs — no doc is core after ADR-0043 — no domains) and syncs it.
+// 0 docs - no doc is core after ADR-0043 - no domains) and syncs it.
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -88,7 +88,7 @@ func TestRunAddAcrossKinds(t *testing.T) {
 }
 
 // A project-local artifact (ADR-0068) lists under its declared kind with the
-// state "local" — not "tuned", which would hide that it is not a catalog skill.
+// state "local" - not "tuned", which would hide that it is not a catalog skill.
 func TestRunListShowsLocalArtifactAsLocal(t *testing.T) {
 	root := scaffoldedProject(t)
 	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy."}, io.Discard); err != nil {
@@ -141,7 +141,7 @@ func TestRunAddRemoveGateBeforeConfigWrite(t *testing.T) {
 }
 
 // TestRunAddDomainScaffoldIdempotent confirms add domain never clobbers an
-// existing current-state.md — pre-authored content (e.g. from a prior
+// existing current-state.md - pre-authored content (e.g. from a prior
 // add/remove cycle, or hand-authored before the domain was ever enabled)
 // survives a fresh add.
 func TestRunAddDomainScaffoldIdempotent(t *testing.T) {
@@ -506,7 +506,7 @@ func TestDispatchRunner(t *testing.T) {
 		t.Errorf("runner not enabled after add dispatch:\n%s", cfg)
 	}
 
-	// A name is a usage error — the runner is a nameless singleton.
+	// A name is a usage error - the runner is a nameless singleton.
 	errb.Reset()
 	if code := run([]string{"awf", "enable", "runner", "x"}, &out, &errb); code == 0 ||
 		!strings.Contains(errb.String(), "takes no name") {
@@ -778,7 +778,7 @@ func TestRunListStatesAndKinds(t *testing.T) {
 	}
 }
 
-// `awf disable agent` refuses upfront — before any config rewrite — while an
+// `awf disable agent` refuses upfront - before any config rewrite - while an
 // enabled, non-local skill requires the agent (ADR-0050).
 // invariant: remove-agent-pairing-guard
 func TestRunRemoveAgentPairingGuard(t *testing.T) {
@@ -814,7 +814,7 @@ func TestRunRemoveAgentPairingGuard(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills", "example-reviewing-adr", "SKILL.md"),
 		"---\nname: example-reviewing-adr\ndescription: local reviewing skill\n---\nbody\n")
 
-	// Local-declaring the requiring skill unblocks the removal too — removing
+	// Local-declaring the requiring skill unblocks the removal too - removing
 	// the skill outright is impossible one-at-a-time inside the chain's
 	// mutually-requiring core (ADR-0081; Phase 2's cascade flag covers it).
 	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "reviewing-impl.yaml"), []byte("local: true\n"), 0o644); err != nil {
@@ -888,8 +888,8 @@ func TestDispatchAddRemoveList(t *testing.T) {
 	}
 }
 
-// Bare `awf list` covers every kind — the four catalog/domain kinds plus
-// target, bootstrap, and hooks — and an empty kind prints (none) under its
+// Bare `awf list` covers every kind - the four catalog/domain kinds plus
+// target, bootstrap, and hooks - and an empty kind prints (none) under its
 // header. A single-kind filter still prints only that kind.
 func TestRunListBareShowsAllKinds(t *testing.T) {
 	root := scaffoldedProject(t)
@@ -938,9 +938,9 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 	}
 	var out bytes.Buffer
 	noteUnrequiredAgents(p, plan, &out)
-	// adr-reviewer: required by the removed reviewing-adr, but local — skipped.
+	// adr-reviewer: required by the removed reviewing-adr, but local - skipped.
 	// plan-reviewer: required by the removed reviewing-plan, but the remaining
-	// reviewing-plan-resync still requires it — no note.
+	// reviewing-plan-resync still requires it - no note.
 	if out.String() != "" {
 		t.Errorf("expected no notes, got %q", out.String())
 	}

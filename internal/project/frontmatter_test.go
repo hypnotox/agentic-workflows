@@ -20,7 +20,7 @@ import (
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	cat := catalog.Standard
 	// check renders one template with a docs map seeded only for the skill's own
-	// required doc — mirroring the suppression guarantee (a doc-gated skill renders
+	// required doc - mirroring the suppression guarantee (a doc-gated skill renders
 	// only when its doc is enabled, so its unguarded .layout.docs.<doc> resolves;
 	// non-gated skills must render cleanly with no docs enabled, guards omitting).
 	check := func(tid, requiresDoc string) {

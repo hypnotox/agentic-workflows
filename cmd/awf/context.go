@@ -17,13 +17,13 @@ import (
 // owning domains, backed invariants, related ADRs, and each domain's rendered
 // current-state pointer. When no explicit paths are given, --staged/--range
 // resolve them from git first (a bad selector still errors, an empty selector is
-// a usage error) — placed before the static-fallback stat so the resolved paths
+// a usage error) - placed before the static-fallback stat so the resolved paths
 // carry into the outside-a-tree output. It then mirrors runConfig's gate +
 // static-fallback shape: a genuinely absent config prints the pre-adoption
 // notice; any other stat fault is an error; inside a tree the binary-version
-// gate runs before Open. The command entry point holds no writer dependency —
+// gate runs before Open. The command entry point holds no writer dependency -
 // it only reads.
-// touches-invariant: context-read-only — read-only command entry point (no writer dependency); proof in context_test.go
+// touches-invariant: context-read-only - read-only command entry point (no writer dependency); proof in context_test.go
 func runContext(cwd string, paths []string, staged bool, rng string, asJSON, uncovered bool, stdout io.Writer) error {
 	if uncovered {
 		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
@@ -45,7 +45,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		// touches-invariant: context-static-fallback — static pre-adoption fallback output; proof in context_test.go
+		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printContext(stdout, project.ContextResult{Paths: paths}, asJSON,
 			"context (static — not inside an awf project; live context appears inside one)")
 	}
@@ -66,7 +66,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 // runUncovered serves `awf context --uncovered`: the whole-tree inverse of the
 // domain-ownership resolution. Positional args are optional scan roots; --staged and
 // --range are rejected. It mirrors runContext's read-only + static-fallback shape.
-// touches-invariant: context-read-only — read-only command entry point (no writer dependency); proof in context_test.go
+// touches-invariant: context-read-only - read-only command entry point (no writer dependency); proof in context_test.go
 func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
 	if staged || rng != "" {
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --staged/--range"}
@@ -75,7 +75,7 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		// touches-invariant: context-static-fallback — static pre-adoption fallback output; proof in context_test.go
+		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
 			"context --uncovered (static — not inside an awf project; live coverage appears inside one)")
 	}
@@ -91,7 +91,7 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 		return err
 	}
 	res, err := p.Uncovered(tracked, scanRoots)
-	if err != nil { // coverage-ignore: Uncovered's only fault is a domain-sidecar read, which project.Open validates first — unreachable post-Open here; the branch is covered at the project level (TestUncovered sidecar fault)
+	if err != nil { // coverage-ignore: Uncovered's only fault is a domain-sidecar read, which project.Open validates first - unreachable post-Open here; the branch is covered at the project level (TestUncovered sidecar fault)
 		return err
 	}
 	return printUncovered(stdout, res, asJSON, "context --uncovered — tracked paths owned by no domain")
@@ -99,7 +99,7 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 
 // printUncovered renders res as JSON or human-readable text. Both modes read the same
 // assembled res, so they cannot diverge.
-// touches-invariant: uncovered-output-parity — uncovered render reads one assembled result; proof in context_test.go
+// touches-invariant: uncovered-output-parity - uncovered render reads one assembled result; proof in context_test.go
 func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, header string) error {
 	if asJSON {
 		enc := json.NewEncoder(stdout)
@@ -123,7 +123,7 @@ func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, 
 
 // printContext renders res as JSON or human-readable text. Both modes read the
 // same assembled res, so they cannot diverge.
-// touches-invariant: context-output-parity — context render reads one assembled result; proof in context_test.go
+// touches-invariant: context-output-parity - context render reads one assembled result; proof in context_test.go
 func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, header string) error {
 	if asJSON {
 		enc := json.NewEncoder(stdout)

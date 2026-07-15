@@ -18,9 +18,9 @@ func unknownKind(kind string) error {
 }
 
 // enableDisableSingleton enables or disables a nested <key>.enabled singleton toggle
-// in the config — the bootstrap (ADR-0040), the git-hook payloads (ADR-0048), or the
+// in the config - the bootstrap (ADR-0040), the git-hook payloads (ADR-0048), or the
 // command runner (ADR-0101). It is the bespoke path (singletons are not
-// kindDescriptors — no catalog pool / sections / plural enable array, so they stay
+// kindDescriptors - no catalog pool / sections / plural enable array, so they stay
 // out of the single dispatch table that inv: kind-dispatch-single-table guards): a
 // nested <key>.enabled scalar, written via config.SetMappingScalar.
 func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error {
@@ -55,7 +55,7 @@ func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error 
 }
 
 // enableDisableTarget enables or disables an adapter in the config targets array. It
-// is the bespoke path (targets is not a kindDescriptor — ADR-0037): it validates
+// is the bespoke path (targets is not a kindDescriptor - ADR-0037): it validates
 // against the known-adapter set and writes the full resolved list, since the
 // targets array carries a Load default that an absent on-disk key would drop.
 // invariant: target-cli
@@ -207,15 +207,15 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 	if isGraphKind(kind) {
 		if add {
 			// Closure plan (ADR-0081 Decision 4): enabling an artifact enables its
-			// full missing forward closure — skills, agents, and docs — in one
+			// full missing forward closure - skills, agents, and docs - in one
 			// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
 			// and subsumes the ADR-0013 doc advisory note.
-			// touches-invariant: add-skill-pairs-agent — closure plan enables the required agent; proof in list_add_test.go
+			// touches-invariant: add-skill-pairs-agent - closure plan enables the required agent; proof in list_add_test.go
 			plan = p.ResolveEnable(kind, name)
 		} else {
 			// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
 			// target plus its enabled transitive dependents, printed before any
-			// change; a longer plan refuses upfront — BEFORE the config rewrite,
+			// change; a longer plan refuses upfront - BEFORE the config rewrite,
 			// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
 			// guard (the reverse walk's length-1 case).
 			// invariant: remove-agent-pairing-guard
@@ -257,12 +257,12 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 // domainCurrentStateStub is the starter content for a new domain's current-state
 // convention part: a concrete writing prompt instead of a blank file. It names the
 // doc-standard path in plain text, not a markdown link, since doc-standard is an
-// optional catalog doc — a link would risk ADR-0020's dead-reference gate on a
+// optional catalog doc - a link would risk ADR-0020's dead-reference gate on a
 // project that hasn't enabled it.
 const domainCurrentStateStub = "Describe where the %q domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.\n"
 
 // scaffoldDomainCurrentState writes name's current-state convention part with a
-// starter prompt, unless one already exists — idempotent, so it never clobbers
+// starter prompt, unless one already exists - idempotent, so it never clobbers
 // hand-authored content from a prior enable or a manual file.
 func scaffoldDomainCurrentState(p *project.Project, name string) error {
 	path := p.Cfg.PartPath("domains", name, "current-state")
@@ -283,7 +283,7 @@ func runDisable(root, kind, name string, withDependents, dryRun bool, stdout io.
 
 // noteUnrequiredAgents prints, after a cascade, a note for each still-enabled
 // agent that a removed skill required and no remaining enabled, non-local
-// skill still requires — agents are legal standalone (ADR-0050 Decision
+// skill still requires - agents are legal standalone (ADR-0050 Decision
 // item 3), so they stay enabled (ADR-0081). Restricting to agents a removed
 // skill required keeps "no longer" honest (a pre-existing standalone agent is
 // not this cascade's doing), and local-sidecar agents mirror the resolver's
@@ -463,7 +463,7 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 
 // artifactState returns the display state of a catalog-backed artifact: "available"
 // when not enabled, else "local"/"tuned"/"enabled" from its sidecar. A name
-// outside the standard catalog is a project-local artifact (ADR-0068) — its
+// outside the standard catalog is a project-local artifact (ADR-0068) - its
 // synthesized pool entry lists as "local", not as a tuned catalog skill.
 func artifactState(p *project.Project, kind, name string) string {
 	if !slices.Contains(enabledNames(p.Cfg, kind), name) {

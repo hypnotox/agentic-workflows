@@ -58,7 +58,7 @@ func TestCheckIgnoresEmptyVar(t *testing.T) {
 // agents-doc and workflow are local, hooks/bootstrap are off), so only the
 // PartVarRefs plumbing can mark the var consumed. (gateCmd can no longer serve
 // this role: the always-on plans-template singleton now references .vars.gateCmd
-// — ADR-0108 — so it is consumed in every project.)
+// - ADR-0108 - so it is consumed in every project.)
 func TestPartPlaceholderConsumesVar(t *testing.T) {
 	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - refactor-coupling-audit\nagents: []\n"
 	locals := map[string]string{
@@ -152,7 +152,7 @@ func TestCheckFlagsUnusedSingletonDataKey(t *testing.T) {
 
 // The domain-doc placeholder channel: domain docs render outside RenderAll and
 // their RenderedFile copy is hand-built (generateDomainDocs), so this pins the
-// partVarRefs field preservation — re-stripping it would silently reintroduce
+// partVarRefs field preservation - re-stripping it would silently reintroduce
 // false unused-var drift with every other test green. (assembled is retained
 // for the var-consumption union too, but is unexercisable here: the domain
 // template reads no vars.)

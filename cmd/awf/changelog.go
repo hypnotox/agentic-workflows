@@ -14,7 +14,7 @@ import (
 // slice of it. version/since/rng are mutually exclusive; checkArgs has already
 // validated the flag names and zero positional arity, but not this mutual
 // exclusivity or --range's "from..to" shape.
-// touches-invariant: changelog-flags-exclusive — mutually-exclusive changelog flag check; proof in changelog_test.go
+// touches-invariant: changelog-flags-exclusive - mutually-exclusive changelog flag check; proof in changelog_test.go
 func runChangelog(version, since, rng string, stdout io.Writer) error {
 	set := 0
 	for _, v := range []string{version, since, rng} {

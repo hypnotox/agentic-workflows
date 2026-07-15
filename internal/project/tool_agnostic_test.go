@@ -28,7 +28,7 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 		// File-operation tool names (ADR-0038, broadened): backticked tool tokens and
 		// the "via Edit" / "Edit calls" / "Read tool" phrase forms. The plain action
 		// verbs ("Write the ADR file", "Read the file") and the shell `grep` are not
-		// tool names and stay — hence the word-anchored phrase forms, not bare words.
+		// tool names and stay - hence the word-anchored phrase forms, not bare words.
 		regexp.MustCompile("(?i)`(write|edit|read)`"),
 		regexp.MustCompile(`(?i)\bvia (write|edit|read)\b`),
 		regexp.MustCompile(`(?i)\b(write|edit|read) (tool|calls?)\b`),

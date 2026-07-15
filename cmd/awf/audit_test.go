@@ -29,7 +29,7 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 		t.Fatal(err)
 	}
 	// Stage everything (synced scaffold + source) so the baseline working tree is
-	// clean — otherwise the uncommitted-changes rule (ADR-0025) fires on the
+	// clean - otherwise the uncommitted-changes rule (ADR-0025) fires on the
 	// untracked synced files.
 	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module x\n"), 0o644); err != nil {
 		t.Fatal(err)

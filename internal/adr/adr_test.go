@@ -40,7 +40,7 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	}
 
 	// RenderActiveMD is banner-free (the banner is injected downstream by
-	// internal/project, like every other rendered artifact) — content starts
+	// internal/project, like every other rendered artifact) - content starts
 	// directly with the first status heading.
 	if !strings.HasPrefix(got, "## ") {
 		t.Errorf("expected content to start with a status heading, no embedded banner; got start: %q", got[:min(60, len(got))])
@@ -99,7 +99,7 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 
 // TestRenderActiveMDGroupsSupersededVariants locks the lifecycle convention's
 // suffixed status ("Superseded by ADR-NNNN") into one Superseded group: a
-// single section header ordered by statusOrder, per-entry full status kept —
+// single section header ordered by statusOrder, per-entry full status kept -
 // not one alphabetical section per successor.
 // invariant: render-active-md
 func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
@@ -480,7 +480,7 @@ func TestNewFileMissingTemplate(t *testing.T) {
 
 func TestNewFileEmptySlug(t *testing.T) {
 	dir := t.TempDir()
-	// No template.md needed — slugify errors before the file is ever read.
+	// No template.md needed - slugify errors before the file is ever read.
 	if _, err := adr.NewFile(dir, "!!!"); err == nil {
 		t.Fatal("expected slugify error for an all-punctuation title")
 	}

@@ -14,7 +14,7 @@ import (
 
 // InitCollisions returns planned output paths that already exist on disk and are
 // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
-// already exists is not a collision — re-init is idempotent.
+// already exists is not a collision - re-init is idempotent.
 func (p *Project) InitCollisions() ([]string, error) {
 	planned, err := p.PlannedOutputs()
 	if err != nil {
@@ -55,7 +55,7 @@ func CollisionsAt(root string, planned []string) ([]string, error) {
 // BackupFile copies a colliding project-relative file to a free <path>.awf-bak[.N]
 // sibling (never clobbering a prior backup) and returns the backup's
 // project-relative path.
-// touches-invariant: init-force-backs-up — forced-collision backup copy; proof in run_test.go
+// touches-invariant: init-force-backs-up - forced-collision backup copy; proof in run_test.go
 func (p *Project) BackupFile(rel string) (string, error) {
 	src := filepath.Join(p.Root, rel)
 	bak := freeBackupPath(src)
@@ -98,8 +98,8 @@ func copyFile(src, dst string) error {
 // the lock, the directories left empty by their removal, and the now-stale lock
 // itself. It leaves the authored .awf/ config in place and returns the count of
 // files removed. It is a free function (not a *Project method) so a broken
-// config.yaml does not block uninstall — only the lock and root are needed.
-// touches-invariant: uninstall-removes-lock-tracked — lock-tracked file removal; proof in install_test.go
+// config.yaml does not block uninstall - only the lock and root are needed.
+// touches-invariant: uninstall-removes-lock-tracked - lock-tracked file removal; proof in install_test.go
 func Uninstall(root string) (int, error) {
 	lockPath := config.LockPath(root)
 	lock, found, err := manifest.LoadOptional(lockPath)

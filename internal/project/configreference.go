@@ -23,7 +23,7 @@ func (p *Project) crefRel() string {
 // PotentialVarConsumers inverts the full catalog's raw template sources into
 // var → sorted consumer labels: the dormant-hint side of the consumption
 // graph (ADR-0088). Raw-source scanning is sound because no partial
-// references .vars — guarded by a test beside the reference's goldens.
+// references .vars - guarded by a test beside the reference's goldens.
 func PotentialVarConsumers() (map[string][]string, error) {
 	byVar := map[string]map[string]bool{}
 	add := func(tid string) error {
@@ -69,7 +69,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 }
 
 // enabledVarConsumers unions each var's enabled consumers from the rendered
-// files' assembled sources and part-placeholder refs — the same consumption
+// files' assembled sources and part-placeholder refs - the same consumption
 // definition the unused-var check applies (ADR-0086).
 func enabledVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
@@ -300,12 +300,12 @@ func (p *Project) dataKeyRows() ([]map[string]any, error) {
 }
 
 // hasLocalArtifact reports whether the project enables a synthesized
-// project-local artifact of the plural kind — one rendered from an awf-owned
+// project-local artifact of the plural kind - one rendered from an awf-owned
 // base template, so the config reference should document that kind's `_base`
 // data keys (ADR-0068/0091). Skills and agents carry a `Base` flag; a local
 // doc's synthesized `DocEntry.TID` is the base doc template. A `local: true`
 // opt-out is hand-authored and never synthesized, so it correctly does not
-// count — its body is not rendered from the base template.
+// count - its body is not rendered from the base template.
 func (p *Project) hasLocalArtifact(kind string) bool {
 	switch kind {
 	case "skills":
@@ -343,9 +343,9 @@ func (p *Project) enableArray(kind string) []string {
 }
 
 // generateConfigReference renders the always-on generated config reference
-// (ADR-class: generated index, no template/config hashes — drift is checked
+// (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (RenderAll output plus
-// generated domain docs). The bool reports whether a reference was produced —
+// generated domain docs). The bool reports whether a reference was produced -
 // false when a local: sidecar opts out (the manifest.LoadOptional found-flag
 // idiom).
 func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, bool, error) {
@@ -364,7 +364,7 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 	data["data"] = collections
 	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
 		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel())
-	if err != nil { // reachable: an unreadable intro part fails the read here — this is its first render
+	if err != nil { // reachable: an unreadable intro part fails the read here - this is its first render
 		return nil, false, err
 	}
 	return &RenderedFile{Path: rf.Path, Content: rf.Content,
@@ -374,7 +374,7 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 }
 
 // ConfigReferenceModel computes the reference's four collections
-// (configKeys, varEntries, sidecarFields, dataKeys) with live project state —
+// (configKeys, varEntries, sidecarFields, dataKeys) with live project state -
 // the `awf config` command's data source, sharing the doc's builder.
 func (p *Project) ConfigReferenceModel() (map[string]any, error) {
 	files, err := p.RenderAll()

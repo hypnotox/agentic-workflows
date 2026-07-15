@@ -31,7 +31,7 @@ func TestCommandsWellFormed(t *testing.T) {
 // Gating is a top-level property: a group command's children must leave Gating
 // at the Ungated zero value, so the driver (which reads gating from the
 // top-level node) is the single authority. A child that declared its own gating
-// would be silently ignored — this guards that trap shut.
+// would be silently ignored - this guards that trap shut.
 func TestGroupChildrenCarryNoGating(t *testing.T) {
 	for _, c := range Commands {
 		for _, ch := range c.Children {
@@ -67,7 +67,7 @@ func TestLookup(t *testing.T) {
 	}
 }
 
-// GatedCommandNames is the exact published gated set, in table order — the
+// GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
 	want := []string{"sync", "check", "invariants", "audit", "list", "config", "context", "new", "enable", "disable"}

@@ -76,7 +76,7 @@ func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Created after Open: the ADR-0086 open-time validation reads domain
-	// sidecars too, so a pre-existing unreadable sidecar would fail there —
+	// sidecars too, so a pre-existing unreadable sidecar would fail there -
 	// this test pins Audit's own read-error propagation.
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
 		t.Fatal(err)

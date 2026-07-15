@@ -11,7 +11,7 @@ import (
 // The completeness advisory keys on key presence, not value emptiness
 // (ADR-0045 item 4 narrowed by ADR-0087): a present-but-empty or explicit-null
 // key is an open to-do and notes; an absent key is the deliberate, deleted
-// acknowledgement and stays silent — the standing-note regression this exists
+// acknowledgement and stays silent - the standing-note regression this exists
 // for.
 // invariant: absent-var-acknowledged
 func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
@@ -86,7 +86,7 @@ func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
 	notes := p.unsetVarNotes(files)
 	joined := strings.Join(notes, "\n")
 	for _, want := range []string{
-		// Labels derive from the output path — a template-derived "skill _base"
+		// Labels derive from the output path - a template-derived "skill _base"
 		// could not say which local artifact a note is about.
 		"skill example-a references unset vars: alpha",
 		"skill example-b references unset vars: beta",
@@ -115,8 +115,8 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 	}
 }
 
-// AdvisoryNotes' generateDomainDocs input is the only path that parses ADRs —
-// RenderAll never does — so a malformed ADR under a declared domain must surface
+// AdvisoryNotes' generateDomainDocs input is the only path that parses ADRs -
+// RenderAll never does - so a malformed ADR under a declared domain must surface
 // as an error here rather than being swallowed.
 func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n")
@@ -341,7 +341,7 @@ func TestTagHealthNotes(t *testing.T) {
 	writeADR(t, root, "0004-d.md", testsupport.ADR("Implemented", testsupport.WithTitle("0004: D"), testsupport.WithTags("epsilon")))
 	writeADR(t, root, "0005-e.md", testsupport.ADR("Implemented", testsupport.WithTitle("0005: E")))
 	// 0006 carries only `bogus` (non-vocabulary): it has tags (no coverage note),
-	// but contributes to neither the numerator nor the denominator — proving the
+	// but contributes to neither the numerator nor the denominator - proving the
 	// denominator counts only vocabulary-tag-bearing artifacts (alpha stays 2/4).
 	writeADR(t, root, "0006-f.md", testsupport.ADR("Implemented", testsupport.WithTitle("0006: F"), testsupport.WithTags("bogus")))
 	p, err := Open(root)
@@ -353,11 +353,11 @@ func TestTagHealthNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(notes, "\n")
-	// invariant: tag-frequency-note — alpha on 2/4 tagged artifacts (50% > 25%)
+	// invariant: tag-frequency-note - alpha on 2/4 tagged artifacts (50% > 25%)
 	if !strings.Contains(joined, `tag "alpha" is on 2/4`) {
 		t.Errorf("expected an alpha frequency note; got %v", notes)
 	}
-	// beta/delta each 1/4 (25%, not strictly over) — no note.
+	// beta/delta each 1/4 (25%, not strictly over) - no note.
 	if strings.Contains(joined, `tag "beta"`) || strings.Contains(joined, `tag "delta"`) {
 		t.Errorf("did not expect a note for a 25%%-share tag; got %v", notes)
 	}
@@ -369,13 +369,13 @@ func TestTagHealthNotes(t *testing.T) {
 	if strings.Contains(joined, "0006-f.md carries no tags") {
 		t.Errorf("a bogus-only artifact has tags — no coverage note expected; got %v", notes)
 	}
-	// invariant: tag-coverage-note — 0005 carries no tags
+	// invariant: tag-coverage-note - 0005 carries no tags
 	if !strings.Contains(joined, "0005-e.md carries no tags") {
 		t.Errorf("expected a coverage note for the untagged ADR; got %v", notes)
 	}
 }
 
-// An empty/absent vocabulary makes the whole tag-health producer inert — the
+// An empty/absent vocabulary makes the whole tag-health producer inert - the
 // example-adopter safety case (sundial carries free-form tags but no vocabulary).
 func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
@@ -448,7 +448,7 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 }
 
 // tagHealthNotes counts pitfall tags alongside ADR tags and flags an untagged
-// pitfall — exercising the pitfall arm of the artifact scan.
+// pitfall - exercising the pitfall arm of the artifact scan.
 func TestTagHealthNotesPitfalls(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +

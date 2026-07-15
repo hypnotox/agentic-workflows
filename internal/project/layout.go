@@ -46,7 +46,7 @@ func (p *Project) layout() Layout {
 // the per-file ConfigHash consume. The fixed directory/generated keys are set
 // here; the mandatory-singleton keys (adrReadme, adrTemplate, plansReadme,
 // workflowRef, docStandard, agentsMdStandard, workingWithAwf) derive from the
-// catalog doc collection — each entry's TemplateKey at docsDir/Path — so the map
+// catalog doc collection - each entry's TemplateKey at docsDir/Path - so the map
 // reproduces the historical key set and values byte-for-byte (ADR-0061).
 func (l Layout) templateMap() map[string]any {
 	docs := map[string]any{}
@@ -109,7 +109,7 @@ func (p *Project) resolvedDocs() ([]map[string]any, error) {
 
 // documentMapDocs builds the AGENTS.md document-map entries for the mandatory
 // DocumentMap docs from the catalog's title/desc, sorted by name (ADR-0062).
-// Unlike resolvedDocs it is UNCONDITIONAL — a mandatory doc-map line renders
+// Unlike resolvedDocs it is UNCONDITIONAL - a mandatory doc-map line renders
 // regardless of a local: sidecar, matching the historically hardcoded lines.
 func (p *Project) documentMapDocs() []map[string]any {
 	d := strings.TrimRight(p.Cfg.DocsDir, "/")

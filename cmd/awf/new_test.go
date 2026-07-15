@@ -324,7 +324,7 @@ func TestRunNewSkillCollision(t *testing.T) {
 
 func TestRunNewSkillOpenError(t *testing.T) {
 	root := scaffoldProject(t)
-	// Passes the schema/version gate (lock intact) but fails project.Open — an
+	// Passes the schema/version gate (lock intact) but fails project.Open - an
 	// enabled doc that is not in the catalog.
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
 	if err := runNew(root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
@@ -362,7 +362,7 @@ func TestSeedScaffoldVars(t *testing.T) {
 }
 
 // The shipped base templates reference no vars, so awf new seeds nothing today
-// — this pins the no-op so a future var-bearing base template consciously
+// - this pins the no-op so a future var-bearing base template consciously
 // changes it (ADR-0087 Decision 4).
 func TestRunNewSeedsNoVarsToday(t *testing.T) {
 	for _, kind := range []string{"skill", "agent"} {

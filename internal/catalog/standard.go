@@ -3,8 +3,8 @@ package catalog
 // Standard is the compile-time catalog: awf's static description of the standard
 // (skills, agents, docs, singletons, the domain-doc spec, and the fillable vars).
 // It replaces the former embedded catalog.yaml runtime parse (ADR-0060). Default
-// Data bags are kept as map[string]any / []any / scalars — the shapes yaml.v3
-// produced — so the per-file ConfigHash stays byte-identical.
+// Data bags are kept as map[string]any / []any / scalars - the shapes yaml.v3
+// produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
 		"brainstorming": {Core: true, Chain: true, RequiresSkills: []string{"proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
@@ -170,7 +170,7 @@ var Standard = &Catalog{
 	},
 	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
 	Docs: map[string]DocEntry{
-		// Toggleable docs (Mandatory false) — rendered only when enabled in config.
+		// Toggleable docs (Mandatory false) - rendered only when enabled in config.
 		"architecture": {Title: "Architecture", Desc: "system shape, packages, key components, dependencies", Sections: []string{"overview", "components", "data-flow", "dependencies"}, TID: "docs/architecture.md.tmpl"},
 		"testing":      {Title: "Testing", Desc: "gate tiers, test layout, what each tier covers", Sections: []string{"gate", "tiers", "layout"}, TID: "docs/testing.md.tmpl"},
 		"development":  {Title: "Development", Desc: "local setup, the command runner, dependency reference", Sections: []string{"setup", "command-runner", "dependencies"}, TID: "docs/development.md.tmpl"},

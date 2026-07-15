@@ -3,7 +3,7 @@
 // inv: legacy-read-isolation, the named exemption to ADR-0009 inv: config-root)
 // and is imported by nothing on the render/sync/check load path. It reads the
 // compile-time catalog (internal/catalog) for the ADR-0081 close-enabled-set
-// migration — a leaf import that keeps this package off the render path.
+// migration - a leaf import that keeps this package off the render path.
 //
 // Output convention: a migration that mutates the tree prints one line per
 // performed operation to its out writer, prefixed with its registry Name
@@ -45,9 +45,9 @@ var registry = []Migration{
 func Current() int { return registry[len(registry)-1].To }
 
 // Generation reports the project's schema generation. Detection is by layout:
-// a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet —
+// a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet -
 // fresh init / just-upgraded); a pre-relocation .claude/awf/ tree reports its
-// lock's schema, or 1 when no lock — such a tree is the tree-layout port's
+// lock's schema, or 1 when no lock - such a tree is the tree-layout port's
 // output (the port deletes the legacy lock), so every later migration up to and
 // including the To:3 relocation must still apply; the legacy single file
 // reports 0; nothing present reports Current(). A present-but-unreadable lock
@@ -85,7 +85,7 @@ func Generation(root string) (int, error) {
 }
 
 // ProjectPresent reports whether any awf config layout (current tree,
-// pre-relocation tree, or legacy single file) exists under root — the
+// pre-relocation tree, or legacy single file) exists under root - the
 // distinction Generation cannot express, since "nothing present" reports
 // Current() (ADR-0076 Decision 4).
 func ProjectPresent(root string) bool {
@@ -103,7 +103,7 @@ func ProjectPresent(root string) bool {
 
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
-// sync) is a no-op — Generation's no-lock branch already reports Current().
+// sync) is a no-op - Generation's no-lock branch already reports Current().
 func stampLockSchema(root string) error {
 	lockPath := config.LockPath(root)
 	if !fileExists(lockPath) {
@@ -127,7 +127,7 @@ func registryTos() []int {
 }
 
 // gateStateFor is the pure classifier (extracted for testability): "ahead" when
-// gen is strictly above current (the binary is behind the project — ADR-0039);
+// gen is strictly above current (the binary is behind the project - ADR-0039);
 // "ok" when gen == current; "gate" when at least one To lands in the open interval
 // (gen, current]; "autobump" otherwise.
 func gateStateFor(gen, current int, tos []int) string {

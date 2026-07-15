@@ -2,7 +2,7 @@
 // for the .awf configuration surface: every config.yaml key, sidecar field,
 // var, and per-artifact data key an adopter can set. Descriptions are
 // publication prose: they state effect and availability in the adopter's terms
-// — never internal rationale, concrete ADR citations, or repo-identity
+// - never internal rationale, concrete ADR citations, or repo-identity
 // literals (the residue rules, test-enforced).
 package configspec
 
@@ -18,7 +18,7 @@ type Entry struct {
 }
 
 // VarEntry describes one config var. Description text is carried verbatim
-// from the catalog descriptor — the catalog stays the sole var authority;
+// from the catalog descriptor - the catalog stays the sole var authority;
 // configspec attaches only the availability clause.
 type VarEntry struct {
 	Key          string
@@ -42,9 +42,9 @@ func Keys() []Entry { return keys }
 func DataKeys() []DataKey { return dataKeys }
 
 // VarEntries derives the var descriptions from the catalog's config-var
-// descriptors (empty or "var" Target — the init-routing descriptors are not
+// descriptors (empty or "var" Target - the init-routing descriptors are not
 // vars: keys), description text verbatim, availability clause attached here.
-// touches-invariant: configspec-var-derivation — var entries derived from catalog descriptors; proof in spec_test.go
+// touches-invariant: configspec-var-derivation - var entries derived from catalog descriptors; proof in spec_test.go
 func VarEntries() []VarEntry {
 	var out []VarEntry
 	for _, d := range catalog.Standard.Vars {

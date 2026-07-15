@@ -12,21 +12,21 @@ type TargetSpec struct {
 	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
 	Base bool `yaml:"base"`
 	// RequiresSkills names the catalog skills this artifact's template references
-	// unconditionally — rendered into its output even when the referenced skill is
+	// unconditionally - rendered into its output even when the referenced skill is
 	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
 	// unit"). Declarations are exact: the template test sweep fails on an
 	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
-	// not gated validation — promoting it to enable/disable pairing UX is deferred.
+	// not gated validation - promoting it to enable/disable pairing UX is deferred.
 	RequiresSkills []string       `yaml:"requiresSkills"`
 	Data           map[string]any `yaml:"data"`
 }
 
 // SkillSpec declares a skill's render sections plus its optional gating fields.
 // RequiresDoc is *suppression* (ADR-0013): a non-empty value gates the skill on
-// that doc being enabled — with the doc off, the skill silently drops out of
+// that doc being enabled - with the doc off, the skill silently drops out of
 // the effective render set. RequiresAgent is *hard validation* (ADR-0050): a
 // non-empty value names the reviewer agent the skill dispatches, and enabling
-// the skill without that agent fails every gated command at project open — a
+// the skill without that agent fails every gated command at project open - a
 // silently-dropped reviewing skill would sever the workflow chain, so the
 // pairing must be loud. Core marks a skill as part of the workflow-core set
 // awf init scaffolds by default (ADR-0022). Data carries the artifact's
@@ -38,7 +38,7 @@ type SkillSpec struct {
 	Core          bool     `yaml:"core"`
 	// Chain marks a workflow-chain progression node (ADR-0054). A standard skill
 	// that is not Chain is a task skill; Core covers default scaffolding, not
-	// chain membership — adr-lifecycle is core yet a task skill.
+	// chain membership - adr-lifecycle is core yet a task skill.
 	Chain bool `yaml:"chain"`
 	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
 	// template id to the shared base template, not the name-derived catalog path.
@@ -74,7 +74,7 @@ type DocEntry struct {
 }
 
 // SingletonKinds returns every always-on singleton kind (the Mandatory doc
-// entries, agents-doc included), derived from the one doc collection — no
+// entries, agents-doc included), derived from the one doc collection - no
 // hand-maintained list (ADR-0061). internal/config.IsSingletonKind reads it for
 // sidecar/part path classification.
 func SingletonKinds() []string {
@@ -89,7 +89,7 @@ func SingletonKinds() []string {
 }
 
 // NonMandatoryDocNames returns c's sorted toggleable-doc names (Mandatory
-// false) — the pool an adopter selects from and that `awf enable`/`disable doc`
+// false) - the pool an adopter selects from and that `awf enable`/`disable doc`
 // operate on. Mandatory singletons are excluded (ADR-0061). It takes the catalog
 // so the kind-descriptor pool honours the catalog handed to it.
 func NonMandatoryDocNames(c *Catalog) []string {

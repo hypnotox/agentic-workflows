@@ -246,7 +246,7 @@ func TestResolveAuditScopes(t *testing.T) {
 	}
 }
 
-// An empty (or absent) audit-scopes answer resolves to nil — accept-any
+// An empty (or absent) audit-scopes answer resolves to nil - accept-any
 // audit semantics, nothing written (ADR-0051, ADR-0017).
 func TestResolveAuditScopesEmptyIsNil(t *testing.T) {
 	ds := []catalog.VarDescriptor{{Key: "commitScopes", Kind: "string", Target: "audit-scopes"}}
@@ -346,7 +346,7 @@ func TestResolveMultiselectsPromptFirst(t *testing.T) {
 	}
 	var out strings.Builder
 	// First line answers the skills multiselect (empty keeps the default),
-	// second the gateCmd prompt — the reverse of descriptor order.
+	// second the gateCmd prompt - the reverse of descriptor order.
 	_, _, _, err := Resolve(ds, nil, strings.NewReader("\nmake gate\n"), &out, true, nil)
 	if err != nil {
 		t.Fatal(err)

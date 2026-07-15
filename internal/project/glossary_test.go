@@ -84,7 +84,7 @@ func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 }
 
 // Absent data, an empty map, and an explicit null all degrade to the coherent
-// placeholder line naming the authoring surface — never a zero-row table
+// placeholder line naming the authoring surface - never a zero-row table
 // (ADR-0045 via ADR-0089 Decision 4).
 func TestGlossaryDegradesWithoutTerms(t *testing.T) {
 	for name, files := range map[string]map[string]string{
