@@ -12,10 +12,10 @@ persistence, no network, no configuration files.
 <!-- awf:edit components — from .awf/docs/parts/architecture/components.md -->
 ## Components
 
-- **`cmd/sundial/`** — argument parsing and output; exits 2 on usage errors.
-- **`internal/almanac/`** — the cosine day-length model (ADR-0001): `Sun(Location,
+- **`cmd/sundial/`:** argument parsing and output; exits 2 on usage errors.
+- **`internal/almanac/`:** the cosine day-length model (ADR-0001): `Sun(Location,
   date)` returns clamped, polar-safe sunrise/sunset pairs.
-- **`internal/schedule/`** — formats seven `almanac.Day` values as the plain-text
+- **`internal/schedule/`:** formats seven `almanac.Day` values as the plain-text
   sun table.
 
 
@@ -24,7 +24,7 @@ persistence, no network, no configuration files.
 
 `main` → `schedule.Week(location, today)` → seven `almanac.Sun` calls → formatted
 table on stdout. Errors exist only at the argument boundary; the model itself is
-total — polar day and night collapse to full- or zero-length days (ADR-0001).
+total: polar day and night collapse to full- or zero-length days (ADR-0001).
 
 
 <!-- awf:edit dependencies — from .awf/docs/parts/architecture/dependencies.md -->

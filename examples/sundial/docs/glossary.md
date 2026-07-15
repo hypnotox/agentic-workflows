@@ -6,10 +6,10 @@
 
 | Term | Meaning |
 |---|---|
-| almanac | the sun-event model — approximates sunrise and sunset from latitude, longitude, and day of year (`internal/almanac`) |
+| almanac | the sun-event model; approximates sunrise and sunset from latitude, longitude, and day of year (`internal/almanac`) |
 | cosine day-length model | the zero-dependency daylight approximation ADR-0001 adopts; accurate to minutes at temperate latitudes, deliberately wrong for navigation |
 | solar noon | the moment the sun crosses the local meridian; the model centres each day's daylight on it, shifted four minutes per degree of longitude |
-| sun table | the seven-row plain-text schedule `sundial` prints — one row per day, `rise`/`set` columns |
+| sun table | the seven-row plain-text schedule `sundial` prints, one row per day, `rise`/`set` columns |
 
 <!-- awf:edit append — default; create .awf/docs/parts/glossary/append.md to override -->
 

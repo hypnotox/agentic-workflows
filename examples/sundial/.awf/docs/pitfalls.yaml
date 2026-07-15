@@ -9,4 +9,4 @@ data:
       domains: [almanac, cli]
       body: |
         East is positive; a flipped sign shifts solar noon by minutes per degree and
-        looks like a model bug (it isn't — check the input first).
+        looks like a model bug (it isn't; check the input first).

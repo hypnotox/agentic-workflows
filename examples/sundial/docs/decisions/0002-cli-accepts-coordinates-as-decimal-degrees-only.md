@@ -29,7 +29,7 @@ small-and-instant stance.
 
 ## Consequences
 
-One trivially testable input path. Users with DMS coordinates convert them first —
+One trivially testable input path. Users with DMS coordinates convert them first:
 accepted friction, documented in the README usage line.
 
 ## Alternatives Considered

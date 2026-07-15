@@ -29,7 +29,7 @@ the same location repeatedly.
 ## Consequences
 
 Golden-hour rows become cheap. A new seam between `schedule` and `almanac` to keep
-honest — the cache must never change output, only cost.
+honest: the cache must never change output, only cost.
 
 ## Alternatives Considered
 

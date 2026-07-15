@@ -16,7 +16,7 @@ a year at the solstices. Fix the date with `time.Date`.
 _Domains: almanac, cli_
 
 East is positive; a flipped sign shifts solar noon by minutes per degree and
-looks like a model bug (it isn't — check the input first).
+looks like a model bug (it isn't; check the input first).
 
 <!-- awf:edit append — default; create .awf/docs/parts/pitfalls/append.md to override -->
 

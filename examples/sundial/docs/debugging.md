@@ -4,9 +4,9 @@
 <!-- awf:edit surfaces — from .awf/docs/parts/debugging/surfaces.md -->
 ## Surfaces
 
-- **CLI boundary** — wrong usage or non-numeric coordinates: exit 2 with a usage
+- **CLI boundary:** wrong usage or non-numeric coordinates: exit 2 with a usage
   line on stderr.
-- **Model output** — implausible times: check the latitude clamp and the
+- **Model output:** implausible times: check the latitude clamp and the
   declination term in `internal/almanac` before suspecting formatting.
 
 
@@ -14,6 +14,6 @@
 ## Recipes
 
 - Reproduce a suspicious table with a fixed date: call `schedule.Week` from a test
-  with a `time.Date` literal — never `time.Now()` — so the case is replayable.
+  with a `time.Date` literal (never `time.Now()`) so the case is replayable.
 - Bisect model vs formatting by printing `almanac.Sun` directly for one day.
 

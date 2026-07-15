@@ -23,11 +23,11 @@ value is being small and instant.
    longitude.
 2. Latitude is clamped to [-90, 90] before the model runs; garbage input degrades
    to the pole.
-3. Polar day and night collapse to full- or zero-length days — never an error.
+3. Polar day and night collapse to full- or zero-length days, never an error.
 
 ## Invariants
 
-- `invariant: almanac-clamped-latitude` — latitude is clamped to [-90, 90] before the
+- `invariant: almanac-clamped-latitude`: latitude is clamped to [-90, 90] before the
   day-length model; out-of-range input degrades to the pole, never to a domain
   error.
 - Textual: `internal/almanac` stays standard-library-only.
@@ -35,7 +35,7 @@ value is being small and instant.
 ## Consequences
 
 Minutes-level accuracy at temperate latitudes; wrong near the poles and useless
-for navigation — stated in the package doc. Zero dependencies. Sub-minute accuracy
+for navigation, stated in the package doc. Zero dependencies. Sub-minute accuracy
 is out of scope unless a successor decision accepts an ephemeris dependency.
 
 ## Alternatives Considered

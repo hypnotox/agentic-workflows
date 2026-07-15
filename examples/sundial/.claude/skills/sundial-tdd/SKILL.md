@@ -26,7 +26,7 @@ The test-first discipline as a project-owned task skill.
 ## Notes
 - Coverage may never regress: a fix that breaks an existing passing test is itself a regression.
 
-Sundial-specific: the almanac model is pure — every model change starts with a
+Sundial-specific: the almanac model is pure; every model change starts with a
 failing table-driven case in `internal/almanac`, no exceptions.
 
 
