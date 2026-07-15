@@ -22,6 +22,11 @@ Build the primitive first (render + project + check layers), then the runner con
 
 1. Parse an `inplace` section-marker attribute and emit a fourth `awf:edit-in-place` provenance
    pointer (render layer, mirroring the existing `stub` attribute).
+1b. Introduce a **per-target comment style** (ADR-0100 Decision 7): all `awf:edit`-family pointers
+   render in the target file's comment syntax — a `#`-line comment for a `#!`-shebang target (the
+   shell runner), an HTML comment otherwise — sniffed from the expanded template source (mirroring
+   `injectBanner`) and shared by the pointer emitter and the Phase-3 read-back matcher so they cannot
+   diverge. Without this a shell runner's HTML-comment pointers are a bash syntax error.
 2. Add a first-class `RegenChecked` attribute on `RenderedFile` and migrate the triplicated
    hardcoded generated-index exclusion onto it (behaviour-preserving refactor).
 3. Source an in-place section's body by reading it back from the existing output file, bounded by
@@ -37,7 +42,8 @@ Build the primitive first (render + project + check layers), then the runner con
 
 - **Created:** `templates/runner/x.tmpl`; new test files as needed (`internal/render/*_test.go`
   additions, `internal/project/runner_test.go`, `internal/project/inplace_test.go`).
-- **Modified:** `internal/render/section.go`, `internal/render/render.go`,
+- **Modified:** `internal/render/section.go`, `internal/render/render.go` (adds the `CommentStyle`
+  type + shebang sniff, threads it through `editPointer`/`Assemble`),
   `internal/project/render.go`, `internal/project/check.go`, `internal/project/project.go`,
   `internal/config/config.go`, `examples/sundial/.awf/config.yaml`, docs/domain parts,
   `docs/decisions/0100-*.md`, `docs/decisions/0101-*.md` (status flip).
@@ -108,6 +114,40 @@ synthetic in-place sections (no runner template yet).
   internal/render/render.go internal/render/section_test.go internal/render/render_test.go`;
   commit `feat(rendering): parse inplace attribute and edit-in-place pointer` (≤72 chars).
 
+## Phase 1B — Per-target comment style for provenance pointers (ADR-0100 Decision 7)
+
+Added by the ADR-0100 amendment (comment-syntax-aware pointers), discovered during implementation:
+a shell runner carrying HTML-comment pointers is a bash syntax error. Phase 1 landed the
+`awf:edit-in-place` pointer HTML-only; this phase generalises **all four** `awf:edit`-family pointers
+to render in the target's comment style. Implemented after Phase 2 in commit order (Phases 1–2 are
+already committed), but logically an extension of Phase 1. Completes `inv: in-place-pointer-distinct`
+for the comment-style dimension.
+
+- [ ] **Task 1B.1 — Add the `CommentStyle` type and shebang sniff.** In `internal/render/render.go`
+  add `type CommentStyle int` with `HTMLComment CommentStyle = iota` (default) and `HashComment`, and
+  a helper `func CommentStyleForSource(src string) CommentStyle` returning `HashComment` when `src`
+  begins with `#!` (mirroring `injectBanner`'s `strings.HasPrefix(content, "#!")` sniff in
+  `internal/project/banner.go`), else `HTMLComment`. Document that emitter and read-back matcher both
+  derive the style from the **expanded template source** so they cannot diverge (ADR-0100 Decision 7).
+- [ ] **Task 1B.2 — Thread the style into `editPointer` and `Assemble`.** Change `editPointer` to
+  take the style and format every branch's delimiters accordingly: HTML → `<!-- <token> -->`, Hash →
+  `# <token>` (the `awf:edit`/`awf:edit-in-place <name> — …` token/phrasing is constant across
+  styles). Add the style parameter to `Assemble` (`Assemble(segs, plan, style)`) and pass it to each
+  `editPointer` call. In `internal/project/render.go` `renderTarget`, compute
+  `render.CommentStyleForSource(expanded)` and pass it to `Assemble`. Every existing caller of
+  `Assemble` (tests, any other production call) updates to pass `render.HTMLComment` for the current
+  behaviour, so Markdown output is byte-identical.
+- [ ] **Task 1B.3 — Tests.** In `internal/render/render_test.go`: assert an in-place section on a
+  `#!`-shebang source renders `# awf:edit-in-place <name> — …` (Hash style) and on a Markdown source
+  renders `<!-- awf:edit-in-place <name> — … -->` (HTML style); assert the same style switch for the
+  three ordinary `awf:edit` variants (from-part / stub / default); assert `CheckResidualMarkers`
+  stays nil for both styles (the `#`-pointer is not `awf:section`/`awf:end`-shaped). Extend the
+  `in-place-pointer-distinct` proof coverage here (the marker already lives on the Phase-1 test); this
+  test proves the comment-style dimension. Verify: `go test ./internal/render/ -count=1` → `ok`.
+- [ ] **Task 1B.4 — Verify and commit.** `./x gate`; `git add internal/render/render.go
+  internal/project/render.go internal/render/render_test.go`; commit `feat(rendering): per-target
+  comment style for provenance pointers` (≤72 chars).
+
 ## Phase 2 — `RegenChecked` attribute and generated-index exclusion migration
 
 Backs (partially) `inv: regeneration-checked-attribute`. A behaviour-preserving refactor: move the
@@ -158,26 +198,31 @@ triplicated hardcoded generated-index test onto one attribute. No new drift beha
 Backs `inv: in-place-readback`, `inv: section-source-exclusive`, `inv: in-place-spacing-owned`.
 
 - [ ] **Task 3.1 — Read-back extraction helper.** In `internal/project/render.go` add a helper that,
-  given the existing output file bytes and the ordered list of the file's section pointers (the
-  registered section names, in template order), returns the current body of a named in-place
-  section: the text from just after that section's `awf:edit-in-place <name>` pointer line to the
-  line that is awf's **next registered** section pointer (`awf:edit `/`awf:edit-in-place ` for the
-  next section name), or EOF if last. Match the boundary by the *expected next pointer string*
-  computed from the section registry — never "any pointer-shaped line" — so adopter content
-  containing such a line does not truncate (ADR-0100 Decision 2). Trim only leading/trailing blank
-  lines (awf-owned framing); the interior is returned verbatim.
+  given the existing output file bytes, the ordered list of the file's section pointers (the
+  registered section names, in template order), and the target's `render.CommentStyle`, returns the
+  current body of a named in-place section: the text from just after that section's
+  `awf:edit-in-place <name>` pointer line to the line that is awf's **next registered** section
+  pointer (`awf:edit `/`awf:edit-in-place ` for the next section name), or EOF if last. Compute both
+  the section's own pointer and the boundary pointer as the *expected pointer string in the target's
+  comment style* (Task 1B) — the same style the emitter used — never "any pointer-shaped line", so
+  adopter content containing such a line does not truncate (ADR-0100 Decision 2, refined
+  `in-place-readback`). Trim only leading/trailing blank lines (awf-owned framing); the interior is
+  returned verbatim.
 - [ ] **Task 3.2 — Wire read-back into `planSections` (render.go:159–191).** `planSections` (and its
-  caller `renderTarget`, render.go:474–524) gain access to the output path. For a `Segment` with
-  `InPlace==true`: do **not** read a `.awf/parts/` part; instead read the existing output file at
-  `filepath.Join(p.Root, outPath)` (absent → `InPlaceBody=""`), extract the section body via Task
-  3.1's helper, and set `SectionPlan{InPlace: true, InPlaceBody: body}`. If a convention part file
-  *also* exists for an in-place section, return a hard error naming the section
-  (`section-source-exclusive`).
+  caller `renderTarget`, render.go:474–524) gain access to the output path and the target's
+  `render.CommentStyle` (already computed in `renderTarget` for `Assemble`, Task 1B.2). For a
+  `Segment` with `InPlace==true`: do **not** read a `.awf/parts/` part; instead read the existing
+  output file at `filepath.Join(p.Root, outPath)` (absent → `InPlaceBody=""`), extract the section
+  body via Task 3.1's helper (passing the style), and set `SectionPlan{InPlace: true, InPlaceBody:
+  body}`. If a convention part file *also* exists for an in-place section, return a hard error naming
+  the section (`section-source-exclusive`).
 - [ ] **Task 3.3 — Tests.** In `internal/project/inplace_test.go`: (a) read-back extracts the exact
   interior between pointers, internal blank lines preserved; (b) absent output → default; (c) a
   boundary test where the in-place body contains a line resembling `<!-- awf:edit next — … -->` for
   a *non-registered* name and is NOT truncated; (d) leading/trailing blank lines are trimmed
-  (framing owned); (e) a part file present for an in-place section errors. Verify:
+  (framing owned); (e) a part file present for an in-place section errors; (f) a `HashComment`
+  (shell, `#!`-shebang) target: read-back bounds on the `# awf:edit-in-place <next> — …` pointer and
+  a body line resembling a `#`-style pointer for a *non-registered* name is NOT truncated. Verify:
   `go test ./internal/project/ -run 'InPlace' -count=1` → `ok`. Put the proof `// invariant:
   <slug>` markers for the three slugs (`in-place-readback`, `section-source-exclusive`,
   `in-place-spacing-owned`) on lines inside the tests in `internal/project/inplace_test.go` — the
@@ -228,7 +273,11 @@ Backs `inv: runner-singleton-toggle`, `inv: runner-awf-verbs-owned`, `inv: runne
   entry at spec.go:147 — Path/Type/Default) and regenerate `docs/config-reference.md` via `./x sync`;
   stage the regenerated reference. This is a mandatory sub-step of this task and Task 5.5's commit.
 - [ ] **Task 5.2 — The runner template.** Create `templates/runner/x.tmpl` (embedded FS). Structure:
-  a `# GENERATED by awf` banner, `set -euo pipefail`, an `awf:section runner-setup inplace` block
+  **a `#!/usr/bin/env bash` shebang as the first line** — load-bearing twice over: it makes `x`
+  executable, AND it is what the Task-1B comment-style sniff (and `injectBanner`) reads to select the
+  `#`-comment style for the shell target, so the `awf:edit-in-place` pointers render as `#`-comments
+  (a `<!-- -->` pointer would be a bash syntax error). Then a `# GENERATED by awf` banner (injected),
+  `set -euo pipefail`, an `awf:section runner-setup inplace` block
   (in-place; seeded default = a genuine *adopter*-setup placeholder — e.g. a one-line comment such
   as `# Add project-specific setup or helper functions here.` — **not** the pinned-binary resolver:
   the resolver is awf-owned, so putting it in an adopter-editable section would let an adopter break
@@ -262,8 +311,10 @@ Backs `inv: runner-singleton-toggle`, `inv: runner-awf-verbs-owned`, `inv: runne
 - [ ] **Task 5.4 — Tests + golden.** In `internal/project/runner_test.go`: enabled → exactly one
   `x` at root, containing the awf-owned arms (assert each verb delegates directly via
   `"$(bash .awf/bootstrap.sh)" "$cmd" "$@"` — pinned-only, no `command awf` fallback, and the arms
-  sit outside the adopter-editable in-place sections) and the two
-  `awf:edit-in-place` pointers; disabled/absent → no `x`. Publication-safe: render under empty data,
+  sit outside the adopter-editable in-place sections) and the two `awf:edit-in-place` pointers
+  rendered as `#`-comments (`# awf:edit-in-place <name> — …`, **not** `<!-- … -->`, per ADR-0100
+  Decision 7); assert `bash -n` on the rendered `x` succeeds (no syntax error from the pointers);
+  disabled/absent → no `x`. Publication-safe: render under empty data,
   no unresolved token, no marker residue (reuse the catalog-derived sweep pattern or a direct
   assertion). Assert `catalog.SingletonKinds()` is unchanged (the existing
   `TestUnifiedDocModelProjections` already guards this — add an explicit runner-not-in-SingletonKinds
@@ -314,8 +365,8 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
 
 - [ ] **Task 7.1 — Docs travel with the change.** Update the `config` and `rendering` domain
   current-state parts (`.awf/domains/parts/config/current-state.md`,
-  `.awf/domains/parts/rendering/current-state.md`) to mention the in-place-editable-section primitive
-  and the runner singleton; update `docs/architecture.md` / `docs/working-with-awf.md` sections (via
+  `.awf/domains/parts/rendering/current-state.md`) to mention the in-place-editable-section primitive,
+  the per-target comment style for provenance pointers (ADR-0100 Decision 7), and the runner singleton; update `docs/architecture.md` / `docs/working-with-awf.md` sections (via
   their `.awf/docs/parts/...` parts) where the singleton set or override channels are enumerated.
   Specifically, ADR-0100 makes in-place editing a **second adopter override channel**, so correct
   any adopter-facing "the only override channel is a part file" framing (in `docs/working-with-awf.md`
