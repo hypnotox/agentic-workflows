@@ -28,7 +28,7 @@ boilerplate awf should own and keep from rotting, but the project verbs (`gate`,
 are the adopter's own logic awf cannot render. A follow-on ADR consumes this primitive for the
 runner; **this ADR defines only the general mechanism**, consumer-agnostic.
 
-Two couplings shaped the design:
+Three couplings shaped the design:
 
 1. **Provenance pointers already segment the output.** ADR-0015 emits a one-line `awf:edit
    <name>` provenance pointer immediately before every non-dropped section body
@@ -45,6 +45,15 @@ Two couplings shaped the design:
    file whose adopter-owned region legitimately changes between syncs *must* use this regeneration
    mode, or a legitimate edit would false-positive as a hand-edit. Today membership in that class
    is a hand-maintained path list, not a first-class property — a smell this ADR removes.
+
+3. **A surviving pointer must be a valid comment in the target's language.** Because the `awf:edit`
+   pointer survives into the output *as a comment*, it must be a comment in the rendered file's own
+   syntax — not only in Markdown. Every section-bearing file awf renders today is Markdown, where an
+   HTML `<!-- … -->` comment is correct; but the first consumer of this primitive is a **shell
+   script** (the managed runner), where `<!-- … -->` is a hard syntax error. awf already adapts one
+   comment by target — `injectBanner` emits a `#`-line banner after a `#!` shebang and an HTML banner
+   otherwise — so the surviving section pointers must adapt the same way, or an in-place shell file is
+   unrunnable.
 
 The alternative to in-place editing — a two-file split (awf renders a payload, the adopter owns a
 thin stub that delegates to it, as ADR-0048 does for git hooks) — reuses all existing machinery
@@ -110,18 +119,32 @@ section and the file's structure.
    the domain docs) are migrated onto the attribute in the same change, and files with an
    in-place-editable section carry it. No new file joins the class by editing a hardcoded path.
 
+7. **Provenance pointers render in the target file's comment syntax.** All `awf:edit`-family
+   pointers (the three `awf:edit` variants and the `awf:edit-in-place` variant) are emitted in a
+   **comment style** chosen per target: a `#`-line comment (`# awf:edit-in-place <name> — …`) for a
+   `#!`-shebang target such as a shell script, and the HTML comment (`<!-- … -->`) for every other
+   target. The style is derived from the (expanded) template source by the same shebang sniff
+   `injectBanner` uses, so **the pointer emitter and the read-back matcher derive it identically and
+   always agree on the exact expected pointer string**. Only the *comment delimiters* change; the
+   `awf:edit`/`awf:edit-in-place <name> — …` token and phrasing are constant, so pointer distinctness
+   (Decision 1) and read-back bounding (Decision 2) hold in either style. The structural
+   `awf:section`/`awf:end` markers are consumed during assembly and never reach output, so their
+   guards (`no-section-marker-leak`, the residual-marker guard, the `awf:include` guard) are
+   comment-style-independent and unaffected. Markdown output is unchanged (no `#!`, so HTML style).
+
 ## Invariants
 
 - `invariant: in-place-pointer-distinct` — an in-place-editable section renders an `awf:edit-in-place
-  <name>` provenance pointer, textually distinct from the `awf:edit` pointer; neither the pointer
-  nor any in-place read-back causes `awf:section`/`awf:end` marker residue to appear in output
+  <name>` provenance pointer in the target's comment syntax (a `#` line comment for a `#!`-shebang
+  target, an HTML comment otherwise), textually distinct from the `awf:edit` pointer; neither the
+  pointer nor any in-place read-back causes `awf:section`/`awf:end` marker residue to appear in output
   (`no-section-marker-leak` and the `awf:include` partial guard stay green with in-place sections
   present).
 - `invariant: in-place-readback` — on sync and check, an in-place-editable section's body is the text
   read back from the existing output file between its `awf:edit-in-place` pointer and awf's next
-  *registered* section pointer (matched by that pointer's expected string, never any pointer-shaped
-  line in adopter text), or end-of-file when the section is last; when the output is absent or the
-  section's pointer is not found, the body is the template default.
+  *registered* section pointer (matched by that pointer's expected string in the target's comment
+  syntax, never any pointer-shaped line in adopter text), or end-of-file when the section is last;
+  when the output is absent or the section's pointer is not found, the body is the template default.
 - `invariant: in-place-tamper-drift` — regeneration re-derives every awf-owned section and the file
   structure from the template, so an edit to an awf-owned region or to the file structure is
   reported as drift, while an edit confined to an in-place-editable section's content lines is not.
@@ -148,9 +171,12 @@ Easier:
   checked file no longer means editing a hardcoded path list (ADR-0060/0061 single-source ethos).
 
 Harder / accepted trade-offs:
-- A new drift path (regeneration-with-read-back) and a new pointer variant enlarge the render/check
-  surface. This is genuinely more machinery than a two-file split, accepted for the reusable
-  primitive it buys.
+- A new drift path (regeneration-with-read-back), a new pointer variant, and a per-target pointer
+  comment style enlarge the render/check surface. This is genuinely more machinery than a two-file
+  split, accepted for the reusable primitive it buys. The comment style is a two-value sniff (`#!`
+  shebang → `#` comment, else HTML), shared by the pointer emitter and the read-back matcher so they
+  cannot diverge; a target whose comment syntax is neither `#` nor HTML would need a third style
+  before it could carry an in-place section.
 - The adopter may extend a file **only inside** its in-place-editable section(s); content added
   elsewhere is discarded on the next sync (and drift-flagged before it). Templates consuming this
   primitive must place in-place sections at the real extension points. This is also a coherence
