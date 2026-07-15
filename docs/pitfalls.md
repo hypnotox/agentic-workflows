@@ -133,6 +133,21 @@ a project-local list entry, copy the catalog defaults you still want into the ov
 alongside it (they live in `internal/catalog/standard.go`), and eyeball the rendered diff for
 deleted default lines before committing.
 
+**The reverse direction is worse, and this entry did not state it until it bit (ADR-0116,
+2026-07-15).** Adding a *new catalog default* to a list is invisible to every project that
+overrides that list: the default ships to adopters and is silently dropped for the
+overriding project. ADR-0116 added a `docCurrencyItems` entry to the `adr-reviewer` catalog
+default and cited *this pitfall* as the reason to edit the catalog rather than an override,
+without noticing `.awf/agents/adr-reviewer.yaml` already overrode that very list. The rule
+would have reached every adopter except awf itself, the one project meant to dogfood it,
+with a green gate and a clean `awf check` throughout; the ADR reviewer caught it. So the
+rule is bidirectional: **a `data:` list has as many sites as there are overrides of it.**
+Before adding a catalog default, `grep -rn '<listKey>' .awf/` and mirror it into every
+override found (restate it deliberately, as `.awf/agents/code-reviewer.yaml` does in a
+comment); before adding a local entry, copy the defaults you still want. Verify by reading
+the *rendered* artifact for each affected project, `examples/sundial` included, not the
+config.
+
 ## Registry-relative constants in migration code drift
 
 _Domains: config_
@@ -369,6 +384,36 @@ until a fresh-context grounding check re-ran the scan and found two hits. Absenc
 is not verified absence: run verification probes as separate invocations (or with an
 explicit sentinel/exit-code check), and treat any scan whose success path you did not
 observe as unrun, not clean.
+
+## A narrow pattern is a silent undercount, not a clean scan
+
+_Domains: tooling_
+
+_Related: ADR-0116_
+
+The sibling entry above covers a probe that never ran. This is the variant where the probe
+runs perfectly and still lies: the pattern is narrower than the thing it is looking for, so
+it returns a real number that is simply too low, and a low number reads exactly like a
+thorough scan. It bit three times in one session (ADR-0116, 2026-07-15). A
+`grep "only allowed edit"` missed `only allowed **in-place** edit`, so an ADR claimed five
+surfaces contradicted it when seven did, and shipped that count through two review passes.
+A `grep "related..names this ADR"` (two dots where the text needed three) returned `0` for
+files that visibly contained the string, nearly concluding a just-rendered rule had not
+rendered. And three independent corpus sweeps for partial amendments each returned a
+different, each-time-too-low count (16, then 19), because all three were verb-anchored and
+prose does not agree on the verb.
+
+The trap is that a narrow pattern fails *safe-looking*: nothing errors, the output is
+plausible, and the number becomes load-bearing (a Decision item's enumeration, a measured
+compliance rate). The cheap defences, in order: make the pattern **wider than you think you
+need** and discard by eye rather than narrowing up front (`grep -iE "only.*edit"` beats
+guessing the adjective); **corroborate a zero or a suspiciously round count with a second
+probe of a different shape** before it becomes a claim; and when a count reaches a document,
+**write it as a floor** ("at least N"), because the next sweep will find more. If a
+quantity is load-bearing, the enumeration is the work: iterate the whole population and
+route each element to an asserted bucket, the same discipline the attribute-filtered
+pinned-set entry demands of tests. Reviewers are the backstop that actually caught all
+three here, so state counts in a form a reviewer can re-derive.
 
 ## A coverage-ignore justification is stale the moment its line is refactored
 
