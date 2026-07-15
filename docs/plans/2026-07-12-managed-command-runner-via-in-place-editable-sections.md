@@ -343,7 +343,7 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
 ## Verification
 
 - `./x gate` green at every phase commit; `./x check` clean (main repo + sundial example, zero notes).
-- All twelve invariant slugs backed (Task 7.2 grep empty); `./x check` enforces them post-flip.
+- All twelve invariant slugs backed (Task 7.2: `./x invariants` reports all twelve backed); `./x check` enforces them post-flip.
 - `examples/sundial/x` is a rendered file containing a `context` arm and sundial's own `gate`/`test`
   in its in-place section; editing the in-place section and re-syncing preserves it; editing an
   awf-owned arm and re-syncing overwrites it (spot-check the tamper/fixpoint behaviour by hand).
