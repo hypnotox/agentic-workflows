@@ -466,8 +466,16 @@ func TestRulePlainPunctuation(t *testing.T) {
 	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
 	// invariant: audit-plain-punctuation
 	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != Warning ||
-		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") {
-		t.Fatalf("want 1 warning naming the em-dash, got %v", got)
+		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") ||
+		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {
+		t.Fatalf("want 1 warning naming the file and the em-dash, got %v", got)
+	}
+	// Two risen runes are named in sorted order: map iteration order is not
+	// deterministic, so the rule sorts before joining and this pins that.
+	multi := rulePlainPunctuation(change("docs/x.md", "plain", "a "+dash+" b "+dots+" c"), in)
+	if len(multi) != 1 ||
+		!strings.Contains(multi[0].Detail, "ellipsis (U+2026) (0 to 1), em-dash (U+2014) (0 to 1)") {
+		t.Fatalf("want both risen runes named in sorted order, got %v", multi)
 	}
 	// An unchanged count is silent: grandfathering is emergent, not configured.
 	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b", "c"+dash+"d"), in); len(f) != 0 {
