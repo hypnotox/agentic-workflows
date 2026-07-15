@@ -9,6 +9,17 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Seven typographic punctuation substitutes are banned from the prose awf ships (ADR-0115): the
+  em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018,
+  U+2019, U+201C, U+201D). The generated `docs/decisions/ACTIVE.md` now renders a row's status in
+  parentheses (`- [ADR-0001: Title](0001-file.md) (Accepted)`) instead of after an em-dash, so
+  **every adopter's committed `ACTIVE.md` drifts until they run `awf sync`**, and `awf check`
+  reports it until they do. The shipped templates, awf's own output strings, and this changelog
+  are cleaned to match. The rendered documentation standard's plain-punctuation rule is rewritten
+  to name all seven codepoints and now covers authored prose (ADRs, plans, and hand-written docs)
+  as well as shipped prose (ADR-0117), so `docs/doc-standard.md` re-renders too. Nothing rewrites
+  prose you have already written. Notation (arrows, mathematical symbols, accented letters) is
+  unaffected.
 - Invariant backing is redesigned into enforced test-backing with a two-marker
   vocabulary (ADR-0105, ADR-0106). The ADR Invariants-section declaration token is
   unified from `inv: <slug>` to `invariant: <slug>`: the same token the source

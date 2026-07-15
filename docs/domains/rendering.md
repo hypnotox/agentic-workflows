@@ -80,11 +80,8 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 - [ADR-0112: Core-only agent-guide Invariants section](../decisions/0112-core-only-agent-guide-invariants-section.md)
 - [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
-- [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
-
-### Proposed
-
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
+- [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
 
 ### Superseded
 

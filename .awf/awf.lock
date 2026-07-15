@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:1f262c656e365e19e9eb11765a5b31e377f9a68fc76396599e9feae9b754b6bd",
-      "configHash": "sha256:93f63490c082af0cb3eefd8de1fb4639d9465d681730377aebba0e1d2c2e8d11",
-      "outputHash": "sha256:cf4d3f008cc3907301fd73e693528857f014e743a6d6f7e12f062f8982207df1"
+      "configHash": "sha256:8b1d31a95c3fbb6c4014785067f7e90fb6fb75e95dfc5ad4cc857f7b6d4746d3",
+      "outputHash": "sha256:a696ef8f8ee3d53b7e312998103cbc68b7324c59c9b989376da8957bf559ffa0"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -277,7 +277,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:84936576c9dda17cd91f36bc21127b4bccb6a34249b4a88d6627d2298c3f6869",
+      "outputHash": "sha256:498099862a588375fc02d388e85d3d022711dd347c1504bb37d878ee4fc197e9",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -300,15 +300,15 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:feda9687ea728555b1dded6f131856adb59879dd141e0a459167241cd614439c",
+      "templateHash": "sha256:69d74a9623226c95806267f3a93fef88e4b868e68133edeb684d674698a3f5ab",
       "configHash": "sha256:3c9aca6a717fb202b34861e00e9981629b3391fa71e51b64c8d22afdbdb04a3e",
-      "outputHash": "sha256:c26e7e406fc2460695b9a2a27d732898a73e9e87cc93b2ecee3d04a366b3346c"
+      "outputHash": "sha256:2d48e73993fd64681b6051fa6101076a9624b137aa9fa9b3feeb4ccd0bfb88e0"
     },
     "docs/domains/adr-system.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:5de19587b4ee1aa9669964b9f28b14c83bc44dd175040d3c7315d9b6a02fe2e3",
+      "outputHash": "sha256:e2b37f7ece3167b1954c0414cf16402874f2b82ae6d5c555a57b356bf73d9223",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -322,21 +322,21 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:a3d558c1b78e08a59879ffd6a2ef4d034da2fdf517a06460d372b1bda7b801bc",
+      "outputHash": "sha256:301808145ae847ce41741993fea1bc119b8037bf32ee83941ac51bbb81f4bcdb",
       "regenChecked": true
     },
     "docs/domains/rendering.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f16b0df6eacb136bb3e4fa257a50377e84fd21957cb4cb200475043f68442e3f",
+      "outputHash": "sha256:d7e9cfd9f1c204735164e6a85bb1f2a79749b676b358fdc6ba73ab708755cb76",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:15d3695bbcec61c714c3c45bf1530d2807f11fa113d4ecbb2478968c685c74ef",
+      "outputHash": "sha256:db5e97dedd9b05555563993e37bf543ef7937418f555cc8963dc1b43449134de",
       "regenChecked": true
     },
     "docs/glossary.md": {
