@@ -53,8 +53,8 @@ leave it `[]`.
 ## Invariant tagging
 
 Declare each machine-enforceable Invariants bullet with an explicit slug in one of two forms: a
-backed ``- `invariant: <slug>`: …`` for a property a test is declared to back, or an
-``- `unbacked-invariant: <slug>`: …. **Verify:** …`` for a reasoned contract with no automatic test.
+backed ``- `invariant: <slug>`: ...`` for a property a test is declared to back, or an
+``- `unbacked-invariant: <slug>`: ... **Verify:** ...`` for a reasoned contract with no automatic test.
 Back a backed slug with a matching `` `invariant: <slug>` `` proof comment, prefixed with the comment marker for the file's type (`**/*.go` → `//`), on a test that
 exercises it (scoped to `invariants.testGlobs` when configured, else any `invariants.sources` file); a
 `` `touches-invariant: <slug> (<note>)` `` marker records a related production site and never backs.

@@ -13,7 +13,7 @@ The fix-and-verify task skill. Companion to `sundial-debugging`: where debugging
 When the root cause is known and a fix is ready to land. Two callers in practice:
 
 - **Trivial bugfix that validly skips the chain**: the narrow exception in `docs/workflow.md` ("one-line bugfix with an already-failing test"). This skill is the entire flow.
-- **Non-trivial bugfix that ran the chain upstream**: `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair (`sundial-reviewing-impl`).
+- **Non-trivial bugfix that ran the chain upstream**: `brainstorming → ... → implementation`. This skill IS that terminal implementation + review pair (`sundial-reviewing-impl`).
 
 If the root cause is not yet known, invoke `sundial-debugging` first.
 
@@ -29,7 +29,7 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 3. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
-4. **Commit** with Conventional Commits, typically `fix(<scope>): …`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
+4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
 5. **Invoke `sundial-reviewing-impl` as the terminal step.**
 

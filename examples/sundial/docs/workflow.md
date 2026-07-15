@@ -47,7 +47,7 @@ awf never installs or activates git hooks; the wiring is yours. When the `hooks`
 
 - a per-clone stub under `.git/hooks/`, e.g. an executable `pre-commit` file containing `exec bash .awf/hooks/pre-commit.sh "$@"`;
 - a tracked hook directory of your own, activated once per clone via `core.hooksPath`;
-- an existing hook manager (husky, lefthook, …): call the payload from its config.
+- an existing hook manager (husky, lefthook, ...): call the payload from its config.
 
 `awf commit-gate` is the deterministic, blocking commit-message gate: it validates one commit message against the Conventional Commits rules (type, scope, 72-char subject, the same rules `awf audit` reports) and exits non-zero on a violation, so a bad subject is refused at commit time instead of merely flagged later. The `commit-msg.sh` payload runs it with the message file git passes; run `awf commit-gate --help` for details.
 
