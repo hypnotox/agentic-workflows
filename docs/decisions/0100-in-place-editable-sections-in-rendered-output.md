@@ -55,6 +55,13 @@ Three couplings shaped the design:
    otherwise — so the surviving section pointers must adapt the same way, or an in-place shell file is
    unrunnable.
 
+4. **A rendered script must be executable.** awf's sync writes every rendered file with mode `0644`.
+   That suits Markdown and the `bash …`-invoked scripts awf renders today (the bootstrap, the hook
+   payloads), but the managed runner is invoked as `./x` — every command var defaults to `./x …` —
+   which requires the execute bit. A `0644` runner is a permission error on first use. Executability,
+   like the comment style, is a shell-script property awf must render, not leave to a post-render
+   `chmod` the adopter must remember and re-apply.
+
 The alternative to in-place editing — a two-file split (awf renders a payload, the adopter owns a
 thin stub that delegates to it, as ADR-0048 does for git hooks) — reuses all existing machinery
 but sacrifices single-file ergonomics and yields no reusable capability. In-place editing is the
@@ -132,6 +139,16 @@ section and the file's structure.
    guards (`no-section-marker-leak`, the residual-marker guard, the `awf:include` guard) are
    comment-style-independent and unaffected. Markdown output is unchanged (no `#!`, so HTML style).
 
+8. **A rendered `#!`-shebang file is written executable.** On sync, a rendered file whose content
+   begins with a `#!` shebang is written with mode `0755` (executable); every other rendered file
+   stays `0644`. The shebang sniff is the same one Decision 7 and `injectBanner` use, so "is this a
+   script?" has one definition across the banner, the pointer comment style, and the file mode. The
+   mode is enforced on every sync (a pre-existing file's mode is corrected, not just set at
+   creation), so the runner is runnable as `./x` immediately after the first render, and the
+   bootstrap and hook payloads — already `#!` scripts — become executable too (harmless: they are
+   still invoked via `bash …`). Drift is unaffected: `awf check` compares rendered *content*, not
+   file mode.
+
 ## Invariants
 
 - `invariant: in-place-pointer-distinct` — an in-place-editable section renders an `awf:edit-in-place
@@ -159,6 +176,10 @@ section and the file's structure.
   `ACTIVE.md`, the config reference, and the domain docs carry that attribute, and every file with
   an in-place-editable section carries it. (That this attribute *replaces* the former hardcoded
   path list is enforced by the dead-code gate on the removed literals, not by this bullet.)
+- `invariant: shebang-rendered-executable` — a rendered file whose content begins with a `#!` shebang
+  is written with an executable mode (`0755`) and every other rendered file with `0644`; the mode is
+  the `#!` sniff's alone (shared with the banner and pointer comment style) and is enforced on every
+  sync, not only at file creation.
 
 ## Consequences
 
@@ -181,6 +202,10 @@ Harder / accepted trade-offs:
   This mirrors `injectBanner`'s existing shebang assumption, so it is a shared, consistent limitation
   rather than a new one; supporting a non-`#` shebang target (or any comment syntax that is neither
   `#` nor HTML) means refining the sniff, not merely adding a branch.
+- Sync now sets file mode from content (executable for `#!` scripts), a small new side effect on the
+  write path. The bootstrap and hook payloads flip from `0644` to `0755` — a one-time mode change in
+  every adopter, harmless since they are still `bash …`-invoked, and the same `#!` sniff already
+  governs their banner.
 - The adopter may extend a file **only inside** its in-place-editable section(s); content added
   elsewhere is discarded on the next sync (and drift-flagged before it). Templates consuming this
   primitive must place in-place sections at the real extension points. This is also a coherence
