@@ -127,7 +127,7 @@ func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 	if !strings.Contains(got, "## Superseded\n") {
 		t.Errorf("missing single ## Superseded section:\n%s", got)
 	}
-	for _, entry := range []string{"— Superseded by ADR-0003", "— Superseded by ADR-0004"} {
+	for _, entry := range []string{"(Superseded by ADR-0003)", "(Superseded by ADR-0004)"} {
 		if !strings.Contains(got, entry) {
 			t.Errorf("entry lost its full status %q:\n%s", entry, got)
 		}

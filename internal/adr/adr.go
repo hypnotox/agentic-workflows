@@ -128,7 +128,7 @@ func RenderActiveMD(dir string) (string, error) {
 		sb.WriteString(status)
 		sb.WriteString("\n\n")
 		for _, a := range groups[status] {
-			fmt.Fprintf(&sb, "- [%s](%s) — %s\n", a.Title, a.Filename, a.Status)
+			fmt.Fprintf(&sb, "- [%s](%s) (%s)\n", a.Title, a.Filename, a.Status)
 		}
 	}
 	return sb.String(), nil
