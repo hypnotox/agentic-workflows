@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:1f262c656e365e19e9eb11765a5b31e377f9a68fc76396599e9feae9b754b6bd",
-      "configHash": "sha256:17f41ecf8564ec3b71bb78c291218c7cc37b03da9cd77980b1b2d197eaa16294",
-      "outputHash": "sha256:68a7b54b84b3ce5a238e28c05dd2aa0395a9cdd8c163f328c6eb4e35718b86f4"
+      "configHash": "sha256:93f63490c082af0cb3eefd8de1fb4639d9465d681730377aebba0e1d2c2e8d11",
+      "outputHash": "sha256:cf4d3f008cc3907301fd73e693528857f014e743a6d6f7e12f062f8982207df1"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -256,9 +256,9 @@
     },
     "docs/agents-md-standard.md": {
       "templateId": "docs/agents-md-standard.md.tmpl",
-      "templateHash": "sha256:7800b5d4335c850931af8eab0d43e5c64143db85405f26a4e68e6c7237accc81",
+      "templateHash": "sha256:7df83d715290f105e506d372807e6619d16f9d098ffac6ef29604a30f5c94f4a",
       "configHash": "sha256:3c9aca6a717fb202b34861e00e9981629b3391fa71e51b64c8d22afdbdb04a3e",
-      "outputHash": "sha256:06808194ee4283c5736c1225412b41b3ab35349d39c83a71dd775d7c75c17f4d"
+      "outputHash": "sha256:90b680835120fedee3efc4d035f5c7f3d3d482ec8ae5efc9072bb9c396677e5c"
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
@@ -277,7 +277,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:c8b36e5ebcfcf913d31431dacf95eb7e048c90b49ad271b162de775e0cb65309",
+      "outputHash": "sha256:df02745fa11dce817f91c9763717d8ae1c8424d21ae398e661041681e320144f",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -329,7 +329,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:2994843dceb513a2d10dece58fb69939031d592086c96361e951b64b77be7776",
+      "outputHash": "sha256:1cda55191f8d42cccd0d6d29ea3b3e169c3cc0fdc55b8bda96932dc4b1e9976c",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
