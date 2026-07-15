@@ -41,6 +41,7 @@ For how to apply overrides, see the working-with-awf guide; for ad-hoc queries, 
 | `audit.uncommittedChanges` | bool | true | true (default) | Advisory rule: warn when the working tree carries uncommitted changes at audit time. | Read by `awf audit`. |
 | `bootstrap.enabled` | bool | false (key absent) — awf init scaffolds it true | false | Renders the self-pinning `.awf/bootstrap.sh` installer (pinned to the rendering awf version, checksum-verified) and the `.awf/upgrade.sh` porcelain. Absent and false both mean: do not render. | Always. |
 | `hooks.enabled` | bool | false (key absent) — awf init scaffolds it true | true | Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config — wiring the payloads into your hook setup is yours. | Always. |
+| `runner.enabled` | bool | false (key absent) — opt in explicitly | — | Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render. | Always. |
 
 ## Vars
 

@@ -25,7 +25,14 @@ const (
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
 	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
 	memoryTID    = "memory/gitignore.tmpl"
+	runnerTID    = "runner/x.tmpl"
 )
+
+// runnerSections are the command-runner's declared sections in template order: two
+// in-place-editable regions (setup/helpers, project verbs) the adopter owns, each
+// bounded by an awf-owned regular section (the awf-verb dispatch, the usage tail)
+// whose provenance pointer anchors the preceding region's read-back (ADR-0100/0101).
+var runnerSections = []string{"runner-setup", "runner-dispatch", "runner-project-verbs", "runner-tail"}
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
 // unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
@@ -523,6 +530,18 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			}
 			out = append(out, hrf)
 		}
+	}
+	// The command-runner `x` at the repo root (config-tree singleton rendered only
+	// when enabled — ADR-0101; a co-owned in-place file per ADR-0100, not a catalog
+	// DocEntry, so it stays out of SingletonKinds()). awf-the-repo leaves it disabled.
+	// invariant: runner-singleton-toggle
+	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
+		rrf, err := p.renderTarget("runner", "", runnerTID,
+			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}), "x")
+		if err != nil { // coverage-ignore: the runner template references no vars and no parts, so renderTarget cannot produce <no value> or a read error
+			return nil, err
+		}
+		out = append(out, rrf)
 	}
 	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered —
 	// ADR-0069, no config gate unlike bootstrap/hooks). Self-ignoring, so the

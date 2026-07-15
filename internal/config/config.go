@@ -55,6 +55,7 @@ type Config struct {
 	Audit         *AuditConfig      `yaml:"audit"`
 	Bootstrap     *BootstrapConfig  `yaml:"bootstrap"`
 	Hooks         *HooksConfig      `yaml:"hooks"`
+	Runner        *RunnerConfig     `yaml:"runner"`
 	root          string            // <project>/.awf, for sidecar/part resolution
 	raw           []byte            // the exact config.yaml bytes Load read, for in-place byte edits
 }
@@ -105,6 +106,16 @@ type BootstrapConfig struct {
 // legacy array shape never reaches this struct — gated commands migrate first,
 // ungated ones fail loudly on the strict parser's type error.
 type HooksConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// RunnerConfig configures the rendered command-runner singleton `x` (ADR-0101):
+// a co-owned file (ADR-0100) whose awf-verb dispatch awf owns and whose project
+// verbs live in in-place-editable sections the adopter fills. Like the
+// bootstrap/hooks toggles, a nil *RunnerConfig (key absent) and Enabled false both
+// mean "do not render"; only Enabled true renders the runner. Additive and
+// default-off — no schema-generation migration, and adopters opt in explicitly.
+type RunnerConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

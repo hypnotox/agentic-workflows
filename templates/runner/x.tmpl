@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+<!-- awf:section runner-setup inplace -->
+# Add project-specific setup or helper functions here.
+<!-- awf:end -->
+<!-- awf:section runner-dispatch -->
+cmd="${1:-}"
+[ "$#" -gt 0 ] && shift || true
+case "$cmd" in
+sync | check | invariants | audit | context | commit-gate | new)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+<!-- awf:end -->
+<!-- awf:section runner-project-verbs inplace -->
+gate)
+	echo "define the 'gate' project verb in the runner-project-verbs section of ./x" >&2
+	exit 1 ;;
+test)
+	echo "define the 'test' project verb in the runner-project-verbs section of ./x" >&2
+	exit 1 ;;
+<!-- awf:end -->
+<!-- awf:section runner-tail -->
+*)
+	echo "usage: ./x {sync|check|invariants|audit|context|commit-gate|new|gate|test}" >&2
+	exit 1 ;;
+esac
+<!-- awf:end -->

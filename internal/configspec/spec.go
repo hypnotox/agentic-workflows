@@ -219,6 +219,11 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
+		Path: "runner.enabled", Type: "bool", Default: "false (key absent) — opt in explicitly",
+		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
+		Availability: "Always.",
+	},
+	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty — catalog defaults apply",
 		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
 		Availability: "Keys must be referenced by the artifact's template — an unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
