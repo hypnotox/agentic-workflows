@@ -597,8 +597,13 @@ about what the history proves, not a mechanical necessity.
 
   ```yaml
         - ref: ADR-0115
-          text: '**Plain punctuation in emitted prose.** Everything awf ships carries no typographic punctuation substitute: not the embedded templates, not the embedded changelog, and not one string literal in production Go under `internal/` or `cmd/`. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation instead. Go comments and tests are out of scope; notation (arrows, mathematical symbols, accented letters) stays legal. (ADR-0115)'
+          text: '**Plain punctuation in emitted prose.** Everything awf ships carries no typographic punctuation substitute: not the embedded templates, not the embedded changelog, and not one string literal in production Go under `internal/` or `cmd/`. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation instead. Go comments and tests are out of scope; notation (arrows, mathematical symbols, accented letters) stays legal.'
   ```
+
+  **The `text` must not end with its own `(ADR-0115)` attribution.**
+  `templates/agents-doc/AGENTS.md.tmpl:47` renders `- {{ .text }}{{ with .ref }} ({{ . }}){{ end }}`,
+  so the `ref` field supplies the attribution and repeating it in `text` renders it twice. Every
+  sibling entry (`ADR-0012`, `ADR-0063`) puts it in `ref` alone.
 
   The bullet states the rule and its scope, not the mechanism, per the criterion in
   `docs/agents-md-standard.md`. `./x sync` re-renders `AGENTS.md` from this data in task 6.6.
