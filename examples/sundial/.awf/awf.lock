@@ -58,9 +58,9 @@
     },
     ".claude/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
-      "templateHash": "sha256:412639ffe2843f1754b5111fa9af0c68577c81ca33c12cc66321bbe39e3fbb55",
+      "templateHash": "sha256:6f66b9fa722102bcfefa5b704a164a1127d9f22b2d152acc76debdbcf311a49e",
       "configHash": "sha256:b0e579b56bb072c7b24c872c06e2637619348e270cc0683e712e1c246d601737",
-      "outputHash": "sha256:e8be755fcbfcc7dbec11b99fee68a94e569c8eaa695008a3a85cad013a8412c8"
+      "outputHash": "sha256:beaa9029d83fe4504fbffe0296519e443822d856086b0f134445de2b03472ace"
     },
     ".claude/skills/sundial-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",

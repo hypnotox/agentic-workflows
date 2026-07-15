@@ -228,7 +228,7 @@ data:
         such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
         version const) and enumerate each update as a plan task; the ADR-0077 plan review found four
         of these as blockers precisely because the plan hadn't.
-    - title: "A partial amendment needs a forward pointer on the amended ADR"
+    - title: "A partial amendment needs a back-pointer on the amended ADR"
       domains: [adr-system]
       related: [116]
       tags: [adr-lifecycle, cross-references]
@@ -239,12 +239,18 @@ data:
         reads as current guidance and a reader of Y gets no signal. It is a metadata-only edit; the
         body stays append-only.
 
-        **This entry was wrong twice over, and the corrections are the lesson.** It recorded two
-        instances (0079 → 0065, 0093 → 0024) and inferred a promotion trigger from them. A corpus
-        sweep on 2026-07-15 found **16 partial amendments, 10 of them missing the back-pointer**;
-        the two recorded here were merely the ones review happened to catch, and both had since
-        been fixed. Counting only the failures someone noticed understated the problem by five
-        times and pointed the diagnosis at the wrong place: prose *had* been tried (this note
+        **This entry has been wrong three times, and the corrections are the lesson.** It first
+        recorded two instances (0079 → 0065, 0093 → 0024) and inferred a promotion trigger from
+        them. A sweep on 2026-07-15 found **16 partial amendments, 10 missing the back-pointer**,
+        the figures ADR-0116's Context records. The impl review of that very ADR then re-swept and
+        found three more the first sweep had missed (42 → 39 and 59 → 43 missing, 94 → 93
+        conformant), putting the real floor at **at least 19 amendments, at least 12 missing, 7
+        conformant**. Treat every figure here as a floor, not a count: the detectors are
+        verb-anchored, so a partial amendment phrased without one of their verbs is invisible to
+        them, and two independent sweeps each missed edges the other found. The two instances
+        originally recorded were merely the ones review happened to catch, and both had since been
+        fixed. Counting only the failures someone noticed understated the problem by five times and
+        pointed the diagnosis at the wrong place: prose *had* been tried (this note
         landed 2026-07-08 stating the rule verbatim, and 0093, 0105, and 0106 broke it anyway),
         while the rule had never been written into `awf-adr-lifecycle`'s partial-supersedence
         section, the procedure an agent actually loads while performing the act. That section
@@ -260,9 +266,10 @@ data:
         never been tried, so the next failure is the first informative one. Promote only on a
         recurrence **despite** the stated procedure and the lens, and see ADR-0116's Alternatives
         for the two shapes already analysed (an advisory range-scoped `repoaudit` rule; a declared
-        `amends:` field with a derived back-edge). The corpus is knowingly left at 6 of 16
-        conformant (ADR-0116 Decision 6), so a fresh sweep will find residue: do not mistake it for
-        recurrence.
+        `amends:` field with a derived back-edge). The corpus is knowingly left non-conformant
+        (ADR-0116 Decision 6), so a fresh sweep finds residue: do not mistake it for recurrence,
+        and do not read a count above ADR-0116's recorded 10 as recurrence either, since the
+        recorded figure is a floor that later sweeps have already raised.
     - title: "A milestone-time check must not double as an every-commit test"
       domains: [tooling]
       tags: [release-pipeline, changelog]

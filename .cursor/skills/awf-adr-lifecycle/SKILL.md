@@ -52,7 +52,7 @@ The successor overrides specific Decision items or Invariants of the predecessor
 - Successor's prose **explicitly cites the overridden items** (e.g. "Supersedes predecessor Decision item M and Invariant N").
 - `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the override information lives in the successor's prose and in the `related:` linkage on **both** ADRs.
 
-The back-pointer is owed when **this** ADR overrides a **live** (`Accepted`/`Implemented`) predecessor's **Decision item or Invariant**. It is not owed for a citation that does not override, for an amendment of a `Proposed` ADR (edit that ADR in place instead), or for an edit that changes wording without changing meaning.
+The back-pointer is owed when the successor overrides a **live** (`Accepted`/`Implemented`) predecessor's **Decision item or Invariant**. It is not owed for a citation that does not override, for an amendment of a `Proposed` ADR (edit that ADR in place instead), or for an edit that changes wording without changing meaning.
 
 ## Procedure
 
