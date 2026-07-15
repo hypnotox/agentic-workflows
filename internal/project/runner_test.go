@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -116,5 +118,45 @@ func TestRunnerPublicationSafe(t *testing.T) {
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")
+	}
+}
+
+// A convention part authored for an awf-owned runner section (as its
+// `create … to override` pointer invites) is claimed by the closed-tree sweep, so
+// override renders and `awf check` does not flag `.awf/runner` as unclaimed.
+func TestRunnerPartOverrideClaimed(t *testing.T) {
+	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	part := filepath.Join(root, ".awf/runner/parts/runner-tail.md")
+	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(part, []byte("*)\n\techo custom-tail ;;\nesac\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	x, err := os.ReadFile(filepath.Join(root, "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(x), "custom-tail") {
+		t.Errorf("runner-tail part override not applied:\n%s", x)
+	}
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range drift {
+		if strings.Contains(d.Path, ".awf/runner") {
+			t.Errorf("runner parts must be claimed by the sweep, got drift %v", d)
+		}
 	}
 }
