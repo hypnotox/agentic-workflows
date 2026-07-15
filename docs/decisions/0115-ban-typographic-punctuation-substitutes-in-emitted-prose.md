@@ -42,9 +42,12 @@ templates today, so a broader ban would fail on landing and demand an unrequeste
 cleanup is now requested, and the measurement shows it is negligible: all 5 en-dashes in the
 shipped surface are numeric ranges (`templates/skills/refactor-coupling-audit/SKILL.md.tmpl:33`,
 `templates/partials/review-spine-tail.md:24`, `internal/catalog/standard.go:130,147,167`), which
-read identically with an ASCII hyphen. The 31 ellipses mark elision in code and format examples,
-which read identically as three periods. Curly quotes are at zero occurrences in both the
-templates and production Go, so listing them costs no cleanup at all.
+read identically with an ASCII hyphen. The 20 in-scope ellipses (10 in the templates, 5 in the
+changelog, 5 in Go string literals) mark elision in code and format examples, and read identically
+as three periods. Curly quotes are at zero occurrences across all three surfaces, so listing them
+costs no cleanup at all. Every count here is measured over the scope this ADR defines: Go figures
+come from an AST walk of string literals in non-test files, never a whole-file grep, which would
+sweep in the comments Decision item 4 excludes.
 
 The full non-ASCII inventory also rules out the tempting simplification. `templates.FS` contains
 43 rightwards arrows (U+2192) and 7 left-right arrows (U+2194) encoding the workflow chain, plus
@@ -217,7 +220,7 @@ continued to declare it. Do not "repair" this ADR by populating `retires_invaria
 |---|---|
 | Keep ADR-0113 and fix `adr.go:131` as a plain bug | Treats the symptom. The gate would stay blind to Go string literals, so the next generated-output em-dash lands the same way, which is exactly the "removed, then reintroduced with nothing to catch it" signal ADR-0113 was written to answer. |
 | Ban all non-ASCII characters | Measurably fails on landing: 43 arrows encode the workflow chain in `templates.FS`, and an author's name carries U+00E4. Notation is not a punctuation substitute. |
-| Ban the em-dash and en-dash only, keeping the ellipsis | Leaves one machine-set substitute uncovered and forces the rule to carry a stated exception, for a saving of 31 mechanical edits. |
+| Ban the em-dash and en-dash only, keeping the ellipsis | Leaves one machine-set substitute uncovered and forces the rule to carry a stated exception, for a saving of 20 mechanical edits. |
 | Leave the three ADR titles em-dashed | The ban does not reach `docs/decisions/`, so the gate passes either way and this costs nothing. Rejected because harvested titles are read by agents as context, and a record that half-follows its own convention teaches the wrong one. Elective, and taken only with maintainer approval. |
 | Normalize ADR titles at harvest time instead of retitling | Respects append-only without a carve-out, but it would silently rewrite an *adopter's* title in their own generated index, crossing the adopter-content boundary. Warning beats rewriting. |
 | Leave `changelog/CHANGELOG.md` out of scope | Would avoid rewriting released entries and keep the repository's changelog matching published release notes. Rejected because `awf changelog` prints the embedded file verbatim, so the banned glyph would still reach every adopter through awf's own voice, leaving the invariant's name a lie. |
