@@ -177,7 +177,18 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 				return nil, nil, nil, statErr
 			}
 		}
-		if err := os.WriteFile(abs, []byte(f.Content), 0o644); err != nil {
+		// A rendered #!-shebang script is written executable (ADR-0100 Decision 8),
+		// so the runner is runnable as ./x. The mode is enforced on every sync — a
+		// pre-existing file's mode is corrected too, since os.WriteFile applies perm
+		// only at creation — hence the explicit Chmod.
+		perm := os.FileMode(0o644)
+		if strings.HasPrefix(f.Content, "#!") {
+			perm = 0o755
+		}
+		if err := os.WriteFile(abs, []byte(f.Content), perm); err != nil {
+			return nil, nil, nil, err
+		}
+		if err := os.Chmod(abs, perm); err != nil { // coverage-ignore: os.Chmod fails only on a permission/ownership fault that root bypasses, right after a successful WriteFile to the same path
 			return nil, nil, nil, err
 		}
 		lock.Files[f.Path] = manifest.Entry{
