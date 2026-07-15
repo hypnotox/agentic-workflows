@@ -196,19 +196,28 @@ subagent also diverged and you must inspect). Prevention is partial; the dispatc
 "commit on the current branch; never create a branch", so always verify the branch after a
 fix-applying subagent returns rather than trusting it stayed put.
 
-## Zero-padded ADR numbers in YAML lists are octal to YAML-1.1 parsers
+## Zero-padded ADR numbers in YAML lists parse as octal
 
 _Domains: adr-system_
 
-A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which a
-YAML-1.1 parser (PyYAML and kin) resolves as octal; `0017` becomes 15, silently pointing at the
-wrong ADR the moment any tooling starts parsing those fields. Nothing parses them today
-(`internal/adr`'s frontmatter struct has no `related` field), the whole corpus was normalized to
-bare sorted ints on 2026-07-08, and the ADR-README example now models `[1]`, but the padded form
-reads naturally (it matches the `NNNN-` filename convention) so an author copying an old diff can
-reintroduce it. Write bare ints (`related: [17, 50]`). If a padded list lands again despite this
-note, promote to a gate check that scans `docs/decisions/*.md` frontmatter for `[0`-prefixed list
-ints instead of re-recording it.
+_Related: ADR-0103_
+
+A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which YAML
+resolves as octal: `0017` becomes 15, silently pointing at the wrong ADR. This is not a
+foreign-parser hypothetical, as an earlier version of this note claimed ("PyYAML and kin"): awf's
+own parser does it. `gopkg.in/yaml.v3` unmarshals `related: [0017, 17, 0o17]` to `[15 17 15]`
+(verified 2026-07-15). And the field is no longer inert, the other half of that note's stale
+premise: ADR-0103 revived the metadata, so `internal/adr` parses it for real (`adr.ADR.Related
+[]int`), and `awf context` consumes it for relevance tiering. A padded entry would therefore
+mis-point a live consumer, not just a future one.
+
+The corpus is clean as of 2026-07-15 (every live `related:`/`supersedes:` list is bare sorted
+ints, normalized 2026-07-08; padded spellings survive only in ADR prose bodies, which nothing
+parses) and the ADR-README example models `[1]`. But the padded form reads naturally, since it
+matches the `NNNN-` filename convention, so an author copying an old diff can reintroduce it and
+no check would catch the mis-point. Write bare ints (`related: [17, 50]`). The deferred gate check
+(scan `docs/decisions/*.md` frontmatter for `[0`-prefixed list ints) was declined on the grounds
+that nothing parsed the field; that reasoning no longer holds.
 
 ## Enabled linters constrain API shape, sketch signatures against them
 
@@ -583,15 +592,20 @@ over-named.
 regenerates `examples/sundial/docs/config-reference.md` too, but the Phase-3 commit staged only
 the root reference, leaving the example regen for a follow-up commit and three intermediate
 commits `./x check`-red at checkout. The root cause the prose above missed is why staging
-discipline alone keeps failing here: the pre-commit hook validates the *working tree* (where the
-preceding `./x sync` had already written the example file), not the staged snapshot, so a
-regenerated-but-unstaged output passes the hook while the commit itself is drift-red; the
-`.githooks/pre-commit` staged-slice check runs `go build`, not `./x check`. Until the deferred
-fix lands (extend the staged-slice check to run `./x check`, or a `repoaudit` rule flagging a
-commit that touches `internal/configspec`/`internal/catalog`/`templates` but omits the
-`examples/sundial` outputs), the manual guard is: after `./x sync`, `git status --short` and
-stage **every** reported path including the `examples/sundial` tree, and sanity-check by
-`git stash`-ing nothing and re-running `./x check` against the *staged* set, not just the tree.
+discipline alone keeps failing here: a hook that validates the *working tree* (where the
+preceding `./x sync` has already written the example file) cannot see a regenerated-but-unstaged
+output, so the commit passes the hook while being drift-red on its own.
+
+**The deterministic backstop now exists** (34d839c, 2026-07-15): `.githooks/pre-commit` checks the
+index out into a throwaway tree and runs `./x check` there alongside the `go build` staged-slice
+check (ADR-0088), so a commit missing a rendered, lock, or config hunk refuses at commit time.
+Two limits keep the up-front discipline load-bearing rather than redundant. It is **repo-local**:
+the staged-slice logic lives in awf's hand-maintained `.githooks/` stub, while the rendered payload
+adopters get (`.awf/hooks/pre-commit.sh`) still checks the worktree, so an adopter hitting this
+fan-out has no backstop at all. And it fires **late**, after the commit message is written, telling
+you a hunk is missing but not which fan-out arm you forgot. So: when a plan edits a catalog
+artifact, still enumerate the fan-out up front, and after `./x sync` stage **every** path
+`git status --short` reports, `examples/sundial` included.
 
 ## GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree
 
@@ -625,22 +639,6 @@ tokens straight into `data.pitfalls`, and the backslashes leaked into the render
 stayed clean (the output is exactly what the data says), so only diffing the rendered file against
 the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
 `\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
-
-## A new invariant's AGENTS.md bullet is a hand-maintained convention with no check
-
-_Domains: adr-system_
-
-_Related: ADR-0069_
-
-When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `invariant:` slug
-has a source marker, but NOTHING verifies the slug also appears as a bullet in the agent guide's
-Invariants section (authored in `.awf/agents-doc.yaml`, rendered into `AGENTS.md`). Every recent
-invariant-bearing ADR (0091, 0092, 0098, 0099, 0102) added those bullets by hand, and a plan can
-omit the step with a fully green gate; the drift is silent, caught here only by a reviewer's
-doc-currency lens. Until a deterministic check exists (a deferred follow-up: assert every
-non-retired Implemented-ADR `invariant:` slug has a matching agents-doc bullet), treat the
-`.awf/agents-doc.yaml` update as a mandatory step of any invariant-introducing implementation, in
-the same commit that flips the ADR (2026-07-13).
 
 ## A CLI command that re-Opens can't reach an assembly error Open already re-validates
 
