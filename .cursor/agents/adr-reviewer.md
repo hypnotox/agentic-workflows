@@ -59,7 +59,7 @@ Apply all five lenses to every ADR:
 **Schema stability**: ADRs that change the config-tree schema or the lock format must enumerate all consumers (config, render, manifest, migrate) and confirm backward compatibility or a migration path.
 
 
-**Template invariants**: ADRs touching templates must confirm the missingkey=zero constraint is preserved — no template may render a no-value token when vars are empty strings.
+**Template invariants**: ADRs touching templates must confirm the missingkey=zero constraint is preserved; no template may render a no-value token when vars are empty strings.
 
 
 

@@ -9,23 +9,23 @@ convention part to edit (ADR-0015).
 
 The config tree (ADR-0009) lives under a single `.awf/` root:
 
-- **`config.yaml`** — the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
-  arrays (`skills`, `agents`, `docs`, `targets` — a name's presence enables that artifact, or that
+- **`config.yaml`**: the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
+  arrays (`skills`, `agents`, `docs`, `targets`; a name's presence enables that artifact, or that
   adapter runtime).
-- **`<kind>/<artifact>.yaml`** — optional per-artifact sidecars holding an artifact's structured
+- **`<kind>/<artifact>.yaml`**: optional per-artifact sidecars holding an artifact's structured
   `data`, its `sections` overrides (`drop`), and its `local` flag.
-- **`<kind>/parts/<artifact>/<section>.md`** — convention parts: if present, the file replaces that
+- **`<kind>/parts/<artifact>/<section>.md`**: convention parts: if present, the file replaces that
   section's body. Per-section precedence is `drop > convention part > template default`.
-- **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`** — the always-on agent-guide singleton.
-- **`awf.lock`** — the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-artifact
+- **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`**: the always-on agent-guide singleton.
+- **`awf.lock`**: the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-artifact
   projection over exactly that file's inputs, so a sidecar or part edit reflags only that artifact.
 
 Rendered artifacts split into two layers (ADR-0016, ADR-0037). **Neutral** artifacts are owned by no
 runtime and render **once** to fixed or `docsDir`-derived paths: `AGENTS.md` (the cross-tool
-instruction standard), docs, domain docs, and the ADR index. **Adapter** artifacts — skills, review
-agents, and an optional whole-file bridge whose body is the `@AGENTS.md` import — render **once per
+instruction standard), docs, domain docs, and the ADR index. **Adapter** artifacts (skills, review
+agents, and an optional whole-file bridge whose body is the `@AGENTS.md` import) render **once per
 enabled adapter**, each placed at a runtime-specific path supplied by a `Target` value rather than a
 hardcoded literal. A project selects adapters through the `targets` array (default `[claude]`); the
 built-in registry holds `claudeTarget` (`.claude/skills/`, `.claude/agents/`, a `CLAUDE.md` bridge)
-and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge — Cursor reads `AGENTS.md`
+and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge; Cursor reads `AGENTS.md`
 natively). awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.

@@ -62,16 +62,16 @@ Apply all five lenses to every plan:
 **dependency-order**: tasks are ordered so each builds only on already-completed work
 
 
-**gate-clean-embedded**: plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run — commit subjects ≤72 chars (commit-gate), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
+**gate-clean-embedded**: plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run; commit subjects ≤72 chars (commit-gate), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
 
 
-**section-taxonomy**: the plan follows the canonical shape — a `# Plan:` H1 title, the `date`/`adrs`/`status` frontmatter, the three header sections (Goal, Architecture summary, File structure), the phases, and the optional Verification/Notes tails — rather than re-improvising header field names or presentation
+**section-taxonomy**: the plan follows the canonical shape, a `# Plan:` H1 title, the `date`/`adrs`/`status` frontmatter, the three header sections (Goal, Architecture summary, File structure), the phases, and the optional Verification/Notes tails, rather than re-improvising header field names or presentation
 
 
-**coupled-phase-escape**: a multi-phase change sharing one closing commit is marked as a coupled-phase group with the concrete reason it cannot be sliced into independently-gate-passing phases — the sanctioned exception, never used as a convenience to batch unrelated work
+**coupled-phase-escape**: a multi-phase change sharing one closing commit is marked as a coupled-phase group with the concrete reason it cannot be sliced into independently-gate-passing phases; the sanctioned exception, never used as a convenience to batch unrelated work
 
 
-**lifecycle-freeze**: the plan's two-state `status:` lifecycle is honoured — mutable while `Proposed`, flipped to `Implemented` in the final commit that freezes it, with implementation findings recorded in the Notes section alongside the freeze
+**lifecycle-freeze**: the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped to `Implemented` in the final commit that freezes it, with implementation findings recorded in the Notes section alongside the freeze
 
 
 

@@ -30,14 +30,14 @@ The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), 
 |---|---|
 | `adr` | ADR markdown documents |
 | `adr-system` | the ADR machinery code (ACTIVE.md generation, lifecycle) |
-| `awf` | genuinely cross-cutting / repo-meta work — the umbrella of last resort |
+| `awf` | genuinely cross-cutting / repo-meta work, the umbrella of last resort |
 | `config` | the .awf config tree, schema, migrations |
 | `invariants` | invariant backing and checks |
 | `plans` | plan markdown documents |
 | `rendering` | the render engine and templates |
 | `tooling` | CLI, audit/gate, coverage, CI, ./x, changelog, evals |
 
-The code scopes mirror the domain vocabulary in `.awf/config.yaml` — see [the domain docs](domains) for what each area covers. The correspondence is hand-maintained, not machine-enforced (ADR-0055): adding a domain does not add a scope. The gate only checks set membership; it cannot catch a wrong-but-valid pick (a docs scope where a code scope was meant), so pick the scope that names the area you actually changed.
+The code scopes mirror the domain vocabulary in `.awf/config.yaml`; see [the domain docs](domains) for what each area covers. The correspondence is hand-maintained, not machine-enforced (ADR-0055): adding a domain does not add a scope. The gate only checks set membership; it cannot catch a wrong-but-valid pick (a docs scope where a code scope was meant), so pick the scope that names the area you actually changed.
 
 
 <!-- awf:edit doc-currency — default; create .awf/parts/workflow/doc-currency.md to override -->
@@ -54,7 +54,7 @@ profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
 workflow-pin check (`cmd/pincheck`, ADR-0079). Every step is deterministic: same tree in, same verdict out.
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
-hook payload (see the local-hooks section below). And there is no slower tier — `./x gate full`
+hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`
 runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
 (see [docs/testing.md](testing.md)).
 
@@ -62,9 +62,9 @@ runs the identical steps and exists only so the rendered pre-push hook payload w
 <!-- awf:edit local-hooks — from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
-This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check` then `./x gate`, `.awf/hooks/commit-msg.sh` runs `./x commit-gate` with the message file, and `.awf/hooks/pre-push.sh` runs `./x gate full` — all driven by the `checkCmd`/`gateCmd`/`gateCmdFull`/`commitGateCmd` vars and kept current by `./x sync`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
+This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check` then `./x gate`, `.awf/hooks/commit-msg.sh` runs `./x commit-gate` with the message file, and `.awf/hooks/pre-push.sh` runs `./x gate full`; all driven by the `checkCmd`/`gateCmd`/`gateCmdFull`/`commitGateCmd` vars and kept current by `./x sync`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
 
-`awf commit-gate` is the deterministic, blocking commit-message gate — the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
+`awf commit-gate` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
 
 
 <!-- awf:edit ci — default; create .awf/parts/workflow/ci.md to override -->

@@ -13,107 +13,107 @@ convention part to edit (ADR-0015).
 
 The config tree (ADR-0009) lives under a single `.awf/` root:
 
-- **`config.yaml`** — the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
-  arrays (`skills`, `agents`, `docs`, `targets` — a name's presence enables that artifact, or that
+- **`config.yaml`**: the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
+  arrays (`skills`, `agents`, `docs`, `targets`; a name's presence enables that artifact, or that
   adapter runtime).
-- **`<kind>/<artifact>.yaml`** — optional per-artifact sidecars holding an artifact's structured
+- **`<kind>/<artifact>.yaml`**: optional per-artifact sidecars holding an artifact's structured
   `data`, its `sections` overrides (`drop`), and its `local` flag.
-- **`<kind>/parts/<artifact>/<section>.md`** — convention parts: if present, the file replaces that
+- **`<kind>/parts/<artifact>/<section>.md`**: convention parts: if present, the file replaces that
   section's body. Per-section precedence is `drop > convention part > template default`.
-- **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`** — the always-on agent-guide singleton.
-- **`awf.lock`** — the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-artifact
+- **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`**: the always-on agent-guide singleton.
+- **`awf.lock`**: the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-artifact
   projection over exactly that file's inputs, so a sidecar or part edit reflags only that artifact.
 
 Rendered artifacts split into two layers (ADR-0016, ADR-0037). **Neutral** artifacts are owned by no
 runtime and render **once** to fixed or `docsDir`-derived paths: `AGENTS.md` (the cross-tool
-instruction standard), docs, domain docs, and the ADR index. **Adapter** artifacts — skills, review
-agents, and an optional whole-file bridge whose body is the `@AGENTS.md` import — render **once per
+instruction standard), docs, domain docs, and the ADR index. **Adapter** artifacts (skills, review
+agents, and an optional whole-file bridge whose body is the `@AGENTS.md` import) render **once per
 enabled adapter**, each placed at a runtime-specific path supplied by a `Target` value rather than a
 hardcoded literal. A project selects adapters through the `targets` array (default `[claude]`); the
 built-in registry holds `claudeTarget` (`.claude/skills/`, `.claude/agents/`, a `CLAUDE.md` bridge)
-and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge — Cursor reads `AGENTS.md`
+and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge; Cursor reads `AGENTS.md`
 natively). awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 
 <!-- awf:edit components — from .awf/docs/parts/architecture/components.md -->
 ## Components
 
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
+- **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
   `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
   subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
-  (ADR-0010, ADR-0039) before opening the project — the driver pre-gates the always-gated ones,
+  (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
-- **`internal/clispec/`** — the declarative CLI command table (ADR-0094): each command's flags,
+- **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
   positional bounds, three-valued gating classification, help text, and (for `new`) its
   subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs to it, and
   `internal/project` reads its gated set to generate the docs' gated-command list.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
-  `cmd/releasecheck`, `cmd/repoaudit`** — repo-only gate, release, triage, and audit
+  `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
   (ADR-0063), the advisory mutation-survivor report (ADR-0066), the workflow-pin
   check (ADR-0079), the release-time changelog pin (ADR-0078), and the repo-local
   conformance audit (`./x audit-local`, ADR-0073: changelog-entry Errors plus
   coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
-- **`internal/config/`** — owns `.awf/config.yaml`: the schema and strict load, its construction
+- **`internal/config/`**: owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
-- **`internal/catalog/`** — declares the available skills, agents, docs, and their sections as a
+- **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Docs and always-on
   singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
   `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
-- **`internal/render/`** — Go `text/template` rendering (ADR-0001); first expands awf-owned
+- **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
-- **`internal/manifest/`** — reads and writes `.awf/awf.lock` (schema-versioned); drives
+- **`internal/manifest/`**: reads and writes `.awf/awf.lock` (schema-versioned); drives
   drift detection for `awf check`.
-- **`internal/migrate/`** — ordered schema-migration registry (ADR-0010); the `tree-layout`
+- **`internal/migrate/`**: ordered schema-migration registry (ADR-0010); the `tree-layout`
   migration and the frozen legacy reader; powers `awf upgrade` and the sync/check version gate.
-- **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and
+- **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
   `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
-  per-kind dispatch source — enable array, catalog pool, declared sections, output path, and labels
+  per-kind dispatch source; enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
-  `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries — the render/validate
+  `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
-- **`internal/audit/`** — go-git-backed collection of the branch's commits plus the advisory
+- **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/invariants/`** — verifies every Implemented ADR's `invariant:` slugs against
+- **`internal/invariants/`**: verifies every Implemented ADR's `invariant:` slugs against
   `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
   powers `awf invariants` and the gated check.
-- **`internal/pathglob/`** — awf's single glob dialect (ADR-0077): anchored full-path doublestar
+- **`internal/pathglob/`**: awf's single glob dialect (ADR-0077): anchored full-path doublestar
   matching against slash-separated repo-relative paths, consumed by config validation, invariant
   scanning, and the audit's path matching. Leaf package.
-- **`internal/refs/`** — pure, stdlib-only extraction of inline markdown link targets for the
+- **`internal/refs/`**: pure, stdlib-only extraction of inline markdown link targets for the
   dead-reference scan (ADR-0020).
-- **`internal/initspec/`** — `awf init`'s descriptor machinery: the catalog `vars:` descriptors,
+- **`internal/initspec/`**: `awf init`'s descriptor machinery: the catalog `vars:` descriptors,
   `--describe` JSON, `--set`/`--answers` merging and validation, and the interactive prompts
   (ADR-0029).
-- **`internal/coverage/`** — merges the gate's cover profile and enforces the
+- **`internal/coverage/`**: merges the gate's cover profile and enforces the
   `// coverage-ignore: <reason>` contract for `cmd/covercheck` (ADR-0012). Repo-only, not part
   of the rendered standard.
-- **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
+- **`internal/frontmatter/`**: the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
-- **`internal/adr/`** — parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
+- **`internal/adr/`**: parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
   frontmatter, and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
   `awf sync` (`./x sync`) and `awf new adr`.
-- **`internal/configspec/`** — the compile-time, adopter-facing description authority (ADR-0088):
+- **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
   reflection/template parity and description-residue rules are test-enforced. Projected into the
   generated `docs/config-reference.md` (rendered by `internal/project` outside `RenderAll`,
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
-- **`templates/`** — embedded skill, agent, doc, and agent-guide template bodies the catalog names
+- **`templates/`**: embedded skill, agent, doc, and agent-guide template bodies the catalog names
   (the catalog itself is the compile-time `catalog.Standard` value in `internal/catalog`).
-- **`changelog/`** — embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
+- **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
-- **`internal/changelog/`** — parses the embedded changelog into filterable entries; powers `awf
+- **`internal/changelog/`**: parses the embedded changelog into filterable entries; powers `awf
   changelog`.
-- **`examples/sundial/`** — the committed example adopter (ADR-0090): a fictional Go
+- **`examples/sundial/`**: the committed example adopter (ADR-0090): a fictional Go
   module (own `go.mod`, invisible to the repo's `./...` sweeps) whose full rendered
-  surface is the rendered-output quality oracle — re-rendered by `./x sync`, gated
+  surface is the rendered-output quality oracle: re-rendered by `./x sync`, gated
   by `./x check`. Not part of the rendered standard.
 
 
@@ -125,50 +125,50 @@ convention parts layered over template defaults, precedence
 `drop > convention part > template default`), renders each section publication-safe (ADR-0001),
 injects the `GENERATED by awf` banner and per-section `awf:edit` provenance pointers (ADR-0015),
 writes the rendered files, and stamps each one's per-target `ConfigHash` into `.awf/awf.lock`. A
-`check` re-renders in memory and compares against the lock — reporting drift, orphaned
-sidecars/parts, and stale `ACTIVE.md` — while a stale schema generation gates with a "run `awf
+`check` re-renders in memory and compares against the lock (reporting drift, orphaned
+sidecars/parts, and stale `ACTIVE.md`) while a stale schema generation gates with a "run `awf
 upgrade`" message (ADR-0010).
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
-skeleton is executed, then the raw part bodies are restored verbatim — so a literal `{{` in a part
+skeleton is executed, then the raw part bodies are restored verbatim, so a literal `{{` in a part
 renders byte-for-byte and a part is never variable-interpolated. The one narrow exception (ADR-0057)
 is a closed set of `{{=awf:key}}` sandbox placeholders (e.g. `{{=awf:commitScopeTable}}`):
 `planSections` substitutes them from a dynamic, config-derived registry on the raw part body
-*before* assembly — a literal string replace, never `text/template` — with an unknown-or-empty key
+*before* assembly (a literal string replace, never `text/template`) with an unknown-or-empty key
 or a malformed near-miss a hard error, and a part using a scope placeholder folded into its config
-hash so a scopes edit reflags it. A backslash escapes the token — `\{{=awf:key}}` renders the
-literal `{{=awf:key}}` via a NUL-sentinel pre-pass, which is how this sentence prints one — and a
+hash so a scopes edit reflags it. A backslash escapes the token (`\{{=awf:key}}` renders the
+literal `{{=awf:key}}` via a NUL-sentinel pre-pass, which is how this sentence prints one) and a
 registry value may never itself carry the token (ADR-0058).
 
 One registry key steps outside the string-generator mold (ADR-0072): `{{=awf:sectionDefault}}`
 resolves to a NUL-bounded split marker rather than prose. Assembly splits the part body at the
-marker and splices the section's **rendered default** between the raw fragments — the fragments
+marker and splices the section's **rendered default** between the raw fragments; the fragments
 still round-trip verbatim (never templated), but a part carrying the token is deliberately not
 restored byte-for-byte: it *extends* the shipped default instead of copy-forking it. Re-injecting
-a `stub`-classified default is a hard render error — a stub is an authoring prompt, not shippable
+a `stub`-classified default is a hard render error: a stub is an authoring prompt, not shippable
 prose (ADR-0070).
 
 
 <!-- awf:edit dependencies — from .awf/docs/parts/architecture/dependencies.md -->
 ## Key dependencies
 
-- **`gopkg.in/yaml.v3`** — strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
+- **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
-- **`text/template`** (standard library) — the rendering engine; ADR-0001 owns its
+- **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
-- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`) — pure-Go git access for `awf audit`'s
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s
   history and working-tree reads; awf and its tests need no host `git` binary.
-- **`golang.org/x/mod`** — semver comparison for the binary-version gate (ADR-0039).
-- **`github.com/bmatcuk/doublestar/v4`** — the matcher behind `internal/pathglob`'s anchored
+- **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
+- **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`
   all match through it (ADR-0077).
-- **`golangci-lint`** — pinned as a `go tool` dependency and run by the gate (`./x gate`); this
+- **`golangci-lint`**: pinned as a `go tool` dependency and run by the gate (`./x gate`); this
   repo only, not part of the rendered standard.
-- **`deadcode`** (`golang.org/x/tools/cmd/deadcode`) — pinned as a `go tool` dependency; the gate
+- **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
-- **`gremlins`** (`github.com/go-gremlins/gremlins`) — pinned as a `go tool` dependency; `./x mutants`
+- **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`
   runs it under the deterministic `.gremlins.yaml` config and `cmd/mutants` reports survived mutants
-  (ADR-0066). Advisory only — never part of the gate. This repo only, not part of the rendered standard.
+  (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.
 

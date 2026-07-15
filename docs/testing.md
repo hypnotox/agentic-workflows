@@ -4,47 +4,46 @@
 <!-- awf:edit gate — from .awf/docs/parts/testing/gate.md -->
 ## The gate
 
-`./x gate` runs the project's checks — the test suite with a coverage profile, a 100%
-**statement**-coverage floor over non-`// coverage-ignore` blocks (ADR-0012), `go vet`,
-`golangci-lint`, a whole-program dead-code check (ADR-0063), and the workflow supply-chain
-pin check (`cmd/pincheck`, ADR-0079) — and must be green before
-every commit. A red gate blocks the commit: fix the cause or revert.
+`./x gate` runs the project's checks and must be green before every commit: the test suite
+with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
+blocks (ADR-0012), `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
+and the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079). A red gate blocks the commit: fix the cause or revert.
 
 ### Coverage: statement gate vs line reporting
 
 `./x gate` is the **sole hard coverage gate**, and it measures **statement** coverage. CI
-also uploads to Codecov, which measures **line** coverage — a different metric — so
+also uploads to Codecov, which measures **line** coverage (a different metric) so
 Codecov's raw figure does not and cannot equal `go tool cover`'s statement figure;
 the gap is line-vs-statement, not a defect (ADR-0065).
 
 CI publishes two Codecov numbers as flags:
 
-- **`raw`** — line coverage over the whole tree: the honest reality, which climbs only as
+- **`raw`**: line coverage over the whole tree: the honest reality, which climbs only as
   real branches get covered.
-- **`covered`** — line coverage over the profile with `// coverage-ignore` blocks dropped
+- **`covered`**: line coverage over the profile with `// coverage-ignore` blocks dropped
   (~100%): exactly the blocks the gate holds accountable. The filtered profile is emitted
   by `covercheck --emit-filtered`, reusing the same ignore logic as the gate, so reporter
   and gate never disagree on what "ignored" means.
 
-Both Codecov statuses are informational — Codecov never blocks a merge; the gate does.
+Both Codecov statuses are informational: Codecov never blocks a merge; the gate does.
 
 ### Coverage is not verification
 
 The 100% floor proves every statement **runs** under test; it does not prove any test
 would **fail** if that statement were wrong. A line can be covered by a test that never
-asserts on its effect — the gate stays green while a broken result slips through. When you
+asserts on its effect: the gate stays green while a broken result slips through. When you
 add or change logic, spot-check it by hand: flip a condition, negate a comparison, or
 change a constant in the source, and confirm a test turns red. If nothing fails, the gap is
-a missing assertion, not missing coverage — add the assertion, then revert the edit. This
+a missing assertion, not missing coverage; add the assertion, then revert the edit. This
 is a deliberate manual habit. `./x mutants` (ADR-0066) makes it reproducible: it runs
 `gremlins` mutation testing under a deterministic config (`.gremlins.yaml`:
 `integration: true`, `workers: 1`, `timeout-coefficient: 20`) and prints the survived
-mutants for you to triage — run it
+mutants for you to triage; run it
 with no arguments to check your diff against `main`, or pass a package path (e.g. `./x
 mutants ./internal/refs`) for a deep dive. A timed-out mutant makes the whole run
 untrustworthy (it can hide a real survivor), so the command itself exits non-zero when any
-mutant times out — raise the timeout coefficient and rerun; you never need to eyeball the
-`Timed out:` count. It stays advisory — never part of the gate — and every survivor still
+mutant times out. Raise the timeout coefficient and rerun; you never need to eyeball the
+`Timed out:` count. It stays advisory (never part of the gate) and every survivor still
 needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 
 
@@ -52,11 +51,11 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 ## Tiers
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical steps — the `full` argument is accepted only so the rendered pre-push hook
+identical steps; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit.
 
-`./x check` — beside the gate at every commit via the pre-commit payload — also
+`./x check` (beside the gate at every commit via the pre-commit payload) also
 gates the example adopter (ADR-0090): it re-checks `examples/sundial` with a
 source-built awf (drift, invariants, zero advisory notes) and runs that module's
 `go test ./...`, the only place the example's tests execute.
@@ -67,17 +66,17 @@ source-built awf (drift, invariants, zero advisory notes) and runs that module's
 
 Package unit tests are Go `_test.go` files in `internal/<pkg>`, in that package's own test
 package (`package <pkg>` or the black-box `package <pkg>_test` where a test needs no access to
-unexported identifiers). Template golden tests — render assertions against the embedded catalog
-— live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
+unexported identifiers). Template golden tests (render assertions against the embedded catalog)
+live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
 command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
 in `cmd/awf/*_test.go`.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived
-from the embedded catalog — every skill, agent, and doc enabled — and asserts *cross-artifact* seams a
+from the embedded catalog (every skill, agent, and doc enabled) and asserts *cross-artifact* seams a
 single-template test cannot: that a skill names its handoff successor on an *invocation-verb line* (a
 real handoff instruction, not an incidental mention), that a reviewing skill dispatches a reviewer agent
-carrying the shared review-spine partial, and that the forward-chain handoff graph is connected — no
+carrying the shared review-spine partial, and that the forward-chain handoff graph is connected: no
 orphaned node, every node reachable from `brainstorming` (ADR-0053, ADR-0054). The fixture's enabled set
 is catalog-derived so it cannot silently stop covering a newly-added chain artifact. A companion
 section-parity guard in `internal/project` (`TestSkillAndAgentSectionParity`) asserts every skill/agent
@@ -90,8 +89,8 @@ a hand-authored `unsetFallbackCases` entry per conditional template, and a
 golden-completeness guard machine-enforcing the one-golden-per-artifact convention in
 `spine_test.go`.
 
-Shared test-fixture building — project-config scaffolding, ADR frontmatter fixtures,
-file-writing primitives, the seam-swap idiom, and git-repo fixtures — goes through
+Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
+file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through
 `internal/testsupport` (and its `gitfixture` subpackage), a leaf package with no dependency on
 any other `internal/*` awf package (ADR-0044). New test code needing one of these idioms calls
 into `internal/testsupport` rather than hand-rolling a local copy.

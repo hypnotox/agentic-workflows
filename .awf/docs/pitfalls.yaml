@@ -4,13 +4,13 @@ data:
       domains: [tooling]
       tags: [repo-open, audit-rules]
       body: |
-        `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` — a flag `git worktree add` can leave behind even after the worktree is removed — regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
+        `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
     - title: "Stdout is API in command-substitution scripts"
       domains: [rendering]
       tags: [bootstrap-porcelain]
       body: |
         `.awf/bootstrap.sh` is consumed as `"$(bash .awf/bootstrap.sh)" <args>`, so its stdout is the
-        binary path and nothing else — a checksum tool's `<asset>: OK` line on stdout execs as part of
+        binary path and nothing else; a checksum tool's `<asset>: OK` line on stdout execs as part of
         the command and fails only on cache-miss runs, which presents as flaky CI. Every diagnostic in
         rendered shell must carry `>&2`; `TestBootstrapStdoutPathOnly` pins this (`invariant:
         bootstrap-stdout-path-only`, ADR-0049).
@@ -22,11 +22,11 @@ data:
         catalog-derived eval fixture (ADR-0053) and by ADR-0080's derived guards, which fail
         loudly and name the missing piece:
 
-        - `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data — an
+        - `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data; an
           unconditional reference to another skill must be declared in `RequiresSkills`
           (exact both ways: undeclared references and stale declarations each fail).
         - `TestConditionalTemplatesHaveFallbackCases` requires a hand-authored
-          `unsetFallbackCases` entry when the template carries conditional fallback prose —
+          `unsetFallbackCases` entry when the template carries conditional fallback prose;
           the degraded phrases themselves stay human-authored.
         - `TestEveryCatalogArtifactHasGoldenTest` requires a `Test<Skill>Template` golden in
           `internal/project/spine_test.go`.
@@ -41,16 +41,16 @@ data:
       body: |
         The domain current-state narratives (`.awf/domains/parts/*/current-state.md`) are free prose, so a
         spelled-out cardinal ("the nine chain-progression skills", "only the ten workflow-chain skills")
-        is invisible to every deterministic check and goes stale the moment the catalog grows — a 2026-07-07
+        is invisible to every deterministic check and goes stale the moment the catalog grows; a 2026-07-07
         currency sweep found three such stale counts from ADR-0067/0068 alone, in paragraphs the
         feature commits never touched. When a narrative must quantify the catalog, prefer count-free
         phrasing ("the `core`-flagged skills", "the chain-progression skills") or expect to sweep every
-        count in the doc — not just the paragraph you are editing — whenever a chain artifact lands.
+        count in the doc (not just the paragraph you are editing) whenever a chain artifact lands.
     - title: "README.md is outside the drift oracle"
       domains: [tooling]
       tags: [doc-standard, cli-dispatch]
       body: |
-        `README.md` is hand-owned — not rendered, so `awf check` never flags it. Its command table and
+        `README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
         feature claims drift silently when the CLI grows (`awf new` and `awf commit-gate` shipped without
         README rows). Adding or changing a CLI command means updating the README table in the same
         change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
@@ -60,18 +60,18 @@ data:
       body: |
         The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
         `templates/agents/_base.md.tmpl` (ADR-0068). Go's `//go:embed` walk **excludes** every file or
-        directory whose name begins with `_` or `.` unless the pattern is `all:`-prefixed — so the bare
+        directory whose name begins with `_` or `.` unless the pattern is `all:`-prefixed; so the bare
         `//go:embed skills agents …` form embeds neither `_base`, and `fs.ReadFile(templates.FS, …)` fails
         at render with a bare `file does not exist`. `templates/embed.go` therefore uses
         `all:skills all:agents`. Do not "simplify" it back: dropping `all:` silently drops the base
         templates. `TestUnsetFallbackRenders` reads both base templates from `templates.FS`, so a
-        regression fails the gate — but the failure is a confusing missing-file error, not an obvious embed
+        regression fails the gate, but the failure is a confusing missing-file error, not an obvious embed
         bug, hence this note.
 
         The same directive is an **explicit directory allowlist**, not a glob, so it has a second edge: a
         brand-new top-level template directory (a new singleton's `templates/<name>/`) is silently *not*
-        embedded until its name is added to the `//go:embed` line. The symptom is identical — `awf sync`
-        fails with `read template <name>/…: file does not exist` even though the file is on disk — because
+        embedded until its name is added to the `//go:embed` line. The symptom is identical; `awf sync`
+        fails with `read template <name>/…: file does not exist` even though the file is on disk, because
         the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
         `templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
     - title: "Concurrent agents in one worktree share the git index"
@@ -79,15 +79,15 @@ data:
       body: |
         Two agents working in the same checkout share one staging area: `git commit` commits the
         **whole index**, so another agent's `git add` between your `git add` and `git commit` sweeps
-        their files into your commit (this bit the ADR-0069 session — a foreign 526-line plan file
-        landed in a feat commit). Always pathspec-limit the commit itself — `git add <paths> && git
-        commit -m … -- <paths>` — so only your named paths land regardless of index state; note an
+        their files into your commit (this bit the ADR-0069 session; a foreign 526-line plan file
+        landed in a feat commit). Always pathspec-limit the commit itself (`git add <paths> && git
+        commit -m … -- <paths>`), so only your named paths land regardless of index state; note an
         untracked file must still be `git add`-ed first, a bare pathspec commit rejects it. Two more
         shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
-        dirty files (a false positive for your session — never commit or discard their work to appease
-        it), and a pre-commit drift-gate failure may be their stale generated file — `./x sync`
+        dirty files (a false positive for your session; never commit or discard their work to appease
+        it), and a pre-commit drift-gate failure may be their stale generated file; `./x sync`
         freshens the disk, then still commit only your paths. Recurred harder in the ADR-0088/0089
-        dual session: pathspec discipline alone cannot make a commit *hermetic* — the gate validates
+        dual session: pathspec discipline alone cannot make a commit *hermetic*; the gate validates
         the worktree, but the commit is a slice of the index, so a foreign hunk staged in a shared
         file (or a slice cut while the other session's symbol is unstaged) can land a commit that does
         not build on its own, breaking bisect (4ef80e0 carries a call to a function a later commit
@@ -105,16 +105,16 @@ data:
         the prose: every adopter without that var set starts seeing an ADR-0045 unset-var advisory for
         the artifact on `awf check`/`awf init`. awf's own repo sets the common vars (`gateCmd` etc.), so
         the edit looks silent here and the new advisory only surfaces downstream. Before adding a var
-        reference, decide whether the sentence really needs it — generic wording avoids the advisory
+        reference, decide whether the sentence really needs it; generic wording avoids the advisory
         entirely (this kept `gateCmd` out of the plans README when the self-contained-phases rule
-        landed) — and if it does, keep the `{{ with }}…{{ else }}` fallback publication-safe and accept
+        landed), and if it does, keep the `{{ with }}…{{ else }}` fallback publication-safe and accept
         the advisory as intended signal.
     - title: "A `data:` list override replaces the catalog defaults wholesale"
       domains: [config]
       tags: [sidecar-fields, kind-descriptor]
       body: |
         Setting a list key in an artifact's `.awf/<kind>/<name>.yaml` `data:` block (e.g. the
-        plan-reviewer's `focusItems`) replaces the catalog's default list — it does not append. Adding
+        plan-reviewer's `focusItems`) replaces the catalog's default list; it does not append. Adding
         one project-local focus item this way silently dropped the two default items
         (`step-exactness`, `dependency-order`) from this repo's rendered reviewer for a day, and
         nothing flagged it: the render is drift-clean because the config said exactly that. When adding
@@ -125,22 +125,22 @@ data:
       domains: [config]
       tags: [schema-migration, version-authority]
       body: |
-        `migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree — correct when
+        `migrate.Generation` returned `Current()-1` for a lockless pre-relocation tree, correct when
         the To:3 relocation was the newest migration, silently wrong once To:4..6 registered: the tree
         gated forever while `awf upgrade` applied only post-relocation no-ops (fixed 2026-07-07). A
         generation pinned relative to the *growing* registry moves with every new migration, but a
-        layout detected by shape sits at a *fixed* point in history — pin the absolute generation (a
+        layout detected by shape sits at a *fixed* point in history; pin the absolute generation (a
         lockless `.claude/awf/` tree is the tree-layout port's output, so 1). Treat any `Current()±k`
         in migration or versioning code as a red flag unless k describes the current head by
         definition. Since ADR-0076 the sentinel generations apply only to genuinely *absent* locks:
         a present-but-unreadable lock is a hard error from `Generation` (and every other lock
-        reader), never `Current()`/`1` — so a corrupt lock can no longer silently bypass the schema
+        reader), never `Current()`/`1`; so a corrupt lock can no longer silently bypass the schema
         gate the way a mispinned sentinel once mis-gated a healthy tree.
     - title: "Binary-side render changes do not reflag rendered outputs"
       domains: [rendering]
       tags: [render-completeness, version-authority]
       body: |
-        `awf check` hashes config bytes and template bytes — a change to the *Go render logic*
+        `awf check` hashes config bytes and template bytes; a change to the *Go render logic*
         (a new render key, a changed derivation like `taskSkills`) alters what a fresh render
         produces while every hash still matches, so check stays clean over now-stale outputs. This
         shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
@@ -148,7 +148,7 @@ data:
         deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade advises
         "run awf sync" as a note instead of failing). The discipline: any commit that changes render
         output for unchanged config/templates must run `./x sync` *after the final code state* and
-        commit the refreshed outputs — verify by grepping the rendered file for the change, not by
+        commit the refreshed outputs; verify by grepping the rendered file for the change, not by
         trusting a clean check.
     - title: "Documenting a literal `{{=awf:key}}` token in the agent guide trips the render-guide brace check"
       domains: [rendering]
@@ -158,49 +158,49 @@ data:
         rendered agent guide as an unrendered template action. A guide default that documents a literal
         awf placeholder token renders real braces into the guide (e.g. a bullet mentioning
         `{{=awf:sectionDefault}}`), which trips that guard even though the braces are intentional
-        content — and it surfaces as a `TestGuideScopesDerived` failure, not an obvious match for a doc
+        content, and it surfaces as a `TestGuideScopesDerived` failure, not an obvious match for a doc
         edit. This bit ADR-0072, whose plan specified embedding the full token in the override bullet.
         The honest fix is to reference the placeholder by its bare key name in the guide
         (`` `sectionDefault` ``) and leave the full token syntax to `working-with-awf.md`, whose render
-        path tolerates it — the guide is a pointer, that doc is the reference. If the guide must show the
+        path tolerates it; the guide is a pointer, that doc is the reference. If the guide must show the
         full token, strip `awfPlaceholderRE` matches before the brace check rather than deleting the
         guard. (This very entry backslash-escapes its tokens because the pitfalls doc is itself a raw
         convention part run through the same substitution.)
     - title: "A dispatched fix-applying subagent sometimes commits on a new branch, not `main`"
       tags: [subagent-dispatch]
       body: |
-        A dispatched subagent that applies fixes as commits — the implementer subagents in
+        A dispatched subagent that applies fixes as commits, the implementer subagents in
         `<prefix>-subagent-driven-development` (as of ADR-0074 the review subagents are report-only and no
-        longer commit) — occasionally creates a `resync/…` or `review/…` branch and commits there instead
+        longer commit), occasionally creates a `resync/…` or `review/…` branch and commits there instead
         of on the working branch (`main`), leaving the main-thread session behind by those commits (seen
         with a resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort). It surfaces as
         `git branch --show-current` returning an unexpected branch after a subagent returns, or the
         reviewer reporting a commit SHA that `git log` on `main` does not show. Reconcile before
         continuing: `git checkout main && git merge --ff-only <branch> && git branch -d <branch>` (the
         branch is normally `main` plus the fix commits, so the fast-forward is clean; if it is not, the
-        subagent also diverged and you must inspect). Prevention is partial — the dispatch brief can say
-        "commit on the current branch; never create a branch" — so always verify the branch after a
+        subagent also diverged and you must inspect). Prevention is partial; the dispatch brief can say
+        "commit on the current branch; never create a branch", so always verify the branch after a
         fix-applying subagent returns rather than trusting it stayed put.
     - title: "Zero-padded ADR numbers in YAML lists are octal to YAML-1.1 parsers"
       domains: [adr-system]
       tags: [adr-parsing, config-serialization]
       body: |
         A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which a
-        YAML-1.1 parser (PyYAML and kin) resolves as octal — `0017` becomes 15, silently pointing at the
+        YAML-1.1 parser (PyYAML and kin) resolves as octal; `0017` becomes 15, silently pointing at the
         wrong ADR the moment any tooling starts parsing those fields. Nothing parses them today
         (`internal/adr`'s frontmatter struct has no `related` field), the whole corpus was normalized to
-        bare sorted ints on 2026-07-08, and the ADR-README example now models `[1]` — but the padded form
+        bare sorted ints on 2026-07-08, and the ADR-README example now models `[1]`, but the padded form
         reads naturally (it matches the `NNNN-` filename convention) so an author copying an old diff can
         reintroduce it. Write bare ints (`related: [17, 50]`). If a padded list lands again despite this
         note, promote to a gate check that scans `docs/decisions/*.md` frontmatter for `[0`-prefixed list
         ints instead of re-recording it.
-    - title: "Enabled linters constrain API shape — sketch signatures against them"
+    - title: "Enabled linters constrain API shape, sketch signatures against them"
       domains: [tooling]
       tags: [static-linting]
       body: |
         An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
         forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state
-        API must carry a `found bool` (or a sentinel error) instead — discovered mid-execution on
+        API must carry a `found bool` (or a sentinel error) instead; discovered mid-execution on
         ADR-0076's `manifest.LoadOptional`, forcing an amendment-while-Proposed after the signature
         had survived two reviews. `errorlint` (wrap with `%w`, no `!=` on errors) and `perfsprint`
         (no zero-arg `fmt.Errorf`) similarly bite embedded plan code at commit time. When a design
@@ -213,12 +213,12 @@ data:
       body: |
         Several gate tests deliberately pin a *complete current state*: `TestCurrentIsSeven` pins the
         migration registry head, `TestUpgradeAppliesInOrderIdempotent`/`TestUpgradeStampsTreeLock` pin
-        the exact applied-migration list (assertion string **and** the `t.Errorf` want-list message —
+        the exact applied-migration list (assertion string **and** the `t.Errorf` want-list message;
         the ADR-0077 session fixed the strings and still shipped stale messages), and the config
         validation tests pin what the validators accept. Adding a migration, changing a default
         set, or bumping the version therefore reds the gate in places far from the edit. When planning
         such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
-        version const) and enumerate each update as a plan task — the ADR-0077 plan review found four
+        version const) and enumerate each update as a plan task; the ADR-0077 plan review found four
         of these as blockers precisely because the plan hadn't.
     - title: "A partial amendment needs a forward pointer on the amended ADR"
       domains: [adr-system]
@@ -226,16 +226,16 @@ data:
       body: |
         ADR-0079 Decision 4 revised one sentence of Implemented ADR-0065's Decision 3 (partial-item
         supersedence: the successor cites the item in prose and carries `related: [65]`, the
-        predecessor stays live) — but nothing pointed 0065 → 0079, so 0065's Decision 3 read as
+        predecessor stays live), but nothing pointed 0065 → 0079, so 0065's Decision 3 read as
         current guidance with no signal it had been amended; caught only at impl review. The
         lifecycle rules regulate amendment-while-Proposed and full supersedence (predecessor status
         flips) but say nothing about the reverse edge of a partial amendment. Convention: when ADR X
-        partially amends ADR Y, add X to Y's `related:` frontmatter in the same commit — a
+        partially amends ADR Y, add X to Y's `related:` frontmatter in the same commit, a
         metadata-only edit, consistent with the mutable `superseded_by` field; the body stays
-        append-only. This recurred despite the note — ADR-0093's partial supersedence of ADR-0024's
+        append-only. This recurred despite the note; ADR-0093's partial supersedence of ADR-0024's
         Decision items 1 and 6 landed with no 0024 → 0093 back-pointer, again caught only in
         retrospective (fixed 2026-07-11). The recurrence has fired the promotion trigger: a
-        deterministic check is now warranted — a gate or `repoaudit` rule that, for each ADR body
+        deterministic check is now warranted, a gate or `repoaudit` rule that, for each ADR body
         citing another ADR's specific "Decision item", requires the cited ADR's `related:` to name
         the citing ADR.
     - title: "A milestone-time check must not double as an every-commit test"
@@ -246,7 +246,7 @@ data:
         exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a
         non-empty `[Unreleased]`. An early draft of its test suite ran the real check against the live
         embedded changelog in the ordinary gate run, with a skip for only one of the two mid-cycle
-        failure modes — which would have silently re-imposed the every-commit pin the ADR exists to
+        failure modes, which would have silently re-imposed the every-commit pin the ADR exists to
         remove, reddening the gate on the first in-cycle changelog entry (caught before commit,
         2026-07-08). When a check's whole point is to hold only at a milestone (a tag, a release, a
         schema migration), its unit tests belong on synthetic fixtures; the live repo state is input
@@ -256,7 +256,7 @@ data:
       tags: [gofmt-doccomment]
       body: |
         Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
-        a doc comment as the old quoting convention and rewrites it to a curly quote (`“`) — so a
+        a doc comment as the old quoting convention and rewrites it to a curly quote (`“`); so a
         comment trying to *depict* markdown double-backtick spans gets silently mangled into wrong
         typography, and restoring the backticks verbatim just re-triggers the rewrite (hit twice on
         2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
@@ -269,7 +269,7 @@ data:
         `./x sync` regenerates the generated ADR index of **every** domain doc named in an ADR's
         `domains:` frontmatter, not just the one whose current-state part the effort edited. The
         ADR-0080 flip commit staged `docs/domains/rendering.md` (its part changed) but missed the
-        index-only refresh of `docs/domains/tooling.md` — a gap the plan's file list and three review
+        index-only refresh of `docs/domains/tooling.md`, a gap the plan's file list and three review
         passes also missed, caught only by `git status` after the commit (2026-07-09). After the sync
         in a status-flip commit, stage from `git status`, not from a memorised file list; every
         `domains:` entry implies its rendered doc.
@@ -278,35 +278,35 @@ data:
       tags: [lock-manifest, commit-gate]
       body: |
         `.awf/awf.lock` is a single JSON manifest of every rendered file's hashes, so a change that
-        regenerates outputs across several commit *scopes* — skill templates (`rendering`), an ADR flip's
-        domain indexes (`adr`), an `agents-doc.yaml` invariant promotion (`invariants`) — produces one
+        regenerates outputs across several commit *scopes*, skill templates (`rendering`), an ADR flip's
+        domain indexes (`adr`), an `agents-doc.yaml` invariant promotion (`invariants`), produces one
         lock diff whose hunks cannot be sliced by pathspec: `git add <path>` is all-or-nothing on a file
-        and interactive `git add -p` is unavailable here. Don't fight it into per-scope commits — the
+        and interactive `git add -p` is unavailable here. Don't fight it into per-scope commits; the
         coupled regeneration *is* the concern. Bundle the source edits, their rendered outputs, and the
         whole lock into one commit; "one concern per commit" is satisfied because the concern is the
         coupled change, not each scope it happens to touch (ADR-0092 stage b, 2026-07-11: skill adoption
-        + ADR flip + invariant promotion landed as one `feat(rendering)` commit — the impl review
+        + ADR flip + invariant promotion landed as one `feat(rendering)` commit; the impl review
         confirmed the boundary was reasoned, not a scope violation). A genuinely independent, non-rendered
-        file — a `./x` arm, a lockless script — still commits on its own.
+        file (a `./x` arm, a lockless script) still commits on its own.
     - title: "Obsoleting rendered prose: sweep parts and whole narratives, not just templates"
       domains: [rendering]
       tags: [convention-parts, template-overlay]
       body: |
         Fixing a template's default sentence does not reach a project whose convention part
-        *overrides* that section — awf's own `.awf/parts/agents-doc/awf-setup.md` kept ADR-0081's
+        *overrides* that section; awf's own `.awf/parts/agents-doc/awf-setup.md` kept ADR-0081's
         obsoleted "disable them as a unit" instruction past the template rewrite, a sync, and three
         review passes (caught only by the impl review's dogfood check, 2026-07-09). The same session
         also left a domain current-state narrative self-contradicting by *appending* the correction
         while an earlier clause still asserted the old behavior. When a change obsoletes prose, grep
         the repo for the phrase being retired (`templates/`, `.awf/**/parts/`, and the rendered
-        outputs will surface every carrier, parts included) and rewrite stale clauses in place —
+        outputs will surface every carrier, parts included) and rewrite stale clauses in place;
         an appended correction beside a surviving old claim is worse than either alone.
     - title: "An empty scan result only counts once the probe provably ran"
       tags: [verification-discipline]
       body: |
         A compound shell command that errors mid-sequence silently drops every later segment: a
         `grep A; echo ---; grep B` probe whose separator failed to parse never ran the second grep,
-        and its missing output was read as "no matches — templates carry no repo-identity literals"
+        and its missing output was read as "no matches; templates carry no repo-identity literals"
         (2026-07-09, ADR-0082 brainstorm). The false premise shaped a design decision and survived
         until a fresh-context grounding check re-ran the scan and found two hits. Absence of output
         is not verified absence: run verification probes as separate invocations (or with an
@@ -319,22 +319,22 @@ data:
         A `coverage-ignore` comment asserts a reachability claim about the code shape it was written
         against; a refactor that merges call sites, changes a signature, or widens who runs the code
         invalidates the claim silently while the comment rides along verbatim. The schema-6 migration
-        rework (2026-07-09) carried three pre-existing ignores through exactly such a refactor — the
+        rework (2026-07-09) carried three pre-existing ignores through exactly such a refactor; the
         "fresh trees" justification was already false for a partial-prior-migration adopter tree, and
         ENOTDIR/EISDIR reached the "permission fault only" branches with no permissions involved; the
         impl review refuted all three (plus a fourth on a directed probe) by staging the state each
         declared impossible. When an edit touches a line carrying an ignore, the ignore is part of
-        the edit: re-probe the claim (try to stage the "impossible" state — a leftover destination
+        the edit: re-probe the claim (try to stage the "impossible" state, a leftover destination
         file, a path component as a regular file, a config path as a directory) or drop it and cover
         the branch; `./x audit-local`'s `coverage-ignore-added` warning flags every touched ignore in
         the range for exactly this re-evaluation. A fourth recurrence (ADR-0088) sharpened the
         heuristic: an ignore claiming "X already exercised this, so it cannot fail here" is false
-        whenever the guarded call consumes an input X never touched — five "cannot fail after
+        whenever the guarded call consumes an input X never touched; five "cannot fail after
         RenderAll succeeded" ignores guarded the generated config reference, whose intro convention
         part RenderAll never reads because the reference renders outside it; a directory staged at
         the part path reached every one. A fifth recurrence (the 2026-07-10 worktree fix) refuted an
         "only a delete race loses it" claim on a read-after-stat: file *permissions* are the standard
-        refuting move for any "stat just succeeded, so the read cannot fail" shape — a `chmod 0o000`
+        refuting move for any "stat just succeeded, so the read cannot fail" shape; a `chmod 0o000`
         file stats fine and fails the read deterministically (guard the test with a
         `os.Geteuid() == 0` skip, since root bypasses it).
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
@@ -348,26 +348,26 @@ data:
         `Kind == "string"`, so a prose knob reintroduced as `Kind: "enum"` would have passed both
         descriptor-parity and the pin without the successor ADR the invariant exists to force; the
         impl review caught it the same day. When a pin means "this set is closed", enumerate the
-        partition exhaustively — iterate everything, route each element to an asserted bucket
-        (pinned set, known-exempt set), and fail on any element that lands in neither — instead of
+        partition exhaustively. Iterate everything, route each element to an asserted bucket
+        (pinned set, known-exempt set), and fail on any element that lands in neither, instead of
         filtering to the bucket you thought of first.
     - title: "A Proposed ADR's same-commit state-doc update must not speak in present tense"
       domains: [adr-system]
       tags: [adr-lifecycle, domain-staleness]
       body: |
         The proposing step updates the shifted domain's current-state doc in the ADR's own commit,
-        but the ADR is still `Proposed` there — writing "the four prose knobs are removed" while the
+        but the ADR is still `Proposed` there; writing "the four prose knobs are removed" while the
         catalog still carries all four makes the state doc false until implementation lands, and
         permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write the
-        propose-commit sentence in decision tense anchored to the status — "ADR-NNNN (Proposed)
-        narrows the policy … and will remove …" — and flip it to present tense in the
+        propose-commit sentence in decision tense anchored to the status, "ADR-NNNN (Proposed)
+        narrows the policy … and will remove …", and flip it to present tense in the
         implementation commit that makes it true, alongside the status flip.
     - title: "Retiring an Implemented ADR's invariant couples the feature to the successor's status flip"
       domains: [invariants]
       tags: [invariant-retirement, adr-lifecycle]
       body: |
         The invariant scanner demands every `invariant:` slug of an Implemented ADR stay backed until an
-        *Implemented* successor retires it — so a commit that removes or renames the backing marker
+        *Implemented* successor retires it; so a commit that removes or renames the backing marker
         cannot land while the successor is still Proposed, and the green-gate-per-commit rule then
         forces the feature and the successor's `Implemented` flip into one commit. The ADR-0085
         implementation (2026-07-10) planned "feature commit, then flip commit" and hit this at the
@@ -385,8 +385,8 @@ data:
         clean (the output is exactly what the config produces), and only a human reading the
         rendered file notices. Bit the ADR-0086 docs commit (2026-07-10): the rendering domain's
         current-state part quoted both tokens bare while the same file escaped
-        `{{=awf:sectionDefault}}` two sentences earlier. Machine-checking this is off the table —
-        substituting inside backticks is also a legitimate pattern — so it is promoted to a
+        `{{=awf:sectionDefault}}` two sentences earlier. Machine-checking this is off the table (
+        substituting inside backticks is also a legitimate pattern), so it is promoted to a
         code-review focus item (`part-placeholder-escaping`): quoted-as-syntax means escaped,
         meant-to-resolve means bare, and verify by reading the rendered file, not the part.
     - title: "Moving a check earlier in the pipeline steals a later stage's error-branch coverage"
@@ -397,8 +397,8 @@ data:
         unreadable file) to pin a *late* stage's error propagation silently changes meaning when a
         new earlier stage starts reading the same state: the error now surfaces there, the late
         branch goes uncovered, and the 100% gate flags a line nobody edited. ADR-0086's open-time
-        domain-sidecar validation did this to `TestAuditPropagatesDomainSidecarReadError`
-        (2026-07-10) — Audit's read-error branch was suddenly unreachable from a pre-corrupted
+        domain-sidecar validation did this to `TestAuditPropagatesDomainSidecarReadError`;
+        (2026-07-10) Audit's read-error branch was suddenly unreachable from a pre-corrupted
         tree. The repair pattern: corrupt *after* the earlier stage has run (post-`Open`
         mutation), so each stage's own error branch keeps a test that reaches it; and when adding
         an earlier check, grep the tests for fixtures corrupting the state it newly reads.
@@ -407,18 +407,18 @@ data:
       body: |
         Two agent sessions (or an agent and a human) working in the same checkout share the staging
         area: a bare `git commit` after `git add <own files>` commits the *whole index*, silently
-        sweeping whatever the other session had staged — it happened between the ADR-0087 and
+        sweeping whatever the other session had staged; it happened between the ADR-0087 and
         ADR-0088 efforts (2026-07-10), folding one effort's staged review fixes into the other's
         feature commit. Repair: `git reset --soft HEAD~1`, then re-commit with an explicit pathspec
         (`git commit -m … -- <paths>`), which also leaves the foreign entries staged exactly as
         found. Prevention: when a `git status` shows staged entries you did not stage, commit with a
-        pathspec (tracked files only — stage a brand-new file first) or move one effort to a
+        pathspec (tracked files only; stage a brand-new file first) or move one effort to a
         worktree; also prefer targeted reverts over `git checkout <file>` while your own edits are
         uncommitted, which is how a verify-mutation revert erased a just-written test the same day.
 
         **This recurred within hours of being recorded** (same day, opposite direction: the
         ADR-0088 session's feature commit swept the ADR-0089 effort's `render.go` hunks, leaving a
-        commit that does not compile standalone — green-gate-per-commit is unenforceable across a
+        commit that does not compile standalone; green-gate-per-commit is unenforceable across a
         shared tree because the hook validates the *tree*, not the commit). Pathspec discipline
         cannot separate two efforts' hunks inside one file, and prose did not prevent the second
         occurrence. The real rule: **parallel sessions get separate git worktrees, full stop.** A
@@ -429,8 +429,8 @@ data:
       tags: [cross-references, link-resolution]
       body: |
         An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
-        drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input")
-        — three invented link targets landed in ADR-0087's first draft (2026-07-10) and survived to
+        drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input");
+        three invented link targets landed in ADR-0087's first draft (2026-07-10) and survived to
         the verify pass because the ADR-0020 dead-link scan covers awf-managed *rendered* docs
         only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then link.
     - title: "`adr.ADR.Title` already carries the `ADR-NNNN: ` prefix"
@@ -439,7 +439,7 @@ data:
       body: |
         `adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: …` heading, so it includes the
         `ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints
-        both — as `awf context`'s `ADRRef` did in its first draft (2026-07-11) — double-prints the
+        both, as `awf context`'s `ADRRef` did in its first draft (2026-07-11), double-prints the
         number (`ADR-0092 … ADR-0092: Title`); plan review caught it. Strip the prefix
         (`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
         `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
@@ -448,15 +448,15 @@ data:
       domains: [tooling]
       tags: [repo-open]
       body: |
-        In a linked worktree (`git worktree add`) — and the submodule layout — `.git` is a
+        In a linked worktree (`git worktree add`), and the submodule layout, `.git` is a
         `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
         `open repo: … .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
-        ADR-0090 impl review in a session worktree — every parallel session uses one). Fixed the
+        ADR-0090 impl review in a session worktree; every parallel session uses one). Fixed the
         same day: `OpenRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
         `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
         `EnableDotGitCommonDir`; regression tests hand-craft the worktree layout (go-git cannot
         create one). The standing rule from the first entry above still governs: any future
-        awf code opening a repo goes through `internal/git.OpenRepo` — `git.PlainOpen` gets neither
+        awf code opening a repo goes through `internal/git.OpenRepo`; `git.PlainOpen` gets neither
         the extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
         until ADR-0092's stage-a extracted it into the shared `internal/git` package.)
     - title: "Section parts carry their own heading"
@@ -464,7 +464,7 @@ data:
       tags: [convention-parts, section-assembly]
       body: |
         A convention part replaces its section's *body*, and for most doc/guide sections the
-        `## Heading` line lives inside that body — a part written without it renders a headless
+        `## Heading` line lives inside that body; a part written without it renders a headless
         section (ADR-0090's identity part landed headingless on first sync; only comparing the
         rendered file against this repo's own parts caught it). When authoring a part, check the
         section's default (or an existing adopter's part) for whether the heading is yours to write.
@@ -474,7 +474,7 @@ data:
       body: |
         A `cd <dir> && <edit>` chain silently skips the edit when the `cd` fails (wrong cwd
         assumption across tool calls), while an unchained command later in the same block still
-        runs and succeeds — the block "worked", green output and all, minus the one side effect
+        runs and succeeds; the block "worked", green output and all, minus the one side effect
         that mattered (an `invariants:` config append vanished this way in the ADR-0090 session;
         only `tail`-ing the file exposed it). After any compound chain that edits state, verify the
         target's content, not the block's exit status.
@@ -485,10 +485,10 @@ data:
         Anything that walks or opens the repo tree itself must define its repository boundary;
         the Go toolchain gets this free (dot-dirs and nested modules are invisible to `./...`),
         hand-rolled walkers and repo opens do not. Three independent instances bit on 2026-07-10
-        alone: `awf audit` could not open a linked-worktree checkout (`.git` gitfile — the entry
+        alone: `awf audit` could not open a linked-worktree checkout (`.git` gitfile, the entry
         above), `TestLoadReadsTreeRoot`'s legacy-ref sweep flagged `internal/migrate` copies
         inside `.claude/worktrees/` session checkouts, and the invariants scanner let markers in
-        nested checkouts silently back this project's slugs — the worst shape, a false green in
+        nested checkouts silently back this project's slugs; the worst shape, a false green in
         both directions. The rule: a filesystem walk prunes any subdirectory carrying its own
         `.git` entry (directory in a primary clone, gitdir-pointer file in a worktree or
         submodule) and takes a deliberate stance on hidden directories; a repo open resolves the
@@ -499,28 +499,28 @@ data:
       tags: [invariant-backing, marker-scoping]
       body: |
         The invariant-backing scanner (`internal/invariants`) matches a slug only when the marker
-        opens its line after indentation — `strings.TrimLeft(line, " \t")` must start with the
+        opens its line after indentation; `strings.TrimLeft(line, " \t")` must start with the
         configured marker, then `^\s*invariant:\s*<slug>`. This is deliberate: a mid-line match
         could sit inside a string literal (a test fixture's source-code string) and falsely back a
         slug. The consequence is a natural-looking backing that silently does not count: a trailing
         `clone.Docs = maps.Clone(...) // invariant: local-doc-catalog-clone` reads as *unbacked*,
         and because `awf check` only enforces backing once the ADR is `Implemented`, the gap hides
-        until the status flip — exactly when the effort is trying to conclude. Put the
+        until the status flip, exactly when the effort is trying to conclude. Put the
         `// invariant: <slug>` on its own line directly above the statement it describes.
     - title: "Relocating a cross-cutting guard out of a shared helper drops it for internal callers"
       domains: [tooling]
       tags: [cli-dispatch, version-authority]
       body: |
         `gate()` (the binary-version guard) was applied *transitively*: `runSync` gated at its top,
-        so every command that chained `runSync` — including the `Ungated` `init` and `upgrade` —
+        so every command that chained `runSync` (including the `Ungated` `init` and `upgrade`)
         inherited the refusal without a direct `gate()` call. Moving the gate up to the parse-once
         driver (ADR-0094) removed it from `runSync`; the top-level `sync` command stayed covered by
         the driver, but `init`/`upgrade` (Ungated, gating only through their chained sync) silently
-        lost it — `awf init` on a schema-behind tree re-stamped the current schema over an unmigrated
+        lost it; `awf init` on a schema-behind tree re-stamped the current schema over an unmigrated
         config instead of refusing "run awf upgrade". The transitive gate was real but *untested*, so
         the reclassification looked complete and the gap survived to the review step. When you relocate
-        a guard out of a shared helper, enumerate every *internal* caller of that helper — not just the
-        top-level entry point you are reclassifying — and add a per-caller test for each one that still
+        a guard out of a shared helper, enumerate every *internal* caller of that helper (not just the
+        top-level entry point you are reclassifying) and add a per-caller test for each one that still
         needs the guard. `SyncReport`'s corrupt-lock refusal is not a substitute: it catches a corrupt
         lock but not a schema- or version-behind one, which only `gate()` sees.
     - title: "A plan editing a catalog template or default under-enumerates the render fan-out"
@@ -529,47 +529,47 @@ data:
       body: |
         A plan whose diff touches a shipped template (`templates/**`) or a catalog default
         (`internal/catalog/standard.go`) naturally lists the one `.claude/` output the author is looking
-        at — and misses the rest of the fan-out. One source edit re-renders **every enabled target**
+        at, and misses the rest of the fan-out. One source edit re-renders **every enabled target**
         (`.claude/` *and* `.cursor/` here), **both** `.awf/awf.lock` files (root *and* `examples/sundial`),
         and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
         `[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
         plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,
         prefix `sundial`), omitted the `.cursor/` output and the example lock, and scheduled no changelog
-        task — caught downstream by plan review, by reading `git status`, and by `./x audit-local`
+        task; caught downstream by plan review, by reading `git status`, and by `./x audit-local`
         respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
         explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at
-        execution treat the plan's `git add` list as a *floor* — run `./x sync`, then stage exactly what
+        execution treat the plan's `git add` list as a *floor*; run `./x sync`, then stage exactly what
         `git status --short` reports, adding paths the plan forgot rather than only dropping ones it
         over-named.
 
         **Recurred (ADR-0103, 2026-07-13)** despite this note: adding one `internal/configspec` entry
         regenerates `examples/sundial/docs/config-reference.md` too, but the Phase-3 commit staged only
-        the root reference — leaving the example regen for a follow-up commit and three intermediate
+        the root reference, leaving the example regen for a follow-up commit and three intermediate
         commits `./x check`-red at checkout. The root cause the prose above missed is why staging
         discipline alone keeps failing here: the pre-commit hook validates the *working tree* (where the
         preceding `./x sync` had already written the example file), not the staged snapshot, so a
-        regenerated-but-unstaged output passes the hook while the commit itself is drift-red — the
+        regenerated-but-unstaged output passes the hook while the commit itself is drift-red; the
         `.githooks/pre-commit` staged-slice check runs `go build`, not `./x check`. Until the deferred
         fix lands (extend the staged-slice check to run `./x check`, or a `repoaudit` rule flagging a
         commit that touches `internal/configspec`/`internal/catalog`/`templates` but omits the
         `examples/sundial` outputs), the manual guard is: after `./x sync`, `git status --short` and
         stage **every** reported path including the `examples/sundial` tree, and sanity-check by
         `git stash`-ing nothing and re-running `./x check` against the *staged* set, not just the tree.
-    - title: "GoReleaser aborts on a dirty git tree — pre-release artifacts belong outside the worktree"
+    - title: "GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree"
       domains: [tooling]
       tags: [release-pipeline]
       body: |
         `goreleaser release` runs a git-state validation that refuses a dirty tree, and *untracked* files
         count (`git status --porcelain` lists them as `??`). So any `release.yml` step that produces a file
-        before the GoReleaser step must write it **outside the checkout** — `release.yml` extracts the
+        before the GoReleaser step must write it **outside the checkout**; `release.yml` extracts the
         curated release notes into `"$RUNNER_TEMP/release-notes.md"` and passes that absolute path via
         `--release-notes` precisely so the tree GoReleaser sees stays clean (ADR-0096). Writing
-        `release-notes.md` into the repo root would have reddened the very release it was added to fix — a
+        `release-notes.md` into the repo root would have reddened the very release it was added to fix, a
         non-obvious coupling caught in ADR review, not by any local check (the failure only manifests on a
         real tag build). When adding a future pre-release step, keep its output under `$RUNNER_TEMP` or add
         the path to `.gitignore`; do not assume a build-time artifact in the worktree is harmless
         (2026-07-12).
-    - title: "Sidecar `data` is not placeholder-substituted — drop `{{=awf:…}}` escapes when converting a part"
+    - title: "Sidecar `data` is not placeholder-substituted, drop `{{=awf:…}}` escapes when converting a part"
       domains: [rendering]
       related: [89, 99]
       tags: [placeholder-degradation, sidecar-fields]
@@ -578,10 +578,10 @@ data:
         (ADR-0057), so a part that *documents* a placeholder token backslash-escapes it (`\{{=awf:key}}`)
         to render the literal token. A sidecar-derived doc's `data` value is different: the transform hands
         it to the template as a plain string spliced in via Go `{{ . }}`, with no awf-placeholder pass over
-        it — so a `\{{=awf:…}}` escape copied verbatim from a raw part into `data.<key>` renders the
+        it; so a `\{{=awf:…}}` escape copied verbatim from a raw part into `data.<key>` renders the
         backslash literally, and an unescaped `{{=awf:…}}` renders as the literal token (never substituted).
         This bit the ADR-0099 pitfalls conversion: the 40-entry hand-migration copied entries.md's escaped
-        tokens straight into `data.pitfalls`, and the backslashes leaked into the rendered doc — `awf check`
+        tokens straight into `data.pitfalls`, and the backslashes leaked into the rendered doc; `awf check`
         stayed clean (the output is exactly what the data says), so only diffing the rendered file against
         the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
         `\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
@@ -591,10 +591,10 @@ data:
       tags: [invariant-backing, agents-guide]
       body: |
         When an ADR flips to Implemented, the backed-invariant check (ADR-0008) verifies each `invariant:` slug
-        has a source marker — but NOTHING verifies the slug also appears as a bullet in the agent guide's
+        has a source marker, but NOTHING verifies the slug also appears as a bullet in the agent guide's
         Invariants section (authored in `.awf/agents-doc.yaml`, rendered into `AGENTS.md`). Every recent
         invariant-bearing ADR (0091, 0092, 0098, 0099, 0102) added those bullets by hand, and a plan can
-        omit the step with a fully green gate — the drift is silent, caught here only by a reviewer's
+        omit the step with a fully green gate; the drift is silent, caught here only by a reviewer's
         doc-currency lens. Until a deterministic check exists (a deferred follow-up: assert every
         non-retired Implemented-ADR `invariant:` slug has a matching agents-doc bullet), treat the
         `.awf/agents-doc.yaml` update as a mandatory step of any invariant-introducing implementation, in
@@ -606,7 +606,7 @@ data:
       body: |
         An `awf` command handler that calls `project.Open` and then a project assembly method (e.g.
         `runUncovered` → `Uncovered`) cannot reach an assembly error whose only source is state `Open`
-        re-validates. `Open` runs `validateAgainstCatalog`, which reads every domain sidecar — so a
+        re-validates. `Open` runs `validateAgainstCatalog`, which reads every domain sidecar; so a
         malformed sidecar faults at `Open`, never at the later assembly call, making that assembly's
         `if err != nil { return err }` branch unreachable from the CLI and a legitimate `// coverage-ignore`
         (the assembly's own error stays covered at the project layer, where the test reuses one `Open`ed
@@ -625,7 +625,7 @@ data:
         or convention: `.awf/agents-doc.yaml` (AGENTS.md rules AND the `(inv: <slug>)` prose
         citations on every invariant bullet), `.awf/docs/glossary.yaml`, the domain
         `current-state.md` narratives and their citations, `.awf/docs/pitfalls.yaml`, the
-        adr-readme part, and the architecture/working-with-awf guide sources — not just the one
+        adr-readme part, and the architecture/working-with-awf guide sources, not just the one
         authoring template. A post-rename `grep -rnE '\b<oldtoken>' .awf/` reaching zero is the
         cheap catch (2026-07-13).
     - title: "A new config field needs a config-reference live-state projection case"
@@ -634,25 +634,25 @@ data:
       body: |
         `docs/config-reference.md`'s live-state column is projected per key by a switch in
         `internal/project/configreference.go` (`liveState`); a key with no `case` falls through to
-        `default: return "—"`. `invariants.testGlobs` shipped its configspec entry and schema without a
-        projection case, so the reference rendered `—` (which reads as "unset") even once awf configured
-        it — and `awf check` cannot catch this, because regeneration is idempotent, so the
+        a `default` case that returns the `n/a` placeholder. `invariants.testGlobs` shipped its configspec entry and schema without a
+        projection case, so the reference rendered the `n/a` placeholder (which reads as "unset") even once awf configured
+        it, and `awf check` cannot catch this, because regeneration is idempotent, so the
         wrong-but-stable cell never drifts. The impl review caught it only by eye (2026-07-13). When
         adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
-        sibling — `invariants.testGlobs` mirrors `invariants.sources`) and assert the rendered value in a
-        `configreference_test.go` case; a `—` for a set top-level field is the smell.
+        sibling, `invariants.testGlobs` mirrors `invariants.sources`) and assert the rendered value in a
+        `configreference_test.go` case; an `n/a` placeholder for a set top-level field is the smell.
     - title: "Referencing a new var in an always-on template shifts that var's consumer set"
       domains: [rendering, config]
       tags: [config-reference, placeholder-degradation]
       related: [86, 88, 108]
       body: |
         Making a template interpolate `.vars.<x>` for the first time changes which artifacts *consume*
-        that var — and if the template is a mandatory always-on singleton, the var is now consumed in
+        that var, and if the template is a mandatory always-on singleton, the var is now consumed in
         every project, which two consumer-coupled surfaces encode: the config-reference "Consumed by:"
         golden line (`internal/project/configreference_test.go`) and the unused-var isolation test
         (`internal/project/unused_test.go` `TestPartPlaceholderConsumesVar`, whose premise that a var is
         otherwise-unused in its fixture breaks). ADR-0108 made the `plans-template` singleton reference
-        `.vars.gateCmd`, and both tests failed at the gate — the grounding check, the ADR fan-out, the
+        `.vars.gateCmd`, and both tests failed at the gate; the grounding check, the ADR fan-out, the
         plan, plan-review, AND the resync all missed them; only `./x gate` caught it (2026-07-13). The
         render-fan-out sweep is about doc *outputs*; this is a distinct var-*consumer* fan-out. When a
         template starts referencing a var it did not before, grep the tests for that var
@@ -668,7 +668,7 @@ data:
         not an arbitrary token: GitHub Linguist registers it as an alias of its "Git Commit" grammar,
         so ```commit is a real, highlighted language identifier. Two forces followed from that. (1)
         Keep `commit` rather than a namespaced `awf-commit`, so the block keeps its commit-message
-        syntax highlighting — `awf-commit` is unknown to every highlighter. (2) Make the check fail
+        syntax highlighting; `awf-commit` is unknown to every highlighter. (2) Make the check fail
         *safe*: a ```commit block is validated by default (a real planned subject in the natural fence
         is caught, not silently skipped), with a second info-string token `awf-ignore` (```commit
         awf-ignore) as the per-block opt-out for a display-only example. Highlighting survives the
@@ -682,11 +682,11 @@ data:
       tags: [example-adopter, publication-safety]
       body: |
         A new advisory note wired into `awf check` (a producer folded into
-        `Project.AdvisoryNotes`) fires over whatever corpus the project has — including the committed
+        `Project.AdvisoryNotes`) fires over whatever corpus the project has, including the committed
         example adopter `examples/sundial`, whose ADR-0090 `example-zero-notes` gate fails on *any*
         `note:` line. sundial carries free-form ADR/pitfall tags but no `tags:` vocabulary, so a
         tag-health note that keyed only off tag *presence* would fire there and redden the example
-        check. Guard the producer on the opt-in config it governs — `tagHealthNotes` returns early when
+        check. Guard the producer on the opt-in config it governs; `tagHealthNotes` returns early when
         `len(p.Cfg.Tags) == 0`, so an un-curated adopter and the example stay note-free, mirroring how
         `tag-vocabulary-governed` is itself inert under an empty vocabulary. Any future advisory note
         must degrade to inert for a minimally-configured project, or `example-zero-notes` catches it
@@ -697,16 +697,16 @@ data:
       body: |
         The in-place-editable-sections primitive (ADR-0100) was designed and unit-tested entirely
         against Markdown, then its first *shell* consumer (the managed runner `x`, ADR-0101) exposed
-        two gaps invisible until a shell file was rendered *and executed/parsed* — each forcing a
+        two gaps invisible until a shell file was rendered *and executed/parsed*; each forcing a
         mid-implementation ADR amendment. (1) The `awf:edit`-family provenance pointers survive into
         output *as comments*, and an HTML `<!-- … -->` pointer is a hard `bash` syntax error, so the
-        pointers had to become comment-syntax-aware (`#` for a `#!`-shebang target, HTML otherwise —
+        pointers had to become comment-syntax-aware (`#` for a `#!`-shebang target, HTML otherwise;
         the same sniff `injectBanner` already used). (2) awf's sync wrote every file `0644`, but the
         runner is invoked as `./x`, so it had to be rendered executable. Both were invisible to
         `go test` (which never `bash -n`s or executes the rendered output) and to a Markdown-only
         mental model. Lesson: when a rendering primitive will serve a new *output language*, render a
         real target of that language and exercise it the way an adopter will (`bash -n`, execute,
-        parse) before finalizing the ADR — Markdown's assumptions (HTML comments are inert, no execute
+        parse) before finalizing the ADR; Markdown's assumptions (HTML comments are inert, no execute
         bit) do not transfer, and the format-specific property (comment syntax, file mode, escaping)
         that must survive into output is the first thing to validate (ADR-0100, ADR-0101; 2026-07-15).
     - title: "A non-catalog config-tree render unit has a hand-wired fan-out the catalog table doesn't cover"
@@ -714,16 +714,16 @@ data:
       tags: [render-completeness, closed-config-tree, template-embed]
       body: |
         A catalog skill/agent/doc rides a table-driven fan-out (enable array, catalog pool, render
-        loop, sweep, checks), but a config-tree singleton rendered by a dedicated `RenderAll` block —
-        the bootstrap, the hooks, and now the runner `x` (ADR-0101) — must be wired *by hand* in every
+        loop, sweep, checks), but a config-tree singleton rendered by a dedicated `RenderAll` block,
+        the bootstrap, the hooks, and now the runner `x` (ADR-0101), must be wired *by hand* in every
         place the table would otherwise cover, and each omission surfaces far from the render block.
         Adding the runner touched, and each was easy to miss: the `//go:embed` directive
-        (`templates/embed.go` — a template absent from the embed FS fails only at first render), the
-        `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel` — an
+        (`templates/embed.go`, a template absent from the embed FS fails only at first render), the
+        `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel`, an
         unclaimed `.awf/runner/parts` made a `create … to override` pointer's own advice fail `check`,
         caught only in impl review), the `internal/configspec` entry + regenerated config-reference
         (ADR-0088 parity), and the nameless-singleton enable-CLI arm (`cmd/awf` hardcodes each
         singleton kind in the dispatcher, the toggle, `enableDisableSingleton`, `awf list`, and the
-        unknown-kind message — five sites, no central list). Lesson: when adding a config-tree singleton, walk the full
-        list — embed, render block, sweep claim, configspec/reference, enable CLI, example adoption —
+        unknown-kind message; five sites, no central list). Lesson: when adding a config-tree singleton, walk the full
+        list (embed, render block, sweep claim, configspec/reference, enable CLI, example adoption)
         rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).

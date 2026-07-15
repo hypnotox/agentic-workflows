@@ -14,7 +14,7 @@ is the canonical install path; `go install` is the source fallback.
 awf is pre-1.0; versions are `vMAJOR.MINOR.PATCH` (SemVer). `project.Version`
 (`internal/project/project.go`) is the single version authority (ADR-0049): it drives `awf
 version`, the lock's `AWFVersion`, the bootstrap pin, and the binary-version gate. The git tag
-must equal it — the Release workflow hard-fails on a mismatch before building, so the tag can
+must equal it; the Release workflow hard-fails on a mismatch before building, so the tag can
 never mint a version the binary does not carry. The workflow also hard-fails when the changelog
 does not pin the release (`cmd/releasecheck`, ADR-0078): the newest entry must equal
 `project.Version` and the standing `[Unreleased]` section must be present and empty, so a tag
@@ -36,9 +36,9 @@ below `project.Version`, or the gate fails.
 2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already
    matches; bump it only when it does not. A mid-cycle bump touches only the const and the
-   lock, never the changelog — the gate holds only ordering (entries strictly descending,
+   lock, never the changelog; the gate holds only ordering (entries strictly descending,
    newest at or below `project.Version`; ADR-0078). Changes accumulate under a standing
-   `## [Unreleased]` section at the top of `changelog/CHANGELOG.md` as they land — grouped
+   `## [Unreleased]` section at the top of `changelog/CHANGELOG.md` as they land, grouped
    into Breaking changes/Features/Bug fixes/Others by adopter-facing effect (ADR-0041), so
    the changelog is always release-ready. Now, at release, rename that header to
    `## [0.2.0] - YYYY-MM-DD` (the real date you tag) and add a fresh empty `## [Unreleased]`
@@ -85,7 +85,7 @@ go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 ```
 
 The version matches the `version:` input pinned in the workflows; `cmd/pincheck` enforces
-the workflow side — keep these two commands in step by hand (ADR-0079).
+the workflow side; keep these two commands in step by hand (ADR-0079).
 
 `--snapshot` writes artifacts to `dist/` (gitignored) and skips the GitHub Release. The same two
 commands run on every pull request via the `release-config` job in `.github/workflows/ci.yml`, so a
@@ -93,8 +93,8 @@ broken release config fails CI before any tag is pushed.
 
 ## Notes
 
-- **Repo visibility.** The repo is public, so release binaries download without authentication —
-  from the Releases page or via `gh release download v0.2.0` — and
+- **Repo visibility.** The repo is public, so release binaries download without authentication
+  (from the Releases page or via `gh release download v0.2.0`) and
   `go install github.com/hypnotox/agentic-workflows/cmd/awf@latest` resolves without a token.
 - **Undo a bad tag.** If a tag was pushed in error, delete it locally and remotely, then delete the
   GitHub Release it created:
@@ -106,11 +106,11 @@ broken release config fails CI before any tag is pushed.
   ```
 
 - **Tamper posture (ADR-0079).** `checksums.txt` and the bootstrap's SHA-256 check verify
-  download *integrity*, not publisher authenticity — a compromise of the release workflow or
+  download *integrity*, not publisher authenticity: a compromise of the release workflow or
   its token can rewrite binary and checksums together. The accepted mitigations are the
   SHA-pinned actions, dependabot currency, and the gate-and-ancestry checks on tag push;
   artifact attestation and cosign signing are deliberately deferred (revisit at 1.0 or on
   adopter demand).
 - **Hand-maintained files.** `.goreleaser.yaml` and the workflow files live outside awf's
-  render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them — edit them
+  render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them; edit them
   directly.

@@ -36,7 +36,7 @@ by this repository's own checks (ADR-0090).
 - `awf version`: print the binary's version.
 
 `awf context --uncovered [<scan-root>...]` reports git-tracked paths owned by no
-domain — the signal for where to configure a new domain.
+domain: the signal for where to configure a new domain.
 
 
 <!-- awf:edit config-and-overrides — default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->

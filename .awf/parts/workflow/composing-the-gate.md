@@ -6,6 +6,6 @@ profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
 workflow-pin check (`cmd/pincheck`, ADR-0079). Every step is deterministic: same tree in, same verdict out.
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
-hook payload (see the local-hooks section below). And there is no slower tier — `./x gate full`
+hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`
 runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
 (see [docs/testing.md](testing.md)).

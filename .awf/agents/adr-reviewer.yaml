@@ -6,5 +6,5 @@ data:
     focusItems:
         - description: ADRs that change the config-tree schema or the lock format must enumerate all consumers (config, render, manifest, migrate) and confirm backward compatibility or a migration path.
           name: Schema stability
-        - description: ADRs touching templates must confirm the missingkey=zero constraint is preserved — no template may render a no-value token when vars are empty strings.
+        - description: ADRs touching templates must confirm the missingkey=zero constraint is preserved; no template may render a no-value token when vars are empty strings.
           name: Template invariants

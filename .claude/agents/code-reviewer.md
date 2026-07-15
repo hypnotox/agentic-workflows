@@ -56,9 +56,9 @@ Apply all five lenses to every implementation diff:
 
 - error returns must wrap with %w to preserve the error chain
 
-- nil map/pointer dereferences — check before indexing or method calls
+- nil map/pointer dereferences; check before indexing or method calls
 
-- missingkey=zero renders a no-value token for missing interface{} entries — keep vars complete; awf check catches this post-sync
+- missingkey=zero renders a no-value token for missing interface{} entries. Keep vars complete; awf check catches this post-sync
 
 - template FuncMap functions must handle empty-string vars gracefully
 
@@ -69,16 +69,16 @@ Apply all five lenses to every implementation diff:
 **test-coverage**: behaviour changes carry tests in the same commit; no assertion is weakened to pass
 
 
-**two-sided-set-checks**: when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked — one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
+**two-sided-set-checks**: when code compares two collections (lock vs rendered set, catalog pool vs on-disk files, declared vs on-disk parts), verify both directions are walked; one-sided iteration caused three independent check blind spots in the 2026-07-07 audit batch
 
 
-**part-placeholder-escaping**: a convention part that quotes a `\\{{=awf:key}}` token as documentation must backslash-escape it — an unescaped consumable token is silently substituted into the published output (the value where the token name belongs) with `awf check` clean, so only reading the rendered file catches it. Bit the ADR-0086 docs commit (rendering current-state part); the intent is ambiguous to a machine (substituting inside backticks is also legitimate), so this stays a judgment check: quoted-as-syntax means escaped, meant-to-resolve means bare
+**part-placeholder-escaping**: a convention part that quotes a `\\{{=awf:key}}` token as documentation must backslash-escape it; an unescaped consumable token is silently substituted into the published output (the value where the token name belongs) with `awf check` clean, so only reading the rendered file catches it. Bit the ADR-0086 docs commit (rendering current-state part); the intent is ambiguous to a machine (substituting inside backticks is also legitimate), so this stays a judgment check: quoted-as-syntax means escaped, meant-to-resolve means bare
 
 
-**coverage-ignore-reachability**: a new or retained `coverage-ignore` states a reachability claim — try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; treat an ignore *inherited through a refactor* (call sites merged, signature changed, callers widened) as unproven by default, since the claim was written against the old shape. Three false claims surfaced on 2026-07-08 (stampLockSchema, the sectionDefault call site, gate's "TOCTOU-only") and four more on 2026-07-09 (the singleton-standard-docs relocate cluster, all carried through a refactor), each hiding a reachable branch
+**coverage-ignore-reachability**: a new or retained `coverage-ignore` states a reachability claim; try to refute it by staging the state it declares impossible (e.g. the file combination or call order it rules out) before accepting it; treat an ignore *inherited through a refactor* (call sites merged, signature changed, callers widened) as unproven by default, since the claim was written against the old shape. Three false claims surfaced on 2026-07-08 (stampLockSchema, the sectionDefault call site, gate's "TOCTOU-only") and four more on 2026-07-09 (the singleton-standard-docs relocate cluster, all carried through a refactor), each hiding a reachable branch
 
 
-**repo-boundary-enumeration**: code or tests that enumerate or open the repo tree must define their repository boundary: a filesystem walk prunes nested checkouts (a subdirectory with its own `.git` entry — directory or gitdir-pointer file) and takes a deliberate stance on hidden dirs; a repo open resolves the gitfile layout. The Go toolchain is immune (dot-dirs and nested modules invisible to `./...`), hand-rolled walkers are not — three independent instances on 2026-07-10 (audit gitfile open, config_test legacy-ref sweep into .claude/worktrees/, invariants scanner backed by nested-checkout markers). Git-history-based enumeration is immune by construction
+**repo-boundary-enumeration**: code or tests that enumerate or open the repo tree must define their repository boundary: a filesystem walk prunes nested checkouts (a subdirectory with its own `.git` entry, directory or gitdir-pointer file) and takes a deliberate stance on hidden dirs; a repo open resolves the gitfile layout. The Go toolchain is immune (dot-dirs and nested modules invisible to `./...`), hand-rolled walkers are not; three independent instances on 2026-07-10 (audit gitfile open, config_test legacy-ref sweep into .claude/worktrees/, invariants scanner backed by nested-checkout markers). Git-history-based enumeration is immune by construction
 
 
 

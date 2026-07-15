@@ -52,10 +52,10 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.
 
-   Then also run the repo-local audit — `./x audit-local ${baseSha}..${headSha}` (the repo's
+   Then also run the repo-local audit: `./x audit-local ${baseSha}..${headSha}` (the repo's
    own `cmd/repoaudit`, ADR-0073) over the same session range. It mirrors this same finding
-   contract: an `Error` finding — for example an adopter-facing change in the range with no
-   `changelog/CHANGELOG.md` `[Unreleased]` entry — blocks the review from concluding, so
+   contract: an `Error` finding (for example an adopter-facing change in the range with no
+   `changelog/CHANGELOG.md` `[Unreleased]` entry) blocks the review from concluding, so
    resolve it or escalate it as a user-decision item; `Warning` findings are advisory. It is
    repo-specific dev tooling, deliberately not a rule in the shipped `awf audit`, and it does
    not run the gate.

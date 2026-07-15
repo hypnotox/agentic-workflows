@@ -9,7 +9,7 @@ audit:
     - name: adr-system
       meaning: the ADR machinery code (ACTIVE.md generation, lifecycle)
     - name: awf
-      meaning: genuinely cross-cutting / repo-meta work — the umbrella of last resort
+      meaning: genuinely cross-cutting / repo-meta work, the umbrella of last resort
     - name: config
       meaning: the .awf config tree, schema, migrations
     - name: invariants
