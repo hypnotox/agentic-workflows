@@ -691,3 +691,38 @@ data:
         `tag-vocabulary-governed` is itself inert under an empty vocabulary. Any future advisory note
         must degrade to inert for a minimally-configured project, or `example-zero-notes` catches it
         (ADR-0109, ADR-0090; 2026-07-13).
+    - title: "A render primitive proven against Markdown hides output-language gaps until a real target runs"
+      domains: [rendering]
+      tags: [editable-sections, provenance-markers, command-runner]
+      body: |
+        The in-place-editable-sections primitive (ADR-0100) was designed and unit-tested entirely
+        against Markdown, then its first *shell* consumer (the managed runner `x`, ADR-0101) exposed
+        two gaps invisible until a shell file was rendered *and executed/parsed* — each forcing a
+        mid-implementation ADR amendment. (1) The `awf:edit`-family provenance pointers survive into
+        output *as comments*, and an HTML `<!-- … -->` pointer is a hard `bash` syntax error, so the
+        pointers had to become comment-syntax-aware (`#` for a `#!`-shebang target, HTML otherwise —
+        the same sniff `injectBanner` already used). (2) awf's sync wrote every file `0644`, but the
+        runner is invoked as `./x`, so it had to be rendered executable. Both were invisible to
+        `go test` (which never `bash -n`s or executes the rendered output) and to a Markdown-only
+        mental model. Lesson: when a rendering primitive will serve a new *output language*, render a
+        real target of that language and exercise it the way an adopter will (`bash -n`, execute,
+        parse) before finalizing the ADR — Markdown's assumptions (HTML comments are inert, no execute
+        bit) do not transfer, and the format-specific property (comment syntax, file mode, escaping)
+        that must survive into output is the first thing to validate (ADR-0100, ADR-0101; 2026-07-15).
+    - title: "A non-catalog config-tree render unit has a hand-wired fan-out the catalog table doesn't cover"
+      domains: [rendering]
+      tags: [render-completeness, closed-config-tree, template-embed]
+      body: |
+        A catalog skill/agent/doc rides a table-driven fan-out (enable array, catalog pool, render
+        loop, sweep, checks), but a config-tree singleton rendered by a dedicated `RenderAll` block —
+        the bootstrap, the hooks, and now the runner `x` (ADR-0101) — must be wired *by hand* in every
+        place the table would otherwise cover, and each omission surfaces far from the render block.
+        Adding the runner touched, and each was easy to miss: the `//go:embed` directive
+        (`templates/embed.go` — a template absent from the embed FS fails only at first render), the
+        `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel` — an
+        unclaimed `.awf/runner/parts` made a `create … to override` pointer's own advice fail `check`,
+        caught only in impl review), the `internal/configspec` entry + regenerated config-reference
+        (ADR-0088 parity), and the nameless-singleton enable-CLI arm (still hardcoding
+        `bootstrap`/`hooks`, deferred). Lesson: when adding a config-tree singleton, walk the full
+        list — embed, render block, sweep claim, configspec/reference, enable CLI, example adoption —
+        rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).
