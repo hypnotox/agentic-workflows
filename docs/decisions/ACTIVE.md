@@ -102,6 +102,8 @@
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](0097-plan-convention-sections-granularity-and-lifecycle.md) — Implemented
 - [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](0098-structured-plan-artifact-frontmatter-template-and-linking.md) — Implemented
 - [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) — Implemented
+- [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Implemented
+- [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Implemented
 - [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](0102-domain-coverage-report-mode-via-awf-context-uncovered.md) — Implemented
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](0103-governed-tag-vocabulary-and-metadata-revival.md) — Implemented
 - [ADR-0104: Tag-Tiered Relevance in awf context](0104-tag-tiered-relevance-in-awf-context.md) — Implemented
@@ -112,11 +114,6 @@
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md) — Implemented
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](0110-domain-coverage-floor-and-context-ignore-for-awf-context.md) — Implemented
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Implemented
-
-## Proposed
-
-- [ADR-0100: In-Place-Editable Sections in Rendered Output](0100-in-place-editable-sections-in-rendered-output.md) — Proposed
-- [ADR-0101: Managed Command Runner Singleton](0101-managed-command-runner-singleton.md) — Proposed
 
 ## Superseded
 

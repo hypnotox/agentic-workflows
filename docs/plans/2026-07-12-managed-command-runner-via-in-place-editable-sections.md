@@ -1,7 +1,7 @@
 ---
 date: 2026-07-12
 adrs: [100, 101]
-status: Proposed
+status: Implemented
 ---
 # Plan: Managed Command Runner via In-Place-Editable Sections
 
@@ -457,3 +457,23 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
   runner template's awf-verb list against `cmd/awf/dispatch.go`. Each is a candidate follow-up.
 - **awf-the-repo stays opted out.** No change to awf's own `.awf/config.yaml` or its hand-written
   `./x`; the dogfood is via sundial (ADR-0090).
+
+## Implementation findings (recorded at freeze)
+
+- **Two ADR-0100 amendments were forced by gaps discovered only when a shell file was rendered.**
+  (1) The `awf:edit`-family pointers were HTML-only, a bash syntax error in the shell runner →
+  Decision 7 (per-target comment style) + **Phase 1B**. (2) Rendered files were `0644`, so `./x` was
+  a permission error → Decision 8 (`#!` → `0755`, enforced every sync) + **Phase 4C**. Both were
+  amended (amendment-while-Proposed) → re-reviewed → resynced before implementing. Neither was
+  visible until the runner (the first shell file with sections / the first `./x`-invoked output) existed.
+- **The runner needs four sections, not two.** Read-back bounds an in-place region at awf's *next
+  registered section pointer*, so awf-owned raw text between two in-place sections would be swallowed.
+  The awf-verb dispatch and the usage tail are therefore their own awf-owned regular sections
+  (`runner-dispatch`, `runner-tail`) bounding the two in-place regions — Task 5.2/5.3 named only two.
+- **Staging/scope corrections.** Task 2.6 also needed `internal/project/configreference.go` and
+  `.awf/awf.lock`; Task 5.5 also needed `templates/embed.go`; `PointerLinePrefixes` lives in
+  `internal/render` (DRY with `editPointer`), not `internal/project` as Task 3.1 sketched. A
+  pre-existing stale lock from commit `a85bd6a` was repaired standalone before Phase 2.
+- **`awf enable runner` CLI deferred** (ADR-0101 Consequences): the toggle mirrors the bootstrap/hooks
+  *config shape*, but the nameless-singleton CLI arm still hardcodes `bootstrap`/`hooks`; adopters set
+  `runner.enabled` in `.awf/config.yaml` (as the example does). Small mechanical follow-up.

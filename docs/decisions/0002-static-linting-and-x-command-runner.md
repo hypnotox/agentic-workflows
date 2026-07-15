@@ -4,7 +4,7 @@ date: 2026-06-24
 supersedes: []
 superseded_by: ""
 tags: [static-linting, command-runner]
-related: []
+related: [101]
 domains: [tooling]
 ---
 # ADR-0002: Static Linting via golangci-lint and the ./x Command Runner

@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-12
 supersedes: []
 retires_invariants: []
@@ -138,6 +138,11 @@ Harder / accepted trade-offs:
   migration hand-ports its `gate`/`test` bodies into the in-place section; a generic adopter with
   an existing `./x` does likewise from the `*.awf-bak` backup.
 - A new config-tree render unit and its template widen the render/check surface.
+- **`awf enable runner` CLI is not wired yet.** The `runner.enabled` toggle mirrors the bootstrap/hooks
+  *config shape*, but the nameless-singleton enable/disable CLI arm (`cmd/awf` `enableDisableSingleton`)
+  still hardcodes only `bootstrap`/`hooks`; an adopter enables the runner by editing `runner.enabled`
+  in `.awf/config.yaml` (as the example does), not via `awf enable runner`. Wiring the CLI arm is a
+  small, mechanical follow-up, deliberately left out of this ADR's first cut.
 
 Ruled out:
 - **Rendering the whole runner** (project verbs as config data): collides with language-agnosticism
