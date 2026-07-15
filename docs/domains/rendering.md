@@ -79,3 +79,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0108: Trim the plan header taxonomy to three fields](../decisions/0108-trim-the-plan-header-taxonomy-to-three-fields.md)
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 
+### Proposed
+
+- [ADR-0112: Core-only agent-guide Invariants section](../decisions/0112-core-only-agent-guide-invariants-section.md)
+

@@ -115,6 +115,10 @@
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](0110-domain-coverage-floor-and-context-ignore-for-awf-context.md) — Implemented
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Implemented
 
+## Proposed
+
+- [ADR-0112: Core-only agent-guide Invariants section](0112-core-only-agent-guide-invariants-section.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
