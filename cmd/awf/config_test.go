@@ -24,7 +24,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"static — not inside an awf project",
+		"static: not inside an awf project",
 		"## config.yaml keys",
 		"audit.diffThreshold (int)",
 		"gateCmd (var)",

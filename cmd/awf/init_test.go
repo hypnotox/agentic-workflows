@@ -195,7 +195,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("init over existing config: exit %d (%s)", code, errb.String())
 	}
-	if strings.Contains(out.String(), "gateCmd —") {
+	if strings.Contains(out.String(), "gateCmd:") {
 		t.Errorf("init prompted for descriptors it cannot apply:\n%s", out.String())
 	}
 	if !strings.Contains(out.String(), "keeping it") {

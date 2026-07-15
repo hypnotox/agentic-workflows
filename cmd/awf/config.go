@@ -25,7 +25,7 @@ func runConfig(cwd, key string, stdout io.Writer) error {
 			return err
 		}
 		// invariant: config-command-static-fallback
-		return printConfigReference(stdout, key, nil, "config reference (static — not inside an awf project; live state appears inside one)")
+		return printConfigReference(stdout, key, nil, "config reference (static: not inside an awf project; live state appears inside one)")
 	}
 	if err := gate(cwd); err != nil {
 		return err
@@ -38,7 +38,7 @@ func runConfig(cwd, key string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return printConfigReference(stdout, key, model, "config reference — live state for this project")
+	return printConfigReference(stdout, key, model, "config reference: live state for this project")
 }
 
 // staticModel projects configspec (plus catalog-wide potential consumers)

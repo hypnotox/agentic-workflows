@@ -29,20 +29,20 @@
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
-      "configHash": "sha256:bd8ee2ae025a7b706ce3271d19052e523fc96695fb4fc6bd4ec6fb604dacc789",
-      "outputHash": "sha256:9582565174278f14608befd55fab866955c144cd3ef7acb2e21ad9f83e2a74aa"
+      "configHash": "sha256:7ed7d1570aff952fbab4953ffeb9b058f4daa0057e015f8cd8e3cfa4f8847daf",
+      "outputHash": "sha256:0609fec0e9ee42f711c73fb96e852d44d61d721933d0ee201995a723b938795b"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
-      "configHash": "sha256:eced13714565d81b737eb338d0e6b3e1f685dfb6f8297399ea810244f7aa4f53",
-      "outputHash": "sha256:e0833752adaae290c779cb6642b281734e0b092949abd1c0f36ced1db0f676ce"
+      "configHash": "sha256:965f74236dff9daac6674bc0bc453cda7e26783ec359331945b2e9636db2b871",
+      "outputHash": "sha256:73db060f391ef22dca4c8b3009d3a836833317a45753d9f9f766f3af3d39bd0a"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
-      "configHash": "sha256:1f5a2dd61e27e3a1df1122ab1fcf0ed817d11909a34cb1d2e5568fa469dd2620",
-      "outputHash": "sha256:206a5f6c134dead13a032ec638df1602a4c4a30e5597eeb24c0968c7e2261ad0"
+      "configHash": "sha256:11b31b42598eb8e5b96b627e5c82e9e692ea9634ebd2d27aa97ba9191c035efd",
+      "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -137,20 +137,20 @@
     ".cursor/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
-      "configHash": "sha256:bd8ee2ae025a7b706ce3271d19052e523fc96695fb4fc6bd4ec6fb604dacc789",
-      "outputHash": "sha256:9582565174278f14608befd55fab866955c144cd3ef7acb2e21ad9f83e2a74aa"
+      "configHash": "sha256:7ed7d1570aff952fbab4953ffeb9b058f4daa0057e015f8cd8e3cfa4f8847daf",
+      "outputHash": "sha256:0609fec0e9ee42f711c73fb96e852d44d61d721933d0ee201995a723b938795b"
     },
     ".cursor/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
-      "configHash": "sha256:eced13714565d81b737eb338d0e6b3e1f685dfb6f8297399ea810244f7aa4f53",
-      "outputHash": "sha256:e0833752adaae290c779cb6642b281734e0b092949abd1c0f36ced1db0f676ce"
+      "configHash": "sha256:965f74236dff9daac6674bc0bc453cda7e26783ec359331945b2e9636db2b871",
+      "outputHash": "sha256:73db060f391ef22dca4c8b3009d3a836833317a45753d9f9f766f3af3d39bd0a"
     },
     ".cursor/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
-      "configHash": "sha256:1f5a2dd61e27e3a1df1122ab1fcf0ed817d11909a34cb1d2e5568fa469dd2620",
-      "outputHash": "sha256:206a5f6c134dead13a032ec638df1602a4c4a30e5597eeb24c0968c7e2261ad0"
+      "configHash": "sha256:11b31b42598eb8e5b96b627e5c82e9e692ea9634ebd2d27aa97ba9191c035efd",
+      "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
     },
     ".cursor/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:82b4fd2208b1526a92f6eaba6c5d6b8a4afcc7d8259760db9f54ace4bf44ec07",
+      "outputHash": "sha256:f5e88f57784df5cd81dc10f6d8aefd846db6f79b42847a4c082222af394d0180",
       "regenChecked": true
     },
     "docs/decisions/ACTIVE.md": {

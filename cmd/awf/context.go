@@ -47,7 +47,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		}
 		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printContext(stdout, project.ContextResult{Paths: paths}, asJSON,
-			"context (static — not inside an awf project; live context appears inside one)")
+			"context (static: not inside an awf project; live context appears inside one)")
 	}
 	if err := gate(cwd); err != nil {
 		return err
@@ -60,7 +60,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 	if err != nil {
 		return err
 	}
-	return printContext(stdout, res, asJSON, "context — live state for this project")
+	return printContext(stdout, res, asJSON, "context: live state for this project")
 }
 
 // runUncovered serves `awf context --uncovered`: the whole-tree inverse of the
@@ -77,7 +77,7 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 		}
 		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
-			"context --uncovered (static — not inside an awf project; live coverage appears inside one)")
+			"context --uncovered (static: not inside an awf project; live coverage appears inside one)")
 	}
 	if err := gate(cwd); err != nil {
 		return err
@@ -94,7 +94,7 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 	if err != nil { // coverage-ignore: Uncovered's only fault is a domain-sidecar read, which project.Open validates first - unreachable post-Open here; the branch is covered at the project level (TestUncovered sidecar fault)
 		return err
 	}
-	return printUncovered(stdout, res, asJSON, "context --uncovered — tracked paths owned by no domain")
+	return printUncovered(stdout, res, asJSON, "context --uncovered: tracked paths owned by no domain")
 }
 
 // printUncovered renders res as JSON or human-readable text. Both modes read the same
@@ -134,7 +134,7 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	fmt.Fprintf(stdout, "\npaths: %v\n", res.Paths)
 	fmt.Fprintln(stdout, "\n## Domains")
 	for _, d := range res.Domains {
-		fmt.Fprintf(stdout, "  %s — %s\n", d.Name, d.CurrentState)
+		fmt.Fprintf(stdout, "  %s: %s\n", d.Name, d.CurrentState)
 	}
 	fmt.Fprintln(stdout, "\n## Invariants")
 	for _, iv := range res.Invariants {
@@ -153,29 +153,29 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	if len(res.Governing) > 0 {
 		fmt.Fprintln(stdout, "\n## Governing ADRs (invariants backed here)")
 		for _, a := range res.Governing {
-			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
 		}
 	}
 	if len(res.Related) > 0 {
 		fmt.Fprintln(stdout, "\n## Related ADRs (shared tag)")
 		for _, a := range res.Related {
-			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
 		}
 	}
 	if len(res.Plans) > 0 {
 		fmt.Fprintln(stdout, "\n## Related plans")
 		for _, pl := range res.Plans {
-			fmt.Fprintf(stdout, "  %s (%s) — %s\n", pl.Filename, pl.Status, pl.Path)
+			fmt.Fprintf(stdout, "  %s (%s): %s\n", pl.Filename, pl.Status, pl.Path)
 		}
 	}
 	if len(res.Pitfalls) > 0 {
 		fmt.Fprintln(stdout, "\n## Related pitfalls (shared tag)")
 		for _, pf := range res.Pitfalls {
-			fmt.Fprintf(stdout, "  %s %v — %s\n", pf.Title, pf.Tags, pf.Path)
+			fmt.Fprintf(stdout, "  %s %v: %s\n", pf.Title, pf.Tags, pf.Path)
 		}
 	}
 	if res.Background > 0 {
-		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) — see the domain docs above\n", res.Background)
+		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) (see the domain docs above)\n", res.Background)
 	}
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")

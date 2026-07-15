@@ -244,11 +244,11 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 	for _, op := range plan {
 		pl, _ := project.PluralKind(op.Node.Kind)
 		if hasSidecarOrParts(root, pl, op.Node.Name) {
-			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
+			fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", op.Node.Kind, op.Node.Name)
 		}
 	}
 	if kind == "domain" && hasSidecarOrParts(root, key, name) {
-		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/ — now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
+		fmt.Fprintf(stdout, "note: %s %q still has a sidecar or convention parts under .awf/, now orphaned (awf check will flag them); delete them or re-enable to keep them\n", kind, name)
 	}
 	noteUnrequiredAgents(p, plan, stdout)
 	return runSync(root, stdout)

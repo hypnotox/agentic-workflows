@@ -46,7 +46,7 @@ func runCheck(root string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "note: %s\n", n.Line())
 	}
 	for _, d := range drift {
-		fmt.Fprintf(stdout, "  %-14s %s — %s\n", d.Kind, d.Path, d.Detail)
+		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
 	}
 	for _, f := range findings {
 		fmt.Fprintf(stdout, "  %-14s %s\n", "invariant", f.Line())

@@ -19,8 +19,8 @@ func orphanedByPath(drift []manifest.Drift) map[string]string {
 	return out
 }
 
-const unclaimedDetail = "unclaimed file or directory — not part of the .awf config tree; delete it or move it out"
-const bakDetail = "stale awf-bak backup — review and delete"
+const unclaimedDetail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
+const bakDetail = "stale awf-bak backup: review and delete"
 const localPartsDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 
 // invariant: closed-config-tree

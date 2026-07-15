@@ -173,8 +173,8 @@ func TestStubNotesDefaultsClauseUnit(t *testing.T) {
 		{Path: "docs/c.md"},
 	})
 	want := []string{
-		"docs/a.md has unauthored stub content — sections at stub default: setup, deps",
-		"docs/b.md has unauthored stub content — sections at stub default: overview; stub-marked parts: terms",
+		"docs/a.md has unauthored stub content: sections at stub default: setup, deps",
+		"docs/b.md has unauthored stub content: sections at stub default: overview; stub-marked parts: terms",
 	}
 	if len(notes) != len(want) {
 		t.Fatalf("notes = %#v, want %#v", notes, want)
@@ -199,7 +199,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "docs/development.md has unauthored stub content — sections at stub default: setup, command-runner, dependencies"
+	want := "docs/development.md has unauthored stub content: sections at stub default: setup, command-runner, dependencies"
 	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
 		t.Errorf("missing defaults note %q, got:\n%s", want, joined)
 	}
@@ -213,7 +213,7 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = "docs/development.md has unauthored stub content — sections at stub default: command-runner, dependencies; stub-marked parts: setup"
+	want = "docs/development.md has unauthored stub content: sections at stub default: command-runner, dependencies; stub-marked parts: setup"
 	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
 		t.Errorf("missing combined note %q, got:\n%s", want, joined)
 	}
@@ -230,7 +230,7 @@ func TestStubNotesDomainDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "docs/domains/config.md has unauthored stub content — sections at stub default: current-state"
+	want := "docs/domains/config.md has unauthored stub content: sections at stub default: current-state"
 	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
 		t.Errorf("missing domain-doc note %q, got:\n%s", want, joined)
 	}
@@ -257,7 +257,7 @@ func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 	for _, n := range notes {
 		if strings.Contains(n, "marker-shaped line") {
 			count++
-			want := "part .awf/skills/parts/tdd/notes.md contains a marker-shaped line — section markers have no effect inside convention parts; fence the example to silence this note"
+			want := "part .awf/skills/parts/tdd/notes.md contains a marker-shaped line: section markers have no effect inside convention parts; fence the example to silence this note"
 			if n != want {
 				t.Errorf("note = %q, want %q", n, want)
 			}

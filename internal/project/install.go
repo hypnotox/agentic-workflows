@@ -107,7 +107,7 @@ func Uninstall(root string) (int, error) {
 		return 0, err
 	}
 	if !found {
-		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
+		return 0, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
 	removed := 0
 	dirs := map[string]bool{}

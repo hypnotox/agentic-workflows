@@ -59,7 +59,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if configExists {
 		// Descriptor answers only feed the scaffold; resolving them here would
 		// prompt for (or silently accept) values init then discards.
-		fmt.Fprintf(stdout, "%s exists — keeping it and re-rendering only\n", cfgPath)
+		fmt.Fprintf(stdout, "%s exists: keeping it and re-rendering only\n", cfgPath)
 		if len(answers) > 0 {
 			fmt.Fprintln(stdout, "note: --set/--answers values were ignored; edit .awf/config.yaml instead")
 		}
@@ -189,6 +189,6 @@ const initNextSteps = `
 next steps:
   1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf sync.
   2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf sync.
-  3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section) — awf never activates hooks itself.
+  3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself.
   4. Commit .awf/ and the rendered files together.
 `

@@ -63,7 +63,7 @@ func glossaryEntries(raw any) (map[string]string, error) {
 			return nil, glossaryErr(fmt.Sprintf("term %q is empty", k))
 		}
 		if strings.Contains(term, "\n") {
-			return nil, glossaryErr(fmt.Sprintf("term %q contains a newline — table rows are single-line", term))
+			return nil, glossaryErr(fmt.Sprintf("term %q contains a newline: table rows are single-line", term))
 		}
 		s, isStr := v.(string)
 		if !isStr {
@@ -74,7 +74,7 @@ func glossaryEntries(raw any) (map[string]string, error) {
 			return nil, glossaryErr(fmt.Sprintf("term %q: meaning is empty", term))
 		}
 		if strings.Contains(meaning, "\n") {
-			return nil, glossaryErr(fmt.Sprintf("term %q: meaning contains a newline — table rows are single-line", term))
+			return nil, glossaryErr(fmt.Sprintf("term %q: meaning contains a newline; table rows are single-line", term))
 		}
 		if prev, dup := seen[strings.ToLower(term)]; dup {
 			return nil, glossaryErr(fmt.Sprintf("terms %q and %q are case-insensitive duplicates", prev, term))

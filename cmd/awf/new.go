@@ -100,7 +100,7 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 	}
 	pl, _ := project.PluralKind(kind) // "skills" / "agents" / "docs"
 	if pool, _ := project.CatalogNames(p.Cat, kind); slices.Contains(pool, name) {
-		return fmt.Errorf("%s %q already exists (catalog or local) — pick another name", kind, name)
+		return fmt.Errorf("%s %q already exists (catalog or local): pick another name", kind, name)
 	}
 	// The pool guard misses a name that is declared but not enabled (or opted
 	// out via local: true); never overwrite files an author may have edited.
@@ -108,7 +108,7 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 	partPath := p.Cfg.PartPath(pl, name, "content")
 	for _, existing := range []string{scPath, partPath} {
 		if _, err := os.Stat(existing); err == nil {
-			return fmt.Errorf("%s %q already has authored files (%s) — remove them first or pick another name", kind, name, existing)
+			return fmt.Errorf("%s %q already has authored files (%s): remove them first or pick another name", kind, name, existing)
 		}
 	}
 	// Declaring sidecar: data.description feeds the base template's frontmatter;
@@ -174,7 +174,7 @@ func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
 // part unauthored (ADR-0070): awf check reports it until the author deletes the
 // line, and the part still renders verbatim, marker included.
 const localPartStub = "<!-- awf:stub -->\n" +
-	"Replace this with the artifact's body, then delete the awf:stub marker line above — " +
+	"Replace this with the artifact's body, then delete the awf:stub marker line above; " +
 	"awf check flags this part as unauthored while the marker remains. This file is a " +
 	"convention part: edit it to author the content, and see docs/working-with-awf.md for " +
 	"the placeholder syntax.\n"
@@ -184,7 +184,7 @@ const localPartStub = "<!-- awf:stub -->\n" +
 // resolve dead from a nested doc's directory (ADR-0020). The leading awf:stub
 // marker declares the part unauthored (ADR-0070).
 const localDocPartStub = "<!-- awf:stub -->\n" +
-	"Replace this with the document body, then delete the awf:stub marker line above — " +
+	"Replace this with the document body, then delete the awf:stub marker line above; " +
 	"awf check flags this part as unauthored while the marker remains. Write it to the " +
 	"project's documentation standard (see docs/doc-standard.md). This file is a convention " +
 	"part: edit it to author the content.\n"

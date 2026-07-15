@@ -81,20 +81,20 @@ type Finding struct {
 func (f Finding) Detail() string {
 	switch f.Status {
 	case Unchecked:
-		return "unchecked — configure invariants.sources or set invariants.disabled: true"
+		return "unchecked: configure invariants.sources or set invariants.disabled: true"
 	case UnbackedHasProof:
-		return "declared unbacked but a proof `invariant: " + f.Slug + "` marker exists — reclassify as backed or remove the marker"
+		return "declared unbacked but a proof `invariant: " + f.Slug + "` marker exists: reclassify as backed or remove the marker"
 	case MissingVerify:
-		return "declared unbacked without a `Verify:` note — add manual-verification guidance"
+		return "declared unbacked without a `Verify:` note: add manual-verification guidance"
 	default: // Unbacked
-		return "unbacked — declared backed but no proof `invariant: " + f.Slug + "` marker in backing scope"
+		return "unbacked: declared backed but no proof `invariant: " + f.Slug + "` marker in backing scope"
 	}
 }
 
 // Line renders the finding as a single human-readable line (no leading
 // indent/column), shared by `awf check` and `awf invariants`.
 func (f Finding) Line() string {
-	return fmt.Sprintf("%s — invariant %q %s", f.ADR, f.Slug, f.Detail())
+	return fmt.Sprintf("%s: invariant %q %s", f.ADR, f.Slug, f.Detail())
 }
 
 var (

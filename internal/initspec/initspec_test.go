@@ -273,10 +273,10 @@ func TestResolveEOFFallsSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "first —") {
+	if !strings.Contains(out.String(), "first:") {
 		t.Errorf("the first prompt should have been emitted:\n%s", out.String())
 	}
-	if strings.Contains(out.String(), "second —") {
+	if strings.Contains(out.String(), "second:") {
 		t.Errorf("prompt text emitted after EOF:\n%s", out.String())
 	}
 	if vars["first"] != "d1" {

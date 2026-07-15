@@ -245,7 +245,7 @@ func promptMultiselect(r *promptReader, out io.Writer, d catalog.VarDescriptor) 
 	for _, n := range splitNames(d.Default) {
 		core[n] = true
 	}
-	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
+	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
 	for i, o := range d.Options {
 		mark := " "
 		if core[o] {
@@ -290,7 +290,7 @@ func splitNames(s string) []string {
 // prompt reads one line for descriptor d, returning d.Default on empty input.
 // For an enum, a numeric reply selects the option at that 1-based index.
 func prompt(r *promptReader, out io.Writer, d catalog.VarDescriptor) (string, error) {
-	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
+	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
 	if d.Kind == "enum" {
 		for i, o := range d.Options {
 			fmt.Fprintf(out, "  %d) %s\n", i+1, o)

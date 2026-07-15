@@ -38,7 +38,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "coverage: %.1f%% (%d/%d statements)\n", rep.Percent(), rep.Covered, rep.Total)
 	if !rep.OK() {
-		fmt.Fprintf(stderr, "covercheck: coverage below 100%% — %d uncovered statement(s)\n",
+		fmt.Fprintf(stderr, "covercheck: coverage below 100%% (%d uncovered statement(s))\n",
 			rep.Total-rep.Covered)
 		return 1
 	}

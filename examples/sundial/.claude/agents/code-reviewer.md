@@ -91,7 +91,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 ```
 Impl summary:
 - Commits: <one line per commit subject>
-- Headline change: <1–2 sentences>
+- Headline change: <1-2 sentences>
 - Test additions: <file count or named test files>
 
 Impl review complete (N lenses, M findings).

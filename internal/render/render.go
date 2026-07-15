@@ -240,7 +240,7 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 		}
 		p := plan[s.Name]
 		if s.Stub && p.HasPart && strings.Contains(p.PartBody, SectionDefaultSentinel) {
-			return fmt.Errorf("section %q re-injects a stub default via {{=awf:sectionDefault}}: a stub default is an authoring prompt, not shippable prose — author the part instead", s.Name)
+			return fmt.Errorf("section %q re-injects a stub default via {{=awf:sectionDefault}}: a stub default is an authoring prompt, not shippable prose; author the part instead", s.Name)
 		}
 	}
 	return nil

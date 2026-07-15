@@ -83,7 +83,7 @@ func pitfallEntryFrom(i int, m map[string]any) (pitfallEntry, error) {
 		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title is empty", i))
 	}
 	if strings.Contains(title, "\n") {
-		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title %q contains a newline — titles are single-line headings", i, title))
+		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title %q contains a newline; titles are single-line headings", i, title))
 	}
 	body, err := pitfallString(i, m, "body")
 	if err != nil {

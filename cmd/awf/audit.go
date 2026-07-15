@@ -26,7 +26,7 @@ func runAudit(root, base string, stdout io.Writer) error {
 		if loc == "" {
 			loc = "branch"
 		}
-		fmt.Fprintf(stdout, "  %-7s %-22s %s — %s\n", f.Severity, f.Rule, loc, f.Detail)
+		fmt.Fprintf(stdout, "  %-7s %-22s %s: %s\n", f.Severity, f.Rule, loc, f.Detail)
 	}
 	if len(findings) == 0 {
 		fmt.Fprintln(stdout, "awf audit: clean")

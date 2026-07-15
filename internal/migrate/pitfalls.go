@@ -42,7 +42,7 @@ func applyPitfallsData(root string, out io.Writer) error {
 	if len(entries) == 0 {
 		// No `## ` heading to split on: the part is removed but its prose is not
 		// carried into the sidecar. Flag it rather than let the deletion be silent.
-		fmt.Fprintf(out, "pitfalls-data: no `## ` headings found — wrote an empty %s and removed the part; its prior content is recoverable from git history\n", sidecarRel)
+		fmt.Fprintf(out, "pitfalls-data: no `## ` headings found; wrote an empty %s and removed the part; its prior content is recoverable from git history\n", sidecarRel)
 		return nil
 	}
 	for _, e := range entries {

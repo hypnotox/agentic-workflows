@@ -143,7 +143,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") ||
-		!strings.Contains(out.String(), "has unauthored stub content — stub-marked parts: notes") {
+		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: notes") {
 		t.Errorf("missing stub note, got:\n%s", out.String())
 	}
 }

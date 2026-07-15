@@ -33,7 +33,7 @@ func (p *Project) validateAgainstCatalog() error {
 			return err
 		}
 		if len(sc.Data) > 0 || len(sc.Sections) > 0 || sc.Local {
-			return fmt.Errorf("domain %q: a domain sidecar is paths-only — nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
+			return fmt.Errorf("domain %q: a domain sidecar is paths-only; nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
 		}
 	}
 	// agents-doc section overrides against catalog (always-on singleton).
@@ -73,7 +73,7 @@ func (p *Project) validateAgainstCatalog() error {
 		return err
 	}
 	if len(cr.Data) > 0 {
-		return errors.New("config-reference: the reference tables are generated — data: has no effect; remove it from .awf/config-reference.yaml (sections:/local: remain available)")
+		return errors.New("config-reference: the reference tables are generated; data: has no effect; remove it from .awf/config-reference.yaml (sections:/local: remain available)")
 	}
 	if len(cr.Paths) > 0 {
 		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")

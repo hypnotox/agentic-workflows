@@ -569,7 +569,7 @@ func assertNoDuplicateOutputPaths(files []RenderedFile) error {
 	seen := make(map[string]bool, len(files))
 	for _, f := range files {
 		if seen[f.Path] {
-			return fmt.Errorf("two artifacts render to the same output path %q — rename one (a local doc name may collide with awf's reserved decisions/, plans/, or domains/ output)", f.Path)
+			return fmt.Errorf("two artifacts render to the same output path %q: rename one (a local doc name may collide with awf's reserved decisions/, plans/, or domains/ output)", f.Path)
 		}
 		seen[f.Path] = true
 	}
@@ -648,7 +648,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if strings.Contains(content, "<no value>") {
-		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\" — a referenced var or data key is unset", outPath)
+		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\"; a referenced var or data key is unset", outPath)
 	}
 	content = injectBanner(content, tid)
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan))

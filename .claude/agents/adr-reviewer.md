@@ -92,7 +92,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 ```
 ADR summary:
 - Decision: <one line, the load-bearing item>
-- Invariants: <1–2 headlines>
+- Invariants: <1-2 headlines>
 - Trade-off: <one notable rejected alternative + why>
 
 ADR review complete (N lenses, M findings).

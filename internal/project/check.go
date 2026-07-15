@@ -99,7 +99,7 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 	freq := map[string]int{}
 	for _, art := range arts {
 		if len(art.tags) == 0 {
-			notes = append(notes, art.label+" carries no tags — add a narrow topic tag")
+			notes = append(notes, art.label+" carries no tags: add a narrow topic tag")
 			continue
 		}
 		// Count only vocabulary members - both the numerator and the denominator.
@@ -124,7 +124,7 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 	if tagged > 0 {
 		for _, t := range slices.Sorted(maps.Keys(freq)) {
 			if float64(freq[t]) > tagFrequencyThreshold*float64(tagged) {
-				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged artifacts (>%.0f%%) — coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
+				notes = append(notes, fmt.Sprintf("tag %q is on %d/%d tagged artifacts (>%.0f%%): coarsening toward domain scale", t, freq[t], tagged, tagFrequencyThreshold*100))
 			}
 		}
 	}
@@ -158,7 +158,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
 			label = localLabel(f.TemplateID, f.Path)
 		}
-		note := fmt.Sprintf("%s references unset vars: %s — set a value, or delete the key to accept the generic prose",
+		note := fmt.Sprintf("%s references unset vars: %s; set a value, or delete the key to accept the generic prose",
 			label, strings.Join(unset, ", "))
 		if seen[note] {
 			continue
@@ -189,7 +189,7 @@ func stubNotes(files []RenderedFile) []string {
 		if len(f.stubParts) > 0 {
 			clauses = append(clauses, "stub-marked parts: "+strings.Join(f.stubParts, ", "))
 		}
-		notes = append(notes, fmt.Sprintf("%s has unauthored stub content — %s",
+		notes = append(notes, fmt.Sprintf("%s has unauthored stub content: %s",
 			f.Path, strings.Join(clauses, "; ")))
 	}
 	sort.Strings(notes)
@@ -210,7 +210,7 @@ func markerNotes(files []RenderedFile) []string {
 				continue
 			}
 			seen[part] = true
-			notes = append(notes, fmt.Sprintf("part %s contains a marker-shaped line — section markers have no effect inside convention parts; fence the example to silence this note", part))
+			notes = append(notes, fmt.Sprintf("part %s contains a marker-shaped line: section markers have no effect inside convention parts; fence the example to silence this note", part))
 		}
 	}
 	sort.Strings(notes)
@@ -299,7 +299,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 		if len(unused) == 0 {
 			return nil
 		}
-		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + " — a key referenced only inside a dropped section counts as unused; remove the key or the drop"
+		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + "; a key referenced only inside a dropped section counts as unused; remove the key or the drop"
 		if sc.Local {
 			detail = "local: true renders nothing, so no data key is consumed; remove the data block: " + strings.Join(unused, ", ")
 		}
@@ -886,7 +886,7 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 		// names a configured domain is the coarse-tag regression, gated exactly.
 		// invariant: tag-not-domain-name
 		if domainName[tag] {
-			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name — tags must be finer than domains", tag)})
+			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name: tags must be finer than domains", tag)})
 		}
 	}
 	adrs, err := adr.ParseDir(p.decisionsDir())

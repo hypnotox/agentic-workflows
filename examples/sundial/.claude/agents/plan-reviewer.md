@@ -96,7 +96,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 Plan summary:
 - Goal: <one line from the plan header>
 - Shape: <phase count, commit count, files created/modified>
-- Headline tasks: <1–2 sentences naming the load-bearing tasks>
+- Headline tasks: <1-2 sentences naming the load-bearing tasks>
 
 Plan review complete (N lenses, M findings).
 - Findings by classification: mechanical K, reasoned L, user-decision P

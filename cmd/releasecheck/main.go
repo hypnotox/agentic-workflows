@@ -37,7 +37,7 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	}
 	fails := 0
 	if entries[0].Version != project.Version {
-		fmt.Fprintf(stderr, "releasecheck: newest changelog entry %s != project.Version %s — promote [Unreleased] before tagging\n",
+		fmt.Fprintf(stderr, "releasecheck: newest changelog entry %s != project.Version %s; promote [Unreleased] before tagging\n",
 			entries[0].Version, project.Version)
 		fails++
 	}
@@ -53,10 +53,10 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	}
 	switch body, found := unreleasedBody(string(raw)); {
 	case !found:
-		fmt.Fprintln(stderr, "releasecheck: no ## [Unreleased] section — restore the standing header (the changelog-unreleased audit rule keys on it)")
+		fmt.Fprintln(stderr, "releasecheck: no ## [Unreleased] section; restore the standing header (the changelog-unreleased audit rule keys on it)")
 		fails++
 	case strings.TrimSpace(body) != "":
-		fmt.Fprintln(stderr, "releasecheck: [Unreleased] is not empty — fold its entries into the release section before tagging")
+		fmt.Fprintln(stderr, "releasecheck: [Unreleased] is not empty; fold its entries into the release section before tagging")
 		fails++
 	}
 	if fails > 0 {

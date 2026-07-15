@@ -116,7 +116,7 @@ var residualMarkerRE = regexp.MustCompile(`<!--\s*awf:(section|end)\b`)
 // touches-invariant: no-residual-section-marker - hard error on surviving marker residue; proof in section_test.go
 func CheckResidualMarkers(assembled string) error {
 	if m := residualMarkerRE.FindString(assembled); m != "" {
-		return fmt.Errorf("assembled template still contains a section marker (%q) — malformed awf:section/awf:end marker", m)
+		return fmt.Errorf("assembled template still contains a section marker (%q): malformed awf:section/awf:end marker", m)
 	}
 	return nil
 }

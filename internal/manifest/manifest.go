@@ -68,7 +68,7 @@ func LoadOptional(path string) (*Lock, bool, error) {
 		return nil, false, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("unreadable .awf/awf.lock (%w) — restore it from version control, or delete it deliberately to re-adopt", err)
+		return nil, false, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
 	return l, true, nil
 }

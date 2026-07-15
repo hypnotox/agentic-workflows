@@ -265,7 +265,7 @@ func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
 	}
 	if manifestCommit != nil && !adrTouched {
 		return []Finding{finding(Warning, "dependency-adr", *manifestCommit,
-			"dependency manifest changed on this branch with no ADR touched — if a dependency was added, confirm an ADR covers it")}
+			"dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")}
 	}
 	return nil
 }
@@ -353,7 +353,7 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, d := range slices.Sorted(maps.Keys(flagged)) {
 		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
-			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc — add it to config.Domains and author its current-state narrative, or drop the tag", d)})
+			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
 	}
 	return out
 }
@@ -384,7 +384,7 @@ func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
 	for _, d := range slices.Sorted(maps.Keys(churned)) {
 		if !refreshed[d] {
 			out = append(out, Finding{Severity: Warning, Rule: "domain-code-staleness",
-				Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range — if anything meaningful changed, document it", d, in.DomainsPartsDir, d)})
+				Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, in.DomainsPartsDir, d)})
 		}
 	}
 	return out

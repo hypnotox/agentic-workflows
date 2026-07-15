@@ -131,7 +131,7 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	segs := strings.Split(rel, "/") // segs[0] is always ".awf"
 	switch {
 	case !isDir && awfBakRE.MatchString(rel):
-		d.Detail = "stale awf-bak backup — review and delete"
+		d.Detail = "stale awf-bak backup: review and delete"
 	// Singleton parts tree: .awf/parts/<kind>[/<section>.md].
 	case len(segs) == 3 && segs[1] == "parts" && isDir && !m.singletons[segs[2]]:
 		d.Detail = "convention parts for an unknown singleton kind"
@@ -149,7 +149,7 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	case len(segs) == 5 && segs[2] == "parts" && !isDir && strings.HasSuffix(segs[4], ".md") && m.enabled[segs[1]] != nil && m.enabled[segs[1]][segs[3]]:
 		d.Detail = "convention part for a section not in the target's declared set"
 	default:
-		d.Detail = "unclaimed file or directory — not part of the .awf config tree; delete it or move it out"
+		d.Detail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
 	}
 	return d
 }

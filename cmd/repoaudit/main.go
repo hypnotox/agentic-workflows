@@ -169,7 +169,7 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 		// change (a refactor, a comment/marker relocation) from a behavioral one, so a
 		// blocking Error over-fires. A git/read failure above stays an Error - that means
 		// the rule cannot verify conformance and must fail loud.
-		return []finding{{warning, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged — add an entry", base, head, changelogPath)}}
+		return []finding{{warning, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged: add an entry", base, head, changelogPath)}}
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 		}
 		if strings.Contains(ln, coverageIgnoreMarker) {
 			out = append(out, finding{warning, "coverage-ignore-added",
-				file + ": added or touched coverage-ignore — re-evaluate: is this branch genuinely untriggerable? Try to stage the state it declares impossible"})
+				file + ": added or touched coverage-ignore; re-evaluate: is this branch genuinely untriggerable? Try to stage the state it declares impossible"})
 		}
 	}
 	return out

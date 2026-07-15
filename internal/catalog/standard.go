@@ -128,7 +128,7 @@ var Standard = &Catalog{
 				"reviewSubject": "ADR",
 				"readStep":      "Read the ADR in full. Read every doc, ADR, or state doc it references by name.",
 				"digestLabel":   "ADR",
-				"digestSummary": "- Decision: <one line, the load-bearing item>\n- Invariants: <1–2 headlines>\n- Trade-off: <one notable rejected alternative + why>",
+				"digestSummary": "- Decision: <one line, the load-bearing item>\n- Invariants: <1-2 headlines>\n- Trade-off: <one notable rejected alternative + why>",
 			},
 		},
 		"plan-reviewer": {
@@ -145,7 +145,7 @@ var Standard = &Catalog{
 				"reviewSubject": "plan",
 				"readStep":      "Read the artifact in full. Read every doc, ADR, or state doc it references by name.",
 				"digestLabel":   "Plan",
-				"digestSummary": "- Goal: <one line from the plan header>\n- Shape: <phase count, commit count, files created/modified>\n- Headline tasks: <1–2 sentences naming the load-bearing tasks>",
+				"digestSummary": "- Goal: <one line from the plan header>\n- Shape: <phase count, commit count, files created/modified>\n- Headline tasks: <1-2 sentences naming the load-bearing tasks>",
 			},
 		},
 		"code-reviewer": {
@@ -165,7 +165,7 @@ var Standard = &Catalog{
 				"reviewSubject": "diff",
 				"readStep":      "Read the diff in full (`git diff baseSha..headSha`). Read every plan, ADR, or state doc referenced by name in the brief.",
 				"digestLabel":   "Impl",
-				"digestSummary": "- Commits: <one line per commit subject>\n- Headline change: <1–2 sentences>\n- Test additions: <file count or named test files>",
+				"digestSummary": "- Commits: <one line per commit subject>\n- Headline change: <1-2 sentences>\n- Test additions: <file count or named test files>",
 			},
 		},
 	},

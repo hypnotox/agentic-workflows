@@ -100,7 +100,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "docs", Type: "string list", Default: "empty at init (the always-on docs are not listed here)",
-		Description:  "Enabled toggleable docs (architecture, testing, development, …). The always-on docs (the agent guide, workflow, this reference) render regardless and are not listed here.",
+		Description:  "Enabled toggleable docs (architecture, testing, development, ...). The always-on docs (the agent guide, workflow, this reference) render regardless and are not listed here.",
 		Availability: "Always.",
 	},
 	{
@@ -140,7 +140,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "invariants.sources[].marker", Type: "string", Default: "none",
-		Description:  "The literal comment marker (`//`, `#`, `--`, …) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty.",
+		Description:  "The literal comment marker (`//`, `#`, `--`, ...) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty.",
 		Availability: "Within each `invariants.sources` entry.",
 	},
 	{
@@ -165,7 +165,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "audit.allowedScopes[].name", Type: "string", Default: "none",
-		Description:  "The scope token as it appears in a commit subject (`feat(<name>): …`). A bare-string list entry is shorthand for a name-only entry.",
+		Description:  "The scope token as it appears in a commit subject (`feat(<name>): ...`). A bare-string list entry is shorthand for a name-only entry.",
 		Availability: "Within each `audit.allowedScopes` entry.",
 	},
 	{
@@ -179,7 +179,7 @@ var keys = []Entry{
 		Availability: "Read by `awf commit-gate` and `awf audit`.",
 	},
 	{
-		Path: "audit.dependencyManifests", Type: "string list (anchored path globs)", Default: "a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, …)",
+		Path: "audit.dependencyManifests", Type: "string list (anchored path globs)", Default: "a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, ...)",
 		Description:  "Globs identifying dependency manifests; `awf audit` flags a manifest change without a lockfile-style co-change. Absent = the default set; explicit empty = the rule is off.",
 		Availability: "Read by `awf audit`.",
 	},
@@ -220,7 +220,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "runner.enabled", Type: "bool", Default: "false (key absent); opt in via `awf enable runner`",
-		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
+		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, ...) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{

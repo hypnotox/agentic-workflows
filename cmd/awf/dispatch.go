@@ -108,7 +108,7 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 	case len(pos) == 1 && isSingleton:
 		return pos[0], "", nil
 	case len(pos) == 2 && isSingleton:
-		return "", "", &usageErr{fmt.Sprintf("awf %s %s takes no name — it is a singleton toggle", verb, pos[0])}
+		return "", "", &usageErr{fmt.Sprintf("awf %s %s takes no name: it is a singleton toggle", verb, pos[0])}
 	case len(pos) == 2:
 		return pos[0], pos[1], nil
 	case len(pos) == 1 && isKindToken(pos[0]):

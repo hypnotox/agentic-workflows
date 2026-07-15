@@ -69,7 +69,7 @@ func checkFile(name, content string, stderr io.Writer) int {
 	pendingVersion := 0
 	flushPending := func() {
 		if pendingVersion > 0 {
-			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser-action step has no version: input — the tool would float to latest\n", name, pendingVersion)
+			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser-action step has no version: input; the tool would float to latest\n", name, pendingVersion)
 			fails++
 			pendingVersion = 0
 		}

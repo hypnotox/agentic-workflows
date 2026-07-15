@@ -69,7 +69,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if timedOut > 0 {
-		fmt.Fprintf(stderr, "mutants: %d mutant(s) timed out — result untrustworthy; "+
+		fmt.Fprintf(stderr, "mutants: %d mutant(s) timed out, so the result is untrustworthy; "+
 			"raise timeout-coefficient and rerun\n", timedOut)
 		return 1
 	}
@@ -78,7 +78,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	sort.Strings(lived)
-	fmt.Fprintln(stdout, "survived mutants (triage each — some may be equivalent):")
+	fmt.Fprintln(stdout, "survived mutants (triage each: some may be equivalent):")
 	for _, l := range lived {
 		fmt.Fprintln(stdout, "  "+l)
 	}

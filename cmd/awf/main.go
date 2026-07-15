@@ -28,7 +28,7 @@ var isInteractive = func() bool {
 // the internal/clispec table (inv: cli-command-spec-single-source).
 func globalHelp() string {
 	var b strings.Builder
-	b.WriteString("awf — render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
+	b.WriteString("awf: render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
 	b.WriteString("Usage: awf <command> [flags]\n\n")
 	b.WriteString("Commands:\n")
 	for _, c := range clispec.Commands {

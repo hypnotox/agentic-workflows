@@ -91,22 +91,22 @@ func TestRunContextHuman(t *testing.T) {
 	got := out.String()
 	for _, want := range []string{
 		"live state for this project",
-		"alpha — docs/domains/alpha.md",
-		"beta — docs/domains/beta.md",
+		"alpha: docs/domains/alpha.md",
+		"beta: docs/domains/beta.md",
 		"gov-slug [backed]",
 		"unbk-slug [unbacked]",
 		"\n  orphan-slug\n", // present but undeclared → rendered without a class label
 		"Verify: inspect by hand.",
 		"touches: — the reasoned production site.",
 		"## Governing ADRs (invariants backed here)",
-		"ADR-0001 (Implemented) Alpha decision — docs/decisions/0001-a.md",
+		"ADR-0001 (Implemented) Alpha decision: docs/decisions/0001-a.md",
 		"## Related ADRs (shared tag)",
-		"ADR-0002 (Accepted) Related decision — docs/decisions/0002-b.md",
+		"ADR-0002 (Accepted) Related decision: docs/decisions/0002-b.md",
 		"## Domain background: 1 more ADR(s)",
 		"## Related plans",
-		"2026-07-12-linked.md (Proposed) — docs/plans/2026-07-12-linked.md",
+		"2026-07-12-linked.md (Proposed): docs/plans/2026-07-12-linked.md",
 		"## Related pitfalls (shared tag)",
-		"Worktree hazard [precise] — docs/pitfalls.md",
+		"Worktree hazard [precise]: docs/pitfalls.md",
 		"## Unowned paths",
 		"README.md",
 	} {

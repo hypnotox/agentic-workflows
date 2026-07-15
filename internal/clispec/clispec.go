@@ -95,9 +95,9 @@ Flags:
 		HelpBody: `Usage: awf commit-gate [FILE]
 
 Validate one commit message against the Conventional Commits rules (type, scope,
-72-char subject) and exit non-zero on a violation — the commit-side analog of the
+72-char subject) and exit non-zero on a violation: the commit-side analog of the
 gate. Reads FILE (the path a commit-msg hook passes as $1) or stdin; cleans the
-message git-style and exempts merge/autosquash subjects. awf installs no hook —
+message git-style and exempts merge/autosquash subjects. awf installs no hook;
 wire this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh
 payload runs it when the hooks artifact is enabled).
 `,
@@ -139,7 +139,7 @@ changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
 take precedence over the git selectors.
 
 With --uncovered, ignore the path lookup and instead report git-tracked-at-HEAD
-paths matched by no configured domain glob — the coverage-gap signal for where to
+paths matched by no configured domain glob: the coverage-gap signal for where to
 add a domain. Positional args become optional scan roots (a directory subtree);
 --staged/--range are not accepted in this mode.
 
@@ -151,7 +151,7 @@ Flags:
 `,
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact — kind ∈ {adr, plan, skill, agent, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, skill, agent, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf new <kind> <args>
 
@@ -208,7 +208,7 @@ part, the enable, and a re-render.
 		},
 	},
 	{
-		Name: "enable", Summary: "Enable an artifact — kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
+		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
 		BoolFlags: []string{"--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf enable <kind> <name> [--dry-run]
 
@@ -225,7 +225,7 @@ Flags:
 		BoolFlags: []string{"--with-dependents", "--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf disable <kind> <name> [--with-dependents] [--dry-run]
 
-Disable an artifact — a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
+Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
 For skill/agent/doc, disabling refuses while enabled artifacts still require
 <name>, printing the dependent plan (ADR-0081).
 

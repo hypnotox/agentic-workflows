@@ -41,20 +41,20 @@
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
-      "configHash": "sha256:424ca503fb41169efba181bf306d0c7567b24c2b77acb9a7f832aca58ace31ad",
-      "outputHash": "sha256:e5385a31eb78de57cce49664e5ebbff58da5a7b71924ec3723f30b21136a5fb7"
+      "configHash": "sha256:f29d68efbca1bfe6c54f355b45f9924c236400563b6577edd57a3af3ac1112d7",
+      "outputHash": "sha256:18072ec78d11426a475f5c7e9998af7b0f8acb5cdf80203b05e927f15dbf4353"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
-      "configHash": "sha256:0ab08125caf4efdcba5c8e1c50c22f0758198a4c812638bdba2972f952a32d86",
-      "outputHash": "sha256:93f3abba450113193bf386bcfbbdbf08dc9c116ce869797147d54e41e2232ac9"
+      "configHash": "sha256:c46785d1af11109a78485416bc6e8dd3ac5938b049f45a2877a2f1d3dd152a47",
+      "outputHash": "sha256:9a1638efc525e8cd7973853dd51c4b85caf7b8f8011ec56b5ecb7bdfdcf03a74"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
-      "configHash": "sha256:1e4780cf6df648f69527f3b0c7b7148a256268d2e98cb8f1c51f55ea5f93f309",
-      "outputHash": "sha256:c6e7f3b1b31a460a586bb8dcdc1f2adf9c926a1e8b9d4009dda7d02653e78846"
+      "configHash": "sha256:db707fa918408fd2e829e55f24831ffb5bc85de4c3128748c7fa607d2c373698",
+      "outputHash": "sha256:6de3aa850307122f2c83e05013e66e621502e448ca2c346e1b63d90a907e9284"
     },
     ".claude/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -180,7 +180,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:546a9938e07a5f9db710cf10f72aa5ab65391383c94723a2602fc844d70b8ed7",
+      "outputHash": "sha256:40295a24e74555349dc7726502fd01b755f4dafec091fca7e4a6bd49dde23a5f",
       "regenChecked": true
     },
     "docs/debugging.md": {
