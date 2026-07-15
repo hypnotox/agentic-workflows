@@ -174,9 +174,13 @@ Harder / accepted trade-offs:
 - A new drift path (regeneration-with-read-back), a new pointer variant, and a per-target pointer
   comment style enlarge the render/check surface. This is genuinely more machinery than a two-file
   split, accepted for the reusable primitive it buys. The comment style is a two-value sniff (`#!`
-  shebang → `#` comment, else HTML), shared by the pointer emitter and the read-back matcher so they
-  cannot diverge; a target whose comment syntax is neither `#` nor HTML would need a third style
-  before it could carry an in-place section.
+  shebang → `#`-line comment, else HTML), shared by the pointer emitter and the read-back matcher so
+  they cannot diverge. The sniff assumes a `#!`-shebang target uses a `#`-line comment — true for
+  shell, Python, Ruby, but **not** e.g. `#!/usr/bin/env node` (JS comments are `//`): such a target
+  is silently *misclassified* as `#`-style, not cleanly rejected, and would render a broken file.
+  This mirrors `injectBanner`'s existing shebang assumption, so it is a shared, consistent limitation
+  rather than a new one; supporting a non-`#` shebang target (or any comment syntax that is neither
+  `#` nor HTML) means refining the sniff, not merely adding a branch.
 - The adopter may extend a file **only inside** its in-place-editable section(s); content added
   elsewhere is discarded on the next sync (and drift-flagged before it). Templates consuming this
   primitive must place in-place sections at the real extension points. This is also a coherence
