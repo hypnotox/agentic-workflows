@@ -793,3 +793,49 @@ data:
         unknown-kind message; five sites, no central list). Lesson: when adding a config-tree singleton, walk the full
         list (embed, render block, sweep claim, configspec/reference, enable CLI, example adoption)
         rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).
+    - title: "`awf new adr` computes the next number from one tree, so parallel worktrees collide"
+      domains: [adr-system, tooling]
+      related: [42]
+      tags: [adr-scaffolding, worktree-isolation]
+      body: |
+        `awf new adr` derives the next sequential number by scanning the *current* tree's
+        `docs/decisions/`, so it cannot see a sibling worktree that has already claimed it. Two
+        efforts running in parallel worktrees both get the same number and neither command fails:
+        the collision only surfaces at merge, as two unrelated ADRs with one number. Hit
+        2026-07-15: an `effort/adr-backpointer` worktree branched and took 0116, and a
+        concurrent session's `awf new adr` minted 0116 again; the second was renumbered to 0117 by
+        amending, which was only cheap because it was unpushed and provably exclusive to `main`
+        (`git merge-base --is-ancestor`). Renumbering after a push is not cheap: the number is
+        already cited by `related:`/`supersedes:` frontmatter, ACTIVE.md, and the domain indexes.
+
+        Before scaffolding an ADR in a parallel-worktree session, check every branch, not just
+        yours: `git branch --format='%(refname:short)' | while read b; do git ls-tree -r
+        --name-only "$b" docs/decisions; done`. The command is the fallible half here; a
+        cross-branch check is the reliable half. Fixing this inside `awf new adr` (scan refs, not
+        just the worktree) is an open follow-up, deliberately not done as a drive-by.
+    - title: "A post-check whose scope is wider than the change's scope is unsatisfiable"
+      domains: [tooling]
+      related: [115]
+      tags: [verification-discipline, plan-taxonomy]
+      body: |
+        The two sibling entries above cover a probe that never ran and a probe whose pattern is too
+        narrow. This is the variant where the probe runs, the pattern is right, and the *scope* is
+        wrong: it reads a wider unit than the rule governs, so it counts grandfathered matches the
+        change was never allowed to touch and can never reach its expected value. Satisfying it
+        would mean violating the invariant the task exists to protect.
+
+        ADR-0115's plan (2026-07-15) told task 5.1 to normalize an em-dash out of three ADR *heading*
+        lines and change "nothing else in these files", then post-checked with
+        `grep -lP '<banned>' docs/decisions/0007-*.md ... | wc -l` expecting `0`, on the stated
+        premise that those three bodies "happen to carry no other banned codepoint". They carry 15,
+        13, and 11. The check greps whole files, so it prints `3` forever; the only way to make it
+        print `0` is to clean the bodies, which the same plan, the same ADR, and the append-only
+        invariant all forbid. The heading-scoped check (`grep -hP '^# ADR-' ... | grep -cP
+        '<banned>'`) prints `0` and is the one that matches the rule.
+
+        The lesson is not "write better greps": it is that **a post-check is unverified prose until
+        someone runs it**. This one shipped through plan review, a verify pass, and a plan-vs-ADR
+        resync, all of which independently re-derived the em-dash *counts* and none of which
+        executed the command. Grep at the granularity the rule governs (line, literal, heading), and
+        when a task's scope is narrower than a file, say so in the probe rather than the prose
+        around it.
