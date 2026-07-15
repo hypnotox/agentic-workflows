@@ -461,6 +461,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 			Changes: []FileChange{{Path: path, Action: Modified, OldText: oldText, NewText: newText}}}}
 	}
 	dash, dots := "\u2014", "\u2026"
+	endash, ldq := "\u2013", "\u201c"
 
 	// A rising count warns, naming the file, the codepoint, and the commit.
 	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
@@ -470,12 +471,14 @@ func TestRulePlainPunctuation(t *testing.T) {
 		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {
 		t.Fatalf("want 1 warning naming the file and the em-dash, got %v", got)
 	}
-	// Two risen runes are named in sorted order: map iteration order is not
-	// deterministic, so the rule sorts before joining and this pins that.
-	multi := rulePlainPunctuation(change("docs/x.md", "plain", "a "+dash+" b "+dots+" c"), in)
-	if len(multi) != 1 ||
-		!strings.Contains(multi[0].Detail, "ellipsis (U+2026) (0 to 1), em-dash (U+2014) (0 to 1)") {
-		t.Fatalf("want both risen runes named in sorted order, got %v", multi)
+	// Risen runes are named in sorted order: map iteration order is not
+	// deterministic, so the rule sorts before joining and this pins that. Four
+	// runes, not two: two entries fall in sorted order by chance often enough
+	// that a two-rune case lets an unsorted join pass about a quarter of runs.
+	multi := rulePlainPunctuation(change("docs/x.md", "plain", "a"+dash+"b"+dots+"c"+endash+"d"+ldq+"e"), in)
+	if len(multi) != 1 || !strings.Contains(multi[0].Detail,
+		"ellipsis (U+2026) (0 to 1), em-dash (U+2014) (0 to 1), en-dash (U+2013) (0 to 1), left double quote (U+201C) (0 to 1)") {
+		t.Fatalf("want all four risen runes named in sorted order, got %v", multi)
 	}
 	// An unchanged count is silent: grandfathering is emergent, not configured.
 	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b", "c"+dash+"d"), in); len(f) != 0 {
