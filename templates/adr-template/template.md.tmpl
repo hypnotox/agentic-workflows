@@ -33,7 +33,7 @@ An advisory `<your marker> touches-invariant: <slug> (<note>)` marker records a 
 never backs. `awf check` enforces declared slugs once the ADR is `Implemented`; untagged bullets are
 textual contracts.
 
-- `` `invariant: <slug>` ``: a test-backed property. Requires a proof marker.
+- `` `invariant: <slug>` ``: a property a test is declared to back. Requires a proof marker.
 - `` `unbacked-invariant: <slug>` ``: a reasoned contract with no automatic test. **Verify:** how to
   confirm it by hand.
 

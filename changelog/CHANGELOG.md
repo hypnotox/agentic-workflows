@@ -141,6 +141,15 @@ query a single version or a range.
   `awf sync`.
 
 ### Others
+- Invariant backing is documented as a ledger, not a proof (ADR-0114). The marker
+  scan is a textual line match with no assertion awareness, so a backed `invariant:`
+  slug records that a test is declared to back it, not that the property is proven.
+  The ADR-README, the ADR template, and the proposing-adr skill drop the
+  "test-proven property" wording; the invariants domain doc gains a ledger-not-proof
+  caveat cross-referenced to the coverage doc; a new glossary term defines invariant
+  backing; and the `code-reviewer` testing-discipline lens now charges the semantic
+  check that a backing test actually asserts the invariant it backs. Adopters get the
+  reworded prose and the lens on their next `awf sync`.
 - Shipped templates are now gate-checked em-dash-free (ADR-0113). A new gate
   scans awf's embedded templates and fails on the em-dash character (U+2014),
   and the documentation authoring standard gains a plain-punctuation rule.

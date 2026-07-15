@@ -18,7 +18,7 @@ Apply all five lenses to every implementation diff:
 
 1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
 
-1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
+1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` slug must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 
 1. **doc-currency (impl-level)**: ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
 
