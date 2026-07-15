@@ -170,6 +170,8 @@ func (p *Project) currentValue(path string) string {
 		return withDefault(strconv.FormatBool(res.DomainCodeStaleness), a == nil || a.DomainCodeStaleness == nil)
 	case "audit.undocumentedDomain":
 		return withDefault(strconv.FormatBool(res.UndocumentedDomain), a == nil || a.UndocumentedDomain == nil)
+	case "audit.plainPunctuation":
+		return withDefault(strconv.FormatBool(res.PlainPunctuation), a == nil || a.PlainPunctuation == nil)
 	case "audit.uncommittedChanges":
 		return withDefault(strconv.FormatBool(res.UncommittedChanges), a == nil || a.UncommittedChanges == nil)
 	case "bootstrap.enabled":

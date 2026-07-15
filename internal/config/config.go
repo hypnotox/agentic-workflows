@@ -133,6 +133,7 @@ type AuditConfig struct {
 	DomainDocStaleness  *bool       `yaml:"domainDocStaleness"`
 	DomainCodeStaleness *bool       `yaml:"domainCodeStaleness"`
 	UndocumentedDomain  *bool       `yaml:"undocumentedDomain"`
+	PlainPunctuation    *bool       `yaml:"plainPunctuation"`
 	UncommittedChanges  *bool       `yaml:"uncommittedChanges"`
 }
 

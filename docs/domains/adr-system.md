@@ -25,8 +25,5 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
-
-### Proposed
-
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
 

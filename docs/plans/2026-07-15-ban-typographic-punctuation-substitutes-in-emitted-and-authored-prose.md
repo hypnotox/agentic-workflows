@@ -1,7 +1,7 @@
 ---
 date: 2026-07-15
 adrs: [115, 117]
-status: Proposed
+status: Implemented
 ---
 # Plan: Ban typographic punctuation substitutes in emitted and authored prose
 
@@ -955,3 +955,31 @@ Whole-effort acceptance checks, run from a clean tree at the end:
 - **`awf new adr` collides across worktrees.** It computes the next number from the current tree
   only, so a sibling worktree can claim the same number; this effort hit exactly that once already.
   Before scaffolding an ADR in a parallel-worktree session, check every branch first.
+
+### Implementation findings (recorded at the freeze)
+
+- **Task 4.1b's enumeration was one file short.** Seven test files mirror a production string
+  changed in task 4.1, not six: `cmd/awf/initrender_test.go:146` also asserts `check.go:192`'s
+  stub-note text. Task 4.3 anticipated exactly this ("it fails here if task 4.1b missed an
+  assertion, in which case fix it and re-run"), and the gate named the file and line, so the
+  omission cost nothing. It is recorded because it shows the enumeration was the fallible half of
+  the task and the gate was the reliable half.
+- **Task 5.1's post-check command is wrong and must not be satisfied.** It greps whole files
+  (`grep -lP '<banned>' docs/decisions/0007-*.md ...`) and expects `0`, on the stated premise that
+  "these three ADR bodies happen to carry no other banned codepoint". They do: the bodies carry 15,
+  13, and 11 em-dashes respectively. Those are grandfathered and must stay, so the command can only
+  ever print `3`, and the only way to make it print `0` would be to clean the bodies, which task
+  5.1 ("nothing else in these files"), task 6.4 ("the carve-out reaches the heading only, never the
+  body"), and the append-only invariant all forbid. The correct check is heading-scoped and passes:
+  `grep -hP '^# ADR-' docs/decisions/0007-*.md docs/decisions/0018-*.md docs/decisions/0022-*.md |
+  grep -cP '<banned>'` prints `0`. The retitle itself landed exactly as specified: a 3-line diff,
+  one heading each.
+- **`awf invariants` reports only failures.** Tasks 6.6 and 7.7 expect it to "report
+  `<slug>` as backed"; it prints `awf invariants: clean` and names nothing when every slug is
+  backed. Backing was confirmed instead with `awf context <path>`, which labels each slug
+  `[backed]`. No code change is warranted; the expectation was simply phrased against the wrong
+  command.
+- **The whole-effort `./x audit` acceptance check is branch-shaped.** It expects warnings on the
+  plan and ADR files this effort added, but the effort committed to `main`, and the audit range is
+  `main..HEAD`, which is empty there. The rule was verified live over this effort's own commits
+  with an explicit `--range` instead.

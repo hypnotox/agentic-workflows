@@ -118,10 +118,7 @@
 - [ADR-0114: Invariant backing is a ledger, not a proof](0114-invariant-backing-is-a-ledger-not-a-proof.md) (Implemented)
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md) (Implemented)
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md) (Implemented)
-
-## Proposed
-
-- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) (Proposed)
+- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) (Implemented)
 
 ## Superseded
 

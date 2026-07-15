@@ -75,12 +75,13 @@ type Finding struct {
 // Inputs are the resolved audit settings plus the project-derived layout the rules
 // need. The embedded Settings carries the resolved knobs (BaseBranch, AllowedTypes,
 // AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
-// DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges),
-// promoted so the rules read in.AllowedTypes etc. directly.
+// DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges,
+// PlainPunctuation), promoted so the rules read in.AllowedTypes etc. directly.
 type Inputs struct {
 	Settings
 	GeneratedPaths    map[string]bool
 	ADRDir            string   // e.g. "docs/decisions"
+	DocsDir           string   // e.g. "docs"; the authored-prose root (ADRDir and PlansDir sit under it)
 	ActiveMd          string   // e.g. "docs/decisions/ACTIVE.md"
 	PlansDir          string   // e.g. "docs/plans"
 	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
@@ -117,6 +118,7 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 	out = append(out, ruleDomainDocStaleness(commits, in)...)
 	out = append(out, ruleUndocumentedDomain(commits, in)...)
 	out = append(out, ruleDomainCodeStaleness(commits, in)...)
+	out = append(out, rulePlainPunctuation(commits, in)...)
 	return out
 }
 
@@ -411,6 +413,61 @@ func domainOfPart(path, partsDir string) (string, bool) {
 		return "", false
 	}
 	return domain, true
+}
+
+// bannedProseRunes are the typographic punctuation substitutes the documentation
+// standard bans. Each is written as an escape so this file states the rule
+// without typing the glyphs it bans.
+var bannedProseRunes = map[rune]string{
+	'\u2014': "em-dash (U+2014)",
+	'\u2013': "en-dash (U+2013)",
+	'\u2026': "ellipsis (U+2026)",
+	'\u2018': "left single quote (U+2018)",
+	'\u2019': "right single quote (U+2019)",
+	'\u201c': "left double quote (U+201C)",
+	'\u201d': "right double quote (U+201D)",
+}
+
+// countBanned tallies each banned rune in s.
+func countBanned(s string) map[rune]int {
+	out := map[rune]int{}
+	for _, r := range s {
+		if _, bad := bannedProseRunes[r]; bad {
+			out[r]++
+		}
+	}
+	return out
+}
+
+// touches-invariant: audit-plain-punctuation - plain-punctuation audit rule; proof in audit_test.go
+func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
+	if !in.PlainPunctuation || in.DocsDir == "" {
+		return nil
+	}
+	var out []Finding
+	for _, c := range commits {
+		for _, ch := range c.Changes {
+			if ch.Action == Deleted || !strings.HasSuffix(ch.Path, ".md") ||
+				!underDir(ch.Path, in.DocsDir) || in.GeneratedPaths[ch.Path] {
+				continue
+			}
+			before, after := countBanned(ch.OldText), countBanned(ch.NewText)
+			var risen []string
+			for r, name := range bannedProseRunes {
+				if after[r] > before[r] {
+					risen = append(risen, fmt.Sprintf("%s (%d to %d)", name, before[r], after[r]))
+				}
+			}
+			if len(risen) == 0 {
+				continue
+			}
+			slices.Sort(risen)
+			out = append(out, finding(Warning, "plain-punctuation", c,
+				fmt.Sprintf("%s adds typographic punctuation: %s; authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)",
+					ch.Path, strings.Join(risen, ", "))))
+		}
+	}
+	return out
 }
 
 func finding(s Severity, rule string, c Commit, detail string) Finding {

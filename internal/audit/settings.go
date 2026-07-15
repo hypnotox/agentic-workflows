@@ -13,6 +13,7 @@ type Settings struct {
 	DomainDocStaleness  bool
 	DomainCodeStaleness bool
 	UndocumentedDomain  bool
+	PlainPunctuation    bool
 	UncommittedChanges  bool
 }
 
@@ -37,6 +38,7 @@ func Resolve(a *config.AuditConfig) Settings {
 		DomainDocStaleness:  true,
 		DomainCodeStaleness: true,
 		UndocumentedDomain:  true,
+		PlainPunctuation:    true,
 		UncommittedChanges:  true,
 	}
 	if a == nil {
@@ -66,6 +68,9 @@ func Resolve(a *config.AuditConfig) Settings {
 	}
 	if a.UndocumentedDomain != nil {
 		s.UndocumentedDomain = *a.UndocumentedDomain
+	}
+	if a.PlainPunctuation != nil {
+		s.PlainPunctuation = *a.PlainPunctuation
 	}
 	if a.UncommittedChanges != nil {
 		s.UncommittedChanges = *a.UncommittedChanges

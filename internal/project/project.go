@@ -331,6 +331,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
+		DocsDir:           lay.DocsDir,
 		ActiveMd:          lay.ActiveMd,
 		PlansDir:          lay.PlansDir,
 		ConfiguredDomains: p.Cfg.Domains,

@@ -204,6 +204,11 @@ var keys = []Entry{
 		Availability: "Read by `awf audit`.",
 	},
 	{
+		Path: "audit.plainPunctuation", Type: "bool", Default: "true",
+		Description:  "Advisory rule: warn when a commit raises the count of typographic punctuation substitutes (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D) in an authored markdown file under `docsDir`. Existing occurrences never warn; only a net increase does. Generated files are skipped.",
+		Availability: "Read by `awf audit`.",
+	},
+	{
 		Path: "audit.uncommittedChanges", Type: "bool", Default: "true",
 		Description:  "Advisory rule: warn when the working tree carries uncommitted changes at audit time.",
 		Availability: "Read by `awf audit`.",

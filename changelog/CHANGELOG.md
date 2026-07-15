@@ -66,6 +66,11 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf audit` gains an advisory `plain-punctuation` rule (ADR-0117), on by default and switched
+  off with `audit.plainPunctuation: false`. It warns, and never errors, when a commit **raises**
+  the count of a typographic punctuation substitute in an authored markdown file under `docsDir`.
+  Prose already written never warns: only a net increase does, so there is no allowlist, no cutoff
+  date, and nothing to migrate. Generated files are skipped.
 - awf can now render **co-owned files with in-place-editable sections** (ADR-0100) and ships
   a **managed command-runner `x`** as their first consumer (ADR-0101). A section declared with
   the `inplace` marker has its body read back from the existing rendered output (bounded by its

@@ -452,3 +452,60 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 		t.Fatalf("want 2 warnings sorted by domain, got %v", got)
 	}
 }
+
+func TestRulePlainPunctuation(t *testing.T) {
+	in := Inputs{DocsDir: "docs", Settings: Settings{PlainPunctuation: true},
+		GeneratedPaths: map[string]bool{"docs/decisions/ACTIVE.md": true}}
+	change := func(path, oldText, newText string) []Commit {
+		return []Commit{{Hash: "abc1234", Subject: "docs(adr): x",
+			Changes: []FileChange{{Path: path, Action: Modified, OldText: oldText, NewText: newText}}}}
+	}
+	dash, dots := "\u2014", "\u2026"
+
+	// A rising count warns, naming the file, the codepoint, and the commit.
+	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
+	// invariant: audit-plain-punctuation
+	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != Warning ||
+		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") {
+		t.Fatalf("want 1 warning naming the em-dash, got %v", got)
+	}
+	// An unchanged count is silent: grandfathering is emergent, not configured.
+	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b", "c"+dash+"d"), in); len(f) != 0 {
+		t.Errorf("net-zero swap should be silent, got %v", f)
+	}
+	// A falling count is silent.
+	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b"+dash+"c", "a"+dash+"b"), in); len(f) != 0 {
+		t.Errorf("a removal should be silent, got %v", f)
+	}
+	// A new file has empty OldText, so every occurrence in it is new.
+	added := []Commit{{Hash: "d", Changes: []FileChange{{Path: "docs/x.md", Action: Added, NewText: "a " + dots + " b"}}}}
+	if f := rulePlainPunctuation(added, in); len(f) != 1 || !strings.Contains(f[0].Detail, "ellipsis (U+2026)") {
+		t.Fatalf("want 1 warning naming the ellipsis on an added file, got %v", f)
+	}
+	// A generated path is skipped: its glyphs are its source's fault.
+	if f := rulePlainPunctuation(change("docs/decisions/ACTIVE.md", "", "a"+dash+"b"), in); len(f) != 0 {
+		t.Errorf("generated path should be skipped, got %v", f)
+	}
+	// Outside docsDir is skipped.
+	if f := rulePlainPunctuation(change("README.md", "", "a"+dash+"b"), in); len(f) != 0 {
+		t.Errorf("path outside docsDir should be skipped, got %v", f)
+	}
+	// A non-markdown path under docsDir is skipped: FileChange loads text only for .md.
+	if f := rulePlainPunctuation(change("docs/x.txt", "", "a"+dash+"b"), in); len(f) != 0 {
+		t.Errorf("non-markdown path should be skipped, got %v", f)
+	}
+	// A deleted file is skipped.
+	deleted := []Commit{{Hash: "e", Changes: []FileChange{{Path: "docs/x.md", Action: Deleted, OldText: "a" + dash + "b"}}}}
+	if f := rulePlainPunctuation(deleted, in); len(f) != 0 {
+		t.Errorf("deleted file should be skipped, got %v", f)
+	}
+	// Disabled.
+	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"), Inputs{DocsDir: "docs"}); f != nil {
+		t.Errorf("disabled rule returned %v", f)
+	}
+	// Unset DocsDir is inert.
+	if f := rulePlainPunctuation(change("docs/x.md", "", "a"+dash+"b"),
+		Inputs{Settings: Settings{PlainPunctuation: true}}); f != nil {
+		t.Errorf("unset DocsDir should be inert, got %v", f)
+	}
+}
