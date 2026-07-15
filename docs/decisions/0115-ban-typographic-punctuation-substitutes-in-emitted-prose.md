@@ -180,8 +180,11 @@ continued to declare it. Do not "repair" this ADR by populating `retires_invaria
 - **This is an adopter-facing release, not a quiet internal fix.** Changing the ACTIVE.md
   separator makes every adopter's committed `ACTIVE.md` drift against the new binary, so their
   `awf check` fails until they re-sync. The flip commit therefore carries a changelog entry and an
-  upgrade note. `cmd/repoaudit` independently flags an adopter-facing change with no changelog
-  entry as an Error. The in-repo adopter example is affected identically: `./x` runs `awf sync`
+  upgrade note. `cmd/repoaudit` independently flags an adopter-facing change whose `[Unreleased]`
+  section is unchanged, as a `warning` rather than an error: ADR-0107 downgraded that rule because
+  a path heuristic cannot tell a benign change from a behavioural one. The obligation here is
+  therefore the ADR's, not the tooling's. The in-repo adopter example is affected identically:
+  `./x` runs `awf sync`
   and `awf check` inside `examples/sundial`, so the landing commit must stage the regenerated
   `examples/sundial/docs/decisions/ACTIVE.md` (3 rows) or `./x check` fails on drift there.
 - **Past release notes are rewritten, and published ones diverge.** Cleaning the 103 em-dashes and
