@@ -19,17 +19,17 @@ convention parts at `.claude/awf/<kind>/parts/<target>/<section>.md`.
 
 What never materialised is the *content*. Each docs template is a `# Heading` followed by a single
 `<!-- awf:section body -->` block whose only contents are an HTML comment instructing the reader to
-"Override via `docs.<name>.sections.body` … in `.claude/awf.yaml`". That guidance is doubly stale:
+"Override via `docs.<name>.sections.body` ... in `.claude/awf.yaml`". That guidance is doubly stale:
 ADR-0009 deleted `.claude/awf.yaml`, and the convention-part mechanism means no `replaceWith`
 pointer is needed. So a fresh adopter who enables a doc gets an empty file pointing at a removed
-config path. The docs module ships structure but no default — the opposite of `AGENTS.md.tmpl`,
+config path. The docs module ships structure but no default: the opposite of `AGENTS.md.tmpl`,
 the project's exemplar, where every marker section carries real generic prose the project edits in
 place.
 
 Two further gaps surfaced while scoping this (verified against source):
 
 - **Docs are decomposable but undecomposed.** The render engine treats docs sections identically
-  to skill sections — `renderTarget` overlays catalog-declared sections with sidecar overrides and
+  to skill sections: `renderTarget` overlays catalog-declared sections with sidecar overrides and
   convention parts with no doc-specific special-casing (`internal/project/project.go:383-389`), and
   `catalog.DocSpec.Sections []string` already exists (`internal/catalog/catalog.go:15-19`). Every
   doc nonetheless declares the single section `body`, so an adopter can only override a whole doc
@@ -38,7 +38,7 @@ Two further gaps surfaced while scoping this (verified against source):
   detection flags a whole `<kind>/parts/<target>/` directory only when the *target* is disabled
   (`internal/project/project.go:609-625`); it does not flag a part file whose *section* is no
   longer declared. A convention part at a mistyped or removed section name is therefore silently
-  ignored rather than reported — the exact failure the drift oracle exists to catch. (The *sidecar*
+  ignored rather than reported: the exact failure the drift oracle exists to catch. (The *sidecar*
   half is already covered: `checkSectionsAllowed` rejects a sidecar `sections` key not in the
   target's declared set as a hard render error during `RenderAll`,
   `internal/project/project.go:77,117`. The gap is specifically the convention-part file, which is
@@ -56,7 +56,7 @@ such section.
    default content, never a bare placeholder comment. Content is *hybrid*: docs awf is
    authoritative about render as real generic prose true-by-default for any awf project (the
    workflow chain, the gate, the command-runner convention); inherently project-specific docs
-   render a visible skeleton — `##` section headings with a one-line italic prompt under each — that
+   render a visible skeleton (`##` section headings with a one-line italic prompt under each) that
    the project fills in place.
 
 2. **Each doc is decomposed into a named section taxonomy**, declared in `templates/catalog.yaml`
@@ -109,15 +109,15 @@ Checkable contracts that must hold while this decision stands. Tagged slugs are 
 landing with implementation (enforced by `awf check` once this ADR is `Implemented`; ADR-0008);
 untagged bullets are textual contracts.
 
-- `invariant: docs-section-parity` — For every doc in the catalog, the set of declared sections equals
+- `invariant: docs-section-parity`: For every doc in the catalog, the set of declared sections equals
   the set of `<!-- awf:section NAME -->` marker blocks in its template, and the doc renders from
   template defaults with no `<no value>` token.
-- `invariant: section-orphan-flagged` — `awf check` reports a convention part
+- `invariant: section-orphan-flagged`: `awf check` reports a convention part
   `<kind>/parts/<target>/<section>.md` as drift whenever `<section>` is not among the enabled
   target's catalog-declared sections. (An undeclared sidecar `sections` key is separately rejected
   as a render error by `checkSectionsAllowed`, covered by the existing config tests.)
-- Every rendered doc body contains author-facing default content — generic prose or a visible
-  `##` skeleton — and never consists solely of an HTML comment.
+- Every rendered doc body contains author-facing default content (generic prose or a visible
+  `##` skeleton) and never consists solely of an HTML comment.
 - Doc default content interpolates no `.vars.X` or `.data.X` token, preserving publication-safety
   under `missingkey=zero` (ADR-0001).
 - The `awf-setup` section is a member of `agentsDoc.sections` and is rendered by default,
@@ -133,11 +133,11 @@ untagged bullets are textual contracts.
   guarantee, so this is acceptable now; the taxonomy is recorded here so a future change is a
   deliberate, ADR-tracked decision rather than silent drift.
 - Section-level orphan detection makes a mistyped or stale part a hard `awf check` failure for
-  every adopter — catching a real footgun, but also flagging parts that were previously tolerated.
+  every adopter, catching a real footgun, but also flagging parts that were previously tolerated.
   The repo's own `architecture/body.md` is migrated in the same change so the repo stays green.
 - Rendered output for any project that already enabled a doc will change on the next `awf sync`
   (the body gains content); a project that hand-edited a rendered doc instead of using a part will
-  see that overwritten — the intended ADR-0004 contract (diverge via parts, not by hand-editing
+  see that overwritten: the intended ADR-0004 contract (diverge via parts, not by hand-editing
   rendered files), now with content worth keeping.
 - No schema or struct change is required: `DocSpec.Sections` and the part/sidecar overlay already
   support arbitrary section names; the work is catalog content, template content, one Go change to
@@ -148,6 +148,6 @@ untagged bullets are textual contracts.
 | Alternative | Why not chosen |
 |---|---|
 | Keep a single `body` section per doc, just fill it with content | Loses granular override; an adopter wanting to tweak one part of `workflow` must replace the whole doc and re-track upstream changes to the rest. |
-| Generic prose for every doc (no skeleton) | Reads well for `workflow`/`testing` but produces misleading filler for inherently project-specific docs (`architecture`, `glossary`) — a skeleton prompts the author honestly instead. |
+| Generic prose for every doc (no skeleton) | Reads well for `workflow`/`testing` but produces misleading filler for inherently project-specific docs (`architecture`, `glossary`); a skeleton prompts the author honestly instead. |
 | Put the awf-interaction guidance in the `development` doc | Only surfaces if the project enables that opt-in doc; the interaction model applies to every adopter, so it belongs in the always-on agent guide. |
 | Defer section-level orphan detection to a later ADR | Without it the new override taxonomy is not drift-enforced, and the repo's own `body.md` migration would leave a silently-ignored stale part; the enforcement and the taxonomy are one decision. |

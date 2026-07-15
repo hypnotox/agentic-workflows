@@ -3,7 +3,7 @@
 # Plan: Unify render loops + move init/uninstall logic out of cmd
 
 **Date:** 2026-06-28
-**ADR:** none — both items are plan-only refactors with no behaviour change and no new
+**ADR:** none; both items are plan-only refactors with no behaviour change and no new
 architectural decision. Item 1 is the DRY follow-up ADR-0027 named but deferred; it deliberately
 does **not** fold the render loops into the `kindDescriptor` (that would overscope ADR-0027 and
 doesn't fit docs' neutral output path), using self-contained local closures instead. Item 2
@@ -11,9 +11,9 @@ applies the existing "cmd is thin dispatch, logic lives in internal" principle.
 
 ## Goal
 
-1. **Item 1** — collapse the three near-identical `RenderAll` per-kind loops (skills/agents/docs)
+1. **Item 1**: collapse the three near-identical `RenderAll` per-kind loops (skills/agents/docs)
    into one local render-driver helper in `render.go`.
-2. **Item 2** — move init collision/backup planning and the uninstall removal algorithm from
+2. **Item 2**: move init collision/backup planning and the uninstall removal algorithm from
    `cmd/awf` into `internal/project`, re-homing the `init-force-backs-up` and
    `uninstall-removes-lock-tracked` invariant markers, leaving the git/hooks bits in `cmd`.
 
@@ -26,15 +26,15 @@ transitively cover moved `internal/project` code; direct project tests are added
 
 - **Item 1**: `renderTarget` is untouched, so ConfigHash stays byte-identical and drift is
   unaffected. `RenderAll` output is consumed map-keyed by `.Path` (verified: `Check`/`Sync` build
-  maps), so grouping skills/agents/docs together — moving the hooks block after docs — is
+  maps), so grouping skills/agents/docs together (moving the hooks block after docs) is
   order-safe. The skills doc-gate (`inv: doc-gated-skill-suppressed`) becomes an optional per-spec
   predicate (nil for agents/docs). Hooks (no sidecar), the agents-doc + CLAUDE bridge, and the
   adr-readme/adr-template/plans-readme singletons stay bespoke.
 - **Item 2**: `initCollisions`→`(*Project).InitCollisions`; the `--force` backup becomes
   `(*Project).BackupFile`; `freeBackupPath`/`copyFile`/`fileExists` move to a new
   `internal/project/install.go`. Uninstall removal becomes a free function `project.Uninstall(root)`
-  (a free function, not a method, so a broken config.yaml does not block uninstall — it only needs
-  the lock + root). The git helpers (`unsetAwfHooks`, `openWorktree`, …) stay in `cmd/awf`.
+  (a free function, not a method, so a broken config.yaml does not block uninstall: it only needs
+  the lock + root). The git helpers (`unsetAwfHooks`, `openWorktree`, ...) stay in `cmd/awf`.
 
 ## Tech stack
 
@@ -49,16 +49,16 @@ transitively cover moved `internal/project` code; direct project tests are added
 
 ---
 
-## Phase 1 — Unify the RenderAll render loops
+## Phase 1: Unify the RenderAll render loops
 
-### Task 1.1 — Extract a local render-driver helper
+### Task 1.1: Extract a local render-driver helper
 - [ ] In `internal/project/render.go`, add the spec type and driver immediately above
   `func (p *Project) RenderAll()`:
   ```go
   // renderKindSpec drives one catalog-backed render loop (skills/agents/docs): the
   // kinds that share the sort → sidecar → skip-local → render → append shape. tid,
   // sections, and outPath derive from the target name; gate (optional, nil = always
-  // render) suppresses a target — used for the skills doc-gate.
+  // render) suppresses a target, used for the skills doc-gate.
   type renderKindSpec struct {
   	kind     string
   	names    []string
@@ -90,9 +90,9 @@ transitively cover moved `internal/project` code; direct project tests are added
   	return out, nil
   }
   ```
-- [ ] Replace the three loops in `RenderAll` — the skills loop (the `// Skills.` block:
+- [ ] Replace the three loops in `RenderAll` (the skills loop (the `// Skills.` block:
   `enabledDocs := sliceSet(p.Cfg.Docs)` through the skills `for`/append), the `// Agents.` loop,
-  and the `// Docs.` loop — with a single spec-driven block. The exact replacement for those three
+  and the `// Docs.` loop) with a single spec-driven block. The exact replacement for those three
   blocks:
   ```go
   	// Skills / agents / docs share one driver (order-independent: consumers are map-keyed by path).
@@ -131,10 +131,10 @@ transitively cover moved `internal/project` code; direct project tests are added
   		out = append(out, rfs...)
   	}
   ```
-  Leave the `// Hooks.` loop, the `// agents-doc …` block, the CLAUDE bridge, and the
+  Leave the `// Hooks.` loop, the `// agents-doc ...` block, the CLAUDE bridge, and the
   adr-readme/adr-template/plans-readme singleton block exactly as they are (the hooks block now
   follows the driver block). Note: the old skills doc-gate in `render.go` carries only the prose
-  `(inv: doc-gated-skill-suppressed)` reference — there is no standalone `// invariant:` marker
+  `(inv: doc-gated-skill-suppressed)` reference: there is no standalone `// invariant:` marker
   line there to delete (the backing marker for this slug lives on the test at
   `internal/project/project_test.go:556` and stays). The new `// invariant: doc-gated-skill-suppressed`
   line on the spec's `gate` adds a source-side backing, which is a net improvement.
@@ -144,16 +144,16 @@ transitively cover moved `internal/project` code; direct project tests are added
 - [ ] Verify the doc-gate still fires: `go test ./internal/project/ -run DocGated` → PASS
   (`TestRenderAllSuppressesDocGatedSkill`).
 - [ ] `./x gate` → green (aggregate 100%). If any new branch is uncovered, the offender is the
-  `spec.gate != nil` false arm or a gate predicate arm — all are exercised by existing tests
+  `spec.gate != nil` false arm or a gate predicate arm; all are exercised by existing tests
   (agents/docs have nil gate; skills cover req=="" and the suppressed case). Add no coverage-ignore
   without first confirming the arm is genuinely unreachable.
 - [ ] Commit: `refactor(awf): unify the RenderAll skills/agents/docs loops`.
 
 ---
 
-## Phase 2 — Move init/uninstall logic into internal/project
+## Phase 2: Move init/uninstall logic into internal/project
 
-### Task 2.1 — Move init collision + backup planning to internal/project
+### Task 2.1: Move init collision + backup planning to internal/project
 - [ ] Create `internal/project/install.go`:
   ```go
   package project
@@ -169,7 +169,7 @@ transitively cover moved `internal/project` code; direct project tests are added
 
   // InitCollisions returns planned output paths that already exist on disk and are
   // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
-  // already exists is not a collision — re-init is idempotent.
+  // already exists is not a collision; re-init is idempotent.
   func (p *Project) InitCollisions() ([]string, error) {
   	planned, err := p.PlannedOutputs()
   	if err != nil {
@@ -268,10 +268,10 @@ transitively cover moved `internal/project` code; direct project tests are added
   		}
   	}
   ```
-  (The `// invariant: init-force-backs-up` marker is removed here — it re-homes onto
+  (The `// invariant: init-force-backs-up` marker is removed here; it re-homes onto
   `BackupFile` in `install.go`. The scaffold block above `p, err := project.Open` is unchanged.)
 - [ ] Fix `cmd/awf/main.go` imports: remove `"sort"` and the `internal/manifest` import **iff**
-  no longer used (`rg -n 'sort\.|manifest\.' cmd/awf/main.go` — both were only used by the deleted
+  no longer used (`rg -n 'sort\.|manifest\.' cmd/awf/main.go`: both were only used by the deleted
   `initCollisions`; remove whichever has no remaining use). `go build ./...` confirms.
 - [ ] Rewrite the two tests that called `initCollisions` directly:
   - `cmd/awf/run_test.go` `TestInitCollisionsOpenError` (the bad-config case): the Open error now
@@ -340,12 +340,12 @@ transitively cover moved `internal/project` code; direct project tests are added
     to name `p.InitCollisions` so it does not reference the deleted free function.
 - [ ] `go build ./...`; `gofmt -w` the touched files.
 - [ ] Verify: `go test ./internal/project/ ./cmd/awf/` → PASS; `./x gate` → green (aggregate
-  100% — the force-backup branches stay covered by `TestInitGuardBlocksAndForceOverrides` /
+  100%: the force-backup branches stay covered by `TestInitGuardBlocksAndForceOverrides` /
   `TestInitForceBackupDoesNotClobberPriorBak` via `run`, now transitively into `project`).
 - [ ] `./x check` → clean. Commit:
   `refactor(awf): move init collision/backup planning into internal/project`.
 
-### Task 2.2 — Move the uninstall removal algorithm to internal/project
+### Task 2.2: Move the uninstall removal algorithm to internal/project
 - [ ] In `internal/project/install.go`, add (imports: add `"maps"`, `"slices"` to the file's
   import block):
   ```go
@@ -353,13 +353,13 @@ transitively cover moved `internal/project` code; direct project tests are added
   // the lock, the directories left empty by their removal, and the now-stale lock
   // itself. It leaves the authored .awf/ config in place and returns the count of
   // files removed. It is a free function (not a *Project method) so a broken
-  // config.yaml does not block uninstall — only the lock and root are needed.
+  // config.yaml does not block uninstall: only the lock and root are needed.
   // invariant: uninstall-removes-lock-tracked
   func Uninstall(root string) (int, error) {
   	lockPath := filepath.Join(root, ".awf", "awf.lock")
   	lock, err := manifest.Load(lockPath)
   	if err != nil {
-  		return 0, fmt.Errorf("no %s — nothing to uninstall", filepath.Join(".awf", "awf.lock"))
+  		return 0, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(".awf", "awf.lock"))
   	}
   	removed := 0
   	dirs := map[string]bool{}
@@ -388,7 +388,7 @@ transitively cover moved `internal/project` code; direct project tests are added
   Update `install.go`'s import block to include `"maps"` and `"slices"` alongside the existing
   `fmt`/`os`/`path/filepath`/`sort`/`manifest`.
 - [ ] In `cmd/awf/uninstall.go`, replace the removal body of `runUninstall` (the lock load through
-  the `os.Remove(lockPath)` block, lines from `lockPath := …` to the `removed %d` Fprintf) with a
+  the `os.Remove(lockPath)` block, lines from `lockPath := ...` to the `removed %d` Fprintf) with a
   delegation, keeping the git/hooks teardown:
   ```go
   func runUninstall(root string, stdout io.Writer) error {
@@ -405,10 +405,10 @@ transitively cover moved `internal/project` code; direct project tests are added
   Remove the now-unused `// invariant: uninstall-removes-lock-tracked` marker from `uninstall.go`
   (re-homed onto `project.Uninstall`). Fix `cmd/awf/uninstall.go` imports: after delegation the
   only remaining users of `"os"`, `"path/filepath"`, `"maps"`, `"slices"`, and `internal/manifest`
-  are gone — `runUninstall` no longer touches them and `unsetAwfHooks` uses none of them (its git
-  helpers live in another file) — so drop all five; the file then imports only `"fmt"`, `"io"`, and
+  are gone (`runUninstall` no longer touches them and `unsetAwfHooks` uses none of them (its git
+  helpers live in another file)) so drop all five; the file then imports only `"fmt"`, `"io"`, and
   `internal/project`. `go build ./...` confirms the exact set.
-- [ ] Verify: `go test ./cmd/awf/ ./internal/project/` → PASS — the existing
+- [ ] Verify: `go test ./cmd/awf/ ./internal/project/` → PASS: the existing
   `TestUninstallRemovesGeneratedFilesAndLock` / `TestUninstallNoLockErrors` drive `runUninstall`
   and now transitively cover `project.Uninstall` (aggregate coverage). If a removal branch shows
   uncovered, add a direct `project.Uninstall` test in `install_test.go`.
@@ -421,5 +421,5 @@ transitively cover moved `internal/project` code; direct project tests are added
 - [ ] `./x gate full` → green (aggregate 100% coverage, lint clean).
 - [ ] `./x check` → `awf check: clean`; `./x invariants` → `awf invariants: clean` (both re-homed
   markers resolve at their new `internal/project` locations).
-- [ ] Add `# Implementation complete (YYYY-MM-DD)` header to this plan (freezes it — non-ADR).
+- [ ] Add `# Implementation complete (YYYY-MM-DD)` header to this plan (freezes it, non-ADR).
 - [ ] Invoke `awf-reviewing-impl` (terminal review of the series).

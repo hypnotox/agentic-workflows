@@ -22,7 +22,7 @@ outside every existing check. A 2026-07-02 analysis confirmed the blind spot: a 
 `reviewing-impl` but disabling `code-reviewer` renders a skill that dispatches a nonexistent
 agent, and `awf check` passes.
 
-"Shouldn't all agents always be enabled, since they are load bearing for our workflow?" — the
+"Shouldn't all agents always be enabled, since they are load bearing for our workflow?": the
 driving question, resolved as pairing validation rather than always-on: chain-less configs are
 deliberately legal (ADR-0046 amended the AGENTS.md chain prose to gate on `brainstorming` exactly
 so a docs-only adoption stays valid), and in such configs the reviewer agents would be dead
@@ -30,11 +30,11 @@ weight. What must hold is narrower: a dispatcher may never exist without its rev
 
 The existing per-skill gating precedent, `requiresDoc` (ADR-0013), is *suppression*: a doc-gated
 skill silently drops out of the effective render set (`internal/project/render.go:78`), and
-`awf add skill` prints a note (`cmd/awf/list_add.go`). Suppression is the wrong shape here —
+`awf add skill` prints a note (`cmd/awf/list_add.go`). Suppression is the wrong shape here:
 silently dropping a reviewing skill would sever the workflow chain invisibly, turning a
 misconfiguration into missing process. The CLI flow also matters: `awf remove` rewrites the
 config *before* chaining into `runSync` (`cmd/awf/list_add.go:196-205`), so a validation error
-raised only at sync would strand the tree — config already edited, rendered files stale, every
+raised only at sync would strand the tree: config already edited, rendered files stale, every
 gated command failing until the user re-adds the agent by hand.
 
 ## Decision
@@ -48,7 +48,7 @@ gated command failing until the user re-adds the agent by hand.
    guards `sync`, `check`, and every other gated command) fails when an enabled, non-`local`
    skill whose spec carries `requiresAgent` names an agent absent from the `agents:` enable
    array: `skill "reviewing-impl" requires agent "code-reviewer"; enable the agent or disable
-   the skill`. This deliberately diverges from `requiresDoc`'s suppression semantics — an
+   the skill`. This deliberately diverges from `requiresDoc`'s suppression semantics: an
    invalid chain should be loud, not silently thinner. A `local: true` skill sidecar skips the
    check (its content is user-owned, like the rest of catalog validation); the required agent
    itself may be catalog or `local`.
@@ -76,14 +76,14 @@ gated command failing until the user re-adds the agent by hand.
 
 ## Invariants
 
-- `invariant: reviewing-skill-agent-pairing` — an enabled, non-`local` skill whose catalog spec
+- `invariant: reviewing-skill-agent-pairing`: an enabled, non-`local` skill whose catalog spec
   carries `requiresAgent` fails `sync`/`check` (via `project.Open`) when that agent is not in
   the `agents:` enable array.
-- `invariant: remove-agent-pairing-guard` — `awf remove agent` refuses, with the config file
+- `invariant: remove-agent-pairing-guard`: `awf remove agent` refuses, with the config file
   unchanged, while an enabled, non-`local` skill requires the agent.
-- `invariant: add-skill-pairs-agent` — `awf add skill` enables the skill's required agent in the same
+- `invariant: add-skill-pairs-agent`: `awf add skill` enables the skill's required agent in the same
   config rewrite when it is missing.
-- `invariant: reviewing-skill-specs-paired` — every catalog skill named `reviewing-*` carries a
+- `invariant: reviewing-skill-specs-paired`: every catalog skill named `reviewing-*` carries a
   non-empty `requiresAgent` naming its dispatched agent (prefix-anchored catalog test, covering
   future reviewing skills as well as the current four).
 
@@ -91,7 +91,7 @@ gated command failing until the user re-adds the agent by hand.
 
 - The check blind spot closes at the config layer rather than the rendered-prose layer: no new
   scan, no prose parsing, and the error names the fix directly.
-- A previously-legal (but broken) config — reviewing skill on, its agent off — becomes a hard
+- A previously-legal (but broken) config (reviewing skill on, its agent off) becomes a hard
   error on the next gated command. No migration: no schema change, and any adopter in that state
   today has a silently broken chain this ADR makes visible.
 - `requiresDoc` and `requiresAgent` now carry different semantics on the same struct
@@ -107,7 +107,7 @@ gated command failing until the user re-adds the agent by hand.
 | Alternative | Why not chosen |
 |---|---|
 | Always-on agents (drop the `agents:` array for catalog agents) | Chain-less configs would render dead-weight reviewers; removing the array is a schema migration disproportionate to the defect. |
-| Suppression semantics (mirror `requiresDoc`) | Silently dropping a reviewing skill severs the chain invisibly — the failure mode the workflow exists to prevent. |
-| Advisory warning (a `check` warning or CLI note, like the `requiresDoc` add-note) | Warnings do not gate; the broken dispatcher still renders and the severed chain still lands. The doc-gate note works because suppression leaves the tree consistent — here there is no consistent degraded state to warn about. |
+| Suppression semantics (mirror `requiresDoc`) | Silently dropping a reviewing skill severs the chain invisibly: the failure mode the workflow exists to prevent. |
+| Advisory warning (a `check` warning or CLI note, like the `requiresDoc` add-note) | Warnings do not gate; the broken dispatcher still renders and the severed chain still lands. The doc-gate note works because suppression leaves the tree consistent: here there is no consistent degraded state to warn about. |
 | Extend the ADR-0046 dead-reference scan to agent names | Catches the symptom in rendered prose; unprefixed agent names risk false positives, and the config layer states the requirement directly with a better error. |
 | Derive agents from enabled skills (agents stop being configurable) | Cleanest mental model but a config-schema migration plus `awf add/remove agent` semantics change; local agents still need the array. |

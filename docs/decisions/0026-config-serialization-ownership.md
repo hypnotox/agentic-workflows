@@ -14,26 +14,26 @@ domains: [config, tooling]
 `.awf/config.yaml` is *read* through one strict `yaml.v3` decoder (`config.Load`), but it is
 *written* by hand in two other packages: `internal/project/scaffold.go` builds a fresh config with a
 `strings.Builder` (`writeArray`), and `cmd/awf/list_add.go` mutates the enable arrays by splicing
-text lines (`editArray`). `scaffold.go` even documents the rationale — "emit YAML manually … to avoid
-round-trip issues with the strict config.Load decoder" — and ADR-0024 chose the string editor
+text lines (`editArray`). `scaffold.go` even documents the rationale: "emit YAML manually ... to avoid
+round-trip issues with the strict config.Load decoder"; and ADR-0024 chose the string editor
 deliberately, rejecting "round-trip the YAML through a parser" on the grounds that it "loses the
 scaffold's hand-authored formatting/comments."
 
 Two facts overturn that reasoning:
 
 1. **The rejection's premise is false for a node round-trip.** A `yaml.v3` *Node* round-trip (decode
-   to `*yaml.Node`, edit one node, re-encode) preserves head/line comments and unrelated keys —
+   to `*yaml.Node`, edit one node, re-encode) preserves head/line comments and unrelated keys,
    verified empirically. The "lossy round-trip" ADR-0024 feared is the *struct* round-trip
    (`Unmarshal` into `Config`, `Marshal` back), not the node form.
 2. **The string editor is actively corrupting this repo.** `editArray` hard-codes two-space
    indentation, but `internal/migrate` last wrote this project's own `.awf/config.yaml` at four-space
    indentation (sorted keys). Running `awf add skill <x>` here today emits a mixed-indent block that
    the strict decoder silently mangles into a single corrupt scalar. The line editor is safe only for
-   configs it itself produced — a latent bug, not just inelegance.
+   configs it itself produced: a latent bug, not just inelegance.
 
 So config serialization is split across three hand-rolled sites with no single owner of the format,
 and the mutation path is fragile to any indentation it did not emit. The fix is to give `internal/config`
-— which already owns the schema and the read path — ownership of construction and mutation too.
+(which already owns the schema and the read path) ownership of construction and mutation too.
 
 ## Decision
 
@@ -47,15 +47,15 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
    validation, warnings, and `list` surface are unchanged).
 
 2. **Mutation is a structure-preserving node round-trip.** `SetArrayMember` decodes the source to a
-   `*yaml.Node`, edits *only* the target key's sequence — appending or removing the scalar and
-   normalizing that one sequence to block style — and re-encodes. Comments and every untouched key
+   `*yaml.Node`, edits *only* the target key's sequence (appending or removing the scalar and
+   normalizing that one sequence to block style) and re-encodes. Comments and every untouched key
    survive; a flow-style array (`skills: [a, b]`) is accepted and edited rather than refused (a
    deliberate change from `editArray`, which errored on flow style). Add of a present member and
    remove of an absent member are defined and tested; the caller's existing "already enabled" /
    "not enabled" guards are unchanged.
 
 3. **Construction emits the canonical skeleton.** `Skeleton` carries `prefix`, `vars`, and the four
-   catalog arrays (`skills`, `agents`, `hooks`, `docs`) — and **no `domains` field**, so the scaffold
+   catalog arrays (`skills`, `agents`, `hooks`, `docs`), and **no `domains` field**, so the scaffold
    omits a `domains:` key exactly as today. `Skeleton.Vars` is typed `map[string]string` so a `null`
    var value is *unrepresentable*: the scaffold seeds each var with an empty string, and an empty
    string marshals as `x: ""` while a nil interface would marshal as `x: null` and decode back to a
@@ -75,11 +75,11 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
 
 ## Invariants
 
-- `invariant: config-serialization-owned` — the live `.awf/config.yaml` is constructed and mutated only
+- `invariant: config-serialization-owned`: the live `.awf/config.yaml` is constructed and mutated only
   through `internal/config` (`MarshalSkeleton`, `SetArrayMember`), which share one `encode` funnel; no
   other package hand-rolls config.yaml serialization (`internal/migrate`'s forward-compat marshalling
   excepted per Decision 4).
-- `invariant: config-mutation-roundtrip` — `SetArrayMember` edits config.yaml via a `yaml.Node` round-trip
+- `invariant: config-mutation-roundtrip`: `SetArrayMember` edits config.yaml via a `yaml.Node` round-trip
   (not line/string surgery), preserving comments and unrelated formatting and accepting both block-
   and flow-style input arrays.
 
@@ -89,12 +89,12 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
   the live four-space-config corruption (Context 2) is fixed rather than worked around.
 - `SetIndent(2)` reindents the *whole* document on the first mutation, so a config last written by
   `awf upgrade` (four-space) is rewritten to two-space block style on its first `awf add`/`remove`.
-  This is a one-time, semantically-null change to an **input** file — `config.yaml` is not a rendered
-  output, so `awf check` does not gate it — but it produces a visible diff that an adopter commits
+  This is a one-time, semantically-null change to an **input** file (`config.yaml` is not a rendered
+  output, so `awf check` does not gate it), but it produces a visible diff that an adopter commits
   deliberately. `migrate` continues to emit four-space configs on upgrade (Decision 4), so the two
   styles coexist until the next mutation.
 - Behaviour changes that the implementing commits absorb: flow-style arrays now edit instead of
-  erroring, and added members append rather than prepend (both harmless — the arrays are consumed as
+  erroring, and added members append rather than prepend (both harmless: the arrays are consumed as
   sets). `editArray`'s tests (including its flow-style-refusal cases and the `// coverage-ignore` at
   its tail) are replaced by direct `SetArrayMember`/`MarshalSkeleton` unit tests carrying no
   coverage-ignore dodge.

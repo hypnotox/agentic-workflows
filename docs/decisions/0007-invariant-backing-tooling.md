@@ -21,14 +21,14 @@ derive-from-prose mapping that breaks silently when a bullet is reworded.
 
 ADR-0006 just landed the two foundations this needs: `internal/frontmatter` (the single
 `---`-parser) and `internal/adr` (the ADR domain package, ready to extend with section parsing).
-This ADR builds on them — it introduces no new parser.
+This ADR builds on them: it introduces no new parser.
 
 Grounding discoveries (verified against source):
 
 - **`internal/adr` extends cleanly.** `ADR` (`internal/adr/adr.go`) carries
   `Number/Title/Status/Filename/Path`; `parse()` already has the post-frontmatter body in hand
   (the first return of `frontmatter.Parse`). Adding a `Sections map[string]string` field is purely
-  additive — `RenderActiveMD`/`ParseDir` callers read only the existing fields.
+  additive: `RenderActiveMD`/`ParseDir` callers read only the existing fields.
 - **The binary surface is greenfield.** `cmd/awf/main.go` has no `invariants` case; `runCheck`
   (`cmd/awf/check.go`) opens the project and prints `[]manifest.Drift`. `Project` exposes `Root`
   and `Cfg.DocsDir`, so a checker can compute `<docsDir>/decisions`. There are **zero** existing
@@ -50,7 +50,7 @@ binary as well, so adopters can utilise it."
 
 1. **Explicit slug convention.** A checkable ADR invariant bullet carries an explicit slug tag
    `` `inv: <slug>` `` (slug matches `[a-z0-9-]+`); the backing test carries a `// invariant: <slug>`
-   comment. The slug is the stable key — editing the bullet's prose never breaks the link. Bullets
+   comment. The slug is the stable key: editing the bullet's prose never breaks the link. Bullets
    without a tag are untagged textual contracts, not machine-checked. Authors tag the bullets they
    want enforced.
 
@@ -63,16 +63,16 @@ binary as well, so adopters can utilise it."
    from `Sections["Invariants"]`; scan `*.go` files under `root` (skipping `.git`, `vendor`,
    `node_modules`) for `// invariant: <slug>` comments; return a Finding for each Implemented-ADR
    slug with no backing test. A slug declared by more than one ADR is an error. Only `Implemented`
-   ADRs are enforced — `Proposed`/`Accepted` may still be landing their tests, and `Superseded`
+   ADRs are enforced: `Proposed`/`Accepted` may still be landing their tests, and `Superseded`
    invariants no longer bind.
 
 4. **Binary surface.** A new `awf invariants` subcommand operates on the cwd project (like
    `check`): `project.Open` → `Project.CheckInvariants()` → `invariants.Check(<docsDir>/decisions,
    root)`; it prints findings and exits non-zero on any. `awf check` **also** calls
-   `CheckInvariants` and fails when it reports findings — so the existing pre-commit `awf check`
+   `CheckInvariants` and fails when it reports findings, so the existing pre-commit `awf check`
    (which adopters already run) enforces invariant backing automatically. `invariants.Finding` and
    `manifest.Drift` stay distinct types: `runCheck` calls `Check` and `CheckInvariants` separately,
-   prints each set in its own format, and exits non-zero when **either** is non-empty — no type
+   prints each set in its own format, and exits non-zero when **either** is non-empty: no type
    merge, no shared printer.
 
 5. **Convention surfaces.** Rewrite the `proposing-adr` skill's invariant-pairing rule to the
@@ -82,7 +82,7 @@ binary as well, so adopters can utilise it."
 
 6. **Retro-tag ADR-0005 and ADR-0006.** Tag each invariant bullet that has a dedicated test with
    `` `inv: <slug>` `` and add the matching `// invariant: <slug>` comment to that test; leave the
-   textual/repo-audit-only invariants untagged. Running `awf invariants` on this repo then passes —
+   textual/repo-audit-only invariants untagged. Running `awf invariants` on this repo then passes:
    the dogfood proof.
 
 Applying this to awf's own repo (the retro-tagging, re-sync) is mechanical adopter work in the
@@ -95,17 +95,17 @@ convention) and a plan because it is multi-commit.
 Checkable contracts, tagged per the convention this ADR introduces (each is backed by an
 `internal/invariants` test added at implementation):
 
-- `` `invariant: invariants-implemented-only` `` — `invariants.Check` derives required slugs only from
+- `` `invariant: invariants-implemented-only` ``: `invariants.Check` derives required slugs only from
   ADRs whose status is `Implemented`; `Proposed`, `Accepted`, and `Superseded` ADRs contribute no
   required slugs.
-- `` `invariant: invariants-unbacked-detected` `` — an `Implemented` ADR invariant slug with no
+- `` `invariant: invariants-unbacked-detected` ``: an `Implemented` ADR invariant slug with no
   `// invariant: <slug>` comment in any scanned `*.go` file yields a Finding; the same slug with at
   least one such comment yields none.
-- `` `invariant: invariants-duplicate-slug` `` — the same `inv:` slug declared by two ADRs is reported as
+- `` `invariant: invariants-duplicate-slug` ``: the same `inv:` slug declared by two ADRs is reported as
   an error.
-- `` `invariant: invariants-in-check` `` — `awf check` reports failure when `CheckInvariants` returns any
+- `` `invariant: invariants-in-check` ``: `awf check` reports failure when `CheckInvariants` returns any
   Finding and is clean when it returns none.
-- `` `invariant: adr-sections-parsed` `` — `adr.ParseDir` populates `ADR.Sections["Invariants"]` with the
+- `` `invariant: adr-sections-parsed` ``: `adr.ParseDir` populates `ADR.Sections["Invariants"]` with the
   body of the Invariants section for an ADR that has one.
 
 ## Consequences
@@ -113,7 +113,7 @@ Checkable contracts, tagged per the convention this ADR introduces (each is back
 Easier:
 - Invariant backing is machine-enforced: an Implemented ADR cannot claim a tagged invariant
   without a test, and `awf check` (hence the pre-commit hook) catches a missing one.
-- Adopters get `awf invariants` and the check-fold for free with the binary — the tooling is the
+- Adopters get `awf invariants` and the check-fold for free with the binary: the tooling is the
   standard, not a per-project script.
 - Readers can tell at a glance which invariants are enforced (`inv:`-tagged) versus textual.
 
@@ -128,7 +128,7 @@ Harder / accepted trade-offs:
   `internal/invariants` tests scan temp dirs, not the repo, so no real slug is satisfied by a
   fixture. (b) *The scanner's own source (the dogfood run, Decision 6):* `awf invariants` run on
   this repo scans `internal/invariants` and the extended `internal/adr`, whose source carries the
-  `// invariant:` marker as part of the regex pattern literal — but that literal is the *pattern*
+  `// invariant:` marker as part of the regex pattern literal, but that literal is the *pattern*
   (`// invariant: ([a-z0-9-]+)` or similar), not a concrete slug, so it captures no real ADR slug
   and cannot spuriously satisfy one. The mitigation therefore holds for the production self-scan, not
   only for unit tests.
@@ -140,7 +140,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   `inv:`/`// invariant:` convention and the checker.
 - When this ADR flips to Implemented, `./x sync` regenerates `ACTIVE.md`. No
   `docs/decisions/README.md` index row is owed (this repo's README is a how-to guide; `ACTIVE.md`
-  is the generated index — per ADR-0003/0004).
+  is the generated index, per ADR-0003/0004).
 
 Downstream: future ADRs follow the slug convention; the `proposing-adr` "Pair each Invariant with
 a test" step becomes a real, enforced gate.

@@ -1,7 +1,7 @@
 # Plan: Language-Agnostic Invariant Backing and a Polyglot Standard
 
 Implements **[ADR-0008](../decisions/0008-language-agnostic-invariant-backing.md)** (Accepted).
-Design rationale lives in the ADR — this plan is the execution record.
+Design rationale lives in the ADR; this plan is the execution record.
 
 ## Goal
 
@@ -41,9 +41,9 @@ marker prose; reposition the identity as a generic polyglot tool.
 
 ---
 
-## Phase 1 — Config schema + dogfood block
+## Phase 1: Config schema + dogfood block
 
-### Task 1.1 — Add config types, field, validation
+### Task 1.1: Add config types, field, validation
 
 - [ ] In `internal/config/config.go`, add `"path/filepath"` to the import block (after `"os"`).
 - [ ] Add the field to `Config` (after the `Docs` line):
@@ -90,7 +90,7 @@ type InvariantSource struct {
 	}
 ```
 
-### Task 1.2 — Config validation test (backs `invariants-glob-basename`)
+### Task 1.2: Config validation test (backs `invariants-glob-basename`)
 
 - [ ] Append to `internal/config/config_test.go`:
 
@@ -120,7 +120,7 @@ func TestInvariantGlobValidation(t *testing.T) {
 
 - [ ] Verify: `go test ./internal/config/` → `ok`.
 
-### Task 1.3 — Dogfood: add the `invariants` block to this repo's config
+### Task 1.3: Dogfood: add the `invariants` block to this repo's config
 
 - [ ] In `.claude/awf.yaml`, insert after the `prefix: awf` line (before `vars:`):
 
@@ -141,9 +141,9 @@ dogfood stays green through the transition.)
 
 ---
 
-## Phase 2 — Generalize the scanner (+ wire through + tests)
+## Phase 2: Generalize the scanner (+ wire through + tests)
 
-### Task 2.1 — Rewrite `internal/invariants/invariants.go`
+### Task 2.1: Rewrite `internal/invariants/invariants.go`
 
 - [ ] Replace the entire file with:
 
@@ -185,9 +185,9 @@ type Finding struct {
 // Detail is a human, language-neutral remedy line for the finding.
 func (f Finding) Detail() string {
 	if f.Status == Unchecked {
-		return "unchecked — configure invariants.sources or set invariants.disabled: true"
+		return "unchecked: configure invariants.sources or set invariants.disabled: true"
 	}
-	return "unbacked — add a `<marker> invariant: " + f.Slug + "` comment in a configured source file"
+	return "unbacked: add a `<marker> invariant: " + f.Slug + "` comment in a configured source file"
 }
 
 var (
@@ -299,7 +299,7 @@ func scanTags(root string, sources []config.InvariantSource) (map[string]bool, e
 }
 ```
 
-### Task 2.2 — Thread config through `project` and `cmd`
+### Task 2.2: Thread config through `project` and `cmd`
 
 - [ ] In `internal/project/project.go`, change `CheckInvariants`:
 
@@ -314,7 +314,7 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, error) {
 old:
 ```go
 	for _, f := range findings {
-		fmt.Printf("  %-14s %s — invariant %q has no backing `// invariant: <slug>` test\n", "unbacked-inv", f.ADR, f.Slug)
+		fmt.Printf("  %-14s %s: invariant %q has no backing `// invariant: <slug>` test\n", "unbacked-inv", f.ADR, f.Slug)
 	}
 	if len(drift) == 0 && len(findings) == 0 {
 		fmt.Println("awf check: clean")
@@ -325,7 +325,7 @@ old:
 new:
 ```go
 	for _, f := range findings {
-		fmt.Printf("  %-14s %s — invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
+		fmt.Printf("  %-14s %s: invariant %q %s\n", "invariant", f.ADR, f.Slug, f.Detail())
 	}
 	if len(drift) == 0 && len(findings) == 0 {
 		fmt.Println("awf check: clean")
@@ -339,19 +339,19 @@ new:
 old:
 ```go
 	for _, f := range findings {
-		fmt.Printf("  %s — invariant %q has no backing `// invariant: <slug>` test\n", f.ADR, f.Slug)
+		fmt.Printf("  %s: invariant %q has no backing `// invariant: <slug>` test\n", f.ADR, f.Slug)
 	}
 	return fmt.Errorf("awf invariants: %d unbacked invariant(s)", len(findings))
 ```
 new:
 ```go
 	for _, f := range findings {
-		fmt.Printf("  %s — invariant %q %s\n", f.ADR, f.Slug, f.Detail())
+		fmt.Printf("  %s: invariant %q %s\n", f.ADR, f.Slug, f.Detail())
 	}
 	return fmt.Errorf("awf invariants: %d invariant issue(s)", len(findings))
 ```
 
-### Task 2.3 — Tests backing the ADR-0008 slugs
+### Task 2.3: Tests backing the ADR-0008 slugs
 
 - [ ] Replace `internal/invariants/invariants_test.go` with:
 
@@ -391,10 +391,10 @@ func goSrc(t *testing.T, root, name, body string) {
 // invariant: invariants-implemented-only
 func TestCheckImplementedOnly(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-impl` — x.")
-	writeADR(t, dir, "0002-b.md", "Proposed", "- `inv: fixture-prop` — x.")
-	writeADR(t, dir, "0003-c.md", "Accepted", "- `inv: fixture-acc` — x.")
-	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `inv: fixture-sup` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-impl`: x.")
+	writeADR(t, dir, "0002-b.md", "Proposed", "- `inv: fixture-prop`: x.")
+	writeADR(t, dir, "0003-c.md", "Accepted", "- `inv: fixture-acc`: x.")
+	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `inv: fixture-sup`: x.")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
 	if err != nil {
@@ -408,7 +408,7 @@ func TestCheckImplementedOnly(t *testing.T) {
 // invariant: invariants-unbacked-detected
 func TestCheckUnbackedAndBacked(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-backed` — x.\n- `inv: fixture-missing` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-backed`: x.\n- `inv: fixture-missing`: y.")
 	goSrc(t, root, "x.go", "package x\n// invariant: fixture-backed\nfunc T() {}\n")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
 	f, err := invariants.Check(dir, root, cfg)
@@ -423,8 +423,8 @@ func TestCheckUnbackedAndBacked(t *testing.T) {
 // invariant: invariants-duplicate-slug
 func TestCheckDuplicateSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-dup` — x.")
-	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: fixture-dup` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-dup`: x.")
+	writeADR(t, dir, "0002-b.md", "Implemented", "- `inv: fixture-dup`: y.")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
 	if _, err := invariants.Check(dir, root, cfg); err == nil {
 		t.Error("expected error for duplicate slug")
@@ -434,7 +434,7 @@ func TestCheckDuplicateSlug(t *testing.T) {
 // invariant: invariants-three-state
 func TestCheckThreeState(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-one` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-one`: x.")
 	src := []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}
 
 	// nil config -> unchecked
@@ -466,7 +466,7 @@ func TestCheckThreeState(t *testing.T) {
 // invariant: invariants-multilang-scan
 func TestCheckMultiLangScan(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-py` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-py`: x.")
 	if err := os.WriteFile(filepath.Join(root, "t.py"), []byte("# invariant: fixture-py\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -483,7 +483,7 @@ func TestCheckMultiLangScan(t *testing.T) {
 // invariant: invariants-marker-literal
 func TestCheckMarkerLiteral(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-lit` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-lit`: x.")
 	// marker contains regex metacharacters; must be matched literally.
 	if err := os.WriteFile(filepath.Join(root, "t.txt"), []byte("[x] invariant: fixture-lit\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -498,7 +498,7 @@ func TestCheckMarkerLiteral(t *testing.T) {
 // invariant: invariants-marker-whitespace
 func TestCheckMarkerWhitespace(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-a` — x.\n- `inv: fixture-b` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `inv: fixture-a`: x.\n- `inv: fixture-b`: y.")
 	// one with a space after the marker, one without.
 	goSrc(t, root, "x.go", "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"*.go"}, Marker: "//"}}}
@@ -521,7 +521,7 @@ func TestCheckZeroSlugsClean(t *testing.T) {
 }
 ```
 
-### Task 2.4 — Update the cmd-level invariants test for three-state
+### Task 2.4: Update the cmd-level invariants test for three-state
 
 The existing `cmd/awf/invariants_test.go` (`TestRunCheckFailsOnUnbackedInvariant`,
 backing `invariants-in-check`) builds an `awf.yaml` with **no** `invariants` block, then
@@ -541,9 +541,9 @@ new:
 ```
 
 (The slug `invariants-in-check` stays backed by the existing `// invariant: invariants-in-check`
-comment above the test func — keep it.)
+comment above the test func; keep it.)
 
-### Task 2.5 — Verify + commit
+### Task 2.5: Verify + commit
 
 - [ ] `go test ./internal/... ./cmd/...` → `ok` (config, invariants, project, cmd all pass).
 - [ ] `./x sync`; `./x gate` → `0 issues.`; `./x check` → `awf check: clean` (0005-0007 slugs now enforced under the dogfood `*.go`/`//` config and backed by existing comments); `./x invariants` → `awf invariants: clean`.
@@ -552,31 +552,31 @@ comment above the test func — keep it.)
 
 ---
 
-## Phase 3 — De-Go-ify prose + identity
+## Phase 3: De-Go-ify prose + identity
 
-### Task 3.1 — `refactor-coupling-audit` skill: language-neutral procedure
+### Task 3.1: `refactor-coupling-audit` skill: language-neutral procedure
 
 In `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, replace each Go-specific block:
 
-- [ ] Category 1 command (the `grep … --include='*.go' | grep -v _test.go` block):
+- [ ] Category 1 command (the `grep ... --include='*.go' | grep -v _test.go` block):
 ```bash
 # Search the original package's production source for <MovedSymbol>
 # (scope the file filter to your language's source extension; exclude test files).
 grep -rn "<MovedSymbol>" <original-package-path>/
 ```
-- [ ] Category 2 command (`grep … --include='*_test.go'`):
+- [ ] Category 2 command (`grep ... --include='*_test.go'`):
 ```bash
 # Search the package's test files (your language's test-file convention).
 grep -rn "<MovedSymbol>" <original-package-path>/
 ```
-- [ ] Category 3 command (the import-path grep) — keep `modulePrefix`, neutralize:
+- [ ] Category 3 command (the import-path grep): keep `modulePrefix`, neutralize:
 ```bash
 # For languages with import paths, find importers of the original package.
 grep -rn "{{ .vars.modulePrefix }}/<original-package-path>" <original-package-path>/
 ```
 - [ ] Category 4 (the `go:generate` block at lines ~77-81): replace the prose + command with:
 ```
-Check code-generation that references the moved symbols — Go `go:generate` directives,
+Check code-generation that references the moved symbols: Go `go:generate` directives,
 build scripts, schema/codegen configs, or derived-table generators in your toolchain:
 ```
 ```bash
@@ -589,27 +589,27 @@ grep -rn "go:generate" | grep -i "<symbol-or-package>"
 grep -rn "<MovedSymbol>" <constructor-or-init-files>
 ```
 - [ ] Category 6 prose+command (lines ~103-106): replace the receiver-method prose first line and command:
-  - prose: `Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability — e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.`
+  - prose: `Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability, e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.`
   - command:
 ```bash
 # Find functions/methods defined on the moved type (Go method-receiver example shown; adapt).
 grep -rn "<MovedType>" <original-package-path>/
 ```
 
-### Task 3.2 — `proposing-adr` skill: neutralize the marker prose
+### Task 3.2: `proposing-adr` skill: neutralize the marker prose
 
 - [ ] In `templates/skills/proposing-adr/SKILL.md.tmpl`, replace the `invariants-rule` step body:
 
 old:
 ```
-1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and add a `// invariant: <slug>` comment to a test that exercises it, shipping in the same commit. `{{ .prefix }}-check` fails once the ADR is `Implemented` if a tagged slug has no backing test. Bullets without a slug remain textual contracts (not machine-checked). Run `{{ .vars.gateCmd }}` and `{{ .vars.checkCmd }}` to confirm.
+1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>`: ...``, and add a `// invariant: <slug>` comment to a test that exercises it, shipping in the same commit. `{{ .prefix }}-check` fails once the ADR is `Implemented` if a tagged slug has no backing test. Bullets without a slug remain textual contracts (not machine-checked). Run `{{ .vars.gateCmd }}` and `{{ .vars.checkCmd }}` to confirm.
 ```
 new:
 ```
-1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>` — …``, and back it with a comment tag — your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby) — in a source file matching a glob in your `.claude/awf.yaml` `invariants.sources`, shipping in the same commit. `{{ .prefix }}-check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `{{ .vars.gateCmd }}` and `{{ .vars.checkCmd }}` to confirm.
+1. **Tag enforceable Invariants and back them with a test.** Give each machine-checkable Invariants bullet an explicit slug, ``- `inv: <slug>`: ...``, and back it with a comment tag (your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby)) in a source file matching a glob in your `.claude/awf.yaml` `invariants.sources`, shipping in the same commit. `{{ .prefix }}-check` fails once the ADR is `Implemented` if a tagged slug is unbacked, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `{{ .vars.gateCmd }}` and `{{ .vars.checkCmd }}` to confirm.
 ```
 
-### Task 3.3 — ADR template: neutralize the marker prose
+### Task 3.3: ADR template: neutralize the marker prose
 
 - [ ] In `docs/decisions/template.md`, replace the Invariants section body:
 
@@ -627,18 +627,18 @@ with a comment tag (`<your marker> invariant: <slug>`, e.g. `// invariant: <slug
 check` enforces tagged slugs once the ADR is `Implemented`. Untagged bullets are textual contracts.
 ```
 
-### Task 3.4 — Identity + README positioning
+### Task 3.4: Identity + README positioning
 
 - [ ] In `.claude/awf.yaml`, replace the `agentsDoc.data.identity` value (the "into any Go project" paragraph) with:
 
 ```
-      `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml` — supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
+      `awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any project from a single `.claude/awf.yaml`, supplying a default way to set things up and the tooling to enforce parts of it (drift, frontmatter, invariant backing). The full workflow chain is project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. The awf tool is a Go binary (module `agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Private, pre-1.0, no external API stability.
 ```
 
 - [ ] In `.claude/awf.yaml`, replace the "Backed invariants" invariant bullet's `text:` line (the `ref:` line below it changes from `ADR-0007` to `ADR-0008`, since this bullet now states the ADR-0008-revised behaviour):
 
 ```yaml
-      - text: "**Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked — or unconfigured — tagged slug."
+      - text: "**Backed invariants.** Each machine-enforceable ADR Invariants bullet carries an `inv: <slug>` tag backed by a `<marker> invariant: <slug>` comment in a source matching `invariants.sources`; `awf check` (and `awf invariants`) fail when an Implemented ADR has an unbacked (or unconfigured) tagged slug."
         ref: ADR-0008
 ```
 
@@ -657,26 +657,26 @@ per-project `.claude/awf.yaml`, and supplies the tooling to drift-check and enfo
 standard. The awf tool is a Go binary; the standard it renders is language-agnostic.
 ```
 
-### Task 3.5 — Re-sync + commit
+### Task 3.5: Re-sync + commit
 
-- [ ] `./x sync` — re-renders `.claude/skills/awf-refactor-coupling-audit/SKILL.md`, `.claude/skills/awf-proposing-adr/SKILL.md`, and `AGENTS.md`.
+- [ ] `./x sync`: re-renders `.claude/skills/awf-refactor-coupling-audit/SKILL.md`, `.claude/skills/awf-proposing-adr/SKILL.md`, and `AGENTS.md`.
 - [ ] Verify no Go-isms remain in the rendered standard: `grep -rn "include='\*.go'\|go:generate\|// invariant: <slug>" .claude/skills/ AGENTS.md` → only acceptable hits (none of the removed forms). `./x gate` → `0 issues.`; `./x check` → clean; `./x invariants` → clean.
 - [ ] `git add templates/ docs/decisions/template.md .claude/ AGENTS.md README.md`
 - [ ] `git commit -m "docs(awf): de-Go-ify skills, marker prose, and identity for polyglot use"`
 
 ---
 
-## Phase 4 — Finalize
+## Phase 4: Finalize
 
-### Task 4.1 — Flip ADR-0008 to Implemented
+### Task 4.1: Flip ADR-0008 to Implemented
 
 - [ ] In `docs/decisions/0008-language-agnostic-invariant-backing.md`, change `status: Accepted` → `status: Implemented`. (Its six `inv:` slugs are backed by the Phase 1-2 tests and enforced under the dogfood `*.go`/`//` config.)
-- [ ] `./x sync` — regenerates `ACTIVE.md`.
+- [ ] `./x sync`: regenerates `ACTIVE.md`.
 - [ ] `./x gate` → `0 issues.`; `./x check` → clean; `./x invariants` → `awf invariants: clean`.
 - [ ] `git add docs/decisions/0008-language-agnostic-invariant-backing.md docs/decisions/ACTIVE.md .claude/awf.lock`
 - [ ] `git commit -m "docs(adr): mark 0008 Implemented"`
 
-### Task 4.2 — Terminal handoff
+### Task 4.2: Terminal handoff
 
 - [ ] Invoke `awf-reviewing-impl` against the implementation commit range (Phases 1-4).
 

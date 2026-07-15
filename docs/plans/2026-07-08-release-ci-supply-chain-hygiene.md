@@ -1,4 +1,4 @@
-# 2026-07-08 — Release and CI supply-chain hygiene
+# 2026-07-08: Release and CI supply-chain hygiene
 
 **Goal:** implement [ADR-0079](../decisions/0079-release-and-ci-supply-chain-hygiene.md)
 (SHA-pinned workflow actions machine-enforced by a new `cmd/pincheck`, dependabot,
@@ -7,13 +7,13 @@ tamper posture) plus one ADR-external fix: the bootstrap template's unsupported-
 failure points at the manual-install path.
 
 **Architecture summary:** the workflow files and `dependabot.yml` are hand-maintained,
-outside awf's render/lock set — direct edits. `cmd/pincheck` follows the repo's
+outside awf's render/lock set: direct edits. `cmd/pincheck` follows the repo's
 checker-cmd idiom (coverage-ignored `main` wrapping a unit-tested `run` seam) and is
 wired into `./x gate`; its wiring test plus a real-tree test give the
 `workflow-actions-sha-pinned` invariant teeth. The release-workflow step ordering is
 backed by a new wiring test beside `TestReleaseWorkflowRunsReleasecheck`
 (`release-gate-on-tag`). Gate-composition prose lives in awf-rendered docs, so those
-edits go through `.awf/` parts + `./x sync`. Design rationale lives in the ADR — not
+edits go through `.awf/` parts + `./x sync`. Design rationale lives in the ADR, not
 duplicated here.
 
 **Tech stack:** Go 1.26; stdlib only (`io/fs`, `regexp`, `strings`, `testing/fstest`).
@@ -51,7 +51,7 @@ peeled `^{}` object for annotated tags):
 
 ---
 
-## Phase 1 — SHA-pin the workflow actions and the GoReleaser tool
+## Phase 1: SHA-pin the workflow actions and the GoReleaser tool
 
 - [ ] In `.github/workflows/ci.yml`, replace the action references (four `uses:` lines
       keep their surrounding context; the two `version:` lines sit in the
@@ -81,7 +81,7 @@ peeled `^{}` object for annotated tags):
         `      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3`
       - `          version: '~> v2'` → `          version: v2.17.0`
 
-- [ ] Run `./x gate` — green (workflow files are outside the Go build; expect
+- [ ] Run `./x gate`: green (workflow files are outside the Go build; expect
       `coverage: 100.0%`, `0 issues.`, `deadcodecheck: no production dead code`).
 - [ ] Commit:
 
@@ -95,7 +95,7 @@ peeled `^{}` object for annotated tags):
       range can inject unreviewed code into CI."
       ```
 
-## Phase 2 — Token-optional Codecov uploads
+## Phase 2: Token-optional Codecov uploads
 
 - [ ] In `.github/workflows/ci.yml`, add a job-level `env:` to the `gate` job
       (between `runs-on: ubuntu-latest` and `steps:`):
@@ -108,14 +108,14 @@ peeled `^{}` object for annotated tags):
 - [ ] Add `        if: env.CODECOV_TOKEN != ''` as the first line under each of the two
       upload step names (`- name: Upload raw coverage to Codecov` and
       `- name: Upload covered coverage to Codecov`, above their `uses:` lines), and
-      extend the existing `# disable_search …` comment block with:
+      extend the existing `# disable_search ...` comment block with:
 
       ```yaml
       # Fork and dependabot PRs run without repo secrets: both uploads skip there
-      # (ADR-0079) — coverage enforcement is ./x gate, Codecov is reporting only.
+      # (ADR-0079); coverage enforcement is ./x gate, Codecov is reporting only.
       ```
 
-- [ ] Run `./x gate` — green.
+- [ ] Run `./x gate`: green.
 - [ ] Commit:
 
       ```
@@ -128,7 +128,7 @@ peeled `^{}` object for annotated tags):
       stays in ./x gate, where the 100% floor lives."
       ```
 
-## Phase 3 — Dependabot
+## Phase 3: Dependabot
 
 - [ ] Create `.github/dependabot.yml`:
 
@@ -148,7 +148,7 @@ peeled `^{}` object for annotated tags):
             interval: weekly
       ```
 
-- [ ] Run `./x gate` — green.
+- [ ] Run `./x gate`: green.
 - [ ] Commit:
 
       ```
@@ -158,7 +158,7 @@ peeled `^{}` object for annotated tags):
       ADR-0079 Decision 2: SHA pins without an updater rot silently."
       ```
 
-## Phase 4 — Gate the release workflow on tag push
+## Phase 4: Gate the release workflow on tag push
 
 - [ ] In `.github/workflows/release.yml`, insert three steps between
       `- name: Verify changelog pins the release` / `run: go run ./cmd/releasecheck`
@@ -169,7 +169,7 @@ peeled `^{}` object for annotated tags):
               run: |
                 git fetch origin main
                 if ! git merge-base --is-ancestor HEAD origin/main; then
-                  echo "tagged commit $(git rev-parse HEAD) is not on origin/main — push main first" >&2
+                  echo "tagged commit $(git rev-parse HEAD) is not on origin/main; push main first" >&2
                   exit 1
                 fi
             - name: Gate (test + 100% coverage + vet + lint)
@@ -181,7 +181,7 @@ peeled `^{}` object for annotated tags):
 - [ ] Append to `cmd/releasecheck/main_test.go`:
 
       ```go
-      // TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) — the
+      // TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079): the
       // Release workflow must run the ancestry check, ./x gate, and ./x check before
       // the GoReleaser step, so an untested or off-main tag cannot publish.
       // invariant: release-gate-on-tag
@@ -212,8 +212,8 @@ peeled `^{}` object for annotated tags):
       }
       ```
 
-- [ ] Run `go test ./cmd/releasecheck` — `ok`.
-- [ ] Run `./x gate` — green.
+- [ ] Run `go test ./cmd/releasecheck`: `ok`.
+- [ ] Run `./x gate`: green.
 - [ ] Commit:
 
       ```
@@ -227,14 +227,14 @@ peeled `^{}` object for annotated tags):
       backs inv: release-gate-on-tag."
       ```
 
-## Phase 5 — `cmd/pincheck`, gate wiring, and doc parts
+## Phase 5: `cmd/pincheck`, gate wiring, and doc parts
 
 - [ ] Create `cmd/pincheck/main.go`:
 
       ```go
       // Command pincheck is the workflow supply-chain pin gate (ADR-0079). Every
       // remote `uses:` reference under .github/workflows must pin a full 40-hex
-      // commit SHA (repo-local `./` references are exempt — they are repo code;
+      // commit SHA (repo-local `./` references are exempt: they are repo code;
       // `docker://` references must pin an image digest), and every
       // goreleaser-action `version:` input must be an exact semver version, so
       // neither a moved tag nor a re-floated tool range can inject unreviewed code
@@ -493,8 +493,8 @@ peeled `^{}` object for annotated tags):
       workflow-pin check (`cmd/pincheck`, ADR-0079)."
 
 - [ ] In `.awf/docs/parts/testing/gate.md`, replace "and a whole-program dead-code
-      check (ADR-0063) —" with "a whole-program dead-code check (ADR-0063), and the
-      workflow supply-chain pin check (`cmd/pincheck`, ADR-0079) —".
+      check (ADR-0063);" with "a whole-program dead-code check (ADR-0063), and the
+      workflow supply-chain pin check (`cmd/pincheck`, ADR-0079);".
 
 - [ ] In `.awf/docs/parts/development/command-runner.md`, in the `./x gate` row,
       replace "and the whole-program dead-code check (`cmd/deadcodecheck`)." with
@@ -503,12 +503,12 @@ peeled `^{}` object for annotated tags):
 
 - [ ] In `.awf/docs/parts/architecture/components.md`, replace the repo-only helpers
       bullet (currently "**`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`,
-      `cmd/repoaudit`**" — it never gained `cmd/releasecheck` from ADR-0078; fix that
+      `cmd/repoaudit`**": it never gained `cmd/releasecheck` from ADR-0078; fix that
       here too) with:
 
       ```markdown
       - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
-        `cmd/releasecheck`, `cmd/repoaudit`** — repo-only gate, release, triage, and audit
+        `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
         helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
         (ADR-0063), the advisory mutation-survivor report (ADR-0066), the workflow-pin
         check (ADR-0079), the release-time changelog pin (ADR-0078), and the repo-local
@@ -521,15 +521,15 @@ peeled `^{}` object for annotated tags):
 
       ```yaml
               - ref: ADR-0079
-                text: '**SHA-pinned workflows.** Every remote `uses:` reference under `.github/workflows/` pins a full 40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned) and every goreleaser-action `version:` input is an exact semver version — `cmd/pincheck`, run by `./x gate`, fails otherwise, and weekly dependabot (actions + gomod) keeps the pins current.'
+                text: '**SHA-pinned workflows.** Every remote `uses:` reference under `.github/workflows/` pins a full 40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned) and every goreleaser-action `version:` input is an exact semver version: `cmd/pincheck`, run by `./x gate`, fails otherwise, and weekly dependabot (actions + gomod) keeps the pins current.'
               - ref: ADR-0079
-                text: '**Gated, integrity-only release.** `release.yml` refuses a tag whose commit is not on `origin/main` and runs `./x gate` and `./x check` before GoReleaser (a gate test asserts the wiring); Codecov uploads skip without `CODECOV_TOKEN` — coverage enforcement is the local gate; checksum verification is integrity-only, publisher compromise being a documented, deliberately-accepted risk.'
+                text: '**Gated, integrity-only release.** `release.yml` refuses a tag whose commit is not on `origin/main` and runs `./x gate` and `./x check` before GoReleaser (a gate test asserts the wiring); Codecov uploads skip without `CODECOV_TOKEN`: coverage enforcement is the local gate; checksum verification is integrity-only, publisher compromise being a documented, deliberately-accepted risk.'
       ```
 
-- [ ] Run `./x sync` — refreshes `AGENTS.md`, bridge outputs, `docs/workflow.md`,
+- [ ] Run `./x sync`: refreshes `AGENTS.md`, bridge outputs, `docs/workflow.md`,
       `docs/testing.md`, `docs/development.md`, `docs/architecture.md`, `.awf/awf.lock`.
-- [ ] Run `go run ./cmd/pincheck` — expect `pincheck: all workflow references pinned`.
-- [ ] Run `./x gate && ./x check` — green / `awf check: clean`.
+- [ ] Run `go run ./cmd/pincheck`: expect `pincheck: all workflow references pinned`.
+- [ ] Run `./x gate && ./x check`: green / `awf check: clean`.
 - [ ] Commit:
 
       ```
@@ -549,16 +549,16 @@ peeled `^{}` object for annotated tags):
       ```
 
       (If `./x check` lists other rendered targets (e.g. cursor outputs), stage those
-      too — stage exactly what sync reports, never `git add -A`.)
+      too: stage exactly what sync reports, never `git add -A`.)
 
-## Phase 6 — Bootstrap unsupported-platform pointer (ADR-external)
+## Phase 6: Bootstrap unsupported-platform pointer (ADR-external)
 
 - [ ] In `templates/bootstrap/awf-bootstrap.sh.tmpl`, replace:
 
       - `  *) echo "awf bootstrap: unsupported arch: $arch" >&2; exit 1 ;;` →
-        `  *) echo "awf bootstrap: unsupported arch: $arch — install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;`
+        `  *) echo "awf bootstrap: unsupported arch: $arch; install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;`
       - `  *) echo "awf bootstrap: unsupported os: $os" >&2; exit 1 ;;` →
-        `  *) echo "awf bootstrap: unsupported os: $os — install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;`
+        `  *) echo "awf bootstrap: unsupported os: $os; install manually: https://github.com/${REPO}#install" >&2; exit 1 ;;`
 
 - [ ] Append to `internal/project/bootstrap_test.go`:
 
@@ -605,8 +605,8 @@ peeled `^{}` object for annotated tags):
       the dead-reference scan, and pointing its unsupported-OS/arch failures at the
       manual-install README section."
 - [ ] Run `./x sync` (refreshes `docs/domains/rendering.md` and the lock), then
-      `go test ./internal/project` — `ok`.
-- [ ] Run `./x gate && ./x check` — green / clean.
+      `go test ./internal/project`: `ok`.
+- [ ] Run `./x gate && ./x check`: green / clean.
 - [ ] Commit:
 
       ```
@@ -621,7 +621,7 @@ peeled `^{}` object for annotated tags):
       Adopters pick it up at the next release."
       ```
 
-## Phase 7 — Runbook, domain narrative, ADR flip
+## Phase 7: Runbook, domain narrative, ADR flip
 
 - [ ] In `docs/releasing.md`:
 
@@ -639,10 +639,10 @@ peeled `^{}` object for annotated tags):
         `go run github.com/goreleaser/goreleaser/v2@latest release --snapshot --clean`
         with the `@v2.17.0` forms, and add after the commands: "The version matches
         the `version:` input pinned in the workflows; `cmd/pincheck` enforces the
-        workflow side — keep these two commands in step by hand (ADR-0079)."
+        workflow side; keep these two commands in step by hand (ADR-0079)."
       - Notes: add a bullet: "**Tamper posture (ADR-0079).** `checksums.txt` and the
         bootstrap's SHA-256 check verify download *integrity*, not publisher
-        authenticity — a compromise of the release workflow or its token can rewrite
+        authenticity: a compromise of the release workflow or its token can rewrite
         binary and checksums together. The accepted mitigations are the SHA-pinned
         actions, dependabot currency, and the gate-and-ancestry checks on tag push;
         artifact attestation and cosign signing are deliberately deferred (revisit at
@@ -652,9 +652,9 @@ peeled `^{}` object for annotated tags):
       `goreleaser check`/snapshot job guards the release config." with "and a PR-time
       `goreleaser check`/snapshot job guards the release config. ADR-0079 hardens the
       release path: every remote workflow action reference is SHA-pinned and the
-      GoReleaser tool version exact — `cmd/pincheck`, run by `./x gate`, fails an
+      GoReleaser tool version exact (`cmd/pincheck`, run by `./x gate`, fails an
       unpinned ref, an undigested `docker://` ref, or a floated `version:` input,
-      with weekly dependabot keeping the pins current — while `release.yml` refuses a
+      with weekly dependabot keeping the pins current) while `release.yml` refuses a
       tag whose commit is not on `origin/main` and runs `./x gate` and `./x check`
       before building; Codecov uploads skip without their token (coverage enforcement
       is the local gate), and the release checksum is documented as integrity-only,
@@ -662,10 +662,10 @@ peeled `^{}` object for annotated tags):
 - [ ] Flip `docs/decisions/0079-release-and-ci-supply-chain-hygiene.md` frontmatter
       `status: Proposed` → `status: Implemented`.
 - [ ] Run `./x sync` (refreshes `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`,
-      the lock), then `./x invariants` — both new slugs backed
+      the lock), then `./x invariants`: both new slugs backed
       (`workflow-actions-sha-pinned` in `cmd/pincheck/main.go`, `release-gate-on-tag`
       in `cmd/releasecheck/main_test.go`).
-- [ ] Run `./x gate && ./x check` — green / clean. Run `./x audit` — advisory; expect
+- [ ] Run `./x gate && ./x check`: green / clean. Run `./x audit`: advisory; expect
       no Errors.
 - [ ] Commit:
 
@@ -681,7 +681,7 @@ peeled `^{}` object for annotated tags):
       ADR flips to Implemented with both invariants backed."
       ```
 
-## Post-merge verification (not plan tasks — live GitHub behavior)
+## Post-merge verification (not plan tasks: live GitHub behavior)
 
 After pushing `main`: confirm the CI run is green end-to-end (pinned actions resolve,
 Codecov uploads still fire with the token present), confirm in the repo's GitHub

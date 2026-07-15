@@ -15,7 +15,7 @@ domains: [tooling]
 ADR-0012 makes `./x gate` fail below **100% of non-`// coverage-ignore` statements**:
 the gate measures *statement* coverage over the blocks awf holds itself accountable
 for, and a sanctioned `// coverage-ignore: <reason>` directive excludes a genuinely
-unreachable defensive branch. There are ~118 such markers today — overwhelmingly
+unreachable defensive branch. There are ~118 such markers today: overwhelmingly
 `if err != nil` arms over already-validated state (go-git object access, `embed.FS`
 reads, `yaml.Marshal` of known-good structs), permission-fault arms that root bypasses,
 and the three `os.Exit` `main` wrappers. Real statement coverage measured by
@@ -34,7 +34,7 @@ Codecov reports roughly **94%**. Two facts about that number shaped this decisio
    per-statement-block; Codecov maps each block onto source lines and divides
    lines-hit by lines-total. That is a different metric from `go tool cover`'s statement
    percentage, so Codecov's ~94% legitimately differs from the 96.5% and **cannot be
-   made to equal it** — the divergence is line-vs-statement, not a pipeline bug. Any
+   made to equal it**: the divergence is line-vs-statement, not a pipeline bug. Any
    promise to "make Codecov match the gate" is therefore unachievable by construction.
 
 2. **Codecov cannot see the `coverage-ignore` convention.** It parses the raw
@@ -46,7 +46,7 @@ Codecov reports roughly **94%**. Two facts about that number shaped this decisio
 The fix is to publish **two** figures rather than one ambiguous one: a **raw** number
 (the honest reality, ~94% line coverage, which climbs only as real branches get covered)
 and a **covered** number (coverage over the same non-ignored blocks the gate enforces,
-~100% line coverage — the accountability promise). The "ignored" set must have a single
+~100% line coverage: the accountability promise). The "ignored" set must have a single
 source of truth: it already lives in `internal/coverage` (`parseProfile` +
 `ignoredLines`), which backs the ADR-0012 gate. Codecov must never re-implement the
 convention as a path/line exclusion in `codecov.yml`; the second number is derived by
@@ -56,7 +56,7 @@ can never disagree about what "ignored" means.
 One Codecov mechanic constrains the shape. Codecov merges every upload for a commit into
 a single **project** coverage number; because the covered profile is a strict subset of
 the raw profile, that merged headline equals the raw figure. The two numbers therefore
-surface not as two headline badges but as two **flags** — each visible in the PR-comment
+surface not as two headline badges but as two **flags**: each visible in the PR-comment
 table, as its own status check, and (the deliverable that satisfies "two reports") as its
 own README badge via a per-flag badge URL. The honest headline staying the raw number is
 the correct outcome, not a limitation to work around.
@@ -70,7 +70,7 @@ separately load-bearing change and is out of scope.
 
 1. **Emit a filtered coverprofile from `internal/coverage`.** Add an exported function
    that reads a coverprofile and returns/writes a new profile containing exactly the
-   blocks whose start line is **not** in the `ignoredLines` set — reusing `parseProfile`
+   blocks whose start line is **not** in the `ignoredLines` set, reusing `parseProfile`
    and `ignoredLines` so the definition of "ignored" is shared verbatim with the
    ADR-0012 gate. The emitter writes a `mode: set` header (the mode `parseProfile`
    discards; CI's profile is always `set`) followed by each surviving block re-emitted as
@@ -78,27 +78,27 @@ separately load-bearing change and is out of scope.
    raw per-binary duplicates.
 
 2. **Expose it through `cmd/covercheck`.** Add a `--emit-filtered` mode to
-   `covercheck`'s existing `run(args, …)` entrypoint: given a profile path it writes the
+   `covercheck`'s existing `run(args, ...)` entrypoint: given a profile path it writes the
    filtered profile to stdout (or a named output). This keeps the capability reachable
    from a production `main` (satisfying the ADR-0063 dead-code gate) and the logic
    table-testable through `run`.
 
 3. **CI uploads two flagged reports.** `.github/workflows/ci.yml` generates the raw
    profile as today, derives the filtered profile via `covercheck --emit-filtered`, and
-   runs `codecov/codecov-action@v5` **twice** — once with `flags: raw` on the full
+   runs `codecov/codecov-action@v5` **twice**: once with `flags: raw` on the full
    profile, once with `flags: covered` on the filtered profile. `fail_ci_if_error: true`
    is retained on both (an upload failure fails the gate job); each step needs the
    `CODECOV_TOKEN`.
 
 4. **Add `codecov.yml`** defining the two flags and a merge-timing rule:
    `codecov.notify.after_n_builds: 2` so the PR comment waits for both uploads. Both
-   coverage **status checks are `informational: true`** — `./x gate` (statement, ADR-0012)
+   coverage **status checks are `informational: true`**: `./x gate` (statement, ADR-0012)
    remains the sole hard coverage enforcer; Codecov (line) reports but never blocks a
    merge, avoiding a second gate on a divergent metric. `codecov.yml` carries **no** path
    or line ignore that restates the `coverage-ignore` convention.
 
 5. **Show two README badges** via per-flag badge URLs
-   (`…/graph/badge.svg?flag=raw` and `?flag=covered`), labelled so a reader understands
+   (`.../graph/badge.svg?flag=raw` and `?flag=covered`), labelled so a reader understands
    raw = honest line coverage and covered = accountable (non-ignored) line coverage.
 
 6. **Document the line-vs-statement distinction** where coverage is explained
@@ -114,7 +114,7 @@ separately load-bearing change and is out of scope.
 
 ## Invariants
 
-- `invariant: covered-profile-honors-ignores` — the filtered coverprofile emitted by
+- `invariant: covered-profile-honors-ignores`: the filtered coverprofile emitted by
   `internal/coverage` contains a block **iff** that block is not `// coverage-ignore`-d
   under the same `ignoredLines` logic the ADR-0012 gate uses; the two never diverge on
   what "ignored" means. Backed by a `// invariant: covered-profile-honors-ignores` marker
@@ -122,7 +122,7 @@ separately load-bearing change and is out of scope.
   kept (lands with the implementation).
 - The Codecov `covered` flag is fed the *filtered* profile and the `raw` flag the *full*
   profile; `codecov.yml` contains no ignore rule that re-implements the `coverage-ignore`
-  convention — the convention's single source of truth stays `internal/coverage`. (textual)
+  convention: the convention's single source of truth stays `internal/coverage`. (textual)
 - Codecov's numbers are line coverage and are never treated as, or reconciled to, the
   gate's statement coverage; `./x gate` (ADR-0012) remains the sole hard coverage gate and
   both Codecov coverage statuses are informational. (textual)
@@ -152,13 +152,13 @@ Harder / accepted trade-offs:
 Ruled out (for now):
 - Making Codecov report statement coverage / forcing its number to 96.5% (impossible;
   Codecov is line-based).
-- Re-implementing `coverage-ignore` as a `codecov.yml` path/line exclusion (Decision 4 —
+- Re-implementing `coverage-ignore` as a `codecov.yml` path/line exclusion (Decision 4:
   would duplicate the convention and invite drift).
-- A hard Codecov coverage status that could block a merge (Decision 4 — double-gates on a
+- A hard Codecov coverage status that could block a merge (Decision 4: double-gates on a
   divergent metric; the gate is the enforcer).
 - Promoting two-report coverage into the rendered awf standard (out of scope, deferred).
 
-Downstream work unblocked: an implementation sequence covering — add the
+Downstream work unblocked: an implementation sequence covering: add the
 `internal/coverage` filtered-profile emitter with tests and the
 `// invariant: covered-profile-honors-ignores` backing; add the `covercheck
 --emit-filtered` mode with tests; add `codecov.yml`; wire the dual flagged upload in
@@ -172,8 +172,8 @@ existing ADR-0012 and ADR-0063 bullets; the `covered-profile-honors-ignores` inv
 greppable in source and documented in `docs/testing.md`. No `docs/decisions/README.md` index
 row is owed (this repo's README is a how-to guide; `ACTIVE.md` is the generated index). A
 separate, later effort
-(not gated by this ADR) removes the ~10 genuinely-eliminable `coverage-ignore` markers —
-the redundant-re-read cluster in `cmd/awf/list_add.go` — to raise the `raw` figure.
+(not gated by this ADR) removes the ~10 genuinely-eliminable `coverage-ignore` markers
+(the redundant-re-read cluster in `cmd/awf/list_add.go`) to raise the `raw` figure.
 
 ## Alternatives Considered
 

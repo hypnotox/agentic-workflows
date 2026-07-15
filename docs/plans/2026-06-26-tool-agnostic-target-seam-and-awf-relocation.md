@@ -1,7 +1,7 @@
 # Plan: Tool-Agnostic Target Seam, `.awf/` Relocation, and the Claude Adapter
 
 Implements [ADR-0016](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md). Design
-rationale lives in the ADR; this file is the execution record. Do not duplicate rationale — link.
+rationale lives in the ADR; this file is the execution record. Do not duplicate rationale: link.
 
 ## Goal
 
@@ -40,23 +40,23 @@ root `CLAUDE.md` (`@AGENTS.md` bridge), and guard `awf init` against clobbering 
 ## File structure
 
 Created:
-- `internal/project/target.go` — the `Target` type + `claudeTarget`.
-- `internal/project/target_test.go` — backs `inv: target-output-paths`.
-- `templates/claude/CLAUDE.md.tmpl` — the bridge template (`@AGENTS.md`).
-- `internal/migrate/relocation.go` — `applyAwfRelocation`.
+- `internal/project/target.go`: the `Target` type + `claudeTarget`.
+- `internal/project/target_test.go`: backs `inv: target-output-paths`.
+- `templates/claude/CLAUDE.md.tmpl`: the bridge template (`@AGENTS.md`).
+- `internal/migrate/relocation.go`: `applyAwfRelocation`.
 
 Modified (production):
-- `internal/project/project.go` — Target field + path routing; CLAUDE.md emit; `PlannedOutputs`;
+- `internal/project/project.go`: Target field + path routing; CLAUDE.md emit; `PlannedOutputs`;
   banner text; `awf:edit` pointer paths; orphan scanner; `config.Load`/lock paths.
-- `internal/config/config.go` — doc comment + `root` field comment (path text only).
-- `internal/migrate/migrate.go` — register `{To:3}`; rewrite `Generation`; `stampLockSchema` path.
-- `templates/embed.go` — add `claude` to the embed list.
-- `cmd/awf/main.go` — `--force` parse; `runInit` collision guard + `.awf` scaffold path; doc comment.
-- `cmd/awf/list_add.go` — `awf add` config path.
-- `internal/manifest/manifest.go` — doc comment (path text only).
-- `internal/project/scaffold.go` — doc comment (path text only).
+- `internal/config/config.go`: doc comment + `root` field comment (path text only).
+- `internal/migrate/migrate.go`: register `{To:3}`; rewrite `Generation`; `stampLockSchema` path.
+- `templates/embed.go`: add `claude` to the embed list.
+- `cmd/awf/main.go`: `--force` parse; `runInit` collision guard + `.awf` scaffold path; doc comment.
+- `cmd/awf/list_add.go`: `awf add` config path.
+- `internal/manifest/manifest.go`: doc comment (path text only).
+- `internal/project/scaffold.go`: doc comment (path text only).
 
-Modified (tests, Phase 4): `internal/project/{project_test,spine_test,drift_test,coverage_test,docs_sections_test,domains_test,scaffold_test}.go`, `cmd/awf/{run_test,main_test,check_test,invariants_test,list_add_test}.go`, `internal/config/config_test.go`, `internal/migrate/migrate_test.go`, `internal/render/render_test.go` — fixture paths `.claude/awf` → `.awf`; predecessor backing-test updates. This list is indicative; the `grep -rln` sweep in Phase 4 is authoritative — update every `*_test.go` that constructs the config tree.
+Modified (tests, Phase 4): `internal/project/{project_test,spine_test,drift_test,coverage_test,docs_sections_test,domains_test,scaffold_test}.go`, `cmd/awf/{run_test,main_test,check_test,invariants_test,list_add_test}.go`, `internal/config/config_test.go`, `internal/migrate/migrate_test.go`, `internal/render/render_test.go`: fixture paths `.claude/awf` → `.awf`; predecessor backing-test updates. This list is indicative; the `grep -rln` sweep in Phase 4 is authoritative; update every `*_test.go` that constructs the config tree.
 
 Modified (prose, Phase 5): `templates/agents-doc/AGENTS.md.tmpl`, `templates/skills/proposing-adr/SKILL.md.tmpl`, `.awf/` convention parts/sidecars carrying `.claude/awf` prose, `docs/decisions/template.md`, `README.md`, and re-synced current-guidance docs.
 
@@ -64,7 +64,7 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
 
 ---
 
-## Phase 1 — Target seam (byte-identical output)
+## Phase 1: Target seam (byte-identical output)
 
 - [ ] **Create `internal/project/target.go`** with exactly:
   ```go
@@ -149,9 +149,9 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
   }
   ```
 
-- [ ] **Verify byte-identical output and gate.** Run `./x sync` — expect `git status --short` to show
+- [ ] **Verify byte-identical output and gate.** Run `./x sync`: expect `git status --short` to show
   no changes to any rendered file or the lock (paths are unchanged; this is a pure refactor). Run
-  `./x gate` — expect `0 issues.` and `coverage: 100.0%`. If coverage drops, the new `Target` methods
+  `./x gate`: expect `0 issues.` and `coverage: 100.0%`. If coverage drops, the new `Target` methods
   are covered by `TestClaudeTargetPaths` plus the existing render path; add assertions if a method
   shows uncovered.
 
@@ -159,7 +159,7 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
 
 ---
 
-## Phase 2 — CLAUDE.md bridge
+## Phase 2: CLAUDE.md bridge
 
 - [ ] **Create `templates/claude/CLAUDE.md.tmpl`** with exactly this content (one line + trailing
   newline, no frontmatter, no section markers):
@@ -226,11 +226,11 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
 - [ ] **Re-sync the dogfood + update golden fixtures.** Run `./x sync`. Expect a NEW file
   `CLAUDE.md` at the repo root containing the banner + `@AGENTS.md`, plus a new lock entry. If
   `spine_test.go` or `docs_sections_test.go` enumerate the full rendered-file set and now miss
-  `CLAUDE.md`, update those fixtures to include it. Run `./x gate` — expect `0 issues.`, 100%.
+  `CLAUDE.md`, update those fixtures to include it. Run `./x gate`: expect `0 issues.`, 100%.
 
-- [ ] **Verify the import is intact.** `cat CLAUDE.md` — expect exactly:
+- [ ] **Verify the import is intact.** `cat CLAUDE.md`: expect exactly:
   ```
-  <!-- GENERATED by awf — do not edit; change .claude/awf/ and run `awf sync` -->
+  <!-- GENERATED by awf: do not edit; change .claude/awf/ and run `awf sync` -->
   @AGENTS.md
   ```
   (Banner still names `.claude/awf/`; relocated in Phase 4.)
@@ -239,7 +239,7 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
 
 ---
 
-## Phase 3 — `awf init` collision guard + `--force`
+## Phase 3: `awf init` collision guard + `--force`
 
 - [ ] **Add `PlannedOutputs` to `internal/project/project.go`** (after `RenderAll`):
   ```go
@@ -261,7 +261,7 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
   		paths = append(paths, amd.Path)
   	}
   	dds, err := p.generateDomainDocs()
-  	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+  	if err != nil { // coverage-ignore: unreachable, generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
   		return nil, err
   	}
   	for _, dd := range dds {
@@ -330,7 +330,7 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
 
   // initCollisions returns planned output paths that already exist on disk and are
   // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
-  // already exists is not a collision — re-init is idempotent.
+  // already exists is not a collision: re-init is idempotent.
   func initCollisions(root string) ([]string, error) {
   	p, err := project.Open(root)
   	if err != nil {
@@ -399,26 +399,26 @@ Modified (status, Phase 6): `docs/decisions/0016-*.md` (Accepted → Implemented
   Ensure `bytes`, `os`, `path/filepath`, `strings` are imported in `run_test.go` (add any missing).
 
 - [ ] **Fix the existing `runInit` callers** broken by the new `force` parameter (compile failure
-  otherwise — they pass three args to a now-four-arg function). Add `false` as the second argument
+  otherwise, they pass three args to a now-four-arg function). Add `false` as the second argument
   to each direct call (all three init into fresh or already-managed trees, so no collision is
   expected):
-  - `cmd/awf/main_test.go:18` — `runInit(proj, io.Discard, io.Discard)` → `runInit(proj, false, io.Discard, io.Discard)`.
-  - `cmd/awf/run_test.go` (`TestRunInitSyncError`, ~line 285) — add `false`.
-  - `cmd/awf/run_test.go` (`TestRunInitOnExistingConfigSkipsScaffold`, ~line 391) — add `false`.
-  (The `run([]string{"awf","init"}, …)` dispatch tests are unaffected — they exercise the new
+  - `cmd/awf/main_test.go:18`: `runInit(proj, io.Discard, io.Discard)` → `runInit(proj, false, io.Discard, io.Discard)`.
+  - `cmd/awf/run_test.go` (`TestRunInitSyncError`, ~line 285): add `false`.
+  - `cmd/awf/run_test.go` (`TestRunInitOnExistingConfigSkipsScaffold`, ~line 391): add `false`.
+  (The `run([]string{"awf","init"}, ...)` dispatch tests are unaffected: they exercise the new
   signature through `run`.)
 
-- [ ] **Gate:** `./x gate` — expect `0 issues.`, 100%. The `os.RemoveAll` rollback branch is covered
+- [ ] **Gate:** `./x gate`: expect `0 issues.`, 100%. The `os.RemoveAll` rollback branch is covered
   by the collision test; the `--force` path by its second half.
 
 - [ ] **Commit:** `feat(awf): add awf init collision guard and --force (ADR-0016)`.
 
 ---
 
-## Phase 4 — Relocation: code paths + migration + dogfood port (atomic)
+## Phase 4: Relocation: code paths + migration + dogfood port (atomic)
 
 This phase keeps the repo green only as a whole: the code starts reading `.awf/`, the migration moves
-the tree, and the dogfood port runs `awf upgrade` — all in one commit.
+the tree, and the dogfood port runs `awf upgrade`: all in one commit.
 
 - [ ] **Add the relocation migration.** Create `internal/migrate/relocation.go`:
   ```go
@@ -459,7 +459,7 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
 - [ ] **Rewrite `Generation`** in `internal/migrate/migrate.go` to key on directory presence:
   ```go
   // Generation reports the project's schema generation. Detection is by layout:
-  // a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet —
+  // a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet,
   // fresh init / just-upgraded); a pre-relocation .claude/awf/ tree reports its
   // lock's schema, or Current()-1 when no lock, so the To:3 relocation gates; the
   // legacy single file reports 0; nothing present reports Current().
@@ -520,7 +520,7 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
     | grep -v "internal/migrate/dropreplacewith.go"
   ```
   Expect only: `migrate.go` legacy/old-tree detection lines in `Generation` (intended), and the
-  `applyTreeLayout`/`portSidecar` builders (intended — they construct the pre-relocation tree).
+  `applyTreeLayout`/`portSidecar` builders (intended: they construct the pre-relocation tree).
 
 - [ ] **Update predecessor backing tests + all test fixtures** (`.claude/awf` → `.awf`):
   - `internal/config/config_test.go`: update the `config-root` test (line ~78) so its setup writes
@@ -534,19 +534,19 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
     writes under the config tree), change `.claude/awf` join segments to `.awf`.
   - `cmd/awf/run_test.go`: `scaffoldProject` and any fixture writing `.claude/awf` → `.awf`.
   - `internal/migrate/migrate_test.go`: the legacy-port fixtures keep `.claude/awf.yaml` /
-    `.claude/awf/` (they exercise To:1/To:2 against the old layout — unchanged). Add the relocation
+    `.claude/awf/` (they exercise To:1/To:2 against the old layout, unchanged). Add the relocation
     test below. Several existing migrate tests **break** once `{To:3}` lands and must be updated in
     this same commit (they assert the old `Current()`, the old applied-migration chain, or a
     post-upgrade tree still at `.claude/awf/`):
     - `TestCurrentIsTwo` (asserts `Current() == 2`) → assert `3` (rename to `TestCurrentIsThree`).
-    - `TestUpgradeAppliesInOrderIdempotent` — a gen-0 `Upgrade` now applies
+    - `TestUpgradeAppliesInOrderIdempotent`: a gen-0 `Upgrade` now applies
       `tree-layout,drop-replacewith,awf-dir-relocation`, and the ported tree ends at `.awf/config.yaml`
       (not `.claude/awf/config.yaml`). Update both the `strings.Join(applied, ",")` expectation and
       the post-upgrade stat path; `stampLock` after the first upgrade must target `.awf/awf.lock`.
-    - `TestUpgradeStampsTreeLock` — a tree at `.claude/awf/` with a schema-1 lock now upgrades through
+    - `TestUpgradeStampsTreeLock`: a tree at `.claude/awf/` with a schema-1 lock now upgrades through
       `drop-replacewith,awf-dir-relocation` and the restamped lock lives at `.awf/awf.lock`. Update the
       applied list and the `manifest.Load` path.
-    - `TestGateBlocksWhenBehind` — semantic change, not just a value bump: under the rewritten
+    - `TestGateBlocksWhenBehind`: semantic change, not just a value bump: under the rewritten
       `Generation`, a no-lock tree at `.claude/awf/` is now a **pre-relocation** tree that returns
       `Current()-1` and gates. Move the fresh-init/no-lock "must not gate, returns `Current()`"
       sub-case to a `.awf/config.yaml` fixture, and add (or convert) a `.claude/awf/` no-lock sub-case
@@ -628,8 +628,8 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
   	}
   }
   ```
-  (The breaking `migrate_test.go` tests — `TestCurrentIsTwo`, `TestUpgradeAppliesInOrderIdempotent`,
-  `TestUpgradeStampsTreeLock`, `TestGateBlocksWhenBehind` — are itemised in the predecessor-tests step
+  (The breaking `migrate_test.go` tests, `TestCurrentIsTwo`, `TestUpgradeAppliesInOrderIdempotent`,
+  `TestUpgradeStampsTreeLock`, `TestGateBlocksWhenBehind`, are itemised in the predecessor-tests step
   above.)
 
 - [ ] **Port this repo's config tree.** Run the relocation through the freshly-built binary:
@@ -650,10 +650,10 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
   grep -rl "change .claude/awf/ and run" .claude docs AGENTS.md CLAUDE.md | head   # expect: no output
   ```
 
-- [ ] **Gate.** `./x gate` — expect `0 issues.`, 100%. `./x check` — expect `awf check: clean`
+- [ ] **Gate.** `./x gate`: expect `0 issues.`, 100%. `./x check`: expect `awf check: clean`
   (Generation reads `.awf/awf.lock` at schema 3 → gate ok). If the invariant checker complains that
   ADR-0016 slugs are unbacked, that is expected to remain until Phase 6 (ADR-0016 is still
-  `Accepted`, so its slugs are not yet enforced — confirm by re-reading the failure: it must NOT
+  `Accepted`, so its slugs are not yet enforced: confirm by re-reading the failure: it must NOT
   mention 0016 while Accepted).
 
 - [ ] **Commit:** `feat(awf): relocate config tree to .awf, migration {To:3} (ADR-0016)`. The
@@ -662,10 +662,10 @@ the tree, and the dogfood port runs `awf upgrade` — all in one commit.
 
 ---
 
-## Phase 5 — Prose & template sweep
+## Phase 5: Prose & template sweep
 
 Update the *source* of every current-guidance surface that names `.claude/awf/`, then re-sync so the
-rendered docs regenerate. Leave historical ADRs (0002–0015) and historical plans as-is (they narrate
+rendered docs regenerate. Leave historical ADRs (0002-0015) and historical plans as-is (they narrate
 the pre-relocation world).
 
 - [ ] **Templates** (`templates/`):
@@ -677,14 +677,14 @@ the pre-relocation world).
 - [ ] **Convention parts / sidecars** now under `.awf/` that carry `.claude/awf` prose (from the
   Phase-4 survey): `.awf/agents-doc.yaml`, `.awf/parts/agents-doc/identity.md`,
   `.awf/docs/parts/architecture/{overview,components,data-flow}.md`,
-  `.awf/skills/parts/debugging/debugging-surfaces.md`, `.awf/domains/parts/config/current-state.md` —
+  `.awf/skills/parts/debugging/debugging-surfaces.md`, `.awf/domains/parts/config/current-state.md`:
   update each `.claude/awf` → `.awf`. Re-list to be exact:
   ```
   grep -rln "claude/awf" .awf/
   ```
 
 - [ ] **Satisfy the ADR's doc-currency content obligations** (Consequences §"Doc-currency
-  obligations" — not just path strings; new narrative). Edit the source convention parts, then re-sync:
+  obligations"; not just path strings; new narrative). Edit the source convention parts, then re-sync:
   - `.awf/docs/parts/architecture/{overview,components}.md` (and a new `target-seam` part if the
     architecture doc declares that section): document the **target seam**, the **neutral/adapter
     artifact taxonomy**, the `.awf/` config root as awf's home (vs `.claude/` holding only adapter
@@ -694,7 +694,7 @@ the pre-relocation world).
     `.awf/` (relocated from `.claude/awf/` via migration `{To:3}`), beyond the path-string swap.
   - `tooling` domain current-state: refresh its narrative for the target seam + relocation migration
     (add the convention part under `.awf/domains/parts/tooling/` if absent, or edit the existing one).
-  If the architecture doc has no section to host the target-seam narrative, escalate — adding a
+  If the architecture doc has no section to host the target-seam narrative, escalate: adding a
   catalog section is outside this plan's scope.
 
 - [ ] **Hand-maintained docs:** `docs/decisions/template.md` (`.claude/awf/config.yaml` →
@@ -718,7 +718,7 @@ the pre-relocation world).
 
 ---
 
-## Phase 6 — Flip ADR-0016 to Implemented
+## Phase 6: Flip ADR-0016 to Implemented
 
 - [ ] **Update the ADR-0015 banner/pointer backing assertions** if any test asserts the banner *text*
   or an `awf:edit` pointer *path* literally (Phase 4 already changed the strings; this confirms the
@@ -731,17 +731,17 @@ the pre-relocation world).
 - [ ] **Flip status** in `docs/decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md`
   frontmatter: `status: Accepted` → `status: Implemented`.
 
-- [ ] **Regenerate the indexes.** `./x sync` — ADR-0016 moves to the `## Implemented` section of
+- [ ] **Regenerate the indexes.** `./x sync`: ADR-0016 moves to the `## Implemented` section of
   `ACTIVE.md` and the config/tooling/rendering domain indexes. Stage `ACTIVE.md` and the three
   `docs/domains/*.md`.
 
-- [ ] **Enforce invariants.** `./x check` — now that 0016 is `Implemented`, the checker requires all
+- [ ] **Enforce invariants.** `./x check`: now that 0016 is `Implemented`, the checker requires all
   five tagged slugs backed: `awf-config-root` (config_test.go), `target-output-paths`
   (target_test.go), `claude-md-bridge` (target_test.go), `init-collision-guard` (run_test.go),
   `awf-relocation-migration` (migrate_test.go). Expect `awf check: clean`. If any slug reports
   `Unbacked`, add the missing `// invariant: <slug>` marker to its test from the earlier phase.
 
-- [ ] **Gate.** `./x gate` — `0 issues.`, 100%.
+- [ ] **Gate.** `./x gate`: `0 issues.`, 100%.
 
 - [ ] **Commit:** `feat(awf): mark ADR-0016 Implemented; back tool-agnostic invariants`.
 

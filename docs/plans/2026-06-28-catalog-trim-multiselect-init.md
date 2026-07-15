@@ -1,7 +1,7 @@
 # Plan: Catalog-trim multiselect at `awf init`
 
 Implements the deferred follow-up slice of **[ADR-0029](../decisions/0029-interactive-agent-prefillable-init.md)**
-(design authority — do not duplicate rationale here). The first slice (vars + invariants config)
+(design authority: do not duplicate rationale here). The first slice (vars + invariants config)
 already shipped; this plan adds the **catalog-trim multiselect** (which skills/docs `awf init`
 enables) and **flips ADR-0029 from `Proposed` to `Implemented`**. Predecessor plan:
 `docs/plans/2026-06-28-interactive-agent-prefillable-init.md` ("Out of scope" defines this work).
@@ -19,12 +19,12 @@ byte-identical to today). The silent/default path stays exactly the curated core
 ## Design decisions settled in brainstorm (recorded here for the executor; rationale lives in ADR-0029)
 
 - **Full deselectable**, not add-only: a selection *replaces* the enable array verbatim. This is no
-  new capability — `awf remove` (ADR-0024) already disables core/chain skills post-init with no
+  new capability: `awf remove` (ADR-0024) already disables core/chain skills post-init with no
   guardrail; init just front-loads it. The default (no-selection) path is unchanged, so
   `scaffold-core-only` holds. ADR-0029 Decision 4 is amended (Phase 3) to say so explicitly (legal
   while it is still `Proposed`).
 - **No guardrail / no link-conversion.** Deselecting a chain skill leaves dangling *prose* references
-  in AGENTS.md that ADR-0020's dead-reference check (markdown links only) won't catch — identical to
+  in AGENTS.md that ADR-0020's dead-reference check (markdown links only) won't catch: identical to
   the existing `awf remove` exposure, documented in AGENTS.md as user responsibility. Out of scope.
 - **`prompt: false` escape-hatch (ADR-0029 Decision 5) is dropped, not implemented.** Every current
   var already has a real descriptor, so the hatch has no consumer; implementing an unused field is
@@ -37,17 +37,17 @@ byte-identical to today). The silent/default path stays exactly the curated core
 
 ## Architecture summary
 
-- **Descriptors** — two new `multiselect` entries in `templates/catalog.yaml`'s `vars:` block, with
+- **Descriptors**: two new `multiselect` entries in `templates/catalog.yaml`'s `vars:` block, with
   `target: catalog-skills` / `catalog-docs`. Their `options` and core-default are **not authored**;
   `initspec.CatalogVars(cat)` fills them from the catalog (all names sorted; `core:true` pre-selected,
   comma-joined into `Default`). `Describe`/`Resolve` operate on the `CatalogVars` output so the option
   list stays derived from the catalog.
-- **`internal/initspec`** — `CatalogVars` plus a multiselect path in `Resolve`: explicit answer
+- **`internal/initspec`**: `CatalogVars` plus a multiselect path in `Resolve`: explicit answer
   (validated comma-separated names) → interactive prompt (1-based numbers, complete selection) → nil.
   `Resolve` gains a `*config.CatalogTrim` return.
-- **`internal/project.ScaffoldConfig`** — gains a trailing `trim *config.CatalogTrim` param; a non-nil
+- **`internal/project.ScaffoldConfig`**: gains a trailing `trim *config.CatalogTrim` param; a non-nil
   dimension replaces the core skills/docs verbatim, nil keeps core.
-- **`cmd/awf`** — `runInit` computes `descs := initspec.CatalogVars(cat)`, feeds it to `Describe` and
+- **`cmd/awf`**: `runInit` computes `descs := initspec.CatalogVars(cat)`, feeds it to `Describe` and
   `Resolve`, and passes the resolved trim to `ScaffoldConfig`. No new flags (`--set`/`--answers`
   already carry `skills=`/`docs=`).
 
@@ -79,19 +79,19 @@ Modified:
 
 ---
 
-## Phase 1 — `ScaffoldConfig` accepts an optional catalog trim
+## Phase 1: `ScaffoldConfig` accepts an optional catalog trim
 
 Pure plumbing: the signature changes and the overlay lands, but every call still passes `nil`, so the
 output is byte-identical and `scaffold-core-only` is intact. Lands first so Phase 2 has a stable seam.
 
-### Task 1.1 — Add the `CatalogTrim` type
+### Task 1.1: Add the `CatalogTrim` type
 
 - [ ] Edit `internal/config/edit.go`. After the `Skeleton` struct (ends line 25), add:
 
 ```go
 // CatalogTrim optionally overrides which catalog skills/docs a scaffolded config
-// enables (ADR-0029 catalog trim). A nil *CatalogTrim — or a nil dimension within
-// it — means "no selection: keep the curated-core default"; a non-nil dimension is
+// enables (ADR-0029 catalog trim). A nil *CatalogTrim (or a nil dimension within
+// it) means "no selection: keep the curated-core default"; a non-nil dimension is
 // the verbatim, fully-deselectable enable set (an empty slice deselects all).
 type CatalogTrim struct {
 	Skills *[]string
@@ -99,7 +99,7 @@ type CatalogTrim struct {
 }
 ```
 
-### Task 1.2 — Change `ScaffoldConfig` signature + overlay
+### Task 1.2: Change `ScaffoldConfig` signature + overlay
 
 - [ ] Edit `internal/project/scaffold.go`. Change the signature (line 22):
 
@@ -127,7 +127,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
   (The `// invariant: scaffold-core-only` marker on the core-building loop above stays put; the
   default `trim == nil` path still yields exactly the core.)
 
-### Task 1.3 — Update non-test call site
+### Task 1.3: Update non-test call site
 
 - [ ] Edit `cmd/awf/main.go`. In `runInit`, change the `ScaffoldConfig` call (line 271) to pass `nil`
   (full trim wiring lands in Phase 2):
@@ -136,16 +136,16 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, nil)
 ```
 
-### Task 1.4 — Update test call sites + add the trim test
+### Task 1.4: Update test call sites + add the trim test
 
 - [ ] Edit `internal/project/scaffold_test.go`. Append `, nil` to the trim arg of every
-  `ScaffoldConfig(...)` call (lines 23, 53, 98, 127, 163, 205, 238 — 7 calls), e.g. line 23 becomes
+  `ScaffoldConfig(...)` call (lines 23, 53, 98, 127, 163, 205, 238: 7 calls), e.g. line 23 becomes
   `b, err := ScaffoldConfig("example", nil, nil, nil)`. Also update the stale doc comment at line 20
   (`// TestScaffoldParsesCleanly verifies that ScaffoldConfig("example", nil, nil) produces YAML`) to
   the new 4-arg form `ScaffoldConfig("example", nil, nil, nil)`.
 
 - [ ] In the same file, after `TestScaffoldEnablesCoreTargets` (ends line 93), add a test that backs
-  `catalog-trim-applied` — covering both `Skills set / Docs nil` and `Skills nil / Docs set` so each of
+  `catalog-trim-applied`, covering both `Skills set / Docs nil` and `Skills nil / Docs set` so each of
   the two `trim != nil && trim.X != nil` branches is hit in both outcomes:
 
 ```go
@@ -209,12 +209,12 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 - [ ] Edit `cmd/awf/list_add_test.go` line 23: `project.ScaffoldConfig("example", nil, nil)` →
   `project.ScaffoldConfig("example", nil, nil, nil)`.
 
-### Task 1.5 — Verify and commit
+### Task 1.5: Verify and commit
 
-- [ ] Run `go test ./internal/project/ ./internal/config/ ./cmd/awf/ 2>&1 | tail` — expect `ok` for all.
-- [ ] Run `./x gate` — expect `coverage: 100.0%` and `0 issues.`
-- [ ] Run `./x check` — expect `awf check: clean` (no rendered change; the new `// invariant:` marker is
-  not yet declared by an Implemented ADR, so it is an unchecked extra — harmless).
+- [ ] Run `go test ./internal/project/ ./internal/config/ ./cmd/awf/ 2>&1 | tail`: expect `ok` for all.
+- [ ] Run `./x gate`: expect `coverage: 100.0%` and `0 issues.`
+- [ ] Run `./x check`: expect `awf check: clean` (no rendered change; the new `// invariant:` marker is
+  not yet declared by an Implemented ADR, so it is an unchecked extra, harmless).
 - [ ] Commit:
 
 ```
@@ -230,12 +230,12 @@ inv: catalog-trim-applied via TestScaffoldCatalogTrim."
 
 ---
 
-## Phase 2 — Catalog descriptors + multiselect resolution + CLI wiring
+## Phase 2: Catalog descriptors + multiselect resolution + CLI wiring
 
-### Task 2.1 — Add the two multiselect descriptors
+### Task 2.1: Add the two multiselect descriptors
 
 - [ ] Edit `templates/catalog.yaml`. Append after the `invariantsGlobs` descriptor (end of the `vars:`
-  block). `options`/`default` are intentionally omitted — `initspec.CatalogVars` computes them from the
+  block). `options`/`default` are intentionally omitted; `initspec.CatalogVars` computes them from the
   catalog:
 
 ```yaml
@@ -249,7 +249,7 @@ inv: catalog-trim-applied via TestScaffoldCatalogTrim."
     description: Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog.
 ```
 
-### Task 2.2 — Extend the parity allow-list
+### Task 2.2: Extend the parity allow-list
 
 - [ ] Edit `internal/project/descriptor_parity_test.go` line 15:
 
@@ -260,10 +260,10 @@ var validTargets = []string{"", "var", "invariants-marker", "invariants-globs", 
   (The two new descriptors carry non-var targets, so they are exempt from the var↔descriptor parity
   check exactly like the invariants marker/globs; only the target allow-list needs them.)
 
-### Task 2.3 — `CatalogVars` + multiselect resolution in `initspec`
+### Task 2.3: `CatalogVars` + multiselect resolution in `initspec`
 
 - [ ] Edit `internal/initspec/initspec.go`. Refresh the package doc comment (lines 1-4): the phrase
-  "a resolved (vars, invariants-config) pair" is now a triple — change it to
+  "a resolved (vars, invariants-config) pair" is now a triple; change it to
   "a resolved (vars, invariants-config, catalog-trim) triple".
 
 - [ ] Update the import block to add `maps`, `slices`, `strconv`:
@@ -435,7 +435,7 @@ func promptMultiselect(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) 
 	for _, n := range splitNames(d.Default) {
 		core[n] = true
 	}
-	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
+	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
 	for i, o := range d.Options {
 		mark := " "
 		if core[o] {
@@ -478,7 +478,7 @@ func splitNames(s string) []string {
 }
 ```
 
-### Task 2.4 — Wire `CatalogVars` + trim through the CLI
+### Task 2.4: Wire `CatalogVars` + trim through the CLI
 
 - [ ] Edit `cmd/awf/main.go`, `runInit`. Replace the describe + resolve + scaffold lines so all three
   run over `CatalogVars(cat)` and the trim reaches `ScaffoldConfig`. Specifically:
@@ -512,10 +512,10 @@ func splitNames(s string) []string {
 		scaffold, err := project.ScaffoldConfig(filepath.Base(root), vars, inv, trim)
 ```
 
-### Task 2.5 — initspec tests
+### Task 2.5: initspec tests
 
 - [ ] Edit `internal/initspec/initspec_test.go`. Update every existing `Resolve(...)` call to capture
-  the new fourth return — change `vars, inv, err := Resolve(...)` to `vars, inv, _, err := Resolve(...)`
+  the new fourth return; change `vars, inv, err := Resolve(...)` to `vars, inv, _, err := Resolve(...)`
   in `TestResolveSilentSeedsEmpty`, `TestResolveExplicitAnswersWin`,
   `TestResolveInteractiveDefaultAndEnumIndex`,
   `TestResolveInteractiveLiteralAndEnumNonNumeric`, and the half-set/read-error tests
@@ -623,11 +623,11 @@ func TestResolveMultiselectPromptReadError(t *testing.T) {
 
   Note for the executor: `TestResolveMultiselectInteractive` feeds `"1,3,\n\n"`. The trailing comma
   yields an empty final token, which deterministically exercises the `tok == ""` `continue` in
-  `promptMultiselect` — the only test that does, and required by the hard 100% statement-coverage gate.
+  `promptMultiselect`: the only test that does, and required by the hard 100% statement-coverage gate.
   Do not drop the trailing comma; if `./x gate` ever reports that `continue` uncovered, the input was
   altered.
 
-### Task 2.6 — CLI trim wiring test + describe assertion
+### Task 2.6: CLI trim wiring test + describe assertion
 
 - [ ] Edit `cmd/awf/init_test.go`. In `TestInitDescribeReadOnly`, after the `len(parsed.Descriptors)`
   check (line 49), assert the computed trim options surface (proves `CatalogVars` feeds `Describe`):
@@ -673,12 +673,12 @@ func TestInitCatalogTrim(t *testing.T) {
 }
 ```
 
-### Task 2.7 — Verify and commit
+### Task 2.7: Verify and commit
 
-- [ ] Run `go test ./... 2>&1 | tail` — expect all `ok`.
-- [ ] Run `./x gate` — expect `coverage: 100.0%` and `0 issues.`
-- [ ] Run `./x check` — expect `awf check: clean` (catalog.yaml is not drift-tracked; no rendered
-  change yet — domain narratives land in Phase 3).
+- [ ] Run `go test ./... 2>&1 | tail`: expect all `ok`.
+- [ ] Run `./x gate`: expect `coverage: 100.0%` and `0 issues.`
+- [ ] Run `./x check`: expect `awf check: clean` (catalog.yaml is not drift-tracked; no rendered
+  change yet: domain narratives land in Phase 3).
 - [ ] Manual smoke (optional): `go run ./cmd/awf init --describe` in a temp dir and confirm the
   `skills`/`docs` descriptors show populated `options`.
 - [ ] Commit:
@@ -696,12 +696,12 @@ Resolve returns a *config.CatalogTrim wired through runInit into ScaffoldConfig.
 
 ---
 
-## Phase 3 — Flip ADR-0029 to Implemented + docs currency
+## Phase 3: Flip ADR-0029 to Implemented + docs currency
 
 > This is the slice that completes ADR-0029, so the status flips here and the plan freezes. All edits
 > are docs/ADR; the gate passes quickly with no code change.
 
-### Task 3.1 — Amend and flip ADR-0029
+### Task 3.1: Amend and flip ADR-0029
 
 - [ ] Edit `docs/decisions/0029-interactive-agent-prefillable-init.md`:
   - Change the frontmatter `status: Proposed` → `status: Implemented`.
@@ -710,24 +710,24 @@ Resolve returns a *config.CatalogTrim wired through runInit into ScaffoldConfig.
     curated-core targets, mirroring `awf remove` (ADR-0024), which already disables core/chain skills
     post-init with no guardrail. The default (no-selection) path is unchanged, so `scaffold-core-only`
     holds."
-  - In **Decision 5**, replace the parenthetical "— or an explicit `prompt: false` descriptor that
-    means 'seed empty, never prompt' —" with "(`prompt: false` is reserved as a future seed-empty
+  - In **Decision 5**, replace the parenthetical "(or an explicit `prompt: false` descriptor that
+    means 'seed empty, never prompt')" with "(`prompt: false` is reserved as a future seed-empty
     affordance; every current var has a descriptor, so it is unimplemented)". Apply the same edit to the
     `inv: var-descriptor-parity` bullet in the **Invariants** section so the parity rule reads as a
     descriptor-required-for-every-var gate with `prompt: false` noted reserved.
   - In the **Invariants** section, add a bullet:
-    "- `inv: catalog-trim-applied` — a non-nil catalog-trim dimension passed to `ScaffoldConfig`
+    "- `inv: catalog-trim-applied`: a non-nil catalog-trim dimension passed to `ScaffoldConfig`
     replaces the curated-core skills/docs enable array verbatim (the full-deselectable trim); a nil
     dimension keeps exactly the core."
 
-### Task 3.2 — Domain narratives + README
+### Task 3.2: Domain narratives + README
 
 - [ ] Edit `.awf/domains/parts/tooling/current-state.md`. In the sentence that currently ends
   "...the silent non-TTY path still seeds every var empty.", append:
   " Init also offers a full-deselectable catalog trim (ADR-0029): the catalog `vars:` block declares
   two `multiselect` descriptors (`skills`, `docs`) whose options and pre-selected core are computed
   from the catalog, so an operator can deselect core or add opt-in targets interactively or via
-  `--set skills=`/`--set docs=` — the selection replaces the enable array verbatim, mirroring
+  `--set skills=`/`--set docs=`; the selection replaces the enable array verbatim, mirroring
   `awf remove`."
 
 - [ ] Edit `.awf/domains/parts/config/current-state.md`. In the sentence ending "...rather than only
@@ -740,13 +740,13 @@ Resolve returns a *config.CatalogTrim wired through runInit into ScaffoldConfig.
 - [ ] Edit `README.md` line 80 (the `awf init` table row). Append to the cell, before the closing `|`:
   " `--set skills=`/`--set docs=` trim which catalog skills/docs are enabled (core pre-selected)."
 
-### Task 3.3 — Re-render, verify, commit
+### Task 3.3: Re-render, verify, commit
 
-- [ ] Run `./x sync` — regenerates `docs/decisions/ACTIVE.md` (status flip), `docs/domains/tooling.md`,
+- [ ] Run `./x sync`: regenerates `docs/decisions/ACTIVE.md` (status flip), `docs/domains/tooling.md`,
   and `docs/domains/config.md` (edited parts).
-- [ ] Run `./x check` — expect `awf check: clean` (including the invariants pass: `catalog-trim-applied`
+- [ ] Run `./x check`: expect `awf check: clean` (including the invariants pass: `catalog-trim-applied`
   is now declared by Implemented ADR-0029 and backed by the `// invariant:` marker in scaffold.go).
-- [ ] Run `./x gate` — expect `coverage: 100.0%` and `0 issues.`
+- [ ] Run `./x gate`: expect `coverage: 100.0%` and `0 issues.`
 - [ ] Commit:
 
 ```
@@ -763,9 +763,9 @@ and refresh the tooling/config domain narratives + README init row."
 
 ## Out of scope (unchanged from ADR-0029)
 
-- **`prompt: false` seed-empty escape-hatch** — reserved in ADR-0029 Decision 5, no current consumer,
+- **`prompt: false` seed-empty escape-hatch**: reserved in ADR-0029 Decision 5, no current consumer,
   deferred until a var actually needs seed-empty-no-prompt.
 - **Chain-coupling guardrails / converting skill cross-references to markdown links** so a deselected
-  chain skill is caught by ADR-0020 — a separate concern; the exposure already exists via `awf remove`.
+  chain skill is caught by ADR-0020: a separate concern; the exposure already exists via `awf remove`.
 - **Detection-based prefill** and **free-text prose authoring** (ADR-0029 Decisions / rejections).
 ```

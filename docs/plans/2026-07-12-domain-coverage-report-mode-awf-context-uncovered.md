@@ -13,14 +13,14 @@ where domains are missing. The design lives in `docs/decisions/0102-domain-cover
 
 Add `awf context --uncovered [<scan-root>...]`: list git-tracked-at-HEAD paths matched
 by no domain `paths` glob, collapsing a fully-uncovered directory to its topmost node,
-with human and `--json` output from one assembled result — reusing `awf context`'s
+with human and `--json` output from one assembled result, reusing `awf context`'s
 read-only / static-fallback contracts.
 
 ## Architecture summary
 
 - `internal/git` gains a read-only `TrackedPaths(repoRoot)` that walks the HEAD tree.
-- `internal/project` gains `Uncovered(tracked, scanRoots)` returning an `UncoveredResult`
-  — a pure function of the tracked set and the project's domain config (no git import),
+- `internal/project` gains `Uncovered(tracked, scanRoots)` returning an `UncoveredResult`,
+  a pure function of the tracked set and the project's domain config (no git import),
   matching how `ContextFor` already takes its paths as input. It filters to the scan
   roots (path-segment boundaries), drops domain-owned paths, and collapses
   fully-uncovered directories.
@@ -31,7 +31,7 @@ read-only / static-fallback contracts.
 
 Coupling note: the dead-code gate (ADR-0063) requires every production function be
 reachable from a `main`, so `git.TrackedPaths`, `project.Uncovered`, and the `runContext`
-wiring cannot land in separate commits — Phase 1 is one commit by necessity. Phase 2 is
+wiring cannot land in separate commits; Phase 1 is one commit by necessity. Phase 2 is
 the status-flip.
 
 ## Tech stack
@@ -53,9 +53,9 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   `docs/decisions/ACTIVE.md`, `.awf/agents-doc.yaml`, `AGENTS.md`, this plan, `.awf/awf.lock`.
 - **Deleted:** none.
 
-## Phase 1 — Implement `--uncovered` end-to-end (one commit; deadcode-coupled)
+## Phase 1: Implement `--uncovered` end-to-end (one commit; deadcode-coupled)
 
-- [ ] **Task 1.1 — Add `git.TrackedPaths`.** Append to `internal/git/git.go` (after
+- [ ] **Task 1.1: Add `git.TrackedPaths`.** Append to `internal/git/git.go` (after
   `ChangedPaths`, before `treeAt`). `object` is already imported.
 
   ```go
@@ -90,10 +90,10 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   }
   ```
 
-- [ ] **Task 1.2 — Add `project.Uncovered` + `UncoveredResult`.** Append to
+- [ ] **Task 1.2: Add `project.Uncovered` + `UncoveredResult`.** Append to
   `internal/project/context.go` (after `ContextFor`, before `normalizeContextPaths`).
   `sort`, `strings`, `path` semantics via `strings`, and `pathglob` are available;
-  add `"strings"` usage (already imported) — no new imports.
+  add `"strings"` usage (already imported): no new imports.
 
   ```go
   // UncoveredResult is the read-only domain-coverage report for a set of scan roots:
@@ -194,8 +194,8 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   	return res, nil
   }
 
-  // ancestors returns path's directory ancestors from the top down — "." then each
-  // strict directory prefix — excluding path itself.
+  // ancestors returns path's directory ancestors from the top down ("." then each
+  // strict directory prefix), excluding path itself.
   func ancestors(path string) []string {
   	out := []string{"."}
   	segs := strings.Split(path, "/")
@@ -207,14 +207,14 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   ```
 
   Also **export** the existing `normalizeContextPaths` by renaming it to
-  `NormalizeContextPaths` (body unchanged), and update its two callers —
+  `NormalizeContextPaths` (body unchanged), and update its two callers:
   `ContextFor` (line ~69, `clean := NormalizeContextPaths(paths)`) and the new
   `Uncovered` above. The CLI static fallback (Task 1.3) also calls it. Also update the
   function's doc comment (context.go:~187) so its leading word is `NormalizeContextPaths`,
-  not `normalizeContextPaths` — staticcheck ST1020 (enabled via `staticcheck ["all", …]`)
+  not `normalizeContextPaths`: staticcheck ST1020 (enabled via `staticcheck ["all", ...]`)
   requires an exported function's doc to start with its name, or `./x gate` fails.
 
-- [ ] **Task 1.3 — Wire the `--uncovered` mode into `runContext` + add `printUncovered`.**
+- [ ] **Task 1.3: Wire the `--uncovered` mode into `runContext` + add `printUncovered`.**
   In `cmd/awf/context.go`: add `uncovered bool` to `runContext`'s signature (after
   `asJSON`), branch on it before the existing path/selector logic, and add the
   renderer. Exact new signature line:
@@ -248,7 +248,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   		}
   		// invariant: context-static-fallback
   		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
-  			"context --uncovered (static — not inside an awf project; live coverage appears inside one)")
+  			"context --uncovered (static: not inside an awf project; live coverage appears inside one)")
   	}
   	if err := gate(cwd); err != nil {
   		return err
@@ -265,7 +265,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   	if err != nil {
   		return err
   	}
-  	return printUncovered(stdout, res, asJSON, "context --uncovered — tracked paths owned by no domain")
+  	return printUncovered(stdout, res, asJSON, "context --uncovered: tracked paths owned by no domain")
   }
 
   // printUncovered renders res as JSON or human-readable text. Both modes read the same
@@ -293,7 +293,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   }
   ```
 
-- [ ] **Task 1.4 — Pass the flag from dispatch.** In `cmd/awf/dispatch.go`, update the
+- [ ] **Task 1.4: Pass the flag from dispatch.** In `cmd/awf/dispatch.go`, update the
   `context` handler (line ~58) to pass the new flag:
 
   ```go
@@ -302,7 +302,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   	},
   ```
 
-- [ ] **Task 1.5 — Register `--uncovered` in the clispec + refresh help.** In
+- [ ] **Task 1.5: Register `--uncovered` in the clispec + refresh help.** In
   `internal/clispec/clispec.go`, edit the `context` command: add `--uncovered` to
   `BoolFlags` and extend `HelpBody`. Exact `BoolFlags` change:
 
@@ -316,12 +316,12 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>] [--uncovered]
   ```
 
-  Extend the `HelpBody` string: after the "Explicit paths take precedence…" paragraph
+  Extend the `HelpBody` string: after the "Explicit paths take precedence..." paragraph
   and before the `Flags:` block, insert a paragraph, and add the flag to the list:
 
   ```
   With --uncovered, ignore the path lookup and instead report git-tracked-at-HEAD
-  paths matched by no configured domain glob — the coverage-gap signal for where to
+  paths matched by no configured domain glob: the coverage-gap signal for where to
   add a domain. Positional args become optional scan roots (a directory subtree);
   --staged/--range are not accepted in this mode.
   ```
@@ -332,8 +332,8 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
     --uncovered          report tracked paths owned by no domain (scan roots optional)
   ```
 
-- [ ] **Task 1.6 — Document the mode via a source part (never the generated doc).**
-  `docs/working-with-awf.md` is generated (`GENERATED by awf` banner) — hand-editing it
+- [ ] **Task 1.6: Document the mode via a source part (never the generated doc).**
+  `docs/working-with-awf.md` is generated (`GENERATED by awf` banner); hand-editing it
   fails the drift oracle. Its `commands` section is overridable (marker at line ~18:
   `create .awf/parts/working-with-awf/commands.md to override`). Create
   `.awf/parts/working-with-awf/commands.md` that re-injects the section default and
@@ -343,16 +343,16 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   {{=awf:sectionDefault}}
 
   `awf context --uncovered [<scan-root>...]` reports git-tracked paths owned by no
-  domain — the signal for where to configure a new domain.
+  domain: the signal for where to configure a new domain.
   ```
 
-  Then `./x sync` re-renders `docs/working-with-awf.md` (awf's own tree only — the part
+  Then `./x sync` re-renders `docs/working-with-awf.md` (awf's own tree only: the part
   is repo-local, so `examples/sundial` is untouched). Commit the part and the
   re-rendered doc together in Task 1.10. (Note for the ADR resync: ADR-0102 says "update
   the `awf context` entry"; this realizes it as an appended mode note rather than an
   in-place edit of the existing bullet, to stay repo-local and off the shared template.)
 
-- [ ] **Task 1.7 — Tests: `git.TrackedPaths`.** Add to `internal/git/git_test.go`:
+- [ ] **Task 1.7: Tests: `git.TrackedPaths`.** Add to `internal/git/git_test.go`:
   - `TestTrackedPathsListsHeadTreeSorted`: `gitfixture.InitRepo`; `Commit` writing
     `{"b.txt":"1","a/c.txt":"2","a/d.txt":"3"}`; assert `TrackedPaths(dir)` returns
     exactly `["a/c.txt","a/d.txt","b.txt"]` (sorted, slash-separated).
@@ -361,7 +361,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   - `TestTrackedPathsBadRepoErrors`: call `TrackedPaths(t.TempDir())` (not a repo); assert
     an error mentioning `open repo`.
 
-- [ ] **Task 1.8 — Tests: `project.Uncovered`.** Add `TestUncovered` to
+- [ ] **Task 1.8: Tests: `project.Uncovered`.** Add `TestUncovered` to
   `internal/project/context_test.go`, a table over one project fixture whose domains
   own `internal/render/**` and the single file `x`. Build the `Project` with the
   existing test-project helper used by `TestContextFor` (mirror its construction).
@@ -382,17 +382,17 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
      raw-prefix).
   6. **sidecar fault (error branch):** mirroring `TestContextForReaderFaults`, write a
      malformed `domains/<x>.yaml` (`paths: [\n`) for a configured domain, then assert
-     `p.Uncovered(tracked, nil)` returns an error — covering the `Sidecar` error return
+     `p.Uncovered(tracked, nil)` returns an error, covering the `Sidecar` error return
      in the domain loop.
   Assert `res.ScanRoots` echoes the normalized roots for case 5.
 
-- [ ] **Task 1.9 — Tests: `runContext --uncovered` CLI.** Add to `cmd/awf/context_test.go`,
+- [ ] **Task 1.9: Tests: `runContext --uncovered` CLI.** Add to `cmd/awf/context_test.go`,
   mirroring the existing `runContext` tests' harness (adopted-tree temp project +
   git init):
   - `TestRunContextUncoveredHuman`: in an adopted tree with a domain owning
     `internal/render/**`, a committed uncovered file `internal/plan/p.go`; run
     `runContext(dir, []string{"internal/plan"}, false, "", false, true, buf)` (a scan
-    root, so the `scan roots:` line renders — covers `printUncovered`'s
+    root, so the `scan roots:` line renders; covers `printUncovered`'s
     `len(ScanRoots) > 0` branch); assert stdout contains `## Uncovered`,
     `internal/plan/`, and `scan roots:`.
   - `TestRunContextUncoveredJSONParity`: same setup, `asJSON=true`; decode stdout into
@@ -404,7 +404,7 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
     `runContext(dir, nil, false, "", false, true, buf)` prints the static header and
     returns nil.
   - **Error-branch coverage** (`runUncovered` has five reachable error returns; each
-    needs a test or the 100% gate drops — mirror the existing `runContext` fault tests):
+    needs a test or the 100% gate drops; mirror the existing `runContext` fault tests):
     - stat non-ErrNotExist fault: point `cwd` at a path whose `.awf` stat errors
       non-`ErrNotExist` (mirror `TestRunContextStatFault`), `uncovered=true` → error.
     - gate refusal: an adopted tree whose lock fails the version gate (mirror
@@ -417,11 +417,11 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
     - `p.Uncovered` fault: an adopted tree with a configured domain whose sidecar is
       malformed (mirror the Task 1.8 case 6 setup at the CLI layer) → error.
   Update every existing `runContext(...)` call in this test file to pass the new
-  `uncovered` arg (`false`) — post-check: `grep -c "runContext(" cmd/awf/context_test.go`
+  `uncovered` arg (`false`); post-check: `grep -c "runContext(" cmd/awf/context_test.go`
   equals the count of updated call sites (no arity mismatch; `go build` is the real gate).
 
-- [ ] **Task 1.10 — Verify and commit.** Run `./x sync` (regenerates nothing yet —
-  ADR text unchanged — but refresh in case help text feeds a doc), then `./x gate`
+- [ ] **Task 1.10: Verify and commit.** Run `./x sync` (regenerates nothing yet,
+  ADR text unchanged, but refresh in case help text feeds a doc), then `./x gate`
   (expect `coverage: 100.0%`, `0 issues.`, `deadcodecheck: no production dead code`,
   `pincheck: all workflow references pinned`). `git add` the modified source, test,
   and clispec files, the new `.awf/parts/working-with-awf/commands.md`, the re-rendered
@@ -429,34 +429,34 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
   `feat(tooling): awf context --uncovered domain-coverage report`. Body notes the
   deadcode coupling that forces the single commit and lists the three marked invariants.
 
-## Phase 2 — Flip ADR-0102 and this plan to Implemented (final commit)
+## Phase 2: Flip ADR-0102 and this plan to Implemented (final commit)
 
-- [ ] **Task 2.1 — Record the invariants in the agent guide.** Append three bullets to
+- [ ] **Task 2.1: Record the invariants in the agent guide.** Append three bullets to
   the invariants list in `.awf/agents-doc.yaml` (after the ADR-0099 entries, mirroring
-  the ADR-0092 `context-*` shape — AGENTS.md's Invariants section is generated from this
+  the ADR-0092 `context-*` shape; AGENTS.md's Invariants section is generated from this
   source, so the backed-invariant check would not catch this as drift; it is a
   hand-maintained convention every recent invariant-introducing ADR followed):
 
   ```yaml
           - ref: ADR-0102
-            text: '**Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob — every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`).'
+            text: '**Uncovered lists unowned only.** In `--uncovered` mode `awf context` reports exactly the scanned git-tracked paths (under the given scan roots, or the whole tree) matched by no configured domain glob: every uncovered path represented by one reported entry (itself or a reported ancestor directory), no domain-owned path represented (`inv: uncovered-lists-unowned-only`).'
           - ref: ADR-0102
             text: '**Uncovered collapses directories.** A directory all of whose scanned tracked descendants are uncovered is reported as that topmost directory, never as its individual descendant files (`inv: uncovered-collapses-directories`).'
           - ref: ADR-0102
             text: '**Uncovered output parity.** The human and `--json` renderings of `awf context --uncovered` report the same uncovered set, because both derive from one assembled `UncoveredResult` (`inv: uncovered-output-parity`).'
   ```
 
-- [ ] **Task 2.2 — Flip statuses + regenerate.** In
+- [ ] **Task 2.2: Flip statuses + regenerate.** In
   `docs/decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md` set
   `status: Implemented`. In this plan set `status: Implemented` and record any
   implementation deltas in Notes. Run `./x sync` to re-render `AGENTS.md` (picking up
   the Task 2.1 bullets) and regenerate `docs/decisions/ACTIVE.md`. Run `./x gate` and
-  `./x check` — check now enforces the three slugs are backed (they were marked in
+  `./x check`; check now enforces the three slugs are backed (they were marked in
   Phase 1): expect `awf check: clean`, `awf invariants: clean`.
 
-- [ ] **Task 2.3 — Verify and commit.** `git add` the ADR, this plan, `ACTIVE.md`,
+- [ ] **Task 2.3: Verify and commit.** `git add` the ADR, this plan, `ACTIVE.md`,
   `.awf/agents-doc.yaml`, the re-rendered `AGENTS.md`, and `.awf/awf.lock`. Commit:
-  `docs(adr): implement 0102 — flip status`. This is the final commit; the plan freezes here.
+  `docs(adr): implement 0102, flip status`. This is the final commit; the plan freezes here.
 
 ## Verification
 
@@ -479,8 +479,8 @@ Gate: `./x gate` before every commit (100% coverage, deadcode, pincheck).
 ### Implementation findings
 - **`runUncovered`'s `p.Uncovered` error branch is unreachable, not testable.** Task 1.9
   planned a CLI-level sidecar-fault test for it, but `runUncovered` re-opens the project
-  and `project.Open` validates every domain sidecar (`validate.go` → `validateAgainstCatalog`)
-  — so a corrupt sidecar surfaces at `Open`, before `Uncovered`. Since `Uncovered`'s only
+  and `project.Open` validates every domain sidecar (`validate.go` → `validateAgainstCatalog`),
+  so a corrupt sidecar surfaces at `Open`, before `Uncovered`. Since `Uncovered`'s only
   fault source is that same sidecar read (unlike `ContextFor`, which can also fail on an
   ADR parse that `Open` skips), the branch got a `// coverage-ignore` with that reason, and
   the planned `AssembleFault` CLI test was dropped (it exercised `Open`, redundant with

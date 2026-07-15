@@ -6,11 +6,11 @@
 ## Goal
 
 Implement ADR-0054: make workflow-chain handoffs a uniform, machine-enforced convention. Three coupled
-changes plus docs — (1) a skill/agent **section-parity guard** that lands first so it backstops the
+changes plus docs: (1) a skill/agent **section-parity guard** that lands first so it backstops the
 rename; (2) rename `brainstorming`'s `terminal-handoff` section marker to `terminal-step` for chain
 uniformity; (3) strengthen `internal/evals/chain_test.go` with a **positional** handoff assertion
 (successor named on an invocation-verb line, replacing the ADR-0046-redundant `os.Stat`) and a
-**connectivity** guard over the nine chain-progression nodes. Design rationale lives in ADR-0054 — this
+**connectivity** guard over the nine chain-progression nodes. Design rationale lives in ADR-0054; this
 plan is the execution record only.
 
 ## Architecture summary
@@ -18,8 +18,8 @@ plan is the execution record only.
 - The parity guard lands **before** the rename (Phase 1) so it is proven green on the pre-rename state
   and then fails loudly if the rename's two-file lockstep edit is incomplete. Verified: section parity
   currently holds for every skill and agent (0 mismatches).
-- The rename is exactly two source edits — `templates/skills/brainstorming/SKILL.md.tmpl` (the
-  `awf:section` marker) and the `brainstorming.sections` list in `templates/catalog.yaml` — because
+- The rename is exactly two source edits (`templates/skills/brainstorming/SKILL.md.tmpl` (the
+  `awf:section` marker) and the `brainstorming.sections` list in `templates/catalog.yaml`) because
   `render.Assemble` derives each provenance-pointer `EditPath` from the **catalog-declared** sections,
   not the template. `./x sync` regenerates both rendered targets (`.claude/` and `.cursor/`).
 - No invocation-phrasing rewrites are needed: every current handoff/dispatch line already carries an
@@ -31,7 +31,7 @@ plan is the execution record only.
   no orphans.
 - The `reviewing-plan` / `reviewing-plan-resync` token pair collides on substring, so the positional
   matcher uses a token-boundary regex (`example-reviewing-plan` must not be followed by `-` or a word
-  char) to avoid a spurious `…-plan` edge on a `…-plan-resync` line.
+  char) to avoid a spurious `...-plan` edge on a `...-plan-resync` line.
 
 ## Tech stack
 
@@ -57,9 +57,9 @@ plan is the execution record only.
 
 ---
 
-## Phase 1 — skill/agent section-parity guard (lands first)
+## Phase 1: skill/agent section-parity guard (lands first)
 
-### Task 1.1 — Create `internal/project/skill_sections_test.go`
+### Task 1.1: Create `internal/project/skill_sections_test.go`
 
 Create the file with exactly this content:
 
@@ -129,7 +129,7 @@ func TestSkillAndAgentSectionParity(t *testing.T) {
 }
 ```
 
-### Task 1.2 — Verify Phase 1
+### Task 1.2: Verify Phase 1
 
 Run:
 
@@ -138,7 +138,7 @@ go test ./internal/project/ -run TestSkillAndAgentSectionParity -v
 ```
 
 Expected: `--- PASS: TestSkillAndAgentSectionParity` and `ok  github.com/hypnotox/agentic-workflows/internal/project`.
-(The guard passes on the current pre-rename state — parity holds for every skill and agent today.)
+(The guard passes on the current pre-rename state: parity holds for every skill and agent today.)
 
 Then:
 
@@ -149,7 +149,7 @@ Then:
 Expected: final two lines `coverage: 100.0% (...)` and `0 issues.` (the test adds only `_test.go`
 statements, so the coverage denominator is unchanged).
 
-### Task 1.3 — Commit Phase 1
+### Task 1.3: Commit Phase 1
 
 ```
 git add internal/project/skill_sections_test.go
@@ -158,9 +158,9 @@ git commit -m "test(awf): add skill/agent section-parity guard"
 
 ---
 
-## Phase 2 — rename brainstorming's handoff marker (protected by the guard)
+## Phase 2: rename brainstorming's handoff marker (protected by the guard)
 
-### Task 2.1 — Rename the template marker
+### Task 2.1: Rename the template marker
 
 In `templates/skills/brainstorming/SKILL.md.tmpl`, change the line:
 
@@ -174,7 +174,7 @@ to:
 <!-- awf:section terminal-step -->
 ```
 
-### Task 2.2 — Rename the catalog-declared section (lockstep)
+### Task 2.2: Rename the catalog-declared section (lockstep)
 
 In `templates/catalog.yaml`, under `skills.brainstorming.sections`, change the list item:
 
@@ -188,7 +188,7 @@ to:
       - terminal-step
 ```
 
-### Task 2.3 — Verify no invocation-phrasing outliers need editing
+### Task 2.3: Verify no invocation-phrasing outliers need editing
 
 Confirm every forward handoff/dispatch line already carries an invocation verb (no rewrite needed):
 
@@ -198,10 +198,10 @@ grep -rInE "(invoke|dispatch|hands off|chains through)" .claude/skills/awf-brain
 
 Expected: at least the four handoff bullets under the (about-to-be-renamed) terminal section naming
 `awf-proposing-adr`, `awf-writing-plans`, `awf-reviewing-adr`, `awf-reviewing-impl`. If any table-driven
-handoff/dispatch pair from Phase 3 lacks a verb on its successor line, stop and raise to the user — per
+handoff/dispatch pair from Phase 3 lacks a verb on its successor line, stop and raise to the user; per
 ADR-0054 wording is already close and no rewrite is expected.
 
-### Task 2.4 — Re-render and verify the guard still passes
+### Task 2.4: Re-render and verify the guard still passes
 
 ```
 ./x sync
@@ -210,7 +210,7 @@ go test ./internal/project/ -run TestSkillAndAgentSectionParity -v
 ./x gate
 ```
 
-Expected: `./x sync` → `awf sync: done`; the parity test `PASS` (both lockstep edits landed — a missed
+Expected: `./x sync` → `awf sync: done`; the parity test `PASS` (both lockstep edits landed: a missed
 edit would fail here); `./x check` → `awf check: clean`; `./x gate` → `coverage: 100.0% (...)` and
 `0 issues.`
 
@@ -218,7 +218,7 @@ edit would fail here); `./x check` → `awf check: clean`; `./x gate` → `cover
 `.cursor/skills/awf-brainstorming/SKILL.md`, and `.awf/awf.lock` (the rendered `awf:edit terminal-step`
 provenance pointer replaces `terminal-handoff`).
 
-### Task 2.5 — Commit Phase 2
+### Task 2.5: Commit Phase 2
 
 ```
 git add templates/skills/brainstorming/SKILL.md.tmpl templates/catalog.yaml .claude/skills/awf-brainstorming/SKILL.md .cursor/skills/awf-brainstorming/SKILL.md .awf/awf.lock
@@ -227,9 +227,9 @@ git commit -m "refactor(awf): rename brainstorming handoff section to terminal-s
 
 ---
 
-## Phase 3 — strengthen the evals chain assertions
+## Phase 3: strengthen the evals chain assertions
 
-### Task 3.1 — Rewrite `internal/evals/chain_test.go`
+### Task 3.1: Rewrite `internal/evals/chain_test.go`
 
 Replace the entire file with exactly this content:
 
@@ -253,13 +253,13 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// invocationVerb matches a workflow-chain invocation instruction — the verb that
+// invocationVerb matches a workflow-chain invocation instruction: the verb that
 // makes a line a handoff/dispatch rather than an incidental mention (ADR-0054).
 // Case-insensitive so "invoke"/"Invoke"/"Dispatch"/"chains through" all anchor.
 var invocationVerb = regexp.MustCompile(`(?i)(invoke|dispatch|hands off|chains through)`)
 
 // namesOnInvocationLine reports whether body has a line carrying both an
-// invocation verb and the token as a whole skill/agent name — i.e. the token is
+// invocation verb and the token as a whole skill/agent name, i.e. the token is
 // named in an actual instruction, not merely present somewhere in the prose
 // (ADR-0053 owns mere presence) and not just as an existing target (ADR-0046
 // owns that). The trailing boundary ([^-\w] or line end) stops
@@ -275,7 +275,7 @@ func namesOnInvocationLine(body, token string) bool {
 }
 
 // assertHandoff asserts the rendered `from` skill names the prefixed `to` skill
-// on an invocation-verb line — the successor sits in a real handoff instruction.
+// on an invocation-verb line: the successor sits in a real handoff instruction.
 func assertHandoff(t *testing.T, root, from, to string) {
 	t.Helper()
 	body := read(t, skillPath(root, from))
@@ -334,7 +334,7 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 
 // chainNodes is the pinned forward-chain progression node set (ADR-0054 item 3).
 // chainTerminal is the sole terminal (exempt from the outgoing-edge requirement).
-// Task skills bugfix/debugging are deliberately NOT nodes — their handoffs are
+// Task skills bugfix/debugging are deliberately NOT nodes: their handoffs are
 // covered by the per-edge positional check above.
 var chainNodes = []string{
 	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
@@ -369,7 +369,7 @@ func chainEdges(t *testing.T, root string) map[string][]string {
 // TestChainConnectivity asserts the forward-chain handoff graph has no orphaned
 // node (every non-terminal node emits >=1 outgoing invocation edge) and every
 // node is reachable from the root brainstorming (ADR-0054 item 3). This catches a
-// skill that loses all its handoff instructions — a whole-node failure the
+// skill that loses all its handoff instructions: a whole-node failure the
 // per-edge positional check cannot see.
 func TestChainConnectivity(t *testing.T) {
 	cat := loadCatalog(t)
@@ -405,7 +405,7 @@ func TestChainConnectivity(t *testing.T) {
 }
 ```
 
-### Task 3.2 — Verify Phase 3
+### Task 3.2: Verify Phase 3
 
 ```
 go test ./internal/evals/ -v
@@ -420,7 +420,7 @@ Expected: `TestFullCatalogCoverage`, `TestWorkflowChainHandoffs` (5 subtests),
 
 Expected: `coverage: 100.0% (...)` and `0 issues.`
 
-### Task 3.3 — Commit Phase 3
+### Task 3.3: Commit Phase 3
 
 ```
 git add internal/evals/chain_test.go
@@ -429,9 +429,9 @@ git commit -m "test(awf): strengthen evals with positional and connectivity chec
 
 ---
 
-## Phase 4 — docs, invariant entry, and ADR status flip
+## Phase 4: docs, invariant entry, and ADR status flip
 
-### Task 4.1 — Add the ADR-0054 invariant entry to the agent guide
+### Task 4.1: Add the ADR-0054 invariant entry to the agent guide
 
 In `.awf/agents-doc.yaml`, in the `data.invariants` list, immediately after the `ADR-0053` entry
 (`**Full-catalog eval coverage.** ...`), append:
@@ -441,7 +441,7 @@ In `.awf/agents-doc.yaml`, in the `data.invariants` list, immediately after the 
           text: '**Uniform machine-enforced chain handoffs.** Every catalog skill/agent template''s `awf:section` markers match its `catalog.yaml`-declared sections (`skill-section-parity`), so a section rename cannot half-land with a blank override path; and the `internal/evals` suite asserts each forward handoff names its successor on an invocation-verb line and that the nine-node chain graph is connected (no orphan, all reachable from `brainstorming`).'
 ```
 
-### Task 4.2 — Document the convention in the testing part source
+### Task 4.2: Document the convention in the testing part source
 
 In `.awf/docs/parts/testing/layout.md`, replace the existing evals paragraph (the paragraph beginning
 `Workflow-chain golden-task evals live in` and ending `... artifact (ADR-0053).`) with:
@@ -449,10 +449,10 @@ In `.awf/docs/parts/testing/layout.md`, replace the existing evals paragraph (th
 ```markdown
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.Sync` over a fixture config derived
-from the embedded catalog — every skill, agent, and doc enabled — and asserts *cross-artifact* seams a
+from the embedded catalog (every skill, agent, and doc enabled) and asserts *cross-artifact* seams a
 single-template test cannot: that a skill names its handoff successor on an *invocation-verb line* (a
 real handoff instruction, not an incidental mention), that a reviewing skill dispatches a reviewer agent
-carrying the shared review-spine partial, and that the forward-chain handoff graph is connected — no
+carrying the shared review-spine partial, and that the forward-chain handoff graph is connected: no
 orphaned node, every node reachable from `brainstorming` (ADR-0053, ADR-0054). The fixture's enabled set
 is catalog-derived so it cannot silently stop covering a newly-added chain artifact. A companion
 section-parity guard in `internal/project` (`TestSkillAndAgentSectionParity`) asserts every skill/agent
@@ -460,7 +460,7 @@ template's `awf:section` markers match its `catalog.yaml`-declared sections, so 
 cannot half-land with a blank-path provenance pointer.
 ```
 
-### Task 4.3 — Refresh the tooling domain narrative
+### Task 4.3: Refresh the tooling domain narrative
 
 ADR-0054 is tagged `domains: [tooling]`, so its Decision item 6 requires recording the convention in the
 tooling domain narrative in the implementing range (this also clears the `domain-doc-staleness` audit
@@ -480,7 +480,7 @@ template's `awf:section` markers match its `catalog.yaml` sections, so a section
 half-land with a blank-path provenance pointer.
 ```
 
-### Task 4.4 — Flip ADR-0054 status to Implemented
+### Task 4.4: Flip ADR-0054 status to Implemented
 
 In `docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md`, change the
 frontmatter line:
@@ -495,7 +495,7 @@ to:
 status: Implemented
 ```
 
-### Task 4.5 — Re-render, verify drift + invariant backing, and gate
+### Task 4.5: Re-render, verify drift + invariant backing, and gate
 
 ```
 ./x sync
@@ -511,7 +511,7 @@ Expected: `./x sync` → `awf sync: done`; `./x check` → `awf check: clean` (n
 `docs/decisions/ACTIVE.md` (0054 now Implemented), `docs/domains/tooling.md` (0054 moved to the
 Implemented index **and** the new narrative paragraph from Task 4.3), and `.awf/awf.lock`.
 
-### Task 4.6 — Commit Phase 4
+### Task 4.6: Commit Phase 4
 
 ```
 git add .awf/agents-doc.yaml .awf/docs/parts/testing/layout.md .awf/domains/parts/tooling/current-state.md docs/decisions/0054-uniform-machine-enforced-workflow-chain-handoff-convention.md AGENTS.md docs/testing.md docs/decisions/ACTIVE.md docs/domains/tooling.md .awf/awf.lock

@@ -1,7 +1,7 @@
 # Plan: Full Coverage Gate and the `// coverage-ignore` Convention
 
 Implements **[ADR-0012](../decisions/0012-full-coverage-gate-and-conventions.md)** (Accepted).
-Design rationale lives in the ADR — this plan is the execution record.
+Design rationale lives in the ADR; this plan is the execution record.
 
 ## Goal
 
@@ -32,7 +32,7 @@ Implemented. After this, `./x gate` fails whenever any non-ignored statement is 
 
 - Go 1.26; packages: `internal/coverage` (new), `cmd/covercheck` (new), `cmd/awf`, and every
   `internal/*` package for coverage fill. No new external deps (stdlib only).
-- Gate: `./x gate` per code commit. **The coverage step is wired in only at Phase 4** — until
+- Gate: `./x gate` per code commit. **The coverage step is wired in only at Phase 4**: until
   then the gate is unchanged, so incremental commits are not blocked by sub-100% interim state.
 
 ## File structure
@@ -58,9 +58,9 @@ Implemented. After this, `./x gate` fails whenever any non-ignored statement is 
 
 ---
 
-## Phase 1 — `internal/coverage` + `cmd/covercheck`
+## Phase 1: `internal/coverage` + `cmd/covercheck`
 
-### Task 1.1 — Create `internal/coverage/coverage.go`
+### Task 1.1: Create `internal/coverage/coverage.go`
 
 - [ ] Create `internal/coverage/coverage.go`:
 
@@ -83,7 +83,7 @@ import (
 
 // marker is the ignore directive in its comment form. It is assembled by
 // concatenation so this source line does not itself contain the literal
-// directive — otherwise the scanner, when reading this very file out of a
+// directive; otherwise the scanner, when reading this very file out of a
 // coverprofile, would treat this line as a reasonless directive and error.
 var marker = "//" + " coverage-ignore"
 
@@ -295,7 +295,7 @@ func modulePath(goMod string) (string, error) {
 }
 ```
 
-### Task 1.2 — Create `internal/coverage/coverage_test.go`
+### Task 1.2: Create `internal/coverage/coverage_test.go`
 
 White-box (`package coverage`) so it can drive the `getwd` seam and unexported helpers.
 Covers every branch: parse success/malformed, ignore-with-reason, reasonless-marker error,
@@ -530,7 +530,7 @@ func swapGetwd(t *testing.T, fn func() (string, error)) {
 - [ ] Verify: `go test ./internal/coverage/` → `ok`, and
   `go test ./internal/coverage/ -coverprofile=/tmp/cov.out && go tool cover -func=/tmp/cov.out | grep -v 100.0%` prints only the `total:` line at `100.0%`.
 
-### Task 1.3 — Create `cmd/covercheck/main.go`
+### Task 1.3: Create `cmd/covercheck/main.go`
 
 - [ ] Create `cmd/covercheck/main.go`:
 
@@ -562,7 +562,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "coverage: %.1f%% (%d/%d statements)\n", rep.Percent(), rep.Covered, rep.Total)
 	if !rep.OK() {
-		fmt.Fprintf(stderr, "covercheck: coverage below 100%% — %d uncovered statement(s)\n",
+		fmt.Fprintf(stderr, "covercheck: coverage below 100%% (%d uncovered statement(s))\n",
 			rep.Total-rep.Covered)
 		return 1
 	}
@@ -570,10 +570,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 ```
 
-  The trailing `// coverage-ignore: …` on `main` is the canonical ignore directive and must be
+  The trailing `// coverage-ignore: ...` on `main` is the canonical ignore directive and must be
   written verbatim.
 
-### Task 1.4 — Create `cmd/covercheck/main_test.go`
+### Task 1.4: Create `cmd/covercheck/main_test.go`
 
 - [ ] Create `cmd/covercheck/main_test.go`:
 
@@ -664,7 +664,7 @@ func chdir(t *testing.T, dir string) {
 - [ ] Verify: `go test ./cmd/covercheck/` → `ok`. `main`'s only uncovered line is the
   ignored `os.Exit` wrapper.
 
-### Task 1.5 — Commit
+### Task 1.5: Commit
 
 - [ ] `./x gate` → `0 issues.` (coverage step not yet wired; ordinary gate).
 - [ ] `git add internal/coverage cmd/covercheck`
@@ -672,9 +672,9 @@ func chdir(t *testing.T, dir string) {
 
 ---
 
-## Phase 2 — `cmd/awf` `run()` seam
+## Phase 2: `cmd/awf` `run()` seam
 
-### Task 2.1 — Rewrite `cmd/awf/main.go`
+### Task 2.1: Rewrite `cmd/awf/main.go`
 
 - [ ] Replace the whole of `cmd/awf/main.go` with:
 
@@ -796,32 +796,32 @@ func runSync(root string, stdout io.Writer) error {
 
   Note: `fatal`/`fatalIf` are deleted; error→exit mapping now lives in `run`.
 
-### Task 2.2 — Thread writers into the handlers
+### Task 2.2: Thread writers into the handlers
 
-- [ ] `cmd/awf/check.go` — change signature and prints:
+- [ ] `cmd/awf/check.go`: change signature and prints:
 
 ```go
 func runCheck(root string, stdout io.Writer) error {
 ```
   add `"io"` to imports; replace the three `fmt.Printf`/`fmt.Println` calls with
-  `fmt.Fprintf(stdout, …)` / `fmt.Fprintln(stdout, …)` (same format strings). The existing
+  `fmt.Fprintf(stdout, ...)` / `fmt.Fprintln(stdout, ...)` (same format strings). The existing
   `gate(root)` call stays unchanged at the top of `runCheck`.
 
-- [ ] `cmd/awf/invariants.go` — `func runInvariants(root string, stdout io.Writer) error`;
-  add `"io"`; `fmt.Println`→`fmt.Fprintln(stdout, …)`, `fmt.Printf`→`fmt.Fprintf(stdout, …)`.
+- [ ] `cmd/awf/invariants.go`: `func runInvariants(root string, stdout io.Writer) error`;
+  add `"io"`; `fmt.Println`→`fmt.Fprintln(stdout, ...)`, `fmt.Printf`→`fmt.Fprintf(stdout, ...)`.
 
-- [ ] `cmd/awf/list_add.go` — `func runList(root string, stdout io.Writer) error` and
+- [ ] `cmd/awf/list_add.go`: `func runList(root string, stdout io.Writer) error` and
   `func runAdd(root, skill string, stdout io.Writer) error`; add `"io"`; the `fmt.Printf` in
-  `runList` → `fmt.Fprintf(stdout, …)`; `runAdd`'s final `return runSync(root)` →
+  `runList` → `fmt.Fprintf(stdout, ...)`; `runAdd`'s final `return runSync(root)` →
   `return runSync(root, stdout)`. `appendSkill` is unchanged.
 
-- [ ] `cmd/awf/upgrade.go` — `func runUpgrade(root string, stdout io.Writer) error`; add
-  `"io"`; both prints → `fmt.Fprintln/Fprintf(stdout, …)`; `return runSync(root)` →
+- [ ] `cmd/awf/upgrade.go`: `func runUpgrade(root string, stdout io.Writer) error`; add
+  `"io"`; both prints → `fmt.Fprintln/Fprintf(stdout, ...)`; `return runSync(root)` →
   `return runSync(root, stdout)`.
 
-- [ ] `cmd/awf/setup.go` — `func runSetup(root string, stdout, stderr io.Writer) error`; add
-  `"io"`; `fmt.Fprintln(os.Stderr, …)` → `fmt.Fprintln(stderr, …)`; `fmt.Println(…)` →
-  `fmt.Fprintln(stdout, …)`; thread the subprocess output:
+- [ ] `cmd/awf/setup.go`: `func runSetup(root string, stdout, stderr io.Writer) error`; add
+  `"io"`; `fmt.Fprintln(os.Stderr, ...)` → `fmt.Fprintln(stderr, ...)`; `fmt.Println(...)` →
+  `fmt.Fprintln(stdout, ...)`; thread the subprocess output:
 
 ```go
 	cmd := exec.Command("git", "config", "core.hooksPath", ".githooks")
@@ -830,7 +830,7 @@ func runCheck(root string, stdout io.Writer) error {
 	cmd.Stderr = stderr
 ```
 
-### Task 2.3 — Update existing `cmd/awf` tests to the new signatures
+### Task 2.3: Update existing `cmd/awf` tests to the new signatures
 
 - [ ] In every existing `cmd/awf/*_test.go` that calls a handler, pass writers. Use
   `io.Discard` where output is not asserted, a `*bytes.Buffer` where it is. Concretely:
@@ -841,7 +841,7 @@ func runCheck(root string, stdout io.Writer) error {
   (and `"bytes"` where asserting) imports.
 - [ ] Verify: `go test ./cmd/awf/` → `ok` (pre-existing tests pass under new signatures).
 
-### Task 2.4 — Commit
+### Task 2.4: Commit
 
 - [ ] `./x gate` → `0 issues.`
 - [ ] `git add cmd/awf/main.go cmd/awf/check.go cmd/awf/invariants.go cmd/awf/list_add.go cmd/awf/upgrade.go cmd/awf/setup.go cmd/awf/*_test.go`
@@ -849,7 +849,7 @@ func runCheck(root string, stdout io.Writer) error {
 
 ---
 
-## Phase 3 — Drive every package to 100%
+## Phase 3: Drive every package to 100%
 
 Methodology for each task: write tests targeting the named uncovered functions/branches, then
 run the package's coverage and fill until clean:
@@ -858,8 +858,8 @@ run the package's coverage and fill until clean:
 go test ./<pkg>/ -coverprofile=/tmp/p.out && go tool cover -func=/tmp/p.out | grep -v '100.0%'
 ```
 
-The only surviving line must be `total: … 100.0%`. Run `./x gate` before each Phase 3 commit
-(still the ordinary test+vet+lint gate — the coverage step is wired in only at Phase 4 — so the
+The only surviving line must be `total: ... 100.0%`. Run `./x gate` before each Phase 3 commit
+(still the ordinary test+vet+lint gate, the coverage step is wired in only at Phase 4, so the
 green-gate invariant holds without blocking on interim sub-100% state). Prefer real fixtures
 (`t.TempDir`, malformed YAML, missing files, empty inputs) over permission tricks. Where a branch is
 reachable *only* via a permission error, guard the test with the `skipIfRoot` helper below and
@@ -877,7 +877,7 @@ func skipIfRoot(t *testing.T) {
 }
 ```
 
-### Task 3.1 — `cmd/awf` to 100% (new dispatch + handler tests)
+### Task 3.1: `cmd/awf` to 100% (new dispatch + handler tests)
 
 - [ ] Create `cmd/awf/run_test.go` exercising `run` for: no-args (exit 2), unknown command
   (exit 1), `add` with no skill arg (exit 1), the `getwd` failure branch (override the
@@ -927,34 +927,34 @@ func TestNoOsExitOutsideMain(t *testing.T) {
 - [ ] Verify `cmd/awf` at 100% per the methodology command.
 - [ ] Commit: `git add cmd/awf && git commit -m "test(awf): cover cmd/awf dispatch and handlers to 100%"`
 
-### Task 3.2 — `internal/project` to 100%
+### Task 3.2: `internal/project` to 100%
 
 - [ ] Cover the named gaps: `CheckInvariants` (call it directly on an opened project),
-  `declaredSections` (all three `kind` cases — skills/agents/docs — plus the default), `Open`
+  `declaredSections` (all three `kind` cases, skills/agents/docs, plus the default), `Open`
   (error paths: missing config, malformed config), `validateFrontmatter` / `renderTarget` /
   `localOutPath` / `Check` / `Sync` / `RenderAll` / `generateActiveMD` / `orphans` /
   `validateAgainstCatalog` / `targetConfigHash` / `checkLocalFrontmatter` / `resolvedDocs` /
-  `scaffold.go` helpers — drive each remaining branch with a fixture project under `t.TempDir`.
+  `scaffold.go` helpers, drive each remaining branch with a fixture project under `t.TempDir`.
 - [ ] Verify `internal/project` at 100%.
 - [ ] Commit: `git add internal/project && git commit -m "test(awf): cover internal/project to 100%"`
 
-### Task 3.3 — `internal/migrate` to 100%
+### Task 3.3: `internal/migrate` to 100%
 
 - [ ] Cover `treelayout.go` (`applyTreeLayout`, `portAgentsDoc`, `copyPart`, `writeYAML`,
   `writeFile`, `portSidecar`), `legacy.go` (`readLegacy`), `migrate.go` (`Upgrade`). Error
-  branches: missing source part, unreadable/garbled legacy config, write-target collisions —
+  branches: missing source part, unreadable/garbled legacy config, write-target collisions,
   via temp-dir fixtures; `skipIfRoot` only if a write-permission branch has no other trigger.
 - [ ] Verify `internal/migrate` at 100%.
 - [ ] Commit: `git add internal/migrate && git commit -m "test(awf): cover internal/migrate to 100%"`
 
-### Task 3.4 — `internal/invariants` to 100%
+### Task 3.4: `internal/invariants` to 100%
 
 - [ ] Cover `Detail` (both `Status == Unchecked` and the unbacked branch), `Check` (remaining
   branches), `scanTags` (walk-error and the skip-dir cases).
 - [ ] Verify `internal/invariants` at 100%.
 - [ ] Commit: `git add internal/invariants && git commit -m "test(awf): cover internal/invariants to 100%"`
 
-### Task 3.5 — Remaining internal packages to 100%
+### Task 3.5: Remaining internal packages to 100%
 
 - [ ] `internal/adr` (`ParseDir`, `parse`, `RenderActiveMD` error/edge branches),
   `internal/config` (`Load`, `Sidecar` error branches), `internal/frontmatter` (`Parse`
@@ -967,16 +967,16 @@ func TestNoOsExitOutsideMain(t *testing.T) {
   - `git commit -m "test(awf): cover internal/catalog to 100%"`
   - `git commit -m "test(awf): cover internal/manifest to 100%"`
   - `git commit -m "test(awf): cover internal/render to 100%"`
-- [ ] After all packages: verify the whole-module gate semantics manually —
+- [ ] After all packages: verify the whole-module gate semantics manually:
   `go test ./... -coverpkg=./... -coverprofile=/tmp/all.out && go run ./cmd/covercheck /tmp/all.out`
-  → `coverage: 100.0% (… statements)` and exit 0. If any line is uncovered, covercheck names
+  → `coverage: 100.0% (... statements)` and exit 0. If any line is uncovered, covercheck names
   the count; return to the relevant package task.
 
 ---
 
-## Phase 4 — Wire the gate, document, finalize
+## Phase 4: Wire the gate, document, finalize
 
-### Task 4.1 — Wire the coverage step into `./x gate`
+### Task 4.1: Wire the coverage step into `./x gate`
 
 - [ ] In `x`, replace the `gate)` case body with:
 
@@ -998,12 +998,12 @@ func TestNoOsExitOutsideMain(t *testing.T) {
   file, run `./x gate`, observe `covercheck: coverage below 100%` and non-zero exit, then
   remove the scratch file. (Manual check; nothing committed.)
 
-### Task 4.2 — Record the convention in `AGENTS.md`
+### Task 4.2: Record the convention in `AGENTS.md`
 
 The `AGENTS.md` "Invariants" list is rendered from `.claude/awf/agents-doc.yaml`
 (`data.invariants`, per the existing rows; the template at `templates/agents-doc/AGENTS.md.tmpl`
 renders each entry as `- {{ .text }}{{ with .ref }} ({{ . }}){{ end }}`, so `ref:` already
-appends the `(ADR-NNNN)` citation — the `text` must NOT repeat it). Add a row so contributors
+appends the `(ADR-NNNN)` citation: the `text` must NOT repeat it). Add a row so contributors
 learn the gate and the escape hatch.
 
 - [ ] In `.claude/awf/agents-doc.yaml`, add to `data.invariants` (after the existing
@@ -1015,27 +1015,27 @@ learn the gate and the escape hatch.
           text: '**100% coverage gate.** `./x gate` fails below 100% statement coverage. A genuinely-unreachable defensive branch may be excluded with a `// coverage-ignore: <reason>` directive (a non-empty reason is mandatory); every use is audited at review.'
 ```
 
-  (Confirm key/indentation against the file before editing — the rendered `AGENTS.md` is
+  (Confirm key/indentation against the file before editing: the rendered `AGENTS.md` is
   regenerated, never hand-edited.)
 
-- [ ] `./x sync` — re-renders `AGENTS.md`.
+- [ ] `./x sync`: re-renders `AGENTS.md`.
 - [ ] `git add .claude/awf/agents-doc.yaml .claude/awf/awf.lock AGENTS.md x`
 - [ ] `git commit -m "feat(awf): wire 100% coverage gate into ./x and document it"`
 
-### Task 4.3 — Flip ADR-0012 to Implemented
+### Task 4.3: Flip ADR-0012 to Implemented
 
 - [ ] In `docs/decisions/0012-*.md`, change `status: Accepted` → `status: Implemented`. The
   three slugs (`coverage-gate-100`, `coverage-ignore-reason`, `single-os-exit`) are already
   backed by Phase 1/3 tests, so `./x check` stays clean once 0012 is enforced.
-- [ ] `./x sync` — regenerates `ACTIVE.md`.
+- [ ] `./x sync`: regenerates `ACTIVE.md`.
 - [ ] `./x gate` → coverage 100% + `0 issues.`; `./x check` → `awf check: clean`;
   `./x invariants` → `awf invariants: clean`.
 - [ ] `git add docs/decisions/0012-full-coverage-gate-and-conventions.md docs/decisions/ACTIVE.md .claude/awf/awf.lock`
 - [ ] `git commit -m "docs(adr): mark 0012 Implemented"`
 
-### Task 4.4 — Terminal handoff
+### Task 4.4: Terminal handoff
 
-- [ ] Invoke `awf-reviewing-impl` against the Phase 1–4 commit range. The reviewer audits every
+- [ ] Invoke `awf-reviewing-impl` against the Phase 1-4 commit range. The reviewer audits every
   `// coverage-ignore` marker for justification.
 
 ---
@@ -1043,17 +1043,17 @@ learn the gate and the escape hatch.
 ## Notes
 
 - **Gate-wiring order:** the coverage step lands only in Phase 4, after every package is at
-  100%. Phases 1–3 commit under the ordinary gate, so interim sub-100% state never blocks them.
+  100%. Phases 1-3 commit under the ordinary gate, so interim sub-100% state never blocks them.
 - **`-coverpkg=./...`:** a statement counts as covered when any test exercises it, and every
   statement-bearing package appears in the profile (closing the untested-package hole).
   `templates` has zero statements and never appears.
 - **The two `main` directives** (`cmd/awf`, `cmd/covercheck`) are the expected canonical
-  `// coverage-ignore` uses — one-line `os.Exit(run(...))` wrappers whose logic is tested via
+  `// coverage-ignore` uses: one-line `os.Exit(run(...))` wrappers whose logic is tested via
   `run`. Any further directive must be justified at impl review.
 - **Merged-profile dedup (discovered in execution):** `go test ./... -coverpkg=./...` emits
   each instrumented block once *per test binary*, so the merged profile carries every block ~N
   times with differing counts. `coverage.Check` merges blocks by identity (file + span), OR-ing
-  the counts (mode: set) exactly as `go tool cover` does, before counting — otherwise the
+  the counts (mode: set) exactly as `go tool cover` does, before counting; otherwise the
   denominator is inflated N× and the gate reports a spuriously low percentage. Backed by
   `TestCheckMergesDuplicateBlocks`.
 - **Self-scan safety:** `internal/coverage` builds its own marker string by concatenation so

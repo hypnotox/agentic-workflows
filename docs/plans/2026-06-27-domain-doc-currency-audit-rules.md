@@ -1,7 +1,7 @@
 # Plan: Domain-Doc Currency Audit Rules (ADR-0019)
 
 Implements [ADR-0019](../decisions/0019-domain-doc-staleness-audit-rule.md). Design and rationale
-live there — this plan is the execution record only.
+live there; this plan is the execution record only.
 
 ## Goal
 
@@ -12,7 +12,7 @@ the `tooling` current-state narrative; the final commit flips ADR-0019 `Accepted
 
 ## Architecture summary
 
-Localized extension of the ADR-0017 rule engine — no engine, catalog-schema, or lock change. Two
+Localized extension of the ADR-0017 rule engine: no engine, catalog-schema, or lock change. Two
 pure rule functions appended to `evaluate()`, a `domainsOf` frontmatter helper parallel to
 `statusOf`, four new `Inputs` fields, two `*bool` `AuditConfig` toggles resolved by `AuditSettings`,
 and `Project.Audit()` supplying the new inputs. Both rules are range-level (like
@@ -47,9 +47,9 @@ logic + its unit tests (rules dormant in production until wired, fully covered b
 
 ---
 
-## Phase 1 — Audit rule engine (`internal/audit`)
+## Phase 1: Audit rule engine (`internal/audit`)
 
-### Task 1.1 — Add the `sort` import
+### Task 1.1: Add the `sort` import
 
 In `internal/audit/audit.go`, replace the import block:
 
@@ -78,7 +78,7 @@ import (
 )
 ```
 
-### Task 1.2 — Add the four `Inputs` fields
+### Task 1.2: Add the four `Inputs` fields
 
 In `internal/audit/audit.go`, replace:
 
@@ -102,7 +102,7 @@ with:
 }
 ```
 
-### Task 1.3 — Wire the two rules into `evaluate`
+### Task 1.3: Wire the two rules into `evaluate`
 
 In `internal/audit/audit.go`, replace:
 
@@ -124,7 +124,7 @@ with:
 }
 ```
 
-### Task 1.4 — Add the two rule functions and helpers
+### Task 1.4: Add the two rule functions and helpers
 
 In `internal/audit/audit.go`, immediately before `func finding(`, insert:
 
@@ -188,7 +188,7 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, d := range sortedSet(flagged) {
 		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
-			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc — add it to config.Domains and author its current-state narrative, or drop the tag", d)})
+			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
 	}
 	return out
 }
@@ -235,7 +235,7 @@ func sortedSet(m map[string]bool) []string {
 }
 ```
 
-### Task 1.5 — Add unit tests covering both rules to 100%
+### Task 1.5: Add unit tests covering both rules to 100%
 
 In `internal/audit/audit_test.go`, append:
 
@@ -339,7 +339,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 }
 ```
 
-### Task 1.6 — Verify and commit Phase 1
+### Task 1.6: Verify and commit Phase 1
 
 Run:
 
@@ -348,7 +348,7 @@ Run:
 ./x gate
 ```
 
-Expected: `./x check` clean (no rendered files changed); `./x gate` passes — full suite green,
+Expected: `./x check` clean (no rendered files changed); `./x gate` passes: full suite green,
 **100.0% coverage**, 0 lint issues. If any audit.go line is
 reported uncovered, add the covering case to the tests above before committing (do not adjust the
 rule logic to chase coverage).
@@ -362,9 +362,9 @@ git commit -m "feat(awf): add domain-doc currency audit rules (ADR-0019)"
 
 ---
 
-## Phase 2 — Config toggles and `Project.Audit` wiring
+## Phase 2: Config toggles and `Project.Audit` wiring
 
-### Task 2.1 — Add the two `AuditConfig` toggles
+### Task 2.1: Add the two `AuditConfig` toggles
 
 In `internal/config/config.go`, replace:
 
@@ -384,7 +384,7 @@ with:
 }
 ```
 
-### Task 2.2 — Resolve the toggles in `AuditSettings`
+### Task 2.2: Resolve the toggles in `AuditSettings`
 
 In `internal/config/config.go`, replace the signature line:
 
@@ -443,7 +443,7 @@ with:
 }
 ```
 
-### Task 2.3 — Update the three `config_test` call sites
+### Task 2.3: Update the three `config_test` call sites
 
 In `internal/config/config_test.go`:
 
@@ -481,7 +481,7 @@ with:
 	if base != "main" || !containsStr(types, "feat") || scopes != nil ||
 ```
 
-In `TestAuditSettingsExplicitOverrides`, add the two toggles to the literal — replace:
+In `TestAuditSettingsExplicitOverrides`, add the two toggles to the literal; replace:
 
 ```
 		DiffThreshold:       intPtr(0),
@@ -511,7 +511,7 @@ func boolPtr(b bool) *bool { return &b }
 
 (Verify with `grep -n "func boolPtr" internal/config/config_test.go` before adding; add only if absent.)
 
-### Task 2.4 — Supply the new inputs from `Project.Audit`
+### Task 2.4: Supply the new inputs from `Project.Audit`
 
 In `internal/project/project.go`, replace:
 
@@ -547,7 +547,7 @@ with:
 	})
 ```
 
-### Task 2.5 — Verify and commit Phase 2
+### Task 2.5: Verify and commit Phase 2
 
 Run:
 
@@ -567,9 +567,9 @@ git commit -m "feat(awf): wire domain-doc currency rules into config and audit"
 
 ---
 
-## Phase 3 — Dogfood the rule and mark ADR-0019 Implemented
+## Phase 3: Dogfood the rule and mark ADR-0019 Implemented
 
-### Task 3.1 — Refresh the `tooling` current-state narrative
+### Task 3.1: Refresh the `tooling` current-state narrative
 
 In `.awf/domains/parts/tooling/current-state.md`, replace:
 
@@ -582,10 +582,10 @@ with:
 ```
 awf is positioned as a tool-agnostic renderer (ADR-0016): adapter output paths (skills, agents, the `CLAUDE.md` bridge) come from a named `Target` rather than `.claude/` literals, with `claudeTarget` the sole built-in. `awf init` pre-flights every path it would write and aborts on a collision with a pre-existing, non-managed file unless `--force` is passed.
 
-`awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, dependency-without-ADR, large-change-without-plan, and — for domain-doc currency (ADR-0019) — `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). Each rule is independently disable-able via `audit` config.
+`awf audit` (ADR-0017) reports advisory workflow-conformance findings over a branch's git history, wired into no gate. Its rules cover Conventional-Commits, ADR-status/ACTIVE.md co-change, dependency-without-ADR, large-change-without-plan, and, for domain-doc currency (ADR-0019), `domain-doc-staleness` (an ADR reaching Implemented in a configured domain without its current-state narrative refreshed) and `undocumented-domain` (an ADR tagged with a domain that has no domain doc). Each rule is independently disable-able via `audit` config.
 ```
 
-### Task 3.2 — Flip ADR-0019 to Implemented
+### Task 3.2: Flip ADR-0019 to Implemented
 
 In `docs/decisions/0019-domain-doc-staleness-audit-rule.md`, change:
 
@@ -602,7 +602,7 @@ status: Implemented
 Both tagged slugs (`audit-domain-doc-staleness`, `audit-undocumented-domain`) are backed by the
 `// invariant:` comments added in Phase 1, so `awf check`/`awf invariants` stay clean once Implemented.
 
-### Task 3.3 — Verify and commit Phase 3
+### Task 3.3: Verify and commit Phase 3
 
 Run:
 
@@ -647,7 +647,7 @@ git commit -m "feat(awf): mark ADR-0019 Implemented; dogfood the staleness rule"
 ## Terminal step
 
 The ADR flip lands in Phase 3 (final commit), so no separate lifecycle commit is needed. Invoke
-`awf-reviewing-impl` against the Phase 1–3 commit range.
+`awf-reviewing-impl` against the Phase 1-3 commit range.
 
 ## Notes
 

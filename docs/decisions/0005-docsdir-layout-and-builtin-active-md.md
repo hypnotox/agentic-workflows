@@ -16,22 +16,22 @@ with a write-then-fail side effect: `TestGenerateActiveMD`
 (`internal/adrtools/adrtools_test.go:117-140`) regenerates the file and then calls
 `t.Fatalf` so the author re-stages it. It is invoked via `./x adr` (= `go test
 ./internal/adrtools/`). The generator itself, `GenerateActiveMD(decisionsDir)`
-(`internal/adrtools/adrtools.go:37`), is a clean pure function — but nothing in the
+(`internal/adrtools/adrtools.go:37`), is a clean pure function, but nothing in the
 shipped `awf` binary calls it.
 
 This is hand-rolled, repo-internal tooling masquerading as part of the standard. The
-skills already reference the regeneration as adopter-agnostic vars —
-`{{ .vars.activeMdRegenCmd }}` and `{{ .vars.activeMdPath }}` in
+skills already reference the regeneration as adopter-agnostic vars
+(`{{ .vars.activeMdRegenCmd }}` and `{{ .vars.activeMdPath }}` in
 `templates/skills/proposing-adr/SKILL.md.tmpl:69` and
-`templates/skills/adr-lifecycle/SKILL.md.tmpl:75` — so the standard *tells* adopters to
+`templates/skills/adr-lifecycle/SKILL.md.tmpl:75`), so the standard *tells* adopters to
 regenerate `ACTIVE.md`, but ships no tool that does it. An adopter who `go install`s the
 `awf` binary gets the ADR scaffolding and the skills that reference regeneration, yet
 must hand-roll their own generator behind `activeMdRegenCmd`. The generator is the one
 piece of the ADR workflow that never became real `awf` tooling.
 
 Compounding this, the project's doc paths are spread across six hand-set free-form vars
-in `.claude/awf.yaml` — `adrDir`, `plansDir`, `activeMdPath`, `adrReadme`,
-`adrTemplatePath`, `planTemplatePath` — plus a hardcoded `"docs/"` output prefix in two
+in `.claude/awf.yaml` (`adrDir`, `plansDir`, `activeMdPath`, `adrReadme`,
+`adrTemplatePath`, `planTemplatePath`) plus a hardcoded `"docs/"` output prefix in two
 spots in `internal/project/project.go` (`resolvedDocs` line 143, the `RenderAll` docs
 loop line 233). Plans and ADRs are foundational to the workflow, not optional add-ons, so
 their location should not be six independent knobs that can drift out of agreement with
@@ -40,8 +40,8 @@ each other and with the hardcoded managed-docs prefix.
 Grounding discoveries that shape the design (verified against source unless noted):
 
 - **`config.Config` parses with `dec.KnownFields(true)`** (`internal/config/config.go:42`),
-  so a new top-level `docsDir` key is a hard prerequisite — an `awf.yaml` carrying it is a
-  parse error until the struct field exists — and there is no existing defaults mechanism;
+  so a new top-level `docsDir` key is a hard prerequisite (an `awf.yaml` carrying it is a
+  parse error until the struct field exists) and there is no existing defaults mechanism;
   an absent `docsDir` must be defaulted in code.
 - **`Project.data()` returns a fresh `{"prefix", "vars", "data"}` map per call**
   (`internal/project/project.go:122-128`) and is the single choke point where computed
@@ -49,7 +49,7 @@ Grounding discoveries that shape the design (verified against source unless note
 - **`render.ReferencedVars` only scans `.vars.X`** (`internal/render/vars.go`), and
   `ScaffoldConfig` seeds every referenced `.vars.X` name with `""`
   (`internal/project/scaffold.go:71-74`). Therefore any layout path exposed under a
-  namespace *other than* `.vars` is invisible to scaffolding — it will not be seeded as an
+  namespace *other than* `.vars` is invisible to scaffolding: it will not be seeded as an
   empty var slot. This is what makes the paths "strictly awf-given": users cannot set them.
 - **`manifest.Entry` is a generic path→hash record** (`internal/manifest/manifest.go:12-17`)
   with `TemplateID`/`TemplateHash`/`ConfigHash`/`OutputHash`, none assumed non-empty; the
@@ -58,7 +58,7 @@ Grounding discoveries that shape the design (verified against source unless note
   lock-format change.
 - **`Project.Check` detects staleness via `TemplateHash`/`ConfigHash`**
   (`project.go:336-340`). Because `ACTIVE.md` is generated from ADR frontmatter, not a
-  template, both hashes are empty and that comparison passes silently — an ADR frontmatter
+  template, both hashes are empty and that comparison passes silently: an ADR frontmatter
   change would not be flagged. Staleness for `ACTIVE.md` therefore needs a dedicated
   regenerate-and-compare path, separate from the template-hash drift loop.
 - **`internal/adrtools` is imported only by its own test** (no `cmd/` or `internal/project`
@@ -96,16 +96,16 @@ exist yet, it simply does nothing."
    `{{ .vars.adrDir }}`, `{{ .vars.plansDir }}`, `{{ .vars.activeMdPath }}`,
    `{{ .vars.adrReadme }}`, `{{ .vars.adrTemplatePath }}` references to the corresponding
    `{{ .layout.* }}` keys. `agents-doc/AGENTS.md.tmpl` currently guards these vars with
-   `{{ with .vars.X }}…{{ else }}docs/decisions{{ end }}` (line 23) and conditional
+   `{{ with .vars.X }}...{{ else }}docs/decisions{{ end }}` (line 23) and conditional
    Document-map bullets (lines 65-67); because every `.layout.*` key is always populated,
    those guards collapse to **unconditional** output and the `{{ else }}docs/decisions{{ end }}`
-   fallback becomes dead — the migration must drop the guards rather than translate them
+   fallback becomes dead: the migration must drop the guards rather than translate them
    verbatim. `{{ .vars.planTemplatePath }}` is **dropped, not migrated** (see note below): it
    has no plan-template source, so it gets no `.layout` analogue.
    The five migrated doc-path vars *and* `planTemplatePath` are **removed** from config, from
    `ScaffoldConfig`'s seeded set (automatic, since `.layout.*` is not scanned by
    `ReferencedVars`), and from this repo's `.claude/awf.yaml`. Because layout lives outside
-   `.vars`, an adopter cannot override a layout path through `vars` — the structure is
+   `.vars`, an adopter cannot override a layout path through `vars`: the structure is
    strictly awf-given.
 
    > **`planTemplatePath` is dropped; plan-template support is deferred.** Unlike
@@ -124,7 +124,7 @@ exist yet, it simply does nothing."
    (`project.go:233`, `"docs/"+name+".md"`) and the `resolvedDocs` Document-map link path
    (`project.go:143`, `"path": "docs/"+name+".md"`) the agents-doc template receives. Both
    become `<docsDir>/<name>.md`. The doc *template* source location
-   (`templates/docs/<name>.md.tmpl`, embedded) is unaffected — only the output path is rooted
+   (`templates/docs/<name>.md.tmpl`, embedded) is unaffected: only the output path is rooted
    at `docsDir`.
 
 4. **`awf sync` generates `ACTIVE.md` natively.** After rendering templates, if
@@ -156,7 +156,7 @@ exist yet, it simply does nothing."
    strings in `.claude/awf.yaml` that read "regenerated via go test ./internal/adrtools/", to
    describe the sync-driven mechanism; re-render the affected agents.
 
-Applying this change to awf's own repo (the dogfood — defaulting/setting `docsDir`, removing
+Applying this change to awf's own repo (the dogfood: defaulting/setting `docsDir`, removing
 the six doc-path vars, repointing `activeMdRegenCmd`, re-rendering and re-syncing so the
 templates and `ACTIVE.md` reflect the new mechanism) is **not** a Decision item: it is
 adopter work, the final task of the implementation plan, not a standard-definition commitment
@@ -171,25 +171,25 @@ tagging convention and its enforcement checker are deferred to ADR-0006, which w
 retro-apply tagged tests to these bullets; for now they are textual contracts verified by
 the implementation plan's tests.)
 
-- `invariant: docsdir-default` — `config.Config` has a `docsDir` field; loading an `awf.yaml` that omits it yields
+- `invariant: docsdir-default`: `config.Config` has a `docsDir` field; loading an `awf.yaml` that omits it yields
   `DocsDir == "docs"`, and an explicit value relocates every layout path and managed-doc
   output path to that root.
-- `invariant: layout-derivation` — The layout paths (`adrDir`, `activeMd`, `adrReadme`, `adrTemplate`, `plansDir`) are
+- `invariant: layout-derivation`: The layout paths (`adrDir`, `activeMd`, `adrReadme`, `adrTemplate`, `plansDir`) are
   reachable in templates under `.layout.*` and are **not** present as `.vars.*` keys;
   `render.ReferencedVars`/`ScaffoldConfig` does not seed them, so a fresh `awf init` emits no
   `adrDir`/`plansDir`/`activeMdPath`/`adrReadme`/`adrTemplatePath` var. `planTemplatePath` is
-  likewise no longer seeded (it is removed, not migrated — it has no `.layout` analogue).
+  likewise no longer seeded (it is removed, not migrated: it has no `.layout` analogue).
 - With `docsDir` defaulting to `"docs"`, every rendered file and the generated `ACTIVE.md`
   are byte-identical to the pre-change output (managed docs at `docs/<name>.md`, ADR index at
   `docs/decisions/ACTIVE.md`).
-- `invariant: sync-generates-active-md` — `awf sync`, run with ≥1 `NNNN-*.md` ADR under `<docsDir>/decisions/`, writes
+- `invariant: sync-generates-active-md`: `awf sync`, run with ≥1 `NNNN-*.md` ADR under `<docsDir>/decisions/`, writes
   `<docsDir>/decisions/ACTIVE.md` grouped by status and records it in the lock; run with an
   absent or ADR-less decisions dir, it writes no `ACTIVE.md` and prunes any previously locked
   one. (Prune safety: the existing `Sync` prune removes a pruned file's parent dir only when
   empty (`project.go:301-303`); `<docsDir>/decisions/` holds the ADRs themselves, so removing
   a pruned `ACTIVE.md` never deletes the decisions dir.)
-- `invariant: check-active-md-stale` — `awf check` reports drift for `ACTIVE.md` when the on-disk content differs from a fresh
-  regeneration (frontmatter change, hand-edit) or when it is absent while ADRs exist — via a
+- `invariant: check-active-md-stale`: `awf check` reports drift for `ACTIVE.md` when the on-disk content differs from a fresh
+  regeneration (frontmatter change, hand-edit) or when it is absent while ADRs exist, via a
   path that does not depend on `TemplateHash`/`ConfigHash`. A synced, unchanged `ACTIVE.md`
   produces **no** drift entry (not `orphaned`, not `stale`): the generic lock-iteration loop
   skips the `ACTIVE.md` path entirely.
@@ -202,7 +202,7 @@ the implementation plan's tests.)
 
 Easier:
 - The ADR index generator becomes real `awf` tooling that adopters get for free with the
-  binary — `sync` generates it, `check` guards it — closing the one gap where the standard
+  binary (`sync` generates it, `check` guards it), closing the one gap where the standard
   referenced a tool it did not ship.
 - One `docsDir` knob replaces six hand-set path vars plus a hardcoded prefix; the docs tree
   relocates atomically and the layout can no longer drift internally.
@@ -234,12 +234,12 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - The agent `docCurrencyItems` strings in `.claude/awf.yaml` ("regenerated via
   `go test ./internal/adrtools/`") update to the sync mechanism, and `adr-reviewer` /
   `code-reviewer` re-render.
-- `AGENTS.md`'s ACTIVE.md invariant ("`docs/decisions/ACTIVE.md` is generated — never
+- `AGENTS.md`'s ACTIVE.md invariant ("`docs/decisions/ACTIVE.md` is generated, never
   hand-edited") stays true; any reference to the regeneration command updates with the
   re-render.
-- When this ADR flips to Accepted/Implemented, the same commit regenerates `ACTIVE.md` —
+- When this ADR flips to Accepted/Implemented, the same commit regenerates `ACTIVE.md`,
   by then via the new `sync` path. No `docs/decisions/README.md` index row is owed (this
-  repo's README is a how-to guide; `ACTIVE.md` is the generated index — per ADR-0003/0004).
+  repo's README is a how-to guide; `ACTIVE.md` is the generated index, per ADR-0003/0004).
 
 Downstream work unblocked: (1) an implementation plan covering the `docsDir` field + default,
 the `.layout` namespace + template migration, the `sync` generation step, the `check`
@@ -252,9 +252,9 @@ retro-applies tagged tests to this ADR's Invariants.
 | Alternative | Why not chosen |
 |---|---|
 | Standalone `awf adr` subcommand | Redundant with the generate/verify cycle `sync`/`check` already own; forces adopters to remember a separate command and a separate hook step. Folding into sync/check is the user's stated preference. |
-| Keep deriving the paths but inject them under `.vars` | `ReferencedVars` would still collect them as empty scaffold slots, and an adopter could override a layout path via `vars` — contradicting "strictly awf-given". A separate `.layout` namespace dissolves both problems. |
+| Keep deriving the paths but inject them under `.vars` | `ReferencedVars` would still collect them as empty scaffold slots, and an adopter could override a layout path via `vars`, contradicting "strictly awf-given". A separate `.layout` namespace dissolves both problems. |
 | Keep the six per-area path vars configurable | Six knobs that can drift against each other and the hardcoded managed-docs prefix; plans/ADRs are foundational, so their location should be one root plus fixed structure, not free-form config. |
 | Make `ACTIVE.md` a pseudo-template in the manifest | It is generated from ADR frontmatter, not a template render; routing it through `TemplateHash` drift cannot detect frontmatter changes, which is exactly the staleness signal that matters. |
 | Gate `ACTIVE.md` generation behind an opt-in `docs:` entry | ADRs/plans are foundational and effectively always present; generation should key off the presence of ADR files, not a config toggle (user: "they should always be enabled"). |
-| Make `docsDir` required (no default) | Would force every existing `awf.yaml` — including the dogfood — to add the key before `sync`/`check` work. Defaulting to `"docs"` preserves backward compatibility and keeps the change additive. |
+| Make `docsDir` required (no default) | Would force every existing `awf.yaml` (including the dogfood) to add the key before `sync`/`check` work. Defaulting to `"docs"` preserves backward compatibility and keeps the change additive. |
 | Combine the `// invariant:` convention into this ADR | The convention is a general workflow rule applying to every ADR, not coupled to docsDir; one-decision-per-ADR keeps it as ADR-0006 (user-selected). |

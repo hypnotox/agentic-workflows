@@ -2,8 +2,8 @@
 
 Implements **[ADR-0097](../decisions/0097-plan-convention-sections-granularity-and-lifecycle.md)**
 (convention) and **[ADR-0098](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)**
-(structured artifact), both Proposed. Design lives in those ADRs — this plan is the execution record.
-Per ADR-0097's ordering note, β's frontmatter mechanism (Phases 1–4) lands before α's convention
+(structured artifact), both Proposed. Design lives in those ADRs; this plan is the execution record.
+Per ADR-0097's ordering note, β's frontmatter mechanism (Phases 1-4) lands before α's convention
 prose (Phase 5); the ADRs flip to `Implemented` in Phase 5's final commit.
 
 ## Goal
@@ -62,20 +62,20 @@ zero-notes (ADR-0090).
 
 ---
 
-## Phase 1 — `internal/plan` parsing + the two checks
+## Phase 1: `internal/plan` parsing + the two checks
 
-Coupled phase (single commit — genuinely un-sliceable): the parser and both check functions must land
+Coupled phase (single commit, genuinely un-sliceable): the parser and both check functions must land
 together, because the parser is production-dead-code without the checks that call it and the checks
 cannot compile without the parser. The scaffold half (`NewFile`) lands in Phase 3 with its only
-production caller (`awf new plan`), so it does not appear here — placing it here would fail the
+production caller (`awf new plan`), so it does not appear here; placing it here would fail the
 deadcode gate.
 
-- [ ] **Task 1.1 — Create `internal/plan/plan.go` (parser only).** Exact content:
+- [ ] **Task 1.1: Create `internal/plan/plan.go` (parser only).** Exact content:
 
 ```go
 // Package plan parses plan files under docs/plans and scaffolds new plans from
 // the rendered plans template (awf new plan). Unlike internal/adr it is not
-// coupled to sequential numbering — plans are date-prefixed.
+// coupled to sequential numbering: plans are date-prefixed.
 package plan
 
 import (
@@ -147,7 +147,7 @@ The scaffold half (`NewFile` + its `now`/`slugify`/`replaceOnce`/`markerLineRe` 
 `strings` and `time` imports) is added to this same file in Phase 3 Task 3.1, alongside its `awf new
 plan` caller.
 
-- [ ] **Task 1.2 — Wire the two checks into `Project.Check()`.** In `internal/project/check.go`, add
+- [ ] **Task 1.2: Wire the two checks into `Project.Check()`.** In `internal/project/check.go`, add
   the `plan` import (`"github.com/hypnotox/agentic-workflows/internal/plan"`), and after line 431
   (`drift = append(drift, p.checkDeadSkillRefs(...)...)`) append:
 
@@ -206,18 +206,18 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
   (returned as the `err` above → a hard check error), covering the "unparseable YAML" half of
   `plan-frontmatter-validated`; the `status` enum is the drift half.
 
-- [ ] **Task 1.3 — Create `internal/plan/plan_test.go` (parser tests).** Cover `ParseDir` on a temp
+- [ ] **Task 1.3: Create `internal/plan/plan_test.go` (parser tests).** Cover `ParseDir` on a temp
   dir with: a frontmatter plan (fields parsed, `HasFrontmatter` true), a frontmatter-less plan
   (`HasFrontmatter` false), a `template.md` and `README.md` present (both skipped by `FilenameRe`),
   and a malformed-YAML plan (error). 100% statement coverage of the parser half. (`NewFile`'s tests
   land with `NewFile` in Phase 3 Task 3.1.)
 
-- [ ] **Task 1.4 — Extend `internal/project/check_test.go`** with a fixture project that has a plan
+- [ ] **Task 1.4: Extend `internal/project/check_test.go`** with a fixture project that has a plan
   under `docs/plans/` linking a nonexistent ADR (asserts a `plan-adr-link` drift), a bad `status:`
   (asserts a `plan-frontmatter` drift), a valid plan (no drift), and a frontmatter-less plan (no
   drift). Reuse the package's existing project-fixture helper.
 
-- [ ] **Task 1.5 — Verify and commit.**
+- [ ] **Task 1.5: Verify and commit.**
   - `./x gate` → ends with `coverage: 100.0%`, `0 issues.`, `deadcodecheck: no production dead code`,
     `pincheck: all workflow references pinned`.
   - `./x check` → `awf check: clean`.
@@ -229,9 +229,9 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 
 ---
 
-## Phase 2 — `plans-template` singleton
+## Phase 2: `plans-template` singleton
 
-- [ ] **Task 2.1 — Create `templates/plans-template/template.md.tmpl`.** Exact content (embodies
+- [ ] **Task 2.1: Create `templates/plans-template/template.md.tmpl`.** Exact content (embodies
   ADR-0097's taxonomy; the `date: YYYY-MM-DD` and `# Plan: Title` placeholders are the `NewFile` fill
   points):
 
@@ -245,7 +245,7 @@ status: Proposed
 
 <!-- awf:section positioning -->
 One-line statement of what this plan implements. When ADRs drive the work, link them here and in
-`adrs:` above — the design lives in the ADR(s); this plan is the execution record, not a place to
+`adrs:` above; the design lives in the ADR(s); this plan is the execution record, not a place to
 re-argue design.
 <!-- awf:end -->
 
@@ -256,7 +256,7 @@ What this plan achieves, in one or two sentences.
 
 ## Architecture summary
 
-The execution shape — the structural moves the phases make. Not the rationale (that lives in the
+The execution shape: the structural moves the phases make. Not the rationale (that lives in the
 linked ADR).
 
 ## Tech stack
@@ -271,14 +271,14 @@ Language version and the key packages/files touched. The gate command run before
 <!-- awf:end -->
 
 <!-- awf:section phases -->
-## Phase 1 — <name>
+## Phase 1: <name>
 
-- [ ] **Task 1.1 — <what>.** Exact paths, the exact new-file content or diff, and the exact verify
+- [ ] **Task 1.1: <what>.** Exact paths, the exact new-file content or diff, and the exact verify
   command with its expected output. A task is one reviewable, logically-coherent change (a whole new
   file is one task). For a transformation repeated across 3+ sites, use the batch form (a
   representative diff, an edge diff, the affected-site set, and a post-check).
-- [ ] **Task 1.2 — Verify and commit.** Run the gate; `git add` the exact paths; commit with a
-  Conventional-Commits subject. Every phase's closing commit passes the gate on its own — unless the
+- [ ] **Task 1.2: Verify and commit.** Run the gate; `git add` the exact paths; commit with a
+  Conventional-Commits subject. Every phase's closing commit passes the gate on its own, unless the
   change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
   commit, stating why.
 <!-- awf:end -->
@@ -286,7 +286,7 @@ Language version and the key packages/files touched. The gate command run before
 <!-- awf:section verification -->
 ## Verification (optional)
 
-Whole-effort end-state checks beyond the per-phase gates — the acceptance criteria for "done".
+Whole-effort end-state checks beyond the per-phase gates: the acceptance criteria for "done".
 <!-- awf:end -->
 
 <!-- awf:section notes -->
@@ -298,7 +298,7 @@ alongside the freeze.
 <!-- awf:end -->
 ```
 
-- [ ] **Task 2.2 — Register the DocEntry.** In `internal/catalog/standard.go`, after the
+- [ ] **Task 2.2: Register the DocEntry.** In `internal/catalog/standard.go`, after the
   `plans-readme` entry (line 192) add:
 
 ```go
@@ -306,13 +306,13 @@ alongside the freeze.
 ```
 
   `SingletonKinds`, `plainSingletons`, and `layout.templateMap` derive `plansTemplate` automatically
-  (ADR-0061) — no other production wiring.
+  (ADR-0061): no other production wiring.
 
-- [ ] **Task 2.3 — Update the layout-key test list.** In `internal/project/project_test.go` (the
-  layout-key enumeration around lines 35 and 721 — confirm exact lines at execution), add
+- [ ] **Task 2.3: Update the layout-key test list.** In `internal/project/project_test.go` (the
+  layout-key enumeration around lines 35 and 721; confirm exact lines at execution), add
   `"plansTemplate"` to the expected `.layout` key set alongside `"adrTemplate"`/`"plansReadme"`.
 
-- [ ] **Task 2.4 — Add the plans-template golden + taxonomy check.** In
+- [ ] **Task 2.4: Add the plans-template golden + taxonomy check.** In
   `internal/project/golden_test.go`, alongside the plans-readme render assertion (near line 42), add
   a render assertion for `docs/plans/template.md` that asserts (backing `inv: plans-template-taxonomy`)
   the rendered output contains the frontmatter keys `date:`, `adrs:`, `status:` and the taxonomy
@@ -320,7 +320,7 @@ alongside the freeze.
   `## Phase`, `## Verification`, and `## Notes`, and is marker/leak-free. Add the
   `// invariant: plans-template-taxonomy` marker on the test.
 
-- [ ] **Task 2.5 — Verify and commit.**
+- [ ] **Task 2.5: Verify and commit.**
   - `./x sync` renders `docs/plans/template.md` (new) and updates `.awf/awf.lock` + `examples/sundial`.
   - `./x gate` → `coverage: 100.0%`, `0 issues.`, deadcode + pincheck clean.
   - `./x check` → `awf check: clean` (and zero `note:` lines for `examples/sundial`).
@@ -329,9 +329,9 @@ alongside the freeze.
 
 ---
 
-## Phase 3 — `awf new plan` command
+## Phase 3: `awf new plan` command
 
-- [ ] **Task 3.1 — Add `plan.NewFile` + helpers to `internal/plan/plan.go`.** Add `"strings"` and
+- [ ] **Task 3.1: Add `plan.NewFile` + helpers to `internal/plan/plan.go`.** Add `"strings"` and
   `"time"` to the import block, then append:
 
 ```go
@@ -400,7 +400,7 @@ func NewFile(dir, title string) (string, error) {
   `replaceOnce`), and a missing `template.md` (error). Override `now` for a deterministic date.
   Coverage stays 100%.
 
-- [ ] **Task 3.2 — Add `project.NewPlan`.** In `internal/project/project.go`, alongside `NewADR`, add:
+- [ ] **Task 3.2: Add `project.NewPlan`.** In `internal/project/project.go`, alongside `NewADR`, add:
 
 ```go
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans
@@ -412,7 +412,7 @@ func (p *Project) NewPlan(title string) (string, error) {
 
   Add the `plan` import.
 
-- [ ] **Task 3.3 — Dispatch the command.** In `cmd/awf/new.go`, add a `"plan"` case to `runNew`'s
+- [ ] **Task 3.3: Dispatch the command.** In `cmd/awf/new.go`, add a `"plan"` case to `runNew`'s
   switch and a `newPlan` function mirroring `newADR`:
 
 ```go
@@ -443,26 +443,26 @@ func newPlan(root string, titleWords []string, stdout io.Writer) error {
 
   Update the `default` usage string in `runNew` to `"unknown kind %q (want: adr, plan, skill, agent, doc)"`.
 
-- [ ] **Task 3.4 — Register the clispec child.** In `internal/clispec/clispec.go`, add a `plan` child
+- [ ] **Task 3.4: Register the clispec child.** In `internal/clispec/clispec.go`, add a `plan` child
   to the `new` command's `Children` (mirroring the `adr` child), update the `new` `Summary`/`HelpBody`
   to include `plan`, and in `internal/clispec/clispec_test.go` change the child-count assertion from
   `4` to `5` and add a `newCmd.Child("plan")` presence check.
 
-- [ ] **Task 3.5 — Test the command.** In `cmd/awf/new_test.go`, add cases: `awf new plan "Some
+- [ ] **Task 3.5: Test the command.** In `cmd/awf/new_test.go`, add cases: `awf new plan "Some
   Title"` scaffolds `docs/plans/<today>-some-title.md` and prints the path; missing title → usage
   error; a pre-existing target → the overwrite error. Use the existing new-command test fixture
   (which has a rendered `docs/plans/template.md` after sync).
 
-- [ ] **Task 3.6 — Verify and commit.**
+- [ ] **Task 3.6: Verify and commit.**
   - `./x gate` → all clean, `coverage: 100.0%`.
   - `git add cmd/awf/new.go cmd/awf/new_test.go internal/clispec/clispec.go internal/clispec/clispec_test.go internal/project/project.go internal/plan/plan.go internal/plan/plan_test.go`
   - `git commit -m "feat(tooling): add the awf new plan scaffold command"`
 
 ---
 
-## Phase 4 — `awf context` plan surfacing
+## Phase 4: `awf context` plan surfacing
 
-- [ ] **Task 4.1 — Add `PlanRef` + `Plans` to `ContextResult`.** In `internal/project/context.go`,
+- [ ] **Task 4.1: Add `PlanRef` + `Plans` to `ContextResult`.** In `internal/project/context.go`,
   add the field to the struct (after `ADRs`):
 
 ```go
@@ -482,7 +482,7 @@ type PlanRef struct {
 }
 ```
 
-- [ ] **Task 4.2 — Populate it in `ContextFor`.** After the ADR loop (before the final `sort` / return),
+- [ ] **Task 4.2: Populate it in `ContextFor`.** After the ADR loop (before the final `sort` / return),
   build the set of surfaced ADR numbers and scan plans (add the `plan` import):
 
 ```go
@@ -516,14 +516,14 @@ type PlanRef struct {
   Add the `strconv` import. `lay.PlansDir` is already available (`lay := p.layout()`). Mark the
   function `// invariant: context-surfaces-linked-plans`.
 
-- [ ] **Task 4.3 — Render plans in the human output.** In `cmd/awf/context.go`'s `printContext`, after
+- [ ] **Task 4.3: Render plans in the human output.** In `cmd/awf/context.go`'s `printContext`, after
   the Related-ADRs block (before the Unowned block) add:
 
 ```go
 	if len(res.Plans) > 0 {
 		fmt.Fprintln(stdout, "\n## Related plans")
 		for _, pl := range res.Plans {
-			fmt.Fprintf(stdout, "  %s (%s) — %s\n", pl.Filename, pl.Status, pl.Path)
+			fmt.Fprintf(stdout, "  %s (%s): %s\n", pl.Filename, pl.Status, pl.Path)
 		}
 	}
 ```
@@ -531,48 +531,48 @@ type PlanRef struct {
   The `--json` path already serializes the new field (output parity preserved by the single
   `ContextResult`).
 
-- [ ] **Task 4.4 — Test.** In the context test (`internal/project/context_test.go` and
+- [ ] **Task 4.4: Test.** In the context test (`internal/project/context_test.go` and
   `cmd/awf/context_test.go`), extend the fixture with a plan linking a domain-owned ADR and assert it
   appears in `res.Plans` and in both renderings; assert a frontmatter-less plan and a plan linking an
   unsurfaced ADR do not appear; assert the static-fallback path leaves `Plans` empty.
 
-- [ ] **Task 4.5 — Verify and commit.**
+- [ ] **Task 4.5: Verify and commit.**
   - `./x gate` → all clean, `coverage: 100.0%`.
   - `git add internal/project/context.go internal/project/context_test.go cmd/awf/context.go cmd/awf/context_test.go`
   - `git commit -m "feat(tooling): surface linked plans in awf context"`
 
 ---
 
-## Phase 5 — ADR-0097 convention prose + docs + ADR flip
+## Phase 5: ADR-0097 convention prose + docs + ADR flip
 
-- [ ] **Task 5.1 — Retire wall-clock granularity + add coupled-phase escape in the writing-plans
+- [ ] **Task 5.1: Retire wall-clock granularity + add coupled-phase escape in the writing-plans
   skill.** In `templates/skills/writing-plans/SKILL.md.tmpl`, in the `conventions-tasks` section
   replace `bite-sized (~2-5 min each)` with `one reviewable, logically-coherent change each (a whole
   new file is a single task)`, and append to the `Self-contained phases` bullet a coupled-phase
   sentence: `When a change genuinely cannot be sliced into independently-gate-passing phases (a
   signature threaded through many callers, a struct-shape rewrite), mark the coupled phases as a group
-  and share one closing commit, stating why it cannot be sliced — the exception, never a convenience.`
+  and share one closing commit, stating why it cannot be sliced: the exception, never a convenience.`
   In the `conventions-header` bullet, name the canonical four fields and the optional Verification/Notes
   tails, and state the title is the `# Plan:` H1. Fill the empty `plan-template-ref` section with a
   pointer to copy `{{ .layout.plansTemplate }}` (or run `{{ .prefix }} new plan "<Title>"`). Rewrite
-  the `plan-lifecycle` section to the two-state plan-own model — mutable while `status: Proposed`,
-  frozen at `status: Implemented` — removing the `# Implementation complete (YYYY-MM-DD)` line entirely
+  the `plan-lifecycle` section to the two-state plan-own model (mutable while `status: Proposed`,
+  frozen at `status: Implemented`), removing the `# Implementation complete (YYYY-MM-DD)` line entirely
   (so the Task 5.3 post-check passes), and update `positioning`/`notes` to mention the `adrs:` frontmatter
   as the structured link.
 
-- [ ] **Task 5.2 — Reframe the plan-reviewer executability lens.** In
+- [ ] **Task 5.2: Reframe the plan-reviewer executability lens.** In
   `templates/agents/plan-reviewer.md.tmpl` (universal-lenses section, the `executability` bullet),
-  replace `tasks are bite-sized (~2–5 min)` with `each task is one reviewable, logically-coherent
+  replace `tasks are bite-sized (~2-5 min)` with `each task is one reviewable, logically-coherent
   change (a whole new file is one task)`, and change `each phase's closing commit passes the project's
-  gate on its own — flag any definition whose first production use lands in a later phase` to add the
+  gate on its own; flag any definition whose first production use lands in a later phase` to add the
   coupled-phase exception (`unless the plan marks a coupled-phase group that genuinely cannot be
-  sliced`). Add three focus items to `.awf/agents/plan-reviewer.yaml` `focusItems` — `section-taxonomy`
+  sliced`). Add three focus items to `.awf/agents/plan-reviewer.yaml` `focusItems` (`section-taxonomy`
   (the canonical frontmatter + header/phases/tails shape), `coupled-phase-escape` (a multi-phase single
   commit is marked with the reason it cannot be sliced, never used as convenience), and
-  `lifecycle-freeze` (the two-state `status: Implemented` freeze, findings recorded in Notes) —
+  `lifecycle-freeze` (the two-state `status: Implemented` freeze, findings recorded in Notes)),
   covering all three items ADR-0097's Consequences require.
 
-- [ ] **Task 5.3 — Unify the freeze marker in the executing skills.** In
+- [ ] **Task 5.3: Unify the freeze marker in the executing skills.** In
   `templates/skills/executing-plans/SKILL.md.tmpl`: in `procedure-adr-final-commit`, keep the existing
   ADR `status:` flip (`Proposed → Accepted`/`Implemented`) and *add* a step flipping the plan's own
   `status: Proposed → Implemented` frontmatter and recording implementation findings in the plan's
@@ -585,11 +585,11 @@ type PlanRef struct {
   to key off the plan's own `status:` like executing-plans'; and its single combined final section
   (`Final task: ADR status flip and/or plan freeze`, ~line 69) retains any ADR flip and adds the plan
   `status: Proposed → Implemented` freeze + findings-recording.
-  Post-check: `grep -rn "Implementation complete" templates/skills/` returns nothing — covering all
+  Post-check: `grep -rn "Implementation complete" templates/skills/` returns nothing, covering all
   five occurrences (writing-plans `plan-lifecycle`; executing-plans `procedure-resolve-plan` +
   `procedure-non-adr-final-commit`; subagent-driven `procedure-resolve-plan` + final section).
 
-- [ ] **Task 5.4 — Update the plans-readme + AGENTS.md source.** In
+- [ ] **Task 5.4: Update the plans-readme + AGENTS.md source.** In
   `templates/plans-readme/README.md.tmpl` (`structure` and freeze prose) reflect the frontmatter, the
   canonical sections, the reviewability granularity, and the two-state freeze. In `.awf/agents-doc.yaml`
   (AGENTS.md renders its Commands from `data.commands` and its Invariants from `data.invariants`), add
@@ -598,13 +598,13 @@ type PlanRef struct {
   `plan-new-unnumbered`, and `context-surfaces-linked-plans` (each phrased like the existing bullets,
   citing ADR-0097/0098). `./x sync` (Task 5.5) regenerates `AGENTS.md` from these.
 
-- [ ] **Task 5.5 — Flip both ADRs and re-render.** Set `status: Proposed → Implemented` in
+- [ ] **Task 5.5: Flip both ADRs and re-render.** Set `status: Proposed → Implemented` in
   `docs/decisions/0097-*.md` and `docs/decisions/0098-*.md`. Run `./x sync` (regenerates `ACTIVE.md`,
   the rendering/tooling domain docs, `AGENTS.md`, `.awf/awf.lock`, and re-renders `examples/sundial`).
 
-- [ ] **Task 5.6 — Verify and commit (Tasks 5.1–5.5 as one coherent commit).** Phase 5 is a single
-  *coherent-atomic* "adopt the convention" commit — not a coupled-phase escape: the prose edits alone
-  pass the gate while the ADRs are still Proposed (the invariant markers landed in Phases 1–4 and the
+- [ ] **Task 5.6: Verify and commit (Tasks 5.1-5.5 as one coherent commit).** Phase 5 is a single
+  *coherent-atomic* "adopt the convention" commit, not a coupled-phase escape: the prose edits alone
+  pass the gate while the ADRs are still Proposed (the invariant markers landed in Phases 1-4 and the
   ADR→marker check only fires on Implemented ADRs), so it *could* be split, but the convention prose,
   the AGENTS.md currency, and the ADR flip are one indivisible unit of meaning and land together.
   - `./x gate` → all clean, `coverage: 100.0%`.
@@ -616,7 +616,7 @@ type PlanRef struct {
     `docs/plans/README.md`, and `AGENTS.md`, both ADR files, `docs/decisions/ACTIVE.md`,
     `docs/domains/rendering.md`, `docs/domains/tooling.md`, `.awf/awf.lock`, and `examples/sundial`.
     (`./x sync` in Task 5.5 regenerates every `.claude/**` and `docs/**` rendered output from the
-    Phase-5 template/sidecar edits; enumerate them — `git add -A` is barred.)
+    Phase-5 template/sidecar edits; enumerate them: `git add -A` is barred.)
   - `git commit -m "feat(rendering): adopt the ADR-0097 plan convention"` (body: flips ADR-0097 and
     ADR-0098 to Implemented; lists the convention changes and the five now-enforced invariants).
 
@@ -625,17 +625,17 @@ type PlanRef struct {
 - `./x gate` and `./x check` are green at every phase commit.
 - `awf new plan "Test"` creates `docs/plans/<today>-test.md` with valid frontmatter; deleting it leaves the tree clean.
 - A plan linking a nonexistent ADR fails `./x check` with a `plan-adr-link` drift; a bad `status:` fails with `plan-frontmatter`.
-- `awf context internal/project/context.go` lists this plan under "Related plans" (once this plan carries frontmatter — it does not, being grandfathered; verify instead with a scratch frontmatter plan, then delete it).
+- `awf context internal/project/context.go` lists this plan under "Related plans" (once this plan carries frontmatter; it does not, being grandfathered; verify instead with a scratch frontmatter plan, then delete it).
 - `examples/sundial` `awf check` output has zero `note:` lines.
 - The five invariants each have a backing `// invariant:` marker and are enforced once the ADRs are Implemented.
 
 ## Notes
 
-- This plan is itself written under the pre-convention (frontmatter-less) shape — the tooling it builds
+- This plan is itself written under the pre-convention (frontmatter-less) shape: the tooling it builds
   does not exist until it lands. It is grandfathered like the other 67 corpus plans and freezes via the
   ADR flip, not a plan `status:` field.
 - Phase 1 is the plan's one genuine **coupled-phase escape** (ADR-0097): the parser is production
   dead-code without its checks and the checks cannot compile without the parser, so they share one
   commit because the change cannot be sliced. Phase 5 is a **coherent-atomic** single commit (it
-  *could* be split but is one unit of meaning) — not the escape. The distinction is exactly the one
+  *could* be split but is one unit of meaning), not the escape. The distinction is exactly the one
   the new convention draws.

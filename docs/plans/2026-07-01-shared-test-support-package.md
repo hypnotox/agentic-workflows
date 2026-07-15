@@ -5,9 +5,9 @@ there; this plan is the execution record only.
 
 ## Goal
 
-Consolidate the hand-rolled fixture idioms duplicated across awf's test suites — git-repo fixtures,
+Consolidate the hand-rolled fixture idioms duplicated across awf's test suites (git-repo fixtures,
 `TestMain` HOME isolation, project-fixture (`.awf/config.yaml`) setup, ADR-frontmatter fixtures,
-file-writing boilerplate, and the seam-swap idiom — into one new leaf package,
+file-writing boilerplate, and the seam-swap idiom) into one new leaf package,
 `internal/testsupport` (plus its `gitfixture` subpackage), migrate every duplication site named in
 ADR-0044's Context to call the shared helpers instead of its own local copy, and back the package's
 zero-`internal/*`-dependency constraint with a mechanical test.
@@ -30,36 +30,36 @@ zero-`internal/*`-dependency constraint with a mechanical test.
   `gitfixture.go` are themselves subject to the repo's 100%-coverage gate the moment they exist,
   independent of when their call sites migrate. Phase 1 therefore ships each with its own direct
   `_test.go` file exercising every branch that is not marked `// coverage-ignore:` (defensive
-  branches — a failed `os.MkdirTemp`, a failed `git.PlainInit` into a fresh temp dir, etc. — are
+  branches (a failed `os.MkdirTemp`, a failed `git.PlainInit` into a fresh temp dir, etc.) are
   ignored, mirroring `internal/adr/adr.go`'s existing convention), so `./x gate` stays green from the
   package's very first commit, before any call site is touched. `RunIsolated` is the one exception:
   it wraps `(*testing.M).Run`, which cannot be constructed standalone outside the real `go test`
   entry point, so its introduction is folded into the same commit that migrates the first two real
-  `TestMain` call sites — the only commit in this plan where "add code" and "add its first caller"
+  `TestMain` call sites, the only commit in this plan where "add code" and "add its first caller"
   land together.
 - Every other consolidation target keeps its own package-local convenience wrapper where one already
   existed and added value beyond a raw call (`scaffoldFiles`, `scaffoldProject`, `scaffoldedProject`,
   `auditProject`, `gateFixture`, `internal/coverage`'s `module`/`writeProfile`,
   `cmd/covercheck`'s `modWith`, `internal/invariants`'s `writeADR`/`writeRetiringADR`,
-  `internal/project`'s `writeADR`) — only their *bodies* change, from hand-rolled `os.MkdirAll`/
+  `internal/project`'s `writeADR`); only their *bodies* change, from hand-rolled `os.MkdirAll`/
   `os.WriteFile` to a call into `internal/testsupport`. The idioms ADR-0044 identifies as pure
   boilerplate with no added value (`mustWrite`/`mustMkdir` in `internal/migrate`, `writeFileAt` in
   `internal/project`, `swapGetwd`/`swapHasGoMod` in `cmd/awf`/`internal/coverage`, `testSig`/
   `initRepo`/`commit`/`auditSig`/`auditCommit` in `internal/audit`/`cmd/awf`) are deleted outright,
   with every call site switched to call `internal/testsupport`/`gitfixture` directly.
 - `ADR()` builds a raw `---`-delimited string template (not by importing `internal/adr` and
-  marshaling its frontmatter struct — seeADR-0044's Consequences) with a fixed field order
+  marshaling its frontmatter struct; seeADR-0044's Consequences) with a fixed field order
   (`status`, `date`, `tags`, `domains`, `retires_invariants`) matching every migrated fixture's
   existing byte layout, so most migrations are exact-byte-identical; the few that are not (a
   `tags: []` literal collapsing to an omitted field, or a bare `body` payload gaining a `# ADR-0001:
-  T` heading it never had) are semantically inert — the consuming test only ever parses frontmatter
+  T` heading it never had) are semantically inert; the consuming test only ever parses frontmatter
   or asserts on unrelated content, never the exact bytes changed.
 
 ## Tech stack
 
 Go 1.26 (module `github.com/hypnotox/agentic-workflows`). New package `internal/testsupport` (leaf,
 stdlib-only) and subpackage `internal/testsupport/gitfixture` (adds `github.com/go-git/go-git/v5`,
-already a direct `go.mod` dependency — no `go.mod`/`go.sum` change). Every other change is to
+already a direct `go.mod` dependency; no `go.mod`/`go.sum` change). Every other change is to
 existing `_test.go` files; no production (non-test) behavior changes anywhere outside
 `internal/testsupport` itself.
 
@@ -87,17 +87,17 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
 - Modified (rendered, via `./x sync`): `docs/domains/tooling.md`, `docs/testing.md`,
   `docs/decisions/ACTIVE.md`, `.awf/awf.lock`
 
-## Phase 1 — Build `internal/testsupport` + `gitfixture`, migrate `TestMain` sites
+## Phase 1: Build `internal/testsupport` + `gitfixture`, migrate `TestMain` sites
 
-- [ ] **Task 1.1 — Create `internal/testsupport/testsupport.go` and its direct unit tests.** Create
+- [ ] **Task 1.1: Create `internal/testsupport/testsupport.go` and its direct unit tests.** Create
   `internal/testsupport/testsupport.go`:
 
   ```go
   // Package testsupport provides shared test-fixture helpers used across awf's
   // test suites: project-config scaffolding, ADR frontmatter fixtures,
-  // file-writing primitives, and the seam-swap idiom. It is a leaf package —
+  // file-writing primitives, and the seam-swap idiom. It is a leaf package:
   // only the Go standard library may be imported here (see the gitfixture
-  // subpackage for the go-git-dependent helpers) — so it is safe to import from
+  // subpackage for the go-git-dependent helpers), so it is safe to import from
   // any package's tests without risking an import cycle (ADR-0044). deps_test.go
   // enforces the zero-internal-deps constraint mechanically.
   package testsupport
@@ -122,7 +122,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   	}
   }
 
-  // WriteAwfConfig writes <root>/.awf/config.yaml with the given content — the
+  // WriteAwfConfig writes <root>/.awf/config.yaml with the given content, the
   // project-fixture seed step every scaffold-style helper across awf's test
   // suites starts from.
   func WriteAwfConfig(t *testing.T, root, yamlContent string) {
@@ -172,12 +172,12 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   	body              string
   }
 
-  // WithTitle sets the ADR's number+title heading text — the part after
+  // WithTitle sets the ADR's number+title heading text, the part after
   // "# ADR-", e.g. "0001: My Title". Defaults to "0001: T".
   func WithTitle(title string) ADROption { return func(o *adrOpts) { o.title = title } }
 
   // WithDate sets the frontmatter date field. Omitted from the frontmatter
-  // entirely when never called — some fixtures deliberately carry no date.
+  // entirely when never called; some fixtures deliberately carry no date.
   func WithDate(date string) ADROption { return func(o *adrOpts) { o.date = date } }
 
   // WithTags sets the frontmatter tags array.
@@ -198,7 +198,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   // ADR builds a ---delimited ADR frontmatter fixture as a raw string: a status
   // field plus any of date/tags/domains/retires_invariants supplied via opts, a
   // "# ADR-<title>" heading, and an optional trailing body. It intentionally
-  // does not import internal/adr and marshal its real frontmatter struct —
+  // does not import internal/adr and marshal its real frontmatter struct;
   // doing so would break this package's zero-internal-deps invariant (see
   // ADR-0044's Consequences).
   func ADR(status string, opts ...ADROption) string {
@@ -342,7 +342,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `internal/testsupport/testsupport.go internal/testsupport/testsupport_test.go`. Commit:
     `test(awf): add internal/testsupport with core fixture helpers`
 
-- [ ] **Task 1.2 — Create `internal/testsupport/gitfixture` and its direct unit tests.** Create
+- [ ] **Task 1.2: Create `internal/testsupport/gitfixture` and its direct unit tests.** Create
   `internal/testsupport/gitfixture/gitfixture.go`:
 
   ```go
@@ -447,7 +447,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `internal/testsupport/gitfixture/gitfixture.go internal/testsupport/gitfixture/gitfixture_test.go`.
     Commit: `test(awf): add internal/testsupport/gitfixture`
 
-- [ ] **Task 1.3 — Add the zero-internal-deps invariant test.** Create
+- [ ] **Task 1.3: Add the zero-internal-deps invariant test.** Create
   `internal/testsupport/deps_test.go`:
 
   ```go
@@ -495,10 +495,10 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   				t.Fatalf("%s: unquote import %s: %v", f, imp.Path.Value, err)
   			}
   			if strings.HasPrefix(path, "github.com/hypnotox/agentic-workflows/internal/") {
-  				t.Errorf("%s imports internal package %q — internal/testsupport must stay a leaf package (ADR-0044)", f, path)
+  				t.Errorf("%s imports internal package %q: internal/testsupport must stay a leaf package (ADR-0044)", f, path)
   			}
   			if !allowGoGit && strings.HasPrefix(path, "github.com/go-git/") {
-  				t.Errorf("%s imports go-git package %q — only gitfixture/ may depend on go-git", f, path)
+  				t.Errorf("%s imports go-git package %q: only gitfixture/ may depend on go-git", f, path)
   			}
   		}
   	}
@@ -510,18 +510,18 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Run `./x gate`. Expect `coverage: 100.0%` and `0 issues.` (`deps_test.go` is itself a `_test.go`
     file, so it is exempt from the coverage profile, per this plan's Architecture summary.)
   - Run `./x invariants`. Expect `awf invariants: clean` (ADR-0044 stays `Proposed` until Phase 6, so
-    its `inv:` tag is not yet enforced — this just confirms the new backing comment does not itself
+    its `inv:` tag is not yet enforced; this just confirms the new backing comment does not itself
     break the scan).
   - Stage `internal/testsupport/deps_test.go`. Commit:
     `test(awf): back the testsupport-zero-internal-deps invariant`
 
-- [ ] **Task 1.4 — Add `RunIsolated` and migrate both `TestMain` sites.** In
+- [ ] **Task 1.4: Add `RunIsolated` and migrate both `TestMain` sites.** In
   `internal/testsupport/testsupport.go`, change the package doc comment from:
 
   ```go
   // Package testsupport provides shared test-fixture helpers used across awf's
   // test suites: project-config scaffolding, ADR frontmatter fixtures,
-  // file-writing primitives, and the seam-swap idiom. It is a leaf package —
+  // file-writing primitives, and the seam-swap idiom. It is a leaf package:
   ```
 
   to:
@@ -530,7 +530,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   // Package testsupport provides shared test-fixture helpers used across awf's
   // test suites: TestMain HOME isolation, project-config scaffolding, ADR
   // frontmatter fixtures, file-writing primitives, and the seam-swap idiom. It
-  // is a leaf package —
+  // is a leaf package:
   ```
 
   Then append at the end of the file:
@@ -569,8 +569,8 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
 
   // TestMain isolates this package's tests from the host by giving them a throwaway
   // HOME, so go-git's global-gitignore read (the uncommitted-changes audit rule)
-  // finds nothing. awf drives git purely through go-git — no host git binary, and
-  // no host git config — so the tests build their state in temp repos and never
+  // finds nothing. awf drives git purely through go-git (no host git binary, and
+  // no host git config), so the tests build their state in temp repos and never
   // read or write the developer's machine.
   func TestMain(m *testing.M) {
   	home, err := os.MkdirTemp("", "awf-test-home")
@@ -600,8 +600,8 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
 
   // TestMain isolates this package's tests from the host by giving them a throwaway
   // HOME, so go-git's global-gitignore read (the uncommitted-changes audit rule)
-  // finds nothing. awf drives git purely through go-git — no host git binary, and
-  // no host git config — so the tests build their state in temp repos and never
+  // finds nothing. awf drives git purely through go-git (no host git binary, and
+  // no host git config), so the tests build their state in temp repos and never
   // read or write the developer's machine.
   func TestMain(m *testing.M) {
   	os.Exit(testsupport.RunIsolated(m, "awf-test-home"))
@@ -666,9 +666,9 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
     internal/audit/testmain_test.go`. Commit:
     `test(awf): route TestMain HOME isolation via RunIsolated`
 
-## Phase 2 — Seam-swap sites
+## Phase 2: Seam-swap sites
 
-- [ ] **Task 2.1 — `internal/coverage`: route `swapGetwd`/`swapHasGoMod` through `SwapVar`.** In
+- [ ] **Task 2.1: `internal/coverage`: route `swapGetwd`/`swapHasGoMod` through `SwapVar`.** In
   `internal/coverage/coverage_test.go`, change the import block from:
 
   ```go
@@ -727,14 +727,14 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `internal/coverage/coverage_test.go`. Commit:
     `test(awf): route internal/coverage seam-swaps via SwapVar`
 
-- [ ] **Task 2.2 — `cmd/awf`: route every `swapGetwd` call site through `SwapVar`.** `swapGetwd` is
+- [ ] **Task 2.2: `cmd/awf`: route every `swapGetwd` call site through `SwapVar`.** `swapGetwd` is
   defined once, in `cmd/awf/run_test.go`, and called from 7 files in package `main`:
   `run_test.go`, `audit_test.go`, `list_add_test.go`, `init_test.go`, `uninstall_test.go`,
-  `commitgate_test.go`, `new_test.go` — 28 call sites total, every one matching the exact literal
+  `commitgate_test.go`, `new_test.go`: 28 call sites total, every one matching the exact literal
   prefix `swapGetwd(t, ` (verified: `grep -n "swapGetwd(" cmd/awf/*.go | grep -v "func swapGetwd"`
   returns 28 lines, all of the shape `swapGetwd(t, func() ...`). In each of the 7 files, replace
   every occurrence of `swapGetwd(t, ` with `testsupport.SwapVar(t, &getwd, ` (this is a safe blind
-  substitution — the prefix is byte-identical at every site and `getwd`'s type,
+  substitution: the prefix is byte-identical at every site and `getwd`'s type,
   `func() (string, error)`, matches every call's closure).
 
   Then, in `cmd/awf/run_test.go`, delete the now-orphaned definition:
@@ -757,7 +757,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   in full below; the other 6 follow the same "insert one import line, alphabetically, in the existing
   local-import group or as a new group after the stdlib group" rule):
 
-  `cmd/awf/run_test.go` — change:
+  `cmd/awf/run_test.go`, change:
 
   ```go
   import (
@@ -787,7 +787,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/audit_test.go` — change:
+  `cmd/awf/audit_test.go`, change:
 
   ```go
   import (
@@ -824,7 +824,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/list_add_test.go` — change:
+  `cmd/awf/list_add_test.go`, change:
 
   ```go
   import (
@@ -855,7 +855,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/init_test.go` — change:
+  `cmd/awf/init_test.go`, change:
 
   ```go
   import (
@@ -883,7 +883,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/uninstall_test.go` — change:
+  `cmd/awf/uninstall_test.go`, change:
 
   ```go
   import (
@@ -909,7 +909,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/commitgate_test.go` — change:
+  `cmd/awf/commitgate_test.go`, change:
 
   ```go
   import (
@@ -935,7 +935,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  `cmd/awf/new_test.go` — change:
+  `cmd/awf/new_test.go`, change:
 
   ```go
   import (
@@ -969,9 +969,9 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
     cmd/awf/uninstall_test.go cmd/awf/commitgate_test.go cmd/awf/new_test.go`. Commit:
     `test(awf): route cmd/awf's swapGetwd sites via testsupport.SwapVar`
 
-- [ ] **Task 2.3 — `cmd/awf/init_test.go`: route `forceNonInteractive` through `SwapVar`.**
+- [ ] **Task 2.3: `cmd/awf/init_test.go`: route `forceNonInteractive` through `SwapVar`.**
   `forceNonInteractive` is called with zero arguments at 5 sites (`isInteractive` is hardcoded to
-  `false`), so it stays as a named convenience wrapper — only its body changes. Change:
+  `false`), so it stays as a named convenience wrapper; only its body changes. Change:
 
   ```go
   // forceNonInteractive pins the isInteractive seam to false for the test, so the
@@ -1003,9 +1003,9 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/init_test.go`. Commit:
     `test(awf): route cmd/awf's forceNonInteractive via SwapVar`
 
-## Phase 3 — Project-fixture setup sites
+## Phase 3: Project-fixture setup sites
 
-- [ ] **Task 3.1 — `internal/project/project_test.go`: `scaffoldFiles`.** Change the import block
+- [ ] **Task 3.1: `internal/project/project_test.go`: `scaffoldFiles`.** Change the import block
   from:
 
   ```go
@@ -1087,7 +1087,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `internal/project/project_test.go`. Commit:
     `test(awf): route internal/project's scaffoldFiles via WriteAwfConfig`
 
-- [ ] **Task 3.2 — `cmd/awf/run_test.go`: `scaffoldProject`.** Change:
+- [ ] **Task 3.2: `cmd/awf/run_test.go`: `scaffoldProject`.** Change:
 
   ```go
   // scaffoldProject writes a minimal tree config under root and syncs it, leaving a
@@ -1133,11 +1133,11 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/run_test.go`. Commit:
     `test(awf): route cmd/awf's scaffoldProject via WriteAwfConfig`
 
-- [ ] **Task 3.3 — `cmd/awf/list_add_test.go`: `scaffoldedProject`.** Change:
+- [ ] **Task 3.3: `cmd/awf/list_add_test.go`: `scaffoldedProject`.** Change:
 
   ```go
   // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-  // 0 docs — no doc is core after ADR-0043 — no domains) and syncs it.
+  // 0 docs (no doc is core after ADR-0043), no domains) and syncs it.
   func scaffoldedProject(t *testing.T) string {
   	t.Helper()
   	root := t.TempDir()
@@ -1163,7 +1163,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
 
   ```go
   // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-  // 0 docs — no doc is core after ADR-0043 — no domains) and syncs it.
+  // 0 docs (no doc is core after ADR-0043), no domains) and syncs it.
   func scaffoldedProject(t *testing.T) string {
   	t.Helper()
   	root := t.TempDir()
@@ -1187,7 +1187,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/list_add_test.go`. Commit:
     `test(awf): route cmd/awf's scaffoldedProject via WriteAwfConfig`
 
-- [ ] **Task 3.4 — `cmd/awf/audit_test.go`: `auditProject`.** Change:
+- [ ] **Task 3.4: `cmd/awf/audit_test.go`: `auditProject`.** Change:
 
   ```go
   // auditProject creates a temp project (minimal .awf config) with a git repo and
@@ -1225,7 +1225,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   	repo, err := git.PlainInit(root, false)
   ```
 
-  (leave the rest of `auditProject` — the `go.mod`/`main.go` writes and the whole-tree commit —
+  (leave the rest of `auditProject` (the `go.mod`/`main.go` writes and the whole-tree commit)
   unchanged; the `testsupport` import already exists from Task 2.2.)
 
   Verify and commit:
@@ -1234,7 +1234,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/audit_test.go`. Commit:
     `test(awf): route cmd/awf's auditProject via WriteAwfConfig`
 
-- [ ] **Task 3.5 — `cmd/awf/check_test.go`: 3 inline setup sequences.** Change the import block
+- [ ] **Task 3.5: `cmd/awf/check_test.go`: 3 inline setup sequences.** Change the import block
   from:
 
   ```go
@@ -1363,7 +1363,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/check_test.go`. Commit:
     `test(awf): route check_test.go's project fixtures via WriteAwfConfig`
 
-- [ ] **Task 3.6 — `cmd/awf/gate_test.go`: `gateFixture`.** Change the import block from:
+- [ ] **Task 3.6: `cmd/awf/gate_test.go`: `gateFixture`.** Change the import block from:
 
   ```go
   import (
@@ -1395,7 +1395,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   )
   ```
 
-  (`os` is dropped — `gateFixture` is the file's only `os.*` caller, verified via
+  (`os` is dropped: `gateFixture` is the file's only `os.*` caller, verified via
   `grep -n "os\." cmd/awf/gate_test.go`.) Change:
 
   ```go
@@ -1448,7 +1448,7 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/gate_test.go`. Commit:
     `test(awf): route cmd/awf's gateFixture via WriteAwfConfig`
 
-- [ ] **Task 3.7 — `cmd/awf/invariants_test.go`: inline setup.** Change the import block from:
+- [ ] **Task 3.7: `cmd/awf/invariants_test.go`: inline setup.** Change the import block from:
 
   ```go
   import (
@@ -1506,17 +1506,17 @@ existing `_test.go` files; no production (non-test) behavior changes anywhere ou
   - Stage `cmd/awf/invariants_test.go`. Commit:
     `test(awf): route invariants_test.go's fixture via WriteAwfConfig`
 
-## Phase 4 — ADR-frontmatter fixture sites
+## Phase 4: ADR-frontmatter fixture sites
 
 Every migration below keeps the migrated fixture either byte-identical to the original (the common
-case — `testsupport.ADR`'s field order is `status`, `date`, `tags`, `domains`,
+case: `testsupport.ADR`'s field order is `status`, `date`, `tags`, `domains`,
 `retires_invariants`, matching every site's existing literal order) or semantically identical where
 byte-identity is impossible: an explicit `tags: []` collapses to an omitted `tags` field (Go's
 zero-argument variadic call produces `nil`, indistinguishable from never calling `WithTags`), and a
 fixture with no heading at all gains a `# ADR-0001: T` default heading. Neither case is observed by
 its consuming test (verified per site below).
 
-- [ ] **Task 4.1 — `internal/adr/adr_test.go`.** Change the import block from:
+- [ ] **Task 4.1: `internal/adr/adr_test.go`.** Change the import block from:
 
   ```go
   import (
@@ -1595,8 +1595,8 @@ its consuming test (verified per site below).
   	}
   ```
 
-  (the test asserts only on status-section ordering and per-entry title/filename substrings — never
-  on `tags` — so omitting the now-redundant `tags: []` is inert.)
+  (the test asserts only on status-section ordering and per-entry title/filename substrings (never
+  on `tags`), so omitting the now-redundant `tags: []` is inert.)
 
   In `TestParseDirExtractsStatusAndTitle`, change:
 
@@ -1634,19 +1634,19 @@ its consuming test (verified per site below).
   In `TestParseDirExtractsSections`, change:
 
   ```go
-  	content := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0009: S\n## Context\nctx body\n## Invariants\n- `inv: example-slug` — a thing.\n## Consequences\ncons\n"
+  	content := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0009: S\n## Context\nctx body\n## Invariants\n- `inv: example-slug`: a thing.\n## Consequences\ncons\n"
   ```
 
   to:
 
   ```go
   	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-  		testsupport.WithTitle("0009: S"), testsupport.WithBody("## Context\nctx body\n## Invariants\n- `inv: example-slug` — a thing.\n## Consequences\ncons\n"))
+  		testsupport.WithTitle("0009: S"), testsupport.WithBody("## Context\nctx body\n## Invariants\n- `inv: example-slug`: a thing.\n## Consequences\ncons\n"))
   ```
 
   Leave `adrTemplateFixture` (the `docs/decisions/template.md` scaffolding fixture used by
   `NewFile`'s tests) and every malformed-frontmatter literal (`TestParseDirParseError`,
-  `TestRenderActiveMDParseError`) untouched — the former is a template fixture, not an ADR instance,
+  `TestRenderActiveMDParseError`) untouched; the former is a template fixture, not an ADR instance,
   and the latter are deliberately broken, so `testsupport.ADR` (which only ever emits valid
   frontmatter) cannot express them.
 
@@ -1656,7 +1656,7 @@ its consuming test (verified per site below).
   - Stage `internal/adr/adr_test.go`. Commit:
     `test(awf): route internal/adr ADR fixtures through testsupport.ADR`
 
-- [ ] **Task 4.2 — `internal/invariants/invariants_test.go`.** Change the import block from:
+- [ ] **Task 4.2: `internal/invariants/invariants_test.go`.** Change the import block from:
 
   ```go
   import (
@@ -1732,7 +1732,7 @@ its consuming test (verified per site below).
   }
   ```
 
-  Leave `goSrc` (writes a `.go` backing-comment fixture, not an ADR) untouched — out of this task's
+  Leave `goSrc` (writes a `.go` backing-comment fixture, not an ADR) untouched: out of this task's
   scope.
 
   Verify and commit:
@@ -1741,7 +1741,7 @@ its consuming test (verified per site below).
   - Stage `internal/invariants/invariants_test.go`. Commit:
     `test(awf): route internal/invariants ADR fixtures via testsupport.ADR`
 
-- [ ] **Task 4.3 — `internal/project/domains_test.go`.** Change the import block from:
+- [ ] **Task 4.3: `internal/project/domains_test.go`.** Change the import block from:
 
   ```go
   import (
@@ -1783,7 +1783,7 @@ its consuming test (verified per site below).
   `TestDomainDocStaleOnAdrRetag`, `TestDomainDocMissingWhenDeleted`,
   `TestDomainDocOrphanedWhenDomainRemoved`) with
   `testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine"))`
-  (exact byte match — `status` then `domains`, no `date`/`tags` in between).
+  (exact byte match: `status` then `domains`, no `date`/`tags` in between).
 
   Replace the single occurrence of `"---\nstatus: Accepted\ndomains: [rendering]\n---\n# ADR-0002:
   Layout\n"` (in `TestDomainDocRendersIndexAndNarrative`) with
@@ -1806,7 +1806,7 @@ its consuming test (verified per site below).
   - Stage `internal/project/domains_test.go`. Commit:
     `test(awf): route project domain-doc fixtures via testsupport.ADR`
 
-- [ ] **Task 4.4 — `internal/project/project_test.go` and `internal/project/coverage_test.go`.** In
+- [ ] **Task 4.4: `internal/project/project_test.go` and `internal/project/coverage_test.go`.** In
   `internal/project/project_test.go` (import already carries `testsupport` from Task 3.1), in
   `TestSyncGeneratesActiveMDAndCheckDetectsStaleness`, change:
 
@@ -1901,7 +1901,7 @@ its consuming test (verified per site below).
   	writeFileAt(t, root, filepath.Join("docs", "decisions", "0001-first.md"), adrBody)
   ```
 
-  (`writeFileAt` itself is migrated in Task 5.1 — leaving it in place here is fine, it still exists
+  (`writeFileAt` itself is migrated in Task 5.1; leaving it in place here is fine, it still exists
   until then.) Leave `TestSyncFailsOnMalformedADR` and `TestCheckFailsOnMalformedADRIndex`
   untouched (deliberately malformed).
 
@@ -1911,7 +1911,7 @@ its consuming test (verified per site below).
   - Stage `internal/project/project_test.go internal/project/coverage_test.go`. Commit:
     `test(awf): route internal/project ADR fixtures through testsupport.ADR`
 
-- [ ] **Task 4.5 — `internal/audit/audit_test.go`.** Change the import block from:
+- [ ] **Task 4.5: `internal/audit/audit_test.go`.** Change the import block from:
 
   ```go
   import (
@@ -1946,8 +1946,8 @@ its consuming test (verified per site below).
 
   (both consts become vars, since `testsupport.ADR` is a function call; every use of
   `proposedADR`/`acceptedADR` in this file is as an opaque `FileChange.OldText`/`NewText` payload or
-  through `statusOf`, which only ever reads the `status:` frontmatter field — verified via
-  `grep -n "proposedADR\|acceptedADR" internal/audit/audit_test.go` — so the changed heading text,
+  through `statusOf`, which only ever reads the `status:` frontmatter field (verified via
+  `grep -n "proposedADR\|acceptedADR" internal/audit/audit_test.go`), so the changed heading text,
   `# ADR-0001: T` instead of `# ADR`, is never observed.)
 
   Change:
@@ -1971,7 +1971,7 @@ its consuming test (verified per site below).
   (`domains` arrives pre-joined, e.g. `"tooling, rendering"` or `"tooling, tooling"`;
   `strings.Split(domains, ", ")` followed by `WithDomains`'s own `", "`-join round-trips to the
   identical `domains: [...]` value. The fixture gains a `# ADR-0001: T` heading the original never
-  had — every `adrChange` caller only exercises frontmatter-driven rules
+  had; every `adrChange` caller only exercises frontmatter-driven rules
   (`ruleADRDomainCochange`/`ruleDomainDocStaleness`/`ruleUndocumentedDomain`), never the body, so
   this is inert.)
 
@@ -1981,12 +1981,12 @@ its consuming test (verified per site below).
   - Stage `internal/audit/audit_test.go`. Commit:
     `test(awf): route internal/audit ADR fixtures through testsupport.ADR`
 
-- [ ] **Task 4.6 — `cmd/awf/run_test.go`, `cmd/awf/check_test.go`, `cmd/awf/invariants_test.go`.**
+- [ ] **Task 4.6: `cmd/awf/run_test.go`, `cmd/awf/check_test.go`, `cmd/awf/invariants_test.go`.**
   (All three already import `testsupport` from earlier phases.) In `cmd/awf/run_test.go`'s
   `TestRunInvariantsReportsFindings`, change:
 
   ```go
-  	adr := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: X\n## Invariants\n- `inv: unbacked-here` — x.\n## Consequences\nc\n"
+  	adr := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: X\n## Invariants\n- `inv: unbacked-here`: x.\n## Consequences\nc\n"
   	if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte(adr), 0o644); err != nil {
   		t.Fatal(err)
   	}
@@ -1996,7 +1996,7 @@ its consuming test (verified per site below).
 
   ```go
   	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-  		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: unbacked-here` — x.\n## Consequences\nc\n"))
+  		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: unbacked-here`: x.\n## Consequences\nc\n"))
   	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
   ```
 
@@ -2021,7 +2021,7 @@ its consuming test (verified per site below).
   In `cmd/awf/invariants_test.go`'s `TestRunCheckFailsOnUnbackedInvariant`, change:
 
   ```go
-  	adr := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: X\n## Invariants\n- `inv: cmd-needs-backing` — x.\n## Consequences\nc\n"
+  	adr := "---\nstatus: Implemented\ndate: 2026-06-25\ntags: [x]\n---\n# ADR-0001: X\n## Invariants\n- `inv: cmd-needs-backing`: x.\n## Consequences\nc\n"
   	if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte(adr), 0o644); err != nil {
   		t.Fatal(err)
   	}
@@ -2031,7 +2031,7 @@ its consuming test (verified per site below).
 
   ```go
   	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-  		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: cmd-needs-backing` — x.\n## Consequences\nc\n"))
+  		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `inv: cmd-needs-backing`: x.\n## Consequences\nc\n"))
   	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
   ```
 
@@ -2042,9 +2042,9 @@ its consuming test (verified per site below).
   - Stage `cmd/awf/run_test.go cmd/awf/check_test.go cmd/awf/invariants_test.go`. Commit:
     `test(awf): route cmd/awf ADR fixtures through testsupport.ADR`
 
-## Phase 5 — File-write + git-fixture + coverage/covercheck fixtures
+## Phase 5: File-write + git-fixture + coverage/covercheck fixtures
 
-- [ ] **Task 5.1 — `internal/project`: eliminate `writeFileAt`.** `writeFileAt` is defined in
+- [ ] **Task 5.1: `internal/project`: eliminate `writeFileAt`.** `writeFileAt` is defined in
   `internal/project/render_tree_test.go` and called from 4 files: `render_tree_test.go` (4 sites),
   `drift_test.go` (3 sites), `coverage_test.go` (7 sites), `domains_test.go` (1 site, inside its own
   `writeADR` wrapper). Every call site follows `writeFileAt(t, root, REL, BODY)`; the mechanical
@@ -2089,7 +2089,7 @@ its consuming test (verified per site below).
   )
   ```
 
-  (`os`/`path/filepath` stay — both are used elsewhere in this file, e.g. `os.ReadFile` +
+  (`os`/`path/filepath` stay: both are used elsewhere in this file, e.g. `os.ReadFile` +
   `filepath.Join` in `syncAndReadDebugging`/`syncAndReadAgents`.) Replace its 4 call sites:
 
   - `writeFileAt(t, root, out, "---\nname: \"\"\ndescription: \"\"\n---\nbody\n")` →
@@ -2196,7 +2196,7 @@ its consuming test (verified per site below).
     internal/project/coverage_test.go internal/project/domains_test.go`. Commit:
     `test(awf): route internal/project file fixtures via WriteFile`
 
-- [ ] **Task 5.2 — `internal/migrate`: eliminate `mustWrite`/`mustMkdir`.** `mustWrite(t, path,
+- [ ] **Task 5.2: `internal/migrate`: eliminate `mustWrite`/`mustMkdir`.** `mustWrite(t, path,
   body)` matches `testsupport.WriteFile(t, path, content)`'s signature exactly (no argument
   restructuring needed), so every occurrence of `mustWrite(t, ` becomes `testsupport.WriteFile(t, `
   via blind substitution, across both `internal/migrate/migrate_test.go` (16 sites) and
@@ -2212,14 +2212,14 @@ its consuming test (verified per site below).
     }
     ```
   - `mustMkdir(t, filepath.Join(root, ".claude", "awf", "config.yaml"))` (in
-    `TestApplyTreeLayoutConfigWriteError` — deliberately squats a directory where a file belongs) →
+    `TestApplyTreeLayoutConfigWriteError`: deliberately squats a directory where a file belongs) →
     ```go
     if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "config.yaml"), 0o755); err != nil {
     	t.Fatal(err)
     }
     ```
   - `mustMkdir(t, filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"))` (in
-    `TestApplyTreeLayoutCopyPartWriteError` — same squatting trick) →
+    `TestApplyTreeLayoutCopyPartWriteError`: same squatting trick) →
     ```go
     if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "skills", "parts", "beta", "sec.md"), 0o755); err != nil {
     	t.Fatal(err)
@@ -2232,7 +2232,7 @@ its consuming test (verified per site below).
     }
     ```
   - `mustMkdir(t, filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"))`
-    (in `TestPortAgentsDocProseWriteError` — same squatting trick, on the agents-doc prose part) →
+    (in `TestPortAgentsDocProseWriteError`: same squatting trick, on the agents-doc prose part) →
     ```go
     if err := os.MkdirAll(filepath.Join(root, ".claude", "awf", "parts", "agents-doc", "you-and-this-project.md"), 0o755); err != nil {
     	t.Fatal(err)
@@ -2289,7 +2289,7 @@ its consuming test (verified per site below).
   )
   ```
 
-  (`os` stays — it backs the 4 inlined `MkdirAll` calls above plus extensive direct
+  (`os` stays: it backs the 4 inlined `MkdirAll` calls above plus extensive direct
   `os.Stat`/`os.Remove`/`os.ReadFile` use elsewhere in the file.) Change
   `singletonstandarddocs_test.go`'s import block from:
 
@@ -2321,7 +2321,7 @@ its consuming test (verified per site below).
   - Stage `internal/migrate/migrate_test.go internal/migrate/singletonstandarddocs_test.go`. Commit:
     `test(awf): route internal/migrate file fixtures via WriteFile`
 
-- [ ] **Task 5.3 — Route git fixtures through `gitfixture`.** In `internal/audit/git_test.go`,
+- [ ] **Task 5.3: Route git fixtures through `gitfixture`.** In `internal/audit/git_test.go`,
   delete:
 
   ```go
@@ -2398,7 +2398,7 @@ its consuming test (verified per site below).
   )
   ```
 
-  (`time` is dropped — `testSig`'s deletion was its only user, verified via `grep -n "time\."
+  (`time` is dropped: `testSig`'s deletion was its only user, verified via `grep -n "time\."
   internal/audit/git_test.go`; `object` stays, used directly by `orphan`.)
 
   In `cmd/awf/audit_test.go` (its own `swapGetwd`/`WriteAwfConfig` migrations from Tasks 2.2/3.4
@@ -2483,12 +2483,12 @@ its consuming test (verified per site below).
   )
   ```
 
-  (`time` and `.../plumbing/object` are dropped — `auditSig` was their only user, verified via
+  (`time` and `.../plumbing/object` are dropped: `auditSig` was their only user, verified via
   `grep -n "object\.\|time\." cmd/awf/audit_test.go`; `os`/`path/filepath` stay, used by
   `auditProject`'s `go.mod`/`main.go` writes.)
 
   This migration is functional, not merely mechanical: `gitfixture.Commit`'s variadic `remove
-  ...string` parameter is new capability at every migrated `cmd/awf/audit_test.go` call site —
+  ...string` parameter is new capability at every migrated `cmd/awf/audit_test.go` call site;
   `auditCommit` never had a `remove` parameter (the copy-drift ADR-0044 calls out). No existing test
   passes a `remove` argument through the migrated call sites, so this commit changes no test
   behavior; a future `cmd/awf/audit_test.go` test that needs to exercise a file-removal commit can
@@ -2500,7 +2500,7 @@ its consuming test (verified per site below).
   - Stage `internal/audit/git_test.go cmd/awf/audit_test.go`. Commit:
     `test(awf): route git fixtures through internal/testsupport/gitfixture`
 
-- [ ] **Task 5.4 — Route coverage/covercheck fixtures through `WriteGoModule`/`WriteProfile`.** In
+- [ ] **Task 5.4: Route coverage/covercheck fixtures through `WriteGoModule`/`WriteProfile`.** In
   `internal/coverage/coverage_test.go` (its `testsupport` import already landed in Task 2.1), change:
 
   ```go
@@ -2548,8 +2548,8 @@ its consuming test (verified per site below).
   }
   ```
 
-  (`module`/`writeProfile` keep their existing call-site signatures — used ~15 times each elsewhere
-  in this file — only their bodies now route through `testsupport`, mirroring how `scaffoldFiles`
+  (`module`/`writeProfile` keep their existing call-site signatures (used ~15 times each elsewhere
+  in this file); only their bodies now route through `testsupport`, mirroring how `scaffoldFiles`
   etc. were treated in Phase 3, not the full elimination `writeFileAt`/`mustWrite` got in Tasks
   5.1/5.2: `module`'s fixed-`modPath` convention and tuple return are genuine value the shared
   primitive alone doesn't provide.)
@@ -2616,7 +2616,7 @@ its consuming test (verified per site below).
   )
   ```
 
-  (`os`/`path/filepath` are dropped — `modWith` was their only user in this file, verified via
+  (`os`/`path/filepath` are dropped: `modWith` was their only user in this file, verified via
   `grep -n "os\.\|filepath\." cmd/covercheck/main_test.go`.)
 
   Verify and commit:
@@ -2625,42 +2625,42 @@ its consuming test (verified per site below).
   - Stage `internal/coverage/coverage_test.go cmd/covercheck/main_test.go`. Commit:
     `test(awf): route coverage/covercheck fixtures via testsupport helpers`
 
-## Phase 6 — Doc currency and ADR flip
+## Phase 6: Doc currency and ADR flip
 
-- [ ] **Task 6.1 — Update the `tooling` domain narrative.** In
+- [ ] **Task 6.1: Update the `tooling` domain narrative.** In
   `.awf/domains/parts/tooling/current-state.md`, append a new paragraph after the final existing
   paragraph (the one starting `` `awf new adr "<title>"` (ADR-0042) scaffolds a new ADR file: ``):
 
   ```
-  `internal/testsupport` (ADR-0044) is awf's shared test-fixture package — `TestMain` HOME isolation, project-config scaffolding, ADR frontmatter fixtures, file-writing primitives, and the seam-swap idiom, plus `internal/testsupport/gitfixture` for git-repo fixtures — consolidating idioms that had drifted into independent, sometimes-inconsistent copies across `cmd/awf`, `internal/project`, `internal/audit`, `internal/coverage`, `internal/migrate`, and `internal/invariants`. It is a leaf package: no file in `internal/testsupport` (including `gitfixture`) may import another `internal/*` awf package, mechanically enforced by a dedicated test that walks the package's own import graph, so it stays safely importable from any package's tests.
+  `internal/testsupport` (ADR-0044) is awf's shared test-fixture package: `TestMain` HOME isolation, project-config scaffolding, ADR frontmatter fixtures, file-writing primitives, and the seam-swap idiom, plus `internal/testsupport/gitfixture` for git-repo fixtures, consolidating idioms that had drifted into independent, sometimes-inconsistent copies across `cmd/awf`, `internal/project`, `internal/audit`, `internal/coverage`, `internal/migrate`, and `internal/invariants`. It is a leaf package: no file in `internal/testsupport` (including `gitfixture`) may import another `internal/*` awf package, mechanically enforced by a dedicated test that walks the package's own import graph, so it stays safely importable from any package's tests.
   ```
 
-- [ ] **Task 6.2 — Fill in `docs/testing.md`'s "Test layout" section.** That section has been the
+- [ ] **Task 6.2: Fill in `docs/testing.md`'s "Test layout" section.** That section has been the
   unfilled project-default placeholder text since `awf init` scaffolded this repo (no
-  `.awf/docs/parts/testing/` override exists yet) — this plan is the first to establish a real,
+  `.awf/docs/parts/testing/` override exists yet); this plan is the first to establish a real,
   citable test-fixture convention, so it belongs there. Create
   `.awf/docs/parts/testing/layout.md`:
 
   ```
   Package unit tests are Go `_test.go` files in `internal/<pkg>`, in that package's own test
   package (`package <pkg>` or the black-box `package <pkg>_test` where a test needs no access to
-  unexported identifiers). Template golden tests — render assertions against the embedded catalog
-  — live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
+  unexported identifiers). Template golden tests (render assertions against the embedded catalog)
+  live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
   command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
   in `cmd/awf/*_test.go`.
 
-  Shared test-fixture building — project-config scaffolding, ADR frontmatter fixtures,
-  file-writing primitives, the seam-swap idiom, and git-repo fixtures — goes through
+  Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
+  file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through
   `internal/testsupport` (and its `gitfixture` subpackage), a leaf package with no dependency on
   any other `internal/*` awf package (ADR-0044). New test code needing one of these idioms calls
   into `internal/testsupport` rather than hand-rolling a local copy.
   ```
 
-- [ ] **Task 6.3 — Flip ADR-0044 to Implemented.** In
+- [ ] **Task 6.3: Flip ADR-0044 to Implemented.** In
   `docs/decisions/0044-shared-test-support-package.md`, change the frontmatter `status: Proposed` to
   `status: Implemented`.
 
-- [ ] **Task 6.4 — Sync, verify, commit.**
+- [ ] **Task 6.4: Sync, verify, commit.**
   - Run `./x sync`. Expect `awf sync: done` (re-renders `docs/domains/tooling.md`, `docs/testing.md`,
     and `docs/decisions/ACTIVE.md`).
   - Run `./x gate`. Expect `coverage: 100.0%` and `0 issues.`
@@ -2680,20 +2680,20 @@ its consuming test (verified per site below).
   `WriteGoModule`, `WriteProfile`, `ADR`, and the six `ADROption`s; `go doc
   ./internal/testsupport/gitfixture` lists `Sig`, `InitRepo`, `Commit`.
 - `grep -rn "internal/hypnotox\|internal/agentic" internal/testsupport/*.go
-  internal/testsupport/gitfixture/*.go` (excluding `_test.go`) finds nothing — no non-test file under
+  internal/testsupport/gitfixture/*.go` (excluding `_test.go`) finds nothing: no non-test file under
   `internal/testsupport/` imports another `internal/*` awf package.
 - `grep -rln "os.MkdirTemp(\"\", \"awf-.*-test-home\")\|swapGetwd\|swapHasGoMod\|forceNonInteractive\b.*orig :=\|mustWrite\|mustMkdir\|writeFileAt\|testSig\|auditSig\|auditCommit\b" cmd/awf internal/audit internal/project internal/coverage internal/migrate` (excluding this plan's own
-  reference text) turns up nothing — every named duplication site from ADR-0044's Context is gone.
+  reference text) turns up nothing: every named duplication site from ADR-0044's Context is gone.
 - ADR-0044 is `Implemented`; its `testsupport-zero-internal-deps` invariant is backed.
 
 ## Execution
 
 Phases are ordered and mostly sequential: Phase 1 must land before any later phase (every subsequent
-phase's tasks call into `internal/testsupport`/`gitfixture`). Within Phase 1, Tasks 1.1–1.3 are
-independent of each other but Task 1.4 depends on 1.1 (it edits the same file). Phases 2–5 are
-independent of each other in principle, but execute them in the written order — 2 and 3 touch the
+phase's tasks call into `internal/testsupport`/`gitfixture`). Within Phase 1, Tasks 1.1-1.3 are
+independent of each other but Task 1.4 depends on 1.1 (it edits the same file). Phases 2-5 are
+independent of each other in principle, but execute them in the written order: 2 and 3 touch the
 same `cmd/awf` files repeatedly (import blocks accumulate across tasks) and are simplest to reason
 about sequentially; Phase 6 must be last (it documents and flips the ADR after every migration is
-real). Execute inline with `awf-executing-plans` (one task at a time, `./x gate` per commit) — the
+real). Execute inline with `awf-executing-plans` (one task at a time, `./x gate` per commit); the
 tasks are individually small but the plan is long and touches ~30 files, which benefits from a single
 continuous session's context more than subagent dispatch would.

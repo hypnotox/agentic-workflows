@@ -1,9 +1,9 @@
 # Plan: single commit-scope knob (ADR-0051) + init/CLI UX cluster
 
-**Goal:** Implement [ADR-0051](../decisions/0051-single-commit-scope-knob.md) — delete the
+**Goal:** Implement [ADR-0051](../decisions/0051-single-commit-scope-knob.md): delete the
 `commitScope` var, route a `commitScopes` init answer into `audit.allowedScopes`, feed the
 reviewing-skill prose from the same storage the commit gate enforces, and fold the resolved
-scope list into the drift signal — plus the approved init/CLI UX cluster: EOF-silent init
+scope list into the drift signal, plus the approved init/CLI UX cluster: EOF-silent init
 prompting, pre-prompt collision probe, post-init next steps, hook-command descriptor
 de-trapping, bare `awf list` covering all seven kinds, `awf help <cmd>` dispatch,
 `--answers`/README documentation gaps, an AGENTS.md Commands placeholder + dedupe, and
@@ -18,7 +18,7 @@ and in the drift oracle via a `render.ReferencesScopes` gate folding the resolve
 `artifactConfigHash` (mirroring ADR-0046's `ReferencesSkills`). The init UX work reorders
 `runInit` (probe → prompt → scaffold → check → sync → notes/next-steps) and adds an
 EOF-latching prompt reader in `internal/initspec`. The CLI polish is confined to `cmd/awf`
-dispatch and `templates/`. Design rationale lives in ADR-0051 — this plan cites, it does not
+dispatch and `templates/`. Design rationale lives in ADR-0051; this plan cites, it does not
 restate.
 
 **Tech stack:** Go 1.26, module `github.com/hypnotox/agentic-workflows`. Packages touched:
@@ -59,7 +59,7 @@ Modified:
   `.claude/skills/awf-proposing-adr/`, `.cursor/skills/awf-proposing-adr/`,
   `docs/decisions/README.md`, `docs/decisions/ACTIVE.md`, `docs/domains/config.md`,
   `docs/domains/rendering.md`
-- `docs/decisions/0051-single-commit-scope-knob.md` (status flip only — append-only otherwise)
+- `docs/decisions/0051-single-commit-scope-knob.md` (status flip only: append-only otherwise)
 - `changelog/CHANGELOG.md`
 
 Deleted: none.
@@ -71,15 +71,15 @@ the failing-test task precedes the fix task.
 
 ---
 
-## Phase 1 — route `audit-scopes` init answers into `audit.allowedScopes`
+## Phase 1: route `audit-scopes` init answers into `audit.allowedScopes`
 
-Plumbing only (ADR-0051 Decision 2, init side). No catalog descriptor yet — the descriptor
+Plumbing only (ADR-0051 Decision 2, init side). No catalog descriptor yet: the descriptor
 swap must land atomically with the template swap in Phase 2, because
 `TestVarDescriptorParity` fails whenever the catalog descriptor set and the templates'
 referenced-var set disagree. Phase-1 tests use synthetic descriptors, which the initspec
 test fixtures already do.
 
-- [ ] **Task 1.1 — `initspec.Resolve` gains a resolved-scopes return.** In
+- [ ] **Task 1.1: `initspec.Resolve` gains a resolved-scopes return.** In
   `/home/hypno/Projects/agentic-workflows/internal/initspec/initspec.go`:
 
   Doc comment, old:
@@ -137,20 +137,20 @@ test fixtures already do.
   with
   `return nil, nil, nil, nil, errors.New("initspec: invariantsMarker and invariantsGlobs must be set together")`.
 
-  Final return, old: `	return vars, inv, trim, nil` → new (comma-split, trim, drop empties —
+  Final return, old: `	return vars, inv, trim, nil` → new (comma-split, trim, drop empties:
   `splitNames` already does exactly this; empty answer yields nil):
   ```go
 	return vars, inv, trim, splitNames(scopesRaw), nil
   ```
 
-- [ ] **Task 1.2 — update the 13 `Resolve` call sites in
+- [ ] **Task 1.2: update the 13 `Resolve` call sites in
   `/home/hypno/Projects/agentic-workflows/internal/initspec/initspec_test.go`.** Three
   patterns, applied verbatim at every occurrence:
   - `vars, inv, _, err := Resolve(` → `vars, inv, _, _, err := Resolve(` (4 sites: lines 26, 40, 56, 71)
   - `_, _, trim, err := Resolve(` → `_, _, trim, _, err := Resolve(` (3 sites: lines 173, 186, 209)
   - `if _, _, _, err := Resolve(` → `if _, _, _, _, err := Resolve(` (6 sites: lines 84, 91, 100, 200, 223, 230)
 
-- [ ] **Task 1.3 — routing tests (backs `inv: audit-scopes-descriptor-routed`).** Append to
+- [ ] **Task 1.3: routing tests (backs `inv: audit-scopes-descriptor-routed`).** Append to
   `internal/initspec/initspec_test.go`:
   ```go
   // An audit-scopes answer is comma-split, trimmed, empties dropped, and routed
@@ -169,7 +169,7 @@ test fixtures already do.
   	}
   }
 
-  // An empty (or absent) audit-scopes answer resolves to nil — accept-any
+  // An empty (or absent) audit-scopes answer resolves to nil: accept-any
   // audit semantics, nothing written (ADR-0051, ADR-0017).
   func TestResolveAuditScopesEmptyIsNil(t *testing.T) {
   	ds := []catalog.VarDescriptor{{Key: "commitScopes", Kind: "string", Target: "audit-scopes"}}
@@ -184,7 +184,7 @@ test fixtures already do.
   ```
   (`slices` is already imported in this test file.)
 
-- [ ] **Task 1.4 — `config.Skeleton` gains an audit block.** In
+- [ ] **Task 1.4: `config.Skeleton` gains an audit block.** In
   `/home/hypno/Projects/agentic-workflows/internal/config/edit.go`, old:
   ```go
   type Skeleton struct {
@@ -213,16 +213,16 @@ test fixtures already do.
   }
 
   // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
-  // allowedScopes — the one audit field init collects. Deliberately not
+  // allowedScopes: the one audit field init collects. Deliberately not
   // *AuditConfig, whose zero-value fields would serialize as explicit settings.
   type SkeletonAudit struct {
   	AllowedScopes []string `yaml:"allowedScopes"`
   }
   ```
   (`config.Load` already strict-parses `audit.allowedScopes` via `AuditConfig`; no schema
-  change — additive optional key.)
+  change: additive optional key.)
 
-- [ ] **Task 1.5 — `ScaffoldConfig` writes the audit block.** In
+- [ ] **Task 1.5: `ScaffoldConfig` writes the audit block.** In
   `/home/hypno/Projects/agentic-workflows/internal/project/scaffold.go`, signature old:
   ```go
   func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig, trim *config.CatalogTrim) ([]byte, error) {
@@ -234,7 +234,7 @@ test fixtures already do.
   Immediately before the `return config.MarshalSkeleton(config.Skeleton{` statement, insert:
   ```go
 	// A non-empty resolved commitScopes answer becomes the audit block; an empty
-	// answer writes nothing — nil audit.allowedScopes = accept any (ADR-0017,
+	// answer writes nothing: nil audit.allowedScopes = accept any (ADR-0017,
 	// ADR-0051 Decision 2).
 	// invariant: audit-scopes-descriptor-routed
 	var auditBlk *config.SkeletonAudit
@@ -251,7 +251,7 @@ test fixtures already do.
   `// and the git-hook payloads (ADR-0048) enabled by default, and writes a resolved`
   `// commit-scope list to audit.allowedScopes (ADR-0051).`
 
-- [ ] **Task 1.6 — update `ScaffoldConfig` call sites.**
+- [ ] **Task 1.6: update `ScaffoldConfig` call sites.**
   - `/home/hypno/Projects/agentic-workflows/cmd/awf/init.go` line 44, old:
     ```go
 	vars, inv, trim, err := initspec.Resolve(descs, answers, stdin, stdout, isInteractive())
@@ -271,10 +271,10 @@ test fixtures already do.
   - `/home/hypno/Projects/agentic-workflows/cmd/awf/list_add_test.go` line 20:
     `project.ScaffoldConfig("example", nil, nil, nil)` → `project.ScaffoldConfig("example", nil, nil, nil, nil)`
   - `/home/hypno/Projects/agentic-workflows/internal/project/scaffold_test.go`: append `, nil`
-    to every existing call (8 sites at lines 23, 68, 116, 139, 158, 190, 232, 265 — the two
+    to every existing call (8 sites at lines 23, 68, 116, 139, 158, 190, 232, 265; the two
     trim sites become e.g. `ScaffoldConfig("myproj", nil, nil, &config.CatalogTrim{Skills: &pickSkills}, nil)`).
 
-- [ ] **Task 1.7 — scaffold test.** Append to `internal/project/scaffold_test.go`:
+- [ ] **Task 1.7: scaffold test.** Append to `internal/project/scaffold_test.go`:
   ```go
   // A resolved scope list lands under audit.allowedScopes; an empty list writes
   // no audit key at all (ADR-0051).
@@ -300,7 +300,7 @@ test fixtures already do.
   ```
   (`strings` is already imported there; if not, add it.)
 
-- [ ] **Task 1.8 — verify and commit.**
+- [ ] **Task 1.8: verify and commit.**
   ```
   go test ./internal/initspec/... ./internal/project/... ./internal/config/... ./cmd/awf/...
   ./x gate
@@ -310,14 +310,14 @@ test fixtures already do.
 
 ---
 
-## Phase 2 — render commit scopes from `audit.allowedScopes` (ADR-0051 core)
+## Phase 2: render commit scopes from `audit.allowedScopes` (ADR-0051 core)
 
 Atomic by necessity: the catalog descriptor swap, the eight template-site swaps, the render
 context, and the confighash gate must land together or `TestVarDescriptorParity` /
 `awf check` fail in between.
 
-- [ ] **Task 2.1 — swap the catalog descriptor.** In
-  `/home/hypno/Projects/agentic-workflows/templates/catalog.yaml`, old (lines 380–384):
+- [ ] **Task 2.1: swap the catalog descriptor.** In
+  `/home/hypno/Projects/agentic-workflows/templates/catalog.yaml`, old (lines 380-384):
   ```yaml
     - key: commitScope
       kind: string
@@ -330,12 +330,12 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
     - key: commitScopes
       kind: string
       target: audit-scopes
-      description: Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes — enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.
+      description: Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes, enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.
       default: ""
       options: ["adr,awf,plans"]
   ```
 
-- [ ] **Task 2.2 — descriptor parity accommodates the new target.** In
+- [ ] **Task 2.2: descriptor parity accommodates the new target.** In
   `/home/hypno/Projects/agentic-workflows/internal/project/descriptor_parity_test.go`, old:
   ```go
   var validTargets = []string{"", "var", "invariants-marker", "invariants-globs", "catalog-skills", "catalog-docs"}
@@ -347,14 +347,14 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   (The parity assertions themselves need no change: `commitScopes` has a non-var target, so
   it is exempt from the var-parity checks, and `commitScope` disappears from both sides.)
 
-- [ ] **Task 2.3 — `render.ReferencesScopes`.** In
+- [ ] **Task 2.3: `render.ReferencesScopes`.** In
   `/home/hypno/Projects/agentic-workflows/internal/render/vars.go`, after the `skillsRE`
   declaration and `ReferencesSkills`, add:
   ```go
   var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
 
   // ReferencesScopes reports whether src reads the resolved commit-scope render
-  // context (any {{ … .commitScopes … }} action) — such templates fold the
+  // context (any {{ ... .commitScopes ... }} action): such templates fold the
   // resolved scope list into their config hash (ADR-0051, mirroring ADR-0046's
   // ReferencesSkills).
   func ReferencesScopes(src string) bool { return scopesRE.MatchString(src) }
@@ -371,7 +371,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   }
   ```
 
-- [ ] **Task 2.4 — render context key.** In
+- [ ] **Task 2.4: render context key.** In
   `/home/hypno/Projects/agentic-workflows/internal/project/render.go`:
   add `"github.com/hypnotox/agentic-workflows/internal/audit"` to the imports; in
   `Project.data`, old:
@@ -400,9 +400,9 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   and add below `data`:
   ```go
   // commitScopesDisplay returns the display-formatted allowed commit-scope list
-  // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes — the same
+  // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes (the same
   // audit.Resolve path awf commit-gate reads, so prose and gate agree by
-  // construction — or "" when scopes are accept-any (ADR-0051).
+  // construction) or "" when scopes are accept-any (ADR-0051).
   func (p *Project) commitScopesDisplay() string {
   	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes
   	if len(scopes) == 0 {
@@ -416,7 +416,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   }
   ```
 
-- [ ] **Task 2.5 — confighash fold (backs `inv: scopes-in-confighash`).** In
+- [ ] **Task 2.5: confighash fold (backs `inv: scopes-in-confighash`).** In
   `/home/hypno/Projects/agentic-workflows/internal/project/confighash.go`: add
   `"github.com/hypnotox/agentic-workflows/internal/audit"` to the imports, and after the
   existing `ReferencesSkills` block, insert:
@@ -429,7 +429,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
 	}
   ```
 
-- [ ] **Task 2.6 — swap the eight template sites.** In each file the swapped clause is
+- [ ] **Task 2.6: swap the eight template sites.** In each file the swapped clause is
   identical; the surrounding sentences differ and are preserved exactly.
 
   `/home/hypno/Projects/agentic-workflows/templates/skills/reviewing-adr/SKILL.md.tmpl`:
@@ -474,7 +474,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
 
   `/home/hypno/Projects/agentic-workflows/templates/skills/reviewing-impl/SKILL.md.tmpl`:
   - line 37: same old→new as reviewing-adr line 32.
-  - line 50 (also carries the gateCmd clause — preserve it), old:
+  - line 50 (also carries the gateCmd clause; preserve it), old:
     ```
     5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) using {{ with .vars.commitScope }}the `{{ . }}` scope{{ else }}the project's commit scope{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
     ```
@@ -483,7 +483,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
     5. **Commit applied fixes.** Fixes land as new commits (never `--amend`) {{ with .commitScopes }}using a Conventional-Commits scope from {{ . }}{{ else }}using the project's commit scope conventions{{ end }}; {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} passes before each commit. The agent applies the edits; this skill ensures the commit convention is followed.
     ```
 
-- [ ] **Task 2.7 — update the spine-test fixtures.** In
+- [ ] **Task 2.7: update the spine-test fixtures.** In
   `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go` the four reviewing
   templates are rendered directly; move the scope from the (now-unreferenced) var to the new
   top-level context key:
@@ -524,13 +524,13 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
 		"commitScopes": "`feat`",
     ```
 
-- [ ] **Task 2.8 — single-storage scan test (backs `inv: commit-scope-single-storage`).**
+- [ ] **Task 2.8: single-storage scan test (backs `inv: commit-scope-single-storage`).**
   Append to `/home/hypno/Projects/agentic-workflows/internal/project/templates_vars_test.go`
   (add `"github.com/hypnotox/agentic-workflows/internal/catalog"` to its imports):
   ```go
   // TestCommitScopeSingleStorage asserts commit scopes have one storage
   // (ADR-0051): no template references .vars.commitScope and the catalog vars
-  // block carries no commitScope descriptor — every rendered scope mention
+  // block carries no commitScope descriptor: every rendered scope mention
   // derives from audit.allowedScopes via the commitScopes render-context key.
   // invariant: commit-scope-single-storage
   func TestCommitScopeSingleStorage(t *testing.T) {
@@ -546,7 +546,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   			return err
   		}
   		if strings.Contains(string(b), ".vars.commitScope") {
-  			t.Errorf("%s references .vars.commitScope — commit scopes live in audit.allowedScopes (ADR-0051)", path)
+  			t.Errorf("%s references .vars.commitScope: commit scopes live in audit.allowedScopes (ADR-0051)", path)
   		}
   		return nil
   	})
@@ -565,10 +565,10 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   }
   ```
 
-- [ ] **Task 2.9 — drift test: a scopes edit reflags exactly the referencing artifacts.**
+- [ ] **Task 2.9: drift test: a scopes edit reflags exactly the referencing artifacts.**
   Append to `/home/hypno/Projects/agentic-workflows/internal/project/drift_test.go`
   (reuses `scaffold`, `testsupport.WriteAwfConfig`, and the `Open`/`Sync`/`Check` flow that
-  `TestPerTargetDriftProjection` uses; add `os` and `strings` to the file's imports — it has
+  `TestPerTargetDriftProjection` uses; add `os` and `strings` to the file's imports: it has
   neither today). The config enables the full reference-closed core chain plus all three
   reviewer agents: the rendered reviewing skills name the other chain skills unconditionally,
   so a thinner enable set makes `Check` return ADR-0046 `dead-skill-reference` findings that
@@ -629,7 +629,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   }
   ```
 
-- [ ] **Task 2.10 — end-to-end init test.** Append to
+- [ ] **Task 2.10: end-to-end init test.** Append to
   `/home/hypno/Projects/agentic-workflows/cmd/awf/init_test.go`:
   ```go
   // A commitScopes answer lands in audit.allowedScopes, never in vars; the
@@ -656,7 +656,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   (The existing `TestInitNonInteractiveDefault` plus Task 1.7's nil-scopes assertion cover
   the empty-answer-writes-nothing half.)
 
-- [ ] **Task 2.11 — drop the var from this repo's config.** In
+- [ ] **Task 2.11: drop the var from this repo's config.** In
   `/home/hypno/Projects/agentic-workflows/.awf/config.yaml`, delete the line:
   ```yaml
     commitScope: awf
@@ -664,7 +664,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
   (under `vars:`; the surrounding lines `commitGateCmd: ./x commit-gate` and
   `docCurrencyTargets: ...` stay).
 
-- [ ] **Task 2.12 — sync, verify, commit.**
+- [ ] **Task 2.12: sync, verify, commit.**
   ```
   ./x sync      # expected: "awf sync: done"
   ./x check     # expected: "awf check: clean"
@@ -680,7 +680,7 @@ context, and the confighash gate must land together or `TestVarDescriptorParity`
 
 ---
 
-## Phase 3 — init prompting falls silent after stdin EOF (test-first)
+## Phase 3: init prompting falls silent after stdin EOF (test-first)
 
 `awf init < /dev/null` today: `/dev/null` is a char device, so `isInteractive()` is true and
 every prompt streams to stdout while each read EOFs to the default
@@ -688,7 +688,7 @@ every prompt streams to stdout while each read EOFs to the default
 layer: latch EOF in a small reader wrapper; once latched, all remaining descriptors take the
 silent path and no further prompt text is emitted.
 
-- [ ] **Task 3.1 — failing regression test.** Append to
+- [ ] **Task 3.1: failing regression test.** Append to
   `/home/hypno/Projects/agentic-workflows/internal/initspec/initspec_test.go`:
   ```go
   // A prompt stream that hits EOF (e.g. /dev/null, which stats as a char device
@@ -705,10 +705,10 @@ silent path and no further prompt text is emitted.
   	if err != nil {
   		t.Fatal(err)
   	}
-  	if !strings.Contains(out.String(), "first —") {
+  	if !strings.Contains(out.String(), "first:") {
   		t.Errorf("the first prompt should have been emitted:\n%s", out.String())
   	}
-  	if strings.Contains(out.String(), "second —") {
+  	if strings.Contains(out.String(), "second:") {
   		t.Errorf("prompt text emitted after EOF:\n%s", out.String())
   	}
   	if vars["first"] != "d1" {
@@ -719,16 +719,16 @@ silent path and no further prompt text is emitted.
   	}
   }
   ```
-  Run `go test ./internal/initspec/ -run TestResolveEOFFallsSilent` — expected: FAIL with
+  Run `go test ./internal/initspec/ -run TestResolveEOFFallsSilent`; expected: FAIL with
   `prompt text emitted after EOF` (current code prompts every descriptor).
 
-- [ ] **Task 3.2 — the fix.** In
+- [ ] **Task 3.2: the fix.** In
   `/home/hypno/Projects/agentic-workflows/internal/initspec/initspec.go`:
 
   Add above `Resolve`:
   ```go
   // promptReader wraps the prompt input and latches EOF, so Resolve stops
-  // prompting (and stops emitting prompt text) once the input is exhausted —
+  // prompting (and stops emitting prompt text) once the input is exhausted:
   // an init reading /dev/null or a closed stdin degrades to the silent path
   // instead of streaming every remaining prompt to nobody.
   type promptReader struct {
@@ -736,7 +736,7 @@ silent path and no further prompt text is emitted.
   	eof bool
   }
 
-  // line reads one line; EOF is latched, not returned — the partial line (or
+  // line reads one line; EOF is latched, not returned: the partial line (or
   // empty string) read alongside it is still the answer.
   func (pr *promptReader) line() (string, error) {
   	s, err := pr.r.ReadString('\n')
@@ -809,11 +809,11 @@ silent path and no further prompt text is emitted.
   ```
   (`bufio`, `io`, `fmt` imports all stay; the read-error message is unchanged, so
   `TestResolvePromptReadError` and `TestResolveMultiselectPromptReadError` keep passing. The
-  cmd-level `TestInitInteractivePromptWiring` also keeps passing — its prompted first value
+  cmd-level `TestInitInteractivePromptWiring` also keeps passing: its prompted first value
   is consumed before EOF, and the later descriptors now resolve empty, which is what it
   asserts.)
 
-- [ ] **Task 3.3 — verify and commit.**
+- [ ] **Task 3.3: verify and commit.**
   ```
   go test ./internal/initspec/... ./cmd/awf/...
   ./x gate
@@ -823,17 +823,17 @@ silent path and no further prompt text is emitted.
 
 ---
 
-## Phase 4 — probe init collisions before prompting (test-first)
+## Phase 4: probe init collisions before prompting (test-first)
 
 `cmd/awf/init.go` today prompts fully, scaffolds the config, and only then lets
-`InitCollisions` refuse — wasted prompts and a rollback. Reorder: a conservative pre-prompt
-probe against the curated-core planned-output set (computed by scaffolding into a temp dir —
+`InitCollisions` refuse: wasted prompts and a rollback. Reorder: a conservative pre-prompt
+probe against the curated-core planned-output set (computed by scaffolding into a temp dir:
 the paths are project-relative, so they transfer; the prefix is `filepath.Base(root)` either
-way). The existing post-answer check + rollback stays as the accurate second line — a trim
+way). The existing post-answer check + rollback stays as the accurate second line: a trim
 answer (`--set skills=...`) can enable non-core artifacts the curated-core probe set does
 not cover. `--force` skips the probe.
 
-- [ ] **Task 4.1 — failing test.** Append to
+- [ ] **Task 4.1: failing test.** Append to
   `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go`:
   ```go
   // A collision refuses BEFORE any prompt: with a colliding AGENTS.md and an
@@ -862,10 +862,10 @@ not cover. `--force` skips the probe.
   	}
   }
   ```
-  Run `go test ./cmd/awf/ -run TestInitCollisionProbeRefusesBeforePrompts` — expected: FAIL
+  Run `go test ./cmd/awf/ -run TestInitCollisionProbeRefusesBeforePrompts`; expected: FAIL
   (`prompt text emitted before the collision refusal`).
 
-- [ ] **Task 4.2 — extract `CollisionsAt`.** In
+- [ ] **Task 4.2: extract `CollisionsAt`.** In
   `/home/hypno/Projects/agentic-workflows/internal/project/install.go`, replace the body of
   `InitCollisions` (keep its doc comment), old:
   ```go
@@ -930,14 +930,14 @@ not cover. `--force` skips the probe.
   ```
   (`config`, `manifest`, `sort`, `os`, `filepath` are all already imported there.)
 
-- [ ] **Task 4.3 — the probe in `runInit`.** In
+- [ ] **Task 4.3: the probe in `runInit`.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/init.go`:
 
   Insert between the `MergeSetFlags` block and the `initspec.Resolve` call:
   ```go
 	// Pre-prompt probe (conservative): refuse collisions before asking a single
 	// question or writing anything. The post-answer InitCollisions below stays
-	// as the accurate second line — a trim answer can enable non-core artifacts
+	// as the accurate second line: a trim answer can enable non-core artifacts
 	// this curated-core probe set does not cover. --force skips the probe.
 	if !force {
 		collisions, err := probeCollisions(root)
@@ -1008,7 +1008,7 @@ not cover. `--force` skips the probe.
   	return project.CollisionsAt(root, planned), nil
   }
   ```
-  (All needed imports — `os`, `filepath`, `fmt`, `strings`, `config`, `project` — are already
+  (All needed imports (`os`, `filepath`, `fmt`, `strings`, `config`, `project`) are already
   in `init.go`.)
 
   Existing tests keep passing: `TestInitGuardBlocksAndForceOverrides` and
@@ -1019,7 +1019,7 @@ not cover. `--force` skips the probe.
   malformed ADR lives at the real root, not the temp scaffold) and still fails at the
   post-answer check.
 
-- [ ] **Task 4.4 — keep the demoted branches covered.** The reorder strands two branches
+- [ ] **Task 4.4: keep the demoted branches covered.** The reorder strands two branches
   the pre-existing tests used to drive, and `./x gate` fails the 100% bar (ADR-0012)
   without replacements: the post-answer refusal + rollback in `runInit` (both collision
   tests now refuse at the probe instead) and `runInit`'s post-scaffold `project.Open`
@@ -1060,13 +1060,13 @@ not cover. `--force` skips the probe.
   inside the function:
   ```go
   	// --force skips the probe, so the same malformed config now fails at
-  	// runInit's own post-scaffold project.Open — keeping that branch covered.
+  	// runInit's own post-scaffold project.Open, keeping that branch covered.
   	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
   		t.Fatal("expected init --force to fail when project.Open errors")
   	}
   ```
 
-- [ ] **Task 4.5 — verify and commit.**
+- [ ] **Task 4.5: verify and commit.**
   ```
   go test ./cmd/awf/... ./internal/project/...
   ./x gate
@@ -1076,9 +1076,9 @@ not cover. `--force` skips the probe.
 
 ---
 
-## Phase 5 — post-init unset-var notes and next steps (test-first)
+## Phase 5: post-init unset-var notes and next steps (test-first)
 
-- [ ] **Task 5.1 — failing test.** Append to
+- [ ] **Task 5.1: failing test.** Append to
   `/home/hypno/Projects/agentic-workflows/cmd/awf/init_test.go`:
   ```go
   // After the chained sync succeeds, init prints the render-completeness notes
@@ -1103,10 +1103,10 @@ not cover. `--force` skips the probe.
   	}
   }
   ```
-  Run `go test ./cmd/awf/ -run TestInitPrintsNotesAndNextSteps` — expected: FAIL (missing
+  Run `go test ./cmd/awf/ -run TestInitPrintsNotesAndNextSteps`; expected: FAIL (missing
   `next steps:`).
 
-- [ ] **Task 5.2 — the feature.** In
+- [ ] **Task 5.2: the feature.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/init.go`, replace the tail of `runInit`, old:
   ```go
 	if err := runSync(root, stdout); err != nil {
@@ -1143,13 +1143,13 @@ not cover. `--force` skips the probe.
   next steps:
     1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf sync.
     2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf sync.
-    3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section) — awf never activates hooks itself.
+    3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself.
     4. Commit .awf/ and the rendered files together.
   `
   ```
-  (Indentation inside the raw string is literal output — keep it exactly as written.)
+  (Indentation inside the raw string is literal output; keep it exactly as written.)
 
-- [ ] **Task 5.3 — verify and commit.**
+- [ ] **Task 5.3: verify and commit.**
   ```
   go test ./cmd/awf/...
   ./x gate
@@ -1159,7 +1159,7 @@ not cover. `--force` skips the probe.
 
 ---
 
-## Phase 6 — hook-command descriptors stop suggesting unpinned awf
+## Phase 6: hook-command descriptors stop suggesting unpinned awf
 
 The rendered hook payloads carry a bootstrap shim that runs the *pinned* awf when the
 command var is empty (`templates/hooks/*.sh.tmpl`); offering `"awf check"` /
@@ -1168,7 +1168,7 @@ PATH awf is installed. `activeMdRegenCmd` keeps its `awf sync` option deliberate
 quoted in skill prose for an agent to run in a session, not executed by a hook payload, so
 the bootstrap-shim pinning story does not apply to it.
 
-- [ ] **Task 6.1 — catalog edits.** In
+- [ ] **Task 6.1: catalog edits.** In
   `/home/hypno/Projects/agentic-workflows/templates/catalog.yaml`:
 
   old:
@@ -1205,12 +1205,12 @@ the bootstrap-shim pinning story does not apply to it.
       options: ["./x commit-gate"]
   ```
 
-- [ ] **Task 6.2 — verify and commit.** Descriptor metadata renders nothing, so no sync is
+- [ ] **Task 6.2: verify and commit.** Descriptor metadata renders nothing, so no sync is
   needed (confirm: `./x check` → `awf check: clean`).
   ```
   go run ./cmd/awf init --describe | grep -c '"awf check"\|"awf commit-gate"'
   ```
-  Expected output: `0` (note `grep -c` exits 1 when it counts 0 matches — that nonzero
+  Expected output: `0` (note `grep -c` exits 1 when it counts 0 matches: that nonzero
   exit is the pass condition here, not a failure).
   ```
   ./x gate
@@ -1220,13 +1220,13 @@ the bootstrap-shim pinning story does not apply to it.
 
 ---
 
-## Phase 7 — bare `awf list` shows all seven kinds (test-first)
+## Phase 7: bare `awf list` shows all seven kinds (test-first)
 
-- [ ] **Task 7.1 — failing test.** Append to
+- [ ] **Task 7.1: failing test.** Append to
   `/home/hypno/Projects/agentic-workflows/cmd/awf/list_add_test.go`:
   ```go
-  // Bare `awf list` covers every kind — the four catalog/domain kinds plus
-  // target, bootstrap, and hooks — and an empty kind prints (none) under its
+  // Bare `awf list` covers every kind (the four catalog/domain kinds plus
+  // target, bootstrap, and hooks) and an empty kind prints (none) under its
   // header. A single-kind filter still prints only that kind.
   func TestRunListBareShowsAllKinds(t *testing.T) {
   	root := scaffoldedProject(t)
@@ -1251,12 +1251,12 @@ the bootstrap-shim pinning story does not apply to it.
   	}
   }
   ```
-  Run `go test ./cmd/awf/ -run TestRunListBareShowsAllKinds` — expected: FAIL (missing
+  Run `go test ./cmd/awf/ -run TestRunListBareShowsAllKinds`; expected: FAIL (missing
   `targets:`).
 
-- [ ] **Task 7.2 — the feature.** In
+- [ ] **Task 7.2: the feature.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/list_add.go`, replace the whole `runList`
-  function (currently lines 272–333) with:
+  function (currently lines 272-333) with:
   ```go
   // listTargets, listBootstrap, and listHooks print the three non-catalog kind
   // blocks; runList shares them between the single-kind filters and the bare
@@ -1348,7 +1348,7 @@ the bootstrap-shim pinning story does not apply to it.
   (This preserves the previous per-filter output byte-for-byte, so
   `TestRunTargetCLI`/`TestRunBootstrapCLI`/`TestRunHooksCLI` assertions keep passing.)
 
-- [ ] **Task 7.3 — verify and commit.**
+- [ ] **Task 7.3: verify and commit.**
   ```
   go test ./cmd/awf/...
   ./x gate
@@ -1358,9 +1358,9 @@ the bootstrap-shim pinning story does not apply to it.
 
 ---
 
-## Phase 8 — `awf help <cmd>` dispatches to per-command help (test-first)
+## Phase 8: `awf help <cmd>` dispatches to per-command help (test-first)
 
-- [ ] **Task 8.1 — failing test.** Append to
+- [ ] **Task 8.1: failing test.** Append to
   `/home/hypno/Projects/agentic-workflows/cmd/awf/help_test.go`:
   ```go
   // `awf help <cmd>` prints that command's --help text; an unknown command
@@ -1382,11 +1382,11 @@ the bootstrap-shim pinning story does not apply to it.
   	}
   }
   ```
-  (Match this file's existing imports — add `bytes`/`strings` if absent.) Run
-  `go test ./cmd/awf/ -run TestHelpSubcommandDispatch` — expected: FAIL (overview printed for
+  (Match this file's existing imports; add `bytes`/`strings` if absent.) Run
+  `go test ./cmd/awf/ -run TestHelpSubcommandDispatch`; expected: FAIL (overview printed for
   `help sync`).
 
-- [ ] **Task 8.2 — the feature.** In
+- [ ] **Task 8.2: the feature.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/main.go`, old:
   ```go
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
@@ -1408,7 +1408,7 @@ the bootstrap-shim pinning story does not apply to it.
 	}
   ```
 
-- [ ] **Task 8.3 — verify and commit.**
+- [ ] **Task 8.3: verify and commit.**
   ```
   go test ./cmd/awf/...
   ./x gate
@@ -1418,9 +1418,9 @@ the bootstrap-shim pinning story does not apply to it.
 
 ---
 
-## Phase 9 — document the answers schema, prefix derivation, and Windows pinning
+## Phase 9: document the answers schema, prefix derivation, and Windows pinning
 
-- [ ] **Task 9.1 — `--answers` help text.** In
+- [ ] **Task 9.1: `--answers` help text.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/main.go`, in the `init` argSpec help, old:
   ```
 	  --set k=v      set a value non-interactively (repeatable)
@@ -1433,22 +1433,22 @@ the bootstrap-shim pinning story does not apply to it.
 	                 of descriptor keys (see --describe); multiselect answers
 	                 (skills, docs) are comma-joined name lists
   ```
-  (Keep the surrounding backtick-string indentation exactly — these lines are inside the
+  (Keep the surrounding backtick-string indentation exactly: these lines are inside the
   raw help literal.)
 
-- [ ] **Task 9.2 — README prefix derivation.** In
+- [ ] **Task 9.2: README prefix derivation.** In
   `/home/hypno/Projects/agentic-workflows/README.md`, in the "Adopting into an existing
   repo" bullet list, old:
   ```
-  - **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
+  - **Trim to taste**: the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
   ```
   new:
   ```
-  - **Trim to taste** — the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
-  - **Prefix** — rendered skills are named `<prefix>-<skill>`; `awf init` derives `prefix` from the repo directory's basename. Change it via the `prefix` key in `.awf/config.yaml`, then `awf sync`.
+  - **Trim to taste**: the curated default is small; grow or shrink it with `awf add`/`remove <kind> <name>` (or edit `.awf/config.yaml` directly).
+  - **Prefix**: rendered skills are named `<prefix>-<skill>`; `awf init` derives `prefix` from the repo directory's basename. Change it via the `prefix` key in `.awf/config.yaml`, then `awf sync`.
   ```
 
-- [ ] **Task 9.3 — README Windows note.** In the "Pinning with `.awf/bootstrap.sh`"
+- [ ] **Task 9.3: README Windows note.** In the "Pinning with `.awf/bootstrap.sh`"
   subsection, old:
   ```
   It touches nothing outside its cache directory, and `awf remove bootstrap` deletes it if
@@ -1458,12 +1458,12 @@ the bootstrap-shim pinning story does not apply to it.
   ```
   It touches nothing outside its cache directory, and `awf remove bootstrap` deletes it if
   you'd rather manage the binary yourself. The bootstrap and the rendered hook payloads are
-  bash scripts and the bootstrap targets the linux/darwin archives — on Windows, install awf
+  bash scripts and the bootstrap targets the linux/darwin archives; on Windows, install awf
   on `PATH` and run it directly instead of through the pin.
   ```
 
-- [ ] **Task 9.4 — verify and commit.** (README is hand-maintained — outside the render/lock
-  set — so no sync.)
+- [ ] **Task 9.4: verify and commit.** (README is hand-maintained, outside the render/lock
+  set, so no sync.)
   ```
   ./x gate
   git add cmd/awf/main.go README.md
@@ -1472,9 +1472,9 @@ the bootstrap-shim pinning story does not apply to it.
 
 ---
 
-## Phase 10 — AGENTS.md Commands placeholder + command dedupe (test-first)
+## Phase 10: AGENTS.md Commands placeholder + command dedupe (test-first)
 
-- [ ] **Task 10.1 — failing test.** Append to
+- [ ] **Task 10.1: failing test.** Append to
   `/home/hypno/Projects/agentic-workflows/internal/project/singleton_test.go` (uses the
   package's `scaffold` helper; add `os`/`filepath`/`strings` imports only if missing):
   ```go
@@ -1506,53 +1506,53 @@ the bootstrap-shim pinning story does not apply to it.
   		t.Errorf("empty Commands section missing the placeholder:\n%s", empty)
   	}
   	dup := agentsDocContent(t, "prefix: example\nvars:\n  testCmd: make test\n  gateCmd: make test\n  checkCmd: make check\nskills: []\nagents: []\n")
-  	if got := strings.Count(dup, "- `make test` — run the test suite"); got != 1 {
+  	if got := strings.Count(dup, "- `make test`: run the test suite"); got != 1 {
   		t.Errorf("testCmd line rendered %d times, want 1:\n%s", got, dup)
   	}
-  	if strings.Contains(dup, "— run the gate before committing") {
+  	if strings.Contains(dup, ": run the gate before committing") {
   		t.Errorf("gateCmd identical to testCmd must not render its own Commands line:\n%s", dup)
   	}
-  	if !strings.Contains(dup, "`make check` — check rendered files for drift") {
+  	if !strings.Contains(dup, "`make check`: check rendered files for drift") {
   		t.Errorf("distinct checkCmd line missing:\n%s", dup)
   	}
   }
   ```
-  (Assert on the Commands-section line texts, not on a bare `` `make test` `` count —
+  (Assert on the Commands-section line texts, not on a bare `` `make test` `` count:
   `.vars.gateCmd` also renders in the Invariants bullet and the Workflow paragraph of
   `AGENTS.md.tmpl`, so the whole-document count is 3 even after a correct dedupe.)
-  Run `go test ./internal/project/ -run TestAgentsDocCommandsPlaceholderAndDedupe` —
-  expected: FAIL (no placeholder; a duplicate "— run the gate before committing" line
+  Run `go test ./internal/project/ -run TestAgentsDocCommandsPlaceholderAndDedupe`;
+  expected: FAIL (no placeholder; a duplicate ": run the gate before committing" line
   renders).
 
-- [ ] **Task 10.2 — the template.** In
+- [ ] **Task 10.2: the template.** In
   `/home/hypno/Projects/agentic-workflows/templates/agents-doc/AGENTS.md.tmpl`, Commands
   section (the inner triple-backtick lines are literal template content), old:
   ````
   {{ if .data.commands -}}
   ```
-  {{ range .data.commands }}{{ .cmd }} — {{ .desc }}
+  {{ range .data.commands }}{{ .cmd }}: {{ .desc }}
   {{ end -}}
   ```
   {{- else -}}
-  {{ with .vars.testCmd }}- `{{ . }}` — run the test suite
-  {{ end }}{{ with .vars.gateCmd }}- `{{ . }}` — run the gate before committing
-  {{ end }}{{ with .vars.checkCmd }}- `{{ . }}` — check rendered files for drift
+  {{ with .vars.testCmd }}- `{{ . }}`: run the test suite
+  {{ end }}{{ with .vars.gateCmd }}- `{{ . }}`: run the gate before committing
+  {{ end }}{{ with .vars.checkCmd }}- `{{ . }}`: check rendered files for drift
   {{ end }}{{- end }}
   ````
-  new (the `.data.commands` branch is byte-identical — only the else branch changes; `or X ""`
+  new (the `.data.commands` branch is byte-identical: only the else branch changes; `or X ""`
   normalizes a missing/nil var to a comparable empty string under `missingkey=zero`):
   ````
   {{ if .data.commands -}}
   ```
-  {{ range .data.commands }}{{ .cmd }} — {{ .desc }}
+  {{ range .data.commands }}{{ .cmd }}: {{ .desc }}
   {{ end -}}
   ```
   {{- else -}}
   {{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := or .vars.checkCmd "" -}}
   {{- if or $test $gate $check -}}
-  {{ with $test }}- `{{ . }}` — run the test suite
-  {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}` — run the gate before committing
-  {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}` — check rendered files for drift
+  {{ with $test }}- `{{ . }}`: run the test suite
+  {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing
+  {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift
   {{ end }}{{- else }}
   <!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf sync. -->
   {{ end -}}
@@ -1560,10 +1560,10 @@ the bootstrap-shim pinning story does not apply to it.
   ````
   (The placeholder mirrors the Identity section's pattern: self-describing, names the exact
   config surface to edit. If the new unit test flags stray blank lines, adjust only the `-`
-  trim markers — never the emitted text.)
+  trim markers, never the emitted text.)
 
-- [ ] **Task 10.3 — sync, byte-identical verify, commit.** This repo's AGENTS.md supplies
-  `data.commands` via `.awf/agents-doc.yaml`, so its content must not change — only the lock
+- [ ] **Task 10.3: sync, byte-identical verify, commit.** This repo's AGENTS.md supplies
+  `data.commands` via `.awf/agents-doc.yaml`, so its content must not change: only the lock
   re-stamps the template hash:
   ```
   ./x sync && ./x check
@@ -1575,7 +1575,7 @@ the bootstrap-shim pinning story does not apply to it.
    M internal/project/singleton_test.go
    M templates/agents-doc/AGENTS.md.tmpl
   ```
-  — in particular, `AGENTS.md` must NOT appear (byte-identical). Then:
+  ; in particular, `AGENTS.md` must NOT appear (byte-identical). Then:
   ```
   ./x gate
   git add templates/agents-doc/AGENTS.md.tmpl internal/project/singleton_test.go .awf/awf.lock
@@ -1584,23 +1584,23 @@ the bootstrap-shim pinning story does not apply to it.
 
 ---
 
-## Phase 11 — soften the `domains` frontmatter guidance
+## Phase 11: soften the `domains` frontmatter guidance
 
 `awf new adr` scaffolds `domains: []` while the proposing-adr skill calls the field
-"≥1 … required" unconditionally — wrong for projects with no configured domains. Align the
+"≥1 ... required" unconditionally: wrong for projects with no configured domains. Align the
 prose: fill ≥1 domain key before committing *when the project configures domain docs*;
 otherwise leave it empty.
 
-- [ ] **Task 11.1 —
+- [ ] **Task 11.1:
   `/home/hypno/Projects/agentic-workflows/templates/skills/proposing-adr/SKILL.md.tmpl`.**
 
-  Line 31, old (one line — the tail only, shown from `` `domains` ``):
+  Line 31, old (one line: the tail only, shown from `` `domains` ``):
   ```
-  `domains` (≥1 coarse domain key — drives the per-domain `{{ .layout.domainsDir }}/<domain>.md` index).
+  `domains` (≥1 coarse domain key: drives the per-domain `{{ .layout.domainsDir }}/<domain>.md` index).
   ```
   new:
   ```
-  `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index — fill ≥1 before committing when the project configures domain docs; otherwise leave `[]`).
+  `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index: fill ≥1 before committing when the project configures domain docs; otherwise leave `[]`).
   ```
 
   Line 49, old:
@@ -1609,12 +1609,12 @@ otherwise leave it empty.
   ```
   new:
   ```
-     - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty — `domains` stays `[]` when the project configures no domain docs.
+     - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
   ```
 
-- [ ] **Task 11.2 —
+- [ ] **Task 11.2:
   `/home/hypno/Projects/agentic-workflows/templates/adr-readme/README.md.tmpl`** (lines
-  49–51), old:
+  49-51), old:
   ```
   `domains:` lists the coarse domains this decision belongs to; each one's generated
   `## Decisions` index under `{{ .layout.domainsDir }}/` is built from this field, so set it on every
@@ -1627,9 +1627,9 @@ otherwise leave it empty.
   ADR when the project configures domain docs (use the existing domain names); otherwise
   leave it `[]`.
   ```
-  (The `adr-template` scaffold itself already ships `domains: []` — no change there.)
+  (The `adr-template` scaffold itself already ships `domains: []`: no change there.)
 
-- [ ] **Task 11.3 — sync, verify, commit.**
+- [ ] **Task 11.3: sync, verify, commit.**
   ```
   ./x sync && ./x check
   ```
@@ -1643,14 +1643,14 @@ otherwise leave it empty.
 
 ---
 
-## Phase 12 — flip ADR-0051 Implemented, domain narrative, `## [0.6.0]` changelog
+## Phase 12: flip ADR-0051 Implemented, domain narrative, `## [0.6.0]` changelog
 
-- [ ] **Task 12.1 — status flip.** In
+- [ ] **Task 12.1: status flip.** In
   `/home/hypno/Projects/agentic-workflows/docs/decisions/0051-single-commit-scope-knob.md`,
   frontmatter, old: `status: Proposed` → new: `status: Implemented`. No other edit
   (append-only ADRs).
 
-- [ ] **Task 12.2 — domain narratives.** Append to the end of
+- [ ] **Task 12.2: domain narratives.** Append to the end of
   `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md` (same
   paragraph, one added sentence at the very end):
   ```
@@ -1659,14 +1659,14 @@ otherwise leave it empty.
   Append to the end of
   `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/rendering/current-state.md`:
   ```
-   The render context also exposes `.commitScopes` — the display-formatted `audit.allowedScopes` list, empty when accept-any — folded into the config hash of referencing artifacts like `.skills`, so an `audit.allowedScopes` edit reflags exactly the templates that quote it (ADR-0051).
+   The render context also exposes `.commitScopes` (the display-formatted `audit.allowedScopes` list, empty when accept-any) folded into the config hash of referencing artifacts like `.skills`, so an `audit.allowedScopes` edit reflags exactly the templates that quote it (ADR-0051).
   ```
   (Each is one sentence appended to the existing final paragraph with a leading space, not a
   new paragraph.)
 
-- [ ] **Task 12.3 — changelog entry.** In
+- [ ] **Task 12.3: changelog entry.** In
   `/home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md`, insert directly above the
-  `## [0.5.1] - 2026-07-01` line (grouping per the header convention and ADR-0041 — by
+  `## [0.5.1] - 2026-07-01` line (grouping per the header convention and ADR-0041: by
   adopter-facing effect; the batch is everything in `git log v0.5.1..HEAD`; the tag push
   itself remains a user action per docs/releasing.md):
   ```markdown
@@ -1683,7 +1683,7 @@ otherwise leave it empty.
     A leftover var entry is inert; set `audit.allowedScopes` and re-sync to keep the prose.
   ### Features
   - Render three inert git-hook payload scripts (`pre-commit`/`commit-msg`/`pre-push`) under
-    `.awf/hooks/` via a `hooks` singleton — enabled by default at init, toggled with
+    `.awf/hooks/` via a `hooks` singleton: enabled by default at init, toggled with
     `awf add/remove hooks`; awf still never touches git config (ADR-0048).
   - Add `awf new adr`, scaffolding the next sequential ADR from the rendered template (ADR-0042).
   - Add `awf changelog` with `--version`/`--since`/`--range` filters over an embedded changelog
@@ -1691,8 +1691,8 @@ otherwise leave it empty.
   - `awf add domain` scaffolds the domain's `current-state.md` convention part alongside the
     config edit.
   - The rendered workflow doc gains gate-composition and CI-backstop sections.
-  - Every var/data interpolation degrades to coherent generic prose when unset — an empty
-    `awf init` renders publication-safe output — and `awf check`/`awf init` print advisory
+  - Every var/data interpolation degrades to coherent generic prose when unset (an empty
+    `awf init` renders publication-safe output) and `awf check`/`awf init` print advisory
     notes for referenced-but-unset vars (ADR-0045).
   - `awf check` fails on a rendered reference to a catalog skill outside the enabled set, and
     templates can read the enabled-skill set to conditionalize prose (ADR-0046).
@@ -1722,21 +1722,21 @@ otherwise leave it empty.
 
   ```
   (Keep one blank line between this entry and `## [0.5.1]`. `project.Version` is already
-  `0.6.0` — bumped by the ADR-0049 work — so no version-const change; docs/releasing.md step
+  `0.6.0` (bumped by the ADR-0049 work), so no version-const change; docs/releasing.md step
   2's version check is satisfied.)
 
-- [ ] **Task 12.4 — regenerate, full verify, commit.**
+- [ ] **Task 12.4: regenerate, full verify, commit.**
   ```
   ./x sync      # regenerates docs/decisions/ACTIVE.md + docs/domains/{config,rendering}.md; expected "awf sync: done"
   ./x check     # expected: "awf check: clean"
   ./x invariants # expected: exit 0, no unbacked-slug findings (0051's three slugs are backed by Phases 1-2 markers)
   ./x gate      # expected: PASS, 100% coverage
-  ./x audit     # advisory — review findings; the ADR flip + domain-index regen land in this same commit, satisfying the co-change rule
+  ./x audit     # advisory: review findings; the ADR flip + domain-index regen land in this same commit, satisfying the co-change rule
   git add docs/decisions/0051-single-commit-scope-knob.md docs/decisions/ACTIVE.md docs/domains/config.md docs/domains/rendering.md .awf/domains/parts/config/current-state.md .awf/domains/parts/rendering/current-state.md changelog/CHANGELOG.md .awf/awf.lock
   git commit -m "docs(adr): flip 0051 Implemented and add the 0.6.0 changelog"
   ```
   (If `./x check` re-stamps additional generated files after the narrative edits, stage
-  exactly those files too — they will be `docs/domains/config.md`/`rendering.md` content
+  exactly those files too: they will be `docs/domains/config.md`/`rendering.md` content
   changes, already listed.)
 
 ---
@@ -1751,4 +1751,4 @@ otherwise leave it empty.
   "using a Conventional-Commits scope from `adr`, `awf`, `plans`".
 - [ ] ADR-0051 status is Implemented and `docs/decisions/ACTIVE.md` reflects it.
 - [ ] `changelog/CHANGELOG.md` opens with `## [0.6.0] - 2026-07-02`. Tagging/pushing `v0.6.0`
-  is the user's action (docs/releasing.md steps 3–4) — not part of this plan.
+  is the user's action (docs/releasing.md steps 3-4), not part of this plan.

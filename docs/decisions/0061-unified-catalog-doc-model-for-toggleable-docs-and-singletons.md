@@ -15,10 +15,10 @@ domains: [rendering, config]
 awf renders two kinds of documentation artifact, and today they are described by two separate catalog
 maps plus a scatter of hand-maintained Go projections:
 
-- **Toggleable docs** — `catalog.Docs` (`architecture`, `testing`, `development`, `debugging`,
+- **Toggleable docs**: `catalog.Docs` (`architecture`, `testing`, `development`, `debugging`,
   `pitfalls`, `glossary`, `roadmap`): an adopter-selectable pool, rendered only when named in the
   config `docs:` array, listed in `AGENTS.md`'s document map via `resolvedDocs`.
-- **Always-on singletons** — `catalog.Singletons` (`agents-doc`, `adr-readme`, `adr-template`,
+- **Always-on singletons**: `catalog.Singletons` (`agents-doc`, `adr-readme`, `adr-template`,
   `plans-readme`, `workflow`, `doc-standard`, `agents-md-standard`, `working-with-awf`): rendered for
   every project unless a `local: true` sidecar suppresses them.
 
@@ -28,7 +28,7 @@ table), `Layout`'s typed singleton path fields + `templateMap` camelCase keys, t
 `TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally` and `TestLayoutDerivesFromDocsDir`,
 and a by-name enumeration comment in `render.go`. ADR-0043 (promotion of three docs to singletons)
 and ADR-0059 (the `working-with-awf` singleton) each had to touch every one of these; adding the next
-mandatory doc will too. ADR-0043's invariants encode the split itself —
+mandatory doc will too. ADR-0043's invariants encode the split itself:
 `mandatory-docs-not-in-docs-catalog` literally asserts the `docs:` block contains no singleton and
 that `DocSpec` carries no `Core` field.
 
@@ -40,24 +40,24 @@ carry their own nature, and the ~6 hand-maintained sites collapse into projectio
 
 Grounding surfaced two sharp edges. The first is a **pool leak**: several consumers derive the
 toggleable-doc pool from the doc-map's keys. Three of them funnel through the single `docs`
-`kindDescriptor` `poolNames` facet (`kind.go` — `slices.Sorted(maps.Keys(c.Docs))`):
+`kindDescriptor` `poolNames` facet (`kind.go`: `slices.Sorted(maps.Keys(c.Docs))`):
 `validateAgainstCatalog`, `CatalogNames` for `awf list`/`add`/`remove`, and `scaffold`'s
-var-collection loop — so one `!Mandatory` filter at that facet covers all three (scaffold still seeds
+var-collection loop, so one `!Mandatory` filter at that facet covers all three (scaffold still seeds
 each mandatory doc's vars through the `plainSingletons` loop, so the filter drops a harmless
 double-seed, not real coverage; scaffold's `docs:` array is built from the catalog-trim, never from
 the pool). Two more read `cat.Docs` directly and each needs its own `!Mandatory` filter: the
 `awf init` catalog-docs multiselect (`initspec.go:50`) and the evals fixture (`fixture_test.go:60`,
 which seeds a `docs:` array). Miss one and a mandatory singleton leaks into the toggleable-doc CLI,
-validation, or init surface. `agents-doc` is the irregular member — it renders to root `AGENTS.md`
+validation, or init surface. `agents-doc` is the irregular member (it renders to root `AGENTS.md`
 (not a `docsDir` path), has no document-map entry of its own (it *is* the map), and drives the
-CLAUDE.md bridge from a bespoke `RenderAll` branch — so a uniform loop must special-case it.
+CLAUDE.md bridge from a bespoke `RenderAll` branch), so a uniform loop must special-case it.
 
 The second edge is **template-path reconstruction**. Merging every singleton into `Docs` brings in
-keys whose templates do *not* live at `docs/<name>.md.tmpl` — `adr-readme`
+keys whose templates do *not* live at `docs/<name>.md.tmpl`: `adr-readme`
 (`adr-readme/README.md.tmpl`), `adr-template`, `plans-readme`, and `agents-doc`. Every site that
 rebuilds a template id as `docs/<name>.md.tmpl` from a doc-map key breaks on them: the `docs`
-`poolNames` facet's `tid` closure (protected once the pool is filtered to `!Mandatory`) and — more
-sharply — three live invariant-backing tests that iterate `cat.Docs` raw and would `t.Fatalf` reading
+`poolNames` facet's `tid` closure (protected once the pool is filtered to `!Mandatory`) and (more
+sharply) three live invariant-backing tests that iterate `cat.Docs` raw and would `t.Fatalf` reading
 a non-existent `docs/adr-readme.md.tmpl`: `TestDocsSectionParity` (`inv: docs-section-parity`),
 `TestVarDescriptorParity` (`inv: var-descriptor-parity`), and `scaffold_test.go`'s var-parity check
 (`inv: scaffold-seeds-all-vars`). These read the raw map, not the filtered pool, so they must switch
@@ -87,13 +87,13 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
      own expectations: `TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally` renders
      `AGENTS.md` and asserts each mandatory `DocumentMap` entry's link appears in the *rendered output*
      (a real check, not a tautology), while `TestLayoutDerivesFromDocsDir` stays a concrete-value
-     fixture — its expected paths remain literal strings (gaining the new entry's path) — because a
+     fixture (its expected paths remain literal strings (gaining the new entry's path)) because a
      layout test that derived its expectations from the same collection it checks would prove nothing.
 
 3. **Mandatory entries are excluded from the toggleable-doc pool.** The toggleable pool
    (`CatalogNames`, `validateAgainstCatalog`, the `awf init` catalog-docs options, `scaffold`
    var-seeding, the evals fixture) contains only `!Mandatory` entries. A mandatory doc is never
-   addable or removable through `awf add doc` / `awf remove doc`, and never seeds a `docs:` array —
+   addable or removable through `awf add doc` / `awf remove doc`, and never seeds a `docs:` array,
    matching today's behaviour, now enforced by one filter rather than a separate `docs:` block.
 
 4. **`agents-doc` is special-cased by its `AgentsDoc` flag.** It is a mandatory entry with an empty
@@ -103,26 +103,26 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
    docs the `document-map-lists-mandatory-docs` invariant names (`workflow`, `doc-standard`,
    `agents-md-standard`, `working-with-awf`); `adr-readme`, `adr-template`, and `plans-readme` are
    `DocumentMap: false` because their map lines ("ADR index", "Active ADRs", "Plans") stay hardcoded
-   from `.layout.adrReadme`/`.activeMd`/`.plansReadme`, not driven by a `DocEntry` projection — so the
+   from `.layout.adrReadme`/`.activeMd`/`.plansReadme`, not driven by a `DocEntry` projection, so the
    re-backed document-map test iterates exactly the four the invariant contracts, no wider.
 
-5. **`plainSingletons` becomes a pure derivation.** It is generated from the collection — one entry
+5. **`plainSingletons` becomes a pure derivation.** It is generated from the collection (one entry
    per `Mandatory && !AgentsDoc` doc, with `tid`/output path/sections read from that `DocEntry`'s
-   `TID`/`Path`/`Sections` — with no hand-authored render table left. This is what makes "adding a
+   `TID`/`Path`/`Sections`) with no hand-authored render table left. This is what makes "adding a
    mandatory doc is one `DocEntry`" true for the render path, not just the metadata.
 
 6. **Invariant reconciliation.** Two ADR-0043 invariants are retired via this ADR's
    `retires_invariants` frontmatter, their backing tests removed in the same change:
-   - `mandatory-docs-not-in-docs-catalog` — its premise, a separate `docs:` block and a `DocSpec.Core`
+   - `mandatory-docs-not-in-docs-catalog`: its premise, a separate `docs:` block and a `DocSpec.Core`
      field, no longer exists; backing test `TestCatalogDocsExcludeSingletonKinds`
      (`internal/project/singleton_test.go`) is deleted, its guarantee re-expressed as
      `mandatory-doc-pool-exclusion` (item 3).
-   - `singleton-kind-single-source` — it guarded drift between two independently-maintained kind lists;
+   - `singleton-kind-single-source`: it guarded drift between two independently-maintained kind lists;
      with `SingletonKinds` and `plainSingletons` both derived from the one collection (item 2, item 5)
      the drift it named cannot exist, and its two backing tests
      (`TestCatalogSingletonsMatchSingletonKinds`, whose subject `cat.Singletons` the merge deletes, and
      `TestPlainSingletonsMatchCatalogSingletonKinds`, now a tautology over one source) are deleted. Its
-     surviving job — that a non-`agents-doc` mandatory entry reaches `plainSingletons` — is absorbed by
+     surviving job (that a non-`agents-doc` mandatory entry reaches `plainSingletons`) is absorbed by
      `unified-doc-model` (item 2).
 
    The remaining ADR-0043/0059 invariants keep their contracts, re-backed to read the collection:
@@ -138,14 +138,14 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
 
 ## Invariants
 
-- `invariant: unified-doc-model` — every doc/singleton projection is a derivation over the single `catalog`
+- `invariant: unified-doc-model`: every doc/singleton projection is a derivation over the single `catalog`
   doc collection, asserted by iterating that collection: every `Mandatory` entry appears in
   `SingletonKinds`; every `Mandatory && !AgentsDoc` entry appears in `plainSingletons` (and no other
   kind does); every mandatory entry's `TemplateKey`/`Path` appears in `Layout`'s `templateMap` with the
   derived path. (The "no hand-maintained list" property is a design consequence of full derivation, not
-  itself the machine check — the projection-vs-collection assertions above are. Pool exclusion is the
+  itself the machine check; the projection-vs-collection assertions above are. Pool exclusion is the
   separate `mandatory-doc-pool-exclusion` invariant.)
-- `invariant: mandatory-doc-pool-exclusion` — no `Mandatory` entry appears in the toggleable-doc pool: it is
+- `invariant: mandatory-doc-pool-exclusion`: no `Mandatory` entry appears in the toggleable-doc pool: it is
   absent from `CatalogNames("doc")`, rejected by `awf add doc` / `awf remove doc`, and never seeds a
   scaffolded `docs:` array. Backed by a test asserting the `!Mandatory` filter across the pool
   consumers.
@@ -156,20 +156,20 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
 ## Consequences
 
 - Adding a mandatory doc becomes a single `DocEntry` (with `Mandatory: true` and its `Path`/
-  `TemplateKey`/`TID`) plus its template and sections — every projection follows automatically. The
+  `TemplateKey`/`TID`) plus its template and sections; every projection follows automatically. The
   ~6-place drift shape that ADR-0043 and ADR-0059 each paid is gone; the formerly-hardcoded tests
   iterate the collection and cannot silently stop covering a new entry.
 - Promoting a toggleable doc to mandatory (the ADR-0043 move) becomes flipping `Mandatory` on one
-  entry plus a migration to relocate its sidecar/parts — no catalog-map surgery.
+  entry plus a migration to relocate its sidecar/parts: no catalog-map surgery.
 - The pool-leak hazard is the real cost: the `!Mandatory` filter must be applied at every toggleable-
   pool consumer, and `mandatory-doc-pool-exclusion` exists to catch a missed one. The `agents-doc`
   special-case is preserved, not unified away.
 - ConfigHash / `.awf/awf.lock`: rendered output stays byte-identical (the `.layout.*` values and
   document-map text are unchanged), so no adopter-visible drift is expected; per ADR-0060 a one-time
   lock regeneration is acceptable if a hash shifts, since output equality is the contract.
-- Live awf-managed docs describing the doc/singleton split — `docs/architecture.md`,
+- Live awf-managed docs describing the doc/singleton split (`docs/architecture.md`,
   `docs/domains/rendering.md`, and the convention parts under `.awf/docs/parts/` and
-  `.awf/domains/parts/rendering/` that name "singletons" vs "toggleable docs" as two mechanisms —
+  `.awf/domains/parts/rendering/` that name "singletons" vs "toggleable docs" as two mechanisms)
   update in the same commit to describe one collection (docs-travel-with-change). Frozen ADRs/plans
   stay as written; ADR-0043 and ADR-0059 remain `Implemented`, the two retired ADR-0043 invariants
   (`mandatory-docs-not-in-docs-catalog`, `singleton-kind-single-source`) recorded here.
@@ -179,7 +179,7 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
   the fix is not optional cleanup but a landing prerequisite.
 - When this ADR flips to `Accepted`/`Implemented`, the same commit regenerates
   `docs/decisions/ACTIVE.md` via `./x sync` and removes the retired invariant's backing test in
-  lockstep with the flip — retirement is inert until the retiring ADR is `Implemented` (ADR-0031).
+  lockstep with the flip: retirement is inert until the retiring ADR is `Implemented` (ADR-0031).
 - Document-map descriptions remain hardcoded in the template, so a future entry still needs its
   document-map line added there by hand until the deferred templating follow-up lands.
 

@@ -15,7 +15,7 @@ command (diff-scoped by default, whole-package on a path arg). Never part of `./
 `gremlins unleash -i --workers 1 --timeout-coefficient 20` is deterministic on this repo's
 sub-second suite; the recipe lives in `.gremlins.yaml` (nested under `unleash:`) and auto-loads.
 `cmd/mutants` reads the `-o` JSON file path, exits non-zero on any `TIMED OUT` mutation (the
-trust signal — a timeout is scored outside efficacy and can hide a survivor), treats a missing
+trust signal: a timeout is scored outside efficacy and can hide a survivor), treats a missing
 or empty file as an empty run, drops `NOT COVERED` noise, and prints the `LIVED` set. `./x mutants`
 runs gremlins over the `main` diff (or a package) into a temp file, then pipes it through the
 wrapper. Design rationale lives in the ADR; this plan is the execution record.
@@ -45,9 +45,9 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
 
 ---
 
-## Phase 1 — Pin gremlins and the deterministic config
+## Phase 1: Pin gremlins and the deterministic config
 
-- [ ] **Task 1.1 — Add the tool directive.** Run exactly:
+- [ ] **Task 1.1: Add the tool directive.** Run exactly:
   ```
   go get -tool github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
   go mod tidy
@@ -55,7 +55,7 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   Expected: `go.mod`'s `tool ( ... )` block gains a `github.com/go-gremlins/gremlins/cmd/gremlins`
   line; `go.sum` gains gremlins plus the raised `github.com/spf13/viper v1.21.0`,
   `github.com/spf13/cast v1.10.0`, `github.com/fsnotify/fsnotify v1.9.0`. No error.
-- [ ] **Task 1.2 — Verify the tool is runnable.** Run:
+- [ ] **Task 1.2: Verify the tool is runnable.** Run:
   ```
   grep -A4 '^tool (' go.mod
   go tool gremlins --version
@@ -63,29 +63,29 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   Expected: the grep shows `github.com/go-gremlins/gremlins/cmd/gremlins` inside the block;
   `--version` runs with no "missing go.sum entry" error. It prints `gremlins version dev ...`,
   not `v0.6.0`: gremlins stamps its version via release-time ldflags, so a `go tool` source
-  build always reports `dev`. The pin itself is `v0.6.0` — confirm via `go list -m
+  build always reports `dev`. The pin itself is `v0.6.0`; confirm via `go list -m
   github.com/go-gremlins/gremlins` (or the `go.mod`/`go.sum` entries from Task 1.1).
-- [ ] **Task 1.3 — Write `.gremlins.yaml`** at the repo root, exactly:
+- [ ] **Task 1.3: Write `.gremlins.yaml`** at the repo root, exactly:
   ```yaml
   # Deterministic mutation-testing config for `./x mutants` (ADR-0066). Integration
   # mode + a single worker + a generous timeout coefficient drive per-mutant timeouts
   # to zero on this sub-second suite, so verdicts are reproducible. Keys MUST nest
-  # under `unleash:` — a flat file is silently ignored by viper. Trust a run only when
+  # under `unleash:`; a flat file is silently ignored by viper. Trust a run only when
   # it reports `Timed out: 0`.
   unleash:
     integration: true
     workers: 1
     timeout-coefficient: 20
   ```
-- [ ] **Task 1.4 — Confirm the recipe reproduces.** Run:
+- [ ] **Task 1.4: Confirm the recipe reproduces.** Run:
   ```
   go tool gremlins unleash -o /tmp/mut-refs.json ./internal/refs
   ```
-  Expected output includes `Killed: 13, Lived: 3` and — the load-bearing trust signal —
+  Expected output includes `Killed: 13, Lived: 3` and (the load-bearing trust signal)
   `Timed out: 0,`; the config auto-loaded (single worker, integration mode, zero timeouts).
   (The `Not covered:` count is package-local coverage noise the wrapper drops; don't gate this
   check on its exact value.)
-- [ ] **Task 1.5 — Gate + commit.** Run `./x gate` (must pass — the MVS bump leaves lint,
+- [ ] **Task 1.5: Gate + commit.** Run `./x gate` (must pass: the MVS bump leaves lint,
   coverage, and deadcode green; spike-verified). Stage `go.mod go.sum .gremlins.yaml` and commit:
   ```
   build(tooling): pin gremlins tool and deterministic config
@@ -97,9 +97,9 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   green (ADR-0066).
   ```
 
-## Phase 2 — Add the `cmd/mutants` wrapper
+## Phase 2: Add the `cmd/mutants` wrapper
 
-- [ ] **Task 2.1 — Write `cmd/mutants/main.go`:**
+- [ ] **Task 2.1: Write `cmd/mutants/main.go`:**
   ```go
   // Command mutants reads a gremlins -o JSON report and prints the surviving
   // (LIVED) mutants as an advisory triage list, backing the awf `./x mutants`
@@ -173,7 +173,7 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   		}
   	}
   	if timedOut > 0 {
-  		fmt.Fprintf(stderr, "mutants: %d mutant(s) timed out — result untrustworthy; "+
+  		fmt.Fprintf(stderr, "mutants: %d mutant(s) timed out, result untrustworthy; "+
   			"raise timeout-coefficient and rerun\n", timedOut)
   		return 1
   	}
@@ -182,14 +182,14 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   		return 0
   	}
   	sort.Strings(lived)
-  	fmt.Fprintln(stdout, "survived mutants (triage each — some may be equivalent):")
+  	fmt.Fprintln(stdout, "survived mutants (triage each: some may be equivalent):")
   	for _, l := range lived {
   		fmt.Fprintln(stdout, "  "+l)
   	}
   	return 0
   }
   ```
-- [ ] **Task 2.2 — Write `cmd/mutants/main_test.go`** (the `// invariant: mutants-timeout-untrusted`
+- [ ] **Task 2.2: Write `cmd/mutants/main_test.go`** (the `// invariant: mutants-timeout-untrusted`
   marker backs ADR-0066; sibling tests cover the LIVED-only filtering and empty-run cases):
   ```go
   package main
@@ -312,29 +312,29 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
   	}
   }
   ```
-- [ ] **Task 2.3 — Verify coverage and behaviour.** Run:
+- [ ] **Task 2.3: Verify coverage and behaviour.** Run:
   ```
   go test ./cmd/mutants/ -cover
   ```
-  Expected: `ok` with `coverage: 97.2% of statements` — the raw `go tool cover` figure excludes
+  Expected: `ok` with `coverage: 97.2% of statements`; the raw `go tool cover` figure excludes
   only `main()` (line 33), whose `// coverage-ignore: os.Exit wrapper` directive is applied by
   `cmd/covercheck` (the gate), not by `go tool`. The 100% floor is confirmed by `./x gate` in
-  Task 2.4 (covercheck reports `coverage: 100.0%` tree-wide with the ignore honored) — this
+  Task 2.4 (covercheck reports `coverage: 100.0%` tree-wide with the ignore honored); this
   mirrors the `cmd/covercheck`/`cmd/deadcodecheck` siblings exactly.
-- [ ] **Task 2.4 — Gate + commit.** Run `./x gate` (must pass; `cmd/mutants` reaches 100% and its
+- [ ] **Task 2.4: Gate + commit.** Run `./x gate` (must pass; `cmd/mutants` reaches 100% and its
   `main()`/`run()` are reachable, so the deadcode gate stays green). Stage `cmd/mutants/` and commit:
   ```
   feat(tooling): add mutants survivor-triage wrapper
 
   Reads a gremlins -o JSON report, exits non-zero on any TIMED OUT mutation
-  (the trust signal — a timeout can hide a survivor), treats a missing or
+  (the trust signal: a timeout can hide a survivor), treats a missing or
   empty file as an empty run, drops NOT COVERED noise, and prints the LIVED
   set. Backs inv: mutants-timeout-untrusted (ADR-0066).
   ```
 
-## Phase 3 — Wire the `./x mutants` command
+## Phase 3: Wire the `./x mutants` command
 
-- [ ] **Task 3.1 — Add the `mutants` case.** In `x`, immediately before the `*)` default case (the
+- [ ] **Task 3.1: Add the `mutants` case.** In `x`, immediately before the `*)` default case (the
   three lines `  *)`, `    echo "usage: ...`, `    exit 2`), insert:
   ```
     mutants)
@@ -355,79 +355,79 @@ wrapper. Design rationale lives in the ADR; this plan is the execution record.
       ;;
   ```
   Note: under the committed `.gremlins.yaml` the efficacy/coverage thresholds stay at their `0`
-  defaults, so `gremlins unleash` exits `0` even with surviving mutants — `set -e` therefore does
+  defaults, so `gremlins unleash` exits `0` even with surviving mutants; `set -e` therefore does
   not abort before `go run ./cmd/mutants` runs. Never add a threshold to the config, or the
   survivor path (Task 3.3) would abort the script before the wrapper prints.
-- [ ] **Task 3.2 — Update usage.** In `x`, change the usage line to include `mutants`:
+- [ ] **Task 3.2: Update usage.** In `x`, change the usage line to include `mutants`:
   ```
       echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants>" >&2
   ```
-- [ ] **Task 3.3 — Verify package mode.** Run:
+- [ ] **Task 3.3: Verify package mode.** Run:
   ```
   ./x mutants ./internal/refs
   ```
-  Expected: a `survived mutants (triage each — some may be equivalent):` header followed by three
+  Expected: a `survived mutants (triage each: some may be equivalent):` header followed by three
   `refs.go:...` lines (85/92/100), exit 0. (No `TIMED OUT` message.)
-- [ ] **Task 3.4 — Verify diff mode on a clean branch.** Run:
+- [ ] **Task 3.4: Verify diff mode on a clean branch.** Run:
   ```
   ./x mutants
   ```
-  Expected (on `main` with no local changes vs `main`): `no survived mutants`, exit 0 — the empty
+  Expected (on `main` with no local changes vs `main`): `no survived mutants`, exit 0; the empty
   diff produces an empty/absent report the wrapper tolerates.
-- [ ] **Task 3.5 — Commit.** Stage `x` and commit (`x` is outside the awf render/lock set, so no
+- [ ] **Task 3.5: Commit.** Stage `x` and commit (`x` is outside the awf render/lock set, so no
   `awf check` impact):
   ```
   feat(tooling): add ./x mutants advisory command
 
   Diff-scoped by default (gremlins -D against the main merge-base, guarded
   for detached HEAD / missing main) or a given package, piped through
-  cmd/mutants. Advisory — never part of ./x gate (ADR-0066).
+  cmd/mutants. Advisory: never part of ./x gate (ADR-0066).
   ```
 
-## Phase 4 — Document the command
+## Phase 4: Document the command
 
-- [ ] **Task 4.1 — Rewrite the testing-doc stance.** In `.awf/docs/parts/testing/gate.md`, in the
+- [ ] **Task 4.1: Rewrite the testing-doc stance.** In `.awf/docs/parts/testing/gate.md`, in the
   "Coverage is not verification" section, replace the final sentence exactly (it is hard-wrapped
-  across three source lines in the current file — match the wrapped text, not this single-line
+  across three source lines in the current file; match the wrapped text, not this single-line
   rendering):
   - `This is a deliberate manual habit, not a gate: an automated mutation-testing step was evaluated and left out (the available tooling was too timeout-sensitive and mode-dependent to yield trustworthy, reproducible numbers here).`
   →
-  - `This is a deliberate manual habit. \`./x mutants\` (ADR-0066) makes it reproducible: it runs \`gremlins\` mutation testing under a deterministic config (\`.gremlins.yaml\`, \`-i --workers 1\`) and prints the survived mutants for you to triage — run it with no arguments to check your diff against \`main\`, or pass a package path (e.g. \`./x mutants ./internal/refs\`) for a deep dive. Its numbers are trustworthy only when the run reports \`Timed out: 0\`; a nonzero count can hide a real survivor, so raise the timeout coefficient and rerun. It stays advisory — never part of the gate — and every survivor still needs you to judge whether it is a real gap or an unkillable equivalent mutant.`
-- [ ] **Task 4.2 — Add the tooling current-state sentence.** In
+  - `This is a deliberate manual habit. \`./x mutants\` (ADR-0066) makes it reproducible: it runs \`gremlins\` mutation testing under a deterministic config (\`.gremlins.yaml\`, \`-i --workers 1\`) and prints the survived mutants for you to triage; run it with no arguments to check your diff against \`main\`, or pass a package path (e.g. \`./x mutants ./internal/refs\`) for a deep dive. Its numbers are trustworthy only when the run reports \`Timed out: 0\`; a nonzero count can hide a real survivor, so raise the timeout coefficient and rerun. It stays advisory (never part of the gate) and every survivor still needs you to judge whether it is a real gap or an unkillable equivalent mutant.`
+- [ ] **Task 4.2: Add the tooling current-state sentence.** In
   `.awf/domains/parts/tooling/current-state.md`, in the first paragraph, after
   `The dead-code gate fails on any production function unreachable from a \`main\` outside \`internal/testsupport/\` and carries no escape hatch.`
   add (same paragraph, following sentence):
   ```
-  Separately, `./x mutants` (ADR-0066) is an advisory, never-gated mutation-testing command: it runs `gremlins` under a deterministic config (`.gremlins.yaml`; integration mode, one worker) over the production diff vs `main` or a given package, and `cmd/mutants` prints the survived (`LIVED`) mutants to triage — exiting non-zero when any mutant times out, since a timeout can hide a survivor (trustworthy only when the run reports `Timed out: 0`).
+  Separately, `./x mutants` (ADR-0066) is an advisory, never-gated mutation-testing command: it runs `gremlins` under a deterministic config (`.gremlins.yaml`; integration mode, one worker) over the production diff vs `main` or a given package, and `cmd/mutants` prints the survived (`LIVED`) mutants to triage, exiting non-zero when any mutant times out, since a timeout can hide a survivor (trustworthy only when the run reports `Timed out: 0`).
   ```
-- [ ] **Task 4.3 — Add the AGENTS.md invariant.** In `.awf/agents-doc.yaml`, in `data.invariants`,
+- [ ] **Task 4.3: Add the AGENTS.md invariant.** In `.awf/agents-doc.yaml`, in `data.invariants`,
   immediately after the ADR-0063 dead-code-gate entry (the `- ref: ADR-0063` / `text: '**Dead-code
-  gate.** ...'` pair), add (indent to match the siblings exactly — 8 spaces before `- ref`, 10
+  gate.** ...'` pair), add (indent to match the siblings exactly: 8 spaces before `- ref`, 10
   before `text`):
   ```yaml
         - ref: ADR-0066
           text: '**Advisory mutation triage.** `./x mutants` runs `gremlins` under the deterministic `.gremlins.yaml` config and is never part of `./x gate`; `cmd/mutants` exits non-zero when any mutant times out (the run is untrustworthy) and otherwise reports only survived (`LIVED`) mutants, treating a missing or empty report as no survivors.'
   ```
-- [ ] **Task 4.4 — Re-render + verify.** Run `./x sync` then `./x check`. Expected: `docs/testing.md`,
+- [ ] **Task 4.4: Re-render + verify.** Run `./x sync` then `./x check`. Expected: `docs/testing.md`,
   `docs/domains/tooling.md`, `AGENTS.md`, and `.awf/awf.lock` update; `./x check` reports
   `awf check: clean`.
-- [ ] **Task 4.5 — Gate + commit.** Run `./x gate`. Stage the `.awf/` sources + regenerated docs +
+- [ ] **Task 4.5: Gate + commit.** Run `./x gate`. Stage the `.awf/` sources + regenerated docs +
   lock and commit:
   ```
   docs(tooling): document the advisory mutation command
   ```
 
-## Phase 5 — Mark ADR-0066 Implemented
+## Phase 5: Mark ADR-0066 Implemented
 
-- [ ] **Task 5.1 — Flip status.** In `docs/decisions/0066-advisory-mutation-testing-command.md`
+- [ ] **Task 5.1: Flip status.** In `docs/decisions/0066-advisory-mutation-testing-command.md`
   change frontmatter `status: Proposed` → `status: Implemented`.
-- [ ] **Task 5.2 — Regenerate ACTIVE.md.** Run `./x sync`. Expected: `docs/decisions/ACTIVE.md`
+- [ ] **Task 5.2: Regenerate ACTIVE.md.** Run `./x sync`. Expected: `docs/decisions/ACTIVE.md`
   moves ADR-0066 to the Implemented section; `docs/domains/tooling.md` moves it out of Proposed;
   `.awf/awf.lock` updates.
-- [ ] **Task 5.3 — Verify invariant backing.** Run `./x check`. Expected `awf check: clean` — the
+- [ ] **Task 5.3: Verify invariant backing.** Run `./x check`. Expected `awf check: clean`; the
   `inv: mutants-timeout-untrusted` slug is now backed by the `// invariant: mutants-timeout-untrusted`
   marker in `cmd/mutants/main_test.go` (added Phase 2), so the Implemented-ADR invariant check passes.
-- [ ] **Task 5.4 — Gate + commit.** Run `./x gate`. Stage the ADR + regenerated `ACTIVE.md` +
+- [ ] **Task 5.4: Gate + commit.** Run `./x gate`. Stage the ADR + regenerated `ACTIVE.md` +
   `docs/domains/tooling.md` + lock and commit:
   ```
   docs(adr): mark ADR-0066 Implemented

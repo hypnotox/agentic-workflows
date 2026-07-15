@@ -1,12 +1,12 @@
 # Plan: Retrospective terminal step and finding-promotion ladder
 
 **Date:** 2026-07-06
-**ADR:** [ADR-0067](../decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md) — Retrospective terminal step and finding-promotion ladder
+**ADR:** [ADR-0067](../decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md) (Retrospective terminal step and finding-promotion ladder)
 
 ## Goal
 
 Add a Core `retrospective` skill as the new terminal node of the canonical workflow
-chain (`… → reviewing-impl → retrospective`), run by the main thread, that promotes a
+chain (`... → reviewing-impl → retrospective`), run by the main thread, that promotes a
 recurring, codifiable review finding or implementation pitfall up a four-rung ladder
 (invariant → gate test/lint → code-reviewer project-focus item → pitfalls.md) toward a
 deterministic check. Design rationale lives in ADR-0067; this plan is the execution record.
@@ -19,12 +19,12 @@ deterministic check. Design rationale lives in ADR-0067; this plan is the execut
   (safe because both are Core, mirroring its existing `executing-plans` reference).
 - The `internal/evals` chain graph gains the tenth node: add `retrospective` to `chainNodes`,
   flip the `chainTerminal` constant to `retrospective`, and pin the `reviewing-impl →
-  retrospective` handoff edge. Flipping `chainTerminal` is mandatory — `TestChainConnectivity`
+  retrospective` handoff edge. Flipping `chainTerminal` is mandatory: `TestChainConnectivity`
   exempts only that constant from the outgoing-edge requirement, so a `retrospective` added to
   `chainNodes` without moving it is flagged orphaned (ADR-0067 Decision 2).
 - Docs travel: the canonical chain in `AGENTS.md` and `docs/workflow.md`, and a rung-4 framing
   in the `pitfalls` doc default.
-- No new source-level `inv:` slug — chain-node integrity rides the existing ADR-0053
+- No new source-level `inv:` slug: chain-node integrity rides the existing ADR-0053
   (`inv: evals-full-catalog-coverage`, catalog-derived fixture) and ADR-0054 chain-graph
   assertions extended to the new node.
 
@@ -53,13 +53,13 @@ deterministic check. Design rationale lives in ADR-0067; this plan is the execut
 
 ---
 
-## Phase 1 — Add the `retrospective` skill (self-contained, unwired)
+## Phase 1: Add the `retrospective` skill (self-contained, unwired)
 
 This phase adds the skill so it renders and is enabled, but does not yet wire it into the
 chain. It is green on its own: `retrospective` is not yet a `chainNode`, so no chain assertion
 touches it, and nothing references it yet.
 
-### Task 1.1 — Create the skill template
+### Task 1.1: Create the skill template
 
 Create `templates/skills/retrospective/SKILL.md.tmpl` with exactly this content:
 
@@ -71,14 +71,14 @@ description: Terminal step of an implementation, run by the main thread. Reflect
 
 # {{ .prefix }}-retrospective
 
-The closing step of the implementation phase, run by the **main thread** — not a dispatched subagent — because it depends on the full session: the review findings, the friction hit while implementing, and which issues recurred. It closes the feedback loop by turning a recurring, codifiable finding into a durable check instead of letting it resurface every session.
+The closing step of the implementation phase, run by the **main thread** (not a dispatched subagent) because it depends on the full session: the review findings, the friction hit while implementing, and which issues recurred. It closes the feedback loop by turning a recurring, codifiable finding into a durable check instead of letting it resurface every session.
 
 <!-- awf:section when-fires -->
 ## When this skill fires
 
 Terminal step of the implementation phase, after {{ if index .skills "reviewing-impl" }}`{{ .prefix }}-reviewing-impl`{{ else }}the project's review step{{ end }} has concluded. It runs in the main thread and sees the whole session, so it catches what a fresh-context review cannot.
 
-**Skip a trivial session** — a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
+**Skip a trivial session**: a one-line or mechanical change with nothing worth recording and no recurring issue to promote. **Run even on a docs-only session**: a doc or process pitfall is still worth capturing, and the review step skips those.
 <!-- awf:end -->
 
 <!-- awf:section procedure -->
@@ -86,7 +86,7 @@ Terminal step of the implementation phase, after {{ if index .skills "reviewing-
 
 1. **Reflect on the session.** Gather its signals: the {{ if index .skills "reviewing-impl" }}`{{ .prefix }}-reviewing-impl`{{ else }}review{{ end }} findings, the pitfalls or friction hit while implementing, and any issue that came up more than once.
 
-2. **Record the worthy observations.** A first-occurrence pitfall or tricky area is *recorded* (rung 3 or 4 below), not promoted — the record is the memory the next retrospective reads to detect recurrence.
+2. **Record the worthy observations.** A first-occurrence pitfall or tricky area is *recorded* (rung 3 or 4 below), not promoted; the record is the memory the next retrospective reads to detect recurrence.
 
 3. **Promote recurring, codifiable observations** to the strongest rung each can support (see the ladder). Verify a candidate genuinely recurs and is worth the effort before promoting.
 
@@ -96,7 +96,7 @@ Terminal step of the implementation phase, after {{ if index .skills "reviewing-
 <!-- awf:section recurrence-signal -->
 ## Recurrence signal
 
-An observation is a **promotion candidate** when the main thread saw it recur within this session, or when it matches something already recorded — {{ if .layout.docs.pitfalls }}`{{ .layout.docs.pitfalls }}`{{ else }}the project's pitfalls notes{{ end }} or the code-review agent's project-focus list — and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
+An observation is a **promotion candidate** when the main thread saw it recur within this session, or when it matches something already recorded ({{ if .layout.docs.pitfalls }}`{{ .layout.docs.pitfalls }}`{{ else }}the project's pitfalls notes{{ end }} or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
 <!-- awf:end -->
 
 <!-- awf:section promotion-ladder -->
@@ -104,16 +104,16 @@ An observation is a **promotion candidate** when the main thread saw it recur wi
 
 Route each recurring, codifiable observation to the **strongest** rung it can support:
 
-1. **Invariant** — a load-bearing rule the project must remember. {{ if index .skills "proposing-adr" }}Record the decision via `{{ .prefix }}-proposing-adr`{{ else }}Record the decision through the project's decision process{{ end }}, give it an `inv:` slug, and back it with a `<marker> invariant: <slug>` comment or test{{ with .vars.invariantTestPath }} (backing tests live under `{{ . }}`){{ end }}. The marker and globs are config-driven, so this works in any language.
-2. **Gate test or lint rule** — an ordinary mechanically-checkable rule that does not rise to an invariant. Add a test or linter rule so {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} catches it; no decision record needed.
-3. **Code-review focus item** — a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
-4. **Pitfalls note** — tricky knowledge that is not mechanically checkable.{{ if .layout.docs.pitfalls }} Add an entry to `{{ .layout.docs.pitfalls }}`.{{ else }} Record it in the project's pitfalls notes.{{ end }}
+1. **Invariant**: a load-bearing rule the project must remember. {{ if index .skills "proposing-adr" }}Record the decision via `{{ .prefix }}-proposing-adr`{{ else }}Record the decision through the project's decision process{{ end }}, give it an `inv:` slug, and back it with a `<marker> invariant: <slug>` comment or test{{ with .vars.invariantTestPath }} (backing tests live under `{{ . }}`){{ end }}. The marker and globs are config-driven, so this works in any language.
+2. **Gate test or lint rule**: an ordinary mechanically-checkable rule that does not rise to an invariant. Add a test or linter rule so {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} catches it; no decision record needed.
+3. **Code-review focus item**: a rule that needs per-case judgment. Add a persistent project-focus item to the code-review agent's checklist: still probabilistic, but now applied on every review.
+4. **Pitfalls note**: tricky knowledge that is not mechanically checkable.{{ if .layout.docs.pitfalls }} Add an entry to `{{ .layout.docs.pitfalls }}`.{{ else }} Record it in the project's pitfalls notes.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section control -->
 ## Control
 
-The main thread controls the promotion effort — never an unverified auto-promotion, never delegated to a subagent:
+The main thread controls the promotion effort, never an unverified auto-promotion, never delegated to a subagent:
 
 - **Codify now** when the rung is cheap: a gate test, a focus item, a pitfalls note.
 - **Defer as a follow-up** when the rung is expensive. A rung-1 (invariant) promotion is almost always deferred, because it spins the full decision-to-implementation chain; record it as an explicit follow-up rather than derailing the current session.
@@ -122,14 +122,14 @@ The main thread controls the promotion effort — never an unverified auto-promo
 <!-- awf:section notes -->
 ## Notes
 
-- Reflection is cheap; promotion is deliberate. Most sessions record a thing or two and promote nothing — that is the expected steady state.
+- Reflection is cheap; promotion is deliberate. Most sessions record a thing or two and promote nothing: that is the expected steady state.
 - The aim is to move a recurring issue *down* into a deterministic check, not to accumulate more prose the next agent must remember.{{ with .layout.workflowRef }} The canonical chain lives in `{{ . }}`.{{ end }}
 <!-- awf:end -->
 ```
 
 - [ ] Create the file with the exact content above.
 
-### Task 1.2 — Register the skill in the catalog
+### Task 1.2: Register the skill in the catalog
 
 In `internal/catalog/standard.go`, immediately after the `reviewing-impl` entry (the block
 ending `}` on the line before `"refactor-coupling-audit": {`), add:
@@ -143,7 +143,7 @@ ending `}` on the line before `"refactor-coupling-audit": {`), add:
 - [ ] Add the `retrospective` `SkillSpec`. The `Sections` set must exactly equal the template's
   `awf:section` markers (enforced by `inv: skill-section-parity`).
 
-### Task 1.3 — Enable the skill in awf's own config
+### Task 1.3: Enable the skill in awf's own config
 
 In `.awf/config.yaml`, insert `retrospective` into the `skills:` list between
 `refactor-coupling-audit` and `reviewing-adr` (keeping the list alphabetical):
@@ -156,7 +156,7 @@ In `.awf/config.yaml`, insert `retrospective` into the `skills:` list between
 
 - [ ] Add the `- retrospective` line.
 
-### Task 1.4 — Add the per-skill template test
+### Task 1.4: Add the per-skill template test
 
 In `internal/project/spine_test.go`, immediately after `TestReviewingImplTemplate` (the `}` on
 its last line, before `func TestRefactorCouplingAuditTemplate`), add:
@@ -201,11 +201,11 @@ func TestRetrospectiveTemplate(t *testing.T) {
 
 - [ ] Add `TestRetrospectiveTemplate`.
 
-### Task 1.5 — Render, verify, commit
+### Task 1.5: Render, verify, commit
 
 - [ ] Run `./x sync` (renders the new skill into `.claude/` and `.cursor/`, updates the lock).
-- [ ] Run `./x check` — expect `awf check: clean`.
-- [ ] Run `./x gate` — expect the tail to end with `coverage: 100.0% (...)`, `0 issues.`,
+- [ ] Run `./x check`: expect `awf check: clean`.
+- [ ] Run `./x gate`: expect the tail to end with `coverage: 100.0% (...)`, `0 issues.`,
   `deadcodecheck: no production dead code`. `TestRetrospectiveTemplate` and the `internal/evals`
   suite pass (retrospective is not yet a `chainNode`, so no chain assertion references it).
 - [ ] Stage explicitly and commit:
@@ -215,7 +215,7 @@ git add templates/skills/retrospective/SKILL.md.tmpl internal/catalog/standard.g
 git commit -m "feat(rendering): add retrospective skill (unwired)
 
 Adds the Core retrospective SkillSpec, its SKILL.md template, and per-skill
-test; enables it in awf's own config. Not yet wired into the chain — that is
+test; enables it in awf's own config. Not yet wired into the chain; that is
 the next commit. Implements part of ADR-0067.
 
 Claude-Session: https://claude.ai/code/session_01CLtZiZoxUaLuo5cTGfxS4H"
@@ -225,13 +225,13 @@ Subject is 45 chars (< 72). Scope `rendering` (templates/catalog render surface)
 
 ---
 
-## Phase 2 — Wire retrospective as the terminal chain node, update docs, flip ADR
+## Phase 2: Wire retrospective as the terminal chain node, update docs, flip ADR
 
 This phase makes `retrospective` the terminal node and lands all doc-currency + the ADR status
 flip in one cohesive commit (docs travel with the behaviour change; the ADR flips in the final
 implementation commit).
 
-### Task 2.1 — Give `reviewing-impl` a hand-off to the retrospective
+### Task 2.1: Give `reviewing-impl` a hand-off to the retrospective
 
 In `internal/catalog/standard.go`, update the `reviewing-impl` `Sections` to add `"hand-off"`
 before `"notes"`:
@@ -261,7 +261,7 @@ In `templates/skills/reviewing-impl/SKILL.md.tmpl`:
    single, independent` to `This is the independent review step of the implementation phase: a
    single, independent`.
 4. In the frontmatter `description` (line 3), change `Terminal step after implementation
-   commits.` to `Independent review step after implementation commits.` — `reviewing-impl` is no
+   commits.` to `Independent review step after implementation commits.`: `reviewing-impl` is no
    longer the chain's terminal step (retrospective is), so its own self-description must not
    claim otherwise.
 
@@ -269,7 +269,7 @@ In `templates/skills/reviewing-impl/SKILL.md.tmpl`:
   `{{ .prefix }}-retrospective` is unconditional, mirroring the existing unconditional
   `{{ .prefix }}-executing-plans` reference (both Core).
 
-### Task 2.2 — Extend the eval chain graph
+### Task 2.2: Extend the eval chain graph
 
 In `internal/evals/chain_test.go`:
 
@@ -303,7 +303,7 @@ const (
   emit an outgoing edge (satisfied by Task 2.1's hand-off) and treats `retrospective` as the
   terminal node.
 
-### Task 2.3 — Assert the new step renders in the reviewing-impl and agents-doc tests
+### Task 2.3: Assert the new step renders in the reviewing-impl and agents-doc tests
 
 In `internal/project/spine_test.go`:
 
@@ -328,7 +328,7 @@ In `internal/project/spine_test.go`:
 
 - [ ] Apply both assertion additions.
 
-### Task 2.4 — Update the canonical chain in the guide and workflow doc
+### Task 2.4: Update the canonical chain in the guide and workflow doc
 
 In `templates/agents-doc/AGENTS.md.tmpl` (`workflow` section):
 
@@ -346,7 +346,7 @@ brainstorming → ADR (if warranted) → plan (if warranted) → resync (when bo
 
 3. In the **Chain skills** list, insert `` `{{ .prefix }}-retrospective` `` after
    `` `{{ .prefix }}-reviewing-impl` ``, so the list reads
-   ``…, `{{ .prefix }}-reviewing-impl`, `{{ .prefix }}-retrospective`.{{ $tasks := "" }}…``
+   ``..., `{{ .prefix }}-reviewing-impl`, `{{ .prefix }}-retrospective`.{{ $tasks := "" }}...``
 
 In `templates/docs/workflow.md.tmpl` (`chain` section):
 
@@ -359,9 +359,9 @@ Implementation review is the terminal gate; a main-thread **retrospective** then
 
 - [ ] Apply the five doc-template edits. The two `strings.Contains` invariant checks in
   `TestAgentsDocTemplate` (`ADR (if warranted) → plan (if warranted)`, `resync (when both)`)
-  remain satisfied — only the tail of the chain line changes.
+  remain satisfied: only the tail of the chain line changes.
 
-### Task 2.5 — Frame the pitfalls doc as rung 4 (standard default)
+### Task 2.5: Frame the pitfalls doc as rung 4 (standard default)
 
 In `templates/docs/pitfalls.md.tmpl`, append to the `entries` section intro (line 4), so it
 reads:
@@ -374,7 +374,7 @@ Recurring bugs and tricky areas worth a warning before you touch them. _One subs
   overrides the `entries` section via `.awf/docs/parts/pitfalls/entries.md`, so awf's rendered
   doc is unaffected (no drift).
 
-### Task 2.6 — Flip ADR-0067 to Implemented
+### Task 2.6: Flip ADR-0067 to Implemented
 
 In `docs/decisions/0067-retrospective-terminal-step-and-finding-promotion-ladder.md`, change
 the frontmatter `status: Proposed` to `status: Implemented`. (No `inv:` slug exists, so the
@@ -382,13 +382,13 @@ invariant-backing check has nothing new to enforce.)
 
 - [ ] Apply the status flip.
 
-### Task 2.7 — Render, verify, commit
+### Task 2.7: Render, verify, commit
 
 - [ ] Run `./x sync` (re-renders reviewing-impl, AGENTS.md, workflow.md, the pitfalls standard
   default, and regenerates `ACTIVE.md` + the domain docs for the ADR flip).
-- [ ] Run `./x check` — expect `awf check: clean`. (awf's `docs/pitfalls.md` shows no change:
+- [ ] Run `./x check`: expect `awf check: clean`. (awf's `docs/pitfalls.md` shows no change:
   it uses the override part.)
-- [ ] Run `./x gate` — expect `coverage: 100.0% (...)`, `0 issues.`,
+- [ ] Run `./x gate`: expect `coverage: 100.0% (...)`, `0 issues.`,
   `deadcodecheck: no production dead code`. The `internal/evals` chain tests now include
   `retrospective`: `TestChainConnectivity` sees `reviewing-impl → retrospective` and treats
   `retrospective` as terminal; `TestWorkflowChainHandoffs/reviewing-impl_to_retrospective`
@@ -415,7 +415,7 @@ Subject is 52 chars (< 72). Scope `rendering`.
 
 - [ ] `./x check` → `awf check: clean`.
 - [ ] `./x gate` → 100% coverage, 0 lint issues, no dead code, all `internal/evals` chain tests green.
-- [ ] `git log --oneline -2` shows the two feature commits above `docs(adr): note ADR-0067 …`.
+- [ ] `git log --oneline -2` shows the two feature commits above `docs(adr): note ADR-0067 ...`.
 - [ ] The rendered `.claude/skills/awf-retrospective/SKILL.md` exists and the rendered `AGENTS.md`
   chain ends with `→ retrospective`.
 

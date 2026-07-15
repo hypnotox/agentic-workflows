@@ -9,36 +9,36 @@ Flips the ADR-0105/0106 mechanism (shipped additively by the
 `2026-07-13-enforced-test-backing-and-two-marker-mechanism` plan) to **hard teeth**: every existing
 awf invariant is migrated to the proof/touches marker model, `invariants.testGlobs` is set to
 `['**/*_test.go']`, and both ADRs flip to `Implemented`. Design rationale lives in ADR-0105 and
-ADR-0106 — this plan is the execution record and does not re-argue it.
+ADR-0106; this plan is the execution record and does not re-argue it.
 
 ## Goal
 
 Reach enforced test-scoped backing with a green gate at every step: reclassify the one genuinely
 untestable invariant to `unbacked-invariant:`, add a test-file proof marker for the other 72
 production-only-backed slugs (downgrading their production markers to `touches-invariant:`), turn on
-`testGlobs`, then flip ADR-0105 and ADR-0106 to `Implemented` — backing their 12 new slugs on the
+`testGlobs`, then flip ADR-0105 and ADR-0106 to `Implemented`, backing their 12 new slugs on the
 mechanism's existing tests and retiring `context-tier1-governs` for its union-aware successor
 `context-tier1-marker-union`.
 
 ## Architecture summary
 
 Five phases, each a self-contained commit that passes `./x gate` (`invariants.testGlobs` stays unset
-through Phases 1–2, so the source-only fallback keeps every migrated slug backed; teeth switch on in
+through Phases 1-2, so the source-only fallback keeps every migrated slug backed; teeth switch on in
 Phase 3):
 
-1. **Reclassify the sole unbacked invariant** (`adr-new-no-overwrite`) — its refusal guard is a
+1. **Reclassify the sole unbacked invariant** (`adr-new-no-overwrite`): its refusal guard is a
    `// coverage-ignore` unreachable branch (`internal/adr/adr.go`), so no test can prove it. ADR-0042
    declaration → `unbacked-invariant:` + `Verify:` note; its production marker → `touches-invariant:`.
-2. **Add test proof markers for the 72 backed slugs** — each gets a `// invariant: <slug>` marker on
+2. **Add test proof markers for the 72 backed slugs**: each gets a `// invariant: <slug>` marker on
    the test that already asserts it, and its production `// invariant:` marker becomes
-   `// touches-invariant: <slug> — <note>`. One slug (`skills-set-in-confighash`) needs a new proof
+   `// touches-invariant: <slug> - <note>`. One slug (`skills-set-in-confighash`) needs a new proof
    test written first; one (`lock-atomic-save`) has three production sites and one proof site.
-3. **Turn on `testGlobs`** — set `invariants.testGlobs: ['**/*_test.go']` in `.awf/config.yaml`;
+3. **Turn on `testGlobs`**: set `invariants.testGlobs: ['**/*_test.go']` in `.awf/config.yaml`;
    backing now means an executed test line.
-4. **Flip ADR-0105 `Implemented`** — add proof markers for its 9 mechanism slugs on the existing
+4. **Flip ADR-0105 `Implemented`**: add proof markers for its 9 mechanism slugs on the existing
    mechanism tests, amend its one inaccurate illustrative example, rewrite the invariants domain
    narrative, regenerate `ACTIVE.md`.
-5. **Flip ADR-0106 `Implemented`** — add proof markers for its 3 context slugs, retire
+5. **Flip ADR-0106 `Implemented`**: add proof markers for its 3 context slugs, retire
    `context-tier1-governs` (remove its markers; add the `context-tier1-marker-union` marker), swap the
    AGENTS.md context bullet and the tooling domain narrative, regenerate `ACTIVE.md` + `AGENTS.md`.
 
@@ -64,7 +64,7 @@ requiring zero issues.
   `docs/config-reference.md`.
 - **Deleted:** none.
 
-## Phase 1 — Reclassify the sole unbacked invariant (`adr-new-no-overwrite`)
+## Phase 1: Reclassify the sole unbacked invariant (`adr-new-no-overwrite`)
 
 `adr-new-no-overwrite` is the one migrated slug with no honest proof: its guard
 (`internal/adr/adr.go`, `if _, err := os.Stat(path); err == nil {`) carries a `// coverage-ignore`
@@ -74,52 +74,52 @@ symmetric checks (`unbacked-refuses-proof`, `unbacked-requires-verify-note`) are
 mechanism plan and are independent of `testGlobs`, so this reclassification must convert the
 production marker and add the `Verify:` note in the same commit.
 
-- [ ] **Task 1.1 — Reclassify the ADR-0042 declaration.** In
+- [ ] **Task 1.1: Reclassify the ADR-0042 declaration.** In
   `docs/decisions/0042-adr-scaffolding-command.md`, change the `adr-new-no-overwrite` bullet (locate
   with `grep -n adr-new-no-overwrite docs/decisions/0042-adr-scaffolding-command.md`):
 
   ```diff
-  -- `invariant: adr-new-no-overwrite` — `awf new adr` refuses to overwrite an existing file at its computed
+  -- `invariant: adr-new-no-overwrite`: `awf new adr` refuses to overwrite an existing file at its computed
   -  target path rather than silently clobbering it.
-  +- `unbacked-invariant: adr-new-no-overwrite` — `awf new adr` refuses to overwrite an existing file at its
+  +- `unbacked-invariant: adr-new-no-overwrite`: `awf new adr` refuses to overwrite an existing file at its
   +  computed target path rather than silently clobbering it. **Verify:** `NewFile` (`internal/adr/adr.go`)
   +  stats the target and returns an "already exists" error before any write; the branch is
   +  `// coverage-ignore` (unreachable, since `NextNumber` always returns one past every existing
   +  `NNNN-*.md`), so confirm the guard precedes the write by reading `NewFile`.
   ```
 
-- [ ] **Task 1.2 — Downgrade the production marker to `touches-invariant:`.** In
+- [ ] **Task 1.2: Downgrade the production marker to `touches-invariant:`.** In
   `internal/adr/adr.go`, on the `NewFile` doc-comment block (locate with
   `grep -n 'invariant: adr-new-no-overwrite' internal/adr/adr.go`):
 
   ```diff
   -// invariant: adr-new-no-overwrite
-  +// touches-invariant: adr-new-no-overwrite — refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
+  +// touches-invariant: adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
   ```
 
-- [ ] **Task 1.3 — Verify and commit.** `./x gate` && `./x check` (both clean; the reclassified slug
-  now satisfies `unbacked-refuses-proof` — no proof marker remains — and `unbacked-requires-verify-note`;
+- [ ] **Task 1.3: Verify and commit.** `./x gate` && `./x check` (both clean; the reclassified slug
+  now satisfies `unbacked-refuses-proof` (no proof marker remains) and `unbacked-requires-verify-note`;
   the note-bearing `touches-invariant:` raises no bare-touches advisory). `git add
   docs/decisions/0042-adr-scaffolding-command.md internal/adr/adr.go`. Commit:
-  `refactor(invariants): reclassify adr-new-no-overwrite as unbacked` (≤72 chars — the `./x commit-gate`
+  `refactor(invariants): reclassify adr-new-no-overwrite as unbacked` (≤72 chars: the `./x commit-gate`
   hook hard-rejects any subject over 72).
 
-## Phase 2 — Add test proof markers for the 72 backed slugs
+## Phase 2: Add test proof markers for the 72 backed slugs
 
 Every other production-only-backed slug has a test that asserts it (the repo's 100%-coverage gate,
 ADR-0012). Each is migrated identically: add a `// invariant: <slug>` proof marker on the asserting
 test, and rewrite the production `// invariant: <slug>` marker to
-`// touches-invariant: <slug> — <note>` (the note briefly names what the production site does, so no
+`// touches-invariant: <slug> - <note>` (the note briefly names what the production site does, so no
 bare-touches advisory fires). With `testGlobs` still unset, the source-only fallback keeps each slug
 backed (the new test-file marker is a source file), so the gate stays green.
 
 Two slugs are handled first because they are not pure marker-moves:
 
-- [ ] **Task 2.1 — Write the missing `skills-set-in-confighash` proof test, then mark it.**
+- [ ] **Task 2.1: Write the missing `skills-set-in-confighash` proof test, then mark it.**
   `skills-set-in-confighash` (`internal/project/confighash.go`, the `render.ReferencesSkills` fold)
   has no dedicated test asserting its drift consequence, unlike its siblings `scopes-in-confighash`
-  and `invariant-markers-in-confighash`. Add a test to `internal/project/drift_test.go` — the file that
-  already holds the sibling reflag tests — mirroring
+  and `invariant-markers-in-confighash`. Add a test to `internal/project/drift_test.go` (the file that
+  already holds the sibling reflag tests) mirroring
   `internal/project/drift_test.go :: TestScopesEditReflagsReferencingArtifacts`: it must build a
   project whose enabled set renders at least one `.skills`-referencing artifact, compute its
   `ConfigHash`, toggle the `skills` enable array, and assert the hash changes (the enable-set edit
@@ -130,29 +130,29 @@ Two slugs are handled first because they are not pure marker-moves:
 
   ```diff
   -		// invariant: skills-set-in-confighash
-  +		// touches-invariant: skills-set-in-confighash — folds the effective skills set into ConfigHash; proof in drift_test.go
+  +		// touches-invariant: skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
   ```
 
-- [ ] **Task 2.2 — Add the 71 remaining proof markers (batch).** For each slug in the **affected-site
+- [ ] **Task 2.2: Add the 71 remaining proof markers (batch).** For each slug in the **affected-site
   set** table below, apply the two edits. Locate the production marker with
   `grep -rn 'invariant: <slug>' --include='*.go' .` (line numbers below are as of base commit
-  `e18b05c` and shift as edits land — always grep) and the proof test by the named function.
+  `e18b05c` and shift as edits land; always grep) and the proof test by the named function.
 
-  **Representative** (`include-splice`) — add the proof marker on the asserting test, downgrade the
+  **Representative** (`include-splice`): add the proof marker on the asserting test, downgrade the
   production marker:
 
   ```diff
-  # internal/render/include_test.go — in func TestExpandIncludesSplices:
+  # internal/render/include_test.go, in func TestExpandIncludesSplices:
    	// (on or just above the assertion that the partial body is spliced verbatim)
   +	// invariant: include-splice
   ```
   ```diff
   # internal/render/include.go:
   -// invariant: include-splice
-  +// touches-invariant: include-splice — include-directive splice site; proof in include_test.go
+  +// touches-invariant: include-splice - include-directive splice site; proof in include_test.go
   ```
 
-  **Edge — `context-read-only` (two production markers, marker lands on an already-named snapshot
+  **Edge: `context-read-only` (two production markers, marker lands on an already-named snapshot
   test).** Its property is *already* test-backed (ADR-0092 documents the snapshot test); the migration
   only relocates the marker. Add `// invariant: context-read-only` inside
   `cmd/awf/context_test.go :: TestRunContextReadOnly` (the test that snapshots tree mtimes and
@@ -162,22 +162,22 @@ Two slugs are handled first because they are not pure marker-moves:
   ```diff
   # cmd/awf/context.go (two sites):
   -// invariant: context-read-only
-  +// touches-invariant: context-read-only — read-only command entry point (no writer dependency); proof in context_test.go
+  +// touches-invariant: context-read-only - read-only command entry point (no writer dependency); proof in context_test.go
   ```
 
-  **Edge — `lock-atomic-save` (three production markers, one proof site).** Add
+  **Edge: `lock-atomic-save` (three production markers, one proof site).** Add
   `// invariant: lock-atomic-save` inside
   `internal/manifest/manifest_test.go :: TestWriteFileAtomicFailureLeavesTargetUntouched`, and
-  downgrade all three production markers — `internal/manifest/manifest.go`,
-  `internal/migrate/configedit.go`, `internal/migrate/singletonstandarddocs.go`:
+  downgrade all three production markers (`internal/manifest/manifest.go`,
+  `internal/migrate/configedit.go`, `internal/migrate/singletonstandarddocs.go`):
 
   ```diff
   -// invariant: lock-atomic-save
-  +// touches-invariant: lock-atomic-save — atomic temp-file+rename write site; proof in manifest_test.go
+  +// touches-invariant: lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
   ```
 
   **Affected-site set** (71 slugs; `skills-set-in-confighash` is Task 2.1; `context-read-only` and
-  `lock-atomic-save` follow the edge shapes above). `test file :: TestFunc` names the proof site — if
+  `lock-atomic-save` follow the edge shapes above). `test file :: TestFunc` names the proof site: if
   a `_test.go` in the same package holds the named function, that is the file; otherwise the table
   gives the path:
 
@@ -254,29 +254,29 @@ Two slugs are handled first because they are not pure marker-moves:
   | workflow-actions-sha-pinned | cmd/pincheck/main.go:27 | cmd/pincheck/main_test.go :: TestRunFailsTagPinnedAction |
 
   Placement rule: the proof marker must open its line (after optional leading whitespace) and sit on
-  or immediately above the assertion that exercises the property — not merely anywhere in the file —
+  or immediately above the assertion that exercises the property (not merely anywhere in the file),
   so it reads as a claim about *that* test. If a named test does not, on reading, actually assert the
   slug's property, stop and record it in Notes rather than planting a hollow marker (this is the
-  authorized escape valve — see Notes).
+  authorized escape valve, see Notes).
 
-- [ ] **Task 2.3 — Verify and commit.** Post-check (deterministic completeness proof): temporarily add
+- [ ] **Task 2.3: Verify and commit.** Post-check (deterministic completeness proof): temporarily add
   `testGlobs` to `.awf/config.yaml`, run the checker, then revert:
 
   ```
   # add under invariants: →  testGlobs:\n    - '**/*_test.go'
   go run ./cmd/awf invariants   # expect: exit 0, no "invariant issue(s)" line
-  git checkout .awf/config.yaml  # revert — testGlobs is turned on for real in Phase 3
+  git checkout .awf/config.yaml  # revert: testGlobs is turned on for real in Phase 3
   ```
 
   Then `./x gate` (100% coverage holds; the new `skills-set-in-confighash` test is covered) && `./x
-  check` (clean — every `touches-invariant:` names a declared slug and carries a note, so no
+  check` (clean: every `touches-invariant:` names a declared slug and carries a note, so no
   dangling-marker and no bare-touches advisory appears). `git add` the changed production `.go` files,
   their `_test.go` siblings, and `internal/project/drift_test.go` (the new `skills-set-in-confighash`
   test). Commit: `feat(invariants): add test proof markers for 72 backed invariants`.
 
-## Phase 3 — Turn on `testGlobs`
+## Phase 3: Turn on `testGlobs`
 
-- [ ] **Task 3.1 — Set `invariants.testGlobs` and regenerate.** In `.awf/config.yaml`, add the glob
+- [ ] **Task 3.1: Set `invariants.testGlobs` and regenerate.** In `.awf/config.yaml`, add the glob
   list under `invariants:` (the `TestGlobs` field and its validation shipped with the mechanism plan):
 
   ```diff
@@ -293,21 +293,21 @@ Two slugs are handled first because they are not pure marker-moves:
   Run `./x sync` (regenerates `docs/config-reference.md`, whose live-state projection now shows awf's
   `testGlobs` value).
 
-- [ ] **Task 3.2 — Verify and commit.** `./x gate` && `./x check` (clean: backing now means an executed
+- [ ] **Task 3.2: Verify and commit.** `./x gate` && `./x check` (clean: backing now means an executed
   test line; every backed slug has its Phase-2 test marker, `adr-new-no-overwrite` is unbacked, the
-  12 ADR-0105/0106 slugs are not yet required — those ADRs are still `Proposed` — and
+  12 ADR-0105/0106 slugs are not yet required (those ADRs are still `Proposed`) and
   `context-tier1-governs` remains backed by `internal/project/context_test.go`). `git add
   .awf/config.yaml docs/config-reference.md`. Commit:
   `feat(config): enforce test-scoped invariant backing via testGlobs`.
 
-## Phase 4 — Flip ADR-0105 to `Implemented`
+## Phase 4: Flip ADR-0105 to `Implemented`
 
 Flipping ADR-0105 makes its 9 declared slugs enforced; each is `Backed` and needs a proof marker in a
-`testGlobs` file. The mechanism plan already wrote the tests — this phase only annotates them. It also
+`testGlobs` file. The mechanism plan already wrote the tests; this phase only annotates them. It also
 corrects ADR-0105's one now-inaccurate illustrative example (per the authorization to keep ADR data
 correct) and discharges ADR-0105's doc-currency obligations.
 
-- [ ] **Task 4.1 — Add proof markers for the 9 ADR-0105 slugs.** Place `// invariant: <slug>` on the
+- [ ] **Task 4.1: Add proof markers for the 9 ADR-0105 slugs.** Place `// invariant: <slug>` on the
   asserting line of each named test (all in `internal/invariants/invariants_test.go` except the last,
   in `internal/config/config_test.go`). Grep each function to confirm it asserts the property before
   marking; if two slugs map to one function, mark two distinct assertion lines within it.
@@ -315,7 +315,7 @@ correct) and discharges ADR-0105's doc-currency obligations.
   | slug | proof test :: function |
   |---|---|
   | proof-marker-test-scoped | invariants_test.go :: TestCheckProofInNonTestFileScoped |
-  | absent-testglobs-source-fallback | invariants_test.go :: TestCheckProofInNonTestFileScoped (the fallback assertion — the block that re-checks with `TestGlobs` empty) |
+  | absent-testglobs-source-fallback | invariants_test.go :: TestCheckProofInNonTestFileScoped (the fallback assertion: the block that re-checks with `TestGlobs` empty) |
   | backed-requires-proof | invariants_test.go :: TestCheckBackedNoProof |
   | unbacked-refuses-proof | invariants_test.go :: TestCheckUnbackedWithProof |
   | unbacked-requires-verify-note | invariants_test.go :: TestCheckUnbackedWithoutVerify |
@@ -324,23 +324,23 @@ correct) and discharges ADR-0105's doc-currency obligations.
   | bare-touches-note | invariants_test.go :: TestCheckBareTouchesNote |
   | testglobs-anchored-validated | internal/config/config_test.go :: TestInvariantTestGlobsValidation |
 
-- [ ] **Task 4.2 — Amend ADR-0105's inaccurate example and flip its status.** In
+- [ ] **Task 4.2: Amend ADR-0105's inaccurate example and flip its status.** In
   `docs/decisions/0105-...marker-split.md`: (a) the Context example naming `context-read-only` as
   "genuinely-untestable" is now wrong (it is backed via its snapshot test, as is the structural
-  single-source trio) — rewrite it to the one property class awf actually leaves unbacked:
+  single-source trio); rewrite it to the one property class awf actually leaves unbacked:
 
   ```diff
   -  ADR-0008 Decision item 4 ... forces a genuinely-untestable but
-  -  load-bearing property — e.g. `context-read-only`, structural single-source properties — to shed
+  -  load-bearing property (e.g. `context-read-only`, structural single-source properties) to shed
   -  its slug and become prose.
   +  ADR-0008 Decision item 4 ... forces a genuinely-untestable but
-  +  load-bearing property — e.g. a defensive guard whose refusal branch is unreachable by construction —
+  +  load-bearing property (e.g. a defensive guard whose refusal branch is unreachable by construction)
   +  to shed its slug and become prose.
   ```
 
   (Read the exact surrounding lines first; preserve wording outside the example.) (b) In the
-  Invariants-section preamble, strike the now-false transitional parenthetical — Plan 1's atomic
-  rewrite already migrated this ADR's declarations to `invariant:`/`unbacked-invariant:`:
+  Invariants-section preamble, strike the now-false transitional parenthetical (Plan 1's atomic
+  rewrite already migrated this ADR's declarations to `invariant:`/`unbacked-invariant:`):
 
   ```diff
   -test file under the new model. (This ADR's own declarations use today's `inv:` token while
@@ -350,7 +350,7 @@ correct) and discharges ADR-0105's doc-currency obligations.
 
   (c) Flip the frontmatter `status: Proposed` → `status: Implemented`.
 
-- [ ] **Task 4.3 — Rewrite the invariants domain narrative.** In
+- [ ] **Task 4.3: Rewrite the invariants domain narrative.** In
   `.awf/domains/parts/invariants/current-state.md`, replace the single-marker description with the
   two-marker model: a `invariant: <slug>` (backed) or `unbacked-invariant: <slug>` + `Verify:` note
   (unbacked) ADR declaration; a proof `invariant:` source marker that backs only in an
@@ -358,27 +358,27 @@ correct) and discharges ADR-0105's doc-currency obligations.
   `touches-invariant:` context marker; and the symmetric checks (backed-requires-proof,
   unbacked-refuses-proof, unbacked-requires-verify-note) plus the dangling-marker/bare-touches
   advisories. Keep the retirement (ADR-0031) and the `DeclaringADRs` Tier-1-join description unchanged
-  here — Phase 5's Task 5.3(d) revises that join sentence for ADR-0106's union scan once ADR-0106 is
+  here; Phase 5's Task 5.3(d) revises that join sentence for ADR-0106's union scan once ADR-0106 is
   `Implemented`. Preserve ADR-0077 glob wording. Then `./x sync` (regenerates `docs/decisions/ACTIVE.md`
   for the status flip and `docs/domains/invariants.md`).
 
-- [ ] **Task 4.4 — Verify and commit.** `./x gate` && `./x check` (clean: ADR-0105's 9 slugs are now
+- [ ] **Task 4.4: Verify and commit.** `./x gate` && `./x check` (clean: ADR-0105's 9 slugs are now
   enforced and backed in test scope; `ACTIVE.md` shows `0105` Implemented). `git add
   internal/invariants/invariants_test.go internal/config/config_test.go
   docs/decisions/0105-*.md docs/decisions/ACTIVE.md
   .awf/domains/parts/invariants/current-state.md docs/domains/invariants.md`. Commit:
   `feat(invariants): enforce ADR-0105 test-backing (status Implemented)`.
 
-## Phase 5 — Flip ADR-0106 to `Implemented` and retire `context-tier1-governs`
+## Phase 5: Flip ADR-0106 to `Implemented` and retire `context-tier1-governs`
 
 Flipping ADR-0106 enforces its 3 context slugs and applies its `retires_invariants:
 [context-tier1-governs]`. The retired slug's markers are removed and its union-aware successor
 `context-tier1-marker-union` is marked in the same commit (ADR-0106 requires this), and the AGENTS.md
 context bullet + tooling narrative swap to the successor.
 
-- [ ] **Task 5.1 — Add proof markers for the 3 ADR-0106 slugs.** Place `// invariant: <slug>` on the
+- [ ] **Task 5.1: Add proof markers for the 3 ADR-0106 slugs.** Place `// invariant: <slug>` on the
   asserting line of each test (grep to confirm the assertion first; `context-invariant-backed-labeled`
-  and `context-surfaces-marker-notes` share `TestContextForLabelsAndNotes` — mark two distinct lines).
+  and `context-surfaces-marker-notes` share `TestContextForLabelsAndNotes`; mark two distinct lines).
 
   | slug | proof test :: function |
   |---|---|
@@ -386,17 +386,17 @@ context bullet + tooling narrative swap to the successor.
   | context-invariant-backed-labeled | internal/project/context_test.go :: TestContextForLabelsAndNotes |
   | context-surfaces-marker-notes | internal/project/context_test.go :: TestContextForLabelsAndNotes |
 
-- [ ] **Task 5.2 — Retire `context-tier1-governs` markers.** Remove the proof marker
+- [ ] **Task 5.2: Retire `context-tier1-governs` markers.** Remove the proof marker
   `// invariant: context-tier1-governs` from `internal/project/context.go` (on the Tier-1 join, ~:136)
   and from `internal/project/context_test.go` (~:102). At the `context.go` production site, add a
   successor touches marker recording the production context:
 
   ```diff
   -	// invariant: context-tier1-governs
-  +	// touches-invariant: context-tier1-marker-union — Tier-1 union-scan join site; proof in invariants_test.go
+  +	// touches-invariant: context-tier1-marker-union - Tier-1 union-scan join site; proof in invariants_test.go
   ```
 
-- [ ] **Task 5.3 — Flip ADR-0106 status and swap the context wording.** (a) In
+- [ ] **Task 5.3: Flip ADR-0106 status and swap the context wording.** (a) In
   `docs/decisions/0106-...surfacing.md`, flip `status: Proposed` → `status: Implemented`, and strike
   the now-false transitional parenthetical in the Invariants-section preamble (Plan 1 already migrated
   this ADR's bullets to the unified token):
@@ -419,27 +419,27 @@ context bullet + tooling narrative swap to the successor.
   `touches-invariant:` marker, and note that each governing invariant is labelled backed/unbacked.
   Also change that bullet's provenance from `ref: ADR-0104` to `ref: ADR-0104, ADR-0106` (the
   successor slug `context-tier1-marker-union` is declared by ADR-0106, and the repo's multi-ADR ref
-  convention — e.g. `ref: ADR-0097, ADR-0098` — cites both the establishing and amending ADR).
+  convention (e.g. `ref: ADR-0097, ADR-0098`) cites both the establishing and amending ADR).
   (c) In `.awf/domains/parts/tooling/current-state.md`, update the `awf context` narrative for the
   union scan (`MarkersUnder` over `sources` ∪ `testGlobs`, both marker kinds), the backed/unbacked
   labelling of governing invariants, and the surfaced `Verify:`/touches site notes. (d) In
   `.awf/domains/parts/invariants/current-state.md`, update the closing sentence that ties
-  `invariants.DeclaringADRs` to "`awf context`'s Tier-1 relevance join" — ADR-0106 makes that join a
+  `invariants.DeclaringADRs` to "`awf context`'s Tier-1 relevance join": ADR-0106 makes that join a
   two-marker union scan (`invariants.sources` ∪ `testGlobs`, proof + touches) with backed/unbacked
   labelling; discharge ADR-0106's second doc-currency target (Task 4.3's Phase-4 rewrite deliberately
   left this join sentence for Phase 5, since ADR-0106 is not `Implemented` until here). Then `./x sync`
   (regenerates `AGENTS.md`, `docs/decisions/ACTIVE.md`, `docs/domains/tooling.md`,
   `docs/domains/invariants.md`).
 
-- [ ] **Task 5.4 — Verify and commit.** `./x gate` && `./x check` (clean: `context-tier1-governs` is
-  retired — dropped from the required set with no residual marker — `context-tier1-marker-union` and
+- [ ] **Task 5.4: Verify and commit.** `./x gate` && `./x check` (clean: `context-tier1-governs` is
+  retired (dropped from the required set with no residual marker), `context-tier1-marker-union` and
   the other two ADR-0106 slugs are enforced and backed; `AGENTS.md` and `ACTIVE.md` regenerated; no
   `context-tier1-governs` reference survives outside the historical ADR-0104/0106 bodies). `git add
   internal/invariants/invariants_test.go internal/project/context.go internal/project/context_test.go
   docs/decisions/0106-*.md docs/decisions/ACTIVE.md .awf/agents-doc.yaml AGENTS.md
   .awf/domains/parts/tooling/current-state.md docs/domains/tooling.md
   .awf/domains/parts/invariants/current-state.md docs/domains/invariants.md`. Commit:
-  `feat(invariants): union-scan context surfacing, retire tier1-governs` (≤72 chars — commit-gate limit).
+  `feat(invariants): union-scan context surfacing, retire tier1-governs` (≤72 chars: commit-gate limit).
 
 ## Verification
 
@@ -459,22 +459,22 @@ context bullet + tooling narrative swap to the successor.
 
 ## Notes
 
-- **Authorized escape valve — a named test that does not truly assert its slug.** If, on reading a
+- **Authorized escape valve: a named test that does not truly assert its slug.** If, on reading a
   proof-test function named in the tables, it does not actually exercise the slug's property, do not
   plant a hollow marker. Either (a) move the marker to a sibling test that does assert it, or (b) if no
-  test does, treat the slug like `adr-new-no-overwrite` — reclassify its ADR declaration to
-  `unbacked-invariant:` with a `Verify:` note and downgrade its markers to `touches-invariant:` —
+  test does, treat the slug like `adr-new-no-overwrite` (reclassify its ADR declaration to
+  `unbacked-invariant:` with a `Verify:` note and downgrade its markers to `touches-invariant:`),
   recording the decision here. The classification was analysed per-slug, but execution is the final
   check.
 - **ADR data corrections.** ADR text discovered inaccurate under the new model is amended so the data
   is correct (Task 4.2 fixes ADR-0105's `context-read-only` example). ADR-0092's `context-read-only`
-  bullet ("Backed by a test that snapshots the working tree …") stays accurate — the migration backs
+  bullet ("Backed by a test that snapshots the working tree ...") stays accurate; the migration backs
   it via exactly that snapshot test. ADR-0105 and ADR-0106 are `Proposed` and freely amendable; edits
   to Implemented ADRs (0042 in Phase 1, 0092's marker relocation) are the mechanical migration ADR-0105
   authorises, mirroring the mechanism plan's `inv:`→`invariant:` corpus rewrite.
 - **Classification decisions (both confirmed with the user).** The borderline single-source trio
   (`cli-command-spec-single-source`, `config-serialization-owned`, `commit-gate-shared-rule`) and
-  `context-read-only` are all **backed** — each has a real asserting test; `unbacked-invariant:` is
+  `context-read-only` are all **backed**: each has a real asserting test; `unbacked-invariant:` is
   reserved for the genuinely untestable, of which awf has exactly one (`adr-new-no-overwrite`, an
   unreachable defensive guard).
 - **Out of scope.** No adopter migration is emitted (the two-front `inv:`→`invariant:` + marker
@@ -491,7 +491,7 @@ and 5). Phase commits: `e10b9d0` (P1), `9ff1a1d` (P2), `40cc9fb` (P3), `89b19de`
 final commit carrying this freeze. Deviations encountered during execution:
 
 - **Phase 2 was executed by a fan-out of worker subagents** partitioned into disjoint file sets, not
-  hand-edited inline — the 72-slug migration is uniform mechanical work with a deterministic
+  hand-edited inline: the 72-slug migration is uniform mechanical work with a deterministic
   completeness post-check (temp-set `testGlobs` → `awf invariants` reports 0), which the main thread
   re-ran independently before committing. No escape valve was needed: every named proof test was
   confirmed to assert its slug.
@@ -503,7 +503,7 @@ final commit carrying this freeze. Deviations encountered during execution:
   change.
 - **~37 already-test-backed slugs (never in the failing 73) retain a redundant production
   `// invariant:` marker.** Under `testGlobs` these sit outside proof scope and are simply ignored
-  (not flagged, not dangling — the slug is backed by its own test marker). Converting them to
+  (not flagged, not dangling: the slug is backed by its own test marker). Converting them to
   `touches-invariant:` for consistency with the proof/touches model is a deliberate out-of-scope
   tidy-up, not required for green teeth.
 - **`docs/config-reference.md` live-state column shows `—` for `invariants.testGlobs`** rather than the
@@ -511,7 +511,7 @@ final commit carrying this freeze. Deviations encountered during execution:
   Regeneration is idempotent (no drift, `./x check` clean), so this is a cosmetic follow-up, not a
   blocker.
 - **The tooling domain narrative names `context-tier1-governs`** in a "retiring X for the union-aware
-  `context-tier1-marker-union`" explanatory clause — matching how the same narrative already documents
+  `context-tier1-marker-union`" explanatory clause, matching how the same narrative already documents
   earlier retirements (`context-surfaces-pitfalls`, etc.). It is descriptive prose, not a live citation
   or marker, and raises no check finding; Task 5.4's "no surviving reference" verify is met in spirit.
 - **The 0105/0106 status flips regenerated the per-domain ADR indexes** in `docs/domains/{config,tooling}.md`

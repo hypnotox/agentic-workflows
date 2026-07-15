@@ -1,6 +1,6 @@
 # Plan: Interactive and agent-prefillable `awf init`
 
-Implements **[ADR-0029](../decisions/0029-interactive-agent-prefillable-init.md)** (design authority — do
+Implements **[ADR-0029](../decisions/0029-interactive-agent-prefillable-init.md)** (design authority: do
 not duplicate rationale here). Scope per the brainstorm decision: **vars + invariants config**;
 the catalog-trim multiselect is **deferred** to a follow-up plan (ADR-0029 stays `Proposed` until
 that lands; this plan does **not** flip it to `Implemented`).
@@ -49,14 +49,14 @@ Modified:
 - `internal/project/scaffold.go` (signature + overlay)
 - `internal/project/scaffold_test.go`, `cmd/awf/list_add_test.go` (call-site updates)
 - `cmd/awf/main.go` (flags, helpers, `runInit`, help text)
-- `cmd/awf/run_test.go` (or a new init test file — see Phase 4)
+- `cmd/awf/run_test.go` (or a new init test file: see Phase 4)
 - `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/config/current-state.md`, `README.md` (Phase 5)
 
 ---
 
-## Phase 1 — Catalog value descriptors + parity gate
+## Phase 1: Catalog value descriptors + parity gate
 
-### Task 1.1 — Add the `VarDescriptor` type and `Vars` field
+### Task 1.1: Add the `VarDescriptor` type and `Vars` field
 
 - [ ] Edit `internal/catalog/catalog.go`. After the `DocSpec` struct (line 33), add:
 
@@ -83,7 +83,7 @@ type VarDescriptor struct {
 	Vars        []VarDescriptor       `yaml:"vars"`
 ```
 
-### Task 1.2 — Add the `vars:` descriptor block to the catalog
+### Task 1.2: Add the `vars:` descriptor block to the catalog
 
 - [ ] Edit `templates/catalog.yaml`. Append a new top-level block at end of file:
 
@@ -158,7 +158,7 @@ vars:
     options: ["*.go", "*.py", "*.ts", "*.rb"]
 ```
 
-### Task 1.3 — Parity test (backs `var-descriptor-parity`)
+### Task 1.3: Parity test (backs `var-descriptor-parity`)
 
 - [ ] Create `internal/project/descriptor_parity_test.go`:
 
@@ -242,11 +242,11 @@ func TestVarDescriptorParity(t *testing.T) {
 }
 ```
 
-### Task 1.4 — Verify and commit
+### Task 1.4: Verify and commit
 
-- [ ] Run `go test ./internal/catalog/ ./internal/project/ 2>&1 | tail` — expect `ok` for both.
-- [ ] Run `./x gate` — expect `coverage: 100.0%` and `0 issues.`
-- [ ] Run `./x check` — expect `awf check: clean` (catalog.yaml is not drift-tracked; no rendered change).
+- [ ] Run `go test ./internal/catalog/ ./internal/project/ 2>&1 | tail`: expect `ok` for both.
+- [ ] Run `./x gate`: expect `coverage: 100.0%` and `0 issues.`
+- [ ] Run `./x check`: expect `awf check: clean` (catalog.yaml is not drift-tracked; no rendered change).
 - [ ] Commit:
 
 ```
@@ -262,9 +262,9 @@ var has a descriptor and no descriptor names a dead var (inv: var-descriptor-par
 
 ---
 
-## Phase 2 — `internal/initspec`: resolution, describe, parsing
+## Phase 2: `internal/initspec`: resolution, describe, parsing
 
-### Task 2.1 — Create the package
+### Task 2.1: Create the package
 
 - [ ] Create `internal/initspec/initspec.go`:
 
@@ -378,7 +378,7 @@ func invConfig(marker, globs string) (*config.InvariantConfig, error) {
 // prompt reads one line for descriptor d, returning d.Default on empty input.
 // For an enum, a numeric reply selects the option at that 1-based index.
 func prompt(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) (string, error) {
-	fmt.Fprintf(out, "%s — %s\n", d.Key, d.Description)
+	fmt.Fprintf(out, "%s: %s\n", d.Key, d.Description)
 	if d.Kind == "enum" {
 		for i, o := range d.Options {
 			fmt.Fprintf(out, "  %d) %s\n", i+1, o)
@@ -405,7 +405,7 @@ func prompt(r *bufio.Reader, out io.Writer, d catalog.VarDescriptor) (string, er
 }
 ```
 
-### Task 2.2 — Tests
+### Task 2.2: Tests
 
 - [ ] Create `internal/initspec/initspec_test.go` covering every branch:
 
@@ -540,10 +540,10 @@ func TestMergeSetFlags(t *testing.T) {
 }
 ```
 
-### Task 2.3 — Verify and commit
+### Task 2.3: Verify and commit
 
-- [ ] Run `go test ./internal/initspec/ 2>&1 | tail` — expect `ok`.
-- [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.` (`TestResolvePromptReadError` covers the
+- [ ] Run `go test ./internal/initspec/ 2>&1 | tail`: expect `ok`.
+- [ ] Run `./x gate`: expect `coverage: 100.0%`, `0 issues.` (`TestResolvePromptReadError` covers the
   non-EOF `ReadString` branch in `prompt`; `strings.NewReader` cannot trigger it, so that test is required.)
 - [ ] Commit:
 
@@ -559,9 +559,9 @@ no new dependency."
 
 ---
 
-## Phase 3 — `ScaffoldConfig` takes resolved vars + invariants
+## Phase 3: `ScaffoldConfig` takes resolved vars + invariants
 
-### Task 3.1 — Add `Skeleton.Invariants`
+### Task 3.1: Add `Skeleton.Invariants`
 
 - [ ] Edit `internal/config/edit.go`. In the `Skeleton` struct (line 17), add after `Docs`:
 
@@ -571,7 +571,7 @@ no new dependency."
 
 (`omitempty` keeps the silent output byte-identical: a nil pointer emits no `invariants:` key.)
 
-### Task 3.2 — Change `ScaffoldConfig`
+### Task 3.2: Change `ScaffoldConfig`
 
 - [ ] Edit `internal/project/scaffold.go`. Change the signature (line 22) and var-seeding so resolved
   values overlay the all-referenced base, and the invariants config is passed through:
@@ -580,7 +580,7 @@ no new dependency."
 func ScaffoldConfig(prefix string, vars map[string]string, inv *config.InvariantConfig) ([]byte, error) {
 ```
 
-- [ ] Replace the final `vars` construction block (lines 80–83, the `vars := make(...)` loop seeding `""`)
+- [ ] Replace the final `vars` construction block (lines 80-83, the `vars := make(...)` loop seeding `""`)
   with an overlay of the resolved values onto the all-referenced base:
 
 ```go
@@ -605,7 +605,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 	})
 ```
 
-### Task 3.3 — Update call sites
+### Task 3.3: Update call sites
 
 - [ ] `cmd/awf/main.go` line 207: change to (full flag wiring lands in Phase 4):
 
@@ -613,16 +613,16 @@ func ScaffoldConfig(prefix string, vars map[string]string, inv *config.Invariant
 		scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil)
 ```
 
-- [ ] `internal/project/scaffold_test.go`: every `ScaffoldConfig("…")` call → add `, nil, nil`
-  (lines 23, 53, 98, 127, 163, 205, 238 — 7 call sites).
+- [ ] `internal/project/scaffold_test.go`: every `ScaffoldConfig("...")` call → add `, nil, nil`
+  (lines 23, 53, 98, 127, 163, 205, 238: 7 call sites).
 - [ ] `cmd/awf/list_add_test.go` line 23: `project.ScaffoldConfig("example")` → `project.ScaffoldConfig("example", nil, nil)`.
 
-### Task 3.4 — Verify and commit
+### Task 3.4: Verify and commit
 
-- [ ] Run `go test ./... 2>&1 | tail` — expect all `ok` (the nil,nil path is byte-identical, so existing
+- [ ] Run `go test ./... 2>&1 | tail`: expect all `ok` (the nil,nil path is byte-identical, so existing
   golden/clean-sync assertions still hold).
-- [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`
-- [ ] Run `./x check` — expect `awf check: clean`.
+- [ ] Run `./x gate`: expect `coverage: 100.0%`, `0 issues.`
+- [ ] Run `./x check`: expect `awf check: clean`.
 - [ ] Commit:
 
 ```
@@ -637,9 +637,9 @@ nil) call stays byte-identical to today's seed-empty output."
 
 ---
 
-## Phase 4 — CLI: `--describe`, `--set`, `--answers`, interactive
+## Phase 4: CLI: `--describe`, `--set`, `--answers`, interactive
 
-### Task 4.1 — Flag spec + extraction helpers + TTY seam
+### Task 4.1: Flag spec + extraction helpers + TTY seam
 
 - [ ] Edit `cmd/awf/main.go`. Update the init `argSpec` (line 138):
 
@@ -686,7 +686,7 @@ func valueFlag(args []string, flag string) string {
 }
 ```
 
-### Task 4.2 — Wire `runInit`
+### Task 4.2: Wire `runInit`
 
 - [ ] Change the init dispatch (line 70) to extract the new flags:
 
@@ -757,7 +757,7 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
   Keep the remainder of `runInit` (from `p, err := project.Open(root)` through the end) exactly as it
   is today.
 
-### Task 4.3 — Help text
+### Task 4.3: Help text
 
 - [ ] In `helpText` (line 28), extend the init block:
 
@@ -770,28 +770,28 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
                  --answers FILE read values from a JSON/YAML answers file
 ```
 
-### Task 4.4 — Tests (back `describe-read-only`, `explicit-answers-win`, `init-noninteractive-default`)
+### Task 4.4: Tests (back `describe-read-only`, `explicit-answers-win`, `init-noninteractive-default`)
 
-- [ ] Add to `cmd/awf/run_test.go` (follow the existing test style — `run([]string{...}, &bytes.Buffer{}, ...)`
+- [ ] Add to `cmd/awf/run_test.go` (follow the existing test style: `run([]string{...}, &bytes.Buffer{}, ...)`
   with a `t.Chdir(tmp)` or the package's existing cwd seam; set `isInteractive = func() bool { return false }`
   and restore it with `t.Cleanup`). Cover:
 
-  1. **describe-read-only** — `run([]string{"awf","init","--describe"}, out, errOut)` in a temp dir:
+  1. **describe-read-only**: `run([]string{"awf","init","--describe"}, out, errOut)` in a temp dir:
      assert exit 0, `out` parses as JSON containing `"descriptors"`, and **no `.awf/` dir was created**.
      Tag the test `// invariant: describe-read-only`.
-  2. **explicit-answers-win** — `run([]string{"awf","init","--set","gateCmd=make gate"}, ...)`:
+  2. **explicit-answers-win**: `run([]string{"awf","init","--set","gateCmd=make gate"}, ...)`:
      assert the written `.awf/config.yaml` contains `gateCmd: make gate`. Tag `// invariant: explicit-answers-win`.
-  3. **init-noninteractive-default** — with `isInteractive` forced false and no answer flags,
+  3. **init-noninteractive-default**: with `isInteractive` forced false and no answer flags,
      `run([]string{"awf","init"}, ...)`: assert every var in the written config is empty (`gateCmd: ""`)
      and there is no `invariants:` key. Tag `// invariant: init-noninteractive-default`.
-  4. **--answers file** — write a temp JSON `{"testCmd":"go test ./..."}`, run `init --answers <file>`,
+  4. **--answers file**: write a temp JSON `{"testCmd":"go test ./..."}`, run `init --answers <file>`,
      assert config has `testCmd: go test ./...`.
-  5. **error paths** — `init --set bad` (no `=`) → exit 2-or-1 with the `--set` error; `init --answers /nope`
+  5. **error paths**: `init --set bad` (no `=`) → exit 2-or-1 with the `--set` error; `init --answers /nope`
      → read error; **`init --answers <file>` where the file exists but holds a non-map** (e.g. write
      `- a\n`) → the `ParseAnswersFile` error branch in `runInit` (`os.ReadFile` succeeds, so this is a
      distinct statement from the read-error case above and is required for 100% coverage);
      `init --set invariantsMarker=//` (globs missing) → the half-set error.
-  6. **real TTY seam** — one test that calls the production `isInteractive()` *without* overriding it
+  6. **real TTY seam**: one test that calls the production `isInteractive()` *without* overriding it
      (e.g. `func TestIsInteractive(t *testing.T) { _ = isInteractive() }`). `isInteractive` is a closure
      with a body, so unless one test executes the real function its two statements are uncovered and the
      100% gate fails; under `go test` stdin is not a char device, so it returns false and both statements run.
@@ -800,10 +800,10 @@ func runInit(root string, force, forceHooks, describe bool, sets []string, answe
   file bytes via `os.ReadFile`. Stub `isInteractive` to false (with `t.Cleanup` restore) in every test
   *except* `TestIsInteractive`.
 
-### Task 4.5 — Verify and commit
+### Task 4.5: Verify and commit
 
-- [ ] Run `go test ./cmd/awf/ 2>&1 | tail` — expect `ok`.
-- [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`
+- [ ] Run `go test ./cmd/awf/ 2>&1 | tail`: expect `ok`.
+- [ ] Run `./x gate`: expect `coverage: 100.0%`, `0 issues.`
 - [ ] Manual smoke (optional): build a binary and run `awf init --describe` in a temp dir; confirm JSON
   prints and no `.awf/` appears.
 - [ ] Commit:
@@ -820,12 +820,12 @@ explicit-answers-win, and init-noninteractive-default."
 
 ---
 
-## Phase 5 — Docs currency (ADR-0029 stays `Proposed`)
+## Phase 5: Docs currency (ADR-0029 stays `Proposed`)
 
 > This plan implements the vars+invariants slice only; catalog-trim is deferred, so ADR-0029 is **not**
 > flipped to `Implemented` here. Update the domain narratives and the command surface for what shipped.
 
-### Task 5.1 — Domain narratives
+### Task 5.1: Domain narratives
 
 - [ ] Edit `.awf/domains/parts/tooling/current-state.md`: add a sentence that `awf init` now supports
   interactive prompts, `--describe` (JSON schema for agents), and `--set`/`--answers` non-interactive
@@ -834,16 +834,16 @@ explicit-answers-win, and init-noninteractive-default."
   `vars:` descriptor block ({key, kind, description, default, options, target}) driving init, and that
   `ScaffoldConfig` now takes resolved vars + an optional invariants config.
 
-### Task 5.2 — README command surface
+### Task 5.2: README command surface
 
 - [ ] Edit `README.md`: in the Commands table `awf init` row, append a note that init also accepts
   `--describe` (print fillable values as JSON), `--set k=v`, and `--answers FILE`. Keep it one line.
 
-### Task 5.3 — Re-render, verify, commit
+### Task 5.3: Re-render, verify, commit
 
-- [ ] Run `./x sync` — regenerates `docs/domains/tooling.md` + `docs/domains/config.md` from the edited parts.
-- [ ] Run `./x check` — expect `awf check: clean`.
-- [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`
+- [ ] Run `./x sync`: regenerates `docs/domains/tooling.md` + `docs/domains/config.md` from the edited parts.
+- [ ] Run `./x check`: expect `awf check: clean`.
+- [ ] Run `./x gate`: expect `coverage: 100.0%`, `0 issues.`
 - [ ] Commit:
 
 ```
@@ -863,4 +863,4 @@ ADR-0029 stays Proposed; the catalog-trim multiselect is a deferred follow-up."
   including the multiselect prompt widget and the `scaffold-core-only` interaction. When that lands,
   flip ADR-0029 to `Implemented`.
 - Detection-based prefill (explicitly rejected in ADR-0029).
-- Free-text prose authoring (identity/you-and-this-project) — ADR-0029 Decision 6 keeps it manual.
+- Free-text prose authoring (identity/you-and-this-project): ADR-0029 Decision 6 keeps it manual.

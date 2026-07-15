@@ -8,7 +8,7 @@ Collapse the remaining duplicated path/dispatch/parse knowledge surfaced by the
 2026 duplication review into single sources, and fix one latent overwrite bug. This
 is the mechanical follow-on to Track 1 (`internal/testsupport`, ADR-0044). It applies
 already-Implemented decisions (ADR-0027 unified kind descriptor, ADR-0026 config
-serialization owned by `internal/config`); **no new ADR is warranted** — every change
+serialization owned by `internal/config`); **no new ADR is warranted**: every change
 is behaviour-preserving except the one bugfix, which gets a regression test first.
 
 ## Architecture summary
@@ -16,26 +16,26 @@ is behaviour-preserving except the one bugfix, which gets a regression test firs
 Six independent single-source moves plus a file split, each behind the existing
 gates (100% coverage, `./x check` drift, `go vet`, golangci-lint):
 
-1. **Kind dispatch** — extend `kindDescriptor` with a `tid` accessor; route
+1. **Kind dispatch**: extend `kindDescriptor` with a `tid` accessor; route
    `scaffold.go`, `render.go`, and `check.go`'s `orphans()` through the one table
    (ADR-0027) instead of hand-rolled per-kind enumerations.
-2. **Config-tree paths (absolute)** — add `config.DirName`/`RootDir`/`ConfigPath`/
-   `LockPath`; funnel the ~24 hand-typed `filepath.Join(root, ".awf", …)` literals
+2. **Config-tree paths (absolute)**: add `config.DirName`/`RootDir`/`ConfigPath`/
+   `LockPath`; funnel the ~24 hand-typed `filepath.Join(root, ".awf", ...)` literals
    through them.
-3. **Convention-part paths (relative)** — derive `render.go`'s `partRel` from the
+3. **Convention-part paths (relative)**: derive `render.go`'s `partRel` from the
    absolute `config.PartPath` (one structural source); route the remaining relative
    `.awf` tokens through `config.DirName`.
-4. **`internal/config` micro-dedup** — extract the 4× YAML-parse preamble in
+4. **`internal/config` micro-dedup**: extract the 4× YAML-parse preamble in
    `edit.go`; extract the 3× path-separator check in `config.go`; drop the dead
    `len(lines)==0` guard in `internal/frontmatter`.
-5. **`internal/migrate` dedup + bugfix** — extract the scalar-config-edit skeleton
+5. **`internal/migrate` dedup + bugfix**: extract the scalar-config-edit skeleton
    (`enablebootstrap`/`drophooks`); reuse `writeFile` in `relocatePart`; extract the
    3× section-override port branch; **guard `relocate` against clobbering an existing
    destination** (regression test first).
-6. **Cross-package micro-dedup** — extract `sortBySlug` in `internal/invariants`;
+6. **Cross-package micro-dedup**: extract `sortBySlug` in `internal/invariants`;
    unify the two diverged ADR-filename regexes on one exported `internal/adr` source;
    extract the regenerate-and-compare shape shared by `checkActiveMD`/`checkDomainDocs`.
-7. **`cmd/awf/main.go` split** — move `runInit`→`init.go`, `runSync`→`sync.go`,
+7. **`cmd/awf/main.go` split**: move `runInit`→`init.go`, `runSync`→`sync.go`,
    `gate`/`lockVsBinary`/`normalizeSemver`→`gate.go`, leaving `main.go` as the
    dispatch table.
 
@@ -46,7 +46,7 @@ gates (100% coverage, `./x check` drift, `go vet`, golangci-lint):
   `internal/migrate`, `internal/invariants`, `internal/adr`, `internal/audit`,
   `internal/frontmatter`.
 - No new dependencies. No template changes ⇒ **`./x check` must stay drift-free
-  after every commit** (this is the primary regression signal — the refactor must
+  after every commit** (this is the primary regression signal: the refactor must
   not alter one byte of rendered output, including `awf:edit` pointers).
 
 ## File structure
@@ -69,20 +69,20 @@ gates (100% coverage, `./x check` drift, `go vet`, golangci-lint):
 
 ## Scope exclusions (considered, deliberately out)
 
-- **Reviewer-template spine dedup** — the render engine (`internal/render/render.go`)
+- **Reviewer-template spine dedup**: the render engine (`internal/render/render.go`)
   parses each template standalone; there is no cross-file partial mechanism. True
   source-level dedup needs a new engine capability = load-bearing = a future
   template-partials ADR. Excluded per user decision (2026-07-01). Mirrors the
   `render.go` RenderAll exclusion below.
-- **`render.go` RenderAll/renderKindSpec fold into `kindDescriptors`** — ADR-0027
+- **`render.go` RenderAll/renderKindSpec fold into `kindDescriptors`**: ADR-0027
   Decision item 3 explicitly defers this to "a later ADR" (`render.go` carries a
   skills-only doc-gate closure the descriptor has no slot for). Left as accepted debt.
-- **`internal/audit` rule-body extraction** — the four rules (`ruleDomainDocStaleness`,
+- **`internal/audit` rule-body extraction**: the four rules (`ruleDomainDocStaleness`,
   `ruleUndocumentedDomain`, `ruleDependencyADR`, `rulePlanForLargeChange`) share a
   structural *rhythm* but differ in accumulator type, filter direction, single-vs-multi
   finding, and extra filters. A unifying helper would be more obscure than the
-  repetition — rejected as premature abstraction (awf's own convention-alignment lens).
-- **Error-prefix alignment** across `cmd/awf`/`internal/adr`/`internal/changelog` —
+  repetition: rejected as premature abstraction (awf's own convention-alignment lens).
+- **Error-prefix alignment** across `cmd/awf`/`internal/adr`/`internal/changelog`:
   cosmetic; needs a decided convention (which prefix wins) first. Deferred to its own
   focused pass.
 
@@ -90,14 +90,14 @@ gates (100% coverage, `./x check` drift, `go vet`, golangci-lint):
 
 Recommended execution: **`awf-executing-plans` (inline)**. Phases repeatedly revisit
 the same files (`config.go` in 2/4; `render.go` in 1/3; `check.go` in 1/3/6;
-`migrate/*` in 2/5), so import blocks and helper call-sites accumulate — a fresh
+`migrate/*` in 2/5), so import blocks and helper call-sites accumulate; a fresh
 subagent per task would keep re-deriving that shared state. Run phases in order.
 
 ---
 
-## Phase 1 — Kind-dispatch single-sourcing
+## Phase 1: Kind-dispatch single-sourcing
 
-### Task 1.1 — Add the `tid` accessor to `kindDescriptor`
+### Task 1.1: Add the `tid` accessor to `kindDescriptor`
 
 - [ ] In `internal/project/kind.go`, add a `tid` field to the `kindDescriptor` struct
       (after `outPath`, line 20):
@@ -118,7 +118,7 @@ subagent per task would keep re-deriving that shared state. Run phases in order.
 
 - [ ] Verify it compiles: `go build ./internal/project/` → no output.
 
-### Task 1.2 — Route `scaffold.go` var-collection through `tid`
+### Task 1.2: Route `scaffold.go` var-collection through `tid`
 
 - [ ] In `internal/project/scaffold.go`, replace the three per-kind `fmt.Sprintf`
       template-id constructions (lines 33-50) so each loop derives its `tid` from the
@@ -163,7 +163,7 @@ subagent per task would keep re-deriving that shared state. Run phases in order.
 
 - [ ] `go build ./internal/project/` → no output.
 
-### Task 1.3 — Route `render.go`'s docs/skills/agents `tid` closures through `tid`
+### Task 1.3: Route `render.go`'s docs/skills/agents `tid` closures through `tid`
 
 - [ ] In `internal/project/render.go` `RenderAll`, replace the three inline `tid`
       closures with the descriptor accessor. For the docs spec (line 121):
@@ -206,11 +206,11 @@ subagent per task would keep re-deriving that shared state. Run phases in order.
   }
   ```
 
-- [ ] If `fmt` is now unused in `render.go`, leave it — it is still used by the
+- [ ] If `fmt` is now unused in `render.go`, leave it; it is still used by the
       `generateActiveMD`/domain paths and the plainSingletons loop. Confirm with
       `go build ./internal/project/` → no output.
 
-### Task 1.4 — Route `check.go`'s `orphans()` through `kindDescriptors`
+### Task 1.4: Route `check.go`'s `orphans()` through `kindDescriptors`
 
 - [ ] In `internal/project/check.go` `orphans()` (lines 69-138), replace the
       hardcoded `enabled` map and the `[]string{"skills","agents","docs","domains"}`
@@ -236,17 +236,17 @@ subagent per task would keep re-deriving that shared state. Run phases in order.
   		enabledSet := sliceSet(desc.enable(p.Cfg))
   ```
 
-- [ ] Update the two `enabled[kind][…]` lookups in the loop body (lines 91 and 110)
-      to `enabledSet[…]`:
+- [ ] Update the two `enabled[kind][...]` lookups in the loop body (lines 91 and 110)
+      to `enabledSet[...]`:
   - line 91: `if !enabled[kind][name] {` → `if !enabledSet[name] {`
   - line 110: `if !enabled[kind][t.Name()] {` → `if !enabledSet[t.Name()] {`
 
 - [ ] `go build ./internal/project/` → no output.
 
-### Task 1.5 — Extract the bridge/bootstrap template-id constants
+### Task 1.5: Extract the bridge/bootstrap template-id constants
 
 The bridge and bootstrap template ids are literals in both `render.go` (as the tids
-rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list) — a coupling.
+rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list): a coupling.
 
 - [ ] In `internal/project/render.go`, add near the top (after the imports):
 
@@ -271,7 +271,7 @@ rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list) — a cou
 
 - [ ] `go build ./internal/project/` → no output.
 
-### Task 1.6 — Verify and commit Phase 1
+### Task 1.6: Verify and commit Phase 1
 
 - [ ] `./x gate` → passes (100% coverage, tests, vet, lint).
 - [ ] `./x check` → `awf check: no drift` (rendered output byte-identical).
@@ -279,9 +279,9 @@ rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list) — a cou
 
 ---
 
-## Phase 2 — Config-tree path primitives (absolute)
+## Phase 2: Config-tree path primitives (absolute)
 
-### Task 2.1 — Add the path helpers to `internal/config`
+### Task 2.1: Add the path helpers to `internal/config`
 
 - [ ] In `internal/config/config.go`, add after the `Load` function (before
       `Sidecar`, ~line 115):
@@ -302,7 +302,7 @@ rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list) — a cou
 
   (`filepath` is already imported by `config.go`.)
 
-- [ ] Point `Load` at the new helper — the caller already passes `<root>/.awf`, so
+- [ ] Point `Load` at the new helper: the caller already passes `<root>/.awf`, so
       leave `Load`'s body as-is; the helpers are for callers.
 
 - [ ] Add a unit test `internal/config/config_test.go` (or extend the existing one)
@@ -325,7 +325,7 @@ rendered) and `check.go`'s `isManagedMarkdown` (as the exclusion list) — a cou
 
 - [ ] `go test ./internal/config/` → ok.
 
-### Task 2.2 — Route the `config.yaml` literals
+### Task 2.2: Route the `config.yaml` literals
 
 Replace each `filepath.Join(<root>, ".awf", "config.yaml")` with
 `config.ConfigPath(<root>)`. Add the `internal/config` import to any file lacking it
@@ -334,32 +334,32 @@ migrate `drophooks`/`enablebootstrap` files already import config).
 
 - [ ] In `internal/migrate/drophooks.go` and `internal/migrate/enablebootstrap.go` the
       replaced literal is the *only* `path/filepath` use, so drop `path/filepath` from
-      both import blocks in this same commit — otherwise the Phase 2 `go build`/gate
+      both import blocks in this same commit; otherwise the Phase 2 `go build`/gate
       fails on an unused import. (`os` stays until Phase 5 rewrites their bodies.)
 
-- [ ] `cmd/awf/list_add.go:38, :82, :206` — `filepath.Join(root, ".awf", "config.yaml")` → `config.ConfigPath(root)`
-- [ ] `cmd/awf/main.go:404` — `cfgPath := filepath.Join(root, ".awf", "config.yaml")` → `cfgPath := config.ConfigPath(root)` (add config import)
-- [ ] `internal/migrate/drophooks.go:16` — → `config.ConfigPath(root)`
-- [ ] `internal/migrate/enablebootstrap.go:18` — → `config.ConfigPath(root)`
-- [ ] `internal/migrate/migrate.go:41` — `newTree := filepath.Join(root, ".awf", "config.yaml")` → `newTree := config.ConfigPath(root)` (add config import)
+- [ ] `cmd/awf/list_add.go:38, :82, :206`: `filepath.Join(root, ".awf", "config.yaml")` → `config.ConfigPath(root)`
+- [ ] `cmd/awf/main.go:404`: `cfgPath := filepath.Join(root, ".awf", "config.yaml")` → `cfgPath := config.ConfigPath(root)` (add config import)
+- [ ] `internal/migrate/drophooks.go:16`: → `config.ConfigPath(root)`
+- [ ] `internal/migrate/enablebootstrap.go:18`: → `config.ConfigPath(root)`
+- [ ] `internal/migrate/migrate.go:41`: `newTree := filepath.Join(root, ".awf", "config.yaml")` → `newTree := config.ConfigPath(root)` (add config import)
 
-### Task 2.3 — Route the `awf.lock` literals
+### Task 2.3: Route the `awf.lock` literals
 
 Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<root>)`.
 
-- [ ] `cmd/awf/main.go:492` — `manifest.Load(filepath.Join(root, ".awf", "awf.lock"))` → `manifest.Load(config.LockPath(root))`
-- [ ] `internal/migrate/migrate.go:45, :68` — → `config.LockPath(root)`
-- [ ] `internal/project/install.go:90` — → `config.LockPath(root)` (add config import)
-- [ ] `internal/project/project.go:185` — `lockPath()` body `filepath.Join(p.Root, ".awf", "awf.lock")` → `config.LockPath(p.Root)`
+- [ ] `cmd/awf/main.go:492`: `manifest.Load(filepath.Join(root, ".awf", "awf.lock"))` → `manifest.Load(config.LockPath(root))`
+- [ ] `internal/migrate/migrate.go:45, :68`: → `config.LockPath(root)`
+- [ ] `internal/project/install.go:90`: → `config.LockPath(root)` (add config import)
+- [ ] `internal/project/project.go:185`: `lockPath()` body `filepath.Join(p.Root, ".awf", "awf.lock")` → `config.LockPath(p.Root)`
 
-### Task 2.4 — Route the bare `.awf` root literals
+### Task 2.4: Route the bare `.awf` root literals
 
-- [ ] `cmd/awf/list_add.go:224` — `awf := filepath.Join(root, ".awf")` → `awf := config.RootDir(root)`
-- [ ] `internal/migrate/singletonstandarddocs.go:25` — `awfDir := filepath.Join(root, ".awf")` → `awfDir := config.RootDir(root)` (add config import)
-- [ ] `internal/migrate/relocation.go:15` — `newDir := filepath.Join(root, ".awf")` → `newDir := config.RootDir(root)` (add config import; leave `oldDir` = `.claude/awf` legacy literal)
-- [ ] `internal/project/project.go:33` — `config.Load(filepath.Join(root, ".awf"))` → `config.Load(config.RootDir(root))`
+- [ ] `cmd/awf/list_add.go:224`: `awf := filepath.Join(root, ".awf")` → `awf := config.RootDir(root)`
+- [ ] `internal/migrate/singletonstandarddocs.go:25`: `awfDir := filepath.Join(root, ".awf")` → `awfDir := config.RootDir(root)` (add config import)
+- [ ] `internal/migrate/relocation.go:15`: `newDir := filepath.Join(root, ".awf")` → `newDir := config.RootDir(root)` (add config import; leave `oldDir` = `.claude/awf` legacy literal)
+- [ ] `internal/project/project.go:33`: `config.Load(filepath.Join(root, ".awf"))` → `config.Load(config.RootDir(root))`
 
-### Task 2.5 — Verify and commit Phase 2
+### Task 2.5: Verify and commit Phase 2
 
 - [ ] `go build ./...` → no output (catches any missing/unused import).
 - [ ] `./x gate` → passes.
@@ -368,9 +368,9 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
 
 ---
 
-## Phase 3 — Convention-part paths (relative), single-sourced
+## Phase 3: Convention-part paths (relative), single-sourced
 
-### Task 3.1 — Derive `partRel` from `PartPath`
+### Task 3.1: Derive `partRel` from `PartPath`
 
 - [ ] In `internal/project/render.go`, replace the free function `partRel` (lines
       38-44):
@@ -409,22 +409,22 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
       rendered skill/agent/doc must be byte-identical; a drift here means `ToSlash`/
       `Rel` diverged from the old string form.
 
-### Task 3.2 — Route the remaining relative `.awf` tokens through `config.DirName`
+### Task 3.2: Route the remaining relative `.awf` tokens through `config.DirName`
 
-- [ ] `internal/project/project.go:216` — `DomainsPartsDir: ".awf/domains/parts"` →
+- [ ] `internal/project/project.go:216`: `DomainsPartsDir: ".awf/domains/parts"` →
       `DomainsPartsDir: config.DirName + "/domains/parts"`.
-- [ ] `internal/project/check.go:78` — `base := filepath.Join(p.Root, ".awf", kind)` →
+- [ ] `internal/project/check.go:78`: `base := filepath.Join(p.Root, ".awf", kind)` →
       `base := filepath.Join(config.RootDir(p.Root), kind)` (add config import to check.go).
-- [ ] `internal/project/check.go:93` — `filepath.Join(".awf", kind, e.Name())` →
+- [ ] `internal/project/check.go:93`: `filepath.Join(".awf", kind, e.Name())` →
       `filepath.Join(config.DirName, kind, e.Name())`.
-- [ ] `internal/project/check.go:112` — `filepath.Join(".awf", kind, "parts", t.Name())` →
+- [ ] `internal/project/check.go:112`: `filepath.Join(".awf", kind, "parts", t.Name())` →
       `filepath.Join(config.DirName, kind, "parts", t.Name())`.
-- [ ] `internal/project/check.go:129` — `filepath.Join(".awf", kind, "parts", t.Name(), sf.Name())` →
+- [ ] `internal/project/check.go:129`: `filepath.Join(".awf", kind, "parts", t.Name(), sf.Name())` →
       `filepath.Join(config.DirName, kind, "parts", t.Name(), sf.Name())`.
-- [ ] `internal/project/install.go:93` — the error-message path
+- [ ] `internal/project/install.go:93`: the error-message path
       `filepath.Join(".awf", "awf.lock")` → `filepath.Join(config.DirName, "awf.lock")`.
 
-### Task 3.3 — Verify and commit Phase 3
+### Task 3.3: Verify and commit Phase 3
 
 - [ ] `./x gate` → passes.
 - [ ] `./x check` → no drift.
@@ -432,9 +432,9 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
 
 ---
 
-## Phase 4 — `internal/config` + `internal/frontmatter` micro-cleanups
+## Phase 4: `internal/config` + `internal/frontmatter` micro-cleanups
 
-### Task 4.1 — Extract the YAML-parse preamble in `edit.go`
+### Task 4.1: Extract the YAML-parse preamble in `edit.go`
 
 - [ ] In `internal/config/edit.go`, add a helper (near `encode`, ~line 182):
 
@@ -485,12 +485,12 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
 
 - [ ] `./x gate` → passes. Commit: `refactor(awf): share the config.yaml parse preamble`
 
-### Task 4.2 — Extract the path-separator check in `config.go`
+### Task 4.2: Extract the path-separator check in `config.go`
 
 - [ ] In `internal/config/config.go`, add (near `validateBasenameGlob`, ~line 216):
 
   ```go
-  // hasPathSep reports whether s contains a path separator or a ".." segment — the
+  // hasPathSep reports whether s contains a path separator or a ".." segment: the
   // shared reject condition for prefix/target/domain names.
   func hasPathSep(s string) bool {
   	return strings.ContainsAny(s, "/\\") || strings.Contains(s, "..")
@@ -501,13 +501,13 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
   - Prefix (lines 159-161): `if strings.ContainsAny(c.Prefix, "/\\") || strings.Contains(c.Prefix, "..") {` → `if hasPathSep(c.Prefix) {`
   - Targets (line 196): `if t == "" || strings.ContainsAny(t, "/\\") || strings.Contains(t, "..") {` → `if t == "" || hasPathSep(t) {`
   - `ValidateDomainName` (line 210): `if strings.ContainsAny(name, "/\\") || strings.Contains(name, "..") {` → `if hasPathSep(name) {`
-  - Leave the `DocsDir` check (`HasPrefix(c.DocsDir, "/")` variant) untouched — it is a
+  - Leave the `DocsDir` check (`HasPrefix(c.DocsDir, "/")` variant) untouched: it is a
     different predicate.
 
 - [ ] `go test ./internal/config/` → ok. `./x gate` → passes.
       Commit: `refactor(awf): share the config path-separator check`
 
-### Task 4.3 — Drop the dead guard in `internal/frontmatter`
+### Task 4.3: Drop the dead guard in `internal/frontmatter`
 
 - [ ] In `internal/frontmatter/frontmatter.go` `Split` (line 18), remove the
       unreachable `len(lines) == 0 ||` disjunct (`bytes.SplitAfter` never returns an
@@ -528,9 +528,9 @@ Replace each `filepath.Join(<root>, ".awf", "awf.lock")` with `config.LockPath(<
 
 ---
 
-## Phase 5 — `internal/migrate` dedup + relocate bugfix
+## Phase 5: `internal/migrate` dedup + relocate bugfix
 
-### Task 5.1 — Extract the scalar-config-edit skeleton
+### Task 5.1: Extract the scalar-config-edit skeleton
 
 `enablebootstrap.go` and `drophooks.go` share the read / `IsNotExist`-noop /
 `coverage-ignore` permission arm / mutate / `WriteFile(0o644)` skeleton, differing
@@ -549,7 +549,7 @@ only in the single mutation call.
 
   // editConfig applies mutate to the project's config.yaml, routing serialization
   // through internal/config (ADR-0026). A config absent on disk is a no-op
-  // (idempotent re-run safe) — the shared skeleton of the scalar-edit migrations.
+  // (idempotent re-run safe): the shared skeleton of the scalar-edit migrations.
   func editConfig(root string, mutate func(src []byte) ([]byte, error)) error {
   	cfgPath := config.ConfigPath(root)
   	src, err := os.ReadFile(cfgPath)
@@ -595,7 +595,7 @@ only in the single mutation call.
 - [ ] `go test ./internal/migrate/` → ok. `./x gate` → passes.
       Commit: `refactor(awf): share the migrate scalar-config-edit skeleton`
 
-### Task 5.2 — Reuse `writeFile` in `relocatePart`
+### Task 5.2: Reuse `writeFile` in `relocatePart`
 
 - [ ] In `internal/migrate/dropreplacewith.go` `relocatePart` (lines 128-131), replace
       the inline MkdirAll+WriteFile tail:
@@ -622,7 +622,7 @@ only in the single mutation call.
 - [ ] `go test ./internal/migrate/` → ok. `./x gate` → passes.
       Commit: `refactor(awf): reuse writeFile in relocatePart`
 
-### Task 5.3 — Extract the section-override port branch
+### Task 5.3: Extract the section-override port branch
 
 `portSidecar` (treelayout.go:88-101), `portAgentsDoc` (treelayout.go:133-146), and
 `convertSidecar` (dropreplacewith.go) each carry the same
@@ -656,12 +656,12 @@ builder. Extract a helper parameterized by that builder.
   **Before writing this task's code, read `treelayout.go` and `dropreplacewith.go` in
   full** to confirm: (a) the exact `legacySectionOverride` type name and its
   `ReplaceWith`/`Drop` fields; (b) how `copyPart`'s source path is built in each caller
-  (the `filepath.Join(awfDir, ov.ReplaceWith)` form) — thread `awfDir` in as needed
+  (the `filepath.Join(awfDir, ov.ReplaceWith)` form): thread `awfDir` in as needed
   rather than the `awfSrc` placeholder above; (c) whether `convertSidecar`'s `changed`
   flag / `relocatePart` (not `copyPart`) usage makes it diverge enough that only
   `portSidecar`/`portAgentsDoc` should share the helper. **If `convertSidecar` differs
   materially (it uses `relocatePart` + a `changed` bool), scope the helper to the two
-  `treelayout.go` callers only and leave `convertSidecar` as-is** — note that decision
+  `treelayout.go` callers only and leave `convertSidecar` as-is**; note that decision
   in the commit body.
 
 - [ ] Rewrite `portSidecar` to call the helper with
@@ -676,10 +676,10 @@ builder. Extract a helper parameterized by that builder.
       both ports; behaviour must stay byte-identical). `./x gate` → passes.
       Commit: `refactor(awf): extract the section-override port branch`
 
-### Task 5.4 (bugfix, test-first) — Guard `relocate` against overwrite
+### Task 5.4 (bugfix, test-first): Guard `relocate` against overwrite
 
 `singletonstandarddocs.go`'s `relocate` calls `os.Rename` with no destination check,
-so it silently clobbers an existing destination file — unlike `relocation.go`'s
+so it silently clobbers an existing destination file, unlike `relocation.go`'s
 `applyAwfRelocation`, which refuses. Add the guard, test first.
 
 - [ ] **Failing test first.** In `internal/migrate/singletonstandarddocs_test.go`, add
@@ -704,16 +704,16 @@ so it silently clobbers an existing destination file — unlike `relocation.go`'
 
 - [ ] `go test ./internal/migrate/` → the new test passes; existing tests still pass.
       Re-examine the two `// coverage-ignore` comments on the `applySingletonStandardDocs`
-      caller (lines 27, 30) — the new error path may now be reachable from a test;
+      caller (lines 27, 30): the new error path may now be reachable from a test;
       adjust or add coverage as the gate requires.
 
 - [ ] `./x gate` → passes. Commit: `fix(awf): refuse to clobber an existing relocate destination`
 
 ---
 
-## Phase 6 — Cross-package micro-dedup
+## Phase 6: Cross-package micro-dedup
 
-### Task 6.1 — Extract `sortBySlug` in `internal/invariants`
+### Task 6.1: Extract `sortBySlug` in `internal/invariants`
 
 - [ ] In `internal/invariants/invariants.go`, add:
 
@@ -726,7 +726,7 @@ so it silently clobbers an existing destination file — unlike `relocation.go`'
 
   **Confirm first** that both sort sites (line 108 in the `mk` closure, line 126 in
   `Check`) sort the same element type `[]Finding`. The dossier reports line 108 sorts a
-  local `out` and line 126 sorts `findings` — verify `out`'s element type is `Finding`;
+  local `out` and line 126 sorts `findings`; verify `out`'s element type is `Finding`;
   if `out` is a different type, keep 6.1 scoped to the two `Finding` sites only.
 
 - [ ] Replace both `sort.Slice(x, func(i, j int) bool { return x[i].Slug < x[j].Slug })`
@@ -735,7 +735,7 @@ so it silently clobbers an existing destination file — unlike `relocation.go`'
 - [ ] `go test ./internal/invariants/` → ok. `./x gate` → passes.
       Commit: `refactor(awf): extract sortBySlug in invariants`
 
-### Task 6.2 — Unify the ADR-filename regex
+### Task 6.2: Unify the ADR-filename regex
 
 `internal/adr/adr.go`'s `fileRe` (`^(\d{4})-.*\.md$`, capturing, used by `ParseDir`)
 and `internal/audit/audit.go`'s `adrNameRe` (`^\d{4}-.+\.md$`, match-only) encode the
@@ -756,7 +756,7 @@ same "is this an ADR file" rule with a drift risk. Unify on one exported source 
   `coverage-ignore` comment referencing `fileRe` at adr.go:214) to `FilenameRe`.
 
 - [ ] **Verify no test depends on the empty-slug edge.** Run
-      `rg -n '0[0-9]{3}-\.md|"[0-9]{4}-\.md"' internal/` — expect no hits. If any test
+      `rg -n '0[0-9]{3}-\.md|"[0-9]{4}-\.md"' internal/`: expect no hits. If any test
       feeds an empty-slug filename, keep the `.*` form instead and only share the regex
       *value* (still exported), noting the choice in the commit body.
 
@@ -772,7 +772,7 @@ same "is this an ADR file" rule with a drift risk. Unify on one exported source 
 - [ ] `go test ./internal/adr/ ./internal/audit/` → ok. `./x gate` → passes.
       Commit: `refactor(awf): unify the ADR-filename regex on internal/adr`
 
-### Task 6.3 — Extract the regenerate-and-compare shape in `check.go`
+### Task 6.3: Extract the regenerate-and-compare shape in `check.go`
 
 `checkActiveMD` (check.go:249-256) and the per-doc body of `checkDomainDocs`
 (check.go:262-273) share the "read on-disk file; missing → drift; hash-mismatch →
@@ -804,8 +804,8 @@ stale" shape.
   }
   ```
 
-- [ ] In `checkDomainDocs`, replace the per-doc read/compare block (lines 266-272) —
-      inside the `for _, dd := range dds` loop — with:
+- [ ] In `checkDomainDocs`, replace the per-doc read/compare block (lines 266-272),
+      inside the `for _, dd := range dds` loop, with:
 
   ```go
   		produced[dd.Path] = true
@@ -820,13 +820,13 @@ stale" shape.
 
 ---
 
-## Phase 7 — `cmd/awf/main.go` split
+## Phase 7: `cmd/awf/main.go` split
 
 Pure file moves within `package main`; no behaviour change. `main.go` (524 lines)
 becomes the dispatch table + arg helpers; the three command bodies move to their own
-files, matching the existing one-file-per-command layout (`audit.go`, `check.go`, …).
+files, matching the existing one-file-per-command layout (`audit.go`, `check.go`, ...).
 
-### Task 7.1 — Move `runInit` to `init.go`
+### Task 7.1: Move `runInit` to `init.go`
 
 - [ ] Create `cmd/awf/init.go` (`package main`) and move `runInit` (main.go:372-442)
       into it verbatim.
@@ -839,11 +839,11 @@ files, matching the existing one-file-per-command layout (`audit.go`, `check.go`
       `github.com/hypnotox/agentic-workflows/internal/project`,
       `github.com/hypnotox/agentic-workflows/templates`. (`runInit` references
       `config.ConfigPath`/`config.RootDir` after Phase 2, `initspec.*`, `project.*`,
-      `catalog.Load`, `templates.FS`, `stdin`, `isInteractive` — the latter two stay in
+      `catalog.Load`, `templates.FS`, `stdin`, `isInteractive`: the latter two stay in
       `main.go` and are package-scoped, so no import needed for them.)
 - [ ] Remove `runInit` from `main.go`.
 
-### Task 7.2 — Move `runSync` to `sync.go`
+### Task 7.2: Move `runSync` to `sync.go`
 
 - [ ] Create `cmd/awf/sync.go` (`package main`) and move `runSync` (main.go:504-524)
       into it verbatim.
@@ -851,13 +851,13 @@ files, matching the existing one-file-per-command layout (`audit.go`, `check.go`
       `github.com/hypnotox/agentic-workflows/internal/project`.
 - [ ] Remove `runSync` from `main.go`.
 
-### Task 7.3 — Move `gate` and its helpers to `gate.go`
+### Task 7.3: Move `gate` and its helpers to `gate.go`
 
 - [ ] Create `cmd/awf/gate.go` (`package main`) and move `normalizeSemver`
       (main.go:448-454), `gate` (main.go:467-485), and `lockVsBinary` (main.go:491-502)
       into it verbatim. **Move each function together with its preceding doc comment**
       (normalizeSemver: 444-447; gate: 456-466; lockVsBinary: 487-490). gate's doc
-      comment ends with `// invariant: version-compat-gate` (main.go:466) — that marker
+      comment ends with `// invariant: version-compat-gate` (main.go:466): that marker
       must travel with the function into `gate.go`, or it is orphaned in `main.go`
       (still backs the slug, but detaches it from its function and strands a doc comment
       with no body).
@@ -868,15 +868,15 @@ files, matching the existing one-file-per-command layout (`audit.go`, `check.go`
       (`lockVsBinary` uses `config.LockPath` after Phase 2 and `manifest.Load`.)
 - [ ] Remove the three functions from `main.go`.
 
-### Task 7.4 — Fix up `main.go`'s now-unused imports and verify
+### Task 7.4: Fix up `main.go`'s now-unused imports and verify
 
 - [ ] After the moves, prune `main.go`'s import block to what the dispatch table +
       arg helpers still use (`errors`, `fmt`, `io`, `os`, `slices`, `strings`, plus
-      `catalog`/`initspec`/`project`/`templates` only if still referenced — `runInit`'s
+      `catalog`/`initspec`/`project`/`templates` only if still referenced: `runInit`'s
       departure likely drops `catalog`, `initspec`, `manifest`, `migrate`, `semver`,
       `config`; let `go build` and `goimports` decide).
 - [ ] `go build ./cmd/awf/` → no output. `go vet ./cmd/awf/` → clean.
-- [ ] Existing `cmd/awf` tests are unchanged (same package, same symbols) — they must
+- [ ] Existing `cmd/awf` tests are unchanged (same package, same symbols); they must
       pass as-is: `go test ./cmd/awf/` → ok.
 - [ ] `./x gate` → passes. `./x check` → no drift.
 - [ ] Commit: `refactor(awf): split main.go into init/sync/gate files`
@@ -888,6 +888,6 @@ files, matching the existing one-file-per-command layout (`audit.go`, `check.go`
 Invoke `awf-reviewing-plan` on this plan (`docs/plans/2026-07-01-single-source-of-truth-cleanup.md`)
 before any implementation. There is no linked ADR (mechanical application of
 ADR-0027/ADR-0026), so after review findings are resolved the reviewing skill routes
-straight to implementation — no plan↔ADR resync. Commit the plan itself with
+straight to implementation: no plan↔ADR resync. Commit the plan itself with
 `docs(plans): add 2026-07-01-single-source-of-truth-cleanup`. Then execute via
 `awf-executing-plans` (inline; see Execution note).

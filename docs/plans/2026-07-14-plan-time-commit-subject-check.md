@@ -8,7 +8,7 @@ status: Implemented
 ## Goal
 
 Implement ADR-0111: a deterministic `awf check` that validates the planned commit subjects a
-plan marks with a ` ```commit ` fence — length and type as hard drift, an unknown scope as a
+plan marks with a ` ```commit ` fence: length and type as hard drift, an unknown scope as a
 non-failing advisory note, with a per-block `awf-ignore` opt-out. **Non-goal:** changing the
 commit-time gate (`CheckConventionalCommit` stays scope=Error), adding any config key, or
 migrating existing bare-fence plans.
@@ -18,7 +18,7 @@ migrating existing bare-fence plans.
 Two commits. **Phase 1** lands the behaviour and teaches the convention, ADR-0111 staying
 `Proposed`: refactor `audit.CheckConventionalCommit` into a `scopeSeverity`-parameterised core with
 a new plan-time `CheckPlannedSubject` wrapper (scope→Warning); extract ` ```commit ` subjects in
-`plan.ParseDir`; route them in `internal/project/check.go` — Error findings as `manifest.Drift`
+`plan.ParseDir`; route them in `internal/project/check.go`: Error findings as `manifest.Drift`
 from `checkPlans`, the scope Warning as a `note:` from a new `planCommitScopeNotes` wired into
 `AdvisoryNotes`; update the audit doc comments; teach the fence in the plans template and the
 writing-plans skill. **Phase 2** freezes: add `invariant:` proof markers to the Phase 1 tests and
@@ -44,42 +44,42 @@ first production use and tests in the same commit).
   - `docs/plans/2026-07-14-plan-time-commit-subject-check.md` (status flip, Phase 2)
   - Rendered outputs from `./x sync` (both phases): `docs/plans/template.md`,
     `examples/sundial/docs/plans/template.md`, `.claude/skills/awf-writing-plans/SKILL.md`,
-    `.cursor/…/awf-writing-plans` render, `AGENTS.md`, `docs/decisions/ACTIVE.md`, and both
+    `.cursor/.../awf-writing-plans` render, `AGENTS.md`, `docs/decisions/ACTIVE.md`, and both
     `.awf/awf.lock` files.
 - **Deleted:** none.
 
-## Phase 1 — Behaviour and convention (one coupled commit)
+## Phase 1: Behaviour and convention (one coupled commit)
 
-Coupled group: Tasks 1.1–1.8 share one closing commit (Task 1.9). Reason: `CheckPlannedSubject`,
+Coupled group: Tasks 1.1-1.8 share one closing commit (Task 1.9). Reason: `CheckPlannedSubject`,
 `commitSubjects`, and `planCommitScopeNotes` are all reachable-and-covered only once their
-consumers and tests land together — the dead-code and coverage gates fail on any intermediate
+consumers and tests land together; the dead-code and coverage gates fail on any intermediate
 slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in this phase.
 
-- [ ] **Task 1.1 — Parameterise the audit rule by scope severity.** In `internal/audit/audit.go`,
-  replace the `CheckConventionalCommit` function (currently the whole body at lines 131–157) with a
+- [ ] **Task 1.1: Parameterise the audit rule by scope severity.** In `internal/audit/audit.go`,
+  replace the `CheckConventionalCommit` function (currently the whole body at lines 131-157) with a
   thin wrapper plus a shared core and the plan-time entry point. Also update the package doc
-  comment (lines 1–4) so its "never wired into the gate" claim stays accurate.
+  comment (lines 1-4) so its "never wired into the gate" claim stays accurate.
 
-  Package doc — replace lines 1–4:
+  Package doc, replace lines 1-4:
   ```
   // Package audit reports workflow-conformance findings over a branch's git
   // history. The range rules are advisory (ADR-0017): standalone, never wired into
-  // the gate. The shared CheckConventionalCommit rule is the exception — it is also
+  // the gate. The shared CheckConventionalCommit rule is the exception; it is also
   // consumed at commit time by the commit-gate and at plan time by `awf check`
   // (ADR-0111). Most rules are pure over the commit range; the uncommitted-changes
   // rule (ADR-0025) additionally inspects the live working tree.
   ```
 
-  Function — replace lines 131–157 with:
+  Function, replace lines 131-157 with:
   ```go
   // CheckConventionalCommit validates one commit's subject against the Conventional
   // Commits settings and returns any violations. It is the single definition of the
-  // rule — consumed by the audit range loop above, by the blocking `awf commit-gate`
+  // rule: consumed by the audit range loop above, by the blocking `awf commit-gate`
   // command (ADR-0036), and by the plan-time planned-subject check
-  // (CheckPlannedSubject, ADR-0111) — so none re-implements the regex, the type/scope
+  // (CheckPlannedSubject, ADR-0111), so none re-implements the regex, the type/scope
   // allow-lists, or the subject-length limit. Merge commits are exempt.
   // invariant: audit-conventional-commits
-  // touches-invariant: commit-gate-shared-rule — shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
+  // touches-invariant: commit-gate-shared-rule: shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
   func CheckConventionalCommit(c Commit, s Settings) []Finding {
   	return checkConventionalCommit(c, s, Error)
   }
@@ -118,7 +118,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
 
   Verify: `go build ./internal/audit/` succeeds.
 
-- [ ] **Task 1.2 — Test the plan-time entry point.** In `internal/audit/audit_test.go`, add a test
+- [ ] **Task 1.2: Test the plan-time entry point.** In `internal/audit/audit_test.go`, add a test
   covering `CheckPlannedSubject`'s severity split (`config` is already imported). This backs nothing
   yet (markers land in Phase 2) but is required for the 100%-coverage gate on the new wrapper.
   ```go
@@ -150,7 +150,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```
   Verify: `go test ./internal/audit/` passes.
 
-- [ ] **Task 1.3 — Extract ` ```commit ` subjects in the plan parser.** In `internal/plan/plan.go`:
+- [ ] **Task 1.3: Extract ` ```commit ` subjects in the plan parser.** In `internal/plan/plan.go`:
   add the `CommitSubjects` field to `Plan`, populate it in `ParseDir`, and add the extraction
   helpers. `strings` is already imported.
 
@@ -222,7 +222,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```
   Verify: `go build ./internal/plan/` succeeds.
 
-- [ ] **Task 1.4 — Test the extraction.** In `internal/plan/plan_test.go`, add a test that writes one
+- [ ] **Task 1.4: Test the extraction.** In `internal/plan/plan_test.go`, add a test that writes one
   plan file exercising every extraction branch and asserts `Plan.CommitSubjects`. This drives 100%
   coverage of `commitSubjects`/`isCommitInfo`; proof markers land in Phase 2.
   ```go
@@ -255,11 +255,11 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   	}
   }
   ```
-  (Confirm `os`, `path/filepath`, and the `plan` import are present — they are, per the existing
+  (Confirm `os`, `path/filepath`, and the `plan` import are present; they are, per the existing
   `TestParseDirParsesFrontmatterAndSkipsNonPlans`.)
   Verify: `go test ./internal/plan/` passes.
 
-- [ ] **Task 1.5 — Emit length/type/shape drift from `checkPlans`.** In `internal/project/check.go`,
+- [ ] **Task 1.5: Emit length/type/shape drift from `checkPlans`.** In `internal/project/check.go`,
   add `"github.com/hypnotox/agentic-workflows/internal/audit"` to the import block. In `checkPlans`
   (starts line 719), resolve audit settings once and add the subject-drift loop.
 
@@ -267,7 +267,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```go
   	aset := audit.Resolve(p.Cfg.Audit)
   ```
-  Inside `for _, pl := range plans`, after the existing `for _, n := range pl.ADRs { … }` loop and
+  Inside `for _, pl := range plans`, after the existing `for _, n := range pl.ADRs { ... }` loop and
   before the closing brace of the plan loop, add:
   ```go
   		for _, sub := range pl.CommitSubjects {
@@ -289,10 +289,10 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```
   Verify: `go build ./internal/project/` succeeds.
 
-- [ ] **Task 1.6 — Emit the scope advisory from `AdvisoryNotes`.** In `internal/project/check.go`,
+- [ ] **Task 1.6: Emit the scope advisory from `AdvisoryNotes`.** In `internal/project/check.go`,
   add the `planCommitScopeNotes` method and wire it into `AdvisoryNotes`.
 
-  Replace the tail of `AdvisoryNotes` (currently `th, err := p.tagHealthNotes() … return append(notes, th...), nil`) with:
+  Replace the tail of `AdvisoryNotes` (currently `th, err := p.tagHealthNotes() ... return append(notes, th...), nil`) with:
   ```go
   	th, err := p.tagHealthNotes()
   	if err != nil {
@@ -337,11 +337,11 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   ```
   Verify: `go build ./internal/project/` succeeds.
 
-- [ ] **Task 1.7 — Test the check wiring.** In `internal/project/check_test.go`, add three tests. The
-  first drives `checkPlans` drift (and asserts a bad-scope subject produces no drift — covering the
+- [ ] **Task 1.7: Test the check wiring.** In `internal/project/check_test.go`, add three tests. The
+  first drives `checkPlans` drift (and asserts a bad-scope subject produces no drift, covering the
   `Severity == Error` false branch); the second drives `planCommitScopeNotes` (a note for a bad
-  scope, none for an over-length subject — covering its false branch — a frontmatter-less plan
-  skipped — covering the `!HasFrontmatter` continue — and the `ParseDir` error branch); the third
+  scope, none for an over-length subject (covering its false branch), a frontmatter-less plan
+  skipped (covering the `!HasFrontmatter` continue), and the `ParseDir` error branch); the third
   drives `AdvisoryNotes` to a `planCommitScopeNotes` error (covering its new error-propagation
   branch). Follow the fixture style of `TestCheckPlansValidatesFrontmatterAndLinks`
   (`scaffold(t, sampleYAML)`, `testsupport.WriteFile`) and, for the wiring test,
@@ -445,36 +445,36 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   	}
   }
   ```
-  (Confirm `strings`, `path/filepath`, and `testsupport` are imported in `check_test.go` — they are.)
+  (Confirm `strings`, `path/filepath`, and `testsupport` are imported in `check_test.go`; they are.)
   Verify: `go test ./internal/project/` passes.
 
-- [ ] **Task 1.8 — Teach the ` ```commit ` fence in the template and skill.** Two edits, both in
+- [ ] **Task 1.8: Teach the ` ```commit ` fence in the template and skill.** Two edits, both in
   prose using inline code (no literal ` ```commit ` fenced block, so a scaffolded plan carries no
-  checkable block and the `plans-template-taxonomy` golden guard — no `{{`/`}}`, no bare "the gate" —
+  checkable block and the `plans-template-taxonomy` golden guard (no `{{`/`}}`, no bare "the gate")
   stays green).
 
-  `templates/plans-template/template.md.tmpl`, Task 1.2 line (the "Verify and commit" task) — replace
+  `templates/plans-template/template.md.tmpl`, Task 1.2 line (the "Verify and commit" task), replace
   its first sentence so it reads:
   ```
-  - [ ] **Task 1.2 — Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
+  - [ ] **Task 1.2: Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
     Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
     validates its length and type before you commit (tag a display-only example `commit awf-ignore`
-    to skip it). Every phase's closing commit passes {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} on its own — unless the
+    to skip it). Every phase's closing commit passes {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} on its own, unless the
     change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
     commit, stating why.
   ```
 
-  `templates/skills/writing-plans/SKILL.md.tmpl`, in the `conventions-tasks` section — insert a new
-  bullet immediately after the `- **Tasks:** …` bullet (line 29):
+  `templates/skills/writing-plans/SKILL.md.tmpl`, in the `conventions-tasks` section, insert a new
+  bullet immediately after the `- **Tasks:** ...` bullet (line 29):
   ```
-  - **Commit subjects in a `commit` fence:** write each phase's closing-commit subject in a fenced code block tagged `commit`, so `awf check` validates its length and type at plan time — a subject too long is caught before implementation, not at review. Tag a display-only commit example `commit awf-ignore` to exclude it from the check.
+  - **Commit subjects in a `commit` fence:** write each phase's closing-commit subject in a fenced code block tagged `commit`, so `awf check` validates its length and type at plan time: a subject too long is caught before implementation, not at review. Tag a display-only commit example `commit awf-ignore` to exclude it from the check.
   ```
   Verify: `go test ./internal/project/ -run TestSyncGolden` passes.
 
-- [ ] **Task 1.9 — Sync, verify, and commit Phase 1.** Run `./x sync` (re-renders
+- [ ] **Task 1.9: Sync, verify, and commit Phase 1.** Run `./x sync` (re-renders
   `docs/plans/template.md`, `examples/sundial/docs/plans/template.md`, the `.claude`/`.cursor`
-  `awf-writing-plans` skill renders, and both `awf.lock` files). Run `./x gate` — expect
-  `0 issues.` and `coverage: 100.0%`. Run `./x check` — expect `awf check: clean`. Stage exactly the
+  `awf-writing-plans` skill renders, and both `awf.lock` files). Run `./x gate`; expect
+  `0 issues.` and `coverage: 100.0%`. Run `./x check`; expect `awf check: clean`. Stage exactly the
   eight edited sources plus every file `./x sync` changed (`git status --short` to confirm nothing
   unrelated), then commit:
 
@@ -485,9 +485,9 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
   Commit body: name the `scopeSeverity` refactor, the `commitSubjects` extraction, the
   drift/advisory split, and the template/skill guidance; note ADR-0111 stays Proposed until Phase 2.
 
-## Phase 2 — Back the invariants and freeze
+## Phase 2: Back the invariants and freeze
 
-- [ ] **Task 2.1 — Add the invariant proof markers.** Add a `// invariant: <slug>` marker to each
+- [ ] **Task 2.1: Add the invariant proof markers.** Add a `// invariant: <slug>` marker to each
   Phase 1 test and to its production function, matching the existing check pattern (marker on both
   the function and its backing test, e.g. `checkPlans` at `check.go:717`).
   - `internal/plan/plan.go`: above `commitSubjects`, add
@@ -506,7 +506,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
 
   Verify: `go build ./...` succeeds (markers are comments; still `Proposed`, so not yet enforced).
 
-- [ ] **Task 2.2 — Add the agent-guide invariant bullets.** In `.awf/agents-doc.yaml`, after the
+- [ ] **Task 2.2: Add the agent-guide invariant bullets.** In `.awf/agents-doc.yaml`, after the
   `plan-adr-link-resolved` bullet (line 136), insert:
   ```yaml
         - ref: ADR-0111
@@ -515,12 +515,12 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
           text: '**Commit-fence marker scoped.** Only a fence whose info string''s first token is `commit` and which lacks the `awf-ignore` opt-out is read as a planned subject; bare fences, other info strings, empty blocks, and `template.md` are never validated (`invariant: plan-commit-subject-marker-scoped`, `invariant: plan-commit-subject-optout-honored`).'
   ```
 
-- [ ] **Task 2.3 — Flip ADR-0111 and this plan to `Implemented`, sync, verify, and commit.** In
+- [ ] **Task 2.3: Flip ADR-0111 and this plan to `Implemented`, sync, verify, and commit.** In
   `docs/decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md`, change
   `status: Proposed` → `status: Implemented`. In this plan file, change `status: Proposed` →
   `status: Implemented` and append any implementation findings to a `## Notes` section. Run
   `./x sync` (regenerates `AGENTS.md`, `docs/decisions/ACTIVE.md`, and both `awf.lock` files). Run
-  `./x gate` — expect `0 issues.` and `coverage: 100.0%`. Run `./x check` — expect `awf check: clean`
+  `./x gate`; expect `0 issues.` and `coverage: 100.0%`. Run `./x check`; expect `awf check: clean`
   and `awf invariants: clean` (the five slugs now enforced and backed). Stage the marker edits, the
   agents-doc edit, both status flips, and every synced file, then commit:
 
@@ -543,7 +543,7 @@ slice. ADR-0111 stays `Proposed`; no `invariant:` proof markers are added in thi
 
 ## Notes
 
-**Findings at freeze:** The plan executed as written — the exact diffs applied cleanly and the
+**Findings at freeze:** The plan executed as written: the exact diffs applied cleanly and the
 tests hit 100% coverage on the first gate run. The two coverage gaps the plan reviewer had already
 folded into Task 1.7 (the `planCommitScopeNotes` `!HasFrontmatter` skip and the `AdvisoryNotes`
 error branch) were the only pre-empted risks. Dogfooding confirmed: once Phase 1 landed, this plan's
@@ -551,6 +551,6 @@ own Task 1.9 / 2.3 ` ```commit ` subjects were validated by the live check and p
 
 Out of scope: migrating the existing bare-fence plan corpus (grandfathered by the presence trigger),
 adding a config key (the check reuses `audit.SubjectMaxLength`/`allowedScopes`/`allowedTypes`), and
-supporting `~~~` fences (commit subjects use ` ``` ` only — dropping `~~~` avoids an uncovered
+supporting `~~~` fences (commit subjects use ` ``` ` only; dropping `~~~` avoids an uncovered
 branch). This plan's own Task 1.9 / 2.3 commit tasks use ` ```commit ` fences, so once Phase 1 lands
 they are self-validated by the new check.

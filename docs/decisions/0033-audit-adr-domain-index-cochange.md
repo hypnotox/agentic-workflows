@@ -16,7 +16,7 @@ A real escape this session: an ADR-proposal commit added ADRs carrying `domains:
 frontmatter and staged `docs/decisions/ACTIVE.md`, but **not** the regenerated
 `docs/domains/<domain>.md` index docs. The committed snapshot was internally
 inconsistent (stale domain indexes), yet every gate passed. The fix that session
-was a follow-up "regenerate domain indexes" commit — exactly the kind of
+was a follow-up "regenerate domain indexes" commit: exactly the kind of
 after-the-fact patch the deterministic checks are supposed to prevent.
 
 Why each existing net missed it:
@@ -31,7 +31,7 @@ Why each existing net missed it:
   when an ADR reaches **Implemented**, and is a Warning. The slip was on **Proposed**
   ADRs and concerned the **generated index**, a different file on a different trigger.
 - **`adr-status-cochange` (ADR-0017) is half the rule.** It requires an ADR add or
-  status flip to co-change `ACTIVE.md` — but the *same* ADR frontmatter (`status`,
+  status flip to co-change `ACTIVE.md`, but the *same* ADR frontmatter (`status`,
   `domains`, grouped by status) also regenerates each `docs/domains/<d>.md` index, and
   nothing requires those. ADR→generated-index co-change was enforced for one index
   (`ACTIVE.md`) and silently not for the others.
@@ -63,7 +63,7 @@ Grounding discoveries that shape the design:
 2. **New invariant, ADR-0017 left intact.** The new contract is tagged
    `inv: audit-adr-domain-cochange` and backed by new cases in
    `TestRuleADRStatusCochange`. ADR-0017's `inv: audit-adr-status-cochange` (the
-   `ACTIVE.md` contract) is untouched — its text and backing stand. One function now
+   `ACTIVE.md` contract) is untouched: its text and backing stand. One function now
    enforces two distinct, separately-tagged contracts.
 
 3. **Wire the rendered domains-index dir.** Add `audit.Inputs.DomainsIndexDir`, set by
@@ -78,7 +78,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `invariant: audit-adr-domain-cochange` — a commit that adds an ADR, or changes its `status:`,
+- `invariant: audit-adr-domain-cochange`: a commit that adds an ADR, or changes its `status:`,
   without also changing each `docs/domains/<d>.md` index for the ADR's configured
   domains, yields one `adr-domain-cochange` `Error` per missing index; the same change with those indexes
   co-changed yields none. When `DomainsIndexDir` is empty or no domains are configured,
@@ -89,23 +89,23 @@ Grounding discoveries that shape the design:
 Easier:
 - The ADR→generated-index co-change net now covers the domain indexes, not just
   `ACTIVE.md`. A commit that ships stale domain indexes is an `Error` at the
-  reviewing-impl audit (which treats audit Errors as blocking) — closing the exact gap
+  reviewing-impl audit (which treats audit Errors as blocking), closing the exact gap
   that required a follow-up regenerate commit this session.
 - Reuses the tested co-change machinery and existing helpers; no new dependency, no new
   config surface (unconditional, like its `ACTIVE.md` sibling).
 
 Harder / accepted trade-offs:
 - It is a heuristic over the **same triggers** as the `ACTIVE.md` sibling (add /
-  status-flip). An edit that changes an index without one of those triggers — e.g. a
-  `domains:`-set change, a title change, or a `superseded_by` change with no status flip
-  — is not caught, exactly matching the existing `ACTIVE.md` rule's scope. Widening the
+  status-flip). An edit that changes an index without one of those triggers (e.g. a
+  `domains:`-set change, a title change, or a `superseded_by` change with no status flip)
+  is not caught, exactly matching the existing `ACTIVE.md` rule's scope. Widening the
   trigger set is deferred to avoid false positives on index-irrelevant frontmatter edits.
 - This does **not** make `awf check` itself git/commit-aware. A commit could still in
   principle omit a non-ADR-driven generated output (e.g. a rendered skill after a
   `.awf/` part edit). The byte-precise alternative (a git-aware `awf check`) is recorded
   below and deferred.
 - The audit reports per-commit over a range, so on a feature branch a historically
-  non-conforming commit is flagged even if a later commit fixed it — which is accurate
+  non-conforming commit is flagged even if a later commit fixed it, which is accurate
   (that commit was incomplete) and consistent with the `ACTIVE.md` sibling.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
@@ -113,7 +113,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   the domain-index co-change rule in its enumeration of audit rules.
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` and
   `docs/domains/tooling.md`.
-- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md`; the
+- No `docs/decisions/README.md` row is owed: the index is the generated `ACTIVE.md`; the
   README is a how-to (ADR-0005).
 
 ## Alternatives Considered
@@ -121,6 +121,6 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Alternative | Why not chosen |
 |---|---|
 | Git-aware `awf check --staged` (validate the committed snapshot byte-for-byte) | Tightest fix, blocks at commit, but heavier (adds git to the check path) and, post-ADR-0032, commit-time blocking depends on an adopter-wired hook. Deferred, not precluded. |
-| A new parallel rule instead of extending `ruleADRStatusCochange` | Fragments one concern — "an ADR add/flip co-changes its generated indexes" — across two rules. Extending keeps it cohesive while a distinct finding label + invariant slug keep the contracts separable. |
+| A new parallel rule instead of extending `ruleADRStatusCochange` | Fragments one concern ("an ADR add/flip co-changes its generated indexes") across two rules. Extending keeps it cohesive while a distinct finding label + invariant slug keep the contracts separable. |
 | Broaden ADR-0017's `audit-adr-status-cochange` invariant text to include domain indexes | Rewrites an Implemented ADR (append-only). A new slug recorded here via `related` leaves ADR-0017 intact and accurate. |
 | Coarse rule: any `.awf/` authored input changed without any lock-tracked output | False-positive-prone (an input edit that produces no render change) and does not pinpoint the missing output. The actual incident was ADR-driven; this precise rule covers it. |

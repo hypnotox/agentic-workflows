@@ -14,7 +14,7 @@ domains: [rendering, config, tooling]
 
 ADR-0016 built a `Target` seam (`internal/project/target.go`) so adapter artifacts (skills,
 agents, the bridge file) get their output paths from a named runtime descriptor rather than
-literals, and split artifacts into **neutral** (AGENTS.md, docs, domain docs, ADR infra — fixed
+literals, and split artifacts into **neutral** (AGENTS.md, docs, domain docs, ADR infra: fixed
 paths) versus **adapter** (target-placed). The seam was explicitly designed to admit a second
 runtime, but `claudeTarget` remains the sole built-in: `Open` hardwires `Target: claudeTarget`
 (project.go:41), `Project.Target` is a single value, and there is no user-facing way to select or
@@ -25,7 +25,7 @@ Adding **Cursor** as a second adapter realises that positioning and, by being th
 second runtime, validates how far the seam must stretch. A web check of Cursor's current (2026)
 conventions settled the shape:
 
-- Cursor **Skills** are the same `SKILL.md` open standard as Claude skills — a per-skill folder
+- Cursor **Skills** are the same `SKILL.md` open standard as Claude skills: a per-skill folder
   containing `SKILL.md` with `name`/`description` frontmatter, progressive disclosure, on-demand
   description-based activation. awf skills map to Cursor Skills with **identical body and
   frontmatter**.
@@ -34,12 +34,12 @@ conventions settled the shape:
 - Cursor reads **AGENTS.md natively** at repo root, so it needs **no bridge file**.
 
 Because both runtimes share the SKILL.md/AGENTS.md standards, the same rendered body and frontmatter
-are written to two paths — no per-adapter frontmatter transform or per-adapter template set is
+are written to two paths; no per-adapter frontmatter transform or per-adapter template set is
 needed. The grounding check confirmed the lock is keyed by output path (project.go:138) and
 `targetConfigHash` does not fold the path (confighash.go), so two entries for one skill carry
 identical hashes under distinct keys and cannot collide. It also confirmed the prune in Sync
 (project.go:144) already drops files no longer produced, and `PlannedOutputs`/`RenderAll` are the
-single source of truth for the output set — so multi-target drift, collision-guarding, and pruning
+single source of truth for the output set, so multi-target drift, collision-guarding, and pruning
 fall out of one render-loop change rather than bespoke per-target bookkeeping.
 
 Three frictions surfaced that this ADR must address head-on:
@@ -50,14 +50,14 @@ Three frictions surfaced that this ADR must address head-on:
    per-target requires actually separating the neutral and adapter passes.
 2. **Pruning is shallow.** `os.Remove(filepath.Dir(file))` clears only the immediate parent
    (project.go:150), so removing a target would leave empty `.cursor/`, `.cursor/skills/` behind.
-   `Uninstall` already walks all empty ancestors (install.go:96) — that pattern must be reused.
+   `Uninstall` already walks all empty ancestors (install.go:96); that pattern must be reused.
 3. **A term clash.** ADR-0016's `Target` means *adapter*, but `renderTarget`/`targetConfigHash`/
    `planSections`/`partRel`/`config.PartPath` and the orphan loop use "target" to mean *the managed
    artifact's name*. With `Targets` now plural this is actively confusing; a third, unrelated sense
    (`catalog.VarDescriptor.Target` in `internal/initspec`) must be left untouched.
 
-A separable concern that surfaced alongside this work — the shipped skill prose names
-Claude-specific tools, which leak verbatim into Cursor's `.cursor/skills/` — is split out as its
+A separable concern that surfaced alongside this work (the shipped skill prose names
+Claude-specific tools, which leak verbatim into Cursor's `.cursor/skills/`) is split out as its
 own decision in ADR-0038 (tool-agnostic skill/agent prose, extending ADR-0018). The two land in one
 plan; nothing in this ADR depends on it.
 
@@ -66,8 +66,8 @@ plan; nothing in this ADR depends on it.
 1. **`targets` config enable array.** Add `Targets []string` to `internal/config.Config`. When the
    `targets:` key is absent, `Load` injects `["claude"]` (mirroring the `DocsDir` default at
    config.go:94), so a pre-existing config renders byte-identical with no schema-version bump and no
-   `internal/migrate` entry — the backward-safe optional-field precedent set by `Domains` (ADR-0014).
-   `config.Validate` rejects an empty list and path-separator names (sanity only — `internal/config`
+   `internal/migrate` entry: the backward-safe optional-field precedent set by `Domains` (ADR-0014).
+   `config.Validate` rejects an empty list and path-separator names (sanity only: `internal/config`
    stays free of the adapter registry to avoid an import cycle); `project.Open`, via `resolveTargets`,
    rejects any name not in the known-adapter registry, since that is where the registry lives.
 
@@ -93,7 +93,7 @@ plan; nothing in this ADR depends on it.
    scoped to skills/agents/docs/domains. Hand-editing `targets:` in `config.yaml` remains supported.
 
 6. **Rename the artifact-sense "target" to "artifact"** across `renderTarget`, `targetConfigHash`,
-   `planSections`, `consumedParts`, `partRel`, `config.PartPath`, and the orphan-loop vocabulary —
+   `planSections`, `consumedParts`, `partRel`, `config.PartPath`, and the orphan-loop vocabulary:
    a mechanical, behaviour-preserving rename that leaves `catalog.VarDescriptor.Target` untouched.
 
 ## Invariants
@@ -105,27 +105,27 @@ also realises the user-facing `targets:` key ADR-0016 Decision item 2 deliberate
 key lands with the second adapter"), so introducing `targets:` extends rather than contradicts
 ADR-0016.
 
-- `invariant: multi-target-render` — with `targets` enabling N adapters, each adapter artifact (skill,
+- `invariant: multi-target-render`: with `targets` enabling N adapters, each adapter artifact (skill,
   agent) renders once per enabled target to that target's paths (for `claude`,
   `.claude/skills/<prefix>-<name>/SKILL.md` and `.claude/agents/<name>.md`; for `cursor`,
   `.cursor/skills/<prefix>-<name>/SKILL.md` and `.cursor/agents/<name>.md`), with paths produced by
   the `Target` descriptor, not render-loop literals; neutral artifacts render exactly once
   regardless of N.
-- `invariant: targets-default-claude` — a config with no `targets:` key loads as `["claude"]`;
+- `invariant: targets-default-claude`: a config with no `targets:` key loads as `["claude"]`;
   `config.Validate` rejects an empty `targets` list and path-separator names; `project.Open` (via
-  `resolveTargets`) rejects any unknown adapter name — config stays registry-free, so the
+  `resolveTargets`) rejects any unknown adapter name: config stays registry-free, so the
   unknown-name check lives where the adapter registry does.
-- `invariant: cursor-no-bridge` — the `cursor` target has an empty `BridgeFile` and emits no bridge file;
+- `invariant: cursor-no-bridge`: the `cursor` target has an empty `BridgeFile` and emits no bridge file;
   its rendered skill and agent files are byte-identical in body and frontmatter to the `claude`
   target's at their respective paths.
-- `invariant: target-prune-ancestors` — removing a target from `targets:` and re-syncing deletes that
+- `invariant: target-prune-ancestors`: removing a target from `targets:` and re-syncing deletes that
   target's rendered files and every resulting empty ancestor directory, not only the immediate
   parent.
-- `invariant: target-cli` — `awf add target` / `awf remove target` mutate the config `targets` array
+- `invariant: target-cli`: `awf add target` / `awf remove target` mutate the config `targets` array
   against the known-adapter set, and `awf list target` reads it, all without routing through the
   `kindDescriptor` machinery. This adds a CLI kind token (`target`) alongside the
   `kindDescriptor`-backed kinds; `inv: cli-config-kinds` (backed by the marker comment on the
-  `kindDescriptors` table plus the `Kinds()` assertion) is **unaffected** — `targets` is the bespoke
+  `kindDescriptors` table plus the `Kinds()` assertion) is **unaffected**: `targets` is the bespoke
   path Decision 5 keeps outside that machinery, so `target` is **not** a `kindDescriptor`, `Kinds()`
   does not change, and no `cli-config-kinds` backing change is required.
 - Neutral artifacts keep their existing single paths; only adapter artifacts multiply across
@@ -169,7 +169,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   paths) lands; `docs/decisions/ACTIVE.md` is regenerated via `./x sync`. ADR-0024's
   `cli-config-kinds` backing needs no change (`target` stays outside the `kindDescriptor` machinery).
   No `docs/decisions/README.md` ADR-index row is owed (the README is a how-to guide; `ACTIVE.md` is
-  the generated index — ADR-0005).
+  the generated index, ADR-0005).
 
 ## Alternatives Considered
 
@@ -177,6 +177,6 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 |---|---|
 | Single switchable `target:` (one runtime per repo) | Forecloses awf's multi-tool positioning; the field is converging on shared SKILL.md/AGENTS.md standards, so rendering several at once is the higher-value default. |
 | Map awf skills to Cursor **Rules** (`.cursor/rules/*.mdc`) | Worse semantic fit (rules are always-on/glob-scoped project knowledge; awf skills are on-demand procedures) and forces a frontmatter re-dialect that Skills make unnecessary. |
-| Emit a thin always-apply Cursor rule pointing at AGENTS.md | Redundant — Cursor reads AGENTS.md natively; extra rendered output to maintain for no gain. |
+| Emit a thin always-apply Cursor rule pointing at AGENTS.md | Redundant: Cursor reads AGENTS.md natively; extra rendered output to maintain for no gain. |
 | Build a frontmatter-transform / container-rename capability now | Speculative: Claude and Cursor both use identity under the shared standard; the capability earns its place only when a genuinely divergent adapter (e.g. single-file Copilot) arrives. |
 | Make `targets` a fifth `kindDescriptor` | `targets` has no catalog pool, sidecars, parts, or orphan semantics; forcing it into the kind machinery drags it into `orphans()` and render dispatch for no benefit. A bespoke CLI path is cleaner. |

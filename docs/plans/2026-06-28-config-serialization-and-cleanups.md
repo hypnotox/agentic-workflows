@@ -4,7 +4,7 @@
 
 **Design:** [ADR-0026](../decisions/0026-config-serialization-ownership.md) (config serialization). The
 other four items (init bugfix, typed Layout, coverage dodge, `project.Audit` streamline) are refactors/
-a bugfix needing no ADR. Do not duplicate ADR rationale here — link.
+a bugfix needing no ADR. Do not duplicate ADR rationale here; link.
 
 ## Goal
 
@@ -23,7 +23,7 @@ round-trip that preserves comments/untouched keys and normalizes only the edited
 style. `internal/migrate` is untouched (ADR-0010 quarantine; ADR-0026 Decision 4). The typed `Layout`
 keeps the per-file `ConfigHash` stable by routing the hash and the template namespace through
 `templateMap()`, which reproduces today's `layout()` map verbatim. `audit.Inputs` gains an embedded
-`config.AuditSettings` (new `audit → config` edge; acyclic — `config` imports no internal package).
+`config.AuditSettings` (new `audit → config` edge; acyclic: `config` imports no internal package).
 
 ## Tech stack
 
@@ -48,7 +48,7 @@ explicitly (no `git add -A`). Commit-message bodies end with the trailer
 
 ---
 
-## Phase 1 — init rollback bugfix (test-first)
+## Phase 1: init rollback bugfix (test-first)
 
 - [ ] **1.1 Add the regression test.** In `cmd/awf/run_test.go`, after `TestInitGuardBlocksAndForceOverrides`
   (ends ~line 450), add:
@@ -100,7 +100,7 @@ explicitly (no `git add -A`). Commit-message bodies end with the trailer
 
 ---
 
-## Phase 2 — config serialization owner (`internal/config/edit.go`)
+## Phase 2: config serialization owner (`internal/config/edit.go`)
 
 This phase adds the owner and its tests standalone; wiring of scaffold/list_add follows in Phases 3-4.
 
@@ -117,7 +117,7 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
 
   // Skeleton is the input to MarshalSkeleton: the fields a freshly-scaffolded
   // .awf/config.yaml carries. Vars is typed map[string]string (not map[string]any)
-  // so a nil/null var value is unrepresentable — the scaffold seeds each var with an
+  // so a nil/null var value is unrepresentable: the scaffold seeds each var with an
   // empty string, which marshals as `x: ""`. A nil interface would marshal as
   // `x: null` and decode back to a nil value that renders as "<no value>", tripping
   // the publication-safe check (ADR-0026 Decision 3).
@@ -319,17 +319,17 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
   }
   ```
   If yaml.v3 formats any `want` differently (e.g. a quoting nuance), adjust that literal to the actual
-  bytes — the contract is two-space block style + comment preservation, not these exact strings; the
+  bytes: the contract is two-space block style + comment preservation, not these exact strings; the
   gate's 100% coverage and the scaffold semantic tests are the real backstops.
 - [ ] **2.3 Gate + commit** (`internal/config/edit.go`, `internal/config/edit_test.go`):
   `feat(awf): own config.yaml serialization in internal/config`.
 
 ---
 
-## Phase 3 — scaffold via `config.MarshalSkeleton`
+## Phase 3: scaffold via `config.MarshalSkeleton`
 
 - [ ] **3.1 Rewrite `ScaffoldConfig`'s emission.** In `internal/project/scaffold.go`, replace the manual
-  YAML block (lines 80-100, from `// Emit YAML manually …` through `return []byte(b.String()), nil`) with:
+  YAML block (lines 80-100, from `// Emit YAML manually ...` through `return []byte(b.String()), nil`) with:
   ```go
   	vars := make(map[string]string, len(varNames))
   	for _, v := range varNames {
@@ -349,13 +349,13 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
   remove `"strings"` (only `strings.Builder` used it). Keep `fmt`, `io/fs`, `maps`, `slices`, `catalog`,
   `render`, `templates`.
 - [ ] **3.4 Verify scaffold tests pass unchanged.** `internal/project/scaffold_test.go` is semantic
-  (strict-parse, core-set membership, no placeholder) — no byte-golden — so it should pass as-is. If a
+  (strict-parse, core-set membership, no placeholder), no byte-golden, so it should pass as-is. If a
   byte-exact assertion exists and fails, update it to the `MarshalSkeleton` output.
 - [ ] **3.5 Gate + commit** (`internal/project/scaffold.go`): `refactor(awf): scaffold via config.MarshalSkeleton`.
 
 ---
 
-## Phase 4 — mutate config via `config.SetArrayMember` (delete `editArray`)
+## Phase 4: mutate config via `config.SetArrayMember` (delete `editArray`)
 
 - [ ] **4.1 Rewrite `rewriteConfig`.** In `cmd/awf/list_add.go`, replace the body of `rewriteConfig`
   (lines 122-136) with:
@@ -381,7 +381,7 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
   to `SetArrayMember` in Phase 2).
 - [ ] **4.3 Fix imports** in `list_add.go`: remove `"strings"` (only `editArray` used it; confirm with
   `grep -n 'strings\.' cmd/awf/list_add.go` → no matches after deletion). `config`, `slices`, `maps` stay.
-- [ ] **4.4 Delete `TestEditArray`** from `cmd/awf/list_add_test.go` (lines 45-82) — replaced by
+- [ ] **4.4 Delete `TestEditArray`** from `cmd/awf/list_add_test.go` (lines 45-82), replaced by
   `TestSetArrayMember` in `internal/config`.
 - [ ] **4.5 Rewrite the flow-style test.** Replace `TestRunAddRemoveRefuseFlowStyle` (lines 121-132) with a
   test asserting flow-style now *works* end-to-end. **Add `brainstorming`, not `bugfix`:** unlike the old
@@ -416,11 +416,11 @@ This phase adds the owner and its tests standalone; wiring of scaffold/list_add 
   `refactor(awf): mutate config via config.SetArrayMember`.
 
 After this phase, all of ADR-0026's code (construction, mutation, marker re-home, migrate carve-out)
-is in place — Phase 5 closes the ADR.
+is in place; Phase 5 closes the ADR.
 
 ---
 
-## Phase 5 — implement ADR-0026 (status flip + doc currency)
+## Phase 5: implement ADR-0026 (status flip + doc currency)
 
 - [ ] **5.1 Flip status.** In `docs/decisions/0026-config-serialization-ownership.md`, change
   `status: Accepted` → `status: Implemented`.
@@ -434,7 +434,7 @@ is in place — Phase 5 closes the ADR.
   `internal/config` entry: it now owns config.yaml *write* (construction + mutation) as well as the
   load/schema, with `internal/migrate` excepted (ADR-0010 quarantine).
 - [ ] **5.5 Regenerate + check.** `./x sync` (regenerates `docs/decisions/ACTIVE.md`, `docs/domains/config.md`,
-  `docs/domains/tooling.md`, `docs/architecture.md`). Then `./x check` — now that ADR-0026 is `Implemented`,
+  `docs/domains/tooling.md`, `docs/architecture.md`). Then `./x check`: now that ADR-0026 is `Implemented`,
   it enforces `config-serialization-owned` + `config-mutation-roundtrip`; both markers exist in `edit.go`,
   so it must print `awf check: clean`.
 - [ ] **5.6 Gate + commit** (the ADR, the three `.awf/**` parts, and all `docs/**` regenerated by sync):
@@ -442,7 +442,7 @@ is in place — Phase 5 closes the ADR.
 
 ---
 
-## Phase 6 — typed `project.Layout`
+## Phase 6: typed `project.Layout`
 
 - [ ] **6.1 Replace `layout()` and add `templateMap()`.** In `internal/project/render.go`, replace the
   `layout()` method (lines 42-73) with a typed `Layout` struct, a `layout()` returning it, and a
@@ -451,7 +451,7 @@ is in place — Phase 5 closes the ADR.
   // Layout is the fixed, awf-given docs layout derived from cfg.DocsDir, in typed
   // form for Go consumers. templateMap projects it into the .layout namespace for
   // templates (which read a map, not unexported struct fields) and into the
-  // per-file ConfigHash — reproducing the historical map verbatim, so the hash is
+  // per-file ConfigHash, reproducing the historical map verbatim, so the hash is
   // unchanged (no drift).
   type Layout struct {
   	DocsDir     string
@@ -546,7 +546,7 @@ is in place — Phase 5 closes the ADR.
   			t.Errorf("templateMap missing key %q", k)
   		}
   	}
-  	// invariant: workflow-ref-fallback (fallback arm) — without the workflow doc enabled,
+  	// invariant: workflow-ref-fallback (fallback arm): without the workflow doc enabled,
   	// workflowRef resolves to the always-present AGENTS.md.
   	noWf := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
   	if got := noWf.layout().WorkflowRef; got != "AGENTS.md" {
@@ -557,15 +557,15 @@ is in place — Phase 5 closes the ADR.
   	}
   }
   ```
-  Confirm `reflect` is already imported in `project_test.go` (it is — used at the old line 535).
+  Confirm `reflect` is already imported in `project_test.go` (it is, used at the old line 535).
 - [ ] **6.6 Gate + commit** (`internal/project/render.go`, `internal/project/project.go`,
   `internal/project/project_test.go`): `refactor(awf): typed project Layout`. The gate's drift/golden
-  tests must stay green — `templateMap()` keeps every `ConfigHash` byte-identical, so `.awf/awf.lock`
+  tests must stay green: `templateMap()` keeps every `ConfigHash` byte-identical, so `.awf/awf.lock`
   does not change.
 
 ---
 
-## Phase 7 — embed `config.AuditSettings` in `audit.Inputs`
+## Phase 7: embed `config.AuditSettings` in `audit.Inputs`
 
 - [ ] **7.1 Embed in `Inputs`.** In `internal/audit/audit.go`, add the import
   `"github.com/hypnotox/agentic-workflows/internal/config"` and replace the nine settings fields of
@@ -586,10 +586,10 @@ is in place — Phase 5 closes the ADR.
   }
   ```
   Rule bodies read promoted fields unchanged (`in.AllowedTypes`, `in.SubjectMaxLength`, `in.DiffThreshold`,
-  `in.DomainDocStaleness`, `in.UndocumentedDomain`, `in.UncommittedChanges`, `in.BaseBranch`) — no edits to
+  `in.DomainDocStaleness`, `in.UndocumentedDomain`, `in.UncommittedChanges`, `in.BaseBranch`), no edits to
   the rule functions.
 - [ ] **7.2 Collapse the copy in `project.Audit`.** In `internal/project/project.go` (lines 145-161),
-  replace the field-by-field `audit.Inputs{…}` with:
+  replace the field-by-field `audit.Inputs{...}` with:
   ```go
   	return audit.Run(p.Root, audit.Inputs{
   		AuditSettings:     s,
@@ -602,18 +602,18 @@ is in place — Phase 5 closes the ADR.
   	})
   ```
   (`s := p.Cfg.ResolveAudit()` and the `baseOverride` line stay; `lay := p.layout()` is now the typed form.)
-- [ ] **7.3 Nest the test `Inputs` literals.** Add `import "…/internal/config"` to both
+- [ ] **7.3 Nest the test `Inputs` literals.** Add `import ".../internal/config"` to both
   `internal/audit/audit_test.go` and `internal/audit/git_test.go`, then wrap any settings field in
   `AuditSettings:`. Mechanical rule: fields `BaseBranch / AllowedTypes / AllowedScopes / SubjectMaxLength /
   DependencyManifests / DiffThreshold / DomainDocStaleness / UndocumentedDomain / UncommittedChanges` move
-  inside `config.AuditSettings{…}`; `ADRDir / ActiveMd / PlansDir / GeneratedPaths / ConfiguredDomains /
+  inside `config.AuditSettings{...}`; `ADRDir / ActiveMd / PlansDir / GeneratedPaths / ConfiguredDomains /
   DomainsPartsDir` stay flat. Example (audit_test.go:27):
   ```go
   in := Inputs{AuditSettings: config.AuditSettings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []string{"awf"}, SubjectMaxLength: 20}}
   ```
-  Sites to update — **audit_test.go:** 27, 96, 129, 153, 206, 251, 257, 266 (the mixed ones keep their
+  Sites to update: **audit_test.go:** 27, 96, 129, 153, 206, 251, 257, 266 (the mixed ones keep their
   flat fields and gain an `AuditSettings:` field). **git_test.go:** 151, 163, 238, 250, 256, 268 (all set
-  only `BaseBranch`/`UncommittedChanges`, so each becomes `Inputs{AuditSettings: config.AuditSettings{…}}`).
+  only `BaseBranch`/`UncommittedChanges`, so each becomes `Inputs{AuditSettings: config.AuditSettings{...}}`).
   Literals that set *only* flat fields (audit_test.go:53 `Inputs{}`, :65, :108, :140, :199, :261) are
   unchanged. Resolve each against the file as it stands; `./x gate` (compile + 100% coverage) is the backstop.
 - [ ] **7.4 Gate + commit** (`internal/audit/audit.go`, `internal/audit/audit_test.go`,

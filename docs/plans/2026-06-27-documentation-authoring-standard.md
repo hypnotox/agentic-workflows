@@ -1,7 +1,7 @@
 # Plan: Documentation Authoring Standard (ADR-0018)
 
 Implements [ADR-0018](../decisions/0018-documentation-authoring-standard.md). Design and rationale
-live there — this plan is the execution record only.
+live there; this plan is the execution record only.
 
 ## Goal
 
@@ -11,7 +11,7 @@ own AGENTS.md Invariants. The final commit flips ADR-0018 `Accepted → Implemen
 
 ## Architecture summary
 
-Pure ADR-0011 catalog-docs mechanism — no engine, catalog-schema, or lock-format change. Each new
+Pure ADR-0011 catalog-docs mechanism: no engine, catalog-schema, or lock-format change. Each new
 doc is a `templates/catalog.yaml` entry + a `templates/docs/<name>.md.tmpl` (auto-embedded) + an
 entry in `.awf/config.yaml` `docs:`. The docs auto-appear in the agent guide's document map via
 `resolvedDocs()`; `docs_sections_test.go` auto-covers their section-parity and `<no value>` guard.
@@ -39,7 +39,7 @@ carry zero unresolved-token risk.
 - `.awf/agents-doc.yaml` (compress `data.invariants`)
 - `docs/decisions/0018-documentation-authoring-standard.md` (status flip, final phase)
 - `AGENTS.md` (regenerated: document map in Phase 1; invariants-section hint in Phase 2; terser
-  invariants in Phase 3 — the `identity` and `you-and-this-project` hints are template-default
+  invariants in Phase 3: the `identity` and `you-and-this-project` hints are template-default
   only and are NOT rendered in this repo, since both sections are overridden by convention parts)
 - `docs/decisions/ACTIVE.md`, `docs/domains/rendering.md`, `.awf/awf.lock` (regenerated)
 
@@ -50,12 +50,12 @@ carry zero unresolved-token risk.
 
 ---
 
-## Phase 1 — Ship the two standard docs
+## Phase 1: Ship the two standard docs
 
 The two docs are coupled (`agents-md-standard` links `doc-standard`) and share one rationale, so
 they land in one commit.
 
-### Task 1.1 — Add catalog entries
+### Task 1.1: Add catalog entries
 
 In `templates/catalog.yaml`, immediately after the `roadmap:` doc entry (the last entry under
 `docs:`, before the `agentsDoc:` line), insert:
@@ -71,7 +71,7 @@ In `templates/catalog.yaml`, immediately after the `roadmap:` doc entry (the las
     sections: [layout, content, rules]
 ```
 
-### Task 1.2 — Create `templates/docs/doc-standard.md.tmpl`
+### Task 1.2: Create `templates/docs/doc-standard.md.tmpl`
 
 Create the file with exactly this content:
 
@@ -89,7 +89,7 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 
 - **Terse.** Managed docs are read repeatedly; every word is a recurring cost. Use the shortest phrasing that stays precise.
 - **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
-- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it — one source of truth per fact.
+- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
 - **Present-tense, authoritative voice.** Describe what is; use the imperative for instructions.
 <!-- awf:end -->
@@ -97,11 +97,11 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 <!-- awf:section structure -->
 ## Structure
 
-A managed doc is a sequence of `awf:section` marker blocks whose names match its catalog `sections` list. Each section default holds a content prompt naming what belongs there. Override one section with a convention part at `.awf/docs/parts/<doc>/<section>.md`; the rest inherits the default. Documentation travels with the change that makes it true — update the doc in the same commit.
+A managed doc is a sequence of `awf:section` marker blocks whose names match its catalog `sections` list. Each section default holds a content prompt naming what belongs there. Override one section with a convention part at `.awf/docs/parts/<doc>/<section>.md`; the rest inherits the default. Documentation travels with the change that makes it true; update the doc in the same commit.
 <!-- awf:end -->
 ```
 
-### Task 1.3 — Create `templates/docs/agents-md-standard.md.tmpl`
+### Task 1.3: Create `templates/docs/agents-md-standard.md.tmpl`
 
 Create the file with exactly this content:
 
@@ -115,13 +115,13 @@ The agent guide (`AGENTS.md`) is the one doc loaded every session. Follow the [D
 
 The guide renders a fixed sequence of sections:
 
-1. **Working with awf** — awf-given; how the config tree renders the project.
-2. **You and this project** — adopter-authored; the agent's standing responsibility.
-3. **Identity** — adopter-authored; what the project is.
-4. **Invariants** — adopter-authored; the hard rules every change respects.
-5. **Workflow** — awf-given; the canonical chain.
-6. **Commands** — adopter data; the handful of commands an agent runs.
-7. **Document map** — awf-given; the index into the docs, generated from the enabled set.
+1. **Working with awf**: awf-given; how the config tree renders the project.
+2. **You and this project**: adopter-authored; the agent's standing responsibility.
+3. **Identity**: adopter-authored; what the project is.
+4. **Invariants**: adopter-authored; the hard rules every change respects.
+5. **Workflow**: awf-given; the canonical chain.
+6. **Commands**: adopter data; the handful of commands an agent runs.
+7. **Document map**: awf-given; the index into the docs, generated from the enabled set.
 
 Override an adopter-authored section with a convention part at `.awf/parts/agents-doc/<section>.md`, or supply `data` (invariants, commands) in `.awf/agents-doc.yaml`.
 <!-- awf:end -->
@@ -129,19 +129,19 @@ Override an adopter-authored section with a convention part at `.awf/parts/agent
 <!-- awf:section content -->
 ## Content
 
-- **Identity** — one dense paragraph: what the project is, its stack and module path, its maturity, and who it serves. No history.
-- **You and this project** — two or three sentences on the agent's ownership stance: the project's long-term health, not just the task.
-- **Invariants** — the hard rules, one terse imperative line each, with the owning ADR in parentheses. The mechanism lives in that ADR.
+- **Identity**: one dense paragraph: what the project is, its stack and module path, its maturity, and who it serves. No history.
+- **You and this project**: two or three sentences on the agent's ownership stance: the project's long-term health, not just the task.
+- **Invariants**: the hard rules, one terse imperative line each, with the owning ADR in parentheses. The mechanism lives in that ADR.
 <!-- awf:end -->
 
 <!-- awf:section rules -->
 ## Rules
 
-The guide is loaded every session, so it is held to an extra-terse bar — it pays its word cost on every task. State each invariant as a one-line imperative and let its ADR carry the detail. Push anything not every-session-critical into a doc and reach it through the document map.
+The guide is loaded every session, so it is held to an extra-terse bar; it pays its word cost on every task. State each invariant as a one-line imperative and let its ADR carry the detail. Push anything not every-session-critical into a doc and reach it through the document map.
 <!-- awf:end -->
 ```
 
-### Task 1.4 — Enable both docs in this repo
+### Task 1.4: Enable both docs in this repo
 
 In `.awf/config.yaml`, replace the `docs:` array:
 
@@ -169,7 +169,7 @@ docs:
     - workflow
 ```
 
-### Task 1.5 — Render, verify, commit
+### Task 1.5: Render, verify, commit
 
 Run:
 
@@ -201,9 +201,9 @@ git commit -m "docs(awf): add doc-standard and agents-md-standard docs"
 
 ---
 
-## Phase 2 — In-context authoring hints in the agents-doc template
+## Phase 2: In-context authoring hints in the agents-doc template
 
-### Task 2.1 — Refine the `identity` default hint
+### Task 2.1: Refine the `identity` default hint
 
 In `templates/agents-doc/AGENTS.md.tmpl`, replace:
 
@@ -214,10 +214,10 @@ In `templates/agents-doc/AGENTS.md.tmpl`, replace:
 with:
 
 ```
-`{{ .prefix }}` is a software project. Replace this with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph — what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. See `agents-md-standard.md`.
+`{{ .prefix }}` is a software project. Replace this with a convention part at `.awf/parts/agents-doc/identity.md`: one dense paragraph: what `{{ .prefix }}` is, its stack and module path, its maturity, and who it serves. See `agents-md-standard.md`.
 ```
 
-### Task 2.2 — Add an HTML-comment hint to `you-and-this-project`
+### Task 2.2: Add an HTML-comment hint to `you-and-this-project`
 
 In `templates/agents-doc/AGENTS.md.tmpl`, replace:
 
@@ -235,12 +235,12 @@ with:
 <!-- awf:section you-and-this-project -->
 ## You and this project
 
-<!-- Authoring: see agents-md-standard.md — the agent's ownership stance in 2-3 sentences. -->
+<!-- Authoring: see agents-md-standard.md: the agent's ownership stance in 2-3 sentences. -->
 You are a developer on `{{ .prefix }}`, responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it.
 <!-- awf:end -->
 ```
 
-### Task 2.3 — Add an HTML-comment hint to `invariants`
+### Task 2.3: Add an HTML-comment hint to `invariants`
 
 In `templates/agents-doc/AGENTS.md.tmpl`, replace:
 
@@ -257,11 +257,11 @@ with:
 <!-- awf:section invariants -->
 ## Invariants
 
-<!-- Authoring: see agents-md-standard.md — hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
+<!-- Authoring: see agents-md-standard.md: hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 ```
 
-### Task 2.4 — Render, verify, commit
+### Task 2.4: Render, verify, commit
 
 Run:
 
@@ -273,7 +273,7 @@ go test ./internal/project/
 
 Expected: `./x sync` clean; `./x check` exits 0, no drift; tests pass (the golden agents-doc
 assertions use `strings.Contains` + a no-leaks check that rejects only `awf:section`/`awf:end`/
-`<no value>`/`{{}}` — the HTML comments are none of these).
+`<no value>`/`{{}}`: the HTML comments are none of these).
 
 Confirm the `invariants` hint renders (invisible in markdown, present as a comment):
 
@@ -282,7 +282,7 @@ grep -n "Authoring: see agents-md-standard.md" AGENTS.md
 ```
 
 Expected: **one** matching line (the `invariants` hint). The `identity` and `you-and-this-project`
-hints live in the template defaults but are not rendered in this repo — both sections are
+hints live in the template defaults but are not rendered in this repo: both sections are
 overridden by convention parts under `.awf/parts/agents-doc/`, which replace the default body. The
 hints still ship to adopters who have not overridden those sections.
 
@@ -294,9 +294,9 @@ git commit -m "docs(awf): add in-context AGENTS.md authoring hints"
 
 ---
 
-## Phase 3 — Dogfood the leanness pass and mark ADR-0018 Implemented
+## Phase 3: Dogfood the leanness pass and mark ADR-0018 Implemented
 
-### Task 3.1 — Compress this repo's `data.invariants`
+### Task 3.1: Compress this repo's `data.invariants`
 
 In `.awf/agents-doc.yaml`, replace the entire `invariants:` block (the six entries under
 `data.invariants`) with:
@@ -315,7 +315,7 @@ In `.awf/agents-doc.yaml`, replace the entire `invariants:` block (the six entri
           text: '**100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`.'
 ```
 
-### Task 3.2 — Flip ADR-0018 to Implemented
+### Task 3.2: Flip ADR-0018 to Implemented
 
 In `docs/decisions/0018-documentation-authoring-standard.md`, change the frontmatter:
 
@@ -332,7 +332,7 @@ status: Implemented
 (ADR-0018 carries no tagged `inv:` slug, so the `Implemented` status adds no backing requirement;
 `awf check` stays clean.)
 
-### Task 3.3 — Render, verify, commit
+### Task 3.3: Render, verify, commit
 
 Run:
 
@@ -382,7 +382,7 @@ Implemented.
 ## Terminal step
 
 The ADR flip lands in Phase 3 (the final implementation commit), so no separate lifecycle commit is
-needed. Invoke `awf-reviewing-impl` against the Phase 1–3 commit range.
+needed. Invoke `awf-reviewing-impl` against the Phase 1-3 commit range.
 
 ## Notes
 
@@ -390,4 +390,4 @@ needed. Invoke `awf-reviewing-impl` against the Phase 1–3 commit range.
 - The two new doc templates are var-free, so they cannot trip the `<no value>` publication-safety
   guard; `docs_sections_test.go` enforces their section-parity automatically.
 - Scope boundary (ADR-0018 Decision 5): this does **not** re-audit awf's six pre-existing docs to
-  the new standard — that conformance sweep is separate, later work.
+  the new standard; that conformance sweep is separate, later work.

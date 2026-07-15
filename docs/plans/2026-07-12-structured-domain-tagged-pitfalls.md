@@ -58,15 +58,15 @@ before every commit.
 
 ---
 
-## Phase 1 — Sidecar-derived pitfalls model (render + validate + convert)
+## Phase 1: Sidecar-derived pitfalls model (render + validate + convert)
 
 This phase is deliberately large: the DocEntry sections, the template, the transform, the check,
-the configspec entry, and the two hand-conversions are mutually dependent — none passes `./x gate`
+the configspec entry, and the two hand-conversions are mutually dependent: none passes `./x gate`
 + `./x check` without the others (a template referencing `.data.pitfalls` with no transform, or a
-converted tree with no model, both drift). It is one coherent change, not a coupled-phase escape —
+converted tree with no model, both drift). It is one coherent change, not a coupled-phase escape:
 its own closing commit passes the gate.
 
-- [ ] **Task 1.1 — Add the entry model, parser, structural validation, and transform.** Create
+- [ ] **Task 1.1: Add the entry model, parser, structural validation, and transform.** Create
   `internal/project/pitfalls.go`:
 
   ```go
@@ -96,8 +96,8 @@ its own closing commit passes the gate.
 
   // pitfallEntries validates data.pitfalls into the ordered entry list. An absent or
   // null key yields nil, nil (the template's else branch renders the placeholder).
-  // Structural violations — a non-list value, a non-mapping element, an
-  // empty/newline-bearing title, an empty body, a wrong-typed field — are hard errors
+  // Structural violations (a non-list value, a non-mapping element, an
+  // empty/newline-bearing title, an empty body, a wrong-typed field) are hard errors
   // naming the sidecar. Domain and ADR-link *resolution* is checkPitfalls' job (it
   // needs the project's domains and ADRs); this validates shape only.
   // invariant: pitfall-data-validated
@@ -154,7 +154,7 @@ its own closing commit passes the gate.
   		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title is empty", i))
   	}
   	if strings.Contains(title, "\n") {
-  		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title %q contains a newline — titles are single-line headings", i, title))
+  		return pitfallEntry{}, pitfallErr(fmt.Sprintf("entry %d: title %q contains a newline; titles are single-line headings", i, title))
   	}
   	body, err := pitfallString(i, m, "body")
   	if err != nil {
@@ -229,7 +229,7 @@ its own closing commit passes the gate.
   	return out, nil
   }
 
-  // pitfallsTransform replaces data.pitfalls — the authored entry list — with the
+  // pitfallsTransform replaces data.pitfalls (the authored entry list) with the
   // finished markdown, mirroring glossaryTransform (ADR-0089). An absent key is left
   // untouched; a null/empty list yields "" so the template's else branch renders the
   // placeholder.
@@ -249,7 +249,7 @@ its own closing commit passes the gate.
   }
 
   // pitfallsMarkdown renders entries in authored order (a YAML sequence is already
-  // deterministic — no sort needed, unlike the glossary map). Each entry is a
+  // deterministic: no sort needed, unlike the glossary map). Each entry is a
   // `## <title>` section, an optional italic Domains line, an optional italic Related
   // line of plain ADR-NNNN references (the transform cannot resolve numbers to
   // filenames, so these are text not links), and the body.
@@ -285,7 +285,7 @@ its own closing commit passes the gate.
   }
   ```
 
-- [ ] **Task 1.2 — Dispatch the transform.** In `internal/project/glossary.go`, extend
+- [ ] **Task 1.2: Dispatch the transform.** In `internal/project/glossary.go`, extend
   `docDataTransform` to route `pitfalls` and update its comment's last sentence to "The glossary and
   pitfalls docs compute today.":
 
@@ -305,7 +305,7 @@ its own closing commit passes the gate.
   	}
   ```
 
-- [ ] **Task 1.3 — Retire the stub template.** Replace `templates/docs/pitfalls.md.tmpl` entirely:
+- [ ] **Task 1.3: Retire the stub template.** Replace `templates/docs/pitfalls.md.tmpl` entirely:
 
   ```
   # Pitfalls
@@ -313,27 +313,27 @@ its own closing commit passes the gate.
   <!-- awf:section prepend -->
   <!-- awf:end -->
 
-  {{ with .data.pitfalls }}{{ . }}{{ else }}_No pitfalls recorded yet — add entries under `data.pitfalls` in `.awf/docs/pitfalls.yaml`._
+  {{ with .data.pitfalls }}{{ . }}{{ else }}_No pitfalls recorded yet; add entries under `data.pitfalls` in `.awf/docs/pitfalls.yaml`._
   {{ end }}
   <!-- awf:section append -->
   <!-- awf:end -->
   ```
 
-- [ ] **Task 1.4 — Update the DocEntry sections.** In `internal/catalog/standard.go`:
+- [ ] **Task 1.4: Update the DocEntry sections.** In `internal/catalog/standard.go`:
 
   ```
   -		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"entries"}, TID: "docs/pitfalls.md.tmpl"},
   +		"pitfalls":     {Title: "Pitfalls", Desc: "recurring bugs and tricky areas", Sections: []string{"prepend", "append"}, TID: "docs/pitfalls.md.tmpl"},
   ```
 
-- [ ] **Task 1.5 — Describe the new data key.** In `internal/configspec/spec.go`, add to the
+- [ ] **Task 1.5: Describe the new data key.** In `internal/configspec/spec.go`, add to the
   `dataKeys` table (near the glossary `terms` entry):
 
   ```go
   	{Kind: "docs", Artifact: "pitfalls", Key: "pitfalls", Description: "The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) drive `awf context` surfacing and must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries."},
   ```
 
-- [ ] **Task 1.6 — Add the check.** In `internal/project/check.go`, add `checkPitfalls` (model on
+- [ ] **Task 1.6: Add the check.** In `internal/project/check.go`, add `checkPitfalls` (model on
   `checkPlans`) and call it from `Check()` next to the `checkPlans()` call:
 
   ```go
@@ -396,16 +396,16 @@ its own closing commit passes the gate.
   +	drift = append(drift, pitfallDrift...)
   ```
 
-  (`adr`, `slices`, `fmt`, `manifest` are already imported — `checkPlans`/`unusedDataDrift` use them.)
+  (`adr`, `slices`, `fmt`, `manifest` are already imported; `checkPlans`/`unusedDataDrift` use them.)
   The `// coverage-ignore:` is required: `checkPitfalls`'s own error returns are covered by the
   Task 1.9 unit tests that call it directly, but this `Check()` wiring branch cannot be reached
   because `RenderAll` (structural + sidecar-read errors) and `checkPlans` (ADR-parse error) run
-  first — mirroring the `unusedDataDrift` wiring ignore. Without it, Task 1.10's gate fails the
+  first, mirroring the `unusedDataDrift` wiring ignore. Without it, Task 1.10's gate fails the
   100% floor (ADR-0012).
 
-- [ ] **Task 1.7 — Convert awf's own pitfalls (batch).** Create `.awf/docs/pitfalls.yaml` by
+- [ ] **Task 1.7: Convert awf's own pitfalls (batch).** Create `.awf/docs/pitfalls.yaml` by
   converting every top-level `## ` section of `.awf/docs/parts/pitfalls/entries.md` into a
-  `data.pitfalls` list entry, then delete the part. Representative transformation — the first entry
+  `data.pitfalls` list entry, then delete the part. Representative transformation: the first entry
   becomes:
 
   ```yaml
@@ -424,7 +424,7 @@ its own closing commit passes the gate.
   (strip surrounding backticks only where they wrap the whole heading; keep inline backticks),
   section body → `body` block scalar verbatim. Judgment part: tag each entry's `domains:` from the
   five configured domains (`rendering`, `config`, `invariants`, `tooling`, `adr-system`) by reading
-  the entry — a genuinely cross-cutting/process pitfall (e.g. parallel worktrees) gets no `domains:`;
+  the entry; a genuinely cross-cutting/process pitfall (e.g. parallel worktrees) gets no `domains:`;
   set `related:` only where the body already cites a specific ADR as the pitfall's origin. Then
   `rm .awf/docs/parts/pitfalls/entries.md && rmdir .awf/docs/parts/pitfalls`.
 
@@ -433,9 +433,9 @@ its own closing commit passes the gate.
   byte-preserved modulo the added `_Domains:_`/`_Related:_` lines); no drift/`note:` line mentions
   `pitfalls`.
 
-- [ ] **Task 1.8 — Convert the example adopter's pitfalls.** Unlike awf's own file, sundial's
+- [ ] **Task 1.8: Convert the example adopter's pitfalls.** Unlike awf's own file, sundial's
   `examples/sundial/.awf/docs/parts/pitfalls/entries.md` is a single `## Entries` heading followed by
-  a two-bullet list (`time.Now()` in tests; longitude sign confusion) — *not* one `## ` per pitfall.
+  a two-bullet list (`time.Now()` in tests; longitude sign confusion), *not* one `## ` per pitfall.
   Split the two bullets into two titled `data.pitfalls` entries in
   `examples/sundial/.awf/docs/pitfalls.yaml`, e.g.:
 
@@ -451,14 +451,14 @@ its own closing commit passes the gate.
         domains: [almanac, cli]
         body: |
           East is positive; a flipped sign shifts solar noon by minutes per degree and
-          looks like a model bug (it isn't — check the input first).
+          looks like a model bug (it isn't; check the input first).
   ```
 
   Domains are drawn from sundial's configured `[almanac, cli]` (in `examples/sundial/.awf/config.yaml`).
   Delete the example's `parts/pitfalls/entries.md` and its now-empty dir. Post-check: the `./x check`
   example step is clean and note-free (ADR-0090 `example-zero-notes`).
 
-- [ ] **Task 1.9 — Add tests.** Create `internal/project/pitfalls_test.go` covering `pitfallEntries`
+- [ ] **Task 1.9: Add tests.** Create `internal/project/pitfalls_test.go` covering `pitfallEntries`
   (valid list; nil/absent → nil; non-list; non-mapping element; empty title; newline title; empty
   body; missing field; wrong field types; domains/related happy + wrong-type paths), `pitfallsMarkdown`
   (empty → ""; single entry; domains line; related line; multi-entry spacing), and `pitfallsTransform`
@@ -467,7 +467,7 @@ its own closing commit passes the gate.
   doc disabled → nil; unknown domain → `pitfall-domain` drift; dangling `related` → `pitfall-adr-link`
   drift; clean sidecar → no drift; structural error propagates. Reach the 100% floor on the new code.
 
-- [ ] **Task 1.10 — Gate and commit.** `./x gate` and `./x check` clean. Commit:
+- [ ] **Task 1.10: Gate and commit.** `./x gate` and `./x check` clean. Commit:
 
   ```
   feat(rendering): model pitfalls as a sidecar-derived doc
@@ -479,9 +479,9 @@ its own closing commit passes the gate.
   drop the part blobs.
   ```
 
-## Phase 2 — Surface pitfalls in awf context
+## Phase 2: Surface pitfalls in awf context
 
-- [ ] **Task 2.1 — Add the ref type and field.** In `internal/project/context.go`, add `PitfallRef`
+- [ ] **Task 2.1: Add the ref type and field.** In `internal/project/context.go`, add `PitfallRef`
   near `PlanRef` and a `Pitfalls` field on `ContextResult`:
 
   Adding `[]PitfallRef` (wider than the current widest type `[]DomainRef`) reflows every struct
@@ -499,7 +499,7 @@ its own closing commit passes the gate.
   }
   ```
 
-  (Run `./x fmt` after editing — the exact column widths are whatever gofmt produces; the point is
+  (Run `./x fmt` after editing: the exact column widths are whatever gofmt produces; the point is
   the committed diff must be gofmt-clean.)
 
   ```go
@@ -512,7 +512,7 @@ its own closing commit passes the gate.
   }
   ```
 
-- [ ] **Task 2.2 — Add the reader.** In `ContextFor`, after the plans block and before the final
+- [ ] **Task 2.2: Add the reader.** In `ContextFor`, after the plans block and before the final
   `return`, surface pitfalls when the doc is enabled:
 
   ```go
@@ -545,39 +545,39 @@ its own closing commit passes the gate.
 
   Add `"slices"` to the `context.go` import block.
 
-- [ ] **Task 2.3 — Render the human output.** In `cmd/awf/context.go` `printContext`, add a section
-  after the plans section (JSON encodes `res` whole — no change, preserving `context-output-parity`):
+- [ ] **Task 2.3: Render the human output.** In `cmd/awf/context.go` `printContext`, add a section
+  after the plans section (JSON encodes `res` whole, no change, preserving `context-output-parity`):
 
   ```
   		if len(res.Pitfalls) > 0 {
   			fmt.Fprintln(stdout, "\n## Related pitfalls")
   			for _, pf := range res.Pitfalls {
-  				fmt.Fprintf(stdout, "  %s %v — %s\n", pf.Title, pf.Domains, pf.Path)
+  				fmt.Fprintf(stdout, "  %s %v: %s\n", pf.Title, pf.Domains, pf.Path)
   			}
   		}
   ```
 
-- [ ] **Task 2.4 — Add tests.** Extend `internal/project/context_test.go`: a pitfall whose domain
+- [ ] **Task 2.4: Add tests.** Extend `internal/project/context_test.go`: a pitfall whose domain
   owns a queried path surfaces; a domainless pitfall never surfaces; a pitfall whose domain does not
   own the path does not surface; disabled pitfalls doc → empty `Pitfalls`; a structural-error sidecar
-  propagates; **and a Sidecar-read error propagates** (e.g. `pitfalls.yaml` present as a directory) —
+  propagates; **and a Sidecar-read error propagates** (e.g. `pitfalls.yaml` present as a directory);
   `ContextFor` has two distinct error branches (the `Sidecar` read and `pitfallEntries`), both
   coverable here because `ContextFor` runs standalone before `RenderAll`. Assert `--json` includes the
   `pitfalls` array (output-parity) via the existing JSON test pattern.
 
-- [ ] **Task 2.5 — Gate and commit.** `./x gate` + `./x check` clean. Commit:
+- [ ] **Task 2.5: Gate and commit.** `./x gate` + `./x check` clean. Commit:
 
   ```
   feat(tooling): surface pitfalls in awf context
 
   ContextResult gains Pitfalls []PitfallRef; ContextFor reads the pitfalls sidecar
   (when the doc is enabled) and surfaces each entry whose own domains: owns a queried
-  path, on the single read-only ContextResult — human + --json in parity (ADR-0099).
+  path, on the single read-only ContextResult: human + --json in parity (ADR-0099).
   ```
 
-## Phase 3 — Adopter migration + schema bump
+## Phase 3: Adopter migration + schema bump
 
-- [ ] **Task 3.1 — Write the migration.** Create `internal/migrate/pitfalls.go` with
+- [ ] **Task 3.1: Write the migration.** Create `internal/migrate/pitfalls.go` with
   `applyPitfallsData`: read `<awf>/docs/parts/pitfalls/entries.md`; if present, split it on top-level
   `## ` headings *outside fenced code blocks* into `data.pitfalls` entries (`title` from the heading,
   `body` from the section, `domains`/`related` omitted), write `<awf>/docs/pitfalls.yaml` via
@@ -589,14 +589,14 @@ its own closing commit passes the gate.
   whose trimmed prefix is a triple backtick. Model the file-op structure and provenance on
   `applySingletonStandardDocs`.
 
-- [ ] **Task 3.2 — Register it and bump the schema.** In `internal/migrate/migrate.go`:
+- [ ] **Task 3.2: Register it and bump the schema.** In `internal/migrate/migrate.go`:
 
   ```
   		{To: 8, Name: "close-enabled-set", Apply: applyCloseEnabledSet},
   +		{To: 9, Name: "pitfalls-data", Apply: applyPitfallsData},
   ```
 
-  In `internal/project/project.go` (ADR-0049 — a schema bump requires both the version and the floor):
+  In `internal/project/project.go` (ADR-0049: a schema bump requires both the version and the floor):
 
   ```
   -	const Version = "0.16.0"
@@ -611,64 +611,64 @@ its own closing commit passes the gate.
   	}
   ```
 
-- [ ] **Task 3.3 — Add migration tests.** Create `internal/migrate/pitfalls_test.go`: a tree with a
+- [ ] **Task 3.3: Add migration tests.** Create `internal/migrate/pitfalls_test.go`: a tree with a
   two-`##`-entry part splits into a two-entry `pitfalls.yaml`, the part file and dir are gone, and the
   provenance + review lines print; a `##` inside a fenced block does not split; a tree with no part is
   a clean no-op (no output, no file); a re-run after a prior split is a no-op. Reach the 100% floor.
 
-- [ ] **Task 3.4 — Restamp both trees to schema 9.** Registering `To: 9` puts every schema-8 tree
+- [ ] **Task 3.4: Restamp both trees to schema 9.** Registering `To: 9` puts every schema-8 tree
   into the "gate" state, so `sync`/`check` refuse until upgraded. Run `go run ./cmd/awf upgrade`
-  (awf's own tree — the migration no-ops since Phase 1 removed the part; it restamps the lock to 9)
+  (awf's own tree: the migration no-ops since Phase 1 removed the part; it restamps the lock to 9)
   and `go build -o /tmp/awf ./cmd/awf && (cd examples/sundial && /tmp/awf upgrade)`. Both
   `.awf/awf.lock` files now read `schemaVersion: 9`. Then `./x sync` to refresh hashes.
 
-- [ ] **Task 3.5 — Gate and commit.** `./x gate` + `./x check` clean. Commit:
+- [ ] **Task 3.5: Gate and commit.** `./x gate` + `./x check` clean. Commit:
 
   ```
   feat(config): schema-9 auto-split migration for adopter pitfalls
 
   applyPitfallsData splits an adopter's entries.md part into data.pitfalls (fenced ##
   lines skipped), atomically, printing per-entry provenance and a review instruction,
-  then deletes the part — idempotent. Bumps schema to 9 with the matching version
+  then deletes the part, idempotent. Bumps schema to 9 with the matching version
   floor (ADR-0049, ADR-0099); restamps awf's own and sundial's locks.
   ```
 
-## Phase 4 — Doc currency + status freeze
+## Phase 4: Doc currency + status freeze
 
-- [ ] **Task 4.1 — Guide invariants.** In `.awf/agents-doc.yaml` `data.invariants`, add four entries
+- [ ] **Task 4.1: Guide invariants.** In `.awf/agents-doc.yaml` `data.invariants`, add four entries
   (ref + text) for `pitfall-data-validated`, `pitfall-domains-resolved`, `pitfall-adr-link-resolved`,
   and `context-surfaces-pitfalls`, each citing ADR-0099, in the style of the existing entries.
 
-- [ ] **Task 4.2 — Domain current-state.** Update `.awf/domains/parts/rendering/current-state.md`
-  (the pitfalls doc is now sidecar-derived like the glossary — a second transform occupant) and
+- [ ] **Task 4.2: Domain current-state.** Update `.awf/domains/parts/rendering/current-state.md`
+  (the pitfalls doc is now sidecar-derived like the glossary: a second transform occupant) and
   `.awf/domains/parts/tooling/current-state.md` (`awf context` surfaces pitfalls; `awf check` gains
   pitfall validation; schema is 9). Prefer count-free phrasing (per the pitfall about hard-coded
   counts in domain narratives).
 
-- [ ] **Task 4.3 — Changelog.** Add a `## [Unreleased]` entry to `changelog/CHANGELOG.md` under
+- [ ] **Task 4.3: Changelog.** Add a `## [Unreleased]` entry to `changelog/CHANGELOG.md` under
   **Breaking changes** (the pitfalls doc model changed; adopters upgrade) and **Features**
   (`awf context` surfaces pitfalls). State the migration: `awf upgrade` auto-splits `entries.md` into
   `data.pitfalls` with empty domains and prints a review instruction; adopters then tag domains, and
   should review any pitfall whose body had `##` inside fenced code.
 
-- [ ] **Task 4.4 — Glossary.** ADR-0099's Downstream list names the glossary. Add a term to
-  `.awf/docs/glossary.yaml` `data.terms` for the new load-bearing concept — e.g. `"pitfall entry":`
+- [ ] **Task 4.4: Glossary.** ADR-0099's Downstream list names the glossary. Add a term to
+  `.awf/docs/glossary.yaml` `data.terms` for the new load-bearing concept, e.g. `"pitfall entry":`
   defining the structured `{title, domains, related, body}` unit of `data.pitfalls`, that it renders
-  a `## title` section and surfaces in `awf context` by its `domains:` (cite ADR-0099) — in the style
+  a `## title` section and surfaces in `awf context` by its `domains:` (cite ADR-0099), in the style
   of the existing entries. (The `sidecar-derived doc` term already exists from ADR-0089; this adds the
   pitfall-specific unit, not a duplicate.)
 
-- [ ] **Task 4.5 — Flip statuses (the freeze).** In
+- [ ] **Task 4.5: Flip statuses (the freeze).** In
   `docs/decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md` set `status:
   Proposed` → `status: Implemented`. In this plan's frontmatter set `status: Proposed` →
-  `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. `./x check` clean —
+  `status: Implemented`. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md`. `./x check` clean:
   this is where the four `inv:` markers are enforced (ADR-0099 now Implemented); confirm each is
   backed.
 
-- [ ] **Task 4.6 — Gate and commit.** `./x gate`, `./x check`, and `./x audit-local` clean. Commit:
+- [ ] **Task 4.6: Gate and commit.** `./x gate`, `./x check`, and `./x audit-local` clean. Commit:
 
   ```
-  docs(rendering): implement ADR-0099 — flip status, currency
+  docs(rendering): implement ADR-0099, flip status, currency
 
   Guide invariants (4 new slugs), rendering/tooling current-state, and the changelog
   [Unreleased] entry with the migration recipe. Flip ADR-0099 and this plan to
@@ -698,9 +698,9 @@ its own closing commit passes the gate.
   markdown links. So `_Related: ADR-0067, ADR-0092_` matches how every pitfall body and `awf context`
   already reference ADRs. The transform also cannot resolve numbers to filenames (it receives only
   the sidecar). **Resync done (2026-07-12):** ADR-0099 item 2 + its Alternatives row softened from
-  "linked ADR references" to plain `ADR-NNNN` (link-validated) — plan and ADR converged.
+  "linked ADR references" to plain `ADR-NNNN` (link-validated); plan and ADR converged.
 - Structural validation lives in the transform (`pitfall-data-validated`); domain/ADR-link resolution
-  lives in `checkPitfalls` (`pitfall-domains-resolved`, `pitfall-adr-link-resolved`) — the split
+  lives in `checkPitfalls` (`pitfall-domains-resolved`, `pitfall-adr-link-resolved`); the split
   mirrors glossary-structure-in-transform vs plan-links-in-checkPlans, because the transform cannot
   see the project's domain set or ADRs.
 - Deferred (ADR-0099 Consequences): `awf new pitfall` (N/A for a singleton doc) and a `promotion:`

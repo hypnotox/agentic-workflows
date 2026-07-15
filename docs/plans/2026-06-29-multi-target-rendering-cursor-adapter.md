@@ -8,7 +8,7 @@ Generalize ADR-0016's single `Target` rendering seam into `Project.Targets []Tar
 
 ## Architecture summary
 
-Design rationale lives in the two ADRs — do not restate here. Execution shape:
+Design rationale lives in the two ADRs; do not restate here. Execution shape:
 
 - **Neutral vs adapter render passes.** `RenderAll` renders neutral artifacts (docs, AGENTS.md, adr-readme/template, plans-readme) once, and adapter artifacts (skills, agents, bridge) once per enabled target. Generated `ACTIVE.md` + domain docs (added in `Sync`/`PlannedOutputs`) stay neutral.
 - **Same body, two paths.** Claude and Cursor share the SKILL.md/AGENTS.md standards, so the identical rendered body+frontmatter is written to each target's path. The lock is path-keyed (`project.go:138`) and `artifactConfigHash` (renamed from `targetConfigHash`) does not fold the path, so two entries coexist with identical hashes under distinct keys.
@@ -17,7 +17,7 @@ Design rationale lives in the two ADRs — do not restate here. Execution shape:
 ## Tech stack
 
 - Go 1.26. Packages touched: `internal/config`, `internal/project`, `cmd/awf`, `templates/` (skill `.tmpl` files + `doc-standard.md.tmpl`), plus `.awf/` dogfood config and repo `.gitignore`.
-- Gate: `./x gate` (100% statement coverage — ADR-0012). `./x check` (drift + invariants). Run both before every commit.
+- Gate: `./x gate` (100% statement coverage, ADR-0012). `./x check` (drift + invariants). Run both before every commit.
 
 ## File structure
 
@@ -26,36 +26,36 @@ Design rationale lives in the two ADRs — do not restate here. Execution shape:
 - `.cursor/skills/awf-*/SKILL.md`, `.cursor/agents/*.md` (dogfood render output, Phase 8)
 
 **Modified:**
-- `internal/config/config.go` — `Targets` field, default, validation
-- `internal/project/target.go` — `cursorTarget`, registry, `resolveTargets`
-- `internal/project/project.go` — `Targets []Target` field, `Open`, Sync prune ancestor-walk
-- `internal/project/render.go` — RenderAll neutral/adapter split; artifact-sense rename
-- `internal/project/confighash.go` — `targetConfigHash`→`artifactConfigHash`, `consumedParts` param
-- `internal/project/check.go` — `localOutPath`→multi-target; orphan-loop vocab
-- `internal/project/kind.go` — comment vocab (artifact-sense)
-- `cmd/awf/list_add.go`, `cmd/awf/main.go` — bespoke `target` CLI path
-- `templates/skills/*/SKILL.md.tmpl` (10 files) — prose neutralization
-- `templates/docs/doc-standard.md.tmpl` — tool-agnostic-prose rule
-- `.awf/config.yaml` — `targets: [claude, cursor]`
-- `.gitignore` — `!.cursor/`
+- `internal/config/config.go`: `Targets` field, default, validation
+- `internal/project/target.go`: `cursorTarget`, registry, `resolveTargets`
+- `internal/project/project.go`: `Targets []Target` field, `Open`, Sync prune ancestor-walk
+- `internal/project/render.go`: RenderAll neutral/adapter split; artifact-sense rename
+- `internal/project/confighash.go`: `targetConfigHash`→`artifactConfigHash`, `consumedParts` param
+- `internal/project/check.go`: `localOutPath`→multi-target; orphan-loop vocab
+- `internal/project/kind.go`: comment vocab (artifact-sense)
+- `cmd/awf/list_add.go`, `cmd/awf/main.go`: bespoke `target` CLI path
+- `templates/skills/*/SKILL.md.tmpl` (10 files): prose neutralization
+- `templates/docs/doc-standard.md.tmpl`: tool-agnostic-prose rule
+- `.awf/config.yaml`: `targets: [claude, cursor]`
+- `.gitignore`: `!.cursor/`
 - Test files across `internal/config`, `internal/project`, `cmd/awf`
-- ADR-0016 `target-output-paths` backing (removed Phase 8); ADR-0024 `cli-config-kinds` backing (unchanged — confirmed no-op Phase 8)
+- ADR-0016 `target-output-paths` backing (removed Phase 8); ADR-0024 `cli-config-kinds` backing (unchanged, confirmed no-op Phase 8)
 
 ---
 
-## Phase 1 — Artifact-sense rename (mechanical, behaviour-preserving)
+## Phase 1: Artifact-sense rename (mechanical, behaviour-preserving)
 
 ADR-0037 Decision 6. Rename the artifact-name sense of "target" to "artifact" so the adapter `Target` is unambiguous before the slice work. No behaviour change; `git diff` must be rename-only.
 
 - [ ] **Rename in `internal/config/config.go`:** `func (c *Config) PartPath(kind, target, section string)` → `(kind, artifact, section string)`; update the body's `target` reference. Update the doc comment to say "a section of an artifact".
 - [ ] **Rename in `internal/project/confighash.go`:** `targetConfigHash` → `artifactConfigHash` (method name); `consumedParts(kind, target string, ...)` → `(kind, artifact string, ...)`; update bodies + doc comments ("a target" → "an artifact"). The method rename has a test call site: update `internal/project/coverage_test.go:274` (`p.targetConfigHash(...)` → `p.artifactConfigHash(...)`) and rename the test func `TestTargetConfigHashUnreadablePart` → `TestArtifactConfigHashUnreadablePart` (with its comment banner at :266), or `go build` of the test binary fails.
-- [ ] **Rename in `internal/project/render.go`:** the `target` parameter of `partRel`, `planSections`, and `renderTarget` → `artifact`; update bodies and the call site `p.targetConfigHash(...)` → `p.artifactConfigHash(...)` and `p.consumedParts(kind, artifact, plan)`. Leave the function name `renderTarget` itself unchanged (it renders one managed artifact; renaming it to `renderArtifact` is optional — do NOT, to keep the diff minimal and because the reviewer may prefer the broader rename as a separate cleanup).
-- [ ] **Rename in `internal/project/check.go` + `kind.go`:** in `orphans()` update the comment vocabulary "target not in the enable list" → "artifact not in the enable list" (2 occurrences) and the loop discussion; in `kind.go` leave `outPath func(t Target, ...)` (adapter-sense Target) untouched. Do NOT rename `targetState` in `cmd/awf/list_add.go` in this phase — handle it in Phase 6 where the CLI is touched.
-- [ ] **Do NOT touch** `catalog.VarDescriptor.Target` (initspec, unrelated sense) or the `target` loop variable in `checkDeadRefs` (`check.go:289`, a markdown-link target — unrelated sense).
+- [ ] **Rename in `internal/project/render.go`:** the `target` parameter of `partRel`, `planSections`, and `renderTarget` → `artifact`; update bodies and the call site `p.targetConfigHash(...)` → `p.artifactConfigHash(...)` and `p.consumedParts(kind, artifact, plan)`. Leave the function name `renderTarget` itself unchanged (it renders one managed artifact; renaming it to `renderArtifact` is optional; do NOT, to keep the diff minimal and because the reviewer may prefer the broader rename as a separate cleanup).
+- [ ] **Rename in `internal/project/check.go` + `kind.go`:** in `orphans()` update the comment vocabulary "target not in the enable list" → "artifact not in the enable list" (2 occurrences) and the loop discussion; in `kind.go` leave `outPath func(t Target, ...)` (adapter-sense Target) untouched. Do NOT rename `targetState` in `cmd/awf/list_add.go` in this phase; handle it in Phase 6 where the CLI is touched.
+- [ ] **Do NOT touch** `catalog.VarDescriptor.Target` (initspec, unrelated sense) or the `target` loop variable in `checkDeadRefs` (`check.go:289`, a markdown-link target, unrelated sense).
 - [ ] **Verify:** `go build ./... && ./x gate` → `0 issues.` and `coverage: 100.0%`. `./x check` → `awf check: clean`. Confirm rename-only: `git diff --stat` shows no new logic.
 - [ ] **Commit:** `refactor(awf): rename artifact-sense "target" to "artifact" (ADR-0037)`
 
-## Phase 2 — `targets` config enable array
+## Phase 2: `targets` config enable array
 
 ADR-0037 Decision 1. Backs `inv: targets-default-claude` (default + empty-rejection half; unknown-name half lands in Phase 3).
 
@@ -66,7 +66,7 @@ ADR-0037 Decision 1. Backs `inv: targets-default-claude` (default + empty-reject
       c.Targets = []string{"claude"}
   }
   ```
-  This makes an absent `targets:` key load as `["claude"]` (byte-identical render for existing configs; no schema bump, mirroring `Domains` — ADR-0014).
+  This makes an absent `targets:` key load as `["claude"]` (byte-identical render for existing configs; no schema bump, mirroring `Domains`, ADR-0014).
 - [ ] **Validate in `Validate`** (after the `Domains` loop, ~line 157): reject an explicitly-empty list and per-name sanity (non-empty, no path separators):
   ```go
   if len(c.Targets) == 0 {
@@ -78,12 +78,12 @@ ADR-0037 Decision 1. Backs `inv: targets-default-claude` (default + empty-reject
       }
   }
   ```
-  (Unknown-adapter-name rejection is enforced at `project.Open` resolution in Phase 3, where the registry lives — config stays dependency-free. The `targets-default-claude` invariant is backed across both layers.)
-- [ ] **Test `internal/config/config_test.go`:** add cases — (a) config with no `targets:` key → `Load` yields `["claude"]`; (b) `targets: []` (explicit empty after a non-default set via direct struct) → `Validate` errors; (c) `targets: ["a/b"]` → `Validate` errors. Add `// invariant: targets-default-claude` above the default+empty assertions.
+  (Unknown-adapter-name rejection is enforced at `project.Open` resolution in Phase 3, where the registry lives: config stays dependency-free. The `targets-default-claude` invariant is backed across both layers.)
+- [ ] **Test `internal/config/config_test.go`:** add cases: (a) config with no `targets:` key → `Load` yields `["claude"]`; (b) `targets: []` (explicit empty after a non-default set via direct struct) → `Validate` errors; (c) `targets: ["a/b"]` → `Validate` errors. Add `// invariant: targets-default-claude` above the default+empty assertions.
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.` Existing golden/render tests still pass (default injection is transparent).
 - [ ] **Commit:** `feat(awf): add targets config enable array with claude default (ADR-0037)`
 
-## Phase 3 — Plural targets, Cursor descriptor, and the RenderAll split
+## Phase 3: Plural targets, Cursor descriptor, and the RenderAll split
 
 ADR-0037 Decisions 2 & 3. The core refactor. Backs `inv: multi-target-render`, `inv: cursor-no-bridge`, and the unknown-name half of `inv: targets-default-claude`.
 
@@ -93,7 +93,7 @@ ADR-0037 Decisions 2 & 3. The core refactor. Backs `inv: multi-target-render`, `
       Name:     "cursor",
       SkillDir: ".cursor/skills",
       AgentDir: ".cursor/agents",
-      // Cursor reads AGENTS.md natively — no bridge (ADR-0037).
+      // Cursor reads AGENTS.md natively: no bridge (ADR-0037).
       BridgeFile: "",
   }
 
@@ -126,8 +126,8 @@ ADR-0037 Decisions 2 & 3. The core refactor. Backs `inv: multi-target-render`, `
   }
   p := &Project{Root: root, Cfg: cfg, Cat: cat, Targets: targets}
   ```
-  This field rename also breaks the one remaining `p.Target` reader outside `render.go`: `localOutPath` (`check.go:21`, `d.outPath(p.Target, ...)`). The full `localOutPaths` rework is Phase 5, but Phase 3 must still compile and pass the gate, so make the minimal interim edit here — `d.outPath(p.Targets[0], ...)` (the claude target; behaviour-identical to today) — and let Phase 5 generalise it. Grep `p.Target` after this phase to confirm no reader is left dangling.
-- [ ] **`internal/project/render.go` — split `RenderAll`.** Restructure so docs + AGENTS.md + adr-singletons render once and skills + agents + bridge render per target. Concretely:
+  This field rename also breaks the one remaining `p.Target` reader outside `render.go`: `localOutPath` (`check.go:21`, `d.outPath(p.Target, ...)`). The full `localOutPaths` rework is Phase 5, but Phase 3 must still compile and pass the gate, so make the minimal interim edit here, `d.outPath(p.Targets[0], ...)` (the claude target; behaviour-identical to today), and let Phase 5 generalise it. Grep `p.Target` after this phase to confirm no reader is left dangling.
+- [ ] **`internal/project/render.go`: split `RenderAll`.** Restructure so docs + AGENTS.md + adr-singletons render once and skills + agents + bridge render per target. Concretely:
   - Change `renderKindSpec.outPath` to `func(t Target, name string) string` and thread the active target through `renderKind` (add a `target Target` field to `renderKindSpec`, or pass `t` into `renderKind`). The docs spec's `outPath` ignores `t` and returns `p.docOutPath(n)`.
   - Render the **docs** spec once (outside any target loop).
   - Loop `for _, t := range p.Targets` and within it render the **skills** spec (`outPath: func(t Target, n) string { return t.SkillPath(p.Cfg.Prefix, n) }`) and the **agents** spec (`t.AgentPath(n)`).
@@ -136,15 +136,15 @@ ADR-0037 Decisions 2 & 3. The core refactor. Backs `inv: multi-target-render`, `
   - Preserve the existing `// invariant: doc-gated-skill-suppressed` comment on the skills spec.
 - [ ] **Replace the `target-output-paths` realization in tests is deferred to Phase 8.** In this phase, the existing `TestClaudeTargetPaths` (target_test.go) stays green because `claudeTarget` still produces the same paths.
 - [ ] **Test `internal/project/render_test.go` (or the existing render/spine test file):** with `Cfg.Targets = []string{"claude","cursor"}`, assert `RenderAll` produces, for one sample skill, both `.claude/skills/<prefix>-<name>/SKILL.md` and `.cursor/skills/<prefix>-<name>/SKILL.md` with **byte-identical Content**; one sample agent at both `.claude/agents/<name>.md` and `.cursor/agents/<name>.md`; AGENTS.md and each doc produced **exactly once**; `CLAUDE.md` present, no `.cursor` bridge file. Add `// invariant: multi-target-render` and `// invariant: cursor-no-bridge` above the relevant assertions. Add a `resolveTargets` unknown-name test (`["nope"]` → error) tagged `// invariant: targets-default-claude`.
-- [ ] **Update the existing single-target test fixture** that constructs a `Project` literal with `Target: claudeTarget` — `coverage_test.go:132` (in `TestLocalOutPath`) → `Targets: []Target{claudeTarget}`. This is the only `Project` literal that sets the field; `kind_test.go:113` is a bare `tgt := Target{...}` local (not a `Project` literal) and needs no change. Tests that build a project through `Open` (spine/render-tree/golden/coverage) get `Targets` populated automatically.
+- [ ] **Update the existing single-target test fixture** that constructs a `Project` literal with `Target: claudeTarget`: `coverage_test.go:132` (in `TestLocalOutPath`) → `Targets: []Target{claudeTarget}`. This is the only `Project` literal that sets the field; `kind_test.go:113` is a bare `tgt := Target{...}` local (not a `Project` literal) and needs no change. Tests that build a project through `Open` (spine/render-tree/golden/coverage) get `Targets` populated automatically.
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.` `./x check` → clean (this repo still renders only `[claude]` until Phase 8, so output is byte-identical).
 - [ ] **Commit:** `feat(awf): render adapter artifacts per target with a cursor adapter (ADR-0037)`
 
-## Phase 4 — Prune empty ancestor directories
+## Phase 4: Prune empty ancestor directories
 
 ADR-0037 Decision 4. Backs `inv: target-prune-ancestors`.
 
-- [ ] **`internal/project/project.go` — Sync prune loop** (currently ~line 144-153, `for path := range old.Files { if !want[path] {...} }`). Replace the per-file `os.Remove(file)` + single-level `os.Remove(filepath.Dir(file))` with: remove the file, then collect every ancestor dir up to `p.Root` into a set; after the prune loop, remove the collected dirs deepest-first (only succeeds when empty) — the exact idiom from `Uninstall` (install.go:102-111):
+- [ ] **`internal/project/project.go`: Sync prune loop** (currently ~line 144-153, `for path := range old.Files { if !want[path] {...} }`). Replace the per-file `os.Remove(file)` + single-level `os.Remove(filepath.Dir(file))` with: remove the file, then collect every ancestor dir up to `p.Root` into a set; after the prune loop, remove the collected dirs deepest-first (only succeeds when empty), the exact idiom from `Uninstall` (install.go:102-111):
   ```go
   if old != nil {
       dirs := map[string]bool{}
@@ -170,16 +170,16 @@ ADR-0037 Decision 4. Backs `inv: target-prune-ancestors`.
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.`
 - [ ] **Commit:** `fix(awf): prune empty ancestor dirs when a target is removed (ADR-0037)`
 
-## Phase 5 — Local skills/agents under multiple targets
+## Phase 5: Local skills/agents under multiple targets
 
 ADR-0037 Consequences (local-skills resolution). awf ships no local skills, but the path must be defined.
 
 - [ ] **`internal/project/check.go`:** change `localOutPath(kind, name) string` → `localOutPaths(kind, name) []string` returning one conventional path per enabled target (using `descriptorByPlural(kind).outPath(t, p.Cfg.Prefix, name)` for each `t := range p.Targets`); neutral kinds return nil. Update `checkLocalFrontmatter` to validate the local file at **each** target's path (a declared local skill must exist, with valid frontmatter, at every enabled target's path; absence at any target is a drift/fail entry). Update the doc comments to state the multi-target rule.
-- [ ] **Test:** a fixture project with `Targets: [claude, cursor]` and a `local: true` skill sidecar; assert `checkLocalFrontmatter` reports the file absent at **both** target paths when neither exists, and passes when both exist with valid frontmatter. (No new invariant slug — this is a textual consequence; cover for the 100% gate.) Also update the existing `TestLocalOutPath` (`coverage_test.go:131`), which calls the old single-string `localOutPath` and breaks compile under the new `localOutPaths` signature — convert its assertions to expect the `[]string` of per-target paths (or replace it with the new fixture test above).
+- [ ] **Test:** a fixture project with `Targets: [claude, cursor]` and a `local: true` skill sidecar; assert `checkLocalFrontmatter` reports the file absent at **both** target paths when neither exists, and passes when both exist with valid frontmatter. (No new invariant slug: this is a textual consequence; cover for the 100% gate.) Also update the existing `TestLocalOutPath` (`coverage_test.go:131`), which calls the old single-string `localOutPath` and breaks compile under the new `localOutPaths` signature; convert its assertions to expect the `[]string` of per-target paths (or replace it with the new fixture test above).
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.`
 - [ ] **Commit:** `feat(awf): validate local skills at every target path (ADR-0037)`
 
-## Phase 6 — `awf add/remove/list target` CLI
+## Phase 6: `awf add/remove/list target` CLI
 
 ADR-0037 Decision 5. Bespoke path, not a `kindDescriptor`. Backs `inv: target-cli`.
 
@@ -190,43 +190,43 @@ ADR-0037 Decision 5. Bespoke path, not a `kindDescriptor`. Backs `inv: target-cl
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.` `./x check` → clean.
 - [ ] **Commit:** `feat(awf): add awf add/remove/list target CLI (ADR-0037)`
 
-## Phase 7 — Tool-agnostic skill prose (ADR-0038)
+## Phase 7: Tool-agnostic skill prose (ADR-0038)
 
 ADR-0038 Decisions 1-3. Backs `inv: skill-prose-tool-agnostic`.
 
 - [ ] **Neutralize the 10 skill templates.** In each, rewrite Claude-tool vocabulary to action-language, preserving procedure. Exact sites (verified):
-  - `templates/skills/brainstorming/SKILL.md.tmpl:25` — `Prefer multiple choice (\`AskUserQuestion\` tool when available)` → `Prefer multiple-choice questions where your runtime supports them`.
-  - `templates/skills/brainstorming/SKILL.md.tmpl:39` — `dispatch ONE subagent via the \`Agent\` tool (\`subagent_type: Explore\` ...)` → `dispatch ONE fresh-context exploration subagent (read-only; one that can run a command only when the grounding-check needs it)`.
-  - `templates/skills/reviewing-plan/SKILL.md.tmpl:32`, `reviewing-adr/SKILL.md.tmpl:29`, `reviewing-plan-resync/SKILL.md.tmpl:23` — `Invoke the agent tool with subagent type \`<name>\`` → `Dispatch the \`<name>\` subagent`.
-  - `templates/skills/reviewing-impl/SKILL.md.tmpl:33` — `Invoke \`Agent({subagent_type: "code-reviewer", ...})\`` → `Dispatch the \`code-reviewer\` subagent`.
-  - `templates/skills/refactor-coupling-audit/SKILL.md.tmpl:33` — `dispatch a single \`Explore\` subagent via the Agent tool` → `dispatch a single fresh-context exploration subagent`.
-  - `templates/skills/executing-plans/SKILL.md.tmpl:58`, `proposing-adr/SKILL.md.tmpl:77`, `writing-plans/SKILL.md.tmpl:67`, `subagent-driven-development/SKILL.md.tmpl:73` — `via the \`Skill\` tool` → `via the project's skill-invocation mechanism` (or reword to "invoke the \`<name>\` skill").
-  - `templates/skills/subagent-driven-development/SKILL.md.tmpl:40,48` — neutralize the `\`Agent\` prompt` / `via the \`Agent\` tool` references to "the subagent's prompt" / "dispatch a subagent".
+  - `templates/skills/brainstorming/SKILL.md.tmpl:25`: `Prefer multiple choice (\`AskUserQuestion\` tool when available)` → `Prefer multiple-choice questions where your runtime supports them`.
+  - `templates/skills/brainstorming/SKILL.md.tmpl:39`: `dispatch ONE subagent via the \`Agent\` tool (\`subagent_type: Explore\` ...)` → `dispatch ONE fresh-context exploration subagent (read-only; one that can run a command only when the grounding-check needs it)`.
+  - `templates/skills/reviewing-plan/SKILL.md.tmpl:32`, `reviewing-adr/SKILL.md.tmpl:29`, `reviewing-plan-resync/SKILL.md.tmpl:23`: `Invoke the agent tool with subagent type \`<name>\`` → `Dispatch the \`<name>\` subagent`.
+  - `templates/skills/reviewing-impl/SKILL.md.tmpl:33`: `Invoke \`Agent({subagent_type: "code-reviewer", ...})\`` → `Dispatch the \`code-reviewer\` subagent`.
+  - `templates/skills/refactor-coupling-audit/SKILL.md.tmpl:33`: `dispatch a single \`Explore\` subagent via the Agent tool` → `dispatch a single fresh-context exploration subagent`.
+  - `templates/skills/executing-plans/SKILL.md.tmpl:58`, `proposing-adr/SKILL.md.tmpl:77`, `writing-plans/SKILL.md.tmpl:67`, `subagent-driven-development/SKILL.md.tmpl:73`: `via the \`Skill\` tool` → `via the project's skill-invocation mechanism` (or reword to "invoke the \`<name>\` skill").
+  - `templates/skills/subagent-driven-development/SKILL.md.tmpl:40,48`: neutralize the `\`Agent\` prompt` / `via the \`Agent\` tool` references to "the subagent's prompt" / "dispatch a subagent".
   Preserve the neutral word "subagent"/"subagent prompt" (the denylist is word-anchored so it won't false-positive). Keep project identifiers (`awf-reviewing-adr`, `./x gate`) verbatim.
-- [ ] **`templates/docs/doc-standard.md.tmpl`:** add a rule to the existing `rules` section (no new section — preserves `docs_sections_test` parity): rendered skill/agent prose names the action an agent performs, not a runtime's tool names.
+- [ ] **`templates/docs/doc-standard.md.tmpl`:** add a rule to the existing `rules` section (no new section: preserves `docs_sections_test` parity): rendered skill/agent prose names the action an agent performs, not a runtime's tool names.
 - [ ] **Golden guard test `internal/project/*_test.go`:** render every catalog skill + agent (reuse the `frontmatter_test.go` per-template render harness) and assert each body contains none of the denylist tokens, matched **case-insensitively and word-anchored**: `subagent_type`, "subagent type", "Agent tool", "the agent tool", "`Agent` prompt", "Skill tool", "AskUserQuestion". Add `// invariant: skill-prose-tool-agnostic`.
 - [ ] **`./x sync`** to re-render this repo's `.claude/skills/*` with the neutralized prose; stage the regenerated skill files.
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.` `./x check` → clean (re-rendered skills match).
 - [ ] **Commit:** `feat(awf): neutralize runtime tool vocabulary in skill prose (ADR-0038)`
 
-## Phase 8 — Dogfood + flip both ADRs to Implemented
+## Phase 8: Dogfood + flip both ADRs to Implemented
 
 Backs the retirement/replacement and activates enforcement.
 
 - [ ] **`.gitignore`:** add `!.cursor/` (negate any global ignore of `.cursor`, mirroring the existing `!.claude/` / `!CLAUDE.md` lines) so the dogfooded Cursor render commits and is drift-checked.
 - [ ] **`.awf/config.yaml`:** add `targets: [claude, cursor]` (or insert `cursor` into an existing `targets:` if Phase 6 wrote one).
 - [ ] **Retire the old invariant backing:** remove the `// invariant: target-output-paths` comment + its now-superseded assertion from `internal/project/target_test.go` (ADR-0016 stays Implemented; ADR-0037's `retires_invariants: [target-output-paths]` authorizes this once 0037 is Implemented). Ensure `multi-target-render`'s backing test (Phase 3) covers both claude and cursor paths.
-- [ ] **`cli-config-kinds` — confirm, do not extend:** `cli-config-kinds` is backed by the marker **comment** on the `kindDescriptors` table (`internal/project/kind.go:27`), and its only behavioural test is `kind_test.go:31` asserting `Kinds() == [skill, agent, doc, domain]`. Because `targets` is the **bespoke** path Decision 5 keeps *outside* the `kindDescriptor` machinery, `target` is **not** a `kindDescriptor` and **must not** be added to `Kinds()` — extending the `kind_test.go:31` assertion would falsely fail. The correct action is therefore a no-op on the backing: leave the marker at `kind.go:27` and the `Kinds()` assertion unchanged; the new `target` token is exercised by the Phase 6 CLI tests. This matches amended ADR-0037, whose Invariants and Consequences sections both state `cli-config-kinds` is unaffected and no `cli-config-kinds` backing change is required.
+- [ ] **`cli-config-kinds` (confirm, do not extend):** `cli-config-kinds` is backed by the marker **comment** on the `kindDescriptors` table (`internal/project/kind.go:27`), and its only behavioural test is `kind_test.go:31` asserting `Kinds() == [skill, agent, doc, domain]`. Because `targets` is the **bespoke** path Decision 5 keeps *outside* the `kindDescriptor` machinery, `target` is **not** a `kindDescriptor` and **must not** be added to `Kinds()`: extending the `kind_test.go:31` assertion would falsely fail. The correct action is therefore a no-op on the backing: leave the marker at `kind.go:27` and the `Kinds()` assertion unchanged; the new `target` token is exercised by the Phase 6 CLI tests. This matches amended ADR-0037, whose Invariants and Consequences sections both state `cli-config-kinds` is unaffected and no `cli-config-kinds` backing change is required.
 - [ ] **Flip both ADRs:** set `status: Implemented` in ADR-0037 and ADR-0038 frontmatter.
-- [ ] **`./x sync`** — re-renders, generates the `.cursor/` tree (skills + agents; no bridge), regenerates `ACTIVE.md` (both ADRs now Implemented) and the rendering/config/tooling domain indexes.
+- [ ] **`./x sync`**: re-renders, generates the `.cursor/` tree (skills + agents; no bridge), regenerates `ACTIVE.md` (both ADRs now Implemented) and the rendering/config/tooling domain indexes.
 - [ ] **Doc-currency (same commit):** update `docs/architecture.md` (plural-`Targets` seam, neutral/adapter split, Cursor adapter no-bridge) and refresh the `rendering`, `config`, `tooling` domain current-state narratives (`.awf/domains/parts/<d>/current-state.md`); add the `awf add/remove/list target` grammar to the agent guide "Working with awf" section (`.awf/parts/agents-doc/...`) and the README command table. Re-run `./x sync` after part edits.
 - [ ] **Verify:** `./x gate` → 100% / `0 issues.` `./x check` → `awf check: clean` (the new `.cursor/` tree is tracked and matches; all tagged invariants for both ADRs now enforced and backed). `awf audit` advisory clean.
-- [ ] **Commit:** `feat(awf)!: go live with multi-target rendering (ADR-0037, ADR-0038)` (71 chars; stage the new `.cursor/` tree explicitly; one concern — the multi-target go-live).
+- [ ] **Commit:** `feat(awf)!: go live with multi-target rendering (ADR-0037, ADR-0038)` (71 chars; stage the new `.cursor/` tree explicitly; one concern: the multi-target go-live).
 
 ---
 
 ## Notes for the executor
 
 - One commit per phase; `./x gate` + `./x check` green before each commit; Conventional Commits, `awf` scope.
-- Tagged-invariant enforcement activates only when the ADRs flip (Phase 8) — the `// invariant:` comments + backing tests land in their implementing phases (2-7) and are inert until then, except `target-output-paths`/`cli-config-kinds` which stay backed (ADR-0016/0024 are already Implemented) until Phase 8 retires/updates them.
+- Tagged-invariant enforcement activates only when the ADRs flip (Phase 8): the `// invariant:` comments + backing tests land in their implementing phases (2-7) and are inert until then, except `target-output-paths`/`cli-config-kinds` which stay backed (ADR-0016/0024 are already Implemented) until Phase 8 retires/updates them.
 - The render-loop split (Phase 3) is the one place exact diffs are hard to pin without the live file open; follow the structure above and let `./x gate` + the byte-identical-output check on this repo (`./x check` clean through Phase 7) confirm correctness.

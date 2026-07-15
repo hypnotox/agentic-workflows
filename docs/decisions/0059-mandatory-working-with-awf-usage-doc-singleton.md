@@ -17,18 +17,18 @@ project. `docs/` holds internals (`architecture`, `development`, `glossary`, `pi
 and authoring *standards* (`doc-standard`, `agents-md-standard`, `workflow`). The only "how to work
 with awf" material is a terse four-bullet `awf-setup` section baked into the generated `AGENTS.md`
 guide (`templates/agents-doc/AGENTS.md.tmpl`; this repo overrides it at
-`.awf/parts/agents-doc/awf-setup.md`) — enough to point at, not enough to learn from.
+`.awf/parts/agents-doc/awf-setup.md`), enough to point at, not enough to learn from.
 
-The gap is sharpest for the ADR-0057 `{{=awf:…}}` placeholder registry: it has no adopter-facing
+The gap is sharpest for the ADR-0057 `{{=awf:...}}` placeholder registry: it has no adopter-facing
 reference at all. Its keys and rules live only in `docs/architecture.md` and the ADRs, so an adopter
 discovers the feature only by triggering the fail-loud error that lists the available keys. A
 capability whose entire purpose is adopter overrides needs a place an adopter can read.
 
 ADR-0043 established the mandatory always-on doc singletons (`workflow`, `doc-standard`,
-`agents-md-standard`) — awf-authored, rendered for every project, outside the toggleable `docs:`
+`agents-md-standard`), awf-authored, rendered for every project, outside the toggleable `docs:`
 catalog. A usage guide belongs in exactly that family: it is generic awf-usage guidance, the same
 for every adopter, and every adopter needs it. Grounding confirmed a brand-new always-on singleton
-needs **no schema migration or version bump** — unlike ADR-0043, which migrated (`{To: 6}`) only
+needs **no schema migration or version bump**, unlike ADR-0043, which migrated (`{To: 6}`) only
 because it *relocated existing* sidecars and stripped a `docs:` array member; a new singleton never
 lived in `docs:` and adds no config field.
 
@@ -38,26 +38,26 @@ lived in `docs:` and adds no config field.
    rendered into every adopter repo, joining the `plainSingletons` family alongside `workflow` /
    `doc-standard` / `agents-md-standard`: suppressible only via a `local: true` sidecar, covered
    automatically by the dead-internal-link scan (ADR-0020) and the validate/scaffold loops.
-   **Adoption and `awf init` are out of scope** — first-time adoption is documented in the awf repo
+   **Adoption and `awf init` are out of scope**: first-time adoption is documented in the awf repo
    itself, not rendered into adopter projects. Concretely this adds a new template default
    `templates/docs/working-with-awf.md.tmpl` (its `awf:section` markers matching item 2), a
    `working-with-awf` entry in `templates/catalog.yaml`'s `singletons:` map (carrying the item-2
    sections) and in `catalog.SingletonKinds`, and a `plainSingletons` entry in
-   `internal/project/singleton.go` — no `internal/config` change, so `IsSingletonKind` picks it up by
+   `internal/project/singleton.go`; no `internal/config` change, so `IsSingletonKind` picks it up by
    membership with no schema touch.
 
 2. **Section taxonomy** (five sections):
-   - `overview` — the generate-from-config model: every rendered file comes from the `.awf/` tree and
+   - `overview`: the generate-from-config model: every rendered file comes from the `.awf/` tree and
      is never hand-edited.
-   - `commands` — the day-to-day CLI (`sync`, `check`, `add`/`remove`, `upgrade`, `audit`, `list`,
+   - `commands`: the day-to-day CLI (`sync`, `check`, `add`/`remove`, `upgrade`, `audit`, `list`,
      `new`, `changelog`, `commit-gate`); not `init`/adoption.
-   - `config-and-overrides` — the `.awf/` tree (`config.yaml`, sidecars) and overriding a section
+   - `config-and-overrides`: the `.awf/` tree (`config.yaml`, sidecars) and overriding a section
      with a *raw* convention part (ADR-0034).
-   - `placeholders` — the `{{=awf:…}}` registry reference: the keys (`commitScopeList`,
+   - `placeholders`: the `{{=awf:...}}` registry reference: the keys (`commitScopeList`,
      `commitScopeTable`, `commitScopeSentence`, `prefix`, `gateCmd`, `checkCmd`), the
      available-only-when-non-empty rule, and the ADR-0058 backslash escape. Because the doc is a
      template *default*, it shows the literal token via `text/template` escaping (`{{ "{{=awf:key}}" }}`).
-   - `sync-and-drift` — the `sync` → `check` → gate loop and what drift means.
+   - `sync-and-drift`: the `sync` → `check` → gate loop and what drift means.
 
 3. **The agent guide's `awf-setup` section becomes a pointer.** Its terse bullets stay but reference
    `working-with-awf` for the full story instead of being the sole home. Both the template default
@@ -70,7 +70,7 @@ lived in `docs:` and adds no config field.
 
 ## Invariants
 
-- `invariant: working-with-awf-mandatory` — the `working-with-awf` doc renders as an always-on singleton
+- `invariant: working-with-awf-mandatory`: the `working-with-awf` doc renders as an always-on singleton
   for every project (present in `plainSingletons` and `catalog.SingletonKinds`), suppressible only
   via a `local: true` sidecar. Backed by the singleton-set test extended to assert its presence.
 - **Partial-item supersedence of ADR-0043's `document-map-lists-mandatory-docs` invariant.** This
@@ -86,10 +86,10 @@ lived in `docs:` and adds no config field.
 ## Consequences
 
 - Every adopter gets a real usage guide and, in particular, an adopter-facing reference for the
-  `{{=awf:…}}` placeholder registry — not just a fail-loud error message.
+  `{{=awf:...}}` placeholder registry, not just a fail-loud error message.
 - The agent guide de-duplicates: `awf-setup` points at the guide rather than re-explaining, keeping
   the always-loaded guide lean.
-- No migration and no version bump — adopters simply gain a new rendered file on the next `awf sync`.
+- No migration and no version bump: adopters simply gain a new rendered file on the next `awf sync`.
 - Count-drift discipline: the two live narrative sources that say "six" non-agent-guide singletons
   (`.awf/docs/parts/architecture/components.md`, `.awf/domains/parts/rendering/current-state.md`)
   move to seven; the historical "six" in ADR-0043 and the completed singleton plan stay untouched

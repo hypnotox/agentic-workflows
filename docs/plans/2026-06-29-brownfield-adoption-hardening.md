@@ -6,14 +6,14 @@
 - [ADR-0034: Convention Parts Are Raw Input](../decisions/0034-convention-parts-are-raw-input.md)
 - [ADR-0035: Brownfield-Safe Sync Writes](../decisions/0035-brownfield-safe-sync-writes.md)
 
-Design rationale lives in the ADRs — this plan is the execution record only.
+Design rationale lives in the ADRs; this plan is the execution record only.
 
 ## Goal
 
 Close two awf-adoption traps reported by the first external adopter:
-1. A literal `{{` in a convention part breaks `awf sync` (ADR-0034) — make convention parts raw,
+1. A literal `{{` in a convention part breaks `awf sync` (ADR-0034): make convention parts raw,
    never run through `text/template`.
-2. `awf sync` silently overwrites hand-written / externally-generated files (ADR-0035) — back up
+2. `awf sync` silently overwrites hand-written / externally-generated files (ADR-0035): back up
    any foreign file before overwriting and surface an ADR-index ownership takeover.
 
 ## Architecture summary
@@ -28,7 +28,7 @@ Close two awf-adoption traps reported by the first external adopter:
   which loads the *prior* lock before the write loop and, for any target path that exists on disk but
   is absent from that lock, backs it up via the existing `BackupFile` before overwriting, returning
   the backups. `runSync` prints them and an ownership note when the file is the generated ADR/domain
-  index. `init`'s now-redundant `--force` backup loop is removed — sync's backup subsumes it (one
+  index. `init`'s now-redundant `--force` backup loop is removed: sync's backup subsumes it (one
   mechanism), avoiding a double-backup.
 
 ## Tech stack
@@ -40,18 +40,18 @@ Close two awf-adoption traps reported by the first external adopter:
 ## File structure
 
 **Modified:**
-- `internal/render/render.go` — `Assemble`/`Execute` signatures + sentinel + restore (`inv: parts-raw`)
-- `internal/render/render_test.go` — updated call sites + new raw-part test
-- `internal/project/render.go` — `renderTarget` caller update
-- `internal/project/frontmatter_test.go`, `spine_test.go`, `docs_sections_test.go` — call-site updates
-- `internal/project/project.go` — `Backup` type, `SyncReport`, `isGeneratedIndex` (`inv: sync-backs-up-foreign`); `Sync` becomes a wrapper
-- `internal/project/project_test.go` — new sync-backup + ownership-note + init-no-double-backup tests
-- `cmd/awf/main.go` — `runSync` prints backups + note; init `--force` backup loop removed
-- `cmd/awf/run_test.go` — adjust `TestInitGuardBlocksAndForceOverrides` (single-backup regression) + new `TestSyncReportsIndexOwnershipTakeover` (cmd-layer `if b.Index` note coverage)
-- `.awf/docs/parts/architecture/data-flow.md` — render-flow note (parts protected from `text/template`)
-- `.awf/domains/parts/rendering/current-state.md` — parts-are-raw note
-- `.awf/domains/parts/tooling/current-state.md` — sync-backup + ownership note
-- `docs/decisions/0034-*.md`, `docs/decisions/0035-*.md` — status flip Proposed → Implemented (final)
+- `internal/render/render.go`: `Assemble`/`Execute` signatures + sentinel + restore (`inv: parts-raw`)
+- `internal/render/render_test.go`: updated call sites + new raw-part test
+- `internal/project/render.go`: `renderTarget` caller update
+- `internal/project/frontmatter_test.go`, `spine_test.go`, `docs_sections_test.go`: call-site updates
+- `internal/project/project.go`: `Backup` type, `SyncReport`, `isGeneratedIndex` (`inv: sync-backs-up-foreign`); `Sync` becomes a wrapper
+- `internal/project/project_test.go`: new sync-backup + ownership-note + init-no-double-backup tests
+- `cmd/awf/main.go`: `runSync` prints backups + note; init `--force` backup loop removed
+- `cmd/awf/run_test.go`: adjust `TestInitGuardBlocksAndForceOverrides` (single-backup regression) + new `TestSyncReportsIndexOwnershipTakeover` (cmd-layer `if b.Index` note coverage)
+- `.awf/docs/parts/architecture/data-flow.md`: render-flow note (parts protected from `text/template`)
+- `.awf/domains/parts/rendering/current-state.md`: parts-are-raw note
+- `.awf/domains/parts/tooling/current-state.md`: sync-backup + ownership note
+- `docs/decisions/0034-*.md`, `docs/decisions/0035-*.md`: status flip Proposed → Implemented (final)
 - Regenerated: `docs/architecture.md`, `docs/domains/rendering.md`, `docs/domains/tooling.md`,
   `docs/decisions/ACTIVE.md`, `.awf/awf.lock`
 
@@ -59,9 +59,9 @@ Close two awf-adoption traps reported by the first external adopter:
 
 ---
 
-## Phase 1 — ADR-0034: convention parts are raw
+## Phase 1: ADR-0034: convention parts are raw
 
-### Task 1.1 — Rework `render.Assemble` / `render.Execute`
+### Task 1.1: Rework `render.Assemble` / `render.Execute`
 
 In `internal/render/render.go`, replace the `Assemble` and `Execute` functions (lines 30-68) with:
 
@@ -105,7 +105,7 @@ func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]s
 }
 
 // Execute runs text/template over the awf-owned skeleton (part bodies stood in by
-// sentinels) under missingkey=zero, then restores each raw part body verbatim — so
+// sentinels) under missingkey=zero, then restores each raw part body verbatim, so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
 // invariant: parts-raw
@@ -126,7 +126,7 @@ func Execute(assembled string, data map[string]any, parts map[string]string, nam
 }
 ```
 
-### Task 1.2 — Update the production caller
+### Task 1.2: Update the production caller
 
 In `internal/project/render.go`, `renderTarget` (lines 243-244), change:
 
@@ -142,13 +142,13 @@ to:
 	content, err := render.Execute(assembled, data, parts, tid)
 ```
 
-(`assembled` — the sentinel-form skeleton — continues to flow into `targetConfigHash` at line 252
+(`assembled`, the sentinel-form skeleton, continues to flow into `targetConfigHash` at line 252
 unchanged; `tid` names errors, e.g. `docs/architecture.md.tmpl`.)
 
-### Task 1.3 — Update `render_test.go` call sites and add the raw-part test
+### Task 1.3: Update `render_test.go` call sites and add the raw-part test
 
 In `internal/render/render_test.go`, update each existing call. The nested one-liners at lines 23,
-42, 56 take the form `out, err := Execute(Assemble(ParseSections(tmpl), <plan>), sampleData())` —
+42, 56 take the form `out, err := Execute(Assemble(ParseSections(tmpl), <plan>), sampleData())`;
 split each into two statements:
 
 ```go
@@ -156,7 +156,7 @@ split each into two statements:
 	out, err := Execute(asm, sampleData(), parts, "test")
 ```
 
-(use the same `<plan>` argument each site already passes — `nil` at line 23, `plan` at 42 and 56).
+(use the same `<plan>` argument each site already passes: `nil` at line 23, `plan` at 42 and 56).
 
 At lines 69 and 80, the direct calls `Execute("{{ .prefix", sampleData())` and
 `Execute("{{ range .prefix }}{{ end }}", sampleData())` become:
@@ -170,7 +170,7 @@ At lines 69 and 80, the direct calls `Execute("{{ .prefix", sampleData())` and
 
 Then fix `TestRenderConventionPart` (line 54), whose assertion encodes the *old* templated-part
 behaviour: it sets `PartBody: "CUSTOM {{ .prefix }}"` and asserts `strings.Contains(out, "CUSTOM
-example")`. Under the raw-part contract the body is no longer interpolated, so it renders verbatim —
+example")`. Under the raw-part contract the body is no longer interpolated, so it renders verbatim;
 change the assertion to expect the literal `CUSTOM {{ .prefix }}` (keep the `NOTE`-absent and
 edit-pointer checks). Leaving the old assertion makes the test fail after Task 1.1.
 
@@ -199,10 +199,10 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 }
 ```
 
-(If `sampleData()` lacks a `vars` key, the test still passes — the point is the part text is *not*
+(If `sampleData()` lacks a `vars` key, the test still passes: the point is the part text is *not*
 evaluated, so an undefined `.vars.x` inside it can never produce `<no value>`.)
 
-### Task 1.4 — Update the project-layer test call sites
+### Task 1.4: Update the project-layer test call sites
 
 These three tests call `render.Execute(render.Assemble(...), data)` directly. Split each:
 
@@ -219,26 +219,26 @@ line with:
 ```
 
 preserving each site's existing `<data>` argument verbatim (the `map[string]any{...}` literal at
-`docs_sections_test.go:132` spans multiple lines — keep it as the second argument).
+`docs_sections_test.go:132` spans multiple lines; keep it as the second argument).
 
-### Task 1.5 — Update the rendering doc-currency parts
+### Task 1.5: Update the rendering doc-currency parts
 
 In `.awf/docs/parts/architecture/data-flow.md`, add to the render-flow description that
 convention-part bodies are protected from `text/template` by sentinel substitution and restored
 verbatim after execution (so a part is never templated). Keep the existing prose; extend it.
 
-In `.awf/domains/parts/rendering/current-state.md`, note that convention parts are raw input — awf
+In `.awf/domains/parts/rendering/current-state.md`, note that convention parts are raw input: awf
 templates only its own embedded defaults; a part renders byte-for-byte (ADR-0034).
 
-### Task 1.6 — Flip ADR-0034, regenerate, verify, commit
+### Task 1.6: Flip ADR-0034, regenerate, verify, commit
 
 1. In `docs/decisions/0034-convention-parts-are-raw-input.md`, change `status: Proposed` to
    `status: Implemented`.
 2. Run `./x sync` (regenerates `docs/architecture.md`, `docs/domains/rendering.md`,
    `docs/decisions/ACTIVE.md`, `.awf/awf.lock`).
-3. Run `./x check` — expect `awf check: clean` (the zero-drift proof: awf's own rendered tree is
+3. Run `./x check`: expect `awf check: clean` (the zero-drift proof: awf's own rendered tree is
    byte-identical despite the sentinel rework).
-4. Run `./x gate` — expect `coverage: 100.0%` and `0 issues.`.
+4. Run `./x gate`: expect `coverage: 100.0%` and `0 issues.`.
 5. Stage explicitly and commit:
 
 ```
@@ -255,9 +255,9 @@ error name fix; zero drift.
 
 ---
 
-## Phase 2 — ADR-0035: brownfield-safe sync writes
+## Phase 2: ADR-0035: brownfield-safe sync writes
 
-### Task 2.1 — Add `Backup`, `SyncReport`, `isGeneratedIndex`; make `Sync` a wrapper
+### Task 2.1: Add `Backup`, `SyncReport`, `isGeneratedIndex`; make `Sync` a wrapper
 
 In `internal/project/project.go`:
 
@@ -311,7 +311,7 @@ func (p *Project) SyncReport() ([]Backup, error) {
 	}
 	files = append(files, amd)
 	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable — generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
+	if err != nil { // coverage-ignore: unreachable (generateActiveMD above parses the same decisions dir and fails first on a malformed ADR)
 		return nil, err
 	}
 	files = append(files, dds...)
@@ -372,7 +372,7 @@ func (p *Project) SyncReport() ([]Backup, error) {
 }
 
 // isGeneratedIndex reports whether rel is the generated ADR index or a per-domain
-// index — the awf-owned generated docs whose first-time takeover warrants a note.
+// index: the awf-owned generated docs whose first-time takeover warrants a note.
 func (p *Project) isGeneratedIndex(rel string) bool {
 	lay := p.layout()
 	return rel == lay.ActiveMd || strings.HasPrefix(rel, lay.DomainsDir+"/")
@@ -383,7 +383,7 @@ Note: the prior-lock load replaces the old line-105 reload; `manifest.Load` retu
 (no lock on first sync) yields `old == nil` → empty `prior` → every existing output path is foreign,
 matching `init`'s adoption behaviour.
 
-### Task 2.2 — Print backups in `runSync`; remove init's `--force` backup loop
+### Task 2.2: Print backups in `runSync`; remove init's `--force` backup loop
 
 In `cmd/awf/main.go`, `runSync` (lines 320-333), change the `p.Sync()` call to:
 
@@ -437,10 +437,10 @@ becomes (refuse-without-force kept; backup delegated to the chained sync):
 			strings.Join(collisions, "\n  "))
 	}
 	// Under --force, the chained runSync backs up every foreign file via the shared
-	// BackupFile mechanism (ADR-0035) — one backup path for init and sync alike.
+	// BackupFile mechanism (ADR-0035): one backup path for init and sync alike.
 ```
 
-### Task 2.3 — Tests: sync backup, ownership note, init no-double-backup
+### Task 2.3: Tests: sync backup, ownership note, init no-double-backup
 
 In `internal/project/project_test.go`, add two concrete tests (the test is in `package project`,
 so the unexported `layout`, `isGeneratedIndex`, `SyncReport`, and `Backup` are all in scope; reuse
@@ -512,7 +512,7 @@ func TestIsGeneratedIndex(t *testing.T) {
 ```
 
 The first test exercises the `SyncReport` backup branch and the `Index==true` flag; the second pins
-both `||` arms of `isGeneratedIndex` and its false arm — together satisfying the 100% coverage gate
+both `||` arms of `isGeneratedIndex` and its false arm, together satisfying the 100% coverage gate
 for the new project-layer branches.
 
 In `cmd/awf/main.go`, `runSync` gains an `if b.Index` note-print branch (Task 2.2) that neither the
@@ -556,24 +556,24 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 Finally, in `cmd/awf/run_test.go`, keep `TestInitGuardBlocksAndForceOverrides` green: under
 `--force` the colliding `CLAUDE.md` must still end up at `CLAUDE.md.awf-bak` (now created by the
 chained sync) and the "backed up CLAUDE.md" line must still print (now from `runSync`, before
-"awf sync: done" — same observable order, so an order-sensitive assertion still holds). Add a
+"awf sync: done", same observable order, so an order-sensitive assertion still holds). Add a
 regression assertion that exactly one `.awf-bak` (no `.awf-bak.1`) exists for the colliding file,
 proving init no longer double-backs-up. Do not weaken the `.awf-bak` content assertion.
 
-### Task 2.4 — Update the tooling doc-currency part
+### Task 2.4: Update the tooling doc-currency part
 
 In `.awf/domains/parts/tooling/current-state.md`, note that `awf sync` backs up any foreign
-(not-in-prior-lock) file before overwriting — alongside `init --force` — and surfaces an
+(not-in-prior-lock) file before overwriting (alongside `init --force`) and surfaces an
 ADR-index ownership-takeover note (ADR-0035), and that init delegates its backup to the shared
 sync mechanism.
 
-### Task 2.5 — Flip ADR-0035, regenerate, verify, commit
+### Task 2.5: Flip ADR-0035, regenerate, verify, commit
 
 1. In `docs/decisions/0035-brownfield-safe-sync-writes.md`, change `status: Proposed` to
    `status: Implemented`.
 2. `./x sync` (regenerates `docs/domains/tooling.md`, `docs/decisions/ACTIVE.md`, `.awf/awf.lock`).
-3. `./x check` — expect `awf check: clean`.
-4. `./x gate` — expect `coverage: 100.0%` and `0 issues.`.
+3. `./x check`: expect `awf check: clean`.
+4. `./x gate`: expect `coverage: 100.0%` and `0 issues.`.
 5. Stage explicitly and commit:
 
 ```
@@ -592,7 +592,7 @@ ADR-index ownership takeover, and that init's standalone backup loop is subsumed
 ## Verification (whole plan)
 
 After both phases:
-- `./x gate full` — full tier including e2e; expect green.
+- `./x gate full`: full tier including e2e; expect green.
 - `git log --oneline -2` shows the two feature commits.
 - Manual spot-check: in a scratch dir, `awf init --force` over a repo containing a hand-written
   colliding file produces exactly one `.awf-bak`; a part containing `{{ .x }}` renders verbatim.
@@ -602,22 +602,22 @@ After both phases:
 ## Notes / risks
 
 - **Zero-drift is the ADR-0034 proof.** If `./x check` reports drift after Task 1.6, the sentinel
-  rework changed rendered output — stop and investigate before flipping status. Most likely cause: a
+  rework changed rendered output; stop and investigate before flipping status. Most likely cause: a
   sentinel leaking into output (the new test guards this) or `targetConfigHash` seeing a different
   var set (it must not, since no part contains `.vars.`).
 - **`<no value>` check (`render.go:248`)** now sees restored part bodies. A part containing the
-  literal text `<no value>` would falsely trip it — accepted as an absurd, pre-existing edge.
+  literal text `<no value>` would falsely trip it, accepted as an absurd, pre-existing edge.
 - **ADR-0034 Decision item 4 ("empty is not drop")** is preserved by construction, not by a new
   task: an empty part file yields `PartBody == ""`, whose sentinel restores to an empty section
   body, while `drop` is still handled by the separate `if p.Drop { continue }` arm in the reworked
-  `Assemble` (Task 1.1). No code change or dedicated test is owed — the distinction is unchanged
+  `Assemble` (Task 1.1). No code change or dedicated test is owed; the distinction is unchanged
   by the sentinel rework.
-- **ADR-0034's second (untagged) invariant** — "template control-flow never spans a section-marker
-  boundary" — defers to the plan whether to add a guard test. Decision: no guard test is added. The
+- **ADR-0034's second (untagged) invariant** ("template control-flow never spans a section-marker
+  boundary") defers to the plan whether to add a guard test. Decision: no guard test is added. The
   sentinel single-pass is robust to a spanning action regardless (the sentinel passes through the
   parser inertly, so it can never land inside an open control-flow block in a way that changes
   parsing), and the contract carries no `inv:` slug requiring backing. Revisit only if a future
   default introduces control flow across a section boundary.
-- **init→sync unification (Task 2.2)** — resolved at resync: ADR-0035 Decision item 4 now explicitly
+- **init→sync unification (Task 2.2)**: resolved at resync: ADR-0035 Decision item 4 now explicitly
   removes init's standalone `--force` backup loop and delegates the backup to the chained sync, so
   Task 2.2's loop removal and Task 2.3's single-backup regression are ADR-authorized.

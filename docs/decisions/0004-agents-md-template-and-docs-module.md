@@ -25,7 +25,7 @@ Conventions & Invariants`. Beyond cosmetic divergence, two substantive problems:
 
 - **The Workflow section misrepresents the skills.** The template enumerates all eight skills
   as a flat linear sequence, including `reviewing-plan-resync` as a top-level step. The actual
-  skill design treats reviews as *lightweight* — the grounding-check inside `*-brainstorming`
+  skill design treats reviews as *lightweight*: the grounding-check inside `*-brainstorming`
   subsumes plan/ADR review, and `*-reviewing-impl` is the single terminal review. The generated
   guide therefore teaches a heavier process than the skills implement.
 - **No context-gathering surface.** `awf-brainstorming` step 1 instructs the agent to "read
@@ -40,21 +40,21 @@ so the generated shape and awf's own guide should be the same family shape.
 Grounding discoveries that shape the design (verified against source):
 
 - **`agentsDoc.data` already reaches the template as `.data` at root.** `Project.data()`
-  (`internal/project/project.go:108-114`) builds `{"prefix":…, "vars":…, "data": nonNil(sc.Data)}`
+  (`internal/project/project.go:108-114`) builds `{"prefix":..., "vars":..., "data": nonNil(sc.Data)}`
   and passes it to `render.Render`; `.data.foo` is reachable. `SkillConfig.Data` is
   `map[string]any` (`internal/config/config.go:20`), so config-driven prose needs **no struct
-  change** for the narrative fields — they ride the existing `data` map.
+  change** for the narrative fields; they ride the existing `data` map.
 - **`{{ range .data.X }}` over an absent key is safe.** `render.Render` always sets
   `missingkey=zero` (`internal/render/render.go:47`); ranging a missing/nil `.data` field no-ops
   with no `<no value>` token. The post-render `<no value>` guard (`project.go:213-214`) still
   forbids bare missing-var *output*, so optional `.data.*` and `.vars.*` interpolations are
   wrapped in `{{ if }}`/`{{ else }}` exactly as ADR-0003 established for `checkCmd`.
 - **A new opt-in `docs:` group is managed/locked and mirrors the `skills:`/`agents:` shape, not
-  the bare `hooks:` list** — no lock-format change. The manifest `Entry`
+  the bare `hooks:` list**: no lock-format change. The manifest `Entry`
   (`internal/manifest/manifest.go:12-17`) is a generic path→hash record; each rendered doc is an
   ordinary entry, regenerated on every `sync` and drift-checked by `awf check` like any skill.
   A project diverges not by hand-editing the rendered `docs/*.md` (that would drift) but by
-  overriding a doc's sections via `replaceWith`/`drop` in config — the same per-section overlay
+  overriding a doc's sections via `replaceWith`/`drop` in config: the same per-section overlay
   the existing `skills:`/`agentsDoc:` blocks use (`render.Assemble`, `internal/render/render.go:16-37`).
   This is why `docs:` takes `map[string]SkillConfig` (a `data`+`sections` block per doc), not a
   bare `[]string`. Wiring: `Config.Docs map[string]config.SkillConfig`
@@ -65,16 +65,16 @@ Grounding discoveries that shape the design (verified against source):
   **hard prerequisite**, not merely additive: `config.Load` decodes with `dec.KnownFields(true)`
   (`internal/config/config.go:42`), so a `docs:` key in `awf.yaml` is a parse error
   (`field docs not found`) until the struct field exists. The wiring must therefore land before
-  any adopter — including the dogfood — can write `docs:`.
+  any adopter (including the dogfood) can write `docs:`.
 - **Both `agentsDoc` and `docs` are opt-in by construction.** `ScaffoldConfig`
   (`internal/project/scaffold.go`) does not emit an `agentsDoc:` block, so a fresh `awf init`
   already produces no AGENTS.md unless the adopter adds the block; an absent `docs:` key likewise
   yields no docs.
 
 **User constraints driving the design (verbatim intent):** drop the negative-framing
-"What this project is NOT" section — "negative phrasing is not good with LLMs"; make the
+"What this project is NOT" section ("negative phrasing is not good with LLMs"); make the
 narrative prose config-driven; keep docs-stub generation "disabled [by default] so we don't
-automatically clutter the default templates… simply there as a standard way of doing if needed";
+automatically clutter the default templates... simply there as a standard way of doing if needed";
 when enabled it "could also include an automatic AGENTS.md section with all of those docs
 linked"; and "the AGENTS.md should allow adding more other doc links to be added during sync."
 
@@ -83,16 +83,16 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
 1. **Reshape `templates/agents-doc/AGENTS.md.tmpl` to the family shape, minus negative framing.**
    The sections become: `## You and this project`, `## Identity`, `## Invariants`,
    `## Workflow`, `## Commands`, `## Document map`. The heading is deliberately plain `## Commands`
-   — **not** the exemplars' `## Commands (via ./x)` — because `./x` is awf's own runner; the
+   (**not** the exemplars' `## Commands (via ./x)`) because `./x` is awf's own runner; the
    generic template must not assume any adopter uses it, and the command list is config-driven
    (`agentsDoc.data.commands` / the `testCmd`/`gateCmd`/`checkCmd` fallbacks). The exemplars' `## What this
    project is NOT` is **dropped** (negative framing); any genuine non-goal is re-expressed
-   positively inside Identity. `## Repository Layout` is **removed from AGENTS.md** — the family
+   positively inside Identity. `## Repository Layout` is **removed from AGENTS.md**: the family
    keeps layout in `docs/architecture.md` and links it from the Document map. `templates/catalog.yaml`
    `agentsDoc.sections` is redefined to the new section markers (replacing `overview, build-test,
    workflow-chain, layout, conventions`). The rendered Workflow section frames **both** planning
    and ADRs as *warranted-conditional* (planning by complexity, an ADR by load-bearing-ness; many
-   tasks need neither) and presents reviews as lightweight — never as mandatory linear steps.
+   tasks need neither) and presents reviews as lightweight, never as mandatory linear steps.
 
 2. **Config-driven prose via the existing `agentsDoc.data` map.** Recognised keys:
    `ownership` (string), `identity` (string), `invariants` (list of `{text, ref?}`),
@@ -103,31 +103,31 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    guarded so empty config never emits `<no value>` under `missingkey=zero`. No `config.go`
    schema change is required for these narrative fields.
 
-3. **Invariants render in two tiers.** Three universal contracts the standard itself guarantees —
-   append-only ADRs (regenerated `ACTIVE.md`), docs-travel-with-the-change, green-gate-before-commit
-   — are emitted inline in the template from existing vars (`adrReadme`, `activeMdPath`, `gateCmd`).
+3. **Invariants render in two tiers.** Three universal contracts the standard itself guarantees
+   (append-only ADRs (regenerated `ACTIVE.md`), docs-travel-with-the-change, green-gate-before-commit)
+   are emitted inline in the template from existing vars (`adrReadme`, `activeMdPath`, `gateCmd`).
    Adopter-supplied `data.invariants` are appended after them. The universal tier is suppressed
    only by the standard overlay mechanism (section `drop`/`replaceWith`), not by config absence.
-   **Caveat — these vars can be empty strings, not just absent.** `ScaffoldConfig` seeds every
+   **Caveat: these vars can be empty strings, not just absent.** `ScaffoldConfig` seeds every
    referenced var (including `adrReadme`/`activeMdPath`/`gateCmd`) with `""`
    (`internal/project/scaffold.go:74`), and an empty-string var passes the `<no value>` guard
    silently (`missingkey=zero` only zero-fills *absent* keys). A fresh adopter who adds an
    `agentsDoc:` block before filling these vars would otherwise render broken empty-target links
    (`[ACTIVE.md]()`) or an empty gate command that `awf check` cannot catch. Each universal-tier
    line that interpolates such a var must therefore be `{{ if }}`-guarded to fall back to a plain
-   sentence (or omit the link) when the var is empty — the same empty-string discipline applied to
+   sentence (or omit the link) when the var is empty: the same empty-string discipline applied to
    the `.data.*` fallbacks, extended to `.vars.*` here.
 
 4. **Add an opt-in, managed `docs:` module.** A new top-level `docs:` key in `awf.yaml` taking a
    `map[string]config.SkillConfig` (a `data`+`sections` block per doc, the same shape as
    `skills:`/`agents:`), **absent by default** (not emitted by `ScaffoldConfig`). Each listed doc
    renders from a new `templates/docs/<name>.md.tmpl` into the project's `docs/<name>.md`, and is
-   **managed**: regenerated on every `sync`, lock-tracked, drift-checked — so awf can push doc-template
+   **managed**: regenerated on every `sync`, lock-tracked, drift-checked, so awf can push doc-template
    updates and they reach adopters on re-sync. The template set is `architecture, workflow, testing,
    development, debugging, pitfalls, glossary, roadmap`. The manifest/lock format is unchanged
    (ordinary path→hash entries). A project **diverges by config, not by hand-edit**: it overrides a
    doc's sections (`replaceWith` a part, or `drop`) and supplies `data`, exactly as the `agentsDoc:`
-   block already does — a hand-edit to a rendered `docs/*.md` is drift, by design. The
+   block already does; a hand-edit to a rendered `docs/*.md` is drift, by design. The
    awf-internal `templates/catalog.yaml` `docs:` entries carry per-doc `title`/`desc`/`sections`;
    `title`/`desc` feed the Document-map annotations with zero adopter effort.
 
@@ -135,13 +135,13 @@ linked"; and "the AGENTS.md should allow adding more other doc links to be added
    resolved `docs:` list (with catalog titles/descriptions) into the agents-doc template data so
    the `## Document map` section ranges it for annotated links when the module is enabled, and the
    always-present surfaces (ADR `README`, `ACTIVE.md`, plans dir) plus any adopter `data.docMap`
-   entries render regardless. Adding a `data.docMap` entry and re-running `awf sync` adds the link
-   — no template edit needed.
+   entries render regardless. Adding a `data.docMap` entry and re-running `awf sync` adds the link:
+   no template edit needed.
 
-Applying this change to awf's own repo (the dogfood — rewriting `.claude/awf.yaml`, migrating
+Applying this change to awf's own repo (the dogfood: rewriting `.claude/awf.yaml`, migrating
 `Repository Layout` into `docs/architecture.md`, re-syncing) is **not** a Decision item: it is
 adopter work, not a standard-definition commitment the project must remember. It is the final
-task of the implementation plan, executed like any other adoption — see Downstream work. The same
+task of the implementation plan, executed like any other adoption; see Downstream work. The same
 "if warranted" framing applies to this very change: it earns an ADR because it is load-bearing
 (new schema key, changed standard shape) and a plan because it is multi-commit; routine adoptions
 of the new template need neither.
@@ -168,12 +168,12 @@ of the new template need neither.
   `checkSectionsAllowed`/catalog-membership validation), the same way an unknown skill or section
   does today.
 - A fresh `awf init` (`ScaffoldConfig` output) emits neither an `agentsDoc:` block nor a `docs:`
-  key — both modules are opt-in.
+  key: both modules are opt-in.
 - The manifest/lock format (`internal/manifest` `Entry` schema) is unchanged by the `docs:`
   module; each rendered doc is an ordinary path→hash entry.
 - The rendered Workflow section's primary chain sequence contains no `reviewing-plan-resync`
   step (golden test asserts the literal string is absent from the Workflow block). The broader
-  intent — that the section reads as lightweight-review and warranted-conditional — is design
+  intent (that the section reads as lightweight-review and warranted-conditional) is design
   guidance captured in Consequences, not a render assertion.
 
 ## Consequences
@@ -184,7 +184,7 @@ Easier:
   than the skills run.
 - `awf-brainstorming` step 1 finally has real context-gathering targets in any project that
   enables the `docs:` module; the Document map points at them.
-- Narrative prose is config-driven and additive — adopters extend Identity/Invariants/Document
+- Narrative prose is config-driven and additive: adopters extend Identity/Invariants/Document
   map from `awf.yaml` with no template edits.
 
 Harder / accepted trade-offs:
@@ -194,7 +194,7 @@ Harder / accepted trade-offs:
 - The awf schema grows: an opt-in top-level `docs:` map and the recognised `agentsDoc.data`
   keys. Consumers of the `docs:` addition: `Config.Docs` (a hard prerequisite under
   `KnownFields(true)`, not auto-tolerated), `Catalog.Docs` (`DocSpec` with `title`/`desc`/`sections`),
-  the `project` render loop + catalog validation, `embed.go`, and `catalog.yaml` — enumerated and
+  the `project` render loop + catalog validation, `embed.go`, and `catalog.yaml`: enumerated and
   bounded; the lock format is untouched.
 - Dogfooding moves the `Repository Layout` content out of `AGENTS.md` into `docs/architecture.md`.
   Because `docs/architecture.md` is a managed/locked render, awf's real layout content lives in a
@@ -210,7 +210,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 - `.claude/awf/parts/agents-doc-{overview,layout,conventions}.md` are static overlay parts that
   `awf check` will **not** flag as drift; the dogfood step must hand-migrate their content
   (overview → the new Identity / You-and-this-project sections; layout → `docs/architecture.md`;
-  conventions → the new Invariants / Workflow sections — the current `conventions` part carries
+  conventions → the new Invariants / Workflow sections: the current `conventions` part carries
   TDD/gate/commit/doc-currency rules that have no standalone heading in the new shape) and re-sync
   so `AGENTS.md` re-renders.
 - **Same-commit hard requirement, not a soft obligation:** redefining the catalog
@@ -218,13 +218,13 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   `agentsDoc.sections` overlay (which keys `overview`/`layout`/`conventions`) **fail validation**,
   not merely dangle. `Project.Open` → `validateAgainstCatalog` → `checkSectionsAllowed`
   (`internal/project/project.go:94,129-143`) rejects any override key absent from the catalog list
-  with `unknown section … (not declared in the catalog)`, so `awf sync`/`awf check` — and the
-  pre-commit hook — error out until the overlay keys are renamed (or dropped) in the same change
+  with `unknown section ... (not declared in the catalog)`, so `awf sync`/`awf check` (and the
+  pre-commit hook) error out until the overlay keys are renamed (or dropped) in the same change
   that redefines the catalog. The implementing plan must sequence the catalog redefinition, the
   awf.yaml overlay rewrite, and the re-sync as one atomic step to keep the gate green.
 - When this ADR's status flips to Accepted or Implemented, the same commit regenerates
   `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`. No `docs/decisions/README.md`
-  index row is owed — this repo's README is a how-to guide; `ACTIVE.md` is the generated index
+  index row is owed: this repo's README is a how-to guide; `ACTIVE.md` is the generated index
   (per ADR-0003).
 
 Downstream work unblocked: an implementation plan covering (1) the template reshape + catalog
@@ -238,7 +238,7 @@ re-sync), with golden tests at each step.
 |---|---|
 | Keep the thin template, just rename headings | Cosmetic only; leaves the workflow-misrepresentation and the missing context-gathering surface unfixed. |
 | Pure placeholder skeleton (no auto-render) | A fresh `agentsDoc: {}` would yield an unusable stub; the family value is in the auto-rendered Workflow/Commands/Document-map sections. |
-| Add explicit `config.go` fields for the narrative prose (identity, invariants…) | The existing `agentsDoc.data map[string]any` already carries arbitrary structured data to the template; a typed schema adds surface for no gain. |
+| Add explicit `config.go` fields for the narrative prose (identity, invariants...) | The existing `agentsDoc.data map[string]any` already carries arbitrary structured data to the template; a typed schema adds surface for no gain. |
 | Generate the `docs/` set always-on | Clutters every fresh project with stub docs it may not want; the user requires the module be opt-in. |
 | Scaffold-once, project-owned docs (write-if-absent, untracked, hand-edited freely) | The user wants awf to **push doc-template updates** to adopters; untracked scaffolds freeze at creation and never receive updates. A managed/locked render keeps docs current and lets projects diverge through config/section overrides. |
 | Bare `docs: []string` like `hooks:` | Gives no per-doc customization hook, so a project could only diverge by hand-editing the rendered file (which drifts). The `map[string]SkillConfig` shape carries per-doc `data`+`sections` so divergence is expressed in config, consistent with `skills:`/`agentsDoc:`. |

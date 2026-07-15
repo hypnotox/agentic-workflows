@@ -21,18 +21,18 @@ awf currently does two things with git hooks:
   ([ADR-0003](0003-binary-delivery-and-setup.md)) which runs `git config core.hooksPath
   .githooks`; `awf setup` is the standalone activation; [ADR-0023](0023-safe-adoption-existing-repos.md)
   then had to add a `--force-hooks` guard, a foreign-`core.hooksPath` refusal, subdirectory
-  resolution, and an `awf uninstall` that unsets `core.hooksPath` — all to make that side effect
+  resolution, and an `awf uninstall` that unsets `core.hooksPath`: all to make that side effect
   safe.
 
 Touching the adopter's git config on first run is the friction. It risks silently hijacking an
 existing husky/lefthook setup, which is exactly why ADR-0023 grew the guard machinery. The
 dogfooding seam ADR-0003 introduced (`checkCmd`/`gateCmd` so the rendered hook can call `./x`
 here but `awf check` for adopters) exists only to make the rendered hook portable. The net cost
-of awf *owning* hooks — config mutation, guards, the portability seam, an uninstall step —
+of awf *owning* hooks (config mutation, guards, the portability seam, an uninstall step)
 outweighs the value. Adopters already know how to install a git hook; awf supplying the gate
 commands in their guide is enough.
 
-**Decision in brief:** remove automatic hook handling entirely — both rendering the hook files
+**Decision in brief:** remove automatic hook handling entirely, both rendering the hook files
 and touching git config. Adopters install and manage hooks themselves; awf dogfoods by
 hand-maintaining its own `.githooks/`.
 
@@ -46,12 +46,12 @@ Grounding discoveries that shape the design:
   special-case. `cmd/awf/list_add.go` has an `if kind != "hook"` branch.
 - `checkCmd` and `gateCmd` are **not** hook-only vars: both are referenced by
   `templates/agents-doc/AGENTS.md.tmpl` and several skill templates. Removing the hook templates
-  does not orphan them — they stay.
+  does not orphan them; they stay.
 - The config tree is schema-versioned via `internal/migrate` (current version **3**, a registry
   of migrations; `applyDropReplaceWith` is the precedent for a field-stripping step). `awf check`
   gates on the schema version; `migrate.Current()` stamps the lock.
 - Doc sections are declared in `templates/catalog.yaml` (`sections:`) and marked in the template
-  with `<!-- awf:section <name> -->…<!-- awf:end -->`; an override part lives at
+  with `<!-- awf:section <name> -->...<!-- awf:end -->`; an override part lives at
   `.awf/docs/parts/<doc>/<section>.md`. `awf check` flags an override part whose section is not
   catalog-declared. A non-empty prose default body is publication-safe (ADR-0001).
 - `invariant: setup-guards-hookspath` is backed in `cmd/awf/setup.go` and declared by ADR-0023, which
@@ -72,8 +72,8 @@ Grounding discoveries that shape the design:
 
 2. **Remove hook activation.** Delete `cmd/awf/setup.go` (the `setup` subcommand and `runSetup`),
    the `--force-hooks` flag from the `init`/`setup` dispatch, the `runSetup()` call in
-   `runInit()`, and all of `cmd/awf/git.go` — `openWorktree`, `localHooksPath`, and
-   `writeLocalHooksPath` — since removing `setup.go` (which also carries `awfHooksRel`) and
+   `runInit()`, and all of `cmd/awf/git.go` (`openWorktree`, `localHooksPath`, and
+   `writeLocalHooksPath`) since removing `setup.go` (which also carries `awfHooksRel`) and
    `unsetAwfHooks` leaves every function in that file, and its `go-git` import, unreferenced. The
    `go-git` module itself stays in `go.mod`: `internal/audit` still uses it. `awf uninstall`
    continues to remove lock-tracked files and the lock, but no longer touches `core.hooksPath`
@@ -86,7 +86,7 @@ Grounding discoveries that shape the design:
 
 4. **Dogfood with hand-maintained hooks.** awf's `.githooks/pre-commit` and `.githooks/pre-push`
    become plain checked-in files: the generated banner is stripped and they are removed from
-   `.awf/awf.lock` (no longer rendered). awf's local `core.hooksPath` is left as-is — it is now
+   `.awf/awf.lock` (no longer rendered). awf's local `core.hooksPath` is left as-is: it is now
    an adopter-managed setting, not awf-managed. These files are the worked example of an adopter
    that wrote its own hooks.
 
@@ -114,7 +114,7 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `invariant: hooks-config-dropped` — the schema-4 migration removes the `hooks:` key from a
+- `invariant: hooks-config-dropped`: the schema-4 migration removes the `hooks:` key from a
   `.awf/config.yaml`, and is a no-op on a config that has no `hooks:` key (idempotent).
 - awf renders no files under `.githooks/`, and the catalog and config schema declare no `hook`
   kind or `hooks` key (textual contract; verified by the golden render no longer producing
@@ -145,14 +145,14 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   hook-activation/uninstall-unset narrative; add manual hook-installation guidance and the
   `core.hooksPath --unset` note for prior adopters.
 - The agent-guide templates (`templates/agents-doc/`, its layout/setup parts) drop the
-  "git hooks … are rendered by awf" / `awf setup` references.
+  "git hooks ... are rendered by awf" / `awf setup` references.
 - `docs/architecture.md` drops hooks from the overview, the config-arrays list, the CLI entry
   points (`setup`), and component descriptions.
 - The `tooling` domain narrative drops the setup/uninstall-hooks/hook-rendering behaviour; the
   `rendering` domain narrative drops the `hook` kind; the `config` domain narrative drops `hooks`
   from the enable-array enumeration (four arrays, not five) and reflects the schema-4 migration.
-- The user-facing kind enumerations drop `hook`: the `awf --help` text (`kind ∈ {…}`) and the
-  `unknown kind` error message in `cmd/awf` (`main.go`, `list_add.go`), and the `(kinds: …)` list
+- The user-facing kind enumerations drop `hook`: the `awf --help` text (`kind ∈ {...}`) and the
+  `unknown kind` error message in `cmd/awf` (`main.go`, `list_add.go`), and the `(kinds: ...)` list
   in the agent-guide template.
 - The hand-maintained CLI strings in `cmd/awf/main.go` drop `setup`, `--force-hooks`, the `setup`
   entry in `argSpecs`, the `init` help line's "activate git hooks" phrasing, and the `uninstall`
@@ -164,7 +164,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 
 | Alternative | Why not chosen |
 |---|---|
-| Keep rendering hooks; stop only the auto-activation | Leaves the `hook` kind, the `.githooks/*` output, and the `checkCmd` portability seam — half the friction (a generated dir adopters must wire up anyway) with none of the simplicity of full removal. |
+| Keep rendering hooks; stop only the auto-activation | Leaves the `hook` kind, the `.githooks/*` output, and the `checkCmd` portability seam: half the friction (a generated dir adopters must wire up anyway) with none of the simplicity of full removal. |
 | Keep `awf setup` as an opt-in command, drop only the `init` chaining | Retains all the git-config-mutation code and guards for a command few would run; the user chose full removal. |
 | Tolerate-and-ignore the legacy `hooks:` field instead of migrating | Leaves dead config in adopter trees and is dishonest about the breaking change; the schema-version + `awf upgrade` mechanism exists precisely for this. |
 | Drop awf's own hooks entirely and rely on CI | Loses the local pre-commit safety net the "green gate before every commit" invariant leans on; hand-maintaining `.githooks/` keeps it and doubles as the adopter example. |

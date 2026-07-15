@@ -5,7 +5,7 @@ status: Implemented
 ---
 # Plan: Tag-tiered relevance in awf context
 
-Implements [ADR-0104](../decisions/0104-tag-tiered-relevance-in-awf-context.md) — SLICE 3 (the
+Implements [ADR-0104](../decisions/0104-tag-tiered-relevance-in-awf-context.md): SLICE 3 (the
 payoff) of the `awf context` relevance rework. Design and rationale live in the ADR; this plan is
 the execution record.
 
@@ -24,7 +24,7 @@ Two phases. Phase 1 exposes the one-to-one `slug → declaring Implemented ADR` 
 privately inside `invariants.Check`) as a shared function. Phase 2 is a **single coupled commit**:
 the `ContextResult` tier restructure, the `ContextFor` tier assembly, the `printContext`/JSON
 rendering, the five new `inv:` markers, the removal of the two retired markers, the ADR/plan status
-flip, and the doc currency — coupled because removing the two retired markers unbacks 0098/0099
+flip, and the doc currency, coupled because removing the two retired markers unbacks 0098/0099
 until ADR-0104 is `Implemented` (the retirement-couples-to-flip rule), and the `ContextResult`
 struct rewrite couples assembly to rendering.
 
@@ -47,9 +47,9 @@ Go 1.26. Files: `internal/invariants/invariants.go` (+`_test`), `internal/projec
   `.awf/awf.lock`.
 - **Deleted:** none.
 
-## Phase 1 — Expose the slug→declaring-ADR join
+## Phase 1: Expose the slug→declaring-ADR join
 
-- [ ] **Task 1.1 — Extract `DeclaringADRs` from `Check`.** In `internal/invariants/invariants.go`,
+- [ ] **Task 1.1: Extract `DeclaringADRs` from `Check`.** In `internal/invariants/invariants.go`,
   add an exported function holding the exact `required`-map logic currently inline in `Check`
   (Implemented-filter, duplicate-slug refusal, ADR-0031 retirement application), and call it from
   `Check`. It takes already-parsed ADRs (both callers `adr.ParseDir` already), so no double read.
@@ -99,11 +99,11 @@ Go 1.26. Files: `internal/invariants/invariants.go` (+`_test`), `internal/projec
   	}
   ```
 
-  `DeclaringADRs` is a plain extraction — no new `inv:` slug. Its one-to-one / duplicate-refusal /
+  `DeclaringADRs` is a plain extraction: no new `inv:` slug. Its one-to-one / duplicate-refusal /
   retirement behaviour is the pre-existing `Check` contract, unit-tested directly in Task 1.2; the
   context-facing contract that matters is `context-tier1-governs` (ADR-0104), backed in Phase 2.
 
-- [ ] **Task 1.2 — Test `DeclaringADRs` directly.** In `internal/invariants/invariants_test.go`, add
+- [ ] **Task 1.2: Test `DeclaringADRs` directly.** In `internal/invariants/invariants_test.go`, add
   a test asserting: a slug maps to its single Implemented declarer; a non-Implemented ADR's
   declaration is ignored; two Implemented ADRs declaring one slug returns the duplicate error; a
   retirement drops the slug; a dangling retirement errors. Mirror the existing `Check` tests'
@@ -111,21 +111,21 @@ Go 1.26. Files: `internal/invariants/invariants.go` (+`_test`), `internal/projec
   and `WithRetiresInvariants`). The existing `Check` tests continue to cover the same branches
   through `Check`; keep them.
 
-- [ ] **Task 1.3 — Verify and commit.** `./x gate` (pure refactor + new export; `Check` behaviour
+- [ ] **Task 1.3: Verify and commit.** `./x gate` (pure refactor + new export; `Check` behaviour
   unchanged; `./x check` clean). Then
   `git add internal/invariants/invariants.go internal/invariants/invariants_test.go` and commit:
   `refactor(invariants): expose DeclaringADRs slug-to-ADR join for reuse`.
 
-## Phase 2 — Tier the context output, retire, and flip (single coupled commit)
+## Phase 2: Tier the context output, retire, and flip (single coupled commit)
 
 **Why one commit:** removing the `context-surfaces-pitfalls` and `context-surfaces-linked-plans`
 markers (Task 2.4) unbacks 0099/0098 while ADR-0104 is still `Proposed`, so `./x check` fails until
-the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-flip rule. And the
+the `retires_invariants` flip (Task 2.7) lands: the retirement-couples-to-flip rule. And the
 `ContextResult` struct rewrite (Task 2.1) couples the assembly (Task 2.2) to the rendering
 (Task 2.3): a partial phase does not compile. All Phase-2 tasks therefore share one closing commit;
 `./x gate` runs once at the end.
 
-- [ ] **Task 2.1 — Restructure `ContextResult`.** In `internal/project/context.go`, replace the
+- [ ] **Task 2.1: Restructure `ContextResult`.** In `internal/project/context.go`, replace the
   `ContextResult` struct and adjust `ADRRef`/`PitfallRef`:
 
   ```
@@ -142,7 +142,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   }
   ```
 
-  Drop `ADRRef.Invariants` (the per-ADR echo the flat `## Invariants` already carries — ADR-0104
+  Drop `ADRRef.Invariants` (the per-ADR echo the flat `## Invariants` already carries: ADR-0104
   Decision item 6 compaction); `ADRRef` becomes `{Number, Title, Status, Path}`. Change `PitfallRef`
   from `Domains []string` to `Tags []string` (the surfacing reason is now the shared tag), keeping
   `{Title, Tags, Path}`. Update the doc comments to describe the tiers.
@@ -154,7 +154,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   `internal/invariants/invariants_test.go` in this same Phase-2 commit (confirmed no other caller;
   the tier assembly uses `DeclaringADRs`, not `DeclaredSlugs`).
 
-- [ ] **Task 2.2 — Rewrite the tier assembly in `ContextFor`.** Replace the ADR/plan/pitfall
+- [ ] **Task 2.2: Rewrite the tier assembly in `ContextFor`.** Replace the ADR/plan/pitfall
   surfacing block (current `internal/project/context.go` ~L110-183, from `adrs, err := adr.ParseDir`
   through the pitfalls loop) with the tiered assembly. Keep the preceding domain/`owners`/`matched`
   and `res.Invariants` computation unchanged. Add two package-level helpers near the bottom of the
@@ -190,7 +190,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   		return ContextResult{}, err
   	}
 
-  	// Tier 1 — "governs this code": ADRs declaring an invariant slug present as a
+  	// Tier 1 ("governs this code"): ADRs declaring an invariant slug present as a
   	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
   	// invariant: context-tier1-governs
   	declaring, err := invariants.DeclaringADRs(adrs)
@@ -237,7 +237,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   		}
   	}
 
-  	// Tier 2 — "topically related": non-Tier-1, non-Superseded ADRs sharing a
+  	// Tier 2 ("topically related"): non-Tier-1, non-Superseded ADRs sharing a
   	// precise tag or named in a Tier-1 ADR's related:.
   	// invariant: context-tier2-topical
   	inTier2 := map[string]bool{}
@@ -272,7 +272,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   		sort.Slice(res.Pitfalls, func(i, j int) bool { return res.Pitfalls[i].Title < res.Pitfalls[j].Title })
   	}
 
-  	// Tier 3 — "domain background": domain-membership ADRs in neither Tier 1 nor
+  	// Tier 3 ("domain background"): domain-membership ADRs in neither Tier 1 nor
   	// Tier 2, reported only as a collapsed count.
   	// invariant: context-tier3-collapsed
   	for _, a := range adrs {
@@ -318,70 +318,70 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   `adr`) are all already present in `context.go` (they were used by the replaced code). Remove any
   that the rewrite no longer uses to keep the build clean.
 
-- [ ] **Task 2.3 — Render the tiers in `printContext`.** In `cmd/awf/context.go`, replace the
+- [ ] **Task 2.3: Render the tiers in `printContext`.** In `cmd/awf/context.go`, replace the
   `## Related ADRs` / `## Related plans` / `## Related pitfalls` blocks (keep the JSON branch,
-  `## Domains`, `## Invariants`, `## Unowned` unchanged — the JSON branch already encodes the new
+  `## Domains`, `## Invariants`, `## Unowned` unchanged: the JSON branch already encodes the new
   struct, preserving `context-output-parity`):
 
   ```
   	if len(res.Governing) > 0 {
   		fmt.Fprintln(stdout, "\n## Governing ADRs (invariants backed here)")
   		for _, a := range res.Governing {
-  			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+  			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
   		}
   	}
   	if len(res.Related) > 0 {
   		fmt.Fprintln(stdout, "\n## Related ADRs (shared tag)")
   		for _, a := range res.Related {
-  			fmt.Fprintf(stdout, "  ADR-%s (%s) %s — %s\n", a.Number, a.Status, a.Title, a.Path)
+  			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
   		}
   	}
   	if len(res.Plans) > 0 {
   		fmt.Fprintln(stdout, "\n## Related plans")
   		for _, pl := range res.Plans {
-  			fmt.Fprintf(stdout, "  %s (%s) — %s\n", pl.Filename, pl.Status, pl.Path)
+  			fmt.Fprintf(stdout, "  %s (%s): %s\n", pl.Filename, pl.Status, pl.Path)
   		}
   	}
   	if len(res.Pitfalls) > 0 {
   		fmt.Fprintln(stdout, "\n## Related pitfalls (shared tag)")
   		for _, pf := range res.Pitfalls {
-  			fmt.Fprintf(stdout, "  %s %v — %s\n", pf.Title, pf.Tags, pf.Path)
+  			fmt.Fprintf(stdout, "  %s %v: %s\n", pf.Title, pf.Tags, pf.Path)
   		}
   	}
   	if res.Background > 0 {
-  		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) — see the domain docs above\n", res.Background)
+  		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) (see the domain docs above)\n", res.Background)
   	}
   ```
 
   Keep the `// invariant: context-output-parity` marker on `printContext`.
 
-- [ ] **Task 2.4 — Confirm the two retired markers are gone.** The old
+- [ ] **Task 2.4: Confirm the two retired markers are gone.** The old
   `// invariant: context-surfaces-linked-plans` and `// invariant: context-surfaces-pitfalls`
   comments were on the code Task 2.2 replaced, so they are already removed. Confirm:
   `grep -rn 'context-surfaces-linked-plans\|context-surfaces-pitfalls' internal/ cmd/` returns
   nothing (the slugs survive only in ADR prose).
 
-- [ ] **Task 2.5 — Rewrite the context tests.** In `internal/project/context_test.go` and
+- [ ] **Task 2.5: Rewrite the context tests.** In `internal/project/context_test.go` and
   `cmd/awf/context_test.go`, replace assertions keyed on the old flat `ADRs`/domain-based `Pitfalls`
   with tier assertions. Cover, at 100%: a query whose backed invariant puts an ADR in Tier 1
   (`Governing`); a precise-tag ADR and pitfall in Tier 2; a domain-mirror-only Tier-1 tag yielding no
   tag-based Tier 2; a `related:`-linked Tier-2 ADR under an empty precise set; a Superseded ADR
   excluded from Tier 2; a domain-membership ADR counted in `Background`; a plan linked to a
   Governing/Related ADR surfaced; the pitfalls-disabled path; **a present marker whose slug no
-  Implemented ADR declares** (the `if !ok { continue }` Tier-1 skip — e.g. an `// invariant:` marker
+  Implemented ADR declares** (the `if !ok { continue }` Tier-1 skip, e.g. an `// invariant:` marker
   for a Proposed ADR's slug under the queried path); **one Implemented ADR declaring two distinct
   present slugs** (the `if tier1[a.Number] { continue }` Tier-1 dedup skip); and JSON/human parity
   (mirror the existing parity test). Use `testsupport.ADR` with `WithTags`/`WithRelated`/`WithDomains` and an
   `## Invariants` body section carrying an `` - `inv: <slug>` `` bullet plus a matching source-marker
   fixture (a `.go` file under a domain glob with `// invariant: <slug>`) so the Tier-1 join resolves.
   Keep the read-only / output-parity / static-fallback tests green. The `DeclaringADRs` error path in
-  `ContextFor` (a duplicate slug across two Implemented ADRs) is reachable via a fixture — test it
+  `ContextFor` (a duplicate slug across two Implemented ADRs) is reachable via a fixture; test it
   rather than coverage-ignore.
 
-- [ ] **Task 2.6 — Doc currency.** In `.awf/agents-doc.yaml`, remove the two invariant bullets for
+- [ ] **Task 2.6: Doc currency.** In `.awf/agents-doc.yaml`, remove the two invariant bullets for
   `context-surfaces-linked-plans` (ADR-0098) and `context-surfaces-pitfalls` (ADR-0099), and add
-  five for `ref: ADR-0104` — `context-tier1-governs`, `context-tier2-topical`,
-  `context-tier3-collapsed`, `context-surfaces-tiered-plans`, `context-surfaces-tiered-pitfalls` —
+  five for `ref: ADR-0104` (`context-tier1-governs`, `context-tier2-topical`,
+  `context-tier3-collapsed`, `context-surfaces-tiered-plans`, `context-surfaces-tiered-pitfalls`),
   each phrased to the ADR's Invariants statements. Add a sentence to
   `.awf/domains/parts/tooling/current-state.md` (the tiered `awf
   context` output) and `.awf/domains/parts/invariants/current-state.md` (the shared `DeclaringADRs`
@@ -389,13 +389,13 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   `[Unreleased]` **Breaking changes** entry (the `awf context` human and JSON output shape changes:
   `governing`/`related`/`background` fields replace the flat `adrs`, pitfalls surface by tag).
 
-- [ ] **Task 2.7 — Flip and regenerate.** Set ADR-0104 `status:` to `Implemented` and this plan's
+- [ ] **Task 2.7: Flip and regenerate.** Set ADR-0104 `status:` to `Implemented` and this plan's
   `status:` to `Implemented`. Run `./x sync` to regenerate `AGENTS.md`, the `tooling`/`invariants`
   domain indices, and `ACTIVE.md`. ADR-0104's `retires_invariants` now takes effect: 0098/0099's two
   slugs are retired (their removed markers no longer fail the check), the five new markers are
   enforced-backed.
 
-- [ ] **Task 2.8 — Verify and commit.** `./x gate` and `./x check` (green: new slugs backed, retired
+- [ ] **Task 2.8: Verify and commit.** `./x gate` and `./x check` (green: new slugs backed, retired
   slugs no longer required, no dangling retirement, output-parity preserved). Then stage explicitly:
   `internal/invariants/invariants.go internal/invariants/invariants_test.go
   internal/project/context.go internal/project/context_test.go cmd/awf/context.go
@@ -403,7 +403,7 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
   .awf/domains/parts/tooling/current-state.md .awf/domains/parts/invariants/current-state.md
   docs/domains/tooling.md docs/domains/invariants.md changelog/CHANGELOG.md
   docs/decisions/0104-tag-tiered-relevance-in-awf-context.md docs/decisions/ACTIVE.md
-  docs/plans/2026-07-13-tag-tiered-relevance-in-awf-context.md .awf/awf.lock` — plus any
+  docs/plans/2026-07-13-tag-tiered-relevance-in-awf-context.md .awf/awf.lock`, plus any
   `examples/sundial` outputs `git status --short` reports (verify per the render-fan-out pitfall;
   none expected, since no template/configspec/catalog changed). Commit:
   `feat(tooling): tag-tiered relevance in awf context; implement 0104`.
@@ -422,13 +422,13 @@ the `retires_invariants` flip (Task 2.7) lands — the retirement-couples-to-fli
 ## Notes
 
 - **Out of scope (recommended follow-ups from ADR-0104):** the domain-coverage expansion for unowned
-  packages (a separate load-bearing decision — new domain vs fold-in), and any further Tier-2
+  packages (a separate load-bearing decision: new domain vs fold-in), and any further Tier-2
   narrowing (weight by shared-tag count, ≥2 shared tags). This plan changes only the surfacing model.
 - **Two user-decision ADR findings** were resolved with reasoned defaults and are flagged for review:
   the precise-tag-set domain-mirror exclusion, and the domain-coverage demotion to a follow-up.
 - **Dogfood at flip** (`awf context internal/project/context.go`): Tier 1 (`Governing`) is now
-  precise — ADR-0102 + ADR-0104, the two ADRs whose `context-*`/`uncovered-*` invariants are backed
-  in that file — versus the pre-slice ~90-ADR undifferentiated dump. Tier 3 background is 0 (the file
+  precise (ADR-0102 + ADR-0104, the two ADRs whose `context-*`/`uncovered-*` invariants are backed
+  in that file) versus the pre-slice ~90-ADR undifferentiated dump. Tier 3 background is 0 (the file
   is domain-unowned). **Tier 2 (`Related`) is still broad (~28 ADRs)** because the Tier-1 ADRs carry
   the high-frequency non-domain-mirror tag `testing`, which the domain-mirror exclusion does not
   remove. This is the residual risk ADR-0104's Consequences flagged: the precise Tier-1 win lands,

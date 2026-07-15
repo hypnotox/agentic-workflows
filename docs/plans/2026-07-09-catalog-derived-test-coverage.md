@@ -1,10 +1,10 @@
-# 2026-07-09 — Catalog-derived test coverage
+# 2026-07-09: Catalog-derived test coverage
 
 **Goal:** implement [ADR-0080](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
 (catalog-declared skill coupling via `RequiresSkills`, a derived unset-data sweep over every
 catalog template, a conditional-fallback case guard, a golden-completeness guard, and a
 catalog-derived chain-closure fixture), closing the `docs/pitfalls.md` "hand-enumerated test
-touch points" entry. Design rationale lives in the ADR — not duplicated here.
+touch points" entry. Design rationale lives in the ADR, not duplicated here.
 
 **Architecture summary:** production change is one catalog field (`RequiresSkills` on
 `SkillSpec`/`TargetSpec`) plus its declarations in `catalog.Standard`; everything else is
@@ -15,7 +15,7 @@ Decision 7: default inclusion, explicit entries, stale entries fail. All referen
 degraded-output phrases below were derived empirically on 2026-07-09 by rendering each
 template under empty adopter data (`prefix: example`, empty `vars`/`data`/`skills`, full
 `testLayout()`); if a want-phrase mismatches at execution time, re-derive it from the actual
-unset render — the assertion pins degraded prose, not a guess.
+unset render: the assertion pins degraded prose, not a guess.
 
 **Tech stack:** Go 1.26; stdlib only (`regexp`, `slices`, `sort`, `strings`, `io/fs`, `os`).
 Packages touched: `internal/catalog` (field + declarations + validation test),
@@ -39,17 +39,17 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 
 ---
 
-## Phase 1 — `RequiresSkills` catalog field, declarations, validation
+## Phase 1: `RequiresSkills` catalog field, declarations, validation
 
 - [ ] In `internal/catalog/catalog.go`, add the field to `TargetSpec` (after the `Base` field):
 
       ```go
       	// RequiresSkills names the catalog skills this artifact's template references
-      	// unconditionally — rendered into its output even when the referenced skill is
+      	// unconditionally, rendered into its output even when the referenced skill is
       	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
       	// unit"). Declarations are exact: the template test sweep fails on an
       	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
-      	// not gated validation — promoting it to add/remove pairing UX is deferred.
+      	// not gated validation; promoting it to add/remove pairing UX is deferred.
       	RequiresSkills []string `yaml:"requiresSkills"`
       ```
 
@@ -83,7 +83,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       ```go
       // TestRequiresSkillsDeclarationsValid rejects a RequiresSkills entry naming a
       // non-catalog skill or the artifact itself, and any RequiresSkills on the
-      // domain-doc spec — today the only TargetSpec use outside the agents map; the
+      // domain-doc spec, today the only TargetSpec use outside the agents map; the
       // field is meaningless there and a silent no-op would invite drift (ADR-0080
       // Decision 1). The self-naming rejection is an exactness corollary of Decision
       // 7: a self-entry could never fail as stale (the frontmatter name always marks
@@ -119,16 +119,16 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       - The catalog now declares each skill's and agent's unconditional chain-skill
         coupling (`requiresSkills`), and the standard's test suite enforces the
         declarations both ways (undeclared reference and stale declaration each
-        fail). Data only — no CLI or rendering behavior changes.
+        fail). Data only: no CLI or rendering behavior changes.
       ```
 
-- [ ] Run `./x gate` — expect `coverage: 100.0%`, `0 issues.`, all tests pass.
-- [ ] Commit: `feat(rendering): declare chain coupling in the catalog (ADR-0080)`
-      — body: names Decision 1, notes declarations are proven exact by the Phase-2
+- [ ] Run `./x gate`: expect `coverage: 100.0%`, `0 issues.`, all tests pass.
+- [ ] Commit: `feat(rendering): declare chain coupling in the catalog (ADR-0080)`;
+      body: names Decision 1, notes declarations are proven exact by the Phase-2
       sweep, and notes the self-naming rejection as an exactness corollary of
       Decision 7 (a self-entry could never fail as stale).
 
-## Phase 2 — derived unset-data sweep
+## Phase 2: derived unset-data sweep
 
 - [ ] Create `internal/project/catalog_sweep_test.go`:
 
@@ -150,8 +150,8 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       // reports a nested "example-reviewing-plan").
       var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 
-      // doubleBacktickRe matches a double backtick not adjacent to a third — an
-      // empty inline-code span or a literal ``…`` quoting span, never a ``` fence.
+      // doubleBacktickRe matches a double backtick not adjacent to a third: an
+      // empty inline-code span or a literal ``...`` quoting span, never a ``` fence.
       var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 
       // doubleBacktickExempt lists templates whose double-backtick spans are
@@ -195,20 +195,20 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       				}
       				found[name] = true
       				if name != self && !slices.Contains(requiresSkills, name) {
-      					t.Errorf("undeclared unconditional reference %q — guard it behind .skills.%s or declare it in RequiresSkills", m, name)
+      					t.Errorf("undeclared unconditional reference %q: guard it behind .skills.%s or declare it in RequiresSkills", m, name)
       				}
       			}
       			for _, r := range requiresSkills {
       				if !found[r] {
-      					t.Errorf("stale RequiresSkills entry %q — no longer referenced unconditionally; remove the declaration", r)
+      					t.Errorf("stale RequiresSkills entry %q: no longer referenced unconditionally; remove the declaration", r)
       				}
       			}
       			hasDouble := doubleBacktickRe.MatchString(out)
       			if hasDouble && !doubleBacktickExempt[tid] {
-      				t.Errorf("double-backtick span rendered under empty data — fix the template or add a doubleBacktickExempt entry:\n%s", out)
+      				t.Errorf("double-backtick span rendered under empty data: fix the template or add a doubleBacktickExempt entry:\n%s", out)
       			}
       			if !hasDouble && doubleBacktickExempt[tid] {
-      				t.Errorf("stale doubleBacktickExempt entry — the template no longer renders a double-backtick span")
+      				t.Errorf("stale doubleBacktickExempt entry: the template no longer renders a double-backtick span")
       			}
       		})
       	}
@@ -221,15 +221,15 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       }
       ```
 
-- [ ] Run `go test ./internal/project/ -run TestCatalogTemplatesDegradeLeakFree -v` —
+- [ ] Run `go test ./internal/project/ -run TestCatalogTemplatesDegradeLeakFree -v`:
       expect PASS with one subtest per catalog template (16 skills + 3 agents = 19).
       A failure here means a Phase-1 declaration is wrong: fix the declaration (or the
       template), never the sweep.
-- [ ] Run `./x gate` — green.
-- [ ] Commit: `test(rendering): sweep catalog templates under empty data (ADR-0080)`
-      — body: backs `catalog-template-sweep` + `requires-skills-exact`.
+- [ ] Run `./x gate`: green.
+- [ ] Commit: `test(rendering): sweep catalog templates under empty data (ADR-0080)`;
+      body: backs `catalog-template-sweep` + `requires-skills-exact`.
 
-## Phase 3 — hoist the case list, guard conditionals, backfill 11 cases
+## Phase 3: hoist the case list, guard conditionals, backfill 11 cases
 
 - [ ] In `internal/project/spine_test.go`, hoist the case list out of
       `TestUnsetFallbackRenders`: above the func, add
@@ -237,7 +237,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       ```go
       // fallbackCase pins one template's hand-authored degraded output: want
       // phrases must render under empty data, ban phrases must not; docs (when
-      // set) replaces the layout docs map — used by RequiresDoc-gated templates
+      // set) replaces the layout docs map, used by RequiresDoc-gated templates
       // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
       // requires an entry per conditional catalog template (ADR-0080).
       type fallbackCase struct {
@@ -342,7 +342,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       	},
       	{
       		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-      		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only — never parallel"},
+      		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only, never parallel"},
       	},
       	{
       		tmpl: "skills/writing-plans/SKILL.md.tmpl",
@@ -361,7 +361,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 
       // TestConditionalTemplatesHaveFallbackCases requires a hand-authored
       // unset-data case for every catalog template whose post-include-expansion
-      // source contains a conditional action — only a human knows what the degraded
+      // source contains a conditional action: only a human knows what the degraded
       // prose should say, so its presence is machine-forced (ADR-0080 Decision 3).
       // invariant: conditional-fallback-case-guard
       func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
@@ -379,7 +379,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       			t.Fatalf("expand %s: %v", tid, err)
       		}
       		if conditionalActionRe.MatchString(expanded) && !covered[tid] {
-      			t.Errorf("%s has conditional fallback prose but no unsetFallbackCases entry — add a hand-authored case pinning its degraded output", tid)
+      			t.Errorf("%s has conditional fallback prose but no unsetFallbackCases entry: add a hand-authored case pinning its degraded output", tid)
       		}
       	}
       	for name := range catalog.Standard.Skills {
@@ -391,16 +391,16 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       }
       ```
 
-- [ ] Run `go test ./internal/project/ -run 'TestUnsetFallbackRenders|TestConditionalTemplatesHaveFallbackCases' -v`
-      — expect PASS (22 fallback subtests + the guard). A want-phrase failure means the
+- [ ] Run `go test ./internal/project/ -run 'TestUnsetFallbackRenders|TestConditionalTemplatesHaveFallbackCases' -v`:
+      expect PASS (22 fallback subtests + the guard). A want-phrase failure means the
       2026-07-09 derivation drifted: re-render the template under the case's exact data
       and re-pin the phrase from the actual degraded output.
-- [ ] Run `./x gate` — green.
-- [ ] Commit: `test(rendering): force a fallback case per conditional (ADR-0080)`
-      — body: backs `conditional-fallback-case-guard`; notes the 11 backfilled cases
+- [ ] Run `./x gate`: green.
+- [ ] Commit: `test(rendering): force a fallback case per conditional (ADR-0080)`;
+      body: backs `conditional-fallback-case-guard`; notes the 11 backfilled cases
       close the live gap found 2026-07-09.
 
-## Phase 4 — golden completeness guard + the missing tdd golden
+## Phase 4: golden completeness guard + the missing tdd golden
 
 - [ ] In `internal/project/spine_test.go`, add after `TestBugfixTemplate`:
 
@@ -451,7 +451,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 
       // TestEveryCatalogArtifactHasGoldenTest asserts a per-artifact golden test
       // func exists in this package's test source for every catalog skill and
-      // agent — the goldens live in spine_test.go by convention (source-scan
+      // agent: the goldens live in spine_test.go by convention (source-scan
       // mechanic, precedent TestArchitectureDocNamesEveryCmd; ADR-0080 Decision 4).
       // invariant: golden-test-completeness
       func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
@@ -461,24 +461,24 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       	}
       	for name := range catalog.Standard.Skills {
       		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(string(src), needle) {
-      			t.Errorf("no golden test for skill %q — add %s to internal/project/spine_test.go", name, needle)
+      			t.Errorf("no golden test for skill %q: add %s to internal/project/spine_test.go", name, needle)
       		}
       	}
       	for name := range catalog.Standard.Agents {
       		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(string(src), needle) {
-      			t.Errorf("no golden test for agent %q — add %s to internal/project/spine_test.go", name, needle)
+      			t.Errorf("no golden test for agent %q: add %s to internal/project/spine_test.go", name, needle)
       		}
       	}
       }
       ```
 
-- [ ] Run `go test ./internal/project/ -run 'TestTddTemplate|TestEveryCatalogArtifactHasGoldenTest' -v`
-      — expect PASS.
-- [ ] Run `./x gate` — green.
-- [ ] Commit: `test(rendering): enforce a golden test per catalog artifact (ADR-0080)`
-      — body: backs `golden-test-completeness`; notes tdd's golden was the day-one gap.
+- [ ] Run `go test ./internal/project/ -run 'TestTddTemplate|TestEveryCatalogArtifactHasGoldenTest' -v`:
+      expect PASS.
+- [ ] Run `./x gate`: green.
+- [ ] Commit: `test(rendering): enforce a golden test per catalog artifact (ADR-0080)`;
+      body: backs `golden-test-completeness`; notes tdd's golden was the day-one gap.
 
-## Phase 5 — catalog-derived chain-closure fixture
+## Phase 5: catalog-derived chain-closure fixture
 
 - [ ] In `internal/project/drift_test.go`, replace
       `TestScopesEditReflagsReferencingArtifacts`'s local `cfg` closure: delete the
@@ -490,7 +490,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       // chainClosureConfig derives the chain-unit enabled set from the catalog:
       // the Chain-flagged skills, their transitive RequiresSkills closure, and the
       // RequiresAgent agents of every skill in that combined set (ADR-0080
-      // Decision 5) — never a hand list.
+      // Decision 5), never a hand list.
       func chainClosureConfig(scope string) string {
       	set := map[string]bool{}
       	var add func(name string)
@@ -544,7 +544,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       subagent-driven-development, writing-plans) and 3 agents (adr-reviewer,
       code-reviewer, plan-reviewer).
 
-- [ ] Re-point the test's negative control (per ADR-0080 Decision 5 — `tdd` is no
+- [ ] Re-point the test's negative control (per ADR-0080 Decision 5: `tdd` is no
       longer rendered, so the old assertion would pass vacuously): replace
 
       ```go
@@ -561,14 +561,14 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       	}
       ```
 
-- [ ] Run `go test ./internal/project/ -run TestScopesEditReflagsReferencingArtifacts -v`
-      — expect PASS.
-- [ ] Run `./x gate` — green.
-- [ ] Commit: `test(config): derive the chain fixture from the catalog (ADR-0080)`
-      — body: notes the deliberate tdd membership delta and the re-pointed negative
+- [ ] Run `go test ./internal/project/ -run TestScopesEditReflagsReferencingArtifacts -v`:
+      expect PASS.
+- [ ] Run `./x gate`: green.
+- [ ] Commit: `test(config): derive the chain fixture from the catalog (ADR-0080)`;
+      body: notes the deliberate tdd membership delta and the re-pointed negative
       control.
 
-## Phase 6 — docs, guide invariants, ADR flip
+## Phase 6: docs, guide invariants, ADR flip
 
 - [ ] In `.awf/docs/parts/pitfalls/entries.md`, replace the entire section
       `## Adding a catalog skill: hand-enumerated test touch points` (heading through
@@ -581,11 +581,11 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       catalog-derived eval fixture (ADR-0053) and by ADR-0080's derived guards, which fail
       loudly and name the missing piece:
 
-      - `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data — an
+      - `TestCatalogTemplatesDegradeLeakFree` sweeps the template under empty data: an
         unconditional reference to another skill must be declared in `RequiresSkills`
         (exact both ways: undeclared references and stale declarations each fail).
       - `TestConditionalTemplatesHaveFallbackCases` requires a hand-authored
-        `unsetFallbackCases` entry when the template carries conditional fallback prose —
+        `unsetFallbackCases` entry when the template carries conditional fallback prose:
         the degraded phrases themselves stay human-authored.
       - `TestEveryCatalogArtifactHasGoldenTest` requires a `Test<Skill>Template` golden in
         `internal/project/spine_test.go`.
@@ -596,7 +596,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       is an explicit entry that itself fails when stale.
       ```
 
-- [ ] In `.awf/agents-doc.yaml`, append to `data.invariants` — one bullet per new
+- [ ] In `.awf/agents-doc.yaml`, append to `data.invariants`: one bullet per new
       invariant slug, per the ADR's "four new invariant bullets" commitment; match
       the existing entries' indentation (8 spaces before `- ref:`):
 
@@ -622,7 +622,7 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
       ```
 
 - [ ] In `.awf/docs/parts/testing/layout.md`, append to the second paragraph (after
-      the sentence ending "…cannot half-land with a blank-path provenance pointer."):
+      the sentence ending "...cannot half-land with a blank-path provenance pointer."):
 
       ```markdown
       Three further catalog-derived guards live in `internal/project/catalog_sweep_test.go`
@@ -636,25 +636,25 @@ Packages touched: `internal/catalog` (field + declarations + validation test),
 - [ ] Flip the ADR: in
       `docs/decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md`
       frontmatter, change `status: Proposed` → `status: Implemented`.
-- [ ] Run `./x sync` — regenerates `docs/pitfalls.md`, `docs/testing.md`, `AGENTS.md`
+- [ ] Run `./x sync`: regenerates `docs/pitfalls.md`, `docs/testing.md`, `AGENTS.md`
       (+ bridge targets), `docs/domains/rendering.md`, `docs/decisions/ACTIVE.md`,
       `.awf/awf.lock`.
-- [ ] Run `./x check` — expect `awf check: clean` (all four new inv slugs are backed by
-      the markers landed in Phases 2–4).
-- [ ] Run `./x gate` — green.
+- [ ] Run `./x check`: expect `awf check: clean` (all four new inv slugs are backed by
+      the markers landed in Phases 2-4).
+- [ ] Run `./x gate`: green.
 - [ ] Stage the `.awf/` parts, the rendered files, and the ADR; commit:
-      `docs(adr): implement 0080 catalog-derived test coverage` — body: summarises the
+      `docs(adr): implement 0080 catalog-derived test coverage`; body: summarises the
       guards, names the closed pitfalls entry, notes the AGENTS.md invariant bullets and
       ACTIVE.md regen land here per the ADR's Consequences commitment.
 
 ## Execution notes
 
 - Each phase's closing commit passes `./x gate` on its own; no cross-phase forward
-  references (the sweep file grows across Phases 2–4 but each addition is self-contained).
+  references (the sweep file grows across Phases 2-4 but each addition is self-contained).
 - Never hand-edit a rendered file (`docs/pitfalls.md`, `AGENTS.md`, `docs/domains/*.md`,
-  `ACTIVE.md`) — change the `.awf/` part and run `./x sync`.
+  `ACTIVE.md`): change the `.awf/` part and run `./x sync`.
 - `./x audit-local` runs at impl review; the Phase-1 changelog entry covers the
   adopter-facing `internal/catalog/` touch.
 - If any verify step's expected output mismatches, stop and fix the cause (or re-derive
-  the pinned phrase from the actual render, for Phase-3 want-phrases only) — never weaken
+  the pinned phrase from the actual render, for Phase-3 want-phrases only); never weaken
   an assertion to pass.

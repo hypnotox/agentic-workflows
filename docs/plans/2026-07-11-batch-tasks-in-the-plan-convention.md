@@ -1,7 +1,7 @@
 # Plan: Batch tasks in the plan convention
 
 Implements **ADR-0095** (`docs/decisions/0095-batch-tasks-in-the-plan-convention.md`, status
-`Proposed`). Design rationale lives in the ADR — this plan is the execution record only.
+`Proposed`). Design rationale lives in the ADR: this plan is the execution record only.
 
 ## Goal
 
@@ -16,7 +16,7 @@ well-formed batch task is not flagged.
 
 Three rendered catalog artifacts carry the plan convention: the `awf-writing-plans` skill template,
 `docs/plans/README.md`, and the `plan-reviewer` agent. The batch-task definition is folded into the
-skill's existing `conventions-tasks` section (no new `awf:section` marker — `skill-section-parity`,
+skill's existing `conventions-tasks` section (no new `awf:section` marker: `skill-section-parity`,
 ADR-0054, untouched). The reviewer refinement lands in both `internal/catalog/standard.go` (the
 default) and `.awf/agents/plan-reviewer.yaml` (whose `focusItems` replace the default wholesale,
 per `internal/project/datamerge.go`). `./x sync` re-renders this repo's artifacts and the example
@@ -31,10 +31,10 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 
 ## Doc currency
 
-- **AGENTS.md / docs/workflow.md:** no change. Neither enumerates plan-task forms — AGENTS.md's
+- **AGENTS.md / docs/workflow.md:** no change. Neither enumerates plan-task forms: AGENTS.md's
   Workflow section delegates to the skill and `docs/workflow.md`, and `docs/workflow.md` does not
   describe task exactness (verified: no "exact content / verbatim / placeholder" prose). The
-  batch-task convention is documented where the other task rules already live — the skill and
+  batch-task convention is documented where the other task rules already live: the skill and
   `docs/plans/README.md` (both updated here).
 - **No new invariant.** ADR-0095 declares no `inv:` slug, so no `AGENTS.md` invariant bullet and no
   source marker are added; the status flip to `Implemented` (Phase 3) has nothing to back.
@@ -57,7 +57,7 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 
 ---
 
-## Phase 1 — The batch-task convention (skill + README)
+## Phase 1: The batch-task convention (skill + README)
 
 - [ ] **1.1 Add the batch-task definition to the skill's `conventions-tasks` section.** In
   `templates/skills/writing-plans/SKILL.md.tmpl`, insert a new bullet immediately after the
@@ -67,8 +67,8 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   ```diff
    <!-- awf:section conventions-tasks -->
    - **Tasks:** bite-sized (~2-5 min each), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
-  +- **Batch tasks for repeated work:** when one transformation applies across multiple sites — 3+ sites whose change is identical modulo the site, or sites sharing one rationale with only mechanical variation — a task may take the *batch* form instead of repeating N near-identical diffs. A batch task names four things: a **representative** site shown as an exact diff, with the instruction to apply the identical shape to every affected site; an **edge** site shown as an exact diff (omit only when the shape is identical at every site, and say so); the **affected-site set**, given either as an exhaustive list of paths or symbols or as a command whose output is exactly that set; and a **post-check** — a deterministic command that fails if any site is unconverted or wrong (a drift check, a test target, or a search whose match count must reach zero). Genuinely distinct per-site edits stay exact-diff tasks.
-   - **Self-contained phases:** every phase's closing commit must pass {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} on its own. Never introduce a function, type, or file whose first production use lands in a later phase — place each definition in the phase that first uses it, merging or reordering phases as needed.
+  +- **Batch tasks for repeated work:** when one transformation applies across multiple sites (3+ sites whose change is identical modulo the site, or sites sharing one rationale with only mechanical variation), a task may take the *batch* form instead of repeating N near-identical diffs. A batch task names four things: a **representative** site shown as an exact diff, with the instruction to apply the identical shape to every affected site; an **edge** site shown as an exact diff (omit only when the shape is identical at every site, and say so); the **affected-site set**, given either as an exhaustive list of paths or symbols or as a command whose output is exactly that set; and a **post-check**: a deterministic command that fails if any site is unconverted or wrong (a drift check, a test target, or a search whose match count must reach zero). Genuinely distinct per-site edits stay exact-diff tasks.
+   - **Self-contained phases:** every phase's closing commit must pass {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} on its own. Never introduce a function, type, or file whose first production use lands in a later phase: place each definition in the phase that first uses it, merging or reordering phases as needed.
   ```
 
 - [ ] **1.2 Narrow the `conventions-no-placeholders` section to permit the batch task.** In the same
@@ -77,13 +77,13 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   ```diff
    <!-- awf:section conventions-no-placeholders -->
   -- **No placeholders:** no "TBD", "implement later", or "similar to task N". If a step changes a file, the step shows the change verbatim. If a verify step runs a command, the expected output is exact.
-  +- **No placeholders:** no "TBD", "implement later", or vague "similar to task N" deferral. If a step changes a file, the step shows the change verbatim — or, for a batch task, shows the representative and edge diffs, the affected-site set, and the post-check (see Tasks). If a verify step runs a command, the expected output is exact.
+  +- **No placeholders:** no "TBD", "implement later", or vague "similar to task N" deferral. If a step changes a file, the step shows the change verbatim; or, for a batch task, shows the representative and edge diffs, the affected-site set, and the post-check (see Tasks). If a verify step runs a command, the expected output is exact.
    <!-- awf:end -->
   ```
 
 - [ ] **1.3 Add the batch-task shape to `docs/plans/README.md`'s `structure` section.** In
   `templates/plans-readme/README.md.tmpl`, insert a new bullet after the exact-content bullet
-  (current lines 27–28) and before the commit-step bullet (current line 29). Exact diff:
+  (current lines 27-28) and before the commit-step bullet (current line 29). Exact diff:
 
   ```diff
    - Phases of bite-sized tasks (~2-5 min each) as `- [ ]` checkboxes, each naming exact paths, the
@@ -99,7 +99,7 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 - [ ] **1.4 Lock the new skill prose with a golden assertion.** In `internal/project/spine_test.go`,
   in `TestWritingPlansTemplate`, add `"batch task"` and `"affected-site set"` to the `loadBearing`
   slice. The second phrase is specific to the batch-task prose (the 1.1/1.2 bullets), not the
-  exact-diff rules, so it locks the batch-task *substance* — one of the four named fields — rather
+  exact-diff rules, so it locks the batch-task *substance* (one of the four named fields) rather
   than only the two-word name. Exact diff:
 
   ```diff
@@ -135,11 +135,11 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 
   If `git add` names a rendered path that `./x sync` did not change, drop it from the `git add`
   line (only paths shown by `git status --short` after sync are staged). The pre-commit hook re-runs
-  `./x gate` and `./x check` — both must pass.
+  `./x gate` and `./x check`; both must pass.
 
 ---
 
-## Phase 2 — The plan-reviewer lens accepts batch tasks
+## Phase 2: The plan-reviewer lens accepts batch tasks
 
 - [ ] **2.1 Refine the `step-exactness` catalog default.** In `internal/catalog/standard.go`, in the
   `plan-reviewer` agent's `focusItems`, replace the `step-exactness` description (current line 138).
@@ -168,7 +168,7 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
 
 - [ ] **2.3 Lock the catalog default with a unit test.** This test locks the catalog *default*
   (2.1). The sidecar refinement (2.2) is guarded by `./x check` rendered-vs-sidecar drift, not a
-  unit assertion — the intended mechanism for hand-authored config, mirroring every other sidecar in
+  unit assertion: the intended mechanism for hand-authored config, mirroring every other sidecar in
   the repo. Create `internal/catalog/batch_test.go` with exactly this content:
 
   ```go
@@ -221,11 +221,11 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   ```
 
   Drop any `git add` path not shown by `git status --short` after sync. The pre-commit hook re-runs
-  `./x gate` and `./x check` — both must pass.
+  `./x gate` and `./x check`; both must pass.
 
 ---
 
-## Phase 3 — Flip ADR-0095 to Implemented
+## Phase 3: Flip ADR-0095 to Implemented
 
 - [ ] **3.1 Flip the ADR status.** In
   `docs/decisions/0095-batch-tasks-in-the-plan-convention.md`, change the frontmatter status. Exact
@@ -252,4 +252,4 @@ adopter `examples/sundial`; `./x check` must be clean after each phase (ADR-0090
   git commit -m "docs(adr): mark 0095 implemented"
   ```
 
-  The pre-commit hook re-runs `./x gate` and `./x check` — both must pass.
+  The pre-commit hook re-runs `./x gate` and `./x check`; both must pass.

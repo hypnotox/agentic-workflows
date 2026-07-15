@@ -1,7 +1,7 @@
 # Plan: docsDir Layout Key and Built-In ACTIVE.md Generation
 
 Implements **[ADR-0005](../decisions/0005-docsdir-layout-and-builtin-active-md.md)** (Accepted).
-The design rationale lives in the ADR — this plan is the execution record. Do not re-argue
+The design rationale lives in the ADR; this plan is the execution record. Do not re-argue
 design here; if a step seems wrong, re-read the ADR.
 
 ## Goal
@@ -18,7 +18,7 @@ Make `docs/decisions/ACTIVE.md` generation real `awf` tooling: `awf sync` genera
 - **render data:** `Project.data()` injects a computed `layout` map (derived from `docsDir`)
   alongside `prefix`/`vars`/`data`. Templates read doc paths from `.layout.*`, never `.vars.*`.
   Because `render.ReferencedVars` only scans `.vars.X`, `ScaffoldConfig` never seeds the layout
-  paths — they are strictly awf-given.
+  paths; they are strictly awf-given.
 - **managed docs:** output path unifies from hardcoded `"docs/"` to `<docsDir>/<name>.md`.
 - **generation:** a `generateActiveMD` helper calls `adrtools.GenerateActiveMD` on
   `<docsDir>/decisions`; `Sync` appends the result as an ordinary lock entry (empty
@@ -37,34 +37,34 @@ Make `docs/decisions/ACTIVE.md` generation real `awf` tooling: `awf sync` genera
 ## File structure
 
 **Modified:**
-- `internal/config/config.go` — add `DocsDir` field, default, validation
-- `internal/config/config_test.go` — docsDir default/explicit/invalid tests
-- `internal/project/project.go` — `layout()`, `docOutPath()`, `data()`, `resolvedDocs`,
+- `internal/config/config.go`: add `DocsDir` field, default, validation
+- `internal/config/config_test.go`: docsDir default/explicit/invalid tests
+- `internal/project/project.go`: `layout()`, `docOutPath()`, `data()`, `resolvedDocs`,
   `RenderAll` docs loop, `generateActiveMD()`, `Sync`, `Check`
-- `internal/project/project_test.go` — `ACTIVE.md` sync/check tests; drop now-unused vars
-- `internal/project/spine_test.go` — move doc-path keys from `vars` to `layout` in golden data
-- `internal/adrtools/adrtools.go` — return `""` when no ADRs; repoint the package comment and
+- `internal/project/project_test.go`: `ACTIVE.md` sync/check tests; drop now-unused vars
+- `internal/project/spine_test.go`: move doc-path keys from `vars` to `layout` in golden data
+- `internal/adrtools/adrtools.go`: return `""` when no ADRs; repoint the package comment and
   generated-header literal off `go test ./internal/adrtools/` onto the sync mechanism
-- `internal/adrtools/adrtools_test.go` — delete `TestGenerateActiveMD`; add empty-dir unit test;
+- `internal/adrtools/adrtools_test.go`: delete `TestGenerateActiveMD`; add empty-dir unit test;
   update the header-prefix assertion in `TestGenerateActiveMDGroupsByStatus`
-- `x` — remove the `adr)` case
-- `docs/decisions/README.md` — rewrite the "ACTIVE.md" how-to section
+- `x`: remove the `adr)` case
+- `docs/decisions/README.md`: rewrite the "ACTIVE.md" how-to section
 - `templates/agents/adr-reviewer.md.tmpl`, `templates/agents/plan-reviewer.md.tmpl`
 - `templates/agents-doc/AGENTS.md.tmpl`
 - `templates/skills/{proposing-adr,adr-lifecycle,executing-plans,subagent-driven-development,reviewing-adr,reviewing-plan,reviewing-plan-resync,brainstorming,writing-plans}/SKILL.md.tmpl`
-- `.claude/awf.yaml` — remove the six doc-path vars, repoint `activeMdRegenCmd`, update
+- `.claude/awf.yaml`: remove the six doc-path vars, repoint `activeMdRegenCmd`, update
   `docCurrencyItems` strings; re-sync regenerates `.claude/**` + `AGENTS.md` + lock
-- `.claude/awf/parts/doc-architecture.md` — repoint the `internal/adrtools/` bullet off
+- `.claude/awf/parts/doc-architecture.md`: repoint the `internal/adrtools/` bullet off
   `go test ./internal/adrtools/` (re-sync regenerates `docs/architecture.md`)
-- `docs/decisions/0005-*.md` — final status flip `Accepted → Implemented`
+- `docs/decisions/0005-*.md`: final status flip `Accepted → Implemented`
 
 **Created / deleted:** none.
 
 ---
 
-## Phase 1 — `docsDir` config field + default
+## Phase 1: `docsDir` config field + default
 
-### Task 1.1 — Add the `DocsDir` field, default, and validation
+### Task 1.1: Add the `DocsDir` field, default, and validation
 
 - [ ] In `internal/config/config.go`, add the field to `Config` (after `Prefix`):
 
@@ -103,7 +103,7 @@ type Config struct {
 
 (`strings` is already imported.)
 
-### Task 1.2 — Tests for the field
+### Task 1.2: Tests for the field
 
 - [ ] Append to `internal/config/config_test.go`:
 
@@ -151,7 +151,7 @@ already import them.)
 
 - [ ] Verify: `go test ./internal/config/` → `ok`.
 
-### Task 1.3 — Commit
+### Task 1.3: Commit
 
 - [ ] `./x gate` → expect `0 issues.` and all packages `ok`.
 - [ ] `git add internal/config/config.go internal/config/config_test.go`
@@ -159,9 +159,9 @@ already import them.)
 
 ---
 
-## Phase 2 — `.layout` namespace + managed-docs unification
+## Phase 2: `.layout` namespace + managed-docs unification
 
-### Task 2.1 — Add `layout()` and `docOutPath()` helpers
+### Task 2.1: Add `layout()` and `docOutPath()` helpers
 
 - [ ] In `internal/project/project.go`, add after `data()` (around line 128):
 
@@ -188,7 +188,7 @@ func (p *Project) docOutPath(name string) string {
 }
 ```
 
-### Task 2.2 — Inject `layout` into render data
+### Task 2.2: Inject `layout` into render data
 
 - [ ] In `internal/project/project.go`, extend `data()`:
 
@@ -203,7 +203,7 @@ func (p *Project) data(sc config.SkillConfig) map[string]any {
 }
 ```
 
-### Task 2.3 — Unify managed-docs output path under `docsDir`
+### Task 2.3: Unify managed-docs output path under `docsDir`
 
 - [ ] In `resolvedDocs` (line ~143), change the link path:
 
@@ -222,7 +222,7 @@ func (p *Project) data(sc config.SkillConfig) map[string]any {
 		rf, err := p.renderTemplate(tid, dc.Sections, p.data(dc), p.docOutPath(name))
 ```
 
-### Task 2.4 — Unit test the layout map
+### Task 2.4: Unit test the layout map
 
 - [ ] Append to `internal/project/project_test.go`:
 
@@ -250,13 +250,13 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 ```
 
 (Confirm `internal/project/project_test.go` imports `agentic-workflows/internal/config`; it is
-used elsewhere in the package's tests — add the import to this file if missing.)
+used elsewhere in the package's tests; add the import to this file if missing.)
 
 - [ ] Verify: `go test ./internal/project/` → `ok` (templates still read `.vars.*`; `.layout`
-  is injected but not yet consumed — no behaviour change, default `docsDir` keeps every path
+  is injected but not yet consumed: no behaviour change, default `docsDir` keeps every path
   byte-identical).
 
-### Task 2.5 — Commit
+### Task 2.5: Commit
 
 - [ ] `./x gate` → `0 issues.`
 - [ ] `git add internal/project/project.go internal/project/project_test.go`
@@ -264,9 +264,9 @@ used elsewhere in the package's tests — add the import to this file if missing
 
 ---
 
-## Phase 3 — Built-in `ACTIVE.md` generation
+## Phase 3: Built-in `ACTIVE.md` generation
 
-### Task 3.1 — `adrtools` returns empty when no ADRs
+### Task 3.1: `adrtools` returns empty when no ADRs
 
 - [ ] In `internal/adrtools/adrtools.go`, in `GenerateActiveMD`, after the `for _, path := range
   matches` loop that builds `entries` (around line 69, immediately before the `// Group by
@@ -274,11 +274,11 @@ used elsewhere in the package's tests — add the import to this file if missing
 
 ```go
 	if len(entries) == 0 {
-		return "", nil // no ADRs — signal "produce nothing"
+		return "", nil // no ADRs: signal "produce nothing"
 	}
 ```
 
-### Task 3.2 — `generateActiveMD` helper, wired into `Sync` and `Check`
+### Task 3.2: `generateActiveMD` helper, wired into `Sync` and `Check`
 
 - [ ] In `internal/project/project.go`, add `"agentic-workflows/internal/adrtools"` to the import
   block.
@@ -323,7 +323,7 @@ func (p *Project) generateActiveMD() (*RenderedFile, error) {
 	var drift []manifest.Drift
 	for _, path := range sortedKeys(lock.Files) {
 		if path == activeMdRel {
-			continue // generated artifact — checked separately below
+			continue // generated artifact: checked separately below
 		}
 		e := lock.Files[path]
 		rf, ok := rendered[path]
@@ -333,7 +333,7 @@ func (p *Project) generateActiveMD() (*RenderedFile, error) {
 		}
 		if rf.TemplateHash != e.TemplateHash || cfgHash != e.ConfigHash {
 			// stale takes precedence: a re-sync overwrites any hand-edit, so it
-			// is the actionable signal — one drift entry per path.
+			// is the actionable signal: one drift entry per path.
 			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf sync"})
 			continue
 		}
@@ -366,7 +366,7 @@ func (p *Project) generateActiveMD() (*RenderedFile, error) {
 	return drift, nil
 ```
 
-### Task 3.3 — Tests for generation + staleness
+### Task 3.3: Tests for generation + staleness
 
 - [ ] Add to `internal/adrtools/adrtools_test.go` a focused empty-dir unit test:
 
@@ -476,9 +476,9 @@ it is used throughout `project_test.go`. `strings`, `os`, `path/filepath` are al
   `TestGenerateActiveMD` write-then-fail gate still exists here and still passes because the
   repo's own `ACTIVE.md` is current; it is removed in Phase 4).
 
-### Task 3.4 — Re-sync the dogfood lock and commit
+### Task 3.4: Re-sync the dogfood lock and commit
 
-- [ ] `./x sync` — this now also writes/locks `docs/decisions/ACTIVE.md`; `.claude/awf.lock`
+- [ ] `./x sync`: this now also writes/locks `docs/decisions/ACTIVE.md`; `.claude/awf.lock`
   gains the `docs/decisions/ACTIVE.md` entry. `ACTIVE.md` content is unchanged.
 - [ ] `./x check` → expect `awf check: clean`.
 - [ ] `./x gate` → `0 issues.`
@@ -487,16 +487,16 @@ it is used throughout `project_test.go`. `strings`, `os`, `path/filepath` are al
 
 ---
 
-## Phase 4 — Retire the test-as-tool mechanism
+## Phase 4: Retire the test-as-tool mechanism
 
-### Task 4.1 — Delete the write-then-fail gate test
+### Task 4.1: Delete the write-then-fail gate test
 
 - [ ] In `internal/adrtools/adrtools_test.go`, delete the entire `TestGenerateActiveMD` function
-  (the staleness-gate test, currently lines ~113-140 — the one that writes `ACTIVE.md` and calls
-  `t.Fatalf("ACTIVE.md was stale — regenerated; re-stage it")`). Keep
+  (the staleness-gate test, currently lines ~113-140: the one that writes `ACTIVE.md` and calls
+  `t.Fatalf("ACTIVE.md was stale: regenerated; re-stage it")`). Keep
   `TestGenerateActiveMDGroupsByStatus` and `TestGenerateActiveMDEmptyWhenNoADRs`.
 
-### Task 4.1b — Repoint the generator's self-referencing strings
+### Task 4.1b: Repoint the generator's self-referencing strings
 
 The generator embeds the retired command in two places that the rest of Phase 4 leaves
 dangling; both must move to the sync mechanism so the regenerated `ACTIVE.md` no longer
@@ -505,16 +505,16 @@ instructs readers to run a command that no longer exists.
 - [ ] In `internal/adrtools/adrtools.go`, change the package doc comment (line ~2)
   `// Run via: go test ./internal/adrtools/` → `// Generated by awf sync (regenerates docs/decisions/ACTIVE.md).`
 - [ ] In `internal/adrtools/adrtools.go`, change the generated header literal (line ~104)
-  from `<!-- GENERATED by internal/adrtools — do not edit by hand. Run: go test ./internal/adrtools/ -->`
-  to `<!-- GENERATED by awf sync — do not edit by hand. -->`.
+  from `<!-- GENERATED by internal/adrtools: do not edit by hand. Run: go test ./internal/adrtools/ -->`
+  to `<!-- GENERATED by awf sync: do not edit by hand. -->`.
 
 (This changes the first line of every regenerated `ACTIVE.md`, so Task 4.4 must re-sync and
 stage `docs/decisions/ACTIVE.md`; otherwise `./x check` flags it stale against the lock.
 Update the `TestGenerateActiveMDGroupsByStatus` header-prefix assertion in
-`internal/adrtools/adrtools_test.go` — it checks `strings.HasPrefix(got, "<!-- GENERATED by internal/adrtools")` —
+`internal/adrtools/adrtools_test.go` (it checks `strings.HasPrefix(got, "<!-- GENERATED by internal/adrtools")`)
 to match the new prefix, e.g. `"<!-- GENERATED by awf sync"`.)
 
-### Task 4.2 — Remove the `./x adr` target
+### Task 4.2: Remove the `./x adr` target
 
 - [ ] In `x`, delete the `adr)` case block:
 
@@ -531,7 +531,7 @@ to match the new prefix, e.g. `"<!-- GENERATED by awf sync"`.)
     echo "usage: ./x <gate [full]|lint|fmt|test|sync|check|setup|build|install>" >&2
 ```
 
-### Task 4.3 — Rewrite the README "ACTIVE.md" section
+### Task 4.3: Rewrite the README "ACTIVE.md" section
 
 - [ ] In `docs/decisions/README.md`, replace the `## ACTIVE.md` section (the `go test
   ./internal/adrtools/` how-to and the two trailing sentences) with:
@@ -539,15 +539,15 @@ to match the new prefix, e.g. `"<!-- GENERATED by awf sync"`.)
 ```markdown
 ## ACTIVE.md
 
-`ACTIVE.md` is a generated index — **do not edit it by hand**. It is regenerated by `awf sync`
+`ACTIVE.md` is a generated index: **do not edit it by hand**. It is regenerated by `awf sync`
 (here, `./x sync`) from the ADR frontmatter, and `awf check` (`./x check`, run by the pre-commit
 hook) fails if it is stale. After adding an ADR or changing a `status:` field, run `./x sync` and
 stage the regenerated `ACTIVE.md` alongside your change.
 ```
 
-### Task 4.4 — Verify and commit
+### Task 4.4: Verify and commit
 
-- [ ] `./x sync` — regenerates `docs/decisions/ACTIVE.md` with the new header line (and
+- [ ] `./x sync`: regenerates `docs/decisions/ACTIVE.md` with the new header line (and
   refreshes the lock entry's `OutputHash`).
 - [ ] `go test ./internal/adrtools/` → `ok` (no write-then-fail).
 - [ ] `./x gate` → `0 issues.`; `./x check` → `awf check: clean`.
@@ -556,9 +556,9 @@ stage the regenerated `ACTIVE.md` alongside your change.
 
 ---
 
-## Phase 5 — Migrate templates to `.layout` and prune the vars
+## Phase 5: Migrate templates to `.layout` and prune the vars
 
-### Task 5.1 — Global `.vars.* → .layout.*` rename across skill/agent templates
+### Task 5.1: Global `.vars.* → .layout.*` rename across skill/agent templates
 
 Apply these exact substitutions to **every** `.tmpl` file under `templates/skills/` and
 `templates/agents/` (i.e. all files **except** `templates/agents-doc/AGENTS.md.tmpl` and
@@ -578,15 +578,15 @@ Affected files (from `grep -rn '\.vars\.\(adrDir\|plansDir\|adrReadme\|activeMdP
 `skills/reviewing-adr/SKILL.md.tmpl`, `skills/reviewing-plan/SKILL.md.tmpl`,
 `skills/reviewing-plan-resync/SKILL.md.tmpl`, `skills/brainstorming/SKILL.md.tmpl`.
 
-`{{ .vars.activeMdRegenCmd }}` is **not** touched by the global rename — it stays a var (a
+`{{ .vars.activeMdRegenCmd }}` is **not** touched by the global rename: it stays a var (a
 command, not a path). See the one targeted exception in Task 5.1b.
 
 - [ ] Verify no stragglers: `grep -rn '\.vars\.\(adrDir\|plansDir\|adrReadme\|activeMdPath\|adrTemplatePath\)' templates/skills templates/agents` → no output.
 
-### Task 5.1b — Repoint the invariant-confirmation command in `proposing-adr`
+### Task 5.1b: Repoint the invariant-confirmation command in `proposing-adr`
 
 `templates/skills/proposing-adr/SKILL.md.tmpl:65` reuses `{{ .vars.activeMdRegenCmd }}` to mean
-"run the tests to confirm each Invariant has a `// invariant:` test" — this only works today
+"run the tests to confirm each Invariant has a `// invariant:` test"; this only works today
 because the regen command happens to be a test command. Once Task 5.6 repoints
 `activeMdRegenCmd` to `./x sync` (which runs no tests), that instruction becomes wrong. Point
 this one line at the gate command instead (the gate runs the tests). The other two
@@ -608,41 +608,41 @@ new:
 (The `// invariant:` convention itself remains dormant and is made real by ADR-0006; this edit
 only prevents the `activeMdRegenCmd` repoint from corrupting the instruction's meaning.)
 
-### Task 5.2 — `agents-doc/AGENTS.md.tmpl`: drop the guards (collapse to unconditional)
+### Task 5.2: `agents-doc/AGENTS.md.tmpl`: drop the guards (collapse to unconditional)
 
-The layout keys are always populated, so the `{{ with }}…{{ else }}…{{ end }}` guards become dead.
+The layout keys are always populated, so the `{{ with }}...{{ else }}...{{ end }}` guards become dead.
 
 - [ ] Replace line 23 (the Append-only ADRs bullet):
 
 old:
 ```
-- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated — never hand-edited{{ end }}.
+- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated, never hand-edited{{ end }}.
 ```
 new:
 ```
-- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated — never hand-edited.
+- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated, never hand-edited.
 ```
 
 - [ ] Replace the three Document-map bullets (lines 65-67):
 
 old:
 ```
-{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}) — architecture decisions and lifecycle.
-{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}) — generated status index; do not hand-edit.
-{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}) — implementation plans for complex work.
-{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}), architecture decisions and lifecycle.
+{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}), generated status index; do not hand-edit.
+{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}), implementation plans for complex work.
+{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 ```
 new:
 ```
-- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}) — architecture decisions and lifecycle.
-- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}) — generated status index; do not hand-edit.
-- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}) — implementation plans for complex work.
-{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
+- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
+- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}), generated status index; do not hand-edit.
+- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation plans for complex work.
+{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 ```
 
-(The `{{ with .vars.gateCmd }}` guards on lines 25 and 44 stay — `gateCmd` remains a var.)
+(The `{{ with .vars.gateCmd }}` guards on lines 25 and 44 stay; `gateCmd` remains a var.)
 
-### Task 5.3 — `writing-plans/SKILL.md.tmpl`: remove the planTemplatePath section
+### Task 5.3: `writing-plans/SKILL.md.tmpl`: remove the planTemplatePath section
 
 - [ ] Empty the `plan-template-ref` section body (drop the conditional line, keep the markers,
   matching the existing empty-`doc-currency-check` pattern). Replace:
@@ -663,37 +663,37 @@ new:
   body lines 9, 21): `.vars.plansDir` → `.layout.plansDir`.
 - [ ] Verify: `grep -n 'planTemplatePath' templates/` → no output.
 
-### Task 5.4 — Update golden tests to supply `layout`
+### Task 5.4: Update golden tests to supply `layout`
 
 In `internal/project/spine_test.go`, the golden tests call `render.Render` directly, so they
 must now provide a `layout` map for any template that reads `.layout.*`. For each test below,
 **remove** the listed keys from its `vars` map and **add** a sibling `"layout"` entry. Renames:
 `activeMdPath → activeMd`, `adrTemplatePath → adrTemplate`.
 
-- [ ] `TestAdrReviewerAgent` — remove `activeMdPath`, `adrDir` from `vars` (keep
+- [ ] `TestAdrReviewerAgent`: remove `activeMdPath`, `adrDir` from `vars` (keep
   `invariantTestPath`, `activeMdRegenCmd`); add:
 ```go
 		"layout": map[string]any{"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md"},
 ```
-- [ ] `TestPlanReviewerAgent` — remove `plansDir`; add
+- [ ] `TestPlanReviewerAgent`: remove `plansDir`; add
   `"layout": map[string]any{"plansDir": "docs/plans"},`.
-- [ ] `TestExecutingPlansTemplate` — remove `plansDir`, `activeMdPath` (keep
+- [ ] `TestExecutingPlansTemplate`: remove `plansDir`, `activeMdPath` (keep
   `activeMdRegenCmd`, `workflowDoc`, `gateCmd`, `gateDuration`, `hostGitAdrRef`,
   `oracleStateDoc`, `keyInvariantAdrRef`); add
   `"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},`.
-- [ ] `TestSubagentDrivenDevelopmentTemplate` — remove `plansDir`, `activeMdPath`; add the same
+- [ ] `TestSubagentDrivenDevelopmentTemplate`: remove `plansDir`, `activeMdPath`; add the same
   `layout` block as above.
-- [ ] `TestProposingAdrTemplate` — remove `adrDir`, `adrTemplatePath`, `activeMdPath`,
+- [ ] `TestProposingAdrTemplate`: remove `adrDir`, `adrTemplatePath`, `activeMdPath`,
   `adrReadme` (keep `activeMdRegenCmd`, `workflowDoc`, `stateDocsPath`, `adrProposeCommitFmt`);
   **add `"gateCmd": "./x gate"` to `vars`** (Task 5.1b introduces a new bare `{{ .vars.gateCmd }}`
-  reference in this template — without it the golden render emits `<no value>`); add:
+  reference in this template; without it the golden render emits `<no value>`); add:
 ```go
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
 			"activeMd": "docs/decisions/ACTIVE.md", "adrReadme": "docs/decisions/README.md",
 		},
 ```
-- [ ] `TestAdrLifecycleTemplate` — remove `adrDir`, `activeMdPath`, `adrReadme` (keep
+- [ ] `TestAdrLifecycleTemplate`: remove `adrDir`, `activeMdPath`, `adrReadme` (keep
   `activeMdRegenCmd`, `workflowDoc`, `stateDocsPath`, `gateCmd`); add:
 ```go
 		"layout": map[string]any{
@@ -701,18 +701,18 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
 			"adrReadme": "docs/decisions/README.md",
 		},
 ```
-- [ ] `TestBrainstormingTemplate` — remove `adrReadme`; add
+- [ ] `TestBrainstormingTemplate`: remove `adrReadme`; add
   `"layout": map[string]any{"adrReadme": "docs/decisions/README.md"},`.
-- [ ] `TestReviewingPlanTemplate` — remove `plansDir`; add
+- [ ] `TestReviewingPlanTemplate`: remove `plansDir`; add
   `"layout": map[string]any{"plansDir": "docs/plans"},`.
-- [ ] `TestReviewingPlanResyncTemplate` — remove `plansDir`; add the same `layout` block.
-- [ ] `TestReviewingAdrTemplate` — remove `adrDir`, `plansDir`; add
+- [ ] `TestReviewingPlanResyncTemplate`: remove `plansDir`; add the same `layout` block.
+- [ ] `TestReviewingAdrTemplate`: remove `adrDir`, `plansDir`; add
   `"layout": map[string]any{"adrDir": "docs/decisions", "plansDir": "docs/plans"},`.
-- [ ] `TestWritingPlansTemplate` — remove `planTemplatePath`, `plansDir`; add
+- [ ] `TestWritingPlansTemplate`: remove `planTemplatePath`, `plansDir`; add
   `"layout": map[string]any{"plansDir": "docs/plans"},`.
-- [ ] `TestAgentsDocTemplate` — remove `adrDir`, `plansDir` (keep `testCmd`, `gateCmd`); add
+- [ ] `TestAgentsDocTemplate`: remove `adrDir`, `plansDir` (keep `testCmd`, `gateCmd`); add
   `"layout": map[string]any{"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md", "adrReadme": "docs/decisions/README.md", "plansDir": "docs/plans"},`.
-- [ ] `TestAgentsDocTemplateConfigDriven` — remove `adrReadme`, `activeMdPath` from `vars` (keep
+- [ ] `TestAgentsDocTemplateConfigDriven`: remove `adrReadme`, `activeMdPath` from `vars` (keep
   `gateCmd: ""` to exercise the empty-gate guard); add a fully-populated `layout` block and keep
   the `]()` assertion (it now guards the gate/data fallbacks, not the always-present layout links):
 ```go
@@ -724,15 +724,15 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
 
 - [ ] Verify: `go test ./internal/project/` → `ok`.
 
-### Task 5.5 — Re-sync and commit the template migration
+### Task 5.5: Re-sync and commit the template migration
 
-- [ ] `./x sync` — rendered `.claude/**` and `AGENTS.md` content is byte-identical (default
+- [ ] `./x sync`: rendered `.claude/**` and `AGENTS.md` content is byte-identical (default
   `docsDir` ⇒ identical paths); only `.claude/awf.lock` may change.
 - [ ] `./x check` → `awf check: clean`; `./x gate` → `0 issues.`
 - [ ] `git add templates/ internal/project/spine_test.go .claude/`
 - [ ] `git commit -m "refactor(awf): migrate doc-path templates from .vars to .layout"`
 
-### Task 5.6 — Prune the now-unused doc-path vars and repoint the regen command
+### Task 5.6: Prune the now-unused doc-path vars and repoint the regen command
 
 - [ ] In `.claude/awf.yaml`, under `vars:`, delete these six lines:
   `activeMdPath`, `adrDir`, `adrReadme`, `adrTemplatePath`, `plansDir`, `planTemplatePath`.
@@ -752,10 +752,10 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
   also refreshes `docs/architecture.md`.)
 - [ ] In `internal/project/project_test.go`, remove the now-dead `adrDir`/`plansDir` lines from
   the `TestSyncRendersAgentsDoc` yaml (lines ~467-468) and the `adrReadme: ""`/`activeMdPath: ""`
-  lines from `TestSyncAutoLinksDocsInAgentsDoc` (lines ~241-242) — those vars no longer feed the
+  lines from `TestSyncAutoLinksDocsInAgentsDoc` (lines ~241-242): those vars no longer feed the
   template (the Document-map links now come from `.layout`, injected by `Open`→`data`). Leave
   `gateCmd: ""` in place where present.
-- [ ] `./x sync` — regenerates `.claude/agents/adr-reviewer.md` and `code-reviewer.md` (the
+- [ ] `./x sync`: regenerates `.claude/agents/adr-reviewer.md` and `code-reviewer.md` (the
   docCurrency string change), `docs/architecture.md` (the part change) and refreshes the lock
   (`configHash` changed).
 - [ ] `./x check` → `awf check: clean`; `./x gate` → `0 issues.`
@@ -764,19 +764,19 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
 
 ---
 
-## Phase 6 — Finalize: flip ADR-0005 to Implemented
+## Phase 6: Finalize: flip ADR-0005 to Implemented
 
-### Task 6.1 — Flip status and regenerate the index via the new path
+### Task 6.1: Flip status and regenerate the index via the new path
 
 - [ ] In `docs/decisions/0005-docsdir-layout-and-builtin-active-md.md`, change frontmatter
   `status: Accepted` → `status: Implemented`.
-- [ ] `./x sync` — regenerates `docs/decisions/ACTIVE.md` (now via the built-in generator),
+- [ ] `./x sync`: regenerates `docs/decisions/ACTIVE.md` (now via the built-in generator),
   moving ADR-0005 into the Implemented section.
 - [ ] `./x check` → `awf check: clean`; `./x gate` → `0 issues.`
 - [ ] `git add docs/decisions/0005-docsdir-layout-and-builtin-active-md.md docs/decisions/ACTIVE.md`
 - [ ] `git commit -m "docs(adr): mark 0005 Implemented"`
 
-### Task 6.2 — Terminal handoff
+### Task 6.2: Terminal handoff
 
 - [ ] Invoke `awf-reviewing-impl` against the implementation commit range (Phases 1-6) per the
   workflow chain.
@@ -787,11 +787,11 @@ must now provide a `layout` map for any template that reads `.layout.*`. For eac
 
 - **Ordering is load-bearing.** Phase 2 (inject `.layout`) must precede Phase 5 (templates read
   `.layout`), and within Phase 5 the template edits + golden-test updates (5.1-5.5) must land
-  before the var pruning (5.6) — a template reading `.layout.X` while the var is still present is
+  before the var pruning (5.6): a template reading `.layout.X` while the var is still present is
   fine, but pruning a var while a template still reads `.vars.X` would render `<no value>` and
   fail the gate. Because default `docsDir` makes every derived path equal to the old hand-set
   value, rendered output stays byte-identical throughout; only `.claude/awf.lock` churns.
 - **No ADR README index row** is owed (this repo's README is a how-to guide; `ACTIVE.md` is the
-  generated index — ADR-0003/0004 precedent).
+  generated index: ADR-0003/0004 precedent).
 - ADR-0006 (the `// invariant:` test-tagging convention + checker) is a separate follow-up and is
   out of scope here; it will retro-apply tagged tests to ADR-0005's invariants.

@@ -1,9 +1,9 @@
-# 2026-07-02 — Reviewing-skill/agent pairing (ADR-0050) + template sweep
+# 2026-07-02: Reviewing-skill/agent pairing (ADR-0050) + template sweep
 
 **Goal:** implement [ADR-0050](../decisions/0050-reviewing-skill-and-agent-pairing.md)
 (review-settled at 13c4447): a `requiresAgent` catalog field on the four reviewing-skill specs,
 hard pairing validation at project open, an upfront `awf remove agent` refusal, and an
-`awf add skill` auto-pair — then land the user-approved template sweep: chain-prose seams,
+`awf add skill` auto-pair; then land the user-approved template sweep: chain-prose seams,
 generality residue, guarded task-skill references with AGENTS.md task-skill gating, lifecycle-state
 alignment, and the resync→ADR return edge. Final phase flips ADR-0050 to Implemented.
 
@@ -11,10 +11,10 @@ alignment, and the resync→ADR return edge. Final phase flips ADR-0050 to Imple
 `internal/project/validate.go` gains the pairing check inside `checkKindAgainstCatalog` plus an
 exported `SkillsRequiringAgent` predicate the CLI shares; `cmd/awf/list_add.go` reshapes
 `rewriteConfig` into a multi-edit single-write so a paired skill+agent add lands in one config
-rewrite (ADR-0050 Decision 5). Phases 4–7 are template-prose-only: every changed template
+rewrite (ADR-0050 Decision 5). Phases 4-7 are template-prose-only: every changed template
 re-renders this repo's copies under `.claude/` and `.cursor/` (targets: claude, cursor) via
 `./x sync`; rendered files and `.awf/awf.lock` are staged with their templates. Design rationale
-lives in ADR-0050 — cite, don't restate.
+lives in ADR-0050; cite, don't restate.
 
 **Tech stack:** Go 1.26; packages touched: `internal/catalog`, `internal/project`, `cmd/awf`,
 `templates` (catalog.yaml, skills, agents, agents-doc, docs); plus `.awf/` config tree and
@@ -40,20 +40,20 @@ rendered artifacts.
     `.claude/skills/awf-<name>/SKILL.md` + `.cursor/skills/awf-<name>/SKILL.md` for the skills
     listed per phase, `.claude/agents/{code-reviewer,plan-reviewer}.md` +
     `.cursor/agents/{code-reviewer,plan-reviewer}.md`
-    (`roadmap-graduation` is enabled but doc-gate-suppressed in this repo — the `roadmap` doc is
-    off — so its template change has no rendered counterpart here)
+    (`roadmap-graduation` is enabled but doc-gate-suppressed in this repo (the `roadmap` doc is
+    off), so its template change has no rendered counterpart here)
 - Deleted: none.
 
 Conventions for every phase: run `./x gate` immediately before the commit (expected: `ok` lines
 for all packages, `coverage: 100.0% of non-ignored statements`, vet and lint silent, exit 0).
-Stage explicitly — never `git add -A`.
+Stage explicitly; never `git add -A`.
 
 ---
 
-## Phase 1 — catalog: `requiresAgent` on reviewing-skill specs (ADR-0050 Decisions 1, 6)
+## Phase 1: catalog: `requiresAgent` on reviewing-skill specs (ADR-0050 Decisions 1, 6)
 
-- [ ] **Task 1.1 — add the field to `internal/catalog/catalog.go`.** Replace the `SkillSpec`
-  doc comment and struct (currently lines 20–30):
+- [ ] **Task 1.1: add the field to `internal/catalog/catalog.go`.** Replace the `SkillSpec`
+  doc comment and struct (currently lines 20-30):
 
   Old:
   ```go
@@ -74,10 +74,10 @@ Stage explicitly — never `git add -A`.
   ```go
   // SkillSpec declares a skill's render sections plus its optional gating fields.
   // RequiresDoc is *suppression* (ADR-0013): a non-empty value gates the skill on
-  // that doc being enabled — with the doc off, the skill silently drops out of
+  // that doc being enabled: with the doc off, the skill silently drops out of
   // the effective render set. RequiresAgent is *hard validation* (ADR-0050): a
   // non-empty value names the reviewer agent the skill dispatches, and enabling
-  // the skill without that agent fails every gated command at project open — a
+  // the skill without that agent fails every gated command at project open: a
   // silently-dropped reviewing skill would sever the workflow chain, so the
   // pairing must be loud. Core marks a skill as part of the workflow-core set
   // awf init scaffolds by default (ADR-0022). Data carries the artifact's
@@ -91,7 +91,7 @@ Stage explicitly — never `git add -A`.
   }
   ```
 
-- [ ] **Task 1.2 — set the field on the four reviewing specs in `templates/catalog.yaml`.**
+- [ ] **Task 1.2: set the field on the four reviewing specs in `templates/catalog.yaml`.**
   Four two-line edits, inserting `requiresAgent:` directly under each `core: true`:
 
   ```yaml
@@ -119,11 +119,11 @@ Stage explicitly — never `git add -A`.
       sections:
   ```
 
-- [ ] **Task 1.3 — catalog-parity test.** Append to `internal/catalog/catalog_test.go`:
+- [ ] **Task 1.3: catalog-parity test.** Append to `internal/catalog/catalog_test.go`:
 
   ```go
   // Every reviewing skill is a thin dispatcher around one reviewer agent; the
-  // catalog must pair them so the ADR-0050 validation can enforce it — the
+  // catalog must pair them so the ADR-0050 validation can enforce it: the
   // prefix anchor keeps a future reviewing skill from reopening the blind spot.
   // invariant: reviewing-skill-specs-paired
   func TestReviewingSkillSpecsArePaired(t *testing.T) {
@@ -149,11 +149,11 @@ Stage explicitly — never `git add -A`.
   }
   ```
 
-- [ ] **Task 1.4 — verify.** `go test ./internal/catalog/` → `ok`. Then `./x sync && ./x check` →
+- [ ] **Task 1.4: verify.** `go test ./internal/catalog/` → `ok`. Then `./x sync && ./x check` →
   no drift, exit 0, and `git status --short` shows only the three edited files (the field is not
   render data, so no rendered file or lock changes).
 
-- [ ] **Task 1.5 — gate + commit.** `./x gate`, then:
+- [ ] **Task 1.5: gate + commit.** `./x gate`, then:
   ```
   git add internal/catalog/catalog.go internal/catalog/catalog_test.go templates/catalog.yaml
   git commit -m "feat(awf): declare requiresAgent on reviewing-skill specs"
@@ -162,12 +162,12 @@ Stage explicitly — never `git add -A`.
 
 ---
 
-## Phase 2 — hard pairing validation at project open (ADR-0050 Decision 2)
+## Phase 2: hard pairing validation at project open (ADR-0050 Decision 2)
 
-- [ ] **Task 2.1 — failing tests first.** Append to `internal/project/project_test.go`:
+- [ ] **Task 2.1: failing tests first.** Append to `internal/project/project_test.go`:
 
   ```go
-  // A reviewing skill enabled without its dispatched agent fails project open —
+  // A reviewing skill enabled without its dispatched agent fails project open:
   // the error names both sides and the fix (ADR-0050).
   // invariant: reviewing-skill-agent-pairing
   func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
@@ -199,10 +199,10 @@ Stage explicitly — never `git add -A`.
   ```
 
   Run `go test ./internal/project/ -run 'TestOpenRejectsPairedSkillWithoutAgent'` → expect
-  `FAIL` (`expected pairing error ...`) — Open currently succeeds.
+  `FAIL` (`expected pairing error ...`): Open currently succeeds.
 
-- [ ] **Task 2.2 — the check.** In `internal/project/validate.go`, inside
-  `checkKindAgainstCatalog`, after the catalog-membership check. Old (lines 58–63):
+- [ ] **Task 2.2: the check.** In `internal/project/validate.go`, inside
+  `checkKindAgainstCatalog`, after the catalog-membership check. Old (lines 58-63):
 
   ```go
   		if sc.Local {
@@ -224,7 +224,7 @@ Stage explicitly — never `git add -A`.
   		}
   		// Pairing validation (ADR-0050): a reviewing skill may never be enabled
   		// without the agent it dispatches. Unlike requiresDoc suppression, this
-  		// is a hard error — a silently-thinner chain is the failure mode the
+  		// is a hard error: a silently-thinner chain is the failure mode the
   		// workflow exists to prevent.
   		// invariant: reviewing-skill-agent-pairing
   		if d.Plural == "skills" {
@@ -235,15 +235,15 @@ Stage explicitly — never `git add -A`.
   ```
 
   (`sc` is already non-local here and the name is catalog-confirmed, so the check adds no error
-  branches beyond the covered one; the required agent may itself be catalog or local — membership
+  branches beyond the covered one; the required agent may itself be catalog or local; membership
   in `p.Cfg.Agents` is the whole contract.)
 
-- [ ] **Task 2.3 — verify.** `go test ./internal/project/ ./cmd/...` → all `ok` (this repo's
-  fixtures that enable reviewing skills — `scaffoldedProject`, curated init — enable all agents,
+- [ ] **Task 2.3: verify.** `go test ./internal/project/ ./cmd/...` → all `ok` (this repo's
+  fixtures that enable reviewing skills (`scaffoldedProject`, curated init) enable all agents,
   so nothing else trips). Then `./x sync && ./x check` → clean (this repo enables all three
   agents).
 
-- [ ] **Task 2.4 — gate + commit.** `./x gate`, then:
+- [ ] **Task 2.4: gate + commit.** `./x gate`, then:
   ```
   git add internal/project/validate.go internal/project/project_test.go
   git commit -m "feat(awf): fail gated commands on an unpaired reviewing skill"
@@ -251,12 +251,12 @@ Stage explicitly — never `git add -A`.
 
 ---
 
-## Phase 3 — CLI guards + AGENTS.md invariant (ADR-0050 Decisions 4, 5, Consequences)
+## Phase 3: CLI guards + AGENTS.md invariant (ADR-0050 Decisions 4, 5, Consequences)
 
-- [ ] **Task 3.1 — failing tests first.** Append to `cmd/awf/list_add_test.go`:
+- [ ] **Task 3.1: failing tests first.** Append to `cmd/awf/list_add_test.go`:
 
   ```go
-  // `awf remove agent` refuses upfront — before any config rewrite — while an
+  // `awf remove agent` refuses upfront (before any config rewrite) while an
   // enabled, non-local skill requires the agent (ADR-0050).
   // invariant: remove-agent-pairing-guard
   func TestRunRemoveAgentPairingGuard(t *testing.T) {
@@ -332,18 +332,18 @@ Stage explicitly — never `git add -A`.
 
   Run `go test ./cmd/awf/ -run 'PairingGuard|PairsAgent'` → expect both `FAIL`.
 
-- [ ] **Task 3.2 — shared predicate.** Append to `internal/project/validate.go`:
+- [ ] **Task 3.2: shared predicate.** Append to `internal/project/validate.go`:
 
   ```go
   // SkillsRequiringAgent returns the enabled, non-local skills whose catalog
-  // spec requires agent — exactly the set the pairing validation would fail on
+  // spec requires agent: exactly the set the pairing validation would fail on
   // if the agent left the enable array. `awf remove agent` refuses while it is
   // non-empty (ADR-0050).
   func (p *Project) SkillsRequiringAgent(agent string) []string {
   	var out []string
   	for _, name := range p.Cfg.Skills {
   		sc, err := p.Cfg.Sidecar("skills", name)
-  		if err != nil || sc.Local { // err: unreachable — Open pre-validated every enabled sidecar
+  		if err != nil || sc.Local { // err: unreachable; Open pre-validated every enabled sidecar
   			continue
   		}
   		if p.Cat.Skills[name].RequiresAgent == agent {
@@ -354,8 +354,8 @@ Stage explicitly — never `git add -A`.
   }
   ```
 
-- [ ] **Task 3.3 — reshape `rewriteConfig` into a multi-edit single write.** In
-  `cmd/awf/list_add.go`, replace the whole `rewriteConfig` function (currently lines 208–224):
+- [ ] **Task 3.3: reshape `rewriteConfig` into a multi-edit single write.** In
+  `cmd/awf/list_add.go`, replace the whole `rewriteConfig` function (currently lines 208-224):
 
   ```go
   // enableEdit is one enable-array edit for rewriteConfig: the config key and
@@ -384,7 +384,7 @@ Stage explicitly — never `git add -A`.
   }
   ```
 
-- [ ] **Task 3.4 — `runAdd`: pair the agent.** Replace, in `runAdd`:
+- [ ] **Task 3.4: `runAdd`: pair the agent.** Replace, in `runAdd`:
 
   Old:
   ```go
@@ -397,7 +397,7 @@ Stage explicitly — never `git add -A`.
   ```go
   	edits := []enableEdit{{key: key, name: name}}
   	// Pairing (ADR-0050): adding a skill that dispatches a reviewer agent
-  	// enables the missing agent in the same config rewrite — the additive fix
+  	// enables the missing agent in the same config rewrite: the additive fix
   	// is safe to apply silently, announced by a note.
   	// invariant: add-skill-pairs-agent
   	var pairedAgent string
@@ -415,7 +415,7 @@ Stage explicitly — never `git add -A`.
   	}
   ```
 
-- [ ] **Task 3.5 — `runRemove`: refuse upfront.** Replace, in `runRemove`:
+- [ ] **Task 3.5: `runRemove`: refuse upfront.** Replace, in `runRemove`:
 
   Old:
   ```go
@@ -432,7 +432,7 @@ Stage explicitly — never `git add -A`.
   	if !slices.Contains(enabledNames(p.Cfg, kind), name) {
   		return fmt.Errorf("%s %q is not enabled", kind, name)
   	}
-  	// Pairing guard (ADR-0050): refuse BEFORE the config rewrite — the
+  	// Pairing guard (ADR-0050): refuse BEFORE the config rewrite; the
   	// rewrite-then-sync order would otherwise strand a half-broken tree that
   	// every gated command rejects. The predicate is the validator's exactly.
   	// invariant: remove-agent-pairing-guard
@@ -446,7 +446,7 @@ Stage explicitly — never `git add -A`.
   	}
   ```
 
-- [ ] **Task 3.6 — AGENTS.md invariants bullet (ADR-0050 Consequences, ADR-0046 precedent:
+- [ ] **Task 3.6: AGENTS.md invariants bullet (ADR-0050 Consequences, ADR-0046 precedent:
   the new failing check documents itself in the same change).** In `.awf/agents-doc.yaml`,
   append after the second ADR-0049 bullet (the `Bootstrap output contract` entry, end of the
   `invariants` list):
@@ -457,14 +457,14 @@ Stage explicitly — never `git add -A`.
   ```
   (Match the file's existing 4-space/6-space indentation. The bullet describes all three pairing
   behaviours, so it deliberately lands with the CLI half here rather than with the Phase 2
-  validation commit — one commit later than the strict ADR-0046 same-commit precedent, so the
+  validation commit: one commit later than the strict ADR-0046 same-commit precedent, so the
   documented contract is fully true the moment it lands.)
 
-- [ ] **Task 3.7 — verify + render.** `go test ./cmd/awf/ ./internal/project/` → `ok`. Then
+- [ ] **Task 3.7: verify + render.** `go test ./cmd/awf/ ./internal/project/` → `ok`. Then
   `./x sync && ./x check` → exit 0; `git status --short` shows exactly `AGENTS.md` and
   `.awf/awf.lock` as the sync products.
 
-- [ ] **Task 3.8 — gate + commit.** `./x gate`, then:
+- [ ] **Task 3.8: gate + commit.** `./x gate`, then:
   ```
   git add cmd/awf/list_add.go cmd/awf/list_add_test.go internal/project/validate.go .awf/agents-doc.yaml AGENTS.md .awf/awf.lock
   git commit -m "feat(awf): guard agent removal and pair skill adds (ADR-0050)"
@@ -472,24 +472,24 @@ Stage explicitly — never `git add -A`.
 
 ---
 
-## Phase 4 — template sweep: chain-prose seams (B1)
+## Phase 4: template sweep: chain-prose seams (B1)
 
 All edits below are template prose; section keys never change. After the edits, `./x sync`
 re-renders this repo's copies.
 
-- [ ] **Task 4.1 — `templates/skills/writing-plans/SKILL.md.tmpl`: commit-before-review.**
+- [ ] **Task 4.1: `templates/skills/writing-plans/SKILL.md.tmpl`: commit-before-review.**
   Three edits:
 
-  (a) `procedure-write-plan` — old:
+  (a) `procedure-write-plan`: old:
   ```
-  2. **Write the plan file in one go.** Do not commit yet. The plan must be self-contained — every step executable by an agent with no prior conversation context.
+  2. **Write the plan file in one go.** Do not commit yet. The plan must be self-contained: every step executable by an agent with no prior conversation context.
   ```
   new:
   ```
-  2. **Write the plan file in one go.** The plan must be self-contained — every step executable by an agent with no prior conversation context.
+  2. **Write the plan file in one go.** The plan must be self-contained: every step executable by an agent with no prior conversation context.
   ```
 
-  (b) fill the empty `plan-commit-step` section — old:
+  (b) fill the empty `plan-commit-step` section: old:
   ```
   <!-- awf:section plan-commit-step -->
   <!-- awf:end -->
@@ -501,7 +501,7 @@ re-renders this repo's copies.
   <!-- awf:end -->
   ```
 
-  (c) `terminal-step` — old:
+  (c) `terminal-step`: old:
   ```
   3. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure. After review findings are resolved, commit the plan: `docs(plans): add YYYY-MM-DD-<topic>`.
   ```
@@ -510,20 +510,20 @@ re-renders this repo's copies.
   4. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
   ```
   (This matches `reviewing-plan`'s existing "written and committed" premise at its
-  `when-fires`/`apply-fixes-commit` sections — those need no edit.)
+  `when-fires`/`apply-fixes-commit` sections: those need no edit.)
 
-- [ ] **Task 4.2 — dead workflow.md authority citations, five sites.**
+- [ ] **Task 4.2: dead workflow.md authority citations, five sites.**
 
-  (a) `templates/skills/proposing-adr/SKILL.md.tmpl` (`autonomous-rule`) — old:
+  (a) `templates/skills/proposing-adr/SKILL.md.tmpl` (`autonomous-rule`): old:
   ```
   8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval, per the project's autonomous post-brainstorm rule.
   ```
   new:
   ```
-  8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval — once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+  8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval: once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
   ```
 
-  (b) `templates/skills/executing-plans/SKILL.md.tmpl` (`notes-auto-commit`) — old:
+  (b) `templates/skills/executing-plans/SKILL.md.tmpl` (`notes-auto-commit`): old:
   ```
   - Auto-commit when green: tests pass + lint clean → commit without asking (per `{{ .layout.workflowRef }}`).
   ```
@@ -532,7 +532,7 @@ re-renders this repo's copies.
   - Auto-commit when green: tests pass + lint clean → commit without asking.
   ```
 
-  (c) `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` intro (line 12) — old:
+  (c) `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` intro (line 12): old:
   ```
   A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit that `{{ .layout.workflowRef }}` mandates before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
   ```
@@ -540,18 +540,18 @@ re-renders this repo's copies.
   ```
   A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
   ```
-  Same file, `audit-shape-selection` — old ending: `...to absorb the grep transcript noise per
+  Same file, `audit-shape-selection`: old ending: `...to absorb the grep transcript noise per
   `{{ .layout.workflowRef }}`.` → new ending: `...to absorb the grep transcript noise.`
-  Same file, `notes` item 1 — old:
+  Same file, `notes` item 1: old:
   ```
-  1. Authoritative source for the audit categories: `{{ .layout.workflowRef }}`. This skill is a procedural pointer, not a contract restatement — when the playbook prose evolves, follow the prose.
+  1. Authoritative source for the audit categories: `{{ .layout.workflowRef }}`. This skill is a procedural pointer, not a contract restatement: when the playbook prose evolves, follow the prose.
   ```
   new:
   ```
   1. This skill is the authoritative source for the audit categories.
   ```
 
-  (d) `templates/skills/debugging/SKILL.md.tmpl` notes — old:
+  (d) `templates/skills/debugging/SKILL.md.tmpl` notes: old:
   ```
   - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report per `{{ .layout.workflowRef }}`.
   ```
@@ -560,7 +560,7 @@ re-renders this repo's copies.
   - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
   ```
 
-- [ ] **Task 4.3 — `templates/skills/brainstorming/SKILL.md.tmpl`: terminal pointers on the
+- [ ] **Task 4.3: `templates/skills/brainstorming/SKILL.md.tmpl`: terminal pointers on the
   direct-implementation branches** (`terminal-handoff` section). Old:
   ```
      - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed.
@@ -577,18 +577,18 @@ re-renders this repo's copies.
   ```
      - **Neither** → implement directly without a plan or ADR, then invoke `{{ .prefix }}-reviewing-impl`.
   ```
-  (Unguarded chain-to-chain reference — the chain is disabled as a unit, matching this
+  (Unguarded chain-to-chain reference: the chain is disabled as a unit, matching this
   template's existing refs to `proposing-adr`/`writing-plans`.)
 
-- [ ] **Task 4.4 — `templates/skills/reviewing-impl/SKILL.md.tmpl`: layout-driven paths + the
+- [ ] **Task 4.4: `templates/skills/reviewing-impl/SKILL.md.tmpl`: layout-driven paths + the
   audit contradiction.** Four edits:
 
-  (a) `when-fires` — old: ``Exception: `docs/decisions/` changes always proceed so the
+  (a) `when-fires`: old: ``Exception: `docs/decisions/` changes always proceed so the
   `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.`` → new:
   ``Exception: `{{ .layout.adrDir }}/` changes always proceed so the `code-reviewer`'s
   doc-currency lens can confirm any ADR status-flip drift.``
 
-  (b) `sha-range-detection` planPath bullet — old:
+  (b) `sha-range-detection` planPath bullet: old:
   ```
      - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^docs/plans/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
   ```
@@ -597,29 +597,29 @@ re-renders this repo's copies.
      - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^{{ .layout.plansDir }}/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
   ```
 
-  (c) `docs-only-check` — old: ``Exception: `docs/decisions/` changes always proceed. If every
+  (c) `docs-only-check`: old: ``Exception: `docs/decisions/` changes always proceed. If every
   changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note
   and return.`` → new: ``Exception: `{{ .layout.adrDir }}/` changes always proceed. If every
   changed file is docs-only (outside `{{ .layout.adrDir }}/`), surface a `Skipped (docs-only)`
   note and return.``
 
-  (d) `run-audit` — old:
+  (d) `run-audit`: old:
   ```
   6. **Run the process-conformance audit.** After the code-review findings are routed, run
      `awf audit` (or this project's runner alias for it) over the branch. Treat `Error` findings as
-     blocking and `Warning` findings as advisory — surface both in the digest. The audit is advisory
+     blocking and `Warning` findings as advisory; surface both in the digest. The audit is advisory
      and never gates; it does not replace the gate or the drift check.
   ```
   new:
   ```
   6. **Run the process-conformance audit.** After the code-review findings are routed, run
      `awf audit` (or this project's runner alias for it) over the branch. `Error` findings block
-     this review from concluding — resolve them or escalate them as user-decision items before
+     this review from concluding: resolve them or escalate them as user-decision items before
      closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
      gates commits; it does not replace the gate or the drift check.
   ```
 
-- [ ] **Task 4.5 — `templates/skills/bugfix/SKILL.md.tmpl`: coherent numbering.** The
+- [ ] **Task 4.5: `templates/skills/bugfix/SKILL.md.tmpl`: coherent numbering.** The
   `{{ if .layout.docs.pitfalls }}`-gated step 3 breaks the sequence when the doc is disabled.
   Old (the `pitfalls-check` section plus the three following steps):
   ```
@@ -629,12 +629,12 @@ re-renders this repo's copies.
 
   4. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
-  5. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
+  5. **Commit** with Conventional Commits, typically `fix(<scope>): ...`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 
   6. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
   ```
   New (the pitfalls check becomes an unnumbered note attached to step 2, so the numbered list is
-  1–5 whether or not the pitfalls doc is enabled):
+  1-5 whether or not the pitfalls doc is enabled):
   ```
   <!-- awf:section pitfalls-check -->
   {{ if .layout.docs.pitfalls }}   Before writing the fix, check `{{ .layout.docs.pitfalls }}` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
@@ -642,23 +642,23 @@ re-renders this repo's copies.
 
   3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} (fast tier) is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
 
-  4. **Commit** with Conventional Commits — typically `fix(<scope>): …`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
+  4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`, body explains the *why*. Per `{{ .layout.workflowRef }}`, fixes ship with a regression test.
 
   5. **Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**
   ```
 
-- [ ] **Task 4.6 — `templates/skills/subagent-driven-development/SKILL.md.tmpl`: drop the
+- [ ] **Task 4.6: `templates/skills/subagent-driven-development/SKILL.md.tmpl`: drop the
   maintainer meta-sentence** (`per-task-review-note`). Old:
   ```
-  **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it — catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+  **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task. A project that relies solely on the terminal `{{ .prefix }}-reviewing-impl` review can drop this section; otherwise keep it: catching issues per task is cheaper than catching them in the final pass. Dropping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate: no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
   ```
   New:
   ```
-  **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task — catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate — no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+  **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task: catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate: no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
   ```
 
-- [ ] **Task 4.7 — `templates/agents/code-reviewer.md.tmpl`: gate rule in the agent's own
-  fix-application procedure** (Review procedure, step 5 — spine prose outside the sections).
+- [ ] **Task 4.7: `templates/agents/code-reviewer.md.tmpl`: gate rule in the agent's own
+  fix-application procedure** (Review procedure, step 5: spine prose outside the sections).
   Old:
   ```
   1. Apply mechanical and reasoned fixes directly as new commits; note rationale for reasoned fixes. Never `--amend` prior commits.
@@ -668,7 +668,7 @@ re-renders this repo's copies.
   1. Apply mechanical and reasoned fixes directly as new commits; run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} before each fix commit; note rationale for reasoned fixes. Never `--amend` prior commits.
   ```
 
-- [ ] **Task 4.8 — `internal/project/spine_test.go`: give `TestReviewingImplTemplate` a
+- [ ] **Task 4.8: `internal/project/spine_test.go`: give `TestReviewingImplTemplate` a
   layout.** The template now interpolates `.layout.adrDir`/`.layout.plansDir`; without them the
   golden render leaks `<no value>`. Old (in `TestReviewingImplTemplate`):
   ```go
@@ -682,7 +682,7 @@ re-renders this repo's copies.
   The existing `"docs/decisions/"` load-bearing assertion stays green via the rendered layout
   value.
 
-- [ ] **Task 4.9 — render + verify.** `go test ./internal/project/ -run 'Template|Golden|Fallback'`
+- [ ] **Task 4.9: render + verify.** `go test ./internal/project/ -run 'Template|Golden|Fallback'`
   → `ok`. Then `./x sync && ./x check` → exit 0; `git status --short` shows exactly the 9 skills
   × 2 targets, code-reviewer × 2 targets, and the lock:
   `.claude/skills/awf-{writing-plans,proposing-adr,executing-plans,refactor-coupling-audit,debugging,brainstorming,reviewing-impl,bugfix,subagent-driven-development}/SKILL.md`,
@@ -691,7 +691,7 @@ re-renders this repo's copies.
   `.claude/skills/awf-reviewing-impl/SKILL.md` renders `docs/decisions/` (from layout) and the
   new audit-blocking wording.
 
-- [ ] **Task 4.10 — gate + commit.** `./x gate`, then:
+- [ ] **Task 4.10: gate + commit.** `./x gate`, then:
   ```
   git add templates/skills/writing-plans/SKILL.md.tmpl templates/skills/proposing-adr/SKILL.md.tmpl templates/skills/executing-plans/SKILL.md.tmpl templates/skills/refactor-coupling-audit/SKILL.md.tmpl templates/skills/debugging/SKILL.md.tmpl templates/skills/brainstorming/SKILL.md.tmpl templates/skills/reviewing-impl/SKILL.md.tmpl templates/skills/bugfix/SKILL.md.tmpl templates/skills/subagent-driven-development/SKILL.md.tmpl templates/agents/code-reviewer.md.tmpl internal/project/spine_test.go .claude/skills/awf-writing-plans/SKILL.md .claude/skills/awf-proposing-adr/SKILL.md .claude/skills/awf-executing-plans/SKILL.md .claude/skills/awf-refactor-coupling-audit/SKILL.md .claude/skills/awf-debugging/SKILL.md .claude/skills/awf-brainstorming/SKILL.md .claude/skills/awf-reviewing-impl/SKILL.md .claude/skills/awf-bugfix/SKILL.md .claude/skills/awf-subagent-driven-development/SKILL.md .cursor/skills/awf-writing-plans/SKILL.md .cursor/skills/awf-proposing-adr/SKILL.md .cursor/skills/awf-executing-plans/SKILL.md .cursor/skills/awf-refactor-coupling-audit/SKILL.md .cursor/skills/awf-debugging/SKILL.md .cursor/skills/awf-brainstorming/SKILL.md .cursor/skills/awf-reviewing-impl/SKILL.md .cursor/skills/awf-bugfix/SKILL.md .cursor/skills/awf-subagent-driven-development/SKILL.md .claude/agents/code-reviewer.md .cursor/agents/code-reviewer.md .awf/awf.lock
   git commit -m "docs(awf): seal chain-prose seams across skill templates"
@@ -699,52 +699,52 @@ re-renders this repo's copies.
 
 ---
 
-## Phase 5 — template sweep: generality residue (B2)
+## Phase 5: template sweep: generality residue (B2)
 
-- [ ] **Task 5.1 — `templates/agents/code-reviewer.md.tmpl`: de-Go the universal lenses.**
+- [ ] **Task 5.1: `templates/agents/code-reviewer.md.tmpl`: de-Go the universal lenses.**
   Three edits inside `universal-lenses`/spine:
 
   (a) old:
   ```
-  1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (e.g. `%w` wrapping); SQL concurrency issues (wrong index, missing row lock).
+  1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (e.g. `%w` wrapping); SQL concurrency issues (wrong index, missing row lock).
   ```
   new:
   ```
-  1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (wrapping or context propagation, per the language's idiom); storage-layer concurrency (locking, transaction boundaries).
+  1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, race conditions, missing locks; error handling must preserve information (wrapping or context propagation, per the language's idiom); storage-layer concurrency (locking, transaction boundaries).
   ```
 
   (b) old:
   ```
-  1. **testing-discipline** — every behaviour-changing change has a regression test; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
+  1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
   ```
   new:
   ```
-  1. **testing-discipline** — every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
+  1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
   ```
 
   (c) old:
   ```
-  1. **doc-currency (impl-level)** — ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; CLAUDE.md shape preserved.
+  1. **doc-currency (impl-level)**: ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; CLAUDE.md shape preserved.
   ```
   new:
   ```
-  1. **doc-currency (impl-level)** — ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
+  1. **doc-currency (impl-level)**: ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
   ```
 
-- [ ] **Task 5.2 — `templates/agents/plan-reviewer.md.tmpl`: same codegen parenthetical**
+- [ ] **Task 5.2: `templates/agents/plan-reviewer.md.tmpl`: same codegen parenthetical**
   (`universal-lenses`, testing-discipline lens). Old:
   ```
-  1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+  1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the correct tier (runtime bugs → unit tests; codegen bugs → fixture tests); test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
   ```
   new:
   ```
-  1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+  1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
   ```
 
-- [ ] **Task 5.3 — `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`: language-neutral
+- [ ] **Task 5.3: `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`: language-neutral
   category prose.** Two edits:
 
-  (a) `category-2-sibling-tests` — old:
+  (a) `category-2-sibling-tests`: old:
   ```
   Grep `*_test.go` separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
   ```
@@ -753,24 +753,24 @@ re-renders this repo's copies.
   Grep your language's test files (e.g. `*_test.go`, `*.spec.ts`) separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
   ```
 
-  (b) `category-6-init-visibility` (section KEY stays `category-6-init-visibility`) — old
+  (b) `category-6-init-visibility` (section KEY stays `category-6-init-visibility`): old
   heading and final paragraph:
   ```
   ### 6. `init()` ordering and cross-package method visibility
   ```
   ```
-  `init()` ordering across packages is hard to reason about. Flag any cross-package `init()` chains the move would break — registry seeding and global-state setup are common load-bearing sites.
+  `init()` ordering across packages is hard to reason about. Flag any cross-package `init()` chains the move would break: registry seeding and global-state setup are common load-bearing sites.
   ```
   new:
   ```
   ### 6. Initialization ordering and cross-module visibility
   ```
   ```
-  Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions) — registry seeding and global-state setup are common load-bearing sites.
+  Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions): registry seeding and global-state setup are common load-bearing sites.
   ```
   The rest of the section body (its self-labeled Go examples) stays as is.
 
-- [ ] **Task 5.4 — `templates/docs/doc-standard.md.tmpl`: drop the two leaked ADR numbers**
+- [ ] **Task 5.4: `templates/docs/doc-standard.md.tmpl`: drop the two leaked ADR numbers**
   (`rules` section). Old rule endings:
   ```
   ...the dead-reference gate enforces this mechanically for markdown links (ADR-0020).
@@ -786,9 +786,9 @@ re-renders this repo's copies.
   ...using the full value from a file already under `docsDir` doubles the path.
   ```
 
-- [ ] **Task 5.5 — `templates/catalog.yaml`: two data/descriptor touch-ups.**
+- [ ] **Task 5.5: `templates/catalog.yaml`: two data/descriptor touch-ups.**
 
-  (a) code-reviewer `correctnessTraps` — old:
+  (a) code-reviewer `correctnessTraps`: old:
   ```yaml
         - description: boundary conditions at empty, zero, and nil inputs
   ```
@@ -797,7 +797,7 @@ re-renders this repo's copies.
         - description: boundary conditions at empty, zero, and null/nil inputs
   ```
 
-  (b) `gateDuration` descriptor — old:
+  (b) `gateDuration` descriptor: old:
   ```yaml
     - key: gateDuration
       kind: string
@@ -815,7 +815,7 @@ re-renders this repo's copies.
   ```
   This repo's `.awf/config.yaml` `gateDuration: ~15s` stays unchanged.
 
-- [ ] **Task 5.6 — `templates/skills/writing-plans/SKILL.md.tmpl`: stop double-tildeing the
+- [ ] **Task 5.6: `templates/skills/writing-plans/SKILL.md.tmpl`: stop double-tildeing the
   duration** (`gate-tier-note`; the current render shows `(~~15s)`). Old fragment:
   ```
   {{ with .vars.gateDuration }} (~{{ . }}){{ end }}
@@ -825,7 +825,7 @@ re-renders this repo's copies.
   {{ with .vars.gateDuration }} ({{ . }}){{ end }}
   ```
 
-- [ ] **Task 5.7 — render + verify.** `go test ./internal/catalog/ ./internal/project/` → `ok`
+- [ ] **Task 5.7: render + verify.** `go test ./internal/catalog/ ./internal/project/` → `ok`
   (this repo's code-reviewer sidecar overrides `correctnessTraps`, so the catalog-data tweak
   changes no rendered file here; the lens prose does). `./x sync && ./x check` → exit 0;
   `git status --short` shows exactly: `docs/doc-standard.md`,
@@ -834,7 +834,7 @@ re-renders this repo's copies.
   `.cursor/skills/`, `.awf/awf.lock`. Confirm `.claude/skills/awf-writing-plans/SKILL.md` now
   reads `(~15s)`.
 
-- [ ] **Task 5.8 — gate + commit.** `./x gate`, then:
+- [ ] **Task 5.8: gate + commit.** `./x gate`, then:
   ```
   git add templates/agents/code-reviewer.md.tmpl templates/agents/plan-reviewer.md.tmpl templates/skills/refactor-coupling-audit/SKILL.md.tmpl templates/docs/doc-standard.md.tmpl templates/catalog.yaml templates/skills/writing-plans/SKILL.md.tmpl docs/doc-standard.md .claude/agents/code-reviewer.md .claude/agents/plan-reviewer.md .cursor/agents/code-reviewer.md .cursor/agents/plan-reviewer.md .claude/skills/awf-refactor-coupling-audit/SKILL.md .claude/skills/awf-writing-plans/SKILL.md .cursor/skills/awf-refactor-coupling-audit/SKILL.md .cursor/skills/awf-writing-plans/SKILL.md .awf/awf.lock
   git commit -m "docs(awf): sweep language and repo residue from templates"
@@ -842,9 +842,9 @@ re-renders this repo's copies.
 
 ---
 
-## Phase 6 — template sweep: reference guards + AGENTS.md task-skill gating (B3)
+## Phase 6: template sweep: reference guards + AGENTS.md task-skill gating (B3)
 
-- [ ] **Task 6.1 — failing render test first.** Append to
+- [ ] **Task 6.1: failing render test first.** Append to
   `internal/project/skillrefs_test.go`:
 
   ```go
@@ -865,15 +865,15 @@ re-renders this repo's copies.
   listing `example-reviewing-impl` (bugfix), `example-brainstorming` (debugging), and
   `example-proposing-adr` (refactor-coupling-audit, roadmap-graduation).
 
-- [ ] **Task 6.2 — guard `templates/skills/bugfix/SKILL.md.tmpl`'s two `reviewing-impl` refs**
+- [ ] **Task 6.2: guard `templates/skills/bugfix/SKILL.md.tmpl`'s two `reviewing-impl` refs**
   (mirroring the file's existing `{{ if .skills.debugging }}` / `{{ if .skills.tdd }}` idiom;
   hyphenated keys need `index`). Old ("When to invoke" second bullet):
   ```
-  - **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
+  - **Non-trivial bugfix that ran the chain upstream**: `brainstorming → ... → implementation`. This skill IS that terminal implementation + `{{ .prefix }}-reviewing-impl` pair.
   ```
   new:
   ```
-  - **Non-trivial bugfix that ran the chain upstream** — `brainstorming → … → implementation`. This skill IS that terminal implementation + review pair{{ if index .skills "reviewing-impl" }} (`{{ .prefix }}-reviewing-impl`){{ end }}.
+  - **Non-trivial bugfix that ran the chain upstream**: `brainstorming → ... → implementation`. This skill IS that terminal implementation + review pair{{ if index .skills "reviewing-impl" }} (`{{ .prefix }}-reviewing-impl`){{ end }}.
   ```
   Old (final procedure step, renumbered to 5 in Phase 4):
   ```
@@ -884,7 +884,7 @@ re-renders this repo's copies.
   5. {{ if index .skills "reviewing-impl" }}**Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.**{{ else }}**Run the project's review step as the terminal step.**{{ end }}
   ```
 
-- [ ] **Task 6.3 — guard `templates/skills/debugging/SKILL.md.tmpl`'s two `brainstorming`
+- [ ] **Task 6.3: guard `templates/skills/debugging/SKILL.md.tmpl`'s two `brainstorming`
   refs.** Old ("When to invoke", final sentence):
   ```
   If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to `{{ .prefix }}-brainstorming` after confirming the root cause.
@@ -902,10 +902,10 @@ re-renders this repo's copies.
   If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
   ```
 
-- [ ] **Task 6.4 — guard the `proposing-adr` refs in the two audit/graduation task skills.**
+- [ ] **Task 6.4: guard the `proposing-adr` refs in the two audit/graduation task skills.**
 
   (a) `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` (`when-to-invoke`, last
-  sentence) — old:
+  sentence): old:
   ```
   This is a **task skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before `{{ .prefix }}-proposing-adr` finalises the Decision.
   ```
@@ -914,7 +914,7 @@ re-renders this repo's copies.
   This is a **task skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before {{ if index .skills "proposing-adr" }}`{{ .prefix }}-proposing-adr`{{ else }}the project's decision process{{ end }} finalises the Decision.
   ```
 
-  (b) `templates/skills/roadmap-graduation/SKILL.md.tmpl` (`graduate-single-commit`) — old:
+  (b) `templates/skills/roadmap-graduation/SKILL.md.tmpl` (`graduate-single-commit`): old:
   ```
   - **Architectural → ADR:** Invoke `{{ .prefix }}-proposing-adr`. Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).
   ```
@@ -923,27 +923,27 @@ re-renders this repo's copies.
   - **Architectural → ADR:** {{ if index .skills "proposing-adr" }}Invoke `{{ .prefix }}-proposing-adr`.{{ else }}Write the ADR per the project's decision process.{{ end }} Remove the roadmap entry in the same commit as the ADR introduction (or, if the ADR ships across multiple commits, in the final implementation commit).
   ```
 
-- [ ] **Task 6.5 — `templates/agents-doc/AGENTS.md.tmpl`: regate the task-skills sentence.**
+- [ ] **Task 6.5: `templates/agents-doc/AGENTS.md.tmpl`: regate the task-skills sentence.**
   The sentence is currently gated on `adr-lifecycle` alone; regate so each of the four task
   skills appears iff enabled and the sentence renders if ANY is enabled. The line stays inside
   the `{{ if .skills.brainstorming }}` Workflow block (ADR-0046's chain gate), so the guarantee
-  is scoped to chain-enabled configs — a chain-less task-skills-only config still renders no
+  is scoped to chain-enabled configs: a chain-less task-skills-only config still renders no
   Workflow prose at all, which is that gate's existing, deliberate behaviour. Old (one line,
   inside the `{{ if .skills.brainstorming }}` block):
   ```
   **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`.{{ if index .skills "adr-lifecycle" }} **Task skills** (as needed):{{ if .skills.tdd }} `{{ .prefix }}-tdd`,{{ end }}{{ if .skills.bugfix }} `{{ .prefix }}-bugfix`,{{ end }}{{ if .skills.debugging }} `{{ .prefix }}-debugging`,{{ end }} `{{ .prefix }}-adr-lifecycle`.{{ end }}
   ```
   New (one line; `$tasks` accumulates `", `<prefix>-<name>`"` per enabled skill and
-  `slice . 1` strips the leading comma — output is byte-identical to today's when all four are
+  `slice . 1` strips the leading comma; output is byte-identical to today's when all four are
   enabled):
   ```
   **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`.{{ $tasks := "" }}{{ if .skills.tdd }}{{ $tasks = printf "%s, `%s-tdd`" $tasks $.prefix }}{{ end }}{{ if .skills.bugfix }}{{ $tasks = printf "%s, `%s-bugfix`" $tasks $.prefix }}{{ end }}{{ if .skills.debugging }}{{ $tasks = printf "%s, `%s-debugging`" $tasks $.prefix }}{{ end }}{{ if index .skills "adr-lifecycle" }}{{ $tasks = printf "%s, `%s-adr-lifecycle`" $tasks $.prefix }}{{ end }}{{ with $tasks }} **Task skills** (as needed):{{ slice . 1 }}.{{ end }}
   ```
 
-- [ ] **Task 6.6 — spine-test updates for the new guards.** In
+- [ ] **Task 6.6: spine-test updates for the new guards.** In
   `internal/project/spine_test.go`:
 
-  (a) `TestBugfixTemplate` — old:
+  (a) `TestBugfixTemplate`: old:
   ```go
   		"skills": map[string]bool{"tdd": true, "debugging": true},
   ```
@@ -953,7 +953,7 @@ re-renders this repo's copies.
   ```
   (keeps the existing `"example-reviewing-impl"` load-bearing assertion green).
 
-  (b) `TestDebuggingTemplate` — old:
+  (b) `TestDebuggingTemplate`: old:
   ```go
   		"skills": map[string]bool{"tdd": true, "bugfix": true},
   ```
@@ -961,7 +961,7 @@ re-renders this repo's copies.
   ```go
   		"skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true},
   ```
-  and extend its `loadBearing` list — old:
+  and extend its `loadBearing` list: old:
   ```go
   		"example-bugfix",
   	}
@@ -973,7 +973,7 @@ re-renders this repo's copies.
   	}
   ```
 
-  (c) `TestUnsetFallbackRenders` — pin the new fallbacks. Old bugfix case:
+  (c) `TestUnsetFallbackRenders`: pin the new fallbacks. Old bugfix case:
   ```go
   			ban: []string{"example-tdd", "example-debugging", "``"},
   ```
@@ -1031,16 +1031,16 @@ re-renders this repo's copies.
   }
   ```
 
-- [ ] **Task 6.7 — render + verify.** `go test ./internal/project/` → `ok`, including the
+- [ ] **Task 6.7: render + verify.** `go test ./internal/project/` → `ok`, including the
   Task 6.1 test now green (the ADR-0046 dead-ref scan over the chain-less-with-task-skills
   config finds nothing). `./x sync && ./x check` → exit 0; `git status --short` shows exactly
   `.claude/skills/awf-{bugfix,debugging,refactor-coupling-audit}/SKILL.md`, the same three under
-  `.cursor/skills/`, and `.awf/awf.lock` — `AGENTS.md` must NOT appear (this repo enables all
+  `.cursor/skills/`, and `.awf/awf.lock`: `AGENTS.md` must NOT appear (this repo enables all
   four task skills, and the regated sentence renders byte-identically);
   `roadmap-graduation` is doc-gate-suppressed here (the `roadmap` doc is off), so its template
   change renders nothing.
 
-- [ ] **Task 6.8 — gate + commit.** `./x gate`, then:
+- [ ] **Task 6.8: gate + commit.** `./x gate`, then:
   ```
   git add templates/skills/bugfix/SKILL.md.tmpl templates/skills/debugging/SKILL.md.tmpl templates/skills/refactor-coupling-audit/SKILL.md.tmpl templates/skills/roadmap-graduation/SKILL.md.tmpl templates/agents-doc/AGENTS.md.tmpl internal/project/skillrefs_test.go internal/project/spine_test.go .claude/skills/awf-bugfix/SKILL.md .claude/skills/awf-debugging/SKILL.md .claude/skills/awf-refactor-coupling-audit/SKILL.md .cursor/skills/awf-bugfix/SKILL.md .cursor/skills/awf-debugging/SKILL.md .cursor/skills/awf-refactor-coupling-audit/SKILL.md .awf/awf.lock
   git commit -m "docs(awf): guard task-skill chain refs, regate AGENTS.md list"
@@ -1048,58 +1048,58 @@ re-renders this repo's copies.
 
 ---
 
-## Phase 7 — template sweep: lifecycle states + resync return edge (B4)
+## Phase 7: template sweep: lifecycle states + resync return edge (B4)
 
-- [ ] **Task 7.1 — `templates/skills/adr-lifecycle/SKILL.md.tmpl`: drop the two phantom
+- [ ] **Task 7.1: `templates/skills/adr-lifecycle/SKILL.md.tmpl`: drop the two phantom
   states.** The default `adrStates` table has exactly four states; `Deferred`/`Declined` are
   not among them. In `commit-templates`, delete these two lines (the section keeps its other
   three bullets):
   ```
-  - `docs(adr): defer NNNN; <one-line reason>` — `Proposed → Deferred`
-  - `docs(adr): decline NNNN; <one-line reason>` — `Proposed → Declined`
+  - `docs(adr): defer NNNN; <one-line reason>`: `Proposed → Deferred`
+  - `docs(adr): decline NNNN; <one-line reason>`: `Proposed → Declined`
   ```
   In `amendment-while-proposed`, keep the mechanism but reword deferral as a scope-shrink
-  amendment, not a transition — old:
+  amendment, not a transition: old:
   ```
   - **Deferral.** When scope shrinks mid-flight, open a `docs(adr): defer <title>; <reason>` commit that updates the ADR Context with what was learned. Deferred work lands in a follow-up ADR or the roadmap.
   ```
   new:
   ```
-  - **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why — commit as `docs(adr): amend NNNN — defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
+  - **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
   ```
 
-- [ ] **Task 7.2 — `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`: match the
+- [ ] **Task 7.2: `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`: match the
   amendment form** (`scope-shrink-rule`). Old:
   ```
   If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a `docs(adr): defer X` amendment to the Context section before implementation starts. Do not proceed with an underscoped ADR.
   ```
   new:
   ```
-  If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN — defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
+  If the audit reveals the refactor is larger than the ADR's originally proposed scope, **shrink the scope** with a Context-section amendment to the still-`Proposed` ADR (`docs(adr): amend NNNN, defer X`) recording what was deferred and why, before implementation starts. Do not proceed with an underscoped ADR.
   ```
-  (`roadmap-graduation` carries no defer reference — verified — leave it alone.)
+  (`roadmap-graduation` carries no defer reference (verified); leave it alone.)
 
-- [ ] **Task 7.3 — `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`: the ADR return
+- [ ] **Task 7.3: `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`: the ADR return
   edge.** Three edits:
 
-  (a) `classify-route-findings` — old:
+  (a) `classify-route-findings`: old:
   ```
   2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-     - **mechanical** — agent applies directly.
-     - **reasoned** — agent applies with one-line rationale.
-     - **user-decision** — present to the user and wait.
+     - **mechanical**: agent applies directly.
+     - **reasoned**: agent applies with one-line rationale.
+     - **user-decision**: present to the user and wait.
   ```
   new:
   ```
   2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:
-     - **mechanical** — agent applies directly.
-     - **reasoned** — agent applies with one-line rationale.
-     - **user-decision** — present to the user and wait.
+     - **mechanical**: agent applies directly.
+     - **reasoned**: agent applies with one-line rationale.
+     - **user-decision**: present to the user and wait.
 
-     **Return edge:** when a finding implicates the ADR itself — the plan is right and the still-`Proposed` decision text is wrong — do not bend the plan to stale decision text. Amend the ADR ({{ if index .skills "adr-lifecycle" }}via `{{ .prefix }}-adr-lifecycle`'s amendment-while-Proposed procedure{{ else }}an amendment-while-Proposed edit{{ end }}), re-run `{{ .prefix }}-reviewing-adr` on the amended ADR, then re-run this resync — looping until plan and ADR(s) converge.
+     **Return edge:** when a finding implicates the ADR itself (the plan is right and the still-`Proposed` decision text is wrong), do not bend the plan to stale decision text. Amend the ADR ({{ if index .skills "adr-lifecycle" }}via `{{ .prefix }}-adr-lifecycle`'s amendment-while-Proposed procedure{{ else }}an amendment-while-Proposed edit{{ end }}), re-run `{{ .prefix }}-reviewing-adr` on the amended ADR, then re-run this resync, looping until plan and ADR(s) converge.
   ```
 
-  (b) `apply-fixes-commit` — old final sentence:
+  (b) `apply-fixes-commit`: old final sentence:
   ```
   Only the plan file is edited; no other repository files are touched.
   ```
@@ -1108,7 +1108,7 @@ re-renders this repo's copies.
   Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.
   ```
 
-  (c) `notes` first bullet — old:
+  (c) `notes` first bullet: old:
   ```
   - This skill never edits the user's repository other than the plan file itself.
   ```
@@ -1116,18 +1116,18 @@ re-renders this repo's copies.
   ```
   - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
   ```
-  The narrowed-lenses note (next bullet) stands — the return edge re-enters through the ADR
-  review, not through extra resync lenses — so it needs no edit. The AGENTS.md/workflow.md
+  The narrowed-lenses note (next bullet) stands (the return edge re-enters through the ADR
+  review, not through extra resync lenses), so it needs no edit. The AGENTS.md/workflow.md
   "looping until they converge" prose is untouched; this edge is what makes it true.
 
-- [ ] **Task 7.4 — render + verify.** `go test ./internal/project/ -run 'Template|Fallback'` →
+- [ ] **Task 7.4: render + verify.** `go test ./internal/project/ -run 'Template|Fallback'` →
   `ok` (`TestReviewingPlanResyncTemplate` has no skills key, so the golden render exercises the
   `amendment-while-Proposed edit` fallback; `TestAdrLifecycleTemplate`'s assertions all
   survive). `./x sync && ./x check` → exit 0; `git status --short` shows exactly
   `.claude/skills/awf-{adr-lifecycle,refactor-coupling-audit,reviewing-plan-resync}/SKILL.md`,
   the same three under `.cursor/skills/`, and `.awf/awf.lock`.
 
-- [ ] **Task 7.5 — gate + commit.** `./x gate`, then:
+- [ ] **Task 7.5: gate + commit.** `./x gate`, then:
   ```
   git add templates/skills/adr-lifecycle/SKILL.md.tmpl templates/skills/refactor-coupling-audit/SKILL.md.tmpl templates/skills/reviewing-plan-resync/SKILL.md.tmpl .claude/skills/awf-adr-lifecycle/SKILL.md .claude/skills/awf-refactor-coupling-audit/SKILL.md .claude/skills/awf-reviewing-plan-resync/SKILL.md .cursor/skills/awf-adr-lifecycle/SKILL.md .cursor/skills/awf-refactor-coupling-audit/SKILL.md .cursor/skills/awf-reviewing-plan-resync/SKILL.md .awf/awf.lock
   git commit -m "docs(awf): align lifecycle states and add resync return edge"
@@ -1135,16 +1135,16 @@ re-renders this repo's copies.
 
 ---
 
-## Phase 8 — flip ADR-0050 to Implemented
+## Phase 8: flip ADR-0050 to Implemented
 
-- [ ] **Task 8.1 — status flip.** In
+- [ ] **Task 8.1: status flip.** In
   `docs/decisions/0050-reviewing-skill-and-agent-pairing.md`, change the frontmatter line
   `status: Proposed` → `status: Implemented`. All four `inv:` slugs
   (`reviewing-skill-agent-pairing`, `remove-agent-pairing-guard`, `add-skill-pairs-agent`,
   `reviewing-skill-specs-paired`) are backed by the `// invariant:` comments landed in Phases
-  1–3.
+  1-3.
 
-- [ ] **Task 8.2 — config-domain narrative.** ADR-0050's domains are `[config, rendering]`.
+- [ ] **Task 8.2: config-domain narrative.** ADR-0050's domains are `[config, rendering]`.
   The pairing rule is a config-layer contract, so append this sentence at the end of the single
   paragraph in `.awf/domains/parts/config/current-state.md` (after "...no schema bump, the
   tree's shape is unchanged."):
@@ -1156,7 +1156,7 @@ re-renders this repo's copies.
   spot surfaced, not where the fix lives); its `## Decisions` index picks up ADR-0050's new
   status from frontmatter automatically.
 
-- [ ] **Task 8.3 — regenerate + full verification.** Run:
+- [ ] **Task 8.3: regenerate + full verification.** Run:
   ```
   ./x sync && ./x check && ./x invariants && ./x gate
   ```
@@ -1168,13 +1168,13 @@ re-renders this repo's copies.
   `docs/domains/config.md`, `docs/domains/rendering.md`,
   `.awf/domains/parts/config/current-state.md`, `.awf/awf.lock`.
 
-- [ ] **Task 8.4 — commit.**
+- [ ] **Task 8.4: commit.**
   ```
   git add docs/decisions/0050-reviewing-skill-and-agent-pairing.md docs/decisions/ACTIVE.md docs/domains/config.md docs/domains/rendering.md .awf/domains/parts/config/current-state.md .awf/awf.lock
-  git commit -m "docs(adr): flip 0050 Implemented — skill/agent pairing shipped"
+  git commit -m "docs(adr): flip 0050 Implemented (skill/agent pairing shipped)"
   ```
   Body: names the four backed invariants and the seven preceding commits.
 
-- [ ] **Task 8.5 — advisory audit.** Run `./x audit` over the branch; surface findings to the
-  user (advisory only — `Warning` findings do not block, and the plan-file commits carry the
+- [ ] **Task 8.5: advisory audit.** Run `./x audit` over the branch; surface findings to the
+  user (advisory only: `Warning` findings do not block, and the plan-file commits carry the
   `plans` scope the audit config allows).

@@ -18,33 +18,33 @@ workflows that build, test, and publish awf trust more than they verify.
 - **Actions are tag-pinned, not SHA-pinned.** `.github/workflows/ci.yml` and
   `release.yml` reference `actions/checkout@v6`, `actions/setup-go@v6`,
   `goreleaser/goreleaser-action@v7`, and `codecov/codecov-action@v5` by major tag. A
-  moved or hijacked tag executes attacker code inside workflows — including the release
+  moved or hijacked tag executes attacker code inside workflows, including the release
   workflow, which holds `contents: write`. The GoReleaser *tool* additionally floats at
   `version: '~> v2'` in both workflows, and `docs/releasing.md` documents local preview
-  via `go run github.com/goreleaser/goreleaser/v2@latest` — although ADR-0030 Decision 2
+  via `go run github.com/goreleaser/goreleaser/v2@latest`, although ADR-0030 Decision 2
   claims a pinned version is used there, so the runbook has already drifted from its ADR.
 - **Nothing counteracts pin rot.** There is no `.github/dependabot.yml`; SHA pins
   without an updater silently stale.
 - **The release workflow never runs the test suite.** `release.yml` verifies the tag
   against `project.Version` and runs `cmd/releasecheck` (ADR-0078), then builds and
   publishes. `ci.yml` has no tag trigger. A tag pushed on a commit that never went
-  through CI — an unpushed or side-branch commit — ships untested binaries. The gate
+  through CI (an unpushed or side-branch commit) ships untested binaries. The gate
   needs nothing exotic: `ci.yml`'s gate job already runs `./x gate` and `./x check` on
   `ubuntu-latest` with only checkout + setup-go.
 - **Fork and dependabot PRs cannot pass CI.** Both Codecov upload steps set
   `fail_ci_if_error: true` and use `secrets.CODECOV_TOKEN`; PRs from forks (and from
   dependabot, which draws from a separate secret store) run without repo secrets, so
-  the upload step fails their CI. Coverage *enforcement* does not live there — the
+  the upload step fails their CI. Coverage *enforcement* does not live there: the
   100% floor is `cmd/covercheck` inside `./x gate` (ADR-0012); Codecov is reporting
   only, and both its statuses are informational (ADR-0065 Decision 4).
 - **The checksum is integrity, not authenticity.** The rendered bootstrap verifies its
-  download's SHA-256 against `checksums.txt` (ADR-0040) — but that file is published by
+  download's SHA-256 against `checksums.txt` (ADR-0040), but that file is published by
   the same release workflow from the same token. An attacker who can write a release
   can rewrite binary and checksums together. The checksum protects against corrupted
   and truncated downloads, never against a compromised publisher.
 
 Prior art this decision leans on: the repo-local checker-cmd idiom (`cmd/covercheck`,
-`cmd/deadcodecheck`, `cmd/releasecheck` — a coverage-ignored `main` wrapping a
+`cmd/deadcodecheck`, `cmd/releasecheck`: a coverage-ignored `main` wrapping a
 unit-tested `run` seam), and the release-workflow wiring test
 (`cmd/releasecheck/main_test.go`) that reads `.github/workflows/release.yml` by relative
 path and asserts step ordering.
@@ -74,16 +74,16 @@ path and asserts step ordering.
    configures weekly `github-actions` updates (which bump SHA pins and their version
    comments) and weekly `gomod` updates. Accepted and expected: a gomod bump of a
    pinned tool dependency (golangci-lint, deadcode) may legitimately red the gate on
-   the bot's PR — that is signal about the new tool version, not a bug. Dependabot PRs
+   the bot's PR: that is signal about the new tool version, not a bug. Dependabot PRs
    run without repository secrets, which Decision 4 makes survivable.
 
 3. **The release workflow refuses untested and off-main commits.** `release.yml` gains,
-   between the ADR-0078 release checks and the GoReleaser step: (a) an ancestry check —
+   between the ADR-0078 release checks and the GoReleaser step: (a) an ancestry check,
    `git fetch origin main` followed by `git merge-base --is-ancestor HEAD origin/main`
-   (`HEAD`, not `$GITHUB_SHA`, so an annotated tag's object id cannot bite) — refusing
+   (`HEAD`, not `$GITHUB_SHA`, so an annotated tag's object id cannot bite), refusing
    any tag whose commit is not on `origin/main`; and (b) `./x gate` and `./x check`, so
    the published commit passes the full gate in the same run that builds it. Accepted
-   constraint: a hotfix tag on an unmerged branch is refused by design — land it on
+   constraint: a hotfix tag on an unmerged branch is refused by design: land it on
    `main` first. The wiring test in `cmd/releasecheck/main_test.go` extends to assert
    the ancestry, gate, and check steps appear before the GoReleaser step.
 
@@ -99,23 +99,23 @@ path and asserts step ordering.
    required branch-protection check, or skipped uploads would wedge fork PRs.
 
 5. **The tamper posture is documented acceptance.** The SHA-256 verification in the
-   bootstrap and in `checksums.txt` is documented — in `docs/releasing.md` — as an
+   bootstrap and in `checksums.txt` is documented (in `docs/releasing.md`) as an
    integrity check only: it does not authenticate the publisher, and a compromise of
    the release workflow or its token can rewrite binary and checksums together. The
-   accepted mitigations are exactly Decisions 1–3 (pinned actions shrink the code that
+   accepted mitigations are exactly Decisions 1-3 (pinned actions shrink the code that
    runs with `contents: write`; the gate-on-tag step means that code is at least the
    tested tree). Running the test suite and its module-proxy tool downloads inside the
    write-privileged release workflow is part of this accepted surface. Artifact
    attestation and cosign signing are deliberately deferred, to be revisited at 1.0 or
-   on adopter demand — not silently omitted.
+   on adopter demand, not silently omitted.
 
 ## Invariants
 
-- `invariant: workflow-actions-sha-pinned` — `cmd/pincheck`, run by `./x gate`, exits non-zero
+- `invariant: workflow-actions-sha-pinned`: `cmd/pincheck`, run by `./x gate`, exits non-zero
   when any remote `uses:` reference under `.github/workflows/` is not pinned to a full
   40-hex commit SHA (repo-local `./` refs exempt, `docker://` refs digest-pinned), or
   when a `goreleaser-action` `version:` input is not an exact semver version.
-- `invariant: release-gate-on-tag` — a gate test asserts `release.yml` runs the
+- `invariant: release-gate-on-tag`: a gate test asserts `release.yml` runs the
   ancestry check, `./x gate`, and `./x check` before the GoReleaser step.
 - `.github/dependabot.yml` covers the `github-actions` and `gomod` ecosystems.
 - `.github/workflows/ci.yml` maps `secrets.CODECOV_TOKEN` into a job-level env var and
@@ -127,20 +127,20 @@ path and asserts step ordering.
 ## Consequences
 
 - The release path gains real preconditions: a tag on an untested or off-main commit
-  fails before any artifact builds. Release runs get ~2–3 minutes slower (the gate).
-  The undo-a-bad-tag runbook flow is unaffected — the runbook pushes `main` before
+  fails before any artifact builds. Release runs get ~2-3 minutes slower (the gate).
+  The undo-a-bad-tag runbook flow is unaffected: the runbook pushes `main` before
   tagging, so conforming tags always pass the ancestry check.
 - SHA-pinned `uses:` lines are unreadable without their version comments and would rot
-  without dependabot — Decisions 1 and 2 only make sense together, and the pin check
+  without dependabot: Decisions 1 and 2 only make sense together, and the pin check
   makes the policy self-enforcing rather than reviewer-enforced.
 - Weekly dependabot PRs add merge traffic. The 100% gate and CI make them cheap to
   judge; a red gate on a tool bump is triage signal, not noise.
 - External contributors (and dependabot) get green CI without secrets, at the cost of
-  no Codecov report on those PRs — acceptable because both Codecov statuses are
+  no Codecov report on those PRs: acceptable because both Codecov statuses are
   informational and enforcement is local to the gate.
 - A new repo-local binary (`cmd/pincheck`) joins the 100%-coverage and dead-code gates;
   marginal cost is one tested `run` function, per the established idiom.
-- The two GoReleaser preview commands in `docs/releasing.md` remain convention-pinned —
+- The two GoReleaser preview commands in `docs/releasing.md` remain convention-pinned:
   `cmd/pincheck` parses only workflow files. Accepted: drift there affects only local
   preview, and the workflow-side tool pin is machine-enforced.
 - Adopters get no stronger authenticity guarantee than before; the ADR converts an
@@ -148,7 +148,7 @@ path and asserts step ordering.
   re-evaluation trigger (1.0 / adopter demand).
 - Three GitHub-side behaviors are verified live at implementation rather than in tests
   (step-level `if:` on a secret-mapped env var; `goreleaser-action` accepting an exact
-  `version:`; dependabot maintaining SHA pins + comments) — all standard, none
+  `version:`; dependabot maintaining SHA pins + comments), all standard, none
   repo-testable.
 
 ## Alternatives Considered

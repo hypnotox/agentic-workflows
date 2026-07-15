@@ -1,7 +1,7 @@
 # Plan: Docs Default Content and Per-Doc Section Taxonomy
 
 Implements **ADR-0011** (`docs/decisions/0011-docs-default-content-and-section-taxonomy.md`,
-status `Accepted`). The design, rationale, and invariants live in the ADR — this plan is the
+status `Accepted`). The design, rationale, and invariants live in the ADR; this plan is the
 execution record only. Do not duplicate rationale here; link.
 
 ## Goal
@@ -47,27 +47,27 @@ green, so a single ordered session is appropriate. One commit per phase.
 ## File structure
 
 - **Created:**
-  - `internal/project/docs_sections_test.go` — parity test + section-orphan test.
-  - `.claude/awf/docs/parts/architecture/{overview,components,data-flow,dependencies}.md` — migrated repo override.
+  - `internal/project/docs_sections_test.go`: parity test + section-orphan test.
+  - `.claude/awf/docs/parts/architecture/{overview,components,data-flow,dependencies}.md`: migrated repo override.
 - **Modified:**
-  - `internal/project/project.go` — section-level orphan detection + `declaredSections` helper.
-  - `templates/catalog.yaml` — per-doc `sections`; `awf-setup` added to `agentsDoc.sections`.
-  - `templates/docs/{architecture,workflow,testing,development,debugging,pitfalls,glossary,roadmap}.md.tmpl` — default content.
-  - `templates/agents-doc/AGENTS.md.tmpl` — `awf-setup` marker block.
-  - `docs/decisions/0011-docs-default-content-and-section-taxonomy.md` — status flip (final phase).
+  - `internal/project/project.go`: section-level orphan detection + `declaredSections` helper.
+  - `templates/catalog.yaml`: per-doc `sections`; `awf-setup` added to `agentsDoc.sections`.
+  - `templates/docs/{architecture,workflow,testing,development,debugging,pitfalls,glossary,roadmap}.md.tmpl`: default content.
+  - `templates/agents-doc/AGENTS.md.tmpl`: `awf-setup` marker block.
+  - `docs/decisions/0011-docs-default-content-and-section-taxonomy.md`: status flip (final phase).
   - Re-synced: `docs/architecture.md`, `AGENTS.md`, `.claude/awf/awf.lock`, `docs/decisions/ACTIVE.md`.
 - **Deleted:**
-  - `.claude/awf/docs/parts/architecture/body.md` — replaced by the four section parts.
+  - `.claude/awf/docs/parts/architecture/body.md`: replaced by the four section parts.
 
 ---
 
-## Phase 1 — Section-orphan detection + parity/orphan tests
+## Phase 1: Section-orphan detection + parity/orphan tests
 
 Lands the enforcement first. Current templates (single `body`) satisfy parity, so the parity test
 is green from the start; the orphan test derives its valid section from the live catalog, so it
 stays green across every later phase.
 
-- [ ] **Task 1.1 — Add `declaredSections` helper and section-level orphan detection in `internal/project/project.go`.**
+- [ ] **Task 1.1: Add `declaredSections` helper and section-level orphan detection in `internal/project/project.go`.**
 
   Replace the parts loop inside `orphans()` (currently):
   ```go
@@ -145,7 +145,7 @@ stays green across every later phase.
   }
   ```
 
-- [ ] **Task 1.2 — Create `internal/project/docs_sections_test.go` with the parity and orphan tests.**
+- [ ] **Task 1.2: Create `internal/project/docs_sections_test.go` with the parity and orphan tests.**
 
   Exact file content:
   ```go
@@ -253,7 +253,7 @@ stays green across every later phase.
   }
   ```
 
-- [ ] **Task 1.3 — Verify and commit Phase 1.**
+- [ ] **Task 1.3: Verify and commit Phase 1.**
   ```
   ./x gate
   ```
@@ -274,19 +274,19 @@ stays green across every later phase.
 
 ---
 
-## Phase 2 — Canonical-prose docs (workflow, testing, development)
+## Phase 2: Canonical-prose docs (workflow, testing, development)
 
 These docs are not enabled in this repo, so no re-sync is needed; the parity test (Phase 1) gates
 the catalog↔template match.
 
-- [ ] **Task 2.1 — Rewrite `templates/docs/workflow.md.tmpl`.** Full file content:
+- [ ] **Task 2.1: Rewrite `templates/docs/workflow.md.tmpl`.** Full file content:
   ```
   # Workflow
 
   <!-- awf:section principles -->
   ## Principles
 
-  You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change — reality and its docs move together, the gate is green before every commit, and each commit carries exactly one concern.
+  You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change: reality and its docs move together, the gate is green before every commit, and each commit carries exactly one concern.
   <!-- awf:end -->
 
   <!-- awf:section chain -->
@@ -298,7 +298,7 @@ the catalog↔template match.
   brainstorming → planning (if warranted) → ADR (if warranted) → review → implementation → review
   ```
 
-  Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* — multi-commit or interdependent steps. An **ADR** is warranted by *load-bearing-ness* — a design decision the project must remember. Many tasks need neither; few need both. Reviews are lightweight: the grounding-check inside brainstorming subsumes plan/ADR review, and implementation review is the single terminal gate.
+  Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity* (multi-commit or interdependent steps). An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember). Many tasks need neither; few need both. Reviews are lightweight: the grounding-check inside brainstorming subsumes plan/ADR review, and implementation review is the single terminal gate.
   <!-- awf:end -->
 
   <!-- awf:section commit-discipline -->
@@ -310,18 +310,18 @@ the catalog↔template match.
   <!-- awf:section doc-currency -->
   ## Documentation currency
 
-  Documentation travels with the change that makes it true. When you change behaviour, update the affected docs — this file, the agent guide, ADRs, and any reference tables — in the same commit. A separate "docs later" commit is drift waiting to happen.
+  Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, ADRs, and any reference tables) in the same commit. A separate "docs later" commit is drift waiting to happen.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 2.2 — Rewrite `templates/docs/testing.md.tmpl`.** Full file content:
+- [ ] **Task 2.2: Rewrite `templates/docs/testing.md.tmpl`.** Full file content:
   ```
   # Testing
 
   <!-- awf:section gate -->
   ## The gate
 
-  A single gate command runs the project's checks — tests, vet/lint, and any drift verification — and must be green before every commit. Treat a red gate as a blocker, never a warning: fix the cause or revert, do not commit around it.
+  A single gate command runs the project's checks (tests, vet/lint, and any drift verification) and must be green before every commit. Treat a red gate as a blocker, never a warning: fix the cause or revert, do not commit around it.
   <!-- awf:end -->
 
   <!-- awf:section tiers -->
@@ -337,7 +337,7 @@ the catalog↔template match.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 2.3 — Rewrite `templates/docs/development.md.tmpl`.** Full file content:
+- [ ] **Task 2.3: Rewrite `templates/docs/development.md.tmpl`.** Full file content:
   ```
   # Development
 
@@ -350,7 +350,7 @@ the catalog↔template match.
   <!-- awf:section command-runner -->
   ## Command runner
 
-  This project drives common tasks through a single command runner so humans and agents share one interface — build, test, the gate, and any sync/check steps run the same way for everyone. _Name the entry point and list its subcommands, so a newcomer never has to reconstruct a raw command by hand._
+  This project drives common tasks through a single command runner so humans and agents share one interface: build, test, the gate, and any sync/check steps run the same way for everyone. _Name the entry point and list its subcommands, so a newcomer never has to reconstruct a raw command by hand._
   <!-- awf:end -->
 
   <!-- awf:section dependencies -->
@@ -360,7 +360,7 @@ the catalog↔template match.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 2.4 — Update `templates/catalog.yaml` `sections` for these three docs.** Apply three edits:
+- [ ] **Task 2.4: Update `templates/catalog.yaml` `sections` for these three docs.** Apply three edits:
 
   Under `workflow:`, replace `    sections: [body]` with:
   ```
@@ -376,7 +376,7 @@ the catalog↔template match.
   ```
   (Each `sections: [body]` is disambiguated by the unique `title:`/`desc:` lines directly above it.)
 
-- [ ] **Task 2.5 — Verify and commit Phase 2.**
+- [ ] **Task 2.5: Verify and commit Phase 2.**
   ```
   ./x gate
   ```
@@ -394,11 +394,11 @@ the catalog↔template match.
 
 ---
 
-## Phase 3 — Skeleton docs (debugging, pitfalls, glossary, roadmap)
+## Phase 3: Skeleton docs (debugging, pitfalls, glossary, roadmap)
 
 Also not enabled in this repo; gated by the parity test.
 
-- [ ] **Task 3.1 — Rewrite `templates/docs/debugging.md.tmpl`.** Full file content:
+- [ ] **Task 3.1: Rewrite `templates/docs/debugging.md.tmpl`.** Full file content:
   ```
   # Debugging
 
@@ -415,7 +415,7 @@ Also not enabled in this repo; gated by the parity test.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 3.2 — Rewrite `templates/docs/pitfalls.md.tmpl`.** Full file content (single section, body directly under the H1 — no redundant `##`):
+- [ ] **Task 3.2: Rewrite `templates/docs/pitfalls.md.tmpl`.** Full file content (single section, body directly under the H1, no redundant `##`):
   ```
   # Pitfalls
 
@@ -424,7 +424,7 @@ Also not enabled in this repo; gated by the parity test.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 3.3 — Rewrite `templates/docs/glossary.md.tmpl`.** Full file content:
+- [ ] **Task 3.3: Rewrite `templates/docs/glossary.md.tmpl`.** Full file content:
   ```
   # Glossary
 
@@ -437,14 +437,14 @@ Also not enabled in this repo; gated by the parity test.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 3.4 — Rewrite `templates/docs/roadmap.md.tmpl`.** Full file content:
+- [ ] **Task 3.4: Rewrite `templates/docs/roadmap.md.tmpl`.** Full file content:
   ```
   # Roadmap
 
   <!-- awf:section ideas -->
   ## Ideas
 
-  _Uncommitted ideas and directions under consideration — things that are not yet planned work but are worth not forgetting._
+  _Uncommitted ideas and directions under consideration: things that are not yet planned work but are worth not forgetting._
   <!-- awf:end -->
 
   <!-- awf:section deferred -->
@@ -454,7 +454,7 @@ Also not enabled in this repo; gated by the parity test.
   <!-- awf:end -->
   ```
 
-- [ ] **Task 3.5 — Update `templates/catalog.yaml` `sections` for these four docs.** Apply four edits:
+- [ ] **Task 3.5: Update `templates/catalog.yaml` `sections` for these four docs.** Apply four edits:
 
   Under `debugging:`, replace `    sections: [body]` with:
   ```
@@ -473,7 +473,7 @@ Also not enabled in this repo; gated by the parity test.
       sections: [ideas, deferred]
   ```
 
-- [ ] **Task 3.6 — Verify and commit Phase 3.**
+- [ ] **Task 3.6: Verify and commit Phase 3.**
   ```
   ./x gate
   ```
@@ -491,21 +491,21 @@ Also not enabled in this repo; gated by the parity test.
 
 ---
 
-## Phase 4 — Architecture doc + repo self-migration
+## Phase 4: Architecture doc + repo self-migration
 
 This repo enables `architecture` and overrides it via `.claude/awf/docs/parts/architecture/body.md`.
 The catalog change, the template rewrite, the new parts, the deletion of `body.md`, and the re-sync
 must land in **one commit** so `./x check` stays clean (after the catalog change, `body` is no
 longer a declared section, so leaving `body.md` would itself be flagged by the new orphan check).
 
-- [ ] **Task 4.1 — Rewrite `templates/docs/architecture.md.tmpl`.** Full file content:
+- [ ] **Task 4.1: Rewrite `templates/docs/architecture.md.tmpl`.** Full file content:
   ```
   # Architecture
 
   <!-- awf:section overview -->
   ## Overview
 
-  _One paragraph: what this system is and its shape at a glance — the problem it solves and how its major pieces fit together._
+  _One paragraph: what this system is and its shape at a glance: the problem it solves and how its major pieces fit together._
   <!-- awf:end -->
 
   <!-- awf:section components -->
@@ -517,7 +517,7 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   <!-- awf:section data-flow -->
   ## Data flow
 
-  _How a request, build, or command moves through the system end to end — the path from entry point to result, and where the important transformations happen._
+  _How a request, build, or command moves through the system end to end: the path from entry point to result, and where the important transformations happen._
   <!-- awf:end -->
 
   <!-- awf:section dependencies -->
@@ -527,12 +527,12 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   <!-- awf:end -->
   ```
 
-- [ ] **Task 4.2 — Update `templates/catalog.yaml` `sections` for architecture.** Under `architecture:`, replace `    sections: [body]` with:
+- [ ] **Task 4.2: Update `templates/catalog.yaml` `sections` for architecture.** Under `architecture:`, replace `    sections: [body]` with:
   ```
       sections: [overview, components, data-flow, dependencies]
   ```
 
-- [ ] **Task 4.3 — Create the four migrated repo parts** (carrying this repo's real architecture content, redistributed from the old `body.md`; each includes its `##` heading).
+- [ ] **Task 4.3: Create the four migrated repo parts** (carrying this repo's real architecture content, redistributed from the old `body.md`; each includes its `##` heading).
 
   `.claude/awf/docs/parts/architecture/overview.md`:
   ```
@@ -545,15 +545,15 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
 
   The config tree (ADR-0009) lives under a single `.claude/awf/` root:
 
-  - **`config.yaml`** — the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
-    arrays (`skills`, `agents`, `docs`, `hooks` — a name's presence enables that target).
-  - **`<kind>/<target>.yaml`** — optional per-target sidecars holding a target's structured `data`,
+  - **`config.yaml`**: the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
+    arrays (`skills`, `agents`, `docs`, `hooks`: a name's presence enables that target).
+  - **`<kind>/<target>.yaml`**: optional per-target sidecars holding a target's structured `data`,
     its `sections` overrides (`drop` / `replaceWith`), and its `local` flag.
-  - **`<kind>/parts/<target>/<section>.md`** — convention parts: if present, the file replaces that
+  - **`<kind>/parts/<target>/<section>.md`**: convention parts: if present, the file replaces that
     section's body, no `replaceWith` pointer needed. Per-section precedence is
     `drop > explicit replaceWith > convention part > template default`.
-  - **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`** — the always-on agent-guide singleton.
-  - **`awf.lock`** — the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-target
+  - **`agents-doc.yaml`** + **`parts/agents-doc/<section>.md`**: the always-on agent-guide singleton.
+  - **`awf.lock`**: the relocated, schema-versioned lock; each entry's `ConfigHash` is a per-target
     projection over exactly that file's inputs, so a sidecar or part edit reflags only that target.
   ```
 
@@ -561,24 +561,24 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   ```
   ## Components
 
-  - **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup`, `upgrade`
+  - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup`, `upgrade`
     subcommands. `sync`/`check` gate on the schema generation before opening the project.
-  - **`internal/config/`** — loads `.claude/awf/config.yaml` plus keyed sidecars; owns the config schema.
-  - **`internal/catalog/`** — reads `templates/catalog.yaml`; declares the available skills, agents,
+  - **`internal/config/`**: loads `.claude/awf/config.yaml` plus keyed sidecars; owns the config schema.
+  - **`internal/catalog/`**: reads `templates/catalog.yaml`; declares the available skills, agents,
     hooks, docs, and their sections.
-  - **`internal/render/`** — Go `text/template` rendering with `missingkey=zero`; assembles section
+  - **`internal/render/`**: Go `text/template` rendering with `missingkey=zero`; assembles section
     overlays (sidecar overrides + convention parts) then executes the template.
-  - **`internal/manifest/`** — reads and writes `.claude/awf/awf.lock` (schema-versioned); drives
+  - **`internal/manifest/`**: reads and writes `.claude/awf/awf.lock` (schema-versioned); drives
     drift detection for `awf check`.
-  - **`internal/migrate/`** — ordered schema-migration registry (ADR-0010); the `tree-layout`
+  - **`internal/migrate/`**: ordered schema-migration registry (ADR-0010); the `tree-layout`
     migration and the frozen legacy reader; powers `awf upgrade` and the sync/check version gate.
-  - **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and
+  - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
     `Check()`; golden tests live here.
-  - **`internal/frontmatter/`** — the single parser for `---`-delimited YAML frontmatter; used by
+  - **`internal/frontmatter/`**: the single parser for `---`-delimited YAML frontmatter; used by
     `internal/adr` and skill/agent validation.
-  - **`internal/adr/`** — parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their
+  - **`internal/adr/`**: parses ADRs and regenerates `docs/decisions/ACTIVE.md` from their
     frontmatter; invoked by `awf sync` (`./x sync`).
-  - **`templates/`** — embedded skill, agent, hook, doc, and agent-guide templates; the catalog
+  - **`templates/`**: embedded skill, agent, hook, doc, and agent-guide templates; the catalog
     lives at `templates/catalog.yaml`.
   ```
 
@@ -591,7 +591,7 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   `drop > explicit replaceWith > convention part > template default`), executes `text/template`
   under `missingkey=zero`, rejects any `<no value>` output, writes the rendered files, and stamps
   each one's per-target `ConfigHash` into `.claude/awf/awf.lock`. A `check` re-renders in memory and
-  compares against the lock — reporting drift, orphaned sidecars/parts, and stale `ACTIVE.md` — while
+  compares against the lock (reporting drift, orphaned sidecars/parts, and stale `ACTIVE.md`) while
   a stale schema generation hard-fails with a "run `awf upgrade`" gate; `awf upgrade` runs the
   registered migrations up to current and re-syncs.
   ```
@@ -600,20 +600,20 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   ```
   ## Key dependencies
 
-  - **`gopkg.in/yaml.v3`** — strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
+  - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
     unknown keys fail fast rather than rendering silently wrong output.
-  - **`text/template`** (standard library) — the rendering engine, always executed with
+  - **`text/template`** (standard library): the rendering engine, always executed with
     `missingkey=zero` so an unset optional var collapses to empty instead of leaking a token.
-  - **`golangci-lint`** — pinned as a `go tool` dependency and run by the gate (`./x gate`); this
+  - **`golangci-lint`**: pinned as a `go tool` dependency and run by the gate (`./x gate`); this
     repo only, not part of the rendered standard.
   ```
 
-- [ ] **Task 4.4 — Delete the old override part.**
+- [ ] **Task 4.4: Delete the old override part.**
   ```
   git rm .claude/awf/docs/parts/architecture/body.md
   ```
 
-- [ ] **Task 4.5 — Re-sync and verify.**
+- [ ] **Task 4.5: Re-sync and verify.**
   ```
   ./x sync
   ```
@@ -637,7 +637,7 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   ```
   Expected: `4`.
 
-- [ ] **Task 4.6 — Commit Phase 4.**
+- [ ] **Task 4.6: Commit Phase 4.**
   ```
   git add templates/docs/architecture.md.tmpl templates/catalog.yaml \
     .claude/awf/docs/parts/architecture/overview.md \
@@ -652,28 +652,28 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
 
 ---
 
-## Phase 5 — Always-on `awf-setup` AGENTS.md section
+## Phase 5: Always-on `awf-setup` AGENTS.md section
 
-- [ ] **Task 5.1 — Add the `awf-setup` marker block to `templates/agents-doc/AGENTS.md.tmpl`.**
-  Insert it as the **first** section — between the intro paragraph and the existing
+- [ ] **Task 5.1: Add the `awf-setup` marker block to `templates/agents-doc/AGENTS.md.tmpl`.**
+  Insert it as the **first** section, between the intro paragraph and the existing
   `<!-- awf:section you-and-this-project -->` line. Insert exactly:
   ```
   <!-- awf:section awf-setup -->
   ## Working with awf
 
-  This project's `.claude/` skills, agents, and git hooks — and this guide — are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.claude/awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
+  This project's `.claude/` skills, agents, and git hooks (and this guide) are rendered by [awf](https://github.com/hypnotox/agentic-workflows) from the `.claude/awf/` config tree. Every rendered file is generated: never hand-edit one; change the config and re-render.
 
-  - **Toggle a target** — add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.claude/awf/config.yaml`.
-  - **Set a variable** — edit `vars` in `.claude/awf/config.yaml`.
-  - **Override one section of a target** — drop a convention part at `.claude/awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.claude/awf/docs/parts/<name>/<section>.md`.
-  - **After any config or part edit** — run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
+  - **Toggle a target**: add or remove its name in the enable arrays (`skills`, `agents`, `docs`, `hooks`) in `.claude/awf/config.yaml`.
+  - **Set a variable**: edit `vars` in `.claude/awf/config.yaml`.
+  - **Override one section of a target**: drop a convention part at `.claude/awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. For a doc that path is `.claude/awf/docs/parts/<name>/<section>.md`.
+  - **After any config or part edit**: run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
   <!-- awf:end -->
 
   ```
   (Keep one blank line after the new `<!-- awf:end -->` and before
   `<!-- awf:section you-and-this-project -->`.)
 
-- [ ] **Task 5.2 — Add `awf-setup` to `agentsDoc.sections` in `templates/catalog.yaml`.**
+- [ ] **Task 5.2: Add `awf-setup` to `agentsDoc.sections` in `templates/catalog.yaml`.**
   `agentsDoc.sections` already holds six entries (`you-and-this-project`, `identity`,
   `invariants`, `workflow`, `commands`, `document-map`); insert `awf-setup` as the new first
   list item, leaving the rest in place. Replace the three lines:
@@ -692,7 +692,7 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   (The `- you-and-this-project` line is the first under `agentsDoc.sections:`; the remaining five
   entries follow unchanged.)
 
-- [ ] **Task 5.3 — Re-sync and verify.**
+- [ ] **Task 5.3: Re-sync and verify.**
   ```
   ./x sync
   ```
@@ -713,7 +713,7 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
   ```
   Expected: one match.
 
-- [ ] **Task 5.4 — Commit Phase 5.**
+- [ ] **Task 5.4: Commit Phase 5.**
   ```
   git add templates/agents-doc/AGENTS.md.tmpl templates/catalog.yaml AGENTS.md .claude/awf/awf.lock
   git commit -m "feat(awf): add always-on \"Working with awf\" AGENTS.md section"
@@ -721,17 +721,17 @@ longer a declared section, so leaving `body.md` would itself be flagged by the n
 
 ---
 
-## Phase 6 — Flip ADR-0011 to Implemented
+## Phase 6: Flip ADR-0011 to Implemented
 
 The implementation (templates, taxonomy, orphan detection) and its backing tests now exist, so the
 tagged invariants `docs-section-parity` and `section-orphan-flagged` are satisfied and may be
 enforced.
 
-- [ ] **Task 6.1 — Flip the ADR status.** In
+- [ ] **Task 6.1: Flip the ADR status.** In
   `docs/decisions/0011-docs-default-content-and-section-taxonomy.md`, change the frontmatter line
   `status: Accepted` to `status: Implemented`.
 
-- [ ] **Task 6.2 — Regenerate ACTIVE.md and verify invariant backing.**
+- [ ] **Task 6.2: Regenerate ACTIVE.md and verify invariant backing.**
   ```
   ./x sync
   ```
@@ -740,7 +740,7 @@ enforced.
   ```
   ./x check
   ```
-  Expected: `awf check: clean` — confirms both tagged slugs are backed (the two `// invariant:`
+  Expected: `awf check: clean`, confirms both tagged slugs are backed (the two `// invariant:`
   comments in `internal/project/docs_sections_test.go`). If `awf check` reports an unbacked slug,
   the backing comment is missing or misspelled; fix it before committing.
   ```
@@ -748,7 +748,7 @@ enforced.
   ```
   Expected: `0 issues.` and all `ok`.
 
-- [ ] **Task 6.3 — Commit Phase 6 (final).**
+- [ ] **Task 6.3: Commit Phase 6 (final).**
   ```
   git add docs/decisions/0011-docs-default-content-and-section-taxonomy.md docs/decisions/ACTIVE.md .claude/awf/awf.lock
   git commit -m "docs(adr): mark 0011 docs default content and section taxonomy implemented"

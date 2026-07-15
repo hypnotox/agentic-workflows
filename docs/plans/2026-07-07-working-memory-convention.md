@@ -1,7 +1,7 @@
 # Plan: Working-memory convention for chain session continuity
 
 **Date:** 2026-07-07
-**ADR:** [ADR-0069](../decisions/0069-working-memory-convention-for-chain-session-continuity.md) — Working-memory convention for chain session continuity
+**ADR:** [ADR-0069](../decisions/0069-working-memory-convention-for-chain-session-continuity.md) (Working-memory convention for chain session continuity)
 
 ## Goal
 
@@ -64,7 +64,7 @@ Deleted: none.
 
 ---
 
-## Phase 1 — always-on render unit (banner, scan scoping, dogfood)
+## Phase 1: always-on render unit (banner, scan scoping, dogfood)
 
 Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
 
@@ -91,7 +91,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   before `return out, nil` in `RenderAll`):
 
   ```go
-  	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered —
+  	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered:
   	// ADR-0069, no config gate unlike bootstrap/hooks). Self-ignoring, so the
   	// working-memory convention's ephemerality is mechanical, not remembered.
   	// Deliberately non-configurable: no catalog spec, no sections, no CLI kind.
@@ -108,7 +108,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
 
   ```go
   // injectBanner inserts the generated-by banner into rendered content: for the
-  // memory gitignore, a leading `#` comment (a valid .gitignore comment — ADR-0069);
+  // memory gitignore, a leading `#` comment (a valid .gitignore comment, ADR-0069);
   // for shebang scripts, a `#`-comment after the shebang line (keeping the script
   // executable); for frontmatter targets, an HTML comment after the closing `---`;
   // otherwise an HTML comment as the first line.
@@ -136,7 +136,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
 - [ ] In `internal/project/render.go`, update both call sites: in `renderTarget`,
   `content = injectBanner(content)` → `content = injectBanner(content, tid)`; in
   `generateActiveMD`, `content = injectBanner(content)` → `content = injectBanner(content, "")`
-  (ACTIVE.md is markdown — the empty id keeps its HTML-comment banner unchanged).
+  (ACTIVE.md is markdown: the empty id keeps its HTML-comment banner unchanged).
 
 - [ ] In `internal/project/banner_test.go`, update every existing `injectBanner(...)` call to
   pass `""` as the second argument, and add:
@@ -154,9 +154,9 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   ```
 
 - [ ] In `internal/project/check.go`, extend `isManagedMarkdown` (and reword its doc
-  comment's exclusion phrase — a gitignore is not a shell script — to "except the CLAUDE.md
+  comment's exclusion phrase (a gitignore is not a shell script) to "except the CLAUDE.md
   bridge and the non-markdown render units (the bootstrap, the git-hook payloads, and the
-  memory gitignore — ADR-0048, ADR-0069)"):
+  memory gitignore, ADR-0048, ADR-0069)"):
 
   ```go
   func isManagedMarkdown(tid string) bool {
@@ -185,7 +185,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   )
 
   // TestMemoryGitignoreAlwaysOn asserts RenderAll unconditionally emits the
-  // self-ignoring .awf/memory/.gitignore with a #-comment banner (ADR-0069) —
+  // self-ignoring .awf/memory/.gitignore with a #-comment banner (ADR-0069):
   // no config gate, unlike bootstrap/hooks.
   // invariant: memory-gitignore-always-on
   func TestMemoryGitignoreAlwaysOn(t *testing.T) {
@@ -221,24 +221,24 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   (one YAML-quoted string; the change appends the boundary sentence):
 
   ```
-  '**Unified compile-time doc model.** The catalog is a compile-time Go value (`catalog.Standard`, no embedded YAML), and every doc — toggleable or always-on singleton — is one `DocEntry` from which every projection (`SingletonKinds`, `plainSingletons`, the `.layout` paths, the toggleable pool) derives; adding a mandatory doc is a single entry. Config-tree render units — the bootstrap, the hook payloads, and the working-memory `.gitignore` (ADR-0069) — are deliberately outside the doc collection: dedicated render blocks, no `DocEntry`.'
+  '**Unified compile-time doc model.** The catalog is a compile-time Go value (`catalog.Standard`, no embedded YAML), and every doc (toggleable or always-on singleton) is one `DocEntry` from which every projection (`SingletonKinds`, `plainSingletons`, the `.layout` paths, the toggleable pool) derives; adding a mandatory doc is a single entry. Config-tree render units, the bootstrap, the hook payloads, and the working-memory `.gitignore` (ADR-0069), are deliberately outside the doc collection: dedicated render blocks, no `DocEntry`.'
   ```
 
 - [ ] In `.awf/domains/parts/rendering/current-state.md`, append to the end of the paragraph
   (same line run, after the ADR-0058 sentence):
 
   ```
-  A third neutral config-tree unit, `.awf/memory/.gitignore` (ADR-0069), renders unconditionally — no config gate, no catalog spec — as a self-ignoring gitignore backing the working-memory convention; `injectBanner` stamps it with a `#`-comment banner via a branch keyed on its template id, and that id is excluded from the managed-markdown scans like the bootstrap and hook payloads.
+  A third neutral config-tree unit, `.awf/memory/.gitignore` (ADR-0069), renders unconditionally (no config gate, no catalog spec) as a self-ignoring gitignore backing the working-memory convention; `injectBanner` stamps it with a `#`-comment banner via a branch keyed on its template id, and that id is excluded from the managed-markdown scans like the bootstrap and hook payloads.
   ```
 
 - [ ] Run `go test ./...`. Expect failures only in fixtures that enumerate `RenderAll` outputs
   or lock contents exactly (candidates: `internal/project/install_test.go`,
   `internal/project/render_tree_test.go`, `internal/project/drift_test.go`,
   `internal/project/project_test.go`). Fix each by adding `.awf/memory/.gitignore` to the
-  expected output/lock set — never by weakening an assertion.
-- [ ] Run `./x sync` — expect `.awf/memory/.gitignore` created (verify:
+  expected output/lock set, never by weakening an assertion.
+- [ ] Run `./x sync`: expect `.awf/memory/.gitignore` created (verify:
   `head -1 .awf/memory/.gitignore` prints
-  `# GENERATED by awf — do not edit; change .awf/ and run \`awf sync\``), AGENTS.md invariant
+  `# GENERATED by awf: do not edit; change .awf/ and run \`awf sync\``), AGENTS.md invariant
   wording updated, `docs/domains/rendering.md` updated, lock updated. Run
   `git check-ignore .awf/memory/somefile` → exits 0 (path is ignored).
 - [ ] Run `./x check` → `awf check: clean`. Run `./x gate` → green, coverage 100.0%.
@@ -247,7 +247,7 @@ Commit: `feat(rendering): render always-on self-ignoring .awf/memory/.gitignore`
   re-rendered outputs (`AGENTS.md`, `docs/domains/rendering.md`, `.awf/memory/.gitignore`,
   `.awf/awf.lock`, plus any fixture files fixed).
 
-## Phase 2 — agent-guide working-memory section + agents-doc parity test
+## Phase 2: agent-guide working-memory section + agents-doc parity test
 
 Commit: `feat(rendering): add working-memory guide section and parity test`
 
@@ -270,10 +270,10 @@ Commit: `feat(rendering): add working-memory guide section and parity test`
 
   Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
 
-  - **On starting work, check `.awf/memory/`.** If an effort file matches the task at hand, resume from its recorded `Phase:`/`Next:` lines instead of restarting. If several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume — never silently resume a stale effort.
-  - **While working, prefer just-in-time retrieval.** Hold lightweight identifiers — file paths, ADR numbers, doc names — in the memory file and read the sources on demand rather than preloading them.
-  - **File skeleton** (a convention, not a schema — no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
-  - **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue — delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
+  - **On starting work, check `.awf/memory/`.** If an effort file matches the task at hand, resume from its recorded `Phase:`/`Next:` lines instead of restarting. If several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume; never silently resume a stale effort.
+  - **While working, prefer just-in-time retrieval.** Hold lightweight identifiers (file paths, ADR numbers, doc names) in the memory file and read the sources on demand rather than preloading them.
+  - **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
+  - **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue: delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
   <!-- awf:end -->
   ```
 
@@ -310,7 +310,7 @@ Commit: `feat(rendering): add working-memory guide section and parity test`
 
   ```yaml
           - ref: ADR-0069
-            text: '**Ephemeral working memory.** `awf sync` always renders the self-ignoring `.awf/memory/.gitignore`; working-memory files are session state — never committed, never cited by an ADR, plan, or commit message, deleted when the chain terminates.'
+            text: '**Ephemeral working memory.** `awf sync` always renders the self-ignoring `.awf/memory/.gitignore`; working-memory files are session state: never committed, never cited by an ADR, plan, or commit message, deleted when the chain terminates.'
   ```
 
 - [ ] Run `go test ./internal/project/ -run 'SectionParity|AgentsDoc'` → pass. Deliberately
@@ -321,7 +321,7 @@ Commit: `feat(rendering): add working-memory guide section and parity test`
 - [ ] Stage and commit: standard.go, AGENTS.md.tmpl, docs_sections_test.go,
   `.awf/agents-doc.yaml`, re-rendered `AGENTS.md`, `.awf/awf.lock`.
 
-## Phase 3 — checkpoint partial, skill splices, retrospective deletion, doc templates
+## Phase 3: checkpoint partial, skill splices, retrospective deletion, doc templates
 
 Commit: `feat(rendering): checkpoint working memory across the chain skills`
 
@@ -347,15 +347,15 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
     <!-- awf:section procedure -->
     ## Procedure
 
-    Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles — create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
+    Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles; create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
     <!-- awf:end -->
     ```
 
   - In the `grounding-check-output-format` section, replace the sentence
     `Do NOT write the brief to a file.` (end of the first paragraph) with:
-    `Synthesise the dispatch brief inline in the subagent prompt — do NOT write it to a file; the only on-disk record of the brainstorm is the evolving design brief in the working-memory file.`
+    `Synthesise the dispatch brief inline in the subagent prompt: do NOT write it to a file; the only on-disk record of the brainstorm is the evolving design brief in the working-memory file.`
   - In the `terminal-step` section, insert a blank line plus the include line after the last
-    bullet (`- **Neither** → …reviewing-impl\`.`), before `<!-- awf:end -->`:
+    bullet (`- **Neither** → ...reviewing-impl\`.`), before `<!-- awf:end -->`:
 
     ```
     <!-- awf:include memory-checkpoint -->
@@ -363,14 +363,14 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
 
 - [ ] Splice the same two lines (blank line + `<!-- awf:include memory-checkpoint -->`) after
   the step text and before `<!-- awf:end -->` in each of these eight sections:
-  - `templates/skills/proposing-adr/SKILL.md.tmpl` — section `terminal-step`
-  - `templates/skills/reviewing-adr/SKILL.md.tmpl` — section `hand-off-to-resync`
-  - `templates/skills/writing-plans/SKILL.md.tmpl` — section `terminal-step`
-  - `templates/skills/reviewing-plan/SKILL.md.tmpl` — section `hand-off`
-  - `templates/skills/reviewing-plan-resync/SKILL.md.tmpl` — section `hand-off-to-impl`
-  - `templates/skills/executing-plans/SKILL.md.tmpl` — section `terminal-step`
-  - `templates/skills/subagent-driven-development/SKILL.md.tmpl` — section `terminal-step`
-  - `templates/skills/reviewing-impl/SKILL.md.tmpl` — section `hand-off`
+  - `templates/skills/proposing-adr/SKILL.md.tmpl`: section `terminal-step`
+  - `templates/skills/reviewing-adr/SKILL.md.tmpl`: section `hand-off-to-resync`
+  - `templates/skills/writing-plans/SKILL.md.tmpl`: section `terminal-step`
+  - `templates/skills/reviewing-plan/SKILL.md.tmpl`: section `hand-off`
+  - `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`: section `hand-off-to-impl`
+  - `templates/skills/executing-plans/SKILL.md.tmpl`: section `terminal-step`
+  - `templates/skills/subagent-driven-development/SKILL.md.tmpl`: section `terminal-step`
+  - `templates/skills/reviewing-impl/SKILL.md.tmpl`: section `hand-off`
 
 - [ ] In `internal/catalog/standard.go`, append `"memory-checkpoint"` to two skill `Sections`:
 
@@ -403,18 +403,18 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
   section (after step 4, before `<!-- awf:end -->`):
 
   ```
-  5. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists — the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
+  5. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists: the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
   ```
 
 - [ ] In `templates/docs/workflow.md.tmpl`, `chain` section, append to the end of the prose
-  paragraph (after `…toward a deterministic check.`):
-  ` Throughout, each chain skill checkpoints its position — and brainstorming its evolving design brief — to a working-memory file under \`.awf/memory/\` (see the agent guide's working-memory section), so a session death or context compaction resumes instead of restarting; the retrospective deletes the file.`
+  paragraph (after `...toward a deterministic check.`):
+  ` Throughout, each chain skill checkpoints its position (and brainstorming its evolving design brief) to a working-memory file under \`.awf/memory/\` (see the agent guide's working-memory section), so a session death or context compaction resumes instead of restarting; the retrospective deletes the file.`
 
 - [ ] In `templates/docs/working-with-awf.md.tmpl`, `overview` section, append a paragraph
   before `<!-- awf:end -->`:
 
   ```
-  awf also always renders `.awf/memory/.gitignore` — a self-ignoring gitignore that keeps the working-memory directory (per-effort session-state files, described in the agent guide's working-memory section) out of version control. The `.gitignore` itself is rendered and drift-checked; the directory's contents never are.
+  awf also always renders `.awf/memory/.gitignore`: a self-ignoring gitignore that keeps the working-memory directory (per-effort session-state files, described in the agent guide's working-memory section) out of version control. The `.gitignore` itself is rendered and drift-checked; the directory's contents never are.
   ```
 
 - [ ] Run `./x sync` then `./x check` → clean (all skill renders across `.claude/` and
@@ -425,12 +425,12 @@ Commit: `feat(rendering): checkpoint working memory across the chain skills`
   `grep "Delete the effort's working-memory file" .claude/skills/awf-retrospective/SKILL.md`
   matches.
 - [ ] Run `./x gate` → green. If `skill-section-parity` or golden tests fail, the failure names
-  the exact template/section drift — fix the template, not the test (the only legitimate test
+  the exact template/section drift; fix the template, not the test (the only legitimate test
   updates are golden fixtures that pin full rendered bodies).
 - [ ] Stage and commit: the partial, twelve skill templates, standard.go, the two doc
   templates, and all re-rendered outputs + lock.
 
-## Phase 4 — eval-suite coverage lock
+## Phase 4: eval-suite coverage lock
 
 Commit: `test(rendering): lock chain working-memory checkpoint coverage`
 
@@ -470,7 +470,7 @@ Commit: `test(rendering): lock chain working-memory checkpoint coverage`
   include line from `templates/skills/bugfix/SKILL.md.tmpl`, expect the test to fail naming
   `bugfix`, restore) to confirm the lock bites.
 - [ ] In `.awf/domains/parts/tooling/current-state.md`, append to the end of the final
-  (`internal/evals`) paragraph, after `…blank-path provenance pointer.` (same line run —
+  (`internal/evals`) paragraph, after `...blank-path provenance pointer.` (same line run:
   ADR-0069 declares the tooling domain, so its current-state narrative must refresh before
   the Phase 5 Implemented flip or the `domain-doc-staleness` audit rule fires):
 
@@ -484,7 +484,7 @@ Commit: `test(rendering): lock chain working-memory checkpoint coverage`
   `.awf/domains/parts/tooling/current-state.md`, `docs/domains/tooling.md`, and
   `.awf/awf.lock` if changed (plus the restored-template no-op if git shows nothing else).
 
-## Phase 5 — changelog, ADR flip
+## Phase 5: changelog, ADR flip
 
 Commit: `docs(adr): mark 0069 implemented`
 

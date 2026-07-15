@@ -6,7 +6,7 @@
 ## Goal
 
 Set up awf's first release (`v0.1.0`) as prebuilt cross-platform binaries via GoReleaser,
-making binary download the canonical install path. Design rationale lives in ADR-0030 — this
+making binary download the canonical install path. Design rationale lives in ADR-0030; this
 plan is the execution record only.
 
 ## Architecture summary
@@ -16,7 +16,7 @@ plan is the execution record only.
   `project.Version`. `project.Version` (already `"0.1.0"`) stays the lock's `AWFVersion`.
 - **Release tooling:** GoReleaser v2 via `goreleaser/goreleaser-action@v6` (pinned `~> v2`) on
   `v*` tag pushes. `.goreleaser.yaml` and the workflows are hand-maintained, outside awf's
-  render/lock set (precedent: `.golangci.yml`, `./x`) — `awf check` does not scan them.
+  render/lock set (precedent: `.golangci.yml`, `./x`): `awf check` does not scan them.
 - **CI guard:** a PR-time job runs `goreleaser check` + `release --snapshot` so a broken release
   config fails before any tag.
 
@@ -46,7 +46,7 @@ plan is the execution record only.
 
 ---
 
-## Phase 1 — Version stamping (the only Go change)
+## Phase 1: Version stamping (the only Go change)
 
 - [ ] **1.1 Replace `cmd/awf/version.go`** with exactly:
 
@@ -107,9 +107,9 @@ func TestAwfVersionLdflagsPrecedence(t *testing.T) {
 ./x gate
 ```
 
-Expected: tests pass; coverage stays at `coverage: 100.0%` — the new `if version != ""` true path
+Expected: tests pass; coverage stays at `coverage: 100.0%` (the new `if version != ""` true path
 (`return version`) is covered by `TestAwfVersionLdflagsPrecedence`, and the false path by the
-existing `TestRunVersion` (which runs with `version == ""`) — and lint reports `0 issues.` Then:
+existing `TestRunVersion` (which runs with `version == ""`)) and lint reports `0 issues.` Then:
 
 ```
 git add cmd/awf/version.go cmd/awf/version_test.go
@@ -120,12 +120,12 @@ The pre-commit hook re-runs `./x check` + `./x gate`; both must pass.
 
 ---
 
-## Phase 2 — GoReleaser config
+## Phase 2: GoReleaser config
 
 - [ ] **2.1 Create `.goreleaser.yaml`** with exactly:
 
 ```yaml
-# GoReleaser config for the awf CLI — builds cross-platform release binaries and
+# GoReleaser config for the awf CLI: builds cross-platform release binaries and
 # publishes a GitHub Release on a v* tag (see ADR-0030). Hand-maintained, outside
 # awf's render/lock set (like .golangci.yml and ./x). Validate with `goreleaser check`.
 version: 2
@@ -213,7 +213,7 @@ git commit -m "ci: add goreleaser release config"
 
 ---
 
-## Phase 3 — Release workflow + CI guard
+## Phase 3: Release workflow + CI guard
 
 - [ ] **3.1 Create `.github/workflows/release.yml`** with exactly:
 
@@ -280,7 +280,7 @@ git commit -m "ci: add release workflow and PR release-config guard"
 
 ---
 
-## Phase 4 — README install rewrite (doc-currency)
+## Phase 4: README install rewrite (doc-currency)
 
 - [ ] **4.1 Replace the `## Install` section of `README.md`.** It currently reads:
 
@@ -300,7 +300,7 @@ Replace those lines with:
 Download a prebuilt binary for your platform from the
 [latest release](https://github.com/hypnotox/agentic-workflows/releases/latest),
 extract it, and put `awf` on your `PATH`. awf is a single static binary with no
-runtime dependencies — no Go toolchain required.
+runtime dependencies: no Go toolchain required.
 
 <details>
 <summary>Install from source (Go users)</summary>
@@ -321,11 +321,11 @@ git commit -m "docs(awf): make binary download the primary install path"
 
 ---
 
-## Phase 5 — Flip ADR-0030 to Implemented (terminal)
+## Phase 5: Flip ADR-0030 to Implemented (terminal)
 
 - [ ] **5.1 Refresh the tooling domain narrative.** In
   `.awf/domains/parts/tooling/current-state.md`, append this sentence to the end of the first
-  paragraph (the one ending "…run the gate on commit/push."):
+  paragraph (the one ending "...run the gate on commit/push."):
 
 ```
  awf ships as prebuilt cross-platform binaries built by GoReleaser on `v*` tag pushes (ADR-0030): a dedicated ldflags-injected `version` var in `cmd/awf` drives the CLI version while `project.Version` stays the lock's source of truth, and a PR-time `goreleaser check`/snapshot job guards the release config.
@@ -345,7 +345,7 @@ git commit -m "docs(awf): make binary download the primary install path"
 
 Expected: `./x sync` rewrites `docs/domains/tooling.md` (narrative + index) and
 `docs/decisions/ACTIVE.md` (0030 moves to the Implemented group). `./x gate` is green at 100%
-coverage. `./x check` is `awf check: clean` — and now that 0030 is Implemented, its
+coverage. `./x check` is `awf check: clean`, and now that 0030 is Implemented, its
 `version-ldflags-precedence` invariant is enforced and backed by the `// invariant:` comment in
 `cmd/awf/version.go` (added in Phase 1). Then:
 
@@ -362,7 +362,7 @@ git commit -m "docs(adr): mark 0030 implemented"
 
 ---
 
-## Releasing (manual — not executed by this plan)
+## Releasing (manual, not executed by this plan)
 
 After this work merges, cut the release when ready:
 
@@ -374,7 +374,7 @@ git push origin v0.1.0
 `project.Version` is already `0.1.0`, so the tag matches. The push triggers
 `.github/workflows/release.yml`, which builds the six archives + `checksums.txt`, generates the
 changelog, and creates the `v0.1.0` GitHub Release. Repo public/private visibility is out of
-scope (ADR-0030) — the Release is created either way. For a later `v0.2.0`, bump
+scope (ADR-0030); the Release is created either way. For a later `v0.2.0`, bump
 `project.Version` in the same commit that prepares the release so the lock's `AWFVersion` and the
 dev/test fallback stay honest.
 ```

@@ -2,7 +2,7 @@
 
 Design and rationale live in
 [ADR-0052](../decisions/0052-template-include-directive-for-awf-owned-partials.md). This plan is
-the execution record only — do not restate rationale here.
+the execution record only; do not restate rationale here.
 
 ## Goal
 
@@ -18,7 +18,7 @@ unchanged.
 (`internal/project/render.go`), before `render.ParseSections`. It replaces each
 `<!-- awf:include NAME -->` line with the verbatim body of the embedded partial
 `templates/partials/NAME.md`. Because expansion precedes section-parsing, spliced text is
-thereafter indistinguishable from inline template content — overlay, publication-safety, and the
+thereafter indistinguishable from inline template content: overlay, publication-safety, and the
 dead-ref/dead-skill scans all apply unchanged. `TemplateHash` is computed over the
 **post-expansion** source so a partial edit flags including artifacts stale (drift oracle).
 Partials are awf-owned/embedded only; no project config surface. Three fail-loud guards: missing
@@ -57,13 +57,13 @@ Modified:
 
 ---
 
-## Phase 1 — `awf:include` engine, guards, and unit tests
+## Phase 1: `awf:include` engine, guards, and unit tests
 
 The engine lands first and is inert: no template uses `awf:include` yet, so every render is
 unchanged and the gate stays green. Invariant markers for all five ADR-0052 slugs land here (the
 ADR stays `Proposed`, so `awf check` does not yet enforce them).
 
-### Task 1.1 — Create `internal/render/include.go`
+### Task 1.1: Create `internal/render/include.go`
 
 - [ ] Create `internal/render/include.go` with exactly this content:
 
@@ -120,10 +120,10 @@ func ExpandIncludes(src string, partialFS fs.FS) (string, error) {
 }
 ```
 
-### Task 1.2 — Wire `ExpandIncludes` into `renderTarget`
+### Task 1.2: Wire `ExpandIncludes` into `renderTarget`
 
 - [ ] In `internal/project/render.go`, in `renderTarget`, replace this block (currently lines
-  ~343–351):
+  ~343-351):
 
 ```go
 	src, err := fs.ReadFile(templates.FS, tid)
@@ -179,7 +179,7 @@ func ExpandIncludes(src string, partialFS fs.FS) (string, error) {
 	}, nil
 ```
 
-### Task 1.3 — Unit tests for `ExpandIncludes`
+### Task 1.3: Unit tests for `ExpandIncludes`
 
 - [ ] Create `internal/render/include_test.go` with exactly this content:
 
@@ -257,7 +257,7 @@ func TestExpandIncludesSectionMarkerFails(t *testing.T) {
 }
 ```
 
-### Task 1.4 — Gate and commit Phase 1
+### Task 1.4: Gate and commit Phase 1
 
 - [ ] Run `./x gate`. Expected: `coverage: 100.0%`, `0 issues.`, all packages `ok`.
 - [ ] Run `./x check`. Expected: `awf check: clean` (no template uses `awf:include` yet, so all
@@ -274,13 +274,13 @@ git commit -m "feat(awf): add awf:include directive for awf-owned partials"
 
 ---
 
-## Phase 2 — Extract the reviewer spine into partials (output-preserving)
+## Phase 2: Extract the reviewer spine into partials (output-preserving)
 
 This is one atomic change (the dedup) and lands as one commit. After `./x sync`, the six rendered
-reviewer files must be byte-for-byte unchanged — that empty diff is the regression proof ADR-0052
+reviewer files must be byte-for-byte unchanged: that empty diff is the regression proof ADR-0052
 names.
 
-### Task 2.1 — Create the head partial
+### Task 2.1: Create the head partial
 
 - [ ] Create `templates/partials/review-spine-head.md` with exactly this content (the file ends
   with a single newline after "route by classification kind."; do **not** add a trailing blank
@@ -308,14 +308,14 @@ Every finding must cite a **specific location**; "the {{ with .data.reviewSubjec
 
 Classify by what acting on the finding requires, not by severity:
 
-- **mechanical** — the answer is unambiguous from existing rules, docs, or code; apply the fix directly.
-- **reasoned** — a good answer can be reached by reading the relevant code or docs, but judgment is required; apply with a one-line rationale. For deferred-to-follow-up cases, prefix the rationale with `Deferred to <name>:`.
-- **user-decision** — a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
+- **mechanical**: the answer is unambiguous from existing rules, docs, or code; apply the fix directly.
+- **reasoned**: a good answer can be reached by reading the relevant code or docs, but judgment is required; apply with a one-line rationale. For deferred-to-follow-up cases, prefix the rationale with `Deferred to <name>:`.
+- **user-decision**: a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
 
 Severity is informational only; route by classification kind.
 ~~~
 
-### Task 2.2 — Create the tail partial
+### Task 2.2: Create the tail partial
 
 - [ ] Create `templates/partials/review-spine-tail.md` with exactly this content (ends with a
   single newline after "before continuing."; no trailing blank line):
@@ -348,10 +348,10 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
   1. <question>
 ```
 
-Target ~80 words for the {{ with .data.digestLabel }}{{ . }}{{ else }}review{{ end }} summary (range 50–100 words). When `P = 0`, the summary block is optional and the chain auto-proceeds. When `P > 0`, surface the digest and wait for the user's decisions before continuing.
+Target ~80 words for the {{ with .data.digestLabel }}{{ . }}{{ else }}review{{ end }} summary (range 50-100 words). When `P = 0`, the summary block is optional and the chain auto-proceeds. When `P > 0`, surface the digest and wait for the user's decisions before continuing.
 ~~~
 
-### Task 2.3 — Add `partials` to the embed glob
+### Task 2.3: Add `partials` to the embed glob
 
 - [ ] In `templates/embed.go`, change the go:embed directive to include `partials`. Replace:
 
@@ -365,7 +365,7 @@ Target ~80 words for the {{ with .data.digestLabel }}{{ . }}{{ else }}review{{ e
 //go:embed catalog.yaml skills agents agents-doc docs domains claude adr-readme adr-template plans-readme bootstrap hooks partials
 ```
 
-### Task 2.4 — Refactor `adr-reviewer.md.tmpl`
+### Task 2.4: Refactor `adr-reviewer.md.tmpl`
 
 - [ ] Replace the entire content of `templates/agents/adr-reviewer.md.tmpl` with:
 
@@ -388,22 +388,22 @@ Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`, dispa
 <!-- awf:section universal-lenses -->
 Apply all five lenses to every ADR:
 
-1. **decision-clarity** — each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
 
-1. **invariants-checkability** — each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer …") with a concrete checkable rewrite; name the file, string, or structure a test would inspect.{{ with .vars.invariantTestPath }} When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ . }}`.{{ end }}
+1. **invariants-checkability**: each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer ...") with a concrete checkable rewrite; name the file, string, or structure a test would inspect.{{ with .vars.invariantTestPath }} When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `{{ . }}`.{{ end }}
 
-1. **alternatives-honesty** — no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
+1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
-1. **consequences-honesty** — tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
+1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
 
-1. **doc-currency (ADR-level)** — verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
+1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 <!-- awf:end -->
 
 ## Project-specific focus items
 
 <!-- awf:section project-focus -->
 {{ with .data.focusItems }}{{ range . }}
-**{{ .name }}** — {{ .description }}
+**{{ .name }}**: {{ .description }}
 
 {{ end }}{{ end }}
 <!-- awf:end -->
@@ -421,7 +421,7 @@ When the ADR status will land as Accepted or Implemented: a task regenerating `{
 <!-- awf:include review-spine-tail -->
 ~~~
 
-### Task 2.5 — Refactor `plan-reviewer.md.tmpl`
+### Task 2.5: Refactor `plan-reviewer.md.tmpl`
 
 - [ ] Replace the entire content of `templates/agents/plan-reviewer.md.tmpl` with:
 
@@ -444,22 +444,22 @@ Independent, lens-diverse reviewer for plans under `{{ .layout.plansDir }}/`, di
 <!-- awf:section universal-lenses -->
 Apply all five lenses to every plan:
 
-1. **scope-completeness** — every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
+1. **scope-completeness**: every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
 
-1. **executability** — no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step; tasks are bite-sized (~2–5 min); code changes shown as exact diff not prose.
+1. **executability**: no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step; tasks are bite-sized (~2-5 min); code changes shown as exact diff not prose.
 
-1. **doc-currency (plan-level)** — same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
+1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
 
-1. **convention-alignment** — Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
+1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
-1. **testing-discipline** — behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
 <!-- awf:end -->
 
 ## Project-specific focus items
 
 <!-- awf:section project-focus -->
 {{ with .data.focusItems }}{{ range . }}
-**{{ .name }}** — {{ .description }}
+**{{ .name }}**: {{ .description }}
 
 {{ end }}{{ end }}
 <!-- awf:end -->
@@ -484,14 +484,14 @@ Resync mode is triggered by the `{{ .prefix }}-reviewing-plan-resync` skill afte
 <!-- awf:include review-spine-tail -->
 ~~~
 
-### Task 2.6 — Refactor `code-reviewer.md.tmpl`
+### Task 2.6: Refactor `code-reviewer.md.tmpl`
 
 - [ ] Replace the entire content of `templates/agents/code-reviewer.md.tmpl` with:
 
 ~~~text
 ---
 name: code-reviewer
-description: Independent fresh-context reviewer for {{ .prefix }} implementation diffs — correctness, plan-adherence, testing discipline, doc currency, and convention alignment.
+description: Independent fresh-context reviewer for {{ .prefix }} implementation diffs (correctness, plan-adherence, testing discipline, doc currency, and convention alignment).
 ---
 
 # code-reviewer
@@ -505,15 +505,15 @@ Independent, fresh-context reviewer for implementation diffs, separate from the 
 <!-- awf:section universal-lenses -->
 Apply all five lenses to every implementation diff:
 
-1. **correctness** — logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
+1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
-1. **plan-adherence** — all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
+1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries match plan phases.
 
-1. **testing-discipline** — every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
+1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`).
 
-1. **doc-currency (impl-level)** — ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
+1. **doc-currency (impl-level)**: ADR status flips (Accepted→Implemented); state doc updates when domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide and any runtime bridge files kept current.
 
-1. **convention-alignment** — Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
+1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 <!-- awf:end -->
 
 ## Project-specific focus items
@@ -523,7 +523,7 @@ Apply all five lenses to every implementation diff:
 - {{ .description }}
 {{ end }}{{ end }}
 {{ with .data.focusItems }}{{ range . }}
-**{{ .name }}** — {{ .description }}
+**{{ .name }}**: {{ .description }}
 
 {{ end }}{{ end }}
 <!-- awf:end -->
@@ -540,11 +540,11 @@ Apply all five lenses to every implementation diff:
 <!-- awf:include review-spine-tail -->
 ~~~
 
-### Task 2.7 — Add per-reviewer `data:` defaults to the catalog
+### Task 2.7: Add per-reviewer `data:` defaults to the catalog
 
 - [ ] In `templates/catalog.yaml`, under `agents:` → `adr-reviewer:` → `data:`, append these keys
   after the existing `docCurrencyItems` block (indented to match the sibling `focusItems`/
-  `docCurrencyItems` keys — 6 spaces):
+  `docCurrencyItems` keys, 6 spaces):
 
 ```yaml
       reviewSubject: ADR
@@ -552,7 +552,7 @@ Apply all five lenses to every implementation diff:
       digestLabel: ADR
       digestSummary: |-
         - Decision: <one line, the load-bearing item>
-        - Invariants: <1–2 headlines>
+        - Invariants: <1-2 headlines>
         - Trade-off: <one notable rejected alternative + why>
 ```
 
@@ -565,7 +565,7 @@ Apply all five lenses to every implementation diff:
       digestSummary: |-
         - Goal: <one line from the plan header>
         - Shape: <phase count, commit count, files created/modified>
-        - Headline tasks: <1–2 sentences naming the load-bearing tasks>
+        - Headline tasks: <1-2 sentences naming the load-bearing tasks>
 ```
 
 - [ ] Under `code-reviewer:` → `data:`, append after its `docCurrencyItems`:
@@ -577,22 +577,22 @@ Apply all five lenses to every implementation diff:
       digestLabel: Impl
       digestSummary: |-
         - Commits: <one line per commit subject>
-        - Headline change: <1–2 sentences>
+        - Headline change: <1-2 sentences>
         - Test additions: <file count or named test files>
 ```
 
-### Task 2.8 — Sync and verify byte-identical output
+### Task 2.8: Sync and verify byte-identical output
 
 - [ ] Run `./x sync`. Expected: `awf sync: done`.
 - [ ] **Regression proof.** Run `git diff --stat -- .claude/agents .cursor/agents`. Expected:
-  **empty output** — the six rendered reviewer files are byte-for-byte unchanged. If any reviewer
+  **empty output**: the six rendered reviewer files are byte-for-byte unchanged. If any reviewer
   file shows a diff, the partials or `data:` defaults do not reproduce the original text; inspect
   `git diff -- .claude/agents/<file>` and correct the partial/data until the diff is empty. Do
   not proceed until this diff is empty.
 - [ ] Run `./x check`. Expected: `awf check: clean`. (The lock's `TemplateHash`/`ConfigHash` for
   the three reviewers changed under `./x sync`; `.awf/awf.lock` is expected to appear in
   `git status`.)
-### Task 2.9 — Extend the golden test to prove the include expanded
+### Task 2.9: Extend the golden test to prove the include expanded
 
 - [ ] In `internal/project/golden_test.go`, in `TestEndToEndGolden`, after the existing
   `code-reviewer.md` interpolation assertion (the `strings.Contains(string(agent), "Independent
@@ -609,7 +609,7 @@ Apply all five lenses to every implementation diff:
 	}
 ```
 
-### Task 2.10 — Add the expanded-source TemplateHash regression test
+### Task 2.10: Add the expanded-source TemplateHash regression test
 
 This backs the `include-in-templatehash` invariant: without it, a regression reverting item 2 to
 `manifest.Hash(src)` would pass byte-identity, the coverage gate, and `./x invariants`.
@@ -655,7 +655,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 - [ ] Run `go test ./internal/project/ -run 'TestEndToEndGolden|TestTemplateHashCoversExpandedSource'`.
   Expected: `ok`.
 
-### Task 2.11 — Gate and commit Phase 2
+### Task 2.11: Gate and commit Phase 2
 
 - [ ] Run `./x gate`. Expected: `coverage: 100.0%`, `0 issues.`
 - [ ] Stage exactly the changed files and commit:
@@ -674,23 +674,23 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 
 ---
 
-## Phase 3 — Doc currency and ADR flip to Implemented
+## Phase 3: Doc currency and ADR flip to Implemented
 
-### Task 3.1 — Update the rendering domain doc
+### Task 3.1: Update the rendering domain doc
 
 - [ ] In `.awf/domains/parts/rendering/current-state.md`, append this sentence to the end of the
   single existing paragraph (before the final newline):
 
 ```
- A general `awf:include` directive (ADR-0052) splices awf-owned embedded partials under `templates/partials/` into any template before section parsing — the spliced text is thereafter indistinguishable from inline content, and `TemplateHash` is computed over the post-expansion source so a partial edit flags every including artifact stale; these partials are awf-owned templated content spliced pre-parse — on the templated side of ADR-0034's raw-vs-templated boundary, not project-supplied raw-convention input — so they carry no project config surface, and a missing, nested, or section-bearing partial is a hard render error. Its first use deduplicates the review-discipline spine shared by the three reviewer agents.
+ A general `awf:include` directive (ADR-0052) splices awf-owned embedded partials under `templates/partials/` into any template before section parsing: the spliced text is thereafter indistinguishable from inline content, and `TemplateHash` is computed over the post-expansion source so a partial edit flags every including artifact stale; these partials are awf-owned templated content spliced pre-parse (on the templated side of ADR-0034's raw-vs-templated boundary, not project-supplied raw-convention input), so they carry no project config surface, and a missing, nested, or section-bearing partial is a hard render error. Its first use deduplicates the review-discipline spine shared by the three reviewer agents.
 ```
 
-### Task 3.2 — Update the architecture components doc
+### Task 3.2: Update the architecture components doc
 
 - [ ] In `.awf/docs/parts/architecture/components.md`, the `internal/render/` bullet currently
   reads (the file does not use the literal string `ParseSections`; edit this exact clause):
 
-  > - **`internal/render/`** — Go `text/template` rendering (ADR-0001); assembles section
+  > - **`internal/render/`**: Go `text/template` rendering (ADR-0001); assembles section
   >   overlays (sidecar overrides + convention parts) then executes the template.
 
   Replace the clause `assembles section overlays (sidecar overrides + convention parts) then
@@ -701,18 +701,18 @@ git commit -m "refactor(awf): dedup reviewer spine into awf:include partials"
 
   Keep the edit to that one clause; do not restructure the bullet.
 
-### Task 3.3 — Flip ADR-0052 to Implemented
+### Task 3.3: Flip ADR-0052 to Implemented
 
 - [ ] In `docs/decisions/0052-template-include-directive-for-awf-owned-partials.md`, change the
   frontmatter `status: Proposed` to `status: Implemented`.
 
-### Task 3.4 — Sync, verify, and commit Phase 3
+### Task 3.4: Sync, verify, and commit Phase 3
 
 - [ ] Run `./x sync`. Expected: `awf sync: done`. This regenerates `docs/domains/rendering.md`,
   `docs/architecture.md`, and `docs/decisions/ACTIVE.md` (0052 moves from Proposed to
   Implemented).
 - [ ] Run `./x check`. Expected: `awf check: clean`.
-- [ ] Run `./x invariants`. Expected: clean — all five ADR-0052 slugs (`include-splice`,
+- [ ] Run `./x invariants`. Expected: clean; all five ADR-0052 slugs (`include-splice`,
   `include-missing-fails`, `include-no-nested`, `include-no-sections`, `include-in-templatehash`)
   are backed by their markers added in Phase 1.
 - [ ] Run `./x gate`. Expected: `coverage: 100.0%`, `0 issues.`

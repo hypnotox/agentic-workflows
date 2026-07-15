@@ -1,9 +1,9 @@
-# 2026-07-10 — Closed config tree and configuration-consumption checks
+# 2026-07-10: Closed config tree and configuration-consumption checks
 
 **Goal:** implement [ADR-0086](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
 (open-time rejection of inert sidecar fields; unused-var and unused-data drift in `awf check`;
 the closed-tree sweep subsuming `orphans()` with `.awf-bak` flagging and `memory/**` exemption;
-interactive init prompting only for enabled-set vars). Design rationale lives in the ADR — not
+interactive init prompting only for enabled-set vars). Design rationale lives in the ADR, not
 duplicated here.
 
 **Architecture summary:** the checks land smallest-first so each phase gates green alone.
@@ -61,7 +61,7 @@ fixture were verified clean during design.
 
 ---
 
-## Phase 1 — open-time inert-field rejections (ADR-0086 Decision 5)
+## Phase 1: open-time inert-field rejections (ADR-0086 Decision 5)
 
 - [ ] In `internal/project/validate.go`, inside `checkKindAgainstCatalog`, insert between
       the sidecar read (`sc, err := p.Cfg.Sidecar(d.Plural, name)` block) and the
@@ -70,7 +70,7 @@ fixture were verified clean during design.
       ```go
       		// Inert-field rejection (ADR-0086 Decision 5): paths: is read only from
       		// domain sidecars (ADR-0077), so on any other kind it is configuration
-      		// that silently does nothing. Checked before the local: skip — a local
+      		// that silently does nothing. Checked before the local: skip; a local
       		// sidecar cannot carry it either.
       		// invariant: inert-sidecar-field-rejected
       		if len(sc.Paths) > 0 {
@@ -85,7 +85,7 @@ fixture were verified clean during design.
       ```go
       	// Domain sidecars are paths-only (ADR-0086 Decision 5): domain rendering
       	// passes an empty sidecar and injects its own data map, so an authored
-      	// data:, sections:, or local: entry silently does nothing — and the
+      	// data:, sections:, or local: entry silently does nothing, and the
       	// domain template's own .data.domain reference would mask a data: block
       	// from the consumption check.
       	for _, name := range p.Cfg.Domains {
@@ -94,7 +94,7 @@ fixture were verified clean during design.
       			return err
       		}
       		if len(sc.Data) > 0 || len(sc.Sections) > 0 || sc.Local {
-      			return fmt.Errorf("domain %q: a domain sidecar is paths-only — nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
+      			return fmt.Errorf("domain %q: a domain sidecar is paths-only; nothing reads data:, sections:, or local: on it; remove them from .awf/domains/%s.yaml", name, name)
       		}
       	}
       ```
@@ -128,7 +128,7 @@ fixture were verified clean during design.
         `data:\n  k: v\n` → error containing `a domain sidecar is paths-only`;
       - same with `sections:\n  current-state:\n    drop: true\n` instead → same error;
       - same with `local: true` instead → same error (nothing reads `local:` on a
-        domain sidecar — ADR-0086 Decision 5 as amended);
+        domain sidecar, ADR-0086 Decision 5 as amended);
       - `domains/config.yaml` carrying only `paths:\n  - internal/config/**\n` → `Open`
         succeeds;
       - `agents-doc.yaml` with `paths:` → error naming `.awf/agents-doc.yaml`;
@@ -140,14 +140,14 @@ fixture were verified clean during design.
       - Inert sidecar fields now refuse at project open (ADR-0086): `paths:` on a
         non-domain sidecar, and anything but `paths:` on a domain sidecar (`data:`,
         `sections:`, `local: true`), fail every gated command with the exact file
-        and fix named. These fields were silently ignored before — delete them (or
+        and fix named. These fields were silently ignored before; delete them (or
         move `paths:` to a domain sidecar) and re-run.
       ```
 
-- [ ] Run `go test ./internal/project/` then `./x gate` — green. Commit:
+- [ ] Run `go test ./internal/project/` then `./x gate`: green. Commit:
       `feat(awf): reject inert sidecar fields at project open (ADR-0086)`.
 
-## Phase 2 — unused-var and unused-data drift (Decisions 3, 4, 7)
+## Phase 2: unused-var and unused-data drift (Decisions 3, 4, 7)
 
 - [ ] In `internal/render/vars.go`, append (mirroring the `ReferencedVars` shape):
 
@@ -189,7 +189,7 @@ fixture were verified clean during design.
       var varPlaceholderRefRE = regexp.MustCompile(`\{\{=awf:(gateCmd|checkCmd)\}\}`)
 
       // PlaceholderVarRefs returns the config vars a raw convention-part body
-      // consumes through {{=awf:key}} placeholders — gateCmd and checkCmd are the
+      // consumes through {{=awf:key}} placeholders: gateCmd and checkCmd are the
       // only registry keys that read vars (see project.placeholderRegistry).
       // Scanned on the on-disk bytes: substitution has already replaced the
       // tokens in the assembled output, so this is the one consumption channel
@@ -219,7 +219,7 @@ fixture were verified clean during design.
       	PartVarRefs []string
       ```
 
-- [ ] In `internal/project/render.go` `planSections`, after the `sp.PartMarker = …` line,
+- [ ] In `internal/project/render.go` `planSections`, after the `sp.PartMarker = ...` line,
       add:
 
       ```go
@@ -264,7 +264,7 @@ fixture were verified clean during design.
 
       ```go
       // unusedVarDrift reports each non-empty vars: key referenced by no rendered
-      // artifact — neither a .vars.X reference in any assembled source (RenderAll
+      // artifact: neither a .vars.X reference in any assembled source (RenderAll
       // output and the generated domain docs, passed concatenated) nor a
       // gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
       // exempt: they mirror the ADR-0045 unset definition, keeping the ADR-0022
@@ -299,7 +299,7 @@ fixture were verified clean during design.
 
       // unusedDataDrift reports, per enabled artifact, the sidecar data: keys its
       // assembled sources reference nowhere, unioned across enabled targets
-      // (ADR-0086 Decision 4). Domains are excluded — their sidecars are rejected
+      // (ADR-0086 Decision 4). Domains are excluded: their sidecars are rejected
       // as paths-only at open. A local: true sidecar renders nothing, so every
       // key reports. A key referenced only inside a dropped section counts as
       // unused: the drop makes it configuration that does nothing.
@@ -344,7 +344,7 @@ fixture were verified clean during design.
       		if len(unused) == 0 {
       			return nil
       		}
-      		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + " — a key referenced only inside a dropped section counts as unused; remove the key or the drop"
+      		detail := "data keys referenced by no rendered section: " + strings.Join(unused, ", ") + "; a key referenced only inside a dropped section counts as unused; remove the key or the drop"
       		if sc.Local {
       			detail = "local: true renders nothing, so no data key is consumed; remove the data block: " + strings.Join(unused, ", ")
       		}
@@ -371,7 +371,7 @@ fixture were verified clean during design.
       ```
 
 - [ ] Wire both into `Check` in `internal/project/check.go`, after the
-      `drift = append(drift, p.checkDomainDocs(…)…)` line:
+      `drift = append(drift, p.checkDomainDocs(...)...)` line:
 
       ```go
       	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds))...)
@@ -392,7 +392,7 @@ fixture were verified clean during design.
       `Check` and filtering drift by Kind:
       - a non-empty var nothing references → one `unused-var` entry at
         `.awf/config.yaml` naming the key; the same var empty → no entry;
-      - a var consumed ONLY via a part placeholder — the fixture must isolate the
+      - a var consumed ONLY via a part placeholder: the fixture must isolate the
         `PartVarRefs` channel or the test passes even with the plumbing unwired
         (`gateCmd` is referenced via `.vars.gateCmd` by tdd's own template and the
         always-on agents-doc/workflow templates): enable only
@@ -403,7 +403,7 @@ fixture were verified clean during design.
         no `unused-var` entry for `gateCmd`; negative control: the same fixture
         without the part → `unused-var` entry for `gateCmd` (proves the channel);
       - sidecar `data:` key the template never reads (`skills/tdd.yaml` with
-        `data: {testSurfaces: […valid…], dead: v}`) → one `unused-data` entry at
+        `data: {testSurfaces: [...valid...], dead: v}`) → one `unused-data` entry at
         `.awf/skills/tdd.yaml` naming only `dead`;
       - `local: true` sidecar with a data key → `unused-data` entry with the
         `local: true renders nothing` detail;
@@ -413,26 +413,26 @@ fixture were verified clean during design.
         `.awf/agents-doc.yaml`.
 - [ ] Apply the fixture-fallout rule: run `go test ./...`; repair fixtures the new drift
       kinds flag (typical: `data:\n  k: v\n` filler sidecars in `internal/project` and
-      `cmd/awf` tests whose Check-based assertions now see `unused-data` — swap `k` for a
+      `cmd/awf` tests whose Check-based assertions now see `unused-data`: swap `k` for a
       template-read key or drop the data block).
 - [ ] Add to `changelog/CHANGELOG.md` under `### Breaking changes`:
 
       ```markdown
       - `awf check` now fails on authored-but-unconsumed configuration (ADR-0086): a
         non-empty `vars:` key no rendered artifact references (`unused-var`), and a
-        sidecar `data:` key the artifact's template never reads (`unused-data`) — the
+        sidecar `data:` key the artifact's template never reads (`unused-data`): the
         typo that publication-safe degradation used to hide. Empty vars stay legal
         (the init scaffold is unchanged), but note that leftover keys from removed
         catalog vars (e.g. ADR-0084's) are now flagged when non-empty, and disabling
-        a render unit (`awf remove hooks`) can strand the var only it consumed —
+        a render unit (`awf remove hooks`) can strand the var only it consumed;
         delete the key in the same change.
       ```
 
-- [ ] Run `./x gate` — green (this also proves awf's own tree clean under the new
+- [ ] Run `./x gate`: green (this also proves awf's own tree clean under the new
       checks). Commit: `feat(awf): flag unused vars and data keys in awf check (ADR-0086)`
       (subject kept under the 72-char commit-gate limit).
 
-## Phase 3 — the closed-tree sweep (Decisions 1, 2, 7)
+## Phase 3: the closed-tree sweep (Decisions 1, 2, 7)
 
 - [ ] Create `internal/project/sweep.go`:
 
@@ -457,7 +457,7 @@ fixture were verified clean during design.
       // is either claimed here or drift. files holds claimed file paths
       // (project-relative, slash-separated); dirs holds structural directories
       // legal even when empty; enabled/singletons index the artifact facts the
-      // classifier needs to keep the pre-ADR-0086 detail strings — locality is
+      // classifier needs to keep the pre-ADR-0086 detail strings; locality is
       // never stored, because an enabled-but-unclaimed parts dir already implies
       // local: true (buildClaimedModel claims every non-local artifact's parts).
       type claimedModel struct {
@@ -484,7 +484,7 @@ fixture were verified clean during design.
 
       // buildClaimedModel computes the claimed-path model from config, catalog,
       // and the RenderAll output (whose .awf/-prefixed paths are exactly the
-      // enabled config-tree render units — the model derives from the same code
+      // enabled config-tree render units: the model derives from the same code
       // path that writes them, per the ADR's dual-bookkeeping consequence).
       func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error) {
       	m := &claimedModel{
@@ -518,7 +518,7 @@ fixture were verified clean during design.
       				return nil, err
       			}
       			// A local: true artifact renders nothing, so its parts are
-      			// dead weight — deliberately unclaimed (ADR-0086 Decision 1).
+      			// dead weight, deliberately unclaimed (ADR-0086 Decision 1).
       			// A local: true domain sidecar cannot reach here: open-time
       			// validation rejects any non-paths: domain field (Decision 5).
       			if sc.Local {
@@ -561,7 +561,7 @@ fixture were verified clean during design.
       	segs := strings.Split(rel, "/") // segs[0] is always ".awf"
       	switch {
       	case !isDir && awfBakRE.MatchString(rel):
-      		d.Detail = "stale awf-bak backup — review and delete"
+      		d.Detail = "stale awf-bak backup: review and delete"
       	// Singleton parts tree: .awf/parts/<kind>[/<section>.md].
       	case len(segs) == 3 && segs[1] == "parts" && isDir && !m.singletons[segs[2]]:
       		d.Detail = "convention parts for an unknown singleton kind"
@@ -579,7 +579,7 @@ fixture were verified clean during design.
       	case len(segs) == 5 && segs[2] == "parts" && !isDir && strings.HasSuffix(segs[4], ".md") && m.enabled[segs[1]] != nil && m.enabled[segs[1]][segs[3]]:
       		d.Detail = "convention part for a section not in the target's declared set"
       	default:
-      		d.Detail = "unclaimed file or directory — not part of the .awf config tree; delete it or move it out"
+      		d.Detail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
       	}
       	return d
       }
@@ -640,7 +640,7 @@ fixture were verified clean during design.
 
 - [ ] In `internal/project/check.go`: delete the whole `orphans()` function and its
       doc comment (its `inv: drift-source-set` / ADR-0011 comment and behavior move to
-      `sweepConfigTree` above — same commit, so the invariant backing never gaps), and
+      `sweepConfigTree` above: same commit, so the invariant backing never gaps), and
       change the call site in `Check` from
 
       ```go
@@ -657,10 +657,10 @@ fixture were verified clean during design.
 
       Remove imports `check.go` no longer needs if the compiler flags any (it still uses
       `os`/`filepath` elsewhere; verify with `go build ./...`).
-- [ ] Run the two pinned existing tests unchanged — they lock the preserved drift
+- [ ] Run the two pinned existing tests unchanged; they lock the preserved drift
       *paths* (Detail preservation is pinned by sweep_test.go below):
-      `go test ./internal/project/ -run 'TestPerTargetDriftProjection|TestCheckFlagsOrphanedSingletonParts' -v`
-      — both PASS without edits.
+      `go test ./internal/project/ -run 'TestPerTargetDriftProjection|TestCheckFlagsOrphanedSingletonParts' -v`:
+      both PASS without edits.
 - [ ] Create `internal/project/sweep_test.go` covering, via `scaffoldFiles` + `Sync` +
       `Check` (filter drift to `Kind == "orphaned"`, assert exact Path+Detail):
       - `.awf/notes.md` → unclaimed detail;
@@ -668,13 +668,13 @@ fixture were verified clean during design.
         `.awf/scratch`, unclaimed detail (collapse);
       - `.awf/skills/readme.txt` (non-yaml in a kind dir) → unclaimed detail;
       - `.awf/skills/parts/tdd/notes.txt` (non-md in an enabled artifact's parts dir,
-        with `notes` NOT a declared section — use a name like `stray.txt`) → unclaimed
+        with `notes` NOT a declared section; use a name like `stray.txt`) → unclaimed
         detail; and `.awf/skills/parts/tdd/bogus.md` → the byte-identical
         `convention part for a section not in the target's declared set`;
       - `.awf/memory/anything.md` and `.awf/memory/deep/file.awf-bak` → no drift at all;
       - `.awf/hooks/pre-commit.sh.awf-bak` (hooks enabled) and
         `.awf/config.yaml.awf-bak.2` → each one entry with
-        `stale awf-bak backup — review and delete`;
+        `stale awf-bak backup: review and delete`;
       - an enabled skill with `local: true` sidecar and a part file →
         `.awf/skills/parts/<name>` flagged with the local-managed detail;
       - a local `workflow.yaml` singleton (`local: true`) with `.awf/parts/workflow/x.md`
@@ -700,31 +700,31 @@ fixture were verified clean during design.
         structural dirs are all claimed).
 - [ ] Apply the fixture-fallout rule: run `go test ./...`; repair any fixture that
       leaves stray files under its `.awf/` (typical: helper-written scratch files or
-      backups in `cmd/awf` init/e2e tests — `awf init --force` tests now see the
+      backups in `cmd/awf` init/e2e tests: `awf init --force` tests now see the
       stale-backup drift *by design*; assert it rather than remove it where the test
       exercises the backup path).
 - [ ] Add to `changelog/CHANGELOG.md` under `### Breaking changes`:
 
       ```markdown
       - The `.awf/` tree is now closed (ADR-0086): `awf check` fails on any file or
-        directory it cannot claim — strays like `.awf/notes.md`, files with the wrong
-        extension in kind/parts dirs, parts of a `local: true` artifact — with a
+        directory it cannot claim (strays like `.awf/notes.md`, files with the wrong
+        extension in kind/parts dirs, parts of a `local: true` artifact) with a
         repair hint per entry, collapsing to the topmost unclaimed directory.
         Sync-written `<path>.awf-bak[.N]` collision backups are flagged as stale
         backups to review and delete (a brownfield adopt is therefore red on its
-        first check until the backups are cleared — intended to-do surfacing).
+        first check until the backups are cleared; intended to-do surfacing).
         `.awf/memory/` stays exempt session scratch.
       ```
 
-- [ ] Run `./x gate` — green (awf's own tree passes the sweep). Commit:
+- [ ] Run `./x gate`: green (awf's own tree passes the sweep). Commit:
       `feat(awf): close the .awf config tree in awf check (ADR-0086)`.
 
-## Phase 4 — init prompts only enabled-set vars (Decision 6)
+## Phase 4: init prompts only enabled-set vars (Decision 6)
 
 - [ ] In `internal/project/scaffold.go`, extract the selection derivation from
-      `ScaffoldConfig` into a helper it then calls — move the block from the
+      `ScaffoldConfig` into a helper it then calls: move the block from the
       `var skillNames, docNames []string` declaration through the four `slices.Sort`
-      calls (the `Core` loop, `agentNames := …`, the whole `trim != nil` closure block)
+      calls (the `Core` loop, `agentNames := ...`, the whole `trim != nil` closure block)
       verbatim into:
 
       ```go
@@ -733,7 +733,7 @@ fixture were verified clean during design.
       // derived from the selection's requirements (ADR-0081 Decision 9). added
       // lists closure additions beyond the explicit selection.
       func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNames, agentNames, docNames, added []string) {
-      	// …moved body, unchanged, ending after the slices.Sort calls…
+      	// ...moved body, unchanged, ending after the slices.Sort calls...
       	return skillNames, agentNames, docNames, added
       }
       ```
@@ -809,7 +809,7 @@ fixture were verified clean during design.
       ```
 
       then **pass 2** over the remaining descriptors (skip `d.Kind == "multiselect"`),
-      the existing string/enum body with one change — the prompt condition becomes:
+      the existing string/enum body with one change: the prompt condition becomes:
 
       ```go
       		val, ok := answers[d.Key]
@@ -839,7 +839,7 @@ fixture were verified clean during design.
       (existing behavior: prompt for everything).
 - [ ] Fix the one caller the compiler cannot surface: `TestInitInteractivePromptWiring`
       (`cmd/awf/init_test.go`) scripts stdin as `"make gate\n"` assuming `gateCmd` is
-      the first prompt — with multiselects now prompting first, the skills multiselect
+      the first prompt: with multiselects now prompting first, the skills multiselect
       would consume `make gate` and error on the non-numeric token. Change the stdin to
       `"\n\nmake gate\n"` (two empty lines keep both multiselects' core defaults, then
       `gateCmd` reads `make gate`) and update the comment calling `gateCmd` "the first
@@ -854,12 +854,12 @@ fixture were verified clean during design.
         multiselect-before-vars ordering assertion is a separate case using
         trimDescs-style descriptors (mirror the existing multiselect fixture in the
         initspec tests): one multiselect + one string descriptor, with the string
-        listed FIRST — the transcript still shows the multiselect prompt first.
-      - `internal/project`: `TestNeededVars` — `NeededVars(nil)` (untrimmed default)
+        listed FIRST: the transcript still shows the multiselect prompt first.
+      - `internal/project`: `TestNeededVars`: `NeededVars(nil)` (untrimmed default)
         contains `commitGateCmd` (hook payloads) and `gateCmd` (agents-doc/workflow);
         with `trim = &config.CatalogTrim{Skills: &[]string{"tdd"}, Docs: &[]string{}}`
         the result contains `gateCmd` and `commitGateCmd` but NOT `invariantTestPath`
-        (referenced only by the adr-reviewer agent and retrospective skill — both
+        (referenced only by the adr-reviewer agent and retrospective skill, both
         outside tdd's closure; verified during design via
         `grep -rl '\.vars\.invariantTestPath' templates/` →
         `templates/agents/adr-reviewer.md.tmpl`,
@@ -874,18 +874,18 @@ fixture were verified clean during design.
         honored for any var either way.
       ```
 
-- [ ] Run `./x gate` — green. Commit:
+- [ ] Run `./x gate`: green. Commit:
       `feat(awf): prompt only enabled-set vars in interactive init (ADR-0086)`.
 
-## Phase 5 — docs, guide, flip
+## Phase 5: docs, guide, flip
 
 - [ ] In `templates/docs/working-with-awf.md.tmpl`, inside the `sync-and-drift` section,
       append to the existing paragraph (before the closing `<!-- awf:end -->`):
 
       ```markdown
 
-      `awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed —
-      an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton —
+      `awf check` also enforces config-tree hygiene: every entry under `.awf/` must be claimed
+      (an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
       and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
       collision backups (review and delete them) and the parts of a `local: true` artifact
       (`.awf/memory/` is exempt session scratch). Configuration must be consumed, too: a non-empty
@@ -900,7 +900,7 @@ fixture were verified clean during design.
 
       ```yaml
               - ref: ADR-0086
-                text: '**Closed config tree.** Every `.awf/` entry outside the claimed-path model — enabled artifacts'' sidecars and declared-section parts, the rendered units, the skeleton — is failing `awf check` drift, collapsed to the topmost unclaimed directory (`memory/**` exempt; `*.awf-bak` backups flagged for review; a `local: true` artifact''s parts unclaimed), and authored-but-unconsumed configuration fails too: non-empty `vars:` keys and sidecar `data:` keys no rendered artifact references.'
+                text: '**Closed config tree.** Every `.awf/` entry outside the claimed-path model (enabled artifacts'' sidecars and declared-section parts, the rendered units, the skeleton) is failing `awf check` drift, collapsed to the topmost unclaimed directory (`memory/**` exempt; `*.awf-bak` backups flagged for review; a `local: true` artifact''s parts unclaimed), and authored-but-unconsumed configuration fails too: non-empty `vars:` keys and sidecar `data:` keys no rendered artifact references.'
               - ref: ADR-0086
                 text: '**Inert sidecar fields refuse at open.** `paths:` on a non-domain sidecar and any non-`paths:` field on a domain sidecar (`data:`, `sections:`, `local: true`) fail every gated command at project open; interactive `awf init` prompts only for vars the scaffolded enabled set''s templates reference.'
       ```
@@ -916,12 +916,12 @@ fixture were verified clean during design.
       `docs/decisions/0077-anchored-path-globs-and-domain-code-staleness.md` (exact 0077
       filename per `ls docs/decisions/0077-*.md`).
 - [ ] Run `./x sync` (re-renders AGENTS.md, working-with-awf.md, domain docs), then
-      `./x check` — clean. Run `./x gate` — green. Commit everything above:
+      `./x check`: clean. Run `./x gate`: green. Commit everything above:
       `docs(rendering): document the ADR-0086 hygiene checks (ADR-0086)`.
 - [ ] Flip `docs/decisions/0086-closed-config-tree-and-configuration-consumption-checks.md`
       frontmatter `status: Proposed` → `status: Implemented`. Run `./x sync` (ACTIVE.md
-      regen) and `./x gate` — the invariants check now enforces the six ADR-0086 slugs
-      against the markers landed in Phases 1–4; green. Commit:
+      regen) and `./x gate`: the invariants check now enforces the six ADR-0086 slugs
+      against the markers landed in Phases 1-4; green. Commit:
       `docs(adr): flip 0086 to Implemented`.
-- [ ] Freeze this plan: it needs no completion marker — the ADR flip freezes it per the
+- [ ] Freeze this plan: it needs no completion marker; the ADR flip freezes it per the
       plan lifecycle.

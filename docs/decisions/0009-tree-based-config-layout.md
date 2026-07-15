@@ -15,15 +15,15 @@ A project's entire awf configuration lives in one monolithic `.claude/awf.yaml`
 (~141 lines in this repo). That single file carries four very different kinds of
 content at once: global skeleton (`prefix`, `invariants.sources`, `vars`, `hooks`),
 per-target structured `data` arrays (`adrStates`, `testSurfaces`, `focusItems`,
-`correctnessTraps`, …), large inline prose (the `agentsDoc.data.ownership` and
-`agentsDoc.data.identity` blocks — the biggest prose in the whole file), and
+`correctnessTraps`, ...), large inline prose (the `agentsDoc.data.ownership` and
+`agentsDoc.data.identity` blocks: the biggest prose in the whole file), and
 per-target section overrides (`drop` / `replaceWith`). Everything for every skill,
 agent, doc, and the agent guide is interleaved in one place, so the file grows
 without bound and a small per-target tweak means editing the central file.
 
 A `parts/` mechanism already exists but is barely used: a section override
 `replaceWith: parts/<file>.md` pulls a markdown body from
-`.claude/awf/<file>` — the part base dir is already `.claude/awf/`
+`.claude/awf/<file>`: the part base dir is already `.claude/awf/`
 (`internal/project/project.go:121`, `filepath.Join(p.Root, ".claude", "awf", name)`).
 Today only two parts exist (`.claude/awf/parts/debugging-surfaces.md`,
 `.claude/awf/parts/doc-architecture.md`), each pointed at by an explicit
@@ -62,7 +62,7 @@ Grounding discoveries that shape the design (verified against source unless note
   (string, error)` resolving a path under `.claude/awf/`.
 - **agentsDoc prose comes from `data` scalars filling section bodies**, not from the
   template body. `templates/agents-doc/AGENTS.md.tmpl:9` is
-  `{{ with .data.ownership }}{{ . }}{{ else }}…default…{{ end }}` and `:15` the same
+  `{{ with .data.ownership }}{{ . }}{{ else }}...default...{{ end }}` and `:15` the same
   for `.data.identity`; `invariants` loops `.data.invariants` (`:26`) and `docMap`
   loops `.data.docMap` (`:69`). The catalog declares `agentsDoc.sections:
   [you-and-this-project, identity, invariants, workflow, commands, document-map]`
@@ -88,7 +88,7 @@ Grounding discoveries that shape the design (verified against source unless note
 
 **User constraints driving the design (verbatim intent):** "keep files concise and
 split them more"; the root is "`.claude/awf/`" holding "a single folder for all
-config"; sidecars are "a single YAML file per doc file that does the linking … stores
+config"; sidecars are "a single YAML file per doc file that does the linking ... stores
 the overrides config if present"; "parts would be convention, typically located at
 e.g. `.claude/awf/docs/parts/architecture`"; split scope is "prose bodies only" with
 `data` kept "in the per-target sidecar"; agentsDoc prose is "re-model[led] as section
@@ -117,15 +117,15 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    ```
 
    The `.claude/awf/docs/` branch (awf config) and the project `docsDir`
-   (default `docs/`, rendered ADRs/plans — ADR-0005) are independent trees that
+   (default `docs/`, rendered ADRs/plans; ADR-0005) are independent trees that
    co-exist with no interaction.
 
 2. **`config.yaml` is the skeleton only.** It carries `prefix`,
-   `invariants` (`sources`/`disabled` — ADR-0008), `vars`, `hooks`, `docsDir`, and
+   `invariants` (`sources`/`disabled`; ADR-0008), `vars`, `hooks`, `docsDir`, and
    **enable lists that are plain string arrays**: `skills`, `agents`, `docs` become
    `[]string` (target names); `hooks` stays `[]string`. Presence of a name enables
    that target. The root file carries **no** per-target `data`, `sections`, or
-   `local` — those move to sidecars. `config.Config`'s `Skills`/`Agents`/`Docs`
+   `local`: those move to sidecars. `config.Config`'s `Skills`/`Agents`/`Docs`
    fields change from `map[string]SkillConfig` to `[]string`; a `data:`/`sections:`
    key at the root is a parse error (`KnownFields(true)`). `agentsDoc` is **not**
    one of these lists: it remains the always-on singleton `config.Config.AgentsDoc`
@@ -136,7 +136,7 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    live in `.claude/awf/<kind>/<target>.yaml`. Sidecars are **optional and located
    by keyed lookup**, not filesystem scan: for each name in an enable list the
    loader reads `<kind>/<name>.yaml` if it exists. An enabled target with **no**
-   sidecar resolves to an empty override set and renders from template defaults —
+   sidecar resolves to an empty override set and renders from template defaults,
    preserving the publication-safe contract (ADR-0001): missing `data` renders as
    empty under `missingkey=zero`, never a no-value token. Enablement remains
    answerable from `config.yaml` alone; a stray sidecar for an unlisted target is
@@ -144,7 +144,7 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
 
 4. **Prose parts bind by convention.** For section `<sec>` of `<kind>/<target>`, if
    `.claude/awf/<kind>/parts/<target>/<sec>.md` exists, its contents replace that
-   section body — no `replaceWith` pointer needed. The per-section precedence
+   section body: no `replaceWith` pointer needed. The per-section precedence
    generalizes today's rule to four tiers:
 
    > sidecar `drop` > sidecar explicit `replaceWith` > convention part file > template default
@@ -172,9 +172,9 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    skill's/agent's hand-authored frontmatter at the conventional output path awf
    would otherwise render it to, reusing `validateFrontmatter`. Because local targets
    are skipped from `RenderAll` they have no `RenderedFile`, so the output path is
-   derived *structurally* from `prefix`+`name` by a shared helper — skill:
-   `.claude/skills/<prefix>-<name>/SKILL.md`; agent: `.claude/agents/<name>.md` (the
-   same formulas `RenderAll` uses, `project.go:255,269`) — without invoking the
+   derived *structurally* from `prefix`+`name` by a shared helper (skill:
+   `.claude/skills/<prefix>-<name>/SKILL.md`; agent: `.claude/agents/<name>.md`; the
+   same formulas `RenderAll` uses, `project.go:255,269`) without invoking the
    template. `sync`/`check` read that on-disk file and run `validateFrontmatter` on it;
    a local target whose
    on-disk file has missing/empty `name`/`description` fails with the same
@@ -195,15 +195,15 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    of choosing projection over a single whole-tree digest: editing `skills/tdd.yaml`
    re-flags only `tdd`'s outputs, not every rendered file. A sidecar or part file
    matching no enabled/declared target is reported as an orphan. `manifest.Entry`
-   stays a generic `path→hash` record — `ConfigHash` remains a single string per
-   entry — so the lock **format** is unchanged; only how each entry's `ConfigHash`
+   stays a generic `path→hash` record (`ConfigHash` remains a single string per
+   entry), so the lock **format** is unchanged; only how each entry's `ConfigHash`
    is computed changes. The lock file relocates to `.claude/awf/awf.lock`; its
    `AWFVersion` field is untouched here (ADR-B owns version-gating).
 
 7. **agentsDoc stays a distinct singleton kind; its prose moves to parts.**
    `agentsDoc` is **not** folded into the `Docs` map: it remains the top-level
    `config.Config.AgentsDoc *SkillConfig` singleton with its six named sections,
-   always-on, rendering to the repo-root `AGENTS.md` (not under `docsDir`) — folding
+   always-on, rendering to the repo-root `AGENTS.md` (not under `docsDir`); folding
    it into `Docs` (a body-only `DocSpec` with title/desc, rendered under `docsDir`
    and listed in the agents-doc Document-map by `resolvedDocs()`, `project.go:158-173`)
    would give it fields it has no use for and make it list itself. Only its config
@@ -233,11 +233,11 @@ split is "Two ADRs" with ADR-B owning "versioned lock + awf upgrade + gate."
    `available | enabled | tuned | local` vocabulary, with `tuned` now meaning "has a
    sidecar with data/sections" and `local` read from the sidecar.
 
-Applying this layout to awf's own repo — hand-porting `.claude/awf.yaml` into
+Applying this layout to awf's own repo (hand-porting `.claude/awf.yaml` into
 `.claude/awf/config.yaml` + the per-kind sidecars + the extracted parts (including
 this repo's specific identity/ownership prose into
 `.claude/awf/parts/agents-doc/*.md`), then re-syncing so rendered output is
-byte-identical — is **not** a Decision item: it is adopter (dogfood) work, the final
+byte-identical) is **not** a Decision item: it is adopter (dogfood) work, the final
 task of the implementation plan, not a standard-definition commitment. This change
 earns an ADR because it is load-bearing (new top-level config layout, changed config
 schema, new render precedence tier, new drift composition, changed local-target
@@ -249,32 +249,32 @@ Checkable contracts that must hold while this decision stands. Tagged slugs are
 backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`; ADR-0008); untagged bullets are textual contracts.
 
-- `invariant: config-root` — Config loads from `.claude/awf/config.yaml` and the lock is
+- `invariant: config-root`: Config loads from `.claude/awf/config.yaml` and the lock is
   written to/read from `.claude/awf/awf.lock`; no normal load/render/sync/check path
   reads or writes `.claude/awf.yaml` or `.claude/awf.lock`. The `internal/migrate`
   package under `awf upgrade` is the single named exception, reading the legacy file
   only to port it forward (ADR-0010 `legacy-read-isolation`).
-- `invariant: enable-arrays` — `config.Config.Skills`/`Agents`/`Docs` are string arrays
+- `invariant: enable-arrays`: `config.Config.Skills`/`Agents`/`Docs` are string arrays
   whose entries enable targets by presence; a `data:`, `sections:`, or `local:` key
   at the root of `config.yaml` is rejected at load (`KnownFields(true)`).
-- `invariant: sidecar-optional` — An enabled target with no `<kind>/<name>.yaml` sidecar
+- `invariant: sidecar-optional`: An enabled target with no `<kind>/<name>.yaml` sidecar
   renders successfully from template defaults, emitting no `<no value>` token for any
   absent `data` field (`missingkey=zero`, ADR-0001).
-- `invariant: parts-convention` — A section is replaced by
+- `invariant: parts-convention`: A section is replaced by
   `.claude/awf/<kind>/parts/<target>/<section>.md` when that file exists, and the
   per-section precedence is `drop > explicit replaceWith > convention part >
   template default`.
-- `invariant: local-frontmatter` — A declared `local` skill/agent has its on-disk
+- `invariant: local-frontmatter`: A declared `local` skill/agent has its on-disk
   frontmatter validated by `sync` and `check` at its conventional output path;
   missing/empty `name`/`description` fails identically to a rendered target, and an
   absent file for a declared local target is an error.
-- `invariant: drift-source-set` — Each rendered file's `ConfigHash` is a per-target
+- `invariant: drift-source-set`: Each rendered file's `ConfigHash` is a per-target
   projection over only its own effective inputs (the skeleton fields it reads, its
   sidecar, its consumed parts); `awf check` reports that file stale when any of those
   inputs change since the last `sync`, and editing one target's sidecar or part does
   **not** flag unrelated targets' files. A sidecar or part file matching no
   enabled/declared target is reported as an orphan.
-- `invariant: agentsdoc-parts` — The `agents-doc` `you-and-this-project` and `identity`
+- `invariant: agentsdoc-parts`: The `agents-doc` `you-and-this-project` and `identity`
   section bodies are overridable via convention parts under
   `.claude/awf/parts/agents-doc/`, and render publication-safe with no override
   and empty `invariants`/`docMap`.
@@ -342,12 +342,12 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   phrasing if affected, then re-render from the ported config.
 - When this ADR flips to Accepted/Implemented, the same commit regenerates `ACTIVE.md`
   via `./x sync`. No `docs/decisions/README.md` index row is owed (this repo's README
-  is a how-to guide; `ACTIVE.md` is the generated index — ADR-0005).
+  is a how-to guide; `ACTIVE.md` is the generated index, ADR-0005).
 
 Downstream work unblocked: (1) an implementation plan covering the config struct/loader
 change, sidecar discovery and validation, the convention-part precedence tier, the
 drift-source-set composition, the local-frontmatter check, the agents-doc re-model, the
-CLI/scaffold updates, and the dogfood port — with tests at each step; and (2) ADR-B,
+CLI/scaffold updates, and the dogfood port, with tests at each step; and (2) ADR-B,
 the versioned-lock + `awf upgrade` + drift-gate mechanism that migrates existing
 adopters from the single-file layout to this tree.
 
@@ -361,6 +361,6 @@ adopters from the single-file layout to this tree.
 | Externalize `data` arrays into `.md`/separate files too | Scope was explicitly "prose bodies only"; structured `data` stays as YAML in the sidecar where it is schema-checkable and close to its `sections`. |
 | Keep agentsDoc prose as `data` scalars in its sidecar | Leaves the config's largest prose as multi-line YAML, partially defeating the goal; re-modelling the two section bodies into convention parts is the one template change that yields the biggest conciseness win. |
 | Fold the migration mechanism (versioned lock + `awf upgrade` + gate) into this ADR | Couples a reusable, forward-looking migration mechanism to one layout change; one-decision-per-ADR keeps it as ADR-B (user-selected two-ADR split). |
-| Fold `agents-doc` into the `Docs` map for a uniform per-kind tree | `agentsDoc` is a 6-section, always-on singleton rendering to repo-root `AGENTS.md`; `Docs` is a body-only `DocSpec` (title/desc) rendered under `docsDir` and folded into the Document-map by `resolvedDocs()`. Folding would force unused title/desc, push 6 sections through a body-only spec, and make it list itself — more special-casing than keeping it a distinct singleton kind (item 7). |
+| Fold `agents-doc` into the `Docs` map for a uniform per-kind tree | `agentsDoc` is a 6-section, always-on singleton rendering to repo-root `AGENTS.md`; `Docs` is a body-only `DocSpec` (title/desc) rendered under `docsDir` and folded into the Document-map by `resolvedDocs()`. Folding would force unused title/desc, push 6 sections through a body-only spec, and make it list itself: more special-casing than keeping it a distinct singleton kind (item 7). |
 | Whole-config-tree hash instead of per-target projection (item 6) | A single digest over `config.yaml` + all sidecars + all parts is simpler, but any edit re-flags every rendered file as stale, erasing the locality that makes drift output actionable. Per-target projection costs a per-target re-encode and is worth it. |
-| Change the lock format to record per-source hashes | Per-source hashes (one each for skeleton-slice / sidecar / part) would let `check` name *which* source drifted, not just which target. But `ConfigHash` is a single string per `manifest.Entry`; per-source hashes need a format change, and the per-target projection already localizes drift to the offending target — `check` can re-hash a target's components on demand to attribute further. The format change isn't warranted now. |
+| Change the lock format to record per-source hashes | Per-source hashes (one each for skeleton-slice / sidecar / part) would let `check` name *which* source drifted, not just which target. But `ConfigHash` is a single string per `manifest.Entry`; per-source hashes need a format change, and the per-target projection already localizes drift to the offending target: `check` can re-hash a target's components on demand to attribute further. The format change isn't warranted now. |

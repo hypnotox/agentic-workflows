@@ -1,19 +1,19 @@
 # Plan: Project-local skills and agents
 
 **Date:** 2026-07-06
-**ADR:** [ADR-0068](../decisions/0068-project-local-skills-and-agents.md) — Project-local skills and agents
+**ADR:** [ADR-0068](../decisions/0068-project-local-skills-and-agents.md): Project-local skills and agents
 
 ## Goal
 
-Let an adopter define project-local skills/agents — names outside `catalog.Standard`,
-declared by a sidecar and rendered from one awf-owned base template per kind — and scaffold
+Let an adopter define project-local skills/agents (names outside `catalog.Standard`,
+declared by a sidecar and rendered from one awf-owned base template per kind) and scaffold
 them with `awf new skill|agent <name> "<description>"`. Design rationale lives in ADR-0068;
 this plan is the execution record.
 
 ## Architecture summary
 
-- **Base templates.** Two awf-owned embedded templates — `templates/skills/_base/SKILL.md.tmpl`
-  and `templates/agents/_base.md.tmpl` — each with frontmatter and a single `content` section,
+- **Base templates.** Two awf-owned embedded templates (`templates/skills/_base/SKILL.md.tmpl`
+  and `templates/agents/_base.md.tmpl`) each with frontmatter and a single `content` section,
   fully guarded so they degrade leak-free under empty data. Embedded via an `all:` `//go:embed`
   prefix (the bare walk skips `_`-prefixed names).
 - **Base hook on the spec.** `catalog.SkillSpec`/`TargetSpec` gain a `Base bool` field. A
@@ -33,7 +33,7 @@ this plan is the execution record.
   declaring sidecar.
 - **Command.** `awf new skill|agent <name> "<description>"` validates the name, enables it, writes
   the sidecar (description) and a starter `content` part, then syncs.
-- **Harness-agnostic** output is inherited from the existing multi-target render loop — no change.
+- **Harness-agnostic** output is inherited from the existing multi-target render loop: no change.
 - Local artifacts sit outside `catalog.Standard`, so the eval (ADR-0053), chain (ADR-0054), and
   Standard section/descriptor parity suites do not touch them; the base templates get their own
   publication-safety lock.
@@ -67,13 +67,13 @@ this plan is the execution record.
 - `cmd/awf/main.go` (`new` arg handling by kind; help text)
 - `cmd/awf/new_test.go` (fix unknown-kind test; add skill/agent scaffolding tests)
 - `templates/docs/working-with-awf.md.tmpl` (commands + local-artifacts prose)
-- Rendered outputs via `./x sync` (`docs/working-with-awf.md` — a neutral doc, rendered once with no
-  per-target twin — `.awf/awf.lock`, `docs/decisions/ACTIVE.md`)
+- Rendered outputs via `./x sync` (`docs/working-with-awf.md` (a neutral doc, rendered once with no
+  per-target twin), `.awf/awf.lock`, `docs/decisions/ACTIVE.md`)
 - `docs/decisions/0068-...md` (status flip to Implemented in the final commit)
 
 ---
 
-## Phase 1 — Base templates + spec field + publication-safety lock
+## Phase 1: Base templates + spec field + publication-safety lock
 
 Self-contained: adds the base templates and the `Base` field, and locks the templates'
 leak-free degradation. Nothing renders them in production yet, so the suite stays green.
@@ -161,7 +161,7 @@ leak-free degradation. Nothing renders them in production yet, so the suite stay
   		},
   ```
 
-- [ ] **Verify.** Run `./x gate`. Expected tail: `coverage: 100.0% (…)`, `0 issues.`,
+- [ ] **Verify.** Run `./x gate`. Expected tail: `coverage: 100.0% (...)`, `0 issues.`,
   `deadcodecheck: no production dead code`. (The new `Base` field is an unreferenced struct field,
   not a function, so `deadcode` does not flag it.)
 
@@ -173,17 +173,17 @@ leak-free degradation. Nothing renders them in production yet, so the suite stay
 
 ---
 
-## Phase 2 — Effective-catalog merge, discovery, validation, tid hook
+## Phase 2: Effective-catalog merge, discovery, validation, tid hook
 
 Wires the base templates into production: a declared non-Standard name renders from the base
 template, once per target.
 
 - [ ] **Add config helpers.** In `internal/config/config.go`, add a `HasSidecar` method
-  after `Sidecar` (no `SidecarPath` helper is added — Phase 3 inlines the one path it needs
+  after `Sidecar` (no `SidecarPath` helper is added: Phase 3 inlines the one path it needs
   from `RootDir`; a `SidecarPath` introduced here would have no production caller until
   Phase 3 and would fail this commit's dead-code gate, ADR-0063):
   ```go
-  // HasSidecar reports whether a declaring sidecar file exists for an artifact —
+  // HasSidecar reports whether a declaring sidecar file exists for an artifact,
   // the presence signal that marks a non-catalog name as an intentional local
   // artifact rather than a typo (ADR-0068).
   func (c *Config) HasSidecar(kind, name string) (bool, error) {
@@ -240,7 +240,7 @@ template, once per target.
   )
 
   // effectiveCatalog returns a per-project clone of catalog.Standard augmented with
-  // a synthesized entry for every enabled local (non-Standard) skill/agent — a name
+  // a synthesized entry for every enabled local (non-Standard) skill/agent, a name
   // outside the standard pool that carries a declaring sidecar. The package global
   // is never mutated: the maps are cloned before any insert, and existing values
   // are only read (ADR-0068).
@@ -290,7 +290,7 @@ template, once per target.
   			return err
   		}
   		if sc.Local {
-  			continue // hand-authored opt-out — render and validate already skip it.
+  			continue // hand-authored opt-out: render and validate already skip it.
   		}
   		if err := config.ValidateArtifactName(kind, name); err != nil {
   			return err
@@ -367,12 +367,12 @@ template, once per target.
   local skill and a local agent rendering from the base template once per target; the clone leaving
   `catalog.Standard` unmutated; an undeclared non-Standard name failing `Open`; a `_`-prefixed /
   path-separator name failing `Open`; a malformed local sidecar failing `Open`; a non-Standard name
-  whose sidecar sets `local: true` (skipped — not synthesized, not base-rendered, no error, covering
+  whose sidecar sets `local: true` (skipped: not synthesized, not base-rendered, no error, covering
   the `sc.Local` continue); at least one `Open`-failing case enabled under `agents:` rather than
   `skills:` (so both `effectiveCatalog` synthesis error-returns execute, not only the skills-side
   one); a Standard-name collision staying the Standard spec. Use the existing
   `scaffoldProject`-style test root helper in
-  the `project` package (see `project_test.go` for the local fixture builder) — enable a local name
+  the `project` package (see `project_test.go` for the local fixture builder); enable a local name
   in `.awf/config.yaml`, write `.awf/skills/<name>.yaml` (with `data.description`) and
   `.awf/skills/parts/<name>/content.md`, call `Open` + `RenderAll`, and assert:
   - a `RenderedFile` exists with `TemplateID == "skills/_base/SKILL.md.tmpl"` for each target, its
@@ -388,8 +388,8 @@ template, once per target.
   - one of the `Open`-failing cases (bad name or malformed sidecar) is enabled under `agents:`, so
     the agents-side `return nil, err` in `effectiveCatalog` is exercised.
 
-- [ ] **Verify.** Run `./x gate`. Expected: `coverage: 100.0% (…)`, `0 issues.`,
-  `deadcodecheck: no production dead code`. Then `./x check` — expected `awf check: clean` (no
+- [ ] **Verify.** Run `./x gate`. Expected: `coverage: 100.0% (...)`, `0 issues.`,
+  `deadcodecheck: no production dead code`. Then `./x check`; expected `awf check: clean` (no
   drift: awf's own tree enables no local artifacts, and the `Base` field is not serialized into any
   ConfigHash).
 
@@ -401,7 +401,7 @@ template, once per target.
 
 ---
 
-## Phase 3 — `awf new skill|agent` command
+## Phase 3: `awf new skill|agent` command
 
 - [ ] **Dispatch by kind** in `cmd/awf/new.go`. Replace the whole file with:
   ```go
@@ -475,7 +475,7 @@ template, once per target.
   	}
   	pl, _ := project.PluralKind(kind) // "skills" / "agents"
   	if pool, _ := project.CatalogNames(p.Cat, kind); slices.Contains(pool, name) {
-  		return fmt.Errorf("%s %q already exists (catalog or local) — pick another name", kind, name)
+  		return fmt.Errorf("%s %q already exists (catalog or local): pick another name", kind, name)
   	}
   	// Declaring sidecar: data.description feeds the base template's frontmatter.
   	scBytes, err := yaml.Marshal(map[string]any{"data": map[string]any{"description": desc}})
@@ -506,8 +506,8 @@ template, once per target.
   	return runSync(root, stdout)
   }
 
-  // localPartStub is the starter body for a new local artifact's content part —
-  // plain prose only (no live {{=awf:…}} placeholder, which would hard-error if its
+  // localPartStub is the starter body for a new local artifact's content part:
+  // plain prose only (no live {{=awf:...}} placeholder, which would hard-error if its
   // value were unset this render).
   const localPartStub = "Replace this with the artifact's body. This file is a convention part: edit it to author the content, and see docs/working-with-awf.md for the placeholder syntax.\n"
   ```
@@ -517,7 +517,7 @@ template, once per target.
   Update the `"new"` help entry to:
   ```go
   	"new": {
-  		maxPos: -1, summary: "Scaffold a new artifact — kind ∈ {adr, skill, agent}",
+  		maxPos: -1, summary: "Scaffold a new artifact: kind ∈ {adr, skill, agent}",
   		help: `Usage: awf new <kind> <args>
 
   Scaffold a new artifact. <kind> is adr, skill, or agent.
@@ -545,7 +545,7 @@ template, once per target.
     and an already-existing catalog name (`tdd`) are rejected. Add a `TestRunNewMissingDescription`
     (skill with only a name → usage error).
 
-- [ ] **Verify.** `./x gate` → `coverage: 100.0% (…)`, `0 issues.`, no dead code.
+- [ ] **Verify.** `./x gate` → `coverage: 100.0% (...)`, `0 issues.`, no dead code.
 
 - [ ] **Commit:**
   ```
@@ -555,22 +555,22 @@ template, once per target.
 
 ---
 
-## Phase 4 — Document the feature
+## Phase 4: Document the feature
 
 - [ ] **Extend the usage doc.** In `templates/docs/working-with-awf.md.tmpl`:
   - In the `commands` section, add after the `awf new adr` bullet:
     ```
-    - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` — scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
+    - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
     ```
   - At the end of the `config-and-overrides` section body (before `<!-- awf:end -->`), add a
     paragraph:
     ```
-    **Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own. `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a built-in base template — once per enabled target — so a skill you define once is emitted for every agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md` (agents: `.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter description.
+    **Project-local skills and agents.** Beyond overriding catalog artifacts, you can define your own. `awf new skill <name> "<description>"` enables a name that is not in awf's standard catalog, writes a declaring sidecar, and drops a `content` convention part for you to author. awf renders it from a built-in base template (once per enabled target), so a skill you define once is emitted for every agent harness you target. Edit its body at `.awf/skills/parts/<name>/content.md` (agents: `.awf/agents/parts/<name>/content.md`); the sidecar's `data.description` becomes its frontmatter description.
     ```
 
 - [ ] **Re-render and verify no unexpected drift.** Run `./x sync`, then `git status --short`.
   Expected changed paths: `templates/docs/working-with-awf.md.tmpl`, `docs/working-with-awf.md`,
-  and `.awf/awf.lock` — working-with-awf is a neutral doc (rendered once to docsDir), so there is
+  and `.awf/awf.lock`; working-with-awf is a neutral doc (rendered once to docsDir), so there is
   no per-target `.cursor` twin. Run `./x gate` → green.
 
 - [ ] **Commit:**
@@ -581,7 +581,7 @@ template, once per target.
 
 ---
 
-## Phase 5 — Flip ADR-0068 to Implemented
+## Phase 5: Flip ADR-0068 to Implemented
 
 The final commit; every `inv:` slug from ADR-0068 is now backed in source, so `awf check`
 enforces them once the status is `Implemented`.
@@ -590,7 +590,7 @@ enforces them once the status is `Implemented`.
   ```
   grep -rn "invariant: local-" internal/ | sort
   ```
-  Expected — all six slugs present: `local-catalog-clone` (local.go), `local-requires-declaration`
+  Expected: all six slugs present: `local-catalog-clone` (local.go), `local-requires-declaration`
   (local.go), `local-no-shadow` (local.go), `local-renders-from-base` (render.go),
   `local-name-validated` (config.go), `local-base-publication-safe` (spine_test.go).
 

@@ -73,7 +73,7 @@ act or re-litigates it.
    `docs/plans/`. Generated files are excluded by construction, not by exemption: `ACTIVE.md`,
    `docs/decisions/README.md`, and `docs/plans/template.md` are rendered, and hand-editing a
    rendered file is forbidden outright, so a sweep could not reach them even in principle. Their
-   residue is item 3's and the follow-up's business, not this item's. `docs/research/` is
+   residue is item 4's and the follow-up's business, not this item's. `docs/research/` is
    deliberately out of scope: it is not part of the decision corpus agents are steered by, and no
    approval covers it.
 
@@ -84,36 +84,39 @@ act or re-litigates it.
    none is available: all seven of its occurrences are ordinary prose punctuation, and normalizing
    them would destroy nothing. It could be swept safely; it is not, by choice.
 
-   **The tempting general rule, "prose that depicts a banned glyph keeps it", is deliberately not
-   adopted, because within this ADR's scope it would select the empty set.** Depiction is already
-   solved, and not by an exemption: **ADR-0115 Decision item 7** holds that it is handled by
-   convention and scope, extending ADR-0113 item 4's rule that a doc discussing a banned character
-   names it by word and codepoint rather than typing it. The authored corpus already obeys that
-   convention, which is why an intent-rule finds nothing here: ADR-0113 names its subject as
-   "U+2014" and "Em-dash characters (U+2014)" without typing one, and ADR-0115, ADR-0117, and the
-   plan that implemented them carry zero occurrences between them.
+3. **Prose that is genuinely about a banned glyph keeps that glyph.** Where an occurrence is the
+   subject of its own sentence, rather than punctuation in it, normalizing it would make the
+   sentence assert something false. This is the maintainer's rule, and it is a judgement, not a
+   mechanical test, so item 7's completeness probe names its instances rather than inferring them.
 
-   The one genuine depiction in this repository sits outside this ADR's scope, and is the reason
-   the exemption principle is stated as intent rather than dropped. The `.awf/docs/pitfalls.yaml`
-   entry on gofmt's double-backtick rewrite types a curly quote to document what gofmt produces:
-   there, the glyph *is* the subject, and normalizing it would destroy the entry. It survives on the
-   maintainer's rule that prose which is legitimately about a banned glyph keeps it. That case is
-   sidecar data, which the follow-up in item 9 governs; it is not this ADR's to sweep and it is not
-   permanently exempt. Within the authored corpus, no such case exists, which is why item 2 names a
-   file rather than legislating a class.
+   The class is small, because **ADR-0115 Decision item 7** already holds that depiction is handled
+   by convention and scope rather than an exemption list, extending ADR-0113 item 4's rule that a
+   doc discussing a banned character names it by word and codepoint instead of typing it. The
+   corpus largely obeys that convention: ADR-0113 names its subject as "U+2014" and "Em-dash
+   characters (U+2014)" without ever typing one, and ADR-0115, ADR-0117, and the plan that
+   implemented them carry zero occurrences between them.
 
-3. **The sweep covers all seven banned codepoints, not just the em-dash, and it includes headings.**
+   It is not empty, though, and the sweep found the counterexample rather than assuming it away.
+   `docs/plans/2026-07-13-invariant-backing-migration-to-enforced-test-scoped-backing.md` records
+   that the generated config reference's live-state column "shows `<em-dash>` for
+   `invariants.testGlobs`". The glyph there is the observed value, verified against the tree at the
+   time of writing; punctuating it would turn a true report into a false one. It keeps its glyph.
+   The second known instance, the `.awf/docs/pitfalls.yaml` entry that types a curly quote to
+   document gofmt's rewrite, is sidecar data: out of this ADR's scope, governed by the follow-up in
+   item 10, and **not** permanently exempt from cleaning, only from this sweep.
+
+4. **The sweep covers all seven banned codepoints, not just the em-dash, and it includes headings.**
    ADR-0028's en-dashed title is normalized here, closing the gap ADR-0115 item 5 left when it swept
    for one codepoint under a seven-codepoint ban. Every emitted ADR title is then free of all seven.
 
-4. **The five bounding conditions of ADR-0115 item 5 carry over unchanged, with one widened.**
+5. **The five bounding conditions of ADR-0115 item 5 carry over unchanged, with one widened.**
    Retroactive normalization is permitted only when: it changes punctuation and nothing else; it is
    limited to the seven banned codepoints; **every word is preserved**; a maintainer approves it
    explicitly; and it is never a licence to edit an ADR's argument. Only the first condition's reach
    changes, from the heading line to the body. Append-only protects rationale, not orthography, and
    an argument's orthography is not its argument.
 
-5. **"Every word is preserved" is proven mechanically, not asserted.** A word-stream comparison
+6. **"Every word is preserved" is proven mechanically, not asserted.** A word-stream comparison
    (strip every non-alphanumeric character, then diff the resulting token streams) must report zero
    delta across the swept corpus. This is the check that makes the sweep defensible: it reduces the
    risk from "content was silently lost across 191 frozen records" to "a punctuation choice reads
@@ -121,22 +124,22 @@ act or re-litigates it.
    technique on the changelog, where it caught the word count moving 8590 to 8593 and confirmed the
    delta was exactly the three words of one intended rephrasing.
 
-6. **Completeness is proven by a scoped probe, run at the granularity the rule governs.** The sweep
+7. **Completeness is proven by a scoped probe, run at the granularity the rule governs.** The sweep
    is done when a scan of the authored files named in item 1 for the seven codepoints returns
-   nothing outside the single file item 2 names. The probe reads the authored corpus and names the
-   one exemption, rather than reading a wider unit and tolerating a residue, so a nonzero result is
+   nothing outside the instances items 2 and 3 name. The probe reads the authored corpus and names
+   each exemption, rather than reading a wider unit and tolerating a residue, so a nonzero result is
    a defect and not a judgement call. This is deliberate: ADR-0115 item 5's own post-check read
    whole files for a heading-scoped rule and was therefore unsatisfiable, and that failure is
    recorded in the pitfalls doc.
 
-7. **Fenced code blocks are swept, and the sweep reaches inside them.** The roughly 895 in-fence
+8. **Fenced code blocks are swept, and the sweep reaches inside them.** The roughly 895 in-fence
    occurrences in the plans are not spared. A `go` fence quoting an em-dashed string literal is
    quoting code that ADR-0115 has since made illegal and the parent effort has already cleaned, so
    normalizing the fence makes the frozen plan agree with the code that actually shipped rather than
-   preserving a specimen of a form the project now bans. The word-stream proof of item 5 applies
+   preserving a specimen of a form the project now bans. The word-stream proof of item 6 applies
    inside fences exactly as it does outside, so no content can be lost there either.
 
-8. **Replacement is by sentence structure, never a blind substitution.** An em-dash becomes the
+9. **Replacement is by sentence structure, never a blind substitution.** An em-dash becomes the
    punctuation the sentence wants: a colon where what follows explains what precedes, a semicolon
    between independent clauses, a comma for a light aside, and parentheses for a parenthetical. A
    pair of em-dashes bracketing a clause becomes a pair of parentheses. An en-dash in a numeric or
@@ -147,7 +150,7 @@ act or re-litigates it.
    replacement is whatever the surrounding language makes correct, which for a Go string literal is
    the same colon-or-parentheses choice the parent effort applied to the real source.
 
-9. **This authorises one act; it creates no new ongoing rule, and it closes no gate.** The
+10. **This authorises one act; it creates no new ongoing rule, and it closes no gate.** The
    forward-looking regime is unchanged and already owned: ADR-0115 gates the emitted surfaces,
    ADR-0117 warns on newly authored prose. This ADR declares no invariant and adds no check, because
    a completed sweep is history rather than a property to maintain.
@@ -167,7 +170,7 @@ act or re-litigates it.
    reintroduce a banned codepoint afterwards, which needs a gate this ADR does not write. The
    surfaces that follow-up must reach are the three sidecar sources above, production Go comments
    (13 occurrences, all ellipses), the test files, and the tracked non-Go files. Sidecar data is
-   explicitly **not** exempt: its only lasting exemption is the depiction in item 2.
+   explicitly **not** exempt: its only lasting exemption is the depiction in item 3.
 
 ## Invariants
 
@@ -189,7 +192,7 @@ already declared by ADR-0115 (`emitted-prose-no-typographic-substitutes`) and AD
 - **ADR-0028's en-dashed title is fixed, and two generated files re-render clean**
   (`docs/decisions/ACTIVE.md` and `docs/domains/adr-system.md`). It is **not** the last banned
   codepoint in generated output: 24 remain, in `docs/pitfalls.md` (20), `docs/decisions/README.md`
-  (3), and `docs/glossary.md` (1), rendered from the three `.awf/` sources item 9 names. Those are
+  (3), and `docs/glossary.md` (1), rendered from the three `.awf/` sources item 10 names. Those are
   the same defect class as the ADR-0028 title, a banned codepoint reaching emitted output through
   data no gate reads, and they are the follow-up's business.
 - **191 files are touched in a single sweep, and the diff is large and mechanical.** It is
@@ -216,7 +219,7 @@ already declared by ADR-0115 (`emitted-prose-no-typographic-substitutes`) and AD
 | Leave the bodies grandfathered (ADR-0115's status quo) | The maintainer's approval was always broader; the chain narrowed it on a principle it invented. The corpus keeps modelling the punctuation the project bans, to the agents it steers. |
 | Sweep without an ADR, as pure orthography | ADR-0115 item 5 and the rendered adr-system narrative both say the carve-out is heading-only. Leaving them contradicting reality recreates the exact failure item 5 exists to prevent: the next agent reads them and refuses or re-litigates. |
 | Amend ADR-0115 in place | It is Implemented, so its body is frozen; append-only permits editing only status and cross-reference metadata on a live ADR. Partial-item supersedence with a back-pointer is the sanctioned form (ADR-0116). |
-| Declare an invariant and gate the authored corpus | Needs a permanent exemption mechanism for item 2's judgement, which ADR-0113 and ADR-0115 both refused; converts elective hygiene into a standing gate over hand-authored records, which is what ADR-0117's advisory severity deliberately avoids. |
+| Declare an invariant and gate the authored corpus | Needs a permanent exemption mechanism for item 3's judgement, which ADR-0113 and ADR-0115 both refused; converts elective hygiene into a standing gate over hand-authored records, which is what ADR-0117's advisory severity deliberately avoids. |
 | Blind mechanical substitution (every em-dash to a colon) | Corrupts bracketing pairs: "the template - and any future template - must describe" becomes ": and any future template:". Roughly 700 occurrences sit on lines carrying two or more, and pairs span the hard-wrapped lines. |
 | Exempt fenced code blocks as specimens | Tempting, and it was the initial recommendation: a fence preserves the code as it stood at plan time. Rejected because most `go` fences quote string literals ADR-0115 has since made illegal and the parent effort already cleaned, so the "preserved" specimen is a record of a form the project bans, and it would leave about 895 occurrences and a probe that never returns clean. |
 | Sweep prose fences but exempt code fences | Splits the 895 by language and needs a per-fence judgement the probe cannot express; the 424 unlabeled fences, the largest group, are heterogeneous and would each need classifying. |

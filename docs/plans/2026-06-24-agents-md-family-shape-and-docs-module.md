@@ -1,7 +1,7 @@
 # Plan: Family-aligned AGENTS.md template + opt-in docs module
 
 Design & rationale: [ADR-0004](../decisions/0004-agents-md-template-and-docs-module.md). This
-plan is the execution record only — do not duplicate rationale; link to the ADR.
+plan is the execution record only: do not duplicate rationale; link to the ADR.
 
 ## Goal
 
@@ -48,12 +48,12 @@ Deleted (Phase 2):
 
 ---
 
-## Phase 1 — `docs:` module plumbing (additive, single commit)
+## Phase 1: `docs:` module plumbing (additive, single commit)
 
 Everything here is additive: awf's `.claude/awf.yaml` gains no `docs:` key, so no `docs/*` files
 render and `AGENTS.md` output is unchanged. Gate stays green throughout.
 
-### Task 1.1 — Add `Docs` to the config schema
+### Task 1.1: Add `Docs` to the config schema
 
 - [ ] In `internal/config/config.go`, add a `Docs` field to the `Config` struct. Change:
 
@@ -95,7 +95,7 @@ type Config struct {
 	}
 ```
 
-### Task 1.2 — Add `DocSpec` + `Docs` to the catalog
+### Task 1.2: Add `DocSpec` + `Docs` to the catalog
 
 - [ ] In `internal/catalog/catalog.go`, add the `DocSpec` type after the `SkillSpec` type:
 
@@ -119,7 +119,7 @@ type Catalog struct {
 }
 ```
 
-### Task 1.3 — Create the eight doc templates
+### Task 1.3: Create the eight doc templates
 
 Each doc template is a single overridable `body` section with a guided fallback. Create these
 eight files verbatim.
@@ -204,7 +204,7 @@ eight files verbatim.
 <!-- awf:end -->
 ```
 
-### Task 1.4 — Embed the docs template directory
+### Task 1.4: Embed the docs template directory
 
 - [ ] In `templates/embed.go`, change the embed directive line:
 
@@ -220,7 +220,7 @@ to:
 
 (The eight files from Task 1.3 must already exist, or this fails to compile.)
 
-### Task 1.5 — Declare the docs in the catalog
+### Task 1.5: Declare the docs in the catalog
 
 - [ ] In `templates/catalog.yaml`, add a top-level `docs:` block. Insert it immediately before the
   existing `agentsDoc:` block (keep `agentsDoc:` last). Verbatim:
@@ -261,7 +261,7 @@ docs:
     sections: [body]
 ```
 
-### Task 1.6 — Wire the render loop, validation, and `.docs` injection
+### Task 1.6: Wire the render loop, validation, and `.docs` injection
 
 - [ ] In `internal/project/project.go`, in `validateAgainstCatalog()`, add a docs check. Insert it
   immediately before the final `return nil`:
@@ -351,7 +351,7 @@ func (p *Project) resolvedDocs() []map[string]any {
 }
 ```
 
-### Task 1.7 — Tests for the docs module
+### Task 1.7: Tests for the docs module
 
 - [ ] In `internal/config/config_test.go`, add a test that `docs:` parses and validates:
 
@@ -444,7 +444,7 @@ docs:
 }
 ```
 
-### Task 1.8 — Verify and commit Phase 1
+### Task 1.8: Verify and commit Phase 1
 
 - [ ] Run `./x gate`. Expected: `0 issues.` and all packages `ok`.
 - [ ] Run `./x check`. Expected: `awf check: clean` (awf's own `awf.yaml` has no `docs:` key, so
@@ -462,7 +462,7 @@ Reference ADR-0004.
 
 ---
 
-## Phase 2 — AGENTS.md reshape + awf dogfood (atomic, single commit)
+## Phase 2: AGENTS.md reshape + awf dogfood (atomic, single commit)
 
 The catalog `agentsDoc.sections` redefinition invalidates awf's current
 `agentsDoc.sections` overlay (`overview`/`layout`/`conventions`), which fails
@@ -470,12 +470,12 @@ The catalog `agentsDoc.sections` redefinition invalidates awf's current
 catalog section redefinition, the `.claude/awf.yaml` rewrite, the part migration, and the re-sync
 **must all land in one commit**.
 
-### Task 2.1 — Rewrite the AGENTS.md template
+### Task 2.1: Rewrite the AGENTS.md template
 
 - [ ] Replace the entire contents of `templates/agents-doc/AGENTS.md.tmpl` with:
 
 ```
-# {{ .prefix }} — Agent Guide
+# {{ .prefix }}: Agent Guide
 
 This document is the authoritative reference for AI agents working in the `{{ .prefix }}`
 repository. Read it before taking any action; keep it current as decisions evolve.
@@ -497,7 +497,7 @@ repository. Read it before taking any action; keep it current as decisions evolv
 
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated — never hand-edited{{ end }}.
+- **Append-only ADRs.** Decision rationale lives under `{{ with .vars.adrDir }}{{ . }}{{ else }}docs/decisions{{ end }}/`{{ with .vars.activeMdPath }}; `{{ . }}` is generated, never hand-edited{{ end }}.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
 {{- range .data.invariants }}
@@ -526,29 +526,29 @@ Brainstorming is the hard prerequisite. **Planning** is warranted by *complexity
 
 {{ if .data.commands -}}
 ```
-{{ range .data.commands }}{{ .cmd }} — {{ .desc }}
+{{ range .data.commands }}{{ .cmd }}: {{ .desc }}
 {{ end -}}
 ```
 {{- else -}}
-{{ with .vars.testCmd }}- `{{ . }}` — run the test suite
-{{ end }}{{ with .vars.gateCmd }}- `{{ . }}` — run the gate before committing
-{{ end }}{{ with .vars.checkCmd }}- `{{ . }}` — check rendered files for drift
+{{ with .vars.testCmd }}- `{{ . }}`: run the test suite
+{{ end }}{{ with .vars.gateCmd }}- `{{ . }}`: run the gate before committing
+{{ end }}{{ with .vars.checkCmd }}- `{{ . }}`: check rendered files for drift
 {{ end }}{{- end }}
 <!-- awf:end -->
 
 <!-- awf:section document-map -->
 ## Document map
 
-{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}) — architecture decisions and lifecycle.
-{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}) — generated status index; do not hand-edit.
-{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}) — implementation plans for complex work.
-{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}) — {{ .desc }}
-{{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }} — {{ . }}{{ end }}
+{{ with .vars.adrReadme }}- **ADR index:** [{{ . }}]({{ . }}), architecture decisions and lifecycle.
+{{ end }}{{- with .vars.activeMdPath }}- **Active ADRs:** [{{ . }}]({{ . }}), generated status index; do not hand-edit.
+{{ end }}{{- with .vars.plansDir }}- **Plans:** [{{ . }}]({{ . }}), implementation plans for complex work.
+{{ end }}{{- range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+{{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}
 <!-- awf:end -->
 ```
 
-### Task 2.2 — Redefine the catalog agentsDoc sections
+### Task 2.2: Redefine the catalog agentsDoc sections
 
 - [ ] In `templates/catalog.yaml`, replace the existing `agentsDoc:` block:
 
@@ -575,7 +575,7 @@ agentsDoc:
     - document-map
 ```
 
-### Task 2.3 — Author awf's architecture part (migrate Repository Layout)
+### Task 2.3: Author awf's architecture part (migrate Repository Layout)
 
 - [ ] Create `.claude/awf/parts/doc-architecture.md` with awf's layout content (migrated from the
   soon-deleted `agents-doc-layout.md`), verbatim:
@@ -586,20 +586,20 @@ standard's skills/agents/hooks/docs/agent-guide, and drift-checks them against a
 
 Key directories:
 
-- **`cmd/awf/`** — CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup` subcommands.
-- **`internal/config/`** — parses and validates `.claude/awf.yaml`; owns the config schema.
-- **`internal/catalog/`** — reads `templates/catalog.yaml`; declares available skills/agents/hooks/docs/sections.
-- **`internal/render/`** — Go `text/template` rendering with `missingkey=zero`; applies `data`, `sections` (drop / replaceWith), and per-template part injection.
-- **`internal/manifest/`** — writes and reads `.claude/awf.lock`; drives drift detection for `awf check`.
-- **`internal/project/`** — orchestrates config + catalog + render + manifest into `Sync()` and `Check()`; golden tests live here.
-- **`internal/adrtools/`** — regenerates `docs/decisions/ACTIVE.md` from ADR frontmatter; run via `go test ./internal/adrtools/`.
-- **`templates/`** — embedded skill, agent, hook, doc, and agents-doc templates; catalog lives at `templates/catalog.yaml`.
-- **`docs/decisions/`** — ADRs; `ACTIVE.md` is auto-generated; `README.md` is the human index.
-- **`docs/plans/`** — implementation plans written by `awf-writing-plans`.
-- **`.claude/skills/awf-*/`**, **`.claude/agents/`**, **`.githooks/`** — rendered artifacts (committed; do not hand-edit; re-sync from config and parts).
+- **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `add`, `setup` subcommands.
+- **`internal/config/`**: parses and validates `.claude/awf.yaml`; owns the config schema.
+- **`internal/catalog/`**: reads `templates/catalog.yaml`; declares available skills/agents/hooks/docs/sections.
+- **`internal/render/`**: Go `text/template` rendering with `missingkey=zero`; applies `data`, `sections` (drop / replaceWith), and per-template part injection.
+- **`internal/manifest/`**: writes and reads `.claude/awf.lock`; drives drift detection for `awf check`.
+- **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and `Check()`; golden tests live here.
+- **`internal/adrtools/`**: regenerates `docs/decisions/ACTIVE.md` from ADR frontmatter; run via `go test ./internal/adrtools/`.
+- **`templates/`**: embedded skill, agent, hook, doc, and agents-doc templates; catalog lives at `templates/catalog.yaml`.
+- **`docs/decisions/`**: ADRs; `ACTIVE.md` is auto-generated; `README.md` is the human index.
+- **`docs/plans/`**: implementation plans written by `awf-writing-plans`.
+- **`.claude/skills/awf-*/`**, **`.claude/agents/`**, **`.githooks/`**: rendered artifacts (committed; do not hand-edit; re-sync from config and parts).
 ```
 
-### Task 2.4 — Rewrite awf's agentsDoc config and enable the architecture doc
+### Task 2.4: Rewrite awf's agentsDoc config and enable the architecture doc
 
 - [ ] In `.claude/awf.yaml`, replace the existing `agentsDoc:` block:
 
@@ -620,11 +620,11 @@ with the config-driven block plus an enabled, overridden architecture doc:
 agentsDoc:
   data:
     ownership: |
-      You are a developer on `awf` — the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.
+      You are a developer on `awf`, the Agentic Workflows CLI and standard. You are responsible for its long-term health as well as the task in front of you. Bugs you notice in passing are yours; coverage gaps are yours; documentation drift is yours to fix in the same commit that caused it. awf is both the tool that publishes the standard and the first adopter of it, so its own setup must model what it generates.
     identity: |
       `awf` scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, git hooks, docs, and this agent guide into any Go project from a single `.claude/awf.yaml` config file. The full workflow chain is expressed as project-owned skill files under `.claude/skills/awf-*/` and review agents under `.claude/agents/`; hooks under `.githooks/` enforce the gate. Module path `agentic-workflows`; Go 1.26; private, pre-1.0, no external API stability.
     invariants:
-      - text: "**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a `<no value>` token for an empty var — wrap optional output in a conditional. Run `awf check` after any sync to verify."
+      - text: "**Publication-safe templates.** Every template renders with `missingkey=zero`; never emit a `<no value>` token for an empty var: wrap optional output in a conditional. Run `awf check` after any sync to verify."
         ref: ADR-0001
       - text: "**`awf check` is the drift oracle.** After editing `.claude/awf.yaml` or any part, run `./x sync && ./x check`. Commit rendered files alongside config changes; never hand-edit a rendered file."
       - text: "**Conventional Commits, `awf` scope.** One concern per commit; stage files explicitly (no `git add -A`)."
@@ -636,10 +636,10 @@ docs:
         replaceWith: parts/doc-architecture.md
 ```
 
-(Note: `docs:` is a **top-level** key — a sibling of `agentsDoc:`, not nested under it —
+(Note: `docs:` is a **top-level** key (a sibling of `agentsDoc:`, not nested under it)
 because it maps to `Config.Docs`. Nesting it under `agentsDoc:` fails `KnownFields(true)`.)
 
-### Task 2.5 — Delete the obsolete agents-doc parts
+### Task 2.5: Delete the obsolete agents-doc parts
 
 - [ ] Delete the three parts no longer referenced by `.claude/awf.yaml`:
 
@@ -647,7 +647,7 @@ because it maps to `Config.Docs`. Nesting it under `agentsDoc:` fails `KnownFiel
 git rm .claude/awf/parts/agents-doc-overview.md .claude/awf/parts/agents-doc-layout.md .claude/awf/parts/agents-doc-conventions.md
 ```
 
-### Task 2.6 — Golden tests for the reshaped template
+### Task 2.6: Golden tests for the reshaped template
 
 - [ ] In `internal/project/spine_test.go`, replace the body of `TestAgentsDocTemplate` with
   assertions covering the data-absent fallback path, the no-`reviewing-plan-resync` invariant, and
@@ -730,7 +730,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 (`renderGolden` already fails on any `<no value>` leak via `assertNoLeaks`, covering the
 no-`<no value>` invariant.)
 
-### Task 2.7 — Sync, verify, and commit Phase 2
+### Task 2.7: Sync, verify, and commit Phase 2
 
 - [ ] Run `./x sync`. Expected: regenerates `AGENTS.md` (new six-section shape) and writes
   `docs/architecture.md` from the architecture template + `parts/doc-architecture.md` override.
@@ -757,7 +757,7 @@ ADR-0004.
 - `./x gate` and `./x check` both clean after each phase's commit.
 - awf's `AGENTS.md` matches the six-section family shape; `docs/architecture.md` carries the
   migrated layout; the Document map links it.
-- A fresh `awf init` still emits neither `agentsDoc:` nor `docs:` (both opt-in) — unchanged
+- A fresh `awf init` still emits neither `agentsDoc:` nor `docs:` (both opt-in): unchanged
   `ScaffoldConfig`.
 - ADR-0004 status flip to `Implemented` happens in the final commit of the implementation
   sequence (handled by the execution skill, not this plan).

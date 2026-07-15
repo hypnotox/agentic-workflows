@@ -20,43 +20,43 @@ tracing them against the codebase confirmed it:
 - **The `os.Stat` target-existence half is redundant.** `assertHandoff` checks the handoff-target
   skill file exists. But ADR-0046's `checkDeadSkillRefs` (`internal/project/check.go:373`) already
   fails `awf check` on any rendered `<prefix>-<name>` token pointing to a skill outside the enabled
-  set — so for any config that passes `check`, closure is already guaranteed. Under the full-catalog
+  set, so for any config that passes `check`, closure is already guaranteed. Under the full-catalog
   fixture, where every skill is enabled, the check is doubly trivial.
 - **The body-`Contains` half is near-redundant and semantically weak.** `spine_test.go` already asserts
   per-skill that the successor token appears somewhere in an isolated single-template render (e.g.
   `spine_test.go:266` for `writing-plans → example-reviewing-plan`). And "appears somewhere" is not
   "appears in a handoff instruction": a template edit that dropped the real handoff but left
-  `example-proposing-adr` in a "do not confuse with…" aside would pass every existing test while the
-  chain is semantically severed. Catching *that* — workflow-walkability — is exactly the evals suite's
+  `example-proposing-adr` in a "do not confuse with..." aside would pass every existing test while the
+  chain is semantically severed. Catching *that* (workflow-walkability) is exactly the evals suite's
   mandate, and nothing covers it today.
 
 The genuinely uncovered surface is therefore a **positional** property (the successor token sits in an
 actual invocation instruction) and a **graph** property (no chain node is orphaned; the chain is
-connected) — both over the full-catalog render, neither owned by `spine_test.go` (plain `Contains`,
+connected), both over the full-catalog render, neither owned by `spine_test.go` (plain `Contains`,
 single-template) or `checkDeadSkillRefs` (reference-to-absent-skill, not reachability).
 
 **A positional test needs a stable anchor, and the rendered skills do not currently offer a uniform
 one.** Two anchor candidates exist, and grounding both against the templates shaped the decision:
 
-- *Section-marker slug.* awf renders an `<!-- awf:edit <slug> … -->` provenance pointer per template
+- *Section-marker slug.* awf renders an `<!-- awf:edit <slug> ... -->` provenance pointer per template
   section; the slug is the adopter override-API key (`.awf/skills/parts/<skill>/<slug>.md` overrides
-  that section — ADR-0015). But the slugs are **not uniform**: `brainstorming` alone uses
+  that section, ADR-0015). But the slugs are **not uniform**: `brainstorming` alone uses
   `terminal-handoff` while the other four progression skills (`proposing-adr`, `writing-plans`,
   `executing-plans`, `subagent-driven-development`) use `terminal-step`; and the task skills `bugfix`
-  and `debugging` carry *no* handoff-section marker at all — their handoff is an inline numbered
+  and `debugging` carry *no* handoff-section marker at all; their handoff is an inline numbered
   procedure step. So a slug anchor cannot cover every handoff uniformly.
-- *Invocation wording.* In every case the successor token sits on a line carrying an invocation verb —
+- *Invocation wording.* In every case the successor token sits on a line carrying an invocation verb:
   "invoke `awf-reviewing-adr`", "Invoke `awf-reviewing-impl`" (capitalized in `bugfix`), "Dispatch the
-  `code-reviewer`", and "…which chains through `awf-reviewing-adr`". This anchor *is* uniform across all
+  `code-reviewer`", and "...which chains through `awf-reviewing-adr`". This anchor *is* uniform across all
   skills including the marker-less task skills, and it anchors on the semantic instruction rather than
   render structure.
 
 A **surfacing discovery** shaped the scope further: renaming a section-marker slug requires **two**
-lockstep source edits — the template marker (`templates/skills/<skill>/SKILL.md.tmpl`) and the catalog
+lockstep source edits: the template marker (`templates/skills/<skill>/SKILL.md.tmpl`) and the catalog
 `sections` list (`templates/catalog.yaml`). `render.Assemble` derives each pointer's `EditPath` from the
 **catalog-declared** sections, not the template (`internal/project/render.go`); a catalog miss yields a
 provenance pointer with a **blank** override path (`create  to override`). And there is **no
-skill/agent section-parity guard** — only docs, ADR singletons, and the domain doc have a
+skill/agent section-parity guard**: only docs, ADR singletons, and the domain doc have a
 template-marker↔catalog parity test (`internal/project/docs_sections_test.go`). So a template-only
 rename renders green, `./x sync` regenerates the goldens, and `./x check` stays clean while shipping a
 malformed pointer. The rename this ADR proposes would itself be vulnerable to that trap.
@@ -66,8 +66,8 @@ and the 100% coverage gate (ADR-0012).
 
 ## Decision
 
-1. **Uniform forward-chain handoff convention.** The five chain-*progression* skills — `brainstorming`,
-   `proposing-adr`, `writing-plans`, `executing-plans`, `subagent-driven-development` — share the
+1. **Uniform forward-chain handoff convention.** The five chain-*progression* skills (`brainstorming`,
+   `proposing-adr`, `writing-plans`, `executing-plans`, `subagent-driven-development`) share the
    handoff section-marker slug `terminal-step`. Concretely, `brainstorming`'s current
    `terminal-handoff` marker is renamed to `terminal-step` (two lockstep edits:
    `templates/skills/brainstorming/SKILL.md.tmpl` and the `brainstorming.sections` list in
@@ -77,7 +77,7 @@ and the 100% coverage gate (ADR-0012).
    aligned; wording is already close. `reviewing-plan-resync` keeps its distinct
    `dispatch-subagent-narrowed` **agent-dispatch** marker unchanged (that marker governs the
    plan-reviewer dispatch, not a skill handoff, so slug uniformity does not apply to it); it remains a
-   full **forward-chain node** because it is the chain's plan→implementation bridge — it is invoked by
+   full **forward-chain node** because it is the chain's plan→implementation bridge: it is invoked by
    `reviewing-plan` (and `reviewing-adr`) and in turn invokes the execution skills.
 
 2. **Positional handoff assertion replaces the redundant existence check.** In
@@ -93,13 +93,13 @@ and the 100% coverage gate (ADR-0012).
    body invoking another chain skill) and asserts two graph properties: **no orphaned node** (every
    non-terminal node has ≥1 outgoing invocation edge to another in-set node) and **reachability** (every
    node is reachable from the root `brainstorming`). The node set is pinned to the nine chain-progression
-   skills that form the canonical workflow — `brainstorming`, `proposing-adr`, `reviewing-adr`,
+   skills that form the canonical workflow (`brainstorming`, `proposing-adr`, `reviewing-adr`,
    `writing-plans`, `reviewing-plan`, `reviewing-plan-resync`, `executing-plans`,
-   `subagent-driven-development`, `reviewing-impl` — with `reviewing-impl` the sole terminal node
+   `subagent-driven-development`, `reviewing-impl`) with `reviewing-impl` the sole terminal node
    (exempt from the outgoing-edge requirement). The as-needed **task skills** `bugfix` and `debugging`
    are **not** connectivity nodes (they are not linear-chain progression steps); their handoffs remain
    covered by the per-edge positional check in item 2 (e.g. `bugfix → reviewing-impl`). This catches a
-   skill that loses all its handoff instructions — a whole-node failure the per-edge positional check
+   skill that loses all its handoff instructions: a whole-node failure the per-edge positional check
    cannot see.
 
 4. **Skill/agent section-parity guard.** A new test in `internal/project` (mirroring
@@ -121,28 +121,28 @@ and the 100% coverage gate (ADR-0012).
 
 ## Invariants
 
-- `invariant: skill-section-parity` — for every catalog skill and agent, the set of `awf:section` markers in
+- `invariant: skill-section-parity`: for every catalog skill and agent, the set of `awf:section` markers in
   its template source equals its `catalog.yaml`-declared `sections` list (set equality,
   order-independent), so a section rename cannot half-land with a blank-path provenance pointer. Backed
   by `// invariant: skill-section-parity` in an `internal/project` `_test.go` (matching
   `invariants.sources` glob `*.go`).
 - The five forward-chain progression skills share the `terminal-step` handoff section-marker slug and
-  the canonical invocation phrasing — a textual contract, enforced by the section-parity guard (marker
+  the canonical invocation phrasing: a textual contract, enforced by the section-parity guard (marker
   presence) and the positional evals assertion (phrasing) running in the gate.
-- Every forward-chain handoff names its successor on an invocation-verb line in the full-catalog render
-  — enforced by the positional assertion in `internal/evals` running in the gate.
+- Every forward-chain handoff names its successor on an invocation-verb line in the full-catalog render,
+  enforced by the positional assertion in `internal/evals` running in the gate.
 - The forward-chain handoff graph over the nine chain-progression nodes (task skills `bugfix`/`debugging`
   excluded) has no orphaned node and every node is reachable from `brainstorming`, with `reviewing-impl`
-  the sole terminal — enforced by the connectivity assertion running in the gate.
+  the sole terminal, enforced by the connectivity assertion running in the gate.
 
 ## Consequences
 
 - **Easier:** a template edit that demotes a handoff out of its invocation instruction, or that strips a
-  chain skill's handoffs entirely, now fails `go test ./...` — even though each artifact individually
+  chain skill's handoffs entirely, now fails `go test ./...`, even though each artifact individually
   still renders and passes frontmatter and dead-reference checks. The evals suite now asserts
   workflow-*walkability*, not just token presence.
 - **Easier (bonus):** the section-parity guard protects **all** future skill/agent section renames from
-  the blank-path trap, not just this one — a general gate improvement surfaced by this work.
+  the blank-path trap, not just this one: a general gate improvement surfaced by this work.
 - **Harder / cost:** the positional and connectivity matchers couple to a small, bounded vocabulary of
   invocation verbs and the canonical phrasing. This is the same brittleness ADR-0053 accepted for its
   matcher tokens; it is bounded by keeping the verb set to load-bearing instruction words.
@@ -174,8 +174,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Keep the existence check, just add the positional check | The `os.Stat` check is redundant with ADR-0046 and near-always-true under the full-catalog fixture; keeping it is dead weight. Replacing it is net-simpler. |
 | Anchor the positional check on the `awf:edit` marker slug | Slugs are not uniform (`terminal-handoff` vs `terminal-step`) and the task skills carry no handoff marker at all, so a slug anchor cannot cover every handoff. Invocation-verb wording is uniform across all skills. |
 | Do the marker rename without the section-parity guard | The rename is exactly the failure mode (a two-file lockstep edit) that renders green with a blank path and no gate catches. Shipping the rename without the backstop would risk silently corrupting a provenance pointer. |
-| Exclude `reviewing-plan-resync` from the connectivity graph | Resync is the chain's sole plan→implementation bridge — the only skill whose body invokes the execution skills. Excluding it makes `executing-plans`/`subagent-driven-development` unreachable and orphans `reviewing-plan`, breaking the very reachability property item 3 asserts. It must be a full node. |
+| Exclude `reviewing-plan-resync` from the connectivity graph | Resync is the chain's sole plan→implementation bridge: the only skill whose body invokes the execution skills. Excluding it makes `executing-plans`/`subagent-driven-development` unreachable and orphans `reviewing-plan`, breaking the very reachability property item 3 asserts. It must be a full node. |
 | Also normalize resync's `dispatch-subagent-narrowed` slug to `dispatch-subagent` | That slug governs the narrowed-mode plan-reviewer *agent dispatch*, not a skill handoff, so slug uniformity does not apply; normalizing it would widen the adopter-API change to a second slug for no positional-test gain (resync's forward handoff already uses canonical `Invoke` wording). |
-| Literal end-to-end reachability only (`brainstorming → … → reviewing-impl`) | `brainstorming` has a *direct* edge to `reviewing-impl` (the "neither" path), so end-to-end reachability is near-trivially true and barely bites. The orphaned-node + reachable-from-root guard adds real signal. |
-| Split into two ADRs (convention + parity guard) | The parity guard is not independently load-bearing — it exists to make the rename safe. It is a facet of the single "uniform, machine-enforced handoff convention" commitment, so one ADR is the right altitude. |
+| Literal end-to-end reachability only (`brainstorming → ... → reviewing-impl`) | `brainstorming` has a *direct* edge to `reviewing-impl` (the "neither" path), so end-to-end reachability is near-trivially true and barely bites. The orphaned-node + reachable-from-root guard adds real signal. |
+| Split into two ADRs (convention + parity guard) | The parity guard is not independently load-bearing: it exists to make the rename safe. It is a facet of the single "uniform, machine-enforced handoff convention" commitment, so one ADR is the right altitude. |
 | A separate ADR family / live-agent walkability | Out of lane and cost-prohibitive, already ruled out by ADR-0053; this stays in the deterministic `go test` lane. |

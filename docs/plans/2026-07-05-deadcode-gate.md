@@ -14,7 +14,7 @@ day-one findings by relocating test-only helpers into `_test.go` files. No escap
 
 deadcode runs **without `-test`** (the `-test` mode is always-empty under the ADR-0012 100%
 coverage gate). `cmd/deadcodecheck` reads deadcode's JSON from stdin, drops findings whose
-`Position.File` begins with `internal/testsupport/` (the ADR-0044 leaf test-helper package — the
+`Position.File` begins with `internal/testsupport/` (the ADR-0044 leaf test-helper package: the
 one structural exemption), and exits non-zero on anything else. Design rationale lives in the
 ADR; this plan is the execution record.
 
@@ -48,9 +48,9 @@ ADR; this plan is the execution record.
 
 ---
 
-## Phase 1 — Pin the deadcode tool dependency
+## Phase 1: Pin the deadcode tool dependency
 
-- [ ] **Task 1.1 — Add the tool directive.** Run exactly:
+- [ ] **Task 1.1: Add the tool directive.** Run exactly:
   ```
   go get -tool golang.org/x/tools/cmd/deadcode@v0.44.0
   go mod tidy
@@ -58,22 +58,22 @@ ADR; this plan is the execution record.
   Expected: `go.mod`'s single `tool github.com/golangci/...golangci-lint` line becomes a
   `tool ( ... )` block also listing `golang.org/x/tools/cmd/deadcode`; `go.sum` gains
   `golang.org/x/telemetry` entries.
-- [ ] **Task 1.2 — Verify the tool is runnable.** Run:
+- [ ] **Task 1.2: Verify the tool is runnable.** Run:
   ```
   grep -A3 '^tool (' go.mod
   go tool deadcode -json ./... | head -c 40
   ```
   Expected: the grep shows `golang.org/x/tools/cmd/deadcode` inside the block; the deadcode run
-  emits JSON (a `[` … array) with no "missing go.sum entry" error.
-- [ ] **Task 1.3 — Gate + commit.** Run `./x gate` (still the pre-deadcode gate; must pass).
+  emits JSON (a `[` ... array) with no "missing go.sum entry" error.
+- [ ] **Task 1.3: Gate + commit.** Run `./x gate` (still the pre-deadcode gate; must pass).
   Stage `go.mod go.sum` and commit:
   ```
   build(tooling): pin deadcode as a go tool dependency
   ```
 
-## Phase 2 — Relocate test-only helpers out of production
+## Phase 2: Relocate test-only helpers out of production
 
-- [ ] **Task 2.1 — Move `Project.Sync` into a test file.** In `internal/project/project.go`
+- [ ] **Task 2.1: Move `Project.Sync` into a test file.** In `internal/project/project.go`
   delete exactly:
   ```go
   func (p *Project) Sync() error {
@@ -86,7 +86,7 @@ ADR; this plan is the execution record.
   package project
 
   // Sync renders and writes the project like SyncReport, discarding the backup
-  // report — a test-only convenience for the many in-package tests that only care
+  // report, a test-only convenience for the many in-package tests that only care
   // whether the sync errors. Production uses SyncReport directly (ADR-0063).
   func (p *Project) Sync() error {
   	_, err := p.SyncReport()
@@ -98,12 +98,12 @@ ADR; this plan is the execution record.
   reference a symbol absent from the package's non-test API):
   - `// SyncReport renders and writes the project like Sync, additionally backing up any` →
     `// SyncReport renders and writes the project, additionally backing up any`
-- [ ] **Task 2.2 — Migrate the single cross-package caller.** In `internal/evals/fixture_test.go`,
+- [ ] **Task 2.2: Migrate the single cross-package caller.** In `internal/evals/fixture_test.go`,
   change the comment and call in `syncFullCatalog`:
   - `// real Project.Sync, and returns the project root. It reuses the exported` →
     `// real Project.SyncReport, and returns the project root. It reuses the exported`
   - `if err := p.Sync(); err != nil {` → `if _, err := p.SyncReport(); err != nil {`
-- [ ] **Task 2.3 — Move `SetNowForTest` into a test file.** In `internal/adr/adr.go` delete
+- [ ] **Task 2.3: Move `SetNowForTest` into a test file.** In `internal/adr/adr.go` delete
   exactly (keep the `var now = time.Now` block above it):
   ```go
   // SetNowForTest overrides the now seam for a test and returns the previous
@@ -132,10 +132,10 @@ ADR; this plan is the execution record.
   	return prev
   }
   ```
-- [ ] **Task 2.4 — Fix the stale comment.** In `cmd/awf/run_test.go:280`, change
+- [ ] **Task 2.4: Fix the stale comment.** In `cmd/awf/run_test.go:280`, change
   `// A directory squatting on a rendered output path makes p.Sync() fail.` →
   `// A directory squatting on a rendered output path makes p.SyncReport() fail.`
-- [ ] **Task 2.5 — Update generated-doc sources (Project.Sync → SyncReport).** The eval fixture
+- [ ] **Task 2.5: Update generated-doc sources (Project.Sync → SyncReport).** The eval fixture
   now calls `SyncReport`, so the three narratives naming `Project.Sync` as the eval entry point
   become inaccurate. Edit the `.awf/` sources (never the rendered files):
   - `.awf/agents-doc.yaml:53`: `renders every catalog skill and agent via a full \`Project.Sync\`` →
@@ -144,15 +144,15 @@ ADR; this plan is the execution record.
     `renders the full catalog via \`Project.SyncReport\``
   - `.awf/docs/parts/testing/layout.md:11`: `runs a full \`Project.Sync\` over a fixture config` →
     `runs a full \`Project.SyncReport\` over a fixture config`
-- [ ] **Task 2.6 — Re-render.** Run `./x sync`. Expected: `AGENTS.md`, `docs/domains/tooling.md`,
+- [ ] **Task 2.6: Re-render.** Run `./x sync`. Expected: `AGENTS.md`, `docs/domains/tooling.md`,
   `docs/testing.md`, and `.awf/awf.lock` update; `./x check` reports `awf check: clean`.
-- [ ] **Task 2.7 — Verify deadcode is clean except testsupport.** Run:
+- [ ] **Task 2.7: Verify deadcode is clean except testsupport.** Run:
   ```
   go tool deadcode ./...
   ```
   Expected: every reported line begins with `internal/testsupport/` (16 helpers); no
   `internal/project` or `internal/adr` line remains.
-- [ ] **Task 2.8 — Gate + commit.** Run `./x gate` (must pass — relocations are behaviour-
+- [ ] **Task 2.8: Gate + commit.** Run `./x gate` (must pass: relocations are behaviour-
   preserving; coverage stays 100% as the two functions leave the production denominator). Stage
   the modified source + regenerated docs + lock and commit:
   ```
@@ -164,9 +164,9 @@ ADR; this plan is the execution record.
   longer ship in the production binary (ADR-0063 Decision 6).
   ```
 
-## Phase 3 — Add the deadcodecheck wrapper
+## Phase 3: Add the deadcodecheck wrapper
 
-- [ ] **Task 3.1 — Write `cmd/deadcodecheck/main.go`:**
+- [ ] **Task 3.1: Write `cmd/deadcodecheck/main.go`:**
   ```go
   // Command deadcodecheck fails when `deadcode -json` (read from stdin) reports any
   // unreachable function outside the internal/testsupport/ tree. It backs the awf
@@ -236,7 +236,7 @@ ADR; this plan is the execution record.
   	return 1
   }
   ```
-- [ ] **Task 3.2 — Write `cmd/deadcodecheck/main_test.go`** (the `// invariant: deadcode-gate`
+- [ ] **Task 3.2: Write `cmd/deadcodecheck/main_test.go`** (the `// invariant: deadcode-gate`
   marker backs ADR-0063; it asserts a non-testsupport finding fails and a testsupport finding is
   ignored):
   ```go
@@ -309,12 +309,12 @@ ADR; this plan is the execution record.
   	}
   }
   ```
-- [ ] **Task 3.3 — Verify the wired pipeline manually.** Run:
+- [ ] **Task 3.3: Verify the wired pipeline manually.** Run:
   ```
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
   ```
   Expected: `deadcodecheck: no production dead code`, exit 0 (Phase 2 cleaned production).
-- [ ] **Task 3.4 — Gate + commit.** Run `./x gate` (must pass; `cmd/deadcodecheck` reaches 100%
+- [ ] **Task 3.4: Gate + commit.** Run `./x gate` (must pass; `cmd/deadcodecheck` reaches 100%
   coverage via its tests). Stage `cmd/deadcodecheck/` and commit:
   ```
   feat(tooling): add deadcodecheck gate wrapper
@@ -324,27 +324,27 @@ ADR; this plan is the execution record.
   escape hatch (ADR-0063). Backs inv: deadcode-gate.
   ```
 
-## Phase 4 — Wire the gate
+## Phase 4: Wire the gate
 
-- [ ] **Task 4.1 — Add the gate step.** In `x`, in the `gate)` case, after the line
+- [ ] **Task 4.1: Add the gate step.** In `x`, in the `gate)` case, after the line
   `    go tool golangci-lint run` add:
   ```
       go tool deadcode -json ./... | go run ./cmd/deadcodecheck
   ```
-- [ ] **Task 4.2 — Add the `deadcode` subcommand.** In `x`, after the `lint)` case block
+- [ ] **Task 4.2: Add the `deadcode` subcommand.** In `x`, after the `lint)` case block
   (three lines: `  lint)`, then `    go tool golangci-lint run "$@"`, then `    ;;`) add a new case:
   ```
     deadcode)
       go tool deadcode -json ./... | go run ./cmd/deadcodecheck
       ;;
   ```
-- [ ] **Task 4.3 — Update usage.** In `x`, change the usage line to include `deadcode`:
+- [ ] **Task 4.3: Update usage.** In `x`, change the usage line to include `deadcode`:
   ```
       echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install>" >&2
   ```
-- [ ] **Task 4.4 — Verify.** Run `./x deadcode` (expect `deadcodecheck: no production dead code`)
+- [ ] **Task 4.4: Verify.** Run `./x deadcode` (expect `deadcodecheck: no production dead code`)
   and `./x gate` (full gate now includes deadcode; must pass).
-- [ ] **Task 4.5 — Commit.** Stage `x` and commit (`x` is outside the awf render/lock set, so no
+- [ ] **Task 4.5: Commit.** Stage `x` and commit (`x` is outside the awf render/lock set, so no
   `awf check` impact):
   ```
   feat(tooling): run the dead-code gate in ./x gate
@@ -354,49 +354,49 @@ ADR; this plan is the execution record.
   fail the gate (ADR-0063 Decision 4).
   ```
 
-## Phase 5 — Document the gate
+## Phase 5: Document the gate
 
-- [ ] **Task 5.1 — Dependencies doc.** In `.awf/docs/parts/architecture/dependencies.md`, after the
+- [ ] **Task 5.1: Dependencies doc.** In `.awf/docs/parts/architecture/dependencies.md`, after the
   `golangci-lint` bullet (line 7) add:
   ```
-  - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`) — pinned as a `go tool` dependency; the
+  - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the
     gate runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable
     from a `main` outside `internal/testsupport/` (ADR-0063).
   ```
-- [ ] **Task 5.2 — Tooling current-state.** In `.awf/domains/parts/tooling/current-state.md`, change
+- [ ] **Task 5.2: Tooling current-state.** In `.awf/domains/parts/tooling/current-state.md`, change
   the gate sentence in the first paragraph:
   `The gate is \`go test ./... && go vet && golangci-lint\`, with a hard 100% statement-coverage floor (\`cmd/covercheck\`; a genuinely-unreachable branch may carry a justified \`// coverage-ignore:\`).`
   →
   `The gate is \`go test ./... && go vet && golangci-lint\` plus a whole-program dead-code pass (\`deadcode\` without \`-test\`, piped through \`cmd/deadcodecheck\`; ADR-0063), with a hard 100% statement-coverage floor (\`cmd/covercheck\`; a genuinely-unreachable branch may carry a justified \`// coverage-ignore:\`). The dead-code gate fails on any production function unreachable from a \`main\` outside \`internal/testsupport/\` and carries no escape hatch.`
-- [ ] **Task 5.3 — AGENTS.md invariant.** In `.awf/agents-doc.yaml`, in `data.invariants`, after the
+- [ ] **Task 5.3: AGENTS.md invariant.** In `.awf/agents-doc.yaml`, in `data.invariants`, after the
   ADR-0012 entry (the `**100% coverage gate.**` block) add:
   ```yaml
           - ref: ADR-0063
             text: '**Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch.'
   ```
-- [ ] **Task 5.4 — Testing layout (optional gate mention).** In `.awf/docs/parts/testing/layout.md`,
+- [ ] **Task 5.4: Testing layout (optional gate mention).** In `.awf/docs/parts/testing/layout.md`,
   no gate-tier text change is required beyond the Task 2.5 rename; skip unless a gate-steps
   sentence exists to extend.
-- [ ] **Task 5.5 — Re-render + verify.** Run `./x sync` then `./x check`. Expected:
+- [ ] **Task 5.5: Re-render + verify.** Run `./x sync` then `./x check`. Expected:
   `AGENTS.md`, `docs/architecture.md`, `docs/domains/tooling.md`, `.awf/awf.lock` update; check
   reports `awf check: clean`.
-- [ ] **Task 5.6 — Gate + commit.** Run `./x gate`. Stage the `.awf/` sources + regenerated docs +
+- [ ] **Task 5.6: Gate + commit.** Run `./x gate`. Stage the `.awf/` sources + regenerated docs +
   lock and commit:
   ```
   docs(tooling): document the dead-code gate
   ```
 
-## Phase 6 — Mark ADR-0063 Implemented
+## Phase 6: Mark ADR-0063 Implemented
 
-- [ ] **Task 6.1 — Flip status.** In `docs/decisions/0063-whole-program-dead-code-gate-via-deadcode.md`
+- [ ] **Task 6.1: Flip status.** In `docs/decisions/0063-whole-program-dead-code-gate-via-deadcode.md`
   change frontmatter `status: Proposed` → `status: Implemented`.
-- [ ] **Task 6.2 — Regenerate ACTIVE.md.** Run `./x sync`. Expected: `docs/decisions/ACTIVE.md`
+- [ ] **Task 6.2: Regenerate ACTIVE.md.** Run `./x sync`. Expected: `docs/decisions/ACTIVE.md`
   moves ADR-0063 to the Implemented section; `docs/domains/tooling.md` moves it out of Proposed;
   `.awf/awf.lock` updates.
-- [ ] **Task 6.3 — Verify invariant backing.** Run `./x check`. Expected `awf check: clean` — the
+- [ ] **Task 6.3: Verify invariant backing.** Run `./x check`. Expected `awf check: clean`; the
   `inv: deadcode-gate` slug is now backed by the `// invariant: deadcode-gate` marker in
   `cmd/deadcodecheck/main_test.go` (added Phase 3), so the Implemented-ADR invariant check passes.
-- [ ] **Task 6.4 — Gate + commit.** Run `./x gate`. Stage the ADR + regenerated `ACTIVE.md` +
+- [ ] **Task 6.4: Gate + commit.** Run `./x gate`. Stage the ADR + regenerated `ACTIVE.md` +
   `docs/domains/tooling.md` + lock and commit:
   ```
   docs(adr): mark ADR-0063 Implemented

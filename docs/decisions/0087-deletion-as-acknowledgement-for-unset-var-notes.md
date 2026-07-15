@@ -14,24 +14,24 @@ domains: [rendering, config]
 
 The unset-var advisory ([ADR-0045](0045-out-of-box-render-completeness.md) Decision 4)
 prints a non-failing note per rendered artifact that references unset vars. "Unset" today
-means *missing key or empty value* — `unsetVarNotes` indexes the vars map without the
+means *missing key or empty value*: `unsetVarNotes` indexes the vars map without the
 presence flag (`internal/project/check.go:52`), so the two states are indistinguishable.
 An adopter who considers a var and deliberately declines it has no way to say so: the
 note prints on every `awf check` and `awf init`, forever. A real adopter repository carries
 two such standing `invariantTestPath` notes. Permanent unactionable output trains readers
 to skim the notes channel, which buries the one note that is new and matters.
 
-ADR-0045 saw this coming and pre-sanctioned the fix path — its Consequences accept that
+ADR-0045 saw this coming and pre-sanctioned the fix path; its Consequences accept that
 "advisory notes are unsuppressible" and state: "a suppression knob, if the noise proves
 real, is its own ADR". The noise has proven real. This is that ADR, and it deliberately
 avoids a suppression *knob*: the user direction is that removing the key should be the
-acknowledgement ("if not necessary, just remove it") — no second config surface listing
+acknowledgement ("if not necessary, just remove it"), no second config surface listing
 exceptions to the first.
 
 Grounding discoveries that shape the design:
 
 - `Cfg.Vars` is `map[string]any`; YAML `key:` (explicit null) parses to a *present* key
-  with a nil value, distinguishable from an absent key only via the map `ok` flag —
+  with a nil value, distinguishable from an absent key only via the map `ok` flag,
   mechanically verified. A present-null var is unrepresentable by awf's own tooling
   (`Skeleton.Vars` is `map[string]string`, [ADR-0026](0026-config-serialization-ownership.md)
   Decision 3); it arises only from hand-editing.
@@ -41,18 +41,18 @@ Grounding discoveries that shape the design:
 - `ScaffoldConfig` seeds the union of vars referenced by *every* catalog template as `""`
   (`invariant: scaffold-seeds-all-vars`, [ADR-0022](0022-curated-init-default.md) /
   [ADR-0029](0029-interactive-agent-prefillable-init.md)), so on a scaffolded tree a
-  catalog var can never be absent-at-init — absence is always a post-init edit. The
+  catalog var can never be absent-at-init; absence is always a post-init edit. The
   premise "absence means someone deleted it" fails only for vars introduced *after* the
   adopter's init: a future release adding a catalog var, or a future local-artifact base
-  template gaining a var reference (parts are raw and cannot reference vars, ADR-0034 —
+  template gaining a var reference (parts are raw and cannot reference vars, ADR-0034;
   the base templates are the local artifacts' only var channel, varless today).
 - Referenced vars fold into the artifact config hash (`internal/project/confighash.go:38`);
-  an absent key marshals `null`, an empty one `""` — different hashes, mechanically
+  an absent key marshals `null`, an empty one `""`: different hashes, mechanically
   verified. Deleting a key therefore flags every referencing artifact as failing stale
   drift until the next `awf sync`.
 - Schema migrations are run-once per generation (lock `SchemaVersion` gate) with atomic
   config-rewriting precedent (anchored-globs, close-enabled-set). Adding a catalog var
-  currently forces no schema bump — vars are freeform ([ADR-0084](0084-catalog-vars-carry-functional-values-only.md)) —
+  currently forces no schema bump (vars are freeform ([ADR-0084](0084-catalog-vars-carry-functional-values-only.md))),
   so a seed step is the only forcing function, and it drags [ADR-0049](0049-single-version-authority.md)
   Decision 4 machinery (generation bump → `minVersionBySchema` entry → version bump).
   This is acceptable because `inv: var-descriptor-set-pinned` (ADR-0084) already makes
@@ -66,14 +66,14 @@ Grounding discoveries that shape the design:
   ADR un-mirrors.
 - The sidecar *data* namespace declines a catalog default with a **present** null key
   (`inv: sidecar-key-overrides-default`, ADR-0045 Decision 2). This ADR gives vars the
-  opposite convention — declining by *absence* — an asymmetry that must be owned, not
+  opposite convention (declining by *absence*), an asymmetry that must be owned, not
   discovered.
 
 ## Decision
 
 1. **Present-key note semantics.** `unsetVarNotes` reports a var only when its key is
    *present* in `vars:` with an empty-string or null value, distinguished via the map
-   presence flag. An absent key produces no note: deletion is the acknowledgement —
+   presence flag. An absent key produces no note: deletion is the acknowledgement,
    committed, auditable in git history, reversible by re-adding the key. This narrows the
    note trigger of ADR-0045 Decision 4 (partial-item supersedence recorded via `related`;
    ADR-0045 stays Implemented). The graceful-degradation contract (ADR-0045 Decision 3)
@@ -88,7 +88,7 @@ Grounding discoveries that shape the design:
    semantics come free from the generation gate, so a later deletion is never resurrected.
    This is a textual contract on future var-introducing ADRs (precedent: ADR-0084's
    textual policy), not standing machinery: there is no generic scan, and **no seed ships
-   for the existing eight vars** — configs already lacking a referenced key flip from
+   for the existing eight vars**; configs already lacking a referenced key flip from
    noting to silent, which is exactly the intended adopter fix.
 
 4. **`awf new` seeds its scaffold's vars.** At creation, `awf new skill|agent` computes
@@ -112,11 +112,11 @@ Grounding discoveries that shape the design:
 
 ## Invariants
 
-- `invariant: absent-var-acknowledged` — an absent `vars:` key never produces an unset-var
+- `invariant: absent-var-acknowledged`: an absent `vars:` key never produces an unset-var
   note; a present key with an empty or null value does.
-- `invariant: new-seeds-scaffold-vars` — `awf new` adds an empty `vars:` key for every var its
+- `invariant: new-seeds-scaffold-vars`: `awf new` adds an empty `vars:` key for every var its
   scaffolded template source references that is absent from config.
-- Notes remain non-failing (`inv: completeness-advisory-nonfailing`, ADR-0045 — unchanged
+- Notes remain non-failing (`inv: completeness-advisory-nonfailing`, ADR-0045, unchanged
   and still backed).
 - Textual: a release introducing a new catalog var descriptor ships a one-time seed step
   for that key in a schema migration. Anchored where every var introduction must tread:
@@ -129,20 +129,20 @@ Grounding discoveries that shape the design:
 Easier:
 - A deliberate "we don't use this var" is expressible, permanent, and auditable; an adopter
   deletes `invariantTestPath` and its two standing notes end. The notes channel stays
-  high-signal — every note has a concrete config edit that resolves it.
+  high-signal: every note has a concrete config edit that resolves it.
 - No new config surface, no severity model, no suppression list to rot: the ADR-0086
   closed-tree posture ("configs should be clean") is reinforced rather than amended.
 
 Harder / accepted trade-offs:
 - **Acknowledgement is two steps.** Deleting a key changes the referenced-var config hash,
-  flagging referencing artifacts as failing stale drift until `awf sync` — the normal
+  flagging referencing artifacts as failing stale drift until `awf sync`: the normal
   edit-config-then-sync loop, documented alongside the exit in working-with-awf.
 - **Deleting a placeholder-consumed var is loud, not silent.** A convention part using
   `{{=awf:gateCmd}}` hard-errors at render when `gateCmd` is deleted (ADR-0057
   publication-safety); deletion-as-acknowledgement applies to prose interpolations, not
   placeholder contracts. The error names the missing var; re-adding the key recovers.
 - **One-time reinterpretation at upgrade.** Hand-written configs already lacking a
-  referenced key stop noting after this change — an accidental omission is blessed as
+  referenced key stop noting after this change; an accidental omission is blessed as
   deliberate. Accepted: indistinguishable by construction, and the changelog documents
   the semantic shift.
 - **Vars and data decline differently.** Sidecar data declines a default with a present
@@ -153,7 +153,7 @@ Harder / accepted trade-offs:
 - **Future catalog vars cost a migration.** Seed-on-introduction forces a schema
   generation + `minVersionBySchema` + version bump per var-introducing release. Accepted:
   ADR-0084 made such releases rare and deliberate.
-- Present-null keys still note although awf tooling cannot create them (hand-edit only) —
+- Present-null keys still note although awf tooling cannot create them (hand-edit only):
   the "present = open to-do" reading is kept uniform rather than special-cased.
 - Same-change updates owed: the `unusedVarDrift` comment and test rationale that cite
   "mirrors the ADR-0045 unset definition"; the rendering-domain current-state part that

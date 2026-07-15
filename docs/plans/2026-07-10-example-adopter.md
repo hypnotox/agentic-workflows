@@ -1,6 +1,6 @@
-# 2026-07-10 — In-repo example adopter (`examples/sundial/`)
+# 2026-07-10: In-repo example adopter (`examples/sundial/`)
 
-**Goal:** implement [ADR-0090](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md): a committed, full-surface example adopter at `examples/sundial/` — cold-start onboarding artifact and deterministic rendered-output quality oracle — wired into `./x sync` and `./x check`.
+**Goal:** implement [ADR-0090](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md): a committed, full-surface example adopter at `examples/sundial/` (cold-start onboarding artifact and deterministic rendered-output quality oracle) wired into `./x sync` and `./x check`.
 
 **Architecture summary:** see the ADR; the plan adds no design. The example is a fictional Go CLI (module `example.com/sundial`, own `go.mod` → invisible to every enclosing `./...` sweep) carrying a complete `.awf/` adoption with everything enabled and all rendered output committed. `./x sync` re-renders it with a source-built binary; `./x check` gates it (drift + invariants + zero advisory notes + `go test`). A wiring test in `internal/project` pins the mechanism and backs the ADR's three invariant slugs.
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Phase 1 — fictional project scenery
+## Phase 1: fictional project scenery
 
 - [ ] Create `examples/sundial/go.mod`:
 
@@ -202,7 +202,7 @@
 
   ```bash
   #!/usr/bin/env bash
-  # Command runner for sundial — the single entry point for repo tasks.
+  # Command runner for sundial: the single entry point for repo tasks.
   # The awf verbs run the pinned release: .awf/bootstrap.sh resolves (or
   # fetches and verifies) it and prints the binary path on stdout.
   set -euo pipefail
@@ -234,7 +234,7 @@
 - [ ] Create `examples/sundial/README.md`:
 
   ```markdown
-  # sundial — the awf example adopter
+  # sundial: the awf example adopter
 
   `sundial` is a small fictional Go CLI that prints a week of approximate sunrise and
   sunset times:
@@ -242,35 +242,35 @@
       go run ./cmd/sundial 52.5 13.4
 
   The fiction is scenery. This directory's real purpose is to be a **complete,
-  committed example of an awf adoption** — every catalog skill, agent, and doc
+  committed example of an awf adoption**: every catalog skill, agent, and doc
   enabled, domains with declared territories, authored convention parts, three ADRs,
   a plan, and every rendered file checked in. It doubles as the awf repository's
   rendered-output quality oracle (its ADR-0090): the enclosing `./x sync` re-renders
   this directory from awf's source on every template change, and the enclosing
-  `./x check` fails on drift, invariant findings, or any advisory note — so what you
+  `./x check` fails on drift, invariant findings, or any advisory note, so what you
   see here is provably what awf produces.
 
   ## What is what
 
-  - `.awf/` — the authored config tree: `config.yaml`, sidecars, convention parts.
+  - `.awf/`: the authored config tree: `config.yaml`, sidecars, convention parts.
     This is the input; everything marked GENERATED is rendered from it.
-  - `AGENTS.md`, `CLAUDE.md`, `.claude/`, most of `docs/` — rendered output. Never
+  - `AGENTS.md`, `CLAUDE.md`, `.claude/`, most of `docs/`: rendered output. Never
     edit these; change `.awf/` and run `./x sync`.
-  - `docs/decisions/`, `docs/plans/` — the fiction's hand-written workflow artifacts
+  - `docs/decisions/`, `docs/plans/`: the fiction's hand-written workflow artifacts
     (`ACTIVE.md` is generated).
-  - `cmd/`, `internal/` — the fictional Go module (`example.com/sundial`),
+  - `cmd/`, `internal/`: the fictional Go module (`example.com/sundial`),
     deliberately separate from the awf module.
-  - `.githooks/` — illustrative hook wiring. This directory is not a git repository,
+  - `.githooks/`: illustrative hook wiring. This directory is not a git repository,
     so the stubs can never fire here; in a real adoption, activate them with
     `git config core.hooksPath .githooks`.
-  - `x` — the fiction's command runner. Its awf verbs fetch the release pinned in
+  - `x`: the fiction's command runner. Its awf verbs fetch the release pinned in
     `.awf/bootstrap.sh`; inside this repository, the enclosing `./x sync` and
     `./x check` use awf built from source instead.
 
   ## Regenerating
 
   From the repository root: `./x sync` re-renders this directory along with the
-  repo's own tree, and `./x check` gates it — drift, invariants, zero advisory
+  repo's own tree, and `./x check` gates it: drift, invariants, zero advisory
   notes, and this module's `go test ./...`.
   ```
 
@@ -286,10 +286,10 @@
 
   `commit-msg` and `pre-push`: identical apart from the payload name (`.awf/hooks/commit-msg.sh`, `.awf/hooks/pre-push.sh`).
 
-- [ ] Verify: `(cd examples/sundial && go test ./... && go vet ./... && gofmt -l .)` — tests pass, vet clean, gofmt prints nothing. `go build ./...` at the repo root still succeeds and `! go list ./... | grep -q sundial` exits 0 (module isolation).
-- [ ] `./x gate` green; commit: `feat(tooling): add the sundial example scenery` (body: first slice of ADR-0090 — the fictional module the example adoption wraps; adoption follows).
+- [ ] Verify: `(cd examples/sundial && go test ./... && go vet ./... && gofmt -l .)`: tests pass, vet clean, gofmt prints nothing. `go build ./...` at the repo root still succeeds and `! go list ./... | grep -q sundial` exits 0 (module isolation).
+- [ ] `./x gate` green; commit: `feat(tooling): add the sundial example scenery` (body: first slice of ADR-0090, the fictional module the example adoption wraps; adoption follows).
 
-## Phase 2 — adopt awf in the example
+## Phase 2: adopt awf in the example
 
 - [ ] Build the source binary once for this phase: `go build -o /tmp/awf-0090 ./cmd/awf`.
 - [ ] Write `/tmp/sundial-answers.yaml`:
@@ -307,7 +307,7 @@
   docs: architecture,debugging,development,glossary,pitfalls,roadmap,testing
   ```
 
-- [ ] `(cd examples/sundial && /tmp/awf-0090 init --answers /tmp/sundial-answers.yaml)` — expect `scaffolded …/.awf/config.yaml`, `awf sync: done`, and stub notes (they clear in Phase 3). The scaffolded config gets `prefix: sundial` from the directory name; `bootstrap.enabled: true` and `hooks.enabled: true` are init defaults.
+- [ ] `(cd examples/sundial && /tmp/awf-0090 init --answers /tmp/sundial-answers.yaml)`: expect `scaffolded .../.awf/config.yaml`, `awf sync: done`, and stub notes (they clear in Phase 3). The scaffolded config gets `prefix: sundial` from the directory name; `bootstrap.enabled: true` and `hooks.enabled: true` are init defaults.
 - [ ] `(cd examples/sundial && /tmp/awf-0090 add domain almanac && /tmp/awf-0090 add domain cli)`.
 - [ ] Create `examples/sundial/.awf/domains/almanac.yaml`:
 
@@ -338,10 +338,10 @@
   ```yaml
   data:
     terms:
-      almanac: 'the sun-event model — approximates sunrise and sunset from latitude, longitude, and day of year (`internal/almanac`)'
+      almanac: 'the sun-event model; approximates sunrise and sunset from latitude, longitude, and day of year (`internal/almanac`)'
       cosine day-length model: 'the zero-dependency daylight approximation ADR-0001 adopts; accurate to minutes at temperate latitudes, deliberately wrong for navigation'
       solar noon: 'the moment the sun crosses the local meridian; the model centres each day''s daylight on it, shifted four minutes per degree of longitude'
-      sun table: 'the seven-row plain-text schedule `sundial` prints — one row per day, `rise`/`set` columns'
+      sun table: 'the seven-row plain-text schedule `sundial` prints, one row per day, `rise`/`set` columns'
   ```
 
 - [ ] Create `examples/sundial/.awf/agents-doc.yaml`:
@@ -362,11 +362,11 @@
       - kind: scopes
   ```
 
-- [ ] `(cd examples/sundial && /tmp/awf-0090 sync && /tmp/awf-0090 check)` — check exits 0; the remaining notes are exactly the seven stub-content lines (AGENTS.md identity; architecture overview/components/data-flow/dependencies; debugging surfaces/recipes; development setup/command-runner/dependencies; pitfalls entries; roadmap ideas/deferred; testing layout).
+- [ ] `(cd examples/sundial && /tmp/awf-0090 sync && /tmp/awf-0090 check)`: check exits 0; the remaining notes are exactly the seven stub-content lines (AGENTS.md identity; architecture overview/components/data-flow/dependencies; debugging surfaces/recipes; development setup/command-runner/dependencies; pitfalls entries; roadmap ideas/deferred; testing layout).
 - [ ] Verify the rendered adapter tree is not gitignored (the root `.gitignore` negations must reach the example): `git check-ignore examples/sundial/CLAUDE.md examples/sundial/.claude/skills/sundial-tdd/SKILL.md` prints nothing and exits 1.
 - [ ] Stage the whole example (`git add examples/sundial`), `./x gate` green; commit: `feat(tooling): adopt awf in the sundial example` (body: full-surface enabled set per ADR-0090 Decision 2; stub sections authored next). After the commit, `git ls-files examples/sundial/.claude | head -3` is non-empty.
 
-## Phase 3 — author the full surface (zero notes)
+## Phase 3: author the full surface (zero notes)
 
 Every part below carries its own `##` heading where the section renders one (mirror the enclosing repo's doc parts).
 
@@ -378,8 +378,8 @@ Every part below carries its own `##` heading where the section renders one (mir
   `sundial` is a tiny Go CLI that prints a week of approximate sunrise and sunset
   times for a latitude/longitude pair. It is also the worked example for the awf
   standard: a complete, green adoption whose rendered files are kept in sync by the
-  enclosing awf repository. The fiction is deliberately small — two internal packages
-  and a `main` — so the workflow artifacts around it stay legible.
+  enclosing awf repository. The fiction is deliberately small (two internal packages
+  and a `main`) so the workflow artifacts around it stay legible.
   ```
 
 - [ ] Create `examples/sundial/.awf/docs/parts/architecture/overview.md`:
@@ -397,10 +397,10 @@ Every part below carries its own `##` heading where the section renders one (mir
   ```markdown
   ## Components
 
-  - **`cmd/sundial/`** — argument parsing and output; exits 2 on usage errors.
-  - **`internal/almanac/`** — the cosine day-length model (ADR-0001): `Sun(Location,
+  - **`cmd/sundial/`**: argument parsing and output; exits 2 on usage errors.
+  - **`internal/almanac/`**: the cosine day-length model (ADR-0001): `Sun(Location,
     date)` returns clamped, polar-safe sunrise/sunset pairs.
-  - **`internal/schedule/`** — formats seven `almanac.Day` values as the plain-text
+  - **`internal/schedule/`**: formats seven `almanac.Day` values as the plain-text
     sun table.
   ```
 
@@ -411,7 +411,7 @@ Every part below carries its own `##` heading where the section renders one (mir
 
   `main` → `schedule.Week(location, today)` → seven `almanac.Sun` calls → formatted
   table on stdout. Errors exist only at the argument boundary; the model itself is
-  total — polar day and night collapse to full- or zero-length days (ADR-0001).
+  total: polar day and night collapse to full- or zero-length days (ADR-0001).
   ```
 
 - [ ] Create `examples/sundial/.awf/docs/parts/architecture/dependencies.md`:
@@ -429,9 +429,9 @@ Every part below carries its own `##` heading where the section renders one (mir
   ```markdown
   ## Surfaces
 
-  - **CLI boundary** — wrong usage or non-numeric coordinates: exit 2 with a usage
+  - **CLI boundary**: wrong usage or non-numeric coordinates: exit 2 with a usage
     line on stderr.
-  - **Model output** — implausible times: check the latitude clamp and the
+  - **Model output**: implausible times: check the latitude clamp and the
     declination term in `internal/almanac` before suspecting formatting.
   ```
 
@@ -441,7 +441,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   ## Recipes
 
   - Reproduce a suspicious table with a fixed date: call `schedule.Week` from a test
-    with a `time.Date` literal — never `time.Now()` — so the case is replayable.
+    with a `time.Date` literal (never `time.Now()`) so the case is replayable.
   - Bisect model vs formatting by printing `almanac.Sun` directly for one day.
   ```
 
@@ -470,7 +470,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   ## Dependencies
 
   None beyond the Go standard library. awf is a development-time tool, not a module
-  dependency — it never appears in `go.mod`.
+  dependency; it never appears in `go.mod`.
   ```
 
 - [ ] Create `examples/sundial/.awf/docs/parts/pitfalls/entries.md`:
@@ -481,7 +481,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   - **`time.Now()` in tests.** The sun table depends on the date; a test that formats
     "today" goes red twice a year at the solstices. Fix the date with `time.Date`.
   - **Longitude sign confusion.** East is positive; a flipped sign shifts solar noon
-    by minutes per degree and looks like a model bug (it isn't — check the input
+    by minutes per degree and looks like a model bug (it isn't; check the input
     first).
   ```
 
@@ -521,7 +521,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   The almanac domain is one package, `internal/almanac`, implementing the cosine
   day-length model ADR-0001 adopted: clamped latitude, polar-safe collapse, solar
   noon shifted four minutes per degree of longitude. Accuracy is minutes, not
-  seconds — a deliberate ceiling. Anything touching the declination term or the
+  seconds: a deliberate ceiling. Anything touching the declination term or the
   clamp must keep `almanac-clamped-latitude` backed.
   ```
 
@@ -548,7 +548,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   ```markdown
   {{=awf:sectionDefault}}
 
-  Sundial-specific: the almanac model is pure — every model change starts with a
+  Sundial-specific: the almanac model is pure; every model change starts with a
   failing table-driven case in `internal/almanac`, no exceptions.
   ```
 
@@ -582,11 +582,11 @@ Every part below carries its own `##` heading where the section renders one (mir
      longitude.
   2. Latitude is clamped to [-90, 90] before the model runs; garbage input degrades
      to the pole.
-  3. Polar day and night collapse to full- or zero-length days — never an error.
+  3. Polar day and night collapse to full- or zero-length days, never an error.
 
   ## Invariants
 
-  - `inv: almanac-clamped-latitude` — latitude is clamped to [-90, 90] before the
+  - `inv: almanac-clamped-latitude`: latitude is clamped to [-90, 90] before the
     day-length model; out-of-range input degrades to the pole, never to a domain
     error.
   - Textual: `internal/almanac` stays standard-library-only.
@@ -594,7 +594,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   ## Consequences
 
   Minutes-level accuracy at temperate latitudes; wrong near the poles and useless
-  for navigation — stated in the package doc. Zero dependencies. Sub-minute accuracy
+  for navigation, stated in the package doc. Zero dependencies. Sub-minute accuracy
   is out of scope unless a successor decision accepts an ephemeris dependency.
 
   ## Alternatives Considered
@@ -639,7 +639,7 @@ Every part below carries its own `##` heading where the section renders one (mir
 
   ## Consequences
 
-  One trivially testable input path. Users with DMS coordinates convert them first —
+  One trivially testable input path. Users with DMS coordinates convert them first:
   accepted friction, documented in the README usage line.
 
   ## Alternatives Considered
@@ -684,7 +684,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   ## Consequences
 
   Golden-hour rows become cheap. A new seam between `schedule` and `almanac` to keep
-  honest — the cache must never change output, only cost.
+  honest: the cache must never change output, only cost.
 
   ## Alternatives Considered
 
@@ -697,7 +697,7 @@ Every part below carries its own `##` heading where the section renders one (mir
 - [ ] Create `examples/sundial/docs/plans/2026-07-07-decimal-degrees-cli.md` (the fiction's executed plan for ADR-0002; frozen since that ADR is Implemented):
 
   ```markdown
-  # 2026-07-07 — Decimal-degrees CLI
+  # 2026-07-07: Decimal-degrees CLI
 
   **Goal:** implement [ADR-0002](../decisions/0002-cli-accepts-coordinates-as-decimal-degrees-only.md): positional decimal-degree parsing in `cmd/sundial`.
 
@@ -707,23 +707,23 @@ Every part below carries its own `##` heading where the section renders one (mir
 
   **File structure:** modified `cmd/sundial/main.go`.
 
-  ## Phase 1 — parse and gate
+  ## Phase 1: parse and gate
 
   - [x] Parse `os.Args[1]`/`os.Args[2]` with `strconv.ParseFloat`; on error print
         `sundial: latitude and longitude must be decimal degrees` to stderr, exit 2.
   - [x] Print the usage line and exit 2 when the argument count is not 2.
   - [x] `./x gate` green; commit: `feat(cli): parse coordinates as decimal degrees`.
 
-  ## Phase 2 — record
+  ## Phase 2: record
 
   - [x] Flip ADR-0002 to Implemented; `./x sync` regenerates `docs/decisions/ACTIVE.md`.
   - [x] Commit: `docs(docs): flip ADR-0002 to Implemented`.
   ```
 
-- [ ] `(cd examples/sundial && /tmp/awf-0090 sync && /tmp/awf-0090 check && /tmp/awf-0090 invariants && go test ./...)` — expected: sync regenerates `ACTIVE.md` and the two domain docs; check prints **no `note:` lines** and `awf check: clean`; invariants clean; tests pass. If any note remains, the listed section's part is missing or misnamed — fix before committing.
+- [ ] `(cd examples/sundial && /tmp/awf-0090 sync && /tmp/awf-0090 check && /tmp/awf-0090 invariants && go test ./...)`, expected: sync regenerates `ACTIVE.md` and the two domain docs; check prints **no `note:` lines** and `awf check: clean`; invariants clean; tests pass. If any note remains, the listed section's part is missing or misnamed: fix before committing.
 - [ ] Stage `examples/sundial`, `./x gate` green; commit: `feat(tooling): author the sundial example's full surface` (body: zero-notes bar of ADR-0090 Decision 4 reached; parts, ADRs, plan, glossary, guide data).
 
-## Phase 4 — wire `./x` and pin the wiring
+## Phase 4: wire `./x` and pin the wiring
 
 - [ ] In `x`, replace the `sync)` branch:
 
@@ -756,7 +756,7 @@ Every part below carries its own `##` heading where the section renders one (mir
       fi
       printf '%s\n' "$out"
       if printf '%s\n' "$out" | grep -q '^note: '; then
-        echo "check: the example adopter has advisory notes — author the missing content or clear the smell (ADR-0090)" >&2
+        echo "check: the example adopter has advisory notes: author the missing content or clear the smell (ADR-0090)" >&2
         exit 1
       fi
       (cd examples/sundial && "$bindir/awf" invariants)
@@ -775,7 +775,7 @@ Every part below carries its own `##` heading where the section renders one (mir
   	"testing"
   )
 
-  // ADR-0090: the committed example adopter is kept deterministic through ./x —
+  // ADR-0090: the committed example adopter is kept deterministic through ./x:
   // sync re-renders it from source; check drift-, invariant-, note-, and
   // test-gates it. The example is its own Go module so the enclosing ./...
   // sweeps never see it; this test pins the wiring so it cannot be silently
@@ -810,10 +810,10 @@ Every part below carries its own `##` heading where the section renders one (mir
 - [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]`, section `### Others` (create the section if absent, after any Breaking/Features/Bug fixes):
 
   ```markdown
-  - The repository now carries a committed example adopter (`examples/sundial/`) — a full-surface worked example of an awf adoption, browsable in the repo and kept render-synced from awf's source by the repo's own checks (its ADR-0090).
+  - The repository now carries a committed example adopter (`examples/sundial/`): a full-surface worked example of an awf adoption, browsable in the repo and kept render-synced from awf's source by the repo's own checks (its ADR-0090).
   ```
 
-The behavior-documenting parts land in this phase's commit — docs travel with the change (ADR-0090 Decision 7).
+The behavior-documenting parts land in this phase's commit: docs travel with the change (ADR-0090 Decision 7).
 
 - [ ] `.awf/agents-doc.yaml`: append to `data.invariants`:
 
@@ -821,7 +821,7 @@ The behavior-documenting parts land in this phase's commit — docs travel with 
         - ref: ADR-0090
           text: '**Example adopter checked.** `./x sync` re-renders the committed example adopter `examples/sundial` with a source-built awf, and `./x check` fails on its drift or invariant findings.'
         - ref: ADR-0090
-          text: '**Example zero-notes.** The example check step fails on any `note: ` line in the example''s `awf check` output — the model adopter has no smells.'
+          text: '**Example zero-notes.** The example check step fails on any `note: ` line in the example''s `awf check` output: the model adopter has no smells.'
         - ref: ADR-0090
           text: '**Example module isolated.** `examples/sundial` is its own Go module; no enclosing `./...` sweep (test, coverage, vet, lint, deadcode) includes it.'
   ```
@@ -830,24 +830,24 @@ The behavior-documenting parts land in this phase's commit — docs travel with 
 
   ```markdown
 
-  `./x check` — beside the gate at every commit via the pre-commit payload — also
+  `./x check` (beside the gate at every commit via the pre-commit payload) also
   gates the example adopter (ADR-0090): it re-checks `examples/sundial` with a
   source-built awf (drift, invariants, zero advisory notes) and runs that module's
   `go test ./...`, the only place the example's tests execute.
   ```
 
-- [ ] `.awf/docs/parts/development/command-runner.md`: replace the `./x sync / check / …` table row with:
+- [ ] `.awf/docs/parts/development/command-runner.md`: replace the `./x sync / check / ...` table row with:
 
   ```markdown
-  | `./x sync` / `./x check` / `./x invariants` / `./x audit` / `./x commit-gate` / `./x new` | The matching `awf` subcommand, run from source. `sync` additionally re-renders the example adopter `examples/sundial` with a source-built binary; `check` additionally gates it — drift, invariants, zero advisory notes, and its module's `go test ./...` (ADR-0090). |
+  | `./x sync` / `./x check` / `./x invariants` / `./x audit` / `./x commit-gate` / `./x new` | The matching `awf` subcommand, run from source. `sync` additionally re-renders the example adopter `examples/sundial` with a source-built binary; `check` additionally gates it: drift, invariants, zero advisory notes, and its module's `go test ./...` (ADR-0090). |
   ```
 
 - [ ] `.awf/docs/parts/architecture/components.md`: append:
 
   ```markdown
-  - **`examples/sundial/`** — the committed example adopter (ADR-0090): a fictional Go
+  - **`examples/sundial/`**: the committed example adopter (ADR-0090): a fictional Go
     module (own `go.mod`, invisible to the repo's `./...` sweeps) whose full rendered
-    surface is the rendered-output quality oracle — re-rendered by `./x sync`, gated
+    surface is the rendered-output quality oracle: re-rendered by `./x sync`, gated
     by `./x check`. Not part of the rendered standard.
   ```
 
@@ -855,20 +855,20 @@ The behavior-documenting parts land in this phase's commit — docs travel with 
 
   ```markdown
 
-  ADR-0090 adds the committed example adopter `examples/sundial/` — its own Go module, invisible to every `./...` sweep — as the repo's worked example and rendered-output quality oracle: `./x sync` re-renders it with a source-built binary after the repo's own sync, and `./x check` additionally runs the example's `awf check` (failing on drift or any `note: ` line — the model adopter is smell-free), `awf invariants`, and `go test ./...`. `internal/project/example_wiring_test.go` pins the wiring; `awf audit` deliberately never runs there (no `.git` at the example root).
+  ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go module, invisible to every `./...` sweep) as the repo's worked example and rendered-output quality oracle: `./x sync` re-renders it with a source-built binary after the repo's own sync, and `./x check` additionally runs the example's `awf check` (failing on drift or any `note: ` line; the model adopter is smell-free), `awf invariants`, and `go test ./...`. `internal/project/example_wiring_test.go` pins the wiring; `awf audit` deliberately never runs there (no `.git` at the example root).
   ```
 
 - [ ] `.awf/domains/parts/rendering/current-state.md`: append as a new final paragraph:
 
   ```markdown
 
-  The rendered-output quality bar has a deterministic review surface (ADR-0090): the committed full-surface example adopter `examples/sundial/` re-renders on every `./x sync`, so a template change lands as a reviewable rendered diff over a realistic adoption in the same commit, and a schema bump must run `awf upgrade` there before `./x check` goes green — an in-repo migration rehearsal ahead of any external adopter.
+  The rendered-output quality bar has a deterministic review surface (ADR-0090): the committed full-surface example adopter `examples/sundial/` re-renders on every `./x sync`, so a template change lands as a reviewable rendered diff over a realistic adoption in the same commit, and a schema bump must run `awf upgrade` there before `./x check` goes green, an in-repo migration rehearsal ahead of any external adopter.
   ```
 
-- [ ] Verify: `./x sync` (both renders plus the repo-doc re-render, ends quiet), then `./x check` — expected tail: the repo's `awf check: clean`, the example's `awf check: clean`, the example's invariants clean, and `ok  	example.com/sundial/...` test lines. `go test ./internal/project -run TestExampleAdopterWiring` passes.
-- [ ] `./x gate` green; commit: `feat(tooling): gate the example adopter through x sync and check` (body: ADR-0090 Decisions 3-4 — determinism wiring, zero-notes bar, wiring test backing the three invariant slugs; the behavior docs — guide invariants, testing/development/architecture parts, domain narratives — travel in this commit).
+- [ ] Verify: `./x sync` (both renders plus the repo-doc re-render, ends quiet), then `./x check`, expected tail: the repo's `awf check: clean`, the example's `awf check: clean`, the example's invariants clean, and `ok  	example.com/sundial/...` test lines. `go test ./internal/project -run TestExampleAdopterWiring` passes.
+- [ ] `./x gate` green; commit: `feat(tooling): gate the example adopter through x sync and check` (body: ADR-0090 Decisions 3-4: determinism wiring, zero-notes bar, wiring test backing the three invariant slugs; the behavior docs (guide invariants, testing/development/architecture parts, domain narratives) travel in this commit).
 
-## Phase 5 — onboarding links, then the flip
+## Phase 5: onboarding links, then the flip
 
 - [ ] `README.md`: insert after the `## Quickstart` section (before `## Commands`):
 
@@ -876,8 +876,8 @@ The behavior-documenting parts land in this phase's commit — docs travel with 
   ## Worked example
 
   A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-  a small fictional Go CLI with every catalog artifact enabled — authored parts,
-  domains, ADRs, a plan — and every rendered file committed, kept in sync by this
+  a small fictional Go CLI with every catalog artifact enabled (authored parts,
+  domains, ADRs, a plan) and every rendered file committed, kept in sync by this
   repository's own checks. Browse it to see exactly what an adoption looks like on
   disk.
   ```
@@ -893,8 +893,8 @@ The behavior-documenting parts land in this phase's commit — docs travel with 
   by this repository's own checks (ADR-0090).
   ```
 
-- [ ] `./x sync && ./x check` — both trees clean; the dead-link scan accepts the two new example links.
-- [ ] `./x gate` green; commit: `docs(tooling): link the example adopter from the repo docs` (body: ADR-0090 Decision 7 onboarding pointers — README worked-example section, working-with-awf overview part).
+- [ ] `./x sync && ./x check`: both trees clean; the dead-link scan accepts the two new example links.
+- [ ] `./x gate` green; commit: `docs(tooling): link the example adopter from the repo docs` (body: ADR-0090 Decision 7 onboarding pointers: README worked-example section, working-with-awf overview part).
 - [ ] Flip `docs/decisions/0090-*.md` frontmatter `status: Proposed` → `status: Implemented`; run `./x sync` (regenerates `ACTIVE.md` and the tooling/rendering domain docs); `./x invariants` clean (the three slugs are backed by `internal/project/example_wiring_test.go` since Phase 4).
-- [ ] `./x gate` green; commit: `docs(adr): flip 0090 to Implemented — example adopter shipped`.
+- [ ] `./x gate` green; commit: `docs(adr): flip 0090 to Implemented: example adopter shipped`.
 - [ ] Terminal step: invoke `awf-reviewing-impl` over the branch's commits.

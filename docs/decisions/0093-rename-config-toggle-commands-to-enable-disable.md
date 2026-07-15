@@ -14,20 +14,20 @@ domains: [tooling, config]
 
 `awf add <kind> <name>` and `awf remove <kind> <name>` (ADR-0024) do not create or
 delete anything. They flip an artifact's membership in a `.awf/config.yaml` enable
-array — or a singleton's `enabled:` scalar — and re-render. The artifact already
+array (or a singleton's `enabled:` scalar) and re-render. The artifact already
 exists in the catalog; the command toggles whether *this project* renders it.
 
 The verbs misdescribe that operation on two counts:
 
 - **`add` reads as "create," colliding with `awf new`.** `awf new` genuinely
   scaffolds a project-local artifact (new files); `awf add` only toggles an
-  existing catalog entry. The two reading as near-synonyms is the core confusion —
+  existing catalog entry. The two reading as near-synonyms is the core confusion,
   and the commands' own help already reaches for the opposite vocabulary, summarising
   `add` as "**Enable** a target" and `remove` as "**Disable** a target"
   (cmd/awf/main.go:283,296). The names fight their own documentation.
 - **The help noun "target" collides with the `target` kind.** The help uses "target"
-  generically for the toggled artifact, but `target` is also a literal kind — an
-  adapter runtime — so `awf add target cursor` parses as "enable a *target* of kind
+  generically for the toggled artifact, but `target` is also a literal kind (an
+  adapter runtime), so `awf add target cursor` parses as "enable a *target* of kind
   *target*."
 
 ADR-0024's substance is sound: the required `<kind>` token, per-kind validation, the
@@ -44,20 +44,20 @@ change is acceptable ("The bare `awf add <name>` form is removed").
    singleton's `enabled:` scalar, and match the verbs the commands' own help already
    used. Because the agent guide and docs are *rendered*, an adopter's `AGENTS.md` and
    rendered docs switch to the new verbs on their next `sync` and their agent follows
-   the rendered instructions — the migration propagates without hand-editing.
+   the rendered instructions: the migration propagates without hand-editing.
 
-2. **Supersede ADR-0024 Decision items 1 and 6 (partial-item supersedence)** — the
+2. **Supersede ADR-0024 Decision items 1 and 6 (partial-item supersedence):** the
    command names and the help/README/guide grammar. Every other ADR-0024 commitment
    (kind dispatch, per-kind validation, the block-scoped array editor, the doc-gate
    warning and orphan note, `awf list`) stands unchanged, as do its invariants
    `cli-config-kinds` and `remove-block-scoped`: the rename changes command verbs, not
    config-array semantics. Per the partial-item-supersedence convention this ADR links
    the predecessor via `related: [24]` (not `supersedes:`) and does **not** flip its
-   status — ADR-0024 stays `Implemented` and both ADRs remain live in `ACTIVE.md`.
+   status: ADR-0024 stays `Implemented` and both ADRs remain live in `ACTIVE.md`.
 
 3. **Fix the overloaded noun.** In the `enable`/`disable` help and summaries, name the
    toggled thing by its kinds ("a skill, agent, doc, domain, target, bootstrap, or
-   hooks") or as "an artifact" — never the generic "target." The `sync` and `list` uses
+   hooks") or as "an artifact", never the generic "target." The `sync` and `list` uses
    of "target" denote adapter runtimes correctly and are left unchanged.
 
 4. **Rename only the top-level dispatch handlers** `runAdd`→`runEnable` and
@@ -65,30 +65,30 @@ change is acceptable ("The bare `awf add <name>` form is removed").
    (`ResolveAdd`/`ResolveRemove`, `PlanOp.Add`, `addRemoveTarget`, `addRemoveSingleton`)
    and the stable invariant slugs (`cli-config-kinds`, `remove-block-scoped`) accurately
    describe set/config operations and stay. A broader review of the CLI dispatch/resolve
-   plumbing — and the duplicated gated-command prose noted below — is deferred to a
+   plumbing (and the duplicated gated-command prose noted below) is deferred to a
    separate effort.
 
 5. **Update every live surface in the same change, editing prose *sources* (not
    rendered outputs) and re-rendering.** In `.awf/agents-doc.yaml`, every live invariant
-   summary that names a toggle command — the gated-command list (Binary-version gate),
+   summary that names a toggle command (the gated-command list (Binary-version gate),
    the ADR-0050 reviewing-skill/agent pairing line (`awf remove agent`/`awf add skill`),
-   and the ADR-0081 "Add applies the closure plan" and "Remove refuses dependents" lines
-   — plus the `tooling` domain current-state (`.awf/domains/parts/tooling/current-state.md`),
+   and the ADR-0081 "Add applies the closure plan" and "Remove refuses dependents" lines)
+   plus the `tooling` domain current-state (`.awf/domains/parts/tooling/current-state.md`),
    which holds several CLI references (the second gated-command copy, the ADR-0024
    `awf add/remove/list` line, the ADR-0081 dependency-graph line, "opt-in via `awf add`",
    "mirroring `awf remove`"). Also: the "Toggle an artifact" guide bullet and its
    `awf add target cursor` example (`.awf/parts/agents-doc/awf-setup.md`,
    `templates/agents-doc/AGENTS.md.tmpl`); the architecture doc part
-   (`.awf/docs/parts/architecture/components.md` — the `cmd/awf/` entry-point command
+   (`.awf/docs/parts/architecture/components.md`: the `cmd/awf/` entry-point command
    list and the ADR-0027 `list`/`add` dispatch line); the config-reference field
    descriptions (`internal/configspec`); the glossary "plan op" term
    (`.awf/docs/glossary.yaml`); the `working-with-awf` and `workflow` templates;
    hand-written `README.md`; the `config` domain current-state; and the stale
    `inv: target-cli` backing comment
-   (`internal/project/target.go`), which backs ADR-0037's `target-cli` invariant —
+   (`internal/project/target.go`), which backs ADR-0037's `target-cli` invariant:
    semantics unchanged, only the verb in the descriptive prose moves. These are all live
    rendered/hand-written surfaces; ADR-0037's, ADR-0039's, and ADR-0024's own frozen text
-   is **not** edited — only the live `AGENTS.md`/docs lines move, the same "extend the
+   is **not** edited: only the live `AGENTS.md`/docs lines move, the same "extend the
    live line, keep the frozen ADR text" rule ADR-0092 follows. A changelog entry is
    added. No `.awf/` schema or `migrate.Current()` change.
 
@@ -100,7 +100,7 @@ not retire.
 
 - The two config-toggle commands are named `enable` and `disable`; no `add`/`remove`
   command token survives in the CLI dispatch, help, or live docs.
-- ADR-0024's `inv: cli-config-kinds` and `inv: remove-block-scoped` continue to hold —
+- ADR-0024's `inv: cli-config-kinds` and `inv: remove-block-scoped` continue to hold:
   the rename changes command verbs only, not the kind-dispatch or block-scoped-removal
   semantics they guard.
 - No help or doc text uses the generic noun "target" for the artifact a toggle command
@@ -114,7 +114,7 @@ not retire.
 - **Breaking change:** `awf add`/`awf remove` stop working; adopters and scripts move to
   `awf enable`/`awf disable`. The rendered-guide propagation (Decision 1) makes the
   adopter-side migration automatic on the next `sync`.
-- **Pinned-release lag:** an adopter — including `examples/sundial` — whose rendered docs
+- **Pinned-release lag:** an adopter (including `examples/sundial`) whose rendered docs
   are produced by a source-built or newer awf shows `enable`/`disable` while a pinned
   older release binary still only accepts `add`/`remove` until a release ships. Inherent
   to any pre-1.0 CLI change and the same lag ADR-0092 documents; accepted.

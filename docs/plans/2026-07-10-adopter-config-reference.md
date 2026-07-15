@@ -1,9 +1,9 @@
-# 2026-07-10 — Adopter config reference: configspec, generated doc, awf config
+# 2026-07-10: Adopter config reference: configspec, generated doc, awf config
 
 **Goal:** implement [ADR-0088](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 (the `internal/configspec` description authority with bidirectional parity; the always-on
 generated-index doc `docs/config-reference.md`; the `awf config [<key-or-var>]` command with
-a static pre-adoption fallback). Design rationale lives in the ADR — not duplicated here.
+a static pre-adoption fallback). Design rationale lives in the ADR, not duplicated here.
 The ADR was amended while Proposed (2f296a9, cd3c15a, f1cdafe): the data-key universe is
 per-artifact template-referenced keys union catalog-declared defaults (catalog artifacts
 plus the two local base templates), injected keys exempt (the domain-doc pair and the
@@ -11,7 +11,7 @@ config reference's own collections), and the config-reference sidecar rejects `d
 at open.
 
 **Architecture summary:** two feature phases, shaped by the dead-code gate (a production
-function must be reachable from `main` in the phase that lands it — `internal/configspec`
+function must be reachable from `main` in the phase that lands it: `internal/configspec`
 cannot land alone, so it lands with its first production consumer, the generated doc).
 Phase 1 adds `internal/configspec` (entries, var derivation from `catalog.Vars`, data-key
 descriptions), the `config-reference` catalog `DocEntry` (Mandatory + a new `Generated`
@@ -60,7 +60,7 @@ current-state part, glossary sidecar data), `docs/decisions` (flip + regen).
 **Phase → ADR Decision map:** P1→D1+D2+D3+D5+D6; P2→D4; P3→doc/flip obligations.
 `internal/initspec` is deliberately untouched: var descriptions stay authored in
 `catalog.Vars` and configspec *derives* them (ADR-0088 D1), so `awf init --describe` is
-behaviorally unchanged by construction — the existing initspec tests are the pin.
+behaviorally unchanged by construction; the existing initspec tests are the pin.
 
 **Fixture-fallout rule (applies to every phase):** the new Mandatory doc renders in every
 scaffolded fixture, so tests that pin output-file sets, singleton lists, or help text will
@@ -70,7 +70,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 
 ---
 
-## Phase 1 — configspec + the generated config-reference doc (ADR-0088 D1, D2, D3, D5, D6)
+## Phase 1: configspec + the generated config-reference doc (ADR-0088 D1, D2, D3, D5, D6)
 
 ### 1a. The configspec package
 
@@ -82,7 +82,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       // authority for the .awf configuration surface (ADR-0088): every
       // config.yaml key, sidecar field, var, and per-artifact data key an
       // adopter can set. Descriptions are publication prose: they state effect
-      // and availability in the adopter's terms — never internal rationale,
+      // and availability in the adopter's terms, never internal rationale,
       // concrete ADR citations, or repo-identity literals (the residue rules).
       package configspec
 
@@ -94,11 +94,11 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       	Type         string // value shape as prose: "string", "bool", "string list", "key → value map"
       	Default      string // effective default as prose: `"docs"`, "accept any scope", "none"
       	Description  string // full adopter-voiced description
-      	Availability string // when the key has effect: "always", "domain sidecars only", …
+      	Availability string // when the key has effect: "always", "domain sidecars only", ...
       }
 
       // VarEntry describes one config var. Description text is carried verbatim
-      // from the catalog descriptor — the catalog stays the sole var authority;
+      // from the catalog descriptor: the catalog stays the sole var authority;
       // configspec attaches only the availability clause (ADR-0088 D1).
       type VarEntry struct {
       	Key          string
@@ -115,15 +115,15 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       }
 
       func Keys() []Entry          { return keys }
-      func VarEntries() []VarEntry { … }
+      func VarEntries() []VarEntry { ... }
       func DataKeys() []DataKey    { return dataKeys }
       ```
 
-      (Alignment follows gofmt output — run gofmt after pasting any snippet.)
+      (Alignment follows gofmt output: run gofmt after pasting any snippet.)
 
 - [ ] `keys` covers every adopter-writable leaf of `config.Config` and `Sidecar`
       (`internal/config/config.go`), with sidecar fields under the `sidecar.` prefix.
-      The exact path set (the parity test in 1b re-derives it by reflection — this list
+      The exact path set (the parity test in 1b re-derives it by reflection; this list
       is the hand-authored side):
 
       ```
@@ -143,18 +143,18 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       ```
 
       Slice-of-struct containers stay entries themselves (`invariants.sources`,
-      `audit.allowedScopes`) — the container entry is where nil-vs-empty semantics
+      `audit.allowedScopes`): the container entry is where nil-vs-empty semantics
       live ("nil = accept any scope / use the default; explicit empty = disabled"),
       mirroring how `sidecar.sections` stays an entry beside its `<name>.drop` leaf.
 
       Description-authoring rules (enforced by 1b's tests where machine-checkable):
       - Semantics come from the Go doc comments in `internal/config/config.go` and
         `internal/audit` (`audit.Resolve`), rewritten in adopter voice: what the key
-        does, what values mean (nil-vs-empty semantics spelled out where they differ —
+        does, what values mean (nil-vs-empty semantics spelled out where they differ:
         `audit.allowedScopes`, `audit.allowedTypes`), and the repair/edit implications.
       - No concrete `ADR-` citation, no `hypnotox`/`agentic-workflows` literals.
       - `Availability` states the consumption condition: `paths` → "domain sidecars
-        only — rejected at open on any other kind"; `sidecar.data` → "keys must be
+        only: rejected at open on any other kind"; `sidecar.data` → "keys must be
         referenced by the artifact's template; unreferenced keys are failing drift";
         `vars` → "each var is consumed only while an enabled artifact's template
         references it"; plain always-effective keys → "always".
@@ -163,7 +163,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         `"docs"`; `targets` → `"claude"`.
 
 - [ ] `VarEntries()` derives from `catalog.Standard.Vars` at call time: one entry per
-      descriptor whose `Target` is `""` (the plain config vars — multiselects and the
+      descriptor whose `Target` is `""` (the plain config vars: multiselects and the
       audit-scopes descriptor are init routing, not config vars; `commitScopes` is
       described under `audit.allowedScopes[].name` instead). `Description` is the
       descriptor's `Description` string **verbatim**; `Availability` comes from a
@@ -188,7 +188,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       ```
 
       (The `Target == "var"` synonym is blessed by the descriptor contract and the
-      repo's descriptor-parity test — use the same predicate here and in 1b.)
+      repo's descriptor-parity test; use the same predicate here and in 1b.)
 
 - [ ] `dataKeys` covers, per artifact, every `.data.K` key its include-expanded template
       references (ADR-0088 D1 as amended): the three reviewer agents (`focusItems`,
@@ -197,36 +197,36 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       (`tdd.testSurfaces`, `proposing-adr.{adrSections,adrTriggers}`,
       `adr-lifecycle.adrStates`), the agents-doc keys, the doc-template keys, and the
       local base templates' keys (kind `skills`/`agents`, artifact `_base`). Do NOT trust
-      this prose list — derive the authoritative set with the 1b parity test first, run
+      this prose list: derive the authoritative set with the 1b parity test first, run
       it, and author one description per key it demands. Injected domain keys
       (`domain`, `decisions`) are exempt and get no entry.
 
-- [ ] Create `internal/configspec/spec_test.go` — see 1b.
+- [ ] Create `internal/configspec/spec_test.go`: see 1b.
 
 ### 1b. Parity, residue, and defaults tests (all in `internal/configspec/spec_test.go`)
 
 - [ ] **Key parity** (`// invariant: configspec-key-parity`): a reflection walk over
       `config.Config` and `config.Sidecar` (test imports `internal/config` and
       `internal/audit`; production configspec imports neither) computes the expected
-      path set, then asserts set-equality against `Keys()` paths — both directions,
+      path set, then asserts set-equality against `Keys()` paths (both directions),
       and every entry's `Description`/`Type`/`Availability` non-empty. Walk rules:
       - Only exported fields with a yaml tag; skip `Config.root`/`Config.raw`
         (unexported) automatically via `PkgPath != ""`.
       - Scalar, `*int`/`*bool`, `[]string`, and `map[string]any` fields are leaves
-        (`vars`, `sidecar.data` are namespace leaves — their keys are freeform).
+        (`vars`, `sidecar.data` are namespace leaves: their keys are freeform).
       - Pointer-to-struct and struct fields recurse with `<tag>.` prefix
         (`invariants.`, `audit.`, `bootstrap.`, `hooks.`).
       - Slice-of-struct keeps the container as an entry AND recurses with `<tag>[].`
         prefix (`invariants.sources` + `invariants.sources[].globs`/`[].marker`;
-        `audit.allowedScopes` + `[].name`/`[].meaning` — `ScopeSpec{name, meaning}`).
+        `audit.allowedScopes` + `[].name`/`[].meaning`: `ScopeSpec{name, meaning}`).
       - Map-of-struct recurses with `<tag>.<name>.` prefix (`sidecar.sections.<name>.drop`);
         the map itself also stays an entry (`sidecar.sections`).
       - `Sidecar` fields walk under the `sidecar.` prefix.
 - [ ] **Data-key parity** (`// invariant: configspec-data-parity`): derive the expected
-      `(kind, artifact, key)` set from the catalog + templates FS — for every
+      `(kind, artifact, key)` set from the catalog + templates FS: for every
       `catalog.Standard` skill/agent (plus `_base` for both kinds), every doc entry
       (toggleable and Mandatory, `agents-doc` included, the Generated config-reference
-      itself EXCLUDED — its keys are injected, not adopter-settable), read the template
+      itself EXCLUDED: its keys are injected, not adopter-settable), read the template
       via `fs.ReadFile(templates.FS, tid)`, run `render.ExpandIncludes`, and collect
       `render.ReferencedDataKeys` union the artifact's catalog-declared `Data` keys.
       The domain-doc template is skipped entirely (injected `domain`/`decisions`;
@@ -242,9 +242,9 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       `agentic-workflows`.
 - [ ] **Defaults pinned to audit**: `Entry("audit.subjectMaxLength").Default` contains
       `strconv.Itoa(audit.Resolve(nil).SubjectMaxLength)`; same for `DiffThreshold`
-      (`strconv.Itoa`, not `fmt.Sprint` — perfsprint is gate-enforced with no test
+      (`strconv.Itoa`, not `fmt.Sprint`: perfsprint is gate-enforced with no test
       exclusion).
-- [ ] Run `go test ./internal/configspec/` — the data-key parity failure output is the
+- [ ] Run `go test ./internal/configspec/`: the data-key parity failure output is the
       authoritative key list for 1a's `dataKeys`; iterate until green.
 
 ### 1c. Catalog entry + render/sync/check wiring
@@ -261,7 +261,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 - [ ] In `internal/catalog/standard.go`, add to `Docs` (after `working-with-awf`):
 
       ```go
-      		"config-reference": {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key — descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
+      		"config-reference": {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
       ```
 
 - [ ] In `internal/project/singleton.go` `buildPlainSingletons`, extend the skip:
@@ -274,7 +274,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 
 - [ ] Create `templates/docs/config-reference.md.tmpl`. One overridable `intro` section;
       every generated block is UNMARKED literal template body (not part-overridable) and
-      renders each collection through a `{{ range … }}{{ else }}` with a coherent
+      renders each collection through a `{{ range ... }}{{ else }}` with a coherent
       "none configured" line (ADR-0088 D3). Exact template:
 
       ```
@@ -282,7 +282,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       # Configuration Reference
 
       Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and
-      `vars:` — with its meaning, default, availability, and this project's current
+      `vars:`, with its meaning, default, availability, and this project's current
       state. This file is generated per-project by `awf sync`: edit `.awf/` and
       re-render; never edit this file. For how to apply overrides, see the
       working-with-awf guide; for ad-hoc queries, run `awf config [<key-or-var>]`.
@@ -293,34 +293,34 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       | Key | Type | Default | Current | Description | Availability |
       |---|---|---|---|---|---|
       {{ range .data.configKeys }}| `{{ .path }}` | {{ .type }} | {{ .default }} | {{ .current }} | {{ .description }} | {{ .availability }} |
-      {{ else }}| — | | | | No config keys are described; re-render with a current awf. | |
+      {{ else }}| - | | | | No config keys are described; re-render with a current awf. | |
       {{ end }}
 
       ## Vars
 
       Each var is consumed only while an enabled artifact references it. State reads:
-      **set** (a value), **empty** (present with no value — an open to-do), **absent**
+      **set** (a value), **empty** (present with no value, an open to-do), **absent**
       (deliberately declined; the generic prose renders).
 
-      {{ range .data.varEntries }}- `{{ .key }}` — {{ .description }} {{ .availability }}
+      {{ range .data.varEntries }}- `{{ .key }}`: {{ .description }} {{ .availability }}
         State: {{ .state }}. {{ .consumers }}
       {{ else }}No vars are described for this project.
       {{ end }}
 
       ## Sidecar fields
 
-      {{ range .data.sidecarFields }}- `{{ .path }}` ({{ .type }}) — {{ .description }} {{ .availability }}
+      {{ range .data.sidecarFields }}- `{{ .path }}` ({{ .type }}): {{ .description }} {{ .availability }}
       {{ else }}No sidecar fields are described; re-render with a current awf.
       {{ end }}
 
       ## Per-artifact data keys
 
-      {{ range .data.dataKeys }}- `{{ .artifact }}` · `data.{{ .key }}`{{ .state }} — {{ .description }}
+      {{ range .data.dataKeys }}- `{{ .artifact }}` · `data.{{ .key }}`{{ .state }}: {{ .description }}
       {{ else }}No enabled artifact exposes overridable data keys.
       {{ end }}
       ```
 
-      Notes: the template references no vars and no bare `.vars`/`.data` — only the
+      Notes: the template references no vars and no bare `.vars`/`.data`, only the
       four dedicated `.data.*` collections (`inv: config-reference-no-bare-vars`); the
       intro deliberately uses plain prose with no placeholder or escape idiom, since a
       literal placeholder-shaped token in published output would read as unresolved.
@@ -328,21 +328,21 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       words.
 
 - [ ] Create `internal/project/configreference.go`:
-      - `func potentialVarConsumers() (map[string][]string, error)` — for every catalog
+      - `func potentialVarConsumers() (map[string][]string, error)`: for every catalog
         skill/agent/doc + the plain singletons + agents-doc + hook payloads, read the
         RAW template from `templates.FS` (the `NeededVars` precedent, same tid formulas
         via `descriptorByPlural(...).tid` / `plainSingletons` / `hookNames`), collect
         `render.ReferencedVars`, and invert to var → sorted artifact labels
         (`artifactLabel(tid)` for display). Add the include-expansion guard test in
         1d so the raw read stays sound.
-      - `func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error)` —
+      - `func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error)`:
         builds the four dedicated collections:
         - `configKeys`: one row per `configspec.Keys()` entry with `Path` not starting
           `sidecar.`; `current` renders the configured value from `p.Cfg` (a small
           switch on the path prefix: scalars quoted, lists as `n entries`, nil pointer
           blocks as `(default)`, `vars` as `n keys`).
         - `varEntries`: per `configspec.VarEntries()`: `state` from the three-way map
-          presence check on `p.Cfg.Vars` (`set` / `empty — open to-do` / `absent —
+          presence check on `p.Cfg.Vars` (`set` / `empty, open to-do` / `absent,
           declined`); `consumers` from the enabled files' union
           (`render.ReferencedVars(f.assembled)` + `f.partVarRefs`, labeled via
           `artifactLabel`/`localLabel` exactly as `unusedVarNotes` does) rendered as
@@ -354,18 +354,18 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
           keys when any local artifact of that kind exists; agents-doc always): `state`
           is `" (overridden)"` when the artifact's sidecar sets the key, `" (default)"`
           when the catalog declares a default, `""` otherwise.
-      - `func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, error)` —
+      - `func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, error)`:
         `files` is the consumer-union input and must be `slices.Concat(rendered, dds)`
         at BOTH call sites (the ADR-0086 union: domain-doc part placeholders count as
-        var consumption — a var consumed only by a domain part must not show Dormant).
+        var consumption; a var consumed only by a domain part must not show Dormant).
         Reads the `config-reference` sidecar; on `Local` returns `(nil, nil)`; else
         builds `data := p.data(sc)`, overwrites `data["data"]` with the four
         collections map, calls `p.renderTarget("config-reference", "",
         "docs/config-reference.md.tmpl", p.Cat.Docs["config-reference"].Sections, sc,
         data, p.crefRel())`, and returns the domain-doc-style stripped copy (Path,
-        Content, assembled, stub/marker/partVarRefs — NO TemplateID/hashes) so
+        Content, assembled, stub/marker/partVarRefs; NO TemplateID/hashes) so
         `checkLockedFiles` treats it as generated.
-      - `func (p *Project) crefRel() string` —
+      - `func (p *Project) crefRel() string`:
         `strings.TrimRight(p.Cfg.DocsDir, "/") + "/" + p.Cat.Docs["config-reference"].Path`.
 
 - [ ] Wire generation into the three producers, mirroring the domain docs exactly:
@@ -411,17 +411,17 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 
       - Feed the consumption checks: change `p.unusedVarDrift(slices.Concat(files, dds))`
         to include `crefFiles` (a 0/1-element slice), and pass the same concat to
-        `p.unusedDataDrift` — the reference's intro part placeholders must count as var
+        `p.unusedDataDrift`: the reference's intro part placeholders must count as var
         consumption, and its sidecar (data-rejected at open) stays inert there.
       - Feed the dead-reference scans: append the same `crefFiles` to the
-        `checkDeadRefs` and `checkDeadSkillRefs` scan inputs alongside `dds` — an
+        `checkDeadRefs` and `checkDeadSkillRefs` scan inputs alongside `dds`: an
         adopter's intro part can carry a dead link or dead skill reference, and the
         no-dead-links invariant covers every awf-managed rendered doc.
       - `AdvisoryNotes` (`check.go` top): include the generated reference in the
         stub/marker scan the same way `dds` is included (its intro part can be
         stub-marked or carry marker residue like any part).
 - [ ] In `internal/project/validate.go`, in the singleton-sidecar validation loop
-      (`plainSingletons` — which no longer visits config-reference), add an explicit
+      (`plainSingletons`, which no longer visits config-reference), add an explicit
       block after it:
 
       ```go
@@ -434,7 +434,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       		return err
       	}
       	if len(cr.Data) > 0 {
-      		return errors.New("config-reference: the reference tables are generated — data: has no effect; remove it from .awf/config-reference.yaml (sections:/local: remain available)")
+      		return errors.New("config-reference: the reference tables are generated; data: has no effect; remove it from .awf/config-reference.yaml (sections:/local: remain available)")
       	}
       	if len(cr.Paths) > 0 {
       		return errors.New("config-reference: paths: is read only from domain sidecars; remove it from .awf/config-reference.yaml")
@@ -445,7 +445,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       ```
 
       (Adapt the `checkSectionsAllowed` call to the function's actual signature and
-      the surrounding block's catalog accessor — config-reference left the
+      the surrounding block's catalog accessor: config-reference left the
       `plainSingletons` validation loop, so its unknown-`sections:`-name rejection
       must be re-added here explicitly, mirroring the agents-doc sibling.)
 
@@ -460,9 +460,9 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         read `docs/config-reference.md`): contains the banner, the `# Configuration
         Reference` heading, a known key row (`audit.diffThreshold`), a var line with
         `State:` and either `Consumed by:` or `Dormant:`, and the document-map linkage
-        (AGENTS.md contains `config-reference.md` — DocumentMap: true).
+        (AGENTS.md contains `config-reference.md`; DocumentMap: true).
       - **Empty-state degradation**: a minimal fixture (no domains, all vars empty, no
-        data overrides) renders the `{{ else }}` lines — assert "No vars" NOT present
+        data overrides) renders the `{{ else }}` lines: assert "No vars" NOT present
         (vars exist as empty = open to-do) but assert the data-keys else-line renders
         when no enabled artifact has keys; assert no `<no value>`, no empty `| |`-only
         table rows.
@@ -470,7 +470,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         the three state strings render respectively; the absent one shows `absent`.
       - **Dormant hint**: disable an artifact that alone references a var (leave the
         var set) → its entry shows `Dormant:` naming the artifact; NOTE this fixture
-        will also trip `unused-var-drift` in Check — assert via the render output, not
+        will also trip `unused-var-drift` in Check: assert via the render output, not
         a clean Check.
       - **Regen drift** (`config-reference-regen-drift` backing): hand-edit the
         rendered file → `Check` reports `stale` at the doc's path; delete it →
@@ -481,7 +481,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         `!render.ReferencesBareData(cref.assembled)` on the generated file, plus a
         guard over every file under `templates/partials/`: assert
         `!render.ReferencesBareVars(content)` AND
-        `len(render.ReferencedVars(content)) == 0` — any `.vars` reference, dotted or
+        `len(render.ReferencedVars(content)) == 0`: any `.vars` reference, dotted or
         bare, breaks the raw-scan soundness (the include-expansion guard ADR-0088 D5
         requires).
       - **Data rejection** (`config-reference-data-rejected` backing): sidecar with
@@ -498,11 +498,11 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       `templateMap()` gains `configReference` → `docs/config-reference.md`.
 - [ ] Docs travel with the doc (same commit): in
       `templates/docs/working-with-awf.md.tmpl`'s `config-and-overrides` section, add
-      one sentence pointing at the generated reference — every key, var, sidecar
+      one sentence pointing at the generated reference: every key, var, sidecar
       field, and data key is described in the configuration reference
       (link `config-reference.md` relative) with this project's live state.
 - [ ] `.awf/domains/parts/rendering/current-state.md`: append the ADR-0088 rendering
-      state — the `Generated` DocEntry class (outside `plainSingletons`,
+      state: the `Generated` DocEntry class (outside `plainSingletons`,
       regeneration-checked), the config-reference template, and the configspec
       authority feeding it (the rendering territory `internal/catalog/**` +
       `templates/**` changes this phase; the domain-code-staleness advisory expects
@@ -515,7 +515,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 - [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]` / `### Features`:
 
       ```markdown
-      - `docs/config-reference.md`: a generated, always-on configuration reference —
+      - `docs/config-reference.md`: a generated, always-on configuration reference:
         every config key, var, sidecar field, and per-artifact data key with full
         descriptions, defaults, availability, and the project's live state (which
         vars are set/empty/absent, what consumes them, what enabling would activate).
@@ -523,25 +523,25 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         the generated tables are not, and `data:` on its sidecar refuses at open.
       ```
 
-- [ ] Run `./x gate` — green. Commit:
+- [ ] Run `./x gate`: green. Commit:
       `feat(rendering): add configspec and generated config reference`
-      (62 chars — the subject gate caps at 72; cite ADR-0088 in the body).
+      (62 chars; the subject gate caps at 72; cite ADR-0088 in the body).
 
-## Phase 2 — the `awf config` command (ADR-0088 D4)
+## Phase 2: the `awf config` command (ADR-0088 D4)
 
 - [ ] Create `cmd/awf/config.go`:
       - `runConfig(cwd, key string, stdout io.Writer) error`. Project detection: if
         `os.Stat(config.ConfigPath(cwd))` reports not-exist → STATIC mode
         (`// invariant: config-command-static-fallback`): print the catalog-wide
         reference (descriptions, defaults, availability, catalog-wide potential
-        consumers via `project.PotentialVarConsumers()` — export the Phase-1 helper)
-        with a first line `config reference (static — not inside an awf project; live
+        consumers via `project.PotentialVarConsumers()`; export the Phase-1 helper)
+        with a first line `config reference (static: not inside an awf project; live
         state appears inside one)`; exit nil (code 0).
       - LIVE mode: `gate(root)` is the live branch's FIRST statement inside
-        `runConfig` (the static branch never gates — there is no project to be
+        `runConfig` (the static branch never gates: there is no project to be
         behind; the main.go switch snippet below deliberately contains no gate call).
         Then `project.Open(cwd)` and build the same collections the doc uses (export
-        a `func (p *Project) ConfigReferenceModel() (…)` wrapper around
+        a `func (p *Project) ConfigReferenceModel() (...)` wrapper around
         `configReferenceData` + `RenderAll` + `generateDomainDocs`) and print them as
         text: one `## config.yaml keys` block (path, current, description,
         availability per key), `## Vars` (state + consumers/dormant), `## Sidecar
@@ -550,11 +550,11 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         config-key paths, var keys, sidecar field paths, then data-key names (a data
         key prints every artifact carrying it). No match →
         `fmt.Errorf("unknown key or var %q; run `+"`awf config`"+` for the full reference", key)`
-        (exit 1 — a valid CLI shape, not a usageErr).
+        (exit 1: a valid CLI shape, not a usageErr).
 - [ ] Wire `cmd/awf/main.go`:
       - `commandOrder`: insert `"config"` after `"list"`.
       - The bare-usage stderr line in `run()`: add `config` after `list` in the
-        `<init|sync|…>` enumeration.
+        `<init|sync|...>` enumeration.
       - `argSpecs["config"]`:
 
         ```go
@@ -573,7 +573,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         	},
         ```
 
-      - Switch case (gate only when inside a project — mirror how other gated commands
+      - Switch case (gate only when inside a project: mirror how other gated commands
         run `gate` via their run funcs; here the command must NOT refuse outside a
         tree):
 
@@ -587,7 +587,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         ```
 
         and inside `runConfig`'s live branch, first line: `if err := gate(root); err != nil { return err }`
-        (static branch never gates — there is no project to be behind).
+        (static branch never gates: there is no project to be behind).
 - [ ] `cmd/awf/config_test.go` (follow `run_test.go` patterns): static mode in an empty
       dir (exit 0, contains `static`, contains `gateCmd`); live mode in a scaffolded+
       synced fixture (contains `Consumed by:`/`Dormant:`/current values); single-key hit
@@ -604,7 +604,7 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
         add, remove, new)` (the static-fallback nuance lands in the ADR-0088 bullet in
         Phase 3, not appended here).
       - `.awf/domains/parts/tooling/current-state.md`: append the `awf config` command
-        (gated live mode, static pre-adoption fallback) — the tooling territory
+        (gated live mode, static pre-adoption fallback): the tooling territory
         (`cmd/**`) changes this phase; the domain-code-staleness advisory expects the
         co-change.
       - Run `go run ./cmd/awf sync`; stage AGENTS.md + lock + the refreshed
@@ -612,22 +612,22 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
 - [ ] Add to `changelog/CHANGELOG.md` under `## [Unreleased]` / `### Features`:
 
       ```markdown
-      - `awf config [<key-or-var>]`: print the configuration reference from the CLI —
+      - `awf config [<key-or-var>]`: print the configuration reference from the CLI:
         full reference or a single entry, with live state inside a project (current
         values, consumers, dormant hints) and a static catalog-wide fallback outside
         one for pre-adoption discovery.
       ```
 
-- [ ] Run `./x gate` — green. Commit: `feat(tooling): add awf config command`
-      (37 chars; `tooling` covers CLI per audit.allowedScopes — `awf` is the umbrella
+- [ ] Run `./x gate`: green. Commit: `feat(tooling): add awf config command`
+      (37 chars; `tooling` covers CLI per audit.allowedScopes; `awf` is the umbrella
       of last resort; cite ADR-0088 in the body).
 
-## Phase 3 — docs travel + status flip (ADR-0088 doc obligations)
+## Phase 3: docs travel + status flip (ADR-0088 doc obligations)
 
 - [ ] `.awf/docs/parts/architecture/components.md`: add `internal/configspec` (the
       description authority + parity) and the generated config reference + `awf config`
       command to the component narrative, in this repo's own voice.
-- [ ] `.awf/domains/parts/config/current-state.md`: append the ADR-0088 state — the
+- [ ] `.awf/domains/parts/config/current-state.md`: append the ADR-0088 state: the
       configspec authority, the generated reference doc, the `awf config` command, the
       sidecar `data:` rejection.
 - [ ] `.awf/agents-doc.yaml`: add the ADR-0088 invariants bullet to the `invariants:`
@@ -637,27 +637,27 @@ fixture assertions, `cmd/awf/help_test.go`, and any golden asserting `awf list` 
       data keys; var entries derived verbatim from the catalog descriptors), with
       bidirectional reflection/template parity; docs/config-reference.md is an
       always-on generated index, regeneration-checked, its sidecar sections/local-only
-      (data: refuses at open); awf config prints the reference — gated inside an
+      (data: refuses at open); awf config prints the reference: gated inside an
       adopted tree, degrading to a static catalog reference outside one.`
-- [ ] `.awf/docs/glossary.yaml`: add two `data.terms` entries (any position — the
+- [ ] `.awf/docs/glossary.yaml`: add two `data.terms` entries (any position: the
       renderer sorts; ADR-0089 replaced the terms part with sidecar data):
 
       ```yaml
-      "config reference": "The always-on generated doc `config-reference.md`: every config key, var, sidecar field, and per-artifact data key with descriptions, defaults, availability, and the project's live state (var set/empty/absent, consumers, dormant hints). A generated index — regeneration-checked, tables not part-overridable, sidecar `data:` refused at open. Queryable ad hoc via `awf config`."
+      "config reference": "The always-on generated doc `config-reference.md`: every config key, var, sidecar field, and per-artifact data key with descriptions, defaults, availability, and the project's live state (var set/empty/absent, consumers, dormant hints). A generated index, regeneration-checked, tables not part-overridable, sidecar `data:` refused at open. Queryable ad hoc via `awf config`."
       "configspec": "The compile-time, adopter-facing description authority (`internal/configspec`): one entry per adopter-settable config key, sidecar field, and data key, var entries derived verbatim from the catalog descriptors. Bidirectional parity with the config structs and templates is test-enforced, as is description residue (no ADR citations, no repo identity)."
       ```
 
 - [ ] Run `go run ./cmd/awf sync` (regenerates AGENTS.md, architecture, the domain
       doc, glossary, ACTIVE.md, the config reference); verify with
-      `go run ./cmd/awf check` — clean.
+      `go run ./cmd/awf check`: clean.
 - [ ] Flip `docs/decisions/0088-*.md` frontmatter `status: Proposed` → `status:
       Implemented`; run `./x sync` to regenerate ACTIVE.md; confirm
       `go run ./cmd/awf invariants` reports no unbacked slug (all eight ADR-0088 slugs
       must have their backing comments from P1/P2).
 - [ ] Add to `changelog/CHANGELOG.md` under `### Others` (docs-travel bullet only if
       the working-with-awf/AGENTS.md wording changes warrant one; otherwise skip).
-- [ ] Run `./x gate` — green. Commit:
-      `docs(adr): flip 0088 to Implemented — config reference shipped`
+- [ ] Run `./x gate`: green. Commit:
+      `docs(adr): flip 0088 to Implemented: config reference shipped`
       (body: names the two features, the amendment, and the docs-travel set).
 
 ---

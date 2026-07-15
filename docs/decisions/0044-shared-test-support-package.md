@@ -13,8 +13,8 @@ domains: [tooling]
 ## Context
 
 A 7-agent parallel code review (every finding independently re-verified against source by a
-fresh-context agent) found that the ~11,000-line test suite — nearly double the ~6,300 lines of
-production code — has no shared test-support package anywhere in the repo, and no `testdata/`
+fresh-context agent) found that the ~11,000-line test suite (nearly double the ~6,300 lines of
+production code) has no shared test-support package anywhere in the repo, and no `testdata/`
 fixture directories. Instead, the same handful of fixture-building idioms have been hand-rolled
 independently, repeatedly, across packages:
 
@@ -22,7 +22,7 @@ independently, repeatedly, across packages:
   `*object.Signature`), `initRepo` (`git.PlainInit` + `t.TempDir`), and `commit(repo, dir, msg
   string, write map[string]string, remove ...string) plumbing.Hash`. `cmd/awf/audit_test.go`
   independently defines `auditSig` (the identical Name/Email/When values under a different name)
-  and `auditCommit(repo, root, msg string, write map[string]string) plumbing.Hash` — the same
+  and `auditCommit(repo, root, msg string, write map[string]string) plumbing.Hash`: the same
   `Worktree`/`Add`/`Commit` sequence, but with the `remove` capability silently dropped. This is a
   live copy-drift symptom, not a considered simplification: the second copy is quietly weaker than
   the first.
@@ -46,25 +46,25 @@ independently, repeatedly, across packages:
   `os.MkdirAll(filepath.Dir(path))` + `os.WriteFile` shape; a repo-wide grep counts roughly 120 raw
   `os.WriteFile` and 56 raw `os.MkdirAll` call sites in `_test.go` files, the large majority written
   by hand because there is nothing to import.
-- **Seam-swap idiom.** A `swap<Seam>(t *testing.T, fn <T>)` helper — `orig := seam; seam = fn;
-  t.Cleanup(func() { seam = orig })` — is retyped identically for 4 different package-private seam
+- **Seam-swap idiom.** A `swap<Seam>(t *testing.T, fn <T>)` helper (`orig := seam; seam = fn;
+  t.Cleanup(func() { seam = orig })`) is retyped identically for 4 different package-private seam
   variables: `cmd/awf/run_test.go`'s `swapGetwd`, `internal/coverage/coverage_test.go`'s
   `swapGetwd` and `swapHasGoMod`, and `cmd/awf/init_test.go`'s `forceNonInteractive`.
-  (`internal/adr/adr_test.go`'s `swapNow` looks similar but is a genuinely different shape — the
+  (`internal/adr/adr_test.go`'s `swapNow` looks similar but is a genuinely different shape: the
   external test package `adr_test` has no exported pointer to `internal/adr`'s unexported `now`
   seam, only a `SetNowForTest(fn) (prev func() time.Time)` setter-returns-previous accessor. It
   does not fit a `*T`-pointer-based helper and is out of scope for this decision; it keeps its
   existing accessor.)
 - **Coverage/covercheck fixtures.** `cmd/covercheck/main_test.go`'s `modWith` duplicates
-  `internal/coverage/coverage_test.go`'s `module()`/`writeProfile()` fixture logic — the identical
+  `internal/coverage/coverage_test.go`'s `module()`/`writeProfile()` fixture logic: the identical
   `go.mod`, `f.go`, and `cover.out`-prefix literals hardcoded a second time in a sibling package.
 
 This repo's own history establishes the precedent for a dedicated package when a duplicated concern
 needs one tested, canonical home: `internal/frontmatter` (ADR-0006) consolidated `---`-delimited
 frontmatter parsing that had drifted across two ad hoc implementations, and `internal/refs`
 (introduced alongside ADR-0020) consolidated markdown-link extraction. Both cases were framed
-around a *binding constraint* — "all `---`-frontmatter parsing in non-test code routes through this
-package" — not merely the existence of a new file. The same framing applies here: the binding
+around a *binding constraint* ("all `---`-frontmatter parsing in non-test code routes through this
+package"), not merely the existence of a new file. The same framing applies here: the binding
 constraint worth recording is that `internal/testsupport` must stay a leaf package with **zero**
 dependency on any other `internal/*` awf package, so it remains safely importable from *any*
 package's tests (including `internal/config`, whose own tests a naive test-helper package could
@@ -84,60 +84,60 @@ production code imports go-git in a way that could create a cycle back into a te
 2. **`internal/testsupport/gitfixture`, a subpackage isolating the `go-git` dependency.** Kept
    separate from the parent package so a caller that only needs e.g. `testsupport.WriteFile` does
    not have to pull `go-git` into its test binary. API:
-   - `Sig *object.Signature` — the fixed commit signature (`Name: "T"`, `Email: "t@example.com"`, a
+   - `Sig *object.Signature`: the fixed commit signature (`Name: "T"`, `Email: "t@example.com"`, a
      fixed UTC timestamp) both existing implementations already use identically.
-   - `InitRepo(t *testing.T) (*git.Repository, string)` — `git.PlainInit` into a fresh `t.TempDir()`,
+   - `InitRepo(t *testing.T) (*git.Repository, string)`: `git.PlainInit` into a fresh `t.TempDir()`,
      returning the repository and its root path.
    - `Commit(t *testing.T, repo *git.Repository, dir, msg string, write map[string]string, remove
-     ...string) plumbing.Hash` — writes/removes the given paths in the worktree, stages them, and
+     ...string) plumbing.Hash`: writes/removes the given paths in the worktree, stages them, and
      commits with `Sig`. Superset of both prior implementations (keeps `git_test.go`'s `remove`
      capability that `audit_test.go`'s copy had silently dropped).
 
 3. **`internal/testsupport` exports the following, one per consolidation target identified in
    Context:**
-   - `RunIsolated(m *testing.M, prefix string) int` — the `TestMain` HOME-isolation body
+   - `RunIsolated(m *testing.M, prefix string) int`: the `TestMain` HOME-isolation body
      (`os.MkdirTemp(prefix)`, `os.Setenv("HOME", ...)`, `m.Run()`, `os.RemoveAll`, returns the exit
      code for the caller to pass to `os.Exit`). Each package's `TestMain` shrinks to
      `func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "<prefix>")) }`.
-   - `WriteFile(t *testing.T, path, content string)` — `os.MkdirAll(filepath.Dir(path), 0o755)`
+   - `WriteFile(t *testing.T, path, content string)`: `os.MkdirAll(filepath.Dir(path), 0o755)`
      then `os.WriteFile(path, []byte(content), 0o644)`, `t.Fatal`-ing on either error. The primitive
      every other helper below is built from.
-   - `WriteAwfConfig(t *testing.T, root, yaml string)` — creates `<root>/.awf/config.yaml` with
+   - `WriteAwfConfig(t *testing.T, root, yaml string)`: creates `<root>/.awf/config.yaml` with
      the given content via `WriteFile`.
-   - `ADR(status string, opts ...ADROption) string` — builds a `---`-delimited ADR frontmatter
+   - `ADR(status string, opts ...ADROption) string`: builds a `---`-delimited ADR frontmatter
      fixture as a raw string template (not by constructing and marshaling `internal/adr`'s actual
-     frontmatter struct — see Consequences for why). `ADROption` covers the fields the existing ad
+     frontmatter struct: see Consequences for why). `ADROption` covers the fields the existing ad
      hoc fixtures vary: at minimum `WithDomains(...string)`, `WithTags(...string)`,
      `WithTitle(string)`; extend with further options as call sites migrate and need them.
-   - `SwapVar[T any](t *testing.T, seam *T, val T)` — `orig := *seam; *seam = val; t.Cleanup(func()
+   - `SwapVar[T any](t *testing.T, seam *T, val T)`: `orig := *seam; *seam = val; t.Cleanup(func()
      { *seam = orig })`. Covers `swapGetwd`, `swapHasGoMod`, and `forceNonInteractive`-shaped call
      sites (a `*T` package-private seam var in the same package as the test); does not cover
      `internal/adr`'s `swapNow` (see Context).
-   - `WriteGoModule(t *testing.T, dir, modPath, srcBody string)` — writes a minimal `go.mod` (pinned
+   - `WriteGoModule(t *testing.T, dir, modPath, srcBody string)`: writes a minimal `go.mod` (pinned
      to this repo's Go toolchain version) and an `f.go` containing `srcBody` under `dir`.
-   - `WriteProfile(t *testing.T, dir, body string) string` — writes `dir/cover.out` with a
+   - `WriteProfile(t *testing.T, dir, body string) string`: writes `dir/cover.out` with a
      `"mode: set\n"` prefix followed by `body`, returning the file's path.
 
 4. **Migrate existing call sites.** Every duplication site named in Context is updated to call
    the new helpers instead of its local copy, across `cmd/awf`, `internal/project`,
    `internal/audit`, `internal/coverage`, `internal/migrate`, `internal/invariants`,
    `cmd/covercheck`. The exact task breakdown and sequencing is the plan's to decide; what this
-   item commits to is the end state — no local copy of any Context-named idiom survives — plus the
+   item commits to is the end state (no local copy of any Context-named idiom survives) plus the
    forward-looking contract that new test code reaches for `internal/testsupport` rather than
    hand-rolling a 6th copy of any of the above.
 
 ## Invariants
 
-- `invariant: testsupport-zero-internal-deps` — no non-test `.go` file under `internal/testsupport/`
+- `invariant: testsupport-zero-internal-deps`: no non-test `.go` file under `internal/testsupport/`
   (including `internal/testsupport/gitfixture/`) imports any `github.com/hypnotox/agentic-workflows/internal/*`
   package; only the Go standard library and (in `gitfixture` only) `github.com/go-git/go-git/v5`
   and its subpackages are permitted. Backed by a test that inspects the package's own import
   graph (e.g. via `go/parser`/`golang.org/x/tools/go/packages` or an equivalent static check) and
-  fails if a disallowed import appears — enforced mechanically, not left to code review, so a
+  fails if a disallowed import appears: enforced mechanically, not left to code review, so a
   future helper that happens to need e.g. a `config.Config` cannot be added to this package by
   accident.
 - Every helper that reports a test failure calls `t.Helper()` first, so failures attribute to the
-  calling test's line, not a line inside `internal/testsupport`. (Textual contract — enforced by
+  calling test's line, not a line inside `internal/testsupport`. (Textual contract: enforced by
   code review, not an `inv:`-tagged mechanical check, consistent with ADR-0020's and ADR-0039's
   untagged-bullet convention.)
 
@@ -155,7 +155,7 @@ Harder / accepted trade-offs:
   marshaling its actual frontmatter struct, because importing `internal/adr` would break the
   zero-`internal/*`-dependency invariant this ADR exists to establish. This means a future change
   to `internal/adr`'s frontmatter schema will not be caught by the compiler in
-  `internal/testsupport.ADR()` — the failure mode is a test that fails loudly when its fixture no
+  `internal/testsupport.ADR()`: the failure mode is a test that fails loudly when its fixture no
   longer parses as the code under test expects, not a silent divergence. This is judged an
   acceptable trade-off: every existing ad hoc fixture already has this exact property (they are all
   raw string literals today), so this is not a regression, and the loud-failure mode is self-
@@ -179,5 +179,5 @@ Explicitly ruled out:
 | Alternative | Why not chosen |
 |---|---|
 | Add a `testdata/` fixture-file convention instead of Go helper functions | Most of the duplicated logic here is *behavior* (spin up a temp git repo, isolate `HOME`, seed a project tree), not static fixture *data* a file could hold; a `testdata/` convention doesn't address the git-fixture, seam-swap, or `TestMain` duplication at all. |
-| Let each package keep its own local test helpers, only extracting within a single package (e.g. `check_test.go`'s 3 inline copies) | Leaves the cross-package duplication (git fixtures, project-fixture setup, ADR frontmatter, the seam-swap idiom) unaddressed — the review's findings show the highest-value duplication is precisely the cross-package kind a single-package extraction can't reach. |
+| Let each package keep its own local test helpers, only extracting within a single package (e.g. `check_test.go`'s 3 inline copies) | Leaves the cross-package duplication (git fixtures, project-fixture setup, ADR frontmatter, the seam-swap idiom) unaddressed: the review's findings show the highest-value duplication is precisely the cross-package kind a single-package extraction can't reach. |
 | Let `internal/testsupport.ADR()` import `internal/adr` for type-safe frontmatter construction | Would create a package that depends on production code paths from a test-only package, breaking the "safely importable by anyone, including `internal/config`" property that motivates this ADR, and risks a future import cycle if `internal/adr`'s own tests ever need `internal/testsupport`. Rejected in favour of the raw-string-template approach (see Consequences). |

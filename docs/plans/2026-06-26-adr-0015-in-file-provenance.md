@@ -1,6 +1,6 @@
-# Plan: ADR-0015 — In-File Provenance for Rendered Output + Convention-Only Overrides
+# Plan: ADR-0015: In-File Provenance for Rendered Output + Convention-Only Overrides
 
-Design and rationale: [ADR-0015](../decisions/0015-in-file-provenance-and-convention-only-overrides.md). This plan is the execution record only — do not restate rationale here; link to the ADR.
+Design and rationale: [ADR-0015](../decisions/0015-in-file-provenance-and-convention-only-overrides.md). This plan is the execution record only: do not restate rationale here; link to the ADR.
 
 ## Goal
 
@@ -9,9 +9,9 @@ Make every rendered managed file self-describe its source for AI agents: a gener
 ## Architecture summary
 
 - **Render engine** (`internal/render`): `Assemble` stops resolving parts itself. The project layer pre-resolves each section into a `render.SectionPlan` (drop / has-part+body / default, plus the display edit path) and hands a `map[string]SectionPlan` to `Assemble`, which emits an `awf:edit` HTML comment before each non-dropped section body. `Assemble` no longer takes a `PartFunc` and no longer returns an error.
-- **Banner** (`internal/project` `renderTarget`): after `Execute`, a kind-aware banner is injected — `#`-prefixed after the shebang for hooks, after the closing `---` for frontmatter targets, first line otherwise. All `renderTarget` outputs get it (docs, skills, agents, hooks, AGENTS.md, domain docs). `ACTIVE.md` is generated outside `renderTarget` and is out of scope (not config-tree-derived; not in ADR-0015's enumerated outputs).
+- **Banner** (`internal/project` `renderTarget`): after `Execute`, a kind-aware banner is injected: `#`-prefixed after the shebang for hooks, after the closing `---` for frontmatter targets, first line otherwise. All `renderTarget` outputs get it (docs, skills, agents, hooks, AGENTS.md, domain docs). `ACTIVE.md` is generated outside `renderTarget` and is out of scope (not config-tree-derived; not in ADR-0015's enumerated outputs).
 - **Config** (`internal/config`): drop `SectionOverride.ReplaceWith`; the loader's `KnownFields(true)` then rejects any stale `replaceWith:` in a v1 sidecar, which the migration converts first.
-- **Migration** (`internal/migrate`): add schema-2 `drop-replacewith`; `migrate.Current()` becomes 2. The legacy (schema-0) reader in `legacy.go`/`treelayout.go` keeps its own `replaceWith` field untouched — it reads frozen historical input.
+- **Migration** (`internal/migrate`): add schema-2 `drop-replacewith`; `migrate.Current()` becomes 2. The legacy (schema-0) reader in `legacy.go`/`treelayout.go` keeps its own `replaceWith` field untouched; it reads frozen historical input.
 - **Provenance scope clarification (for plan-resync review):** ADR-0015 Decision item 1 lists `docs, skills, agents, hooks, AGENTS.md, domain docs` as the rendered outputs; `ACTIVE.md` is not among them and stays banner-free. Per-section pointers are HTML-only because every section-bearing target is markdown (hooks have no sections).
 
 ## Tech stack
@@ -23,30 +23,30 @@ Make every rendered managed file self-describe its source for AI agents: a gener
 ## File structure
 
 Created:
-- `internal/migrate/dropreplacewith.go` — schema-2 migration.
+- `internal/migrate/dropreplacewith.go`: schema-2 migration.
 
 Modified:
-- `internal/render/render.go` — `SectionPlan`, new `Assemble`/`Render` signatures, `awf:edit` emission.
-- `internal/render/render_test.go` — adapt to new signatures; assert pointers.
-- `internal/project/project.go` — `planSections`, `consumedParts`, banner injection in `renderTarget`.
-- `internal/project/project_test.go`, `internal/project/spine_test.go` — adapt marker assertions; assert banner + pointers.
-- `internal/project/render_tree_test.go` — `TestConventionPartPrecedence` (the `// invariant: parts-convention` backing test): drop case (3) "explicit replaceWith beats the convention part" (the field is gone); keep cases (1) convention-part and (2) drop; preserve the `// invariant: parts-convention` comment (ADR-0009 stays Implemented).
-- `internal/project/coverage_test.go` — the three `TestRenderAll*AssembleErrorOnMissingPart` tests use `replaceWith:` sidecars that now fail the strict decoder at `Open`, and the render-time missing-part error arm they exercised no longer exists; rework them to cover `planSections`' non-`ErrNotExist` read arm (see Task 5.1a).
-- `internal/config/config.go` — remove `ReplaceWith` + its validation branch.
-- `internal/config/config_test.go` — drop/replace the replaceWith validation test; add a "rejects replaceWith" test.
-- `internal/migrate/migrate.go` — register schema-2 migration.
-- `internal/migrate/migrate_test.go` — schema-2 / drop-replacewith tests.
-- `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` — reword `replaceWith` placeholder prose (naming collision).
-- `.claude/awf/docs/parts/architecture/overview.md`, `.claude/awf/docs/parts/architecture/data-flow.md` — update precedence prose.
-- `.claude/awf/parts/agents-doc/*` or the AGENTS.md override bullet source — update "Override one section" wording.
+- `internal/render/render.go`: `SectionPlan`, new `Assemble`/`Render` signatures, `awf:edit` emission.
+- `internal/render/render_test.go`: adapt to new signatures; assert pointers.
+- `internal/project/project.go`: `planSections`, `consumedParts`, banner injection in `renderTarget`.
+- `internal/project/project_test.go`, `internal/project/spine_test.go`: adapt marker assertions; assert banner + pointers.
+- `internal/project/render_tree_test.go`: `TestConventionPartPrecedence` (the `// invariant: parts-convention` backing test): drop case (3) "explicit replaceWith beats the convention part" (the field is gone); keep cases (1) convention-part and (2) drop; preserve the `// invariant: parts-convention` comment (ADR-0009 stays Implemented).
+- `internal/project/coverage_test.go`: the three `TestRenderAll*AssembleErrorOnMissingPart` tests use `replaceWith:` sidecars that now fail the strict decoder at `Open`, and the render-time missing-part error arm they exercised no longer exists; rework them to cover `planSections`' non-`ErrNotExist` read arm (see Task 5.1a).
+- `internal/config/config.go`: remove `ReplaceWith` + its validation branch.
+- `internal/config/config_test.go`: drop/replace the replaceWith validation test; add a "rejects replaceWith" test.
+- `internal/migrate/migrate.go`: register schema-2 migration.
+- `internal/migrate/migrate_test.go`: schema-2 / drop-replacewith tests.
+- `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`: reword `replaceWith` placeholder prose (naming collision).
+- `.claude/awf/docs/parts/architecture/overview.md`, `.claude/awf/docs/parts/architecture/data-flow.md`: update precedence prose.
+- `.claude/awf/parts/agents-doc/*` or the AGENTS.md override bullet source: update "Override one section" wording.
 - All committed rendered files (regenerated by `./x sync`): `docs/*.md`, `.claude/skills/**`, `.claude/agents/**`, `.githooks/*`, `AGENTS.md`, `docs/domains/*.md`, `.claude/awf/awf.lock`.
-- `docs/decisions/0015-*.md` — status flip to `Implemented` (final phase).
+- `docs/decisions/0015-*.md`: status flip to `Implemented` (final phase).
 
 ---
 
-## Phase 1 — Render engine: SectionPlan + awf:edit pointers
+## Phase 1: Render engine: SectionPlan + awf:edit pointers
 
-- [ ] **Task 1.1 — Rewrite `internal/render/render.go`.** Replace the `Assemble`/`Render` functions and add `SectionPlan`. New content for the file body below `package render` (keep the package doc comment line and `import` block, dropping `config` and `fmt` only if unused — `fmt` is now used; remove the `config` import since `SectionOverride` is no longer referenced here):
+- [ ] **Task 1.1: Rewrite `internal/render/render.go`.** Replace the `Assemble`/`Render` functions and add `SectionPlan`. New content for the file body below `package render` (keep the package doc comment line and `import` block, dropping `config` and `fmt` only if unused: `fmt` is now used; remove the `config` import since `SectionOverride` is no longer referenced here):
 
   Remove the import of `github.com/hypnotox/agentic-workflows/internal/config`. Keep `fmt`, `strings`, `text/template`.
 
@@ -67,9 +67,9 @@ Modified:
   // editPointer is the awf:edit provenance comment emitted before a section body.
   func editPointer(name string, p SectionPlan) string {
   	if p.HasPart {
-  		return fmt.Sprintf("<!-- awf:edit %s — from %s -->\n", name, p.EditPath)
+  		return fmt.Sprintf("<!-- awf:edit %s: from %s -->\n", name, p.EditPath)
   	}
-  	return fmt.Sprintf("<!-- awf:edit %s — default; create %s to override -->\n", name, p.EditPath)
+  	return fmt.Sprintf("<!-- awf:edit %s: default; create %s to override -->\n", name, p.EditPath)
   }
 
   // Assemble applies the per-section plan to the parsed segments and returns the
@@ -105,19 +105,19 @@ Modified:
 
   `Execute` and `ReferencedVars` are unchanged.
 
-- [ ] **Task 1.2 — Adapt `internal/render/render_test.go`.** The tests construct `config.SectionOverride` maps and call `Render(tmpl, ov, noParts, data)`. Update them:
+- [ ] **Task 1.2: Adapt `internal/render/render_test.go`.** The tests construct `config.SectionOverride` maps and call `Render(tmpl, ov, noParts, data)`. Update them:
   - Drop the `config` import and the `noParts` helper if now unused.
-  - `TestRenderDefault`: call `Render(tmpl, nil, sampleData())`; additionally assert the output contains `<!-- awf:edit surfaces — default;` and `<!-- awf:edit notes — default;` and still asserts no `awf:section`/`awf:end`.
+  - `TestRenderDefault`: call `Render(tmpl, nil, sampleData())`; additionally assert the output contains `<!-- awf:edit surfaces: default;` and `<!-- awf:edit notes: default;` and still asserts no `awf:section`/`awf:end`.
   - `TestRenderDropsSection`: build `map[string]render.SectionPlan{"notes": {Drop: true}}`; call `Render(tmpl, plan, sampleData())`; assert `NOTE` absent and `S:Logic` present.
-  - `TestRenderReplaceWith` (and any part-substitution test): build `map[string]SectionPlan{"<sec>": {HasPart: true, PartBody: "<body>", EditPath: ".claude/awf/x.md"}}`; assert the part body renders and the pointer reads `<!-- awf:edit <sec> — from .claude/awf/x.md -->`. Rename the test to `TestRenderConventionPart`.
+  - `TestRenderReplaceWith` (and any part-substitution test): build `map[string]SectionPlan{"<sec>": {HasPart: true, PartBody: "<body>", EditPath: ".claude/awf/x.md"}}`; assert the part body renders and the pointer reads `<!-- awf:edit <sec>: from .claude/awf/x.md -->`. Rename the test to `TestRenderConventionPart`.
   - Any test asserting `Assemble` returned an `error` must drop the error return (Assemble now returns only `string`).
   - **Delete `TestRenderPartError`** (lines ~93-106): the `PartFunc` error path it exercised no longer exists (Assemble takes no `PartFunc` and cannot fail). Then drop the now-unused `errors` import (only that test used it).
 
-- [ ] **Task 1.3 — Verify and commit.** Run `go test ./internal/render/...` → expect `ok`. Then `./x gate` (other packages won't compile yet because `project.go` still calls the old `Assemble`; if so, defer the full gate to Task 2.x and run only `go build ./internal/render/ && go test ./internal/render/...`). Commit once Phase 2 makes the tree compile — **do not commit a non-building tree**. (Phases 1 and 2 land in one commit; see Task 2.4.)
+- [ ] **Task 1.3: Verify and commit.** Run `go test ./internal/render/...` → expect `ok`. Then `./x gate` (other packages won't compile yet because `project.go` still calls the old `Assemble`; if so, defer the full gate to Task 2.x and run only `go build ./internal/render/ && go test ./internal/render/...`). Commit once Phase 2 makes the tree compile; **do not commit a non-building tree**. (Phases 1 and 2 land in one commit; see Task 2.4.)
 
-## Phase 2 — Project layer: planSections + banner injection
+## Phase 2: Project layer: planSections + banner injection
 
-- [ ] **Task 2.1 — Add `planSections` and rewrite `consumedParts` in `internal/project/project.go`.** Replace `overlaySections` (lines ~209-228) and `consumedParts` (lines ~432-449) with:
+- [ ] **Task 2.1: Add `planSections` and rewrite `consumedParts` in `internal/project/project.go`.** Replace `overlaySections` (lines ~209-228) and `consumedParts` (lines ~432-449) with:
 
   ```go
   // partRel is the project-relative convention part path the awf:edit pointer names.
@@ -167,10 +167,10 @@ Modified:
 
   Ensure `errors` is imported in `project.go` (add to the import block if absent).
 
-- [ ] **Task 2.2 — Add banner injection helpers in `internal/project/project.go`.** Add near `isSkillOrAgent` (~line 276):
+- [ ] **Task 2.2: Add banner injection helpers in `internal/project/project.go`.** Add near `isSkillOrAgent` (~line 276):
 
   ```go
-  const bannerText = "GENERATED by awf — do not edit; change .claude/awf/ and run `awf sync`"
+  const bannerText = "GENERATED by awf: do not edit; change .claude/awf/ and run `awf sync`"
 
   // injectBanner inserts the generated-by banner into rendered content: for hooks,
   // a `#` comment after the shebang line; for frontmatter targets, an HTML comment
@@ -193,7 +193,7 @@ Modified:
 
   Ensure `internal/frontmatter` is imported in `project.go` (add if absent).
 
-- [ ] **Task 2.3 — Wire `renderTarget` to the new plan + banner.** In `renderTarget` (~lines 405-430), replace the overlay/assemble/hash lines:
+- [ ] **Task 2.3: Wire `renderTarget` to the new plan + banner.** In `renderTarget` (~lines 405-430), replace the overlay/assemble/hash lines:
 
   Replace
   ```go
@@ -221,23 +221,23 @@ Modified:
 
   Remove the now-unused `parts()` method (~lines 126-135): line 411 is its only caller (`grep -n "p.parts()" internal/project` confirms), so after this rewrite it is dead code and the 100% coverage gate fails unless it is deleted. Remove `overlaySections`' old body (replaced in 2.1). The `render.PartFunc` type `parts()` returned is removed in Task 1.1, so these must land in the same commit.
 
-- [ ] **Task 2.4 — Build, fix fallout, commit Phases 1+2.** Run `go build ./...`. Fix any remaining callers of the old `Assemble` signature. Run `go test ./internal/render/... ./internal/project/...` (project golden tests asserting exact output will fail — that is expected and handled in Phase 5; for now run `go vet ./...` and `go build ./...` to confirm compilation). Once it compiles, **do not commit yet** — the project tests are red until Phase 5. Proceed to Phase 3 in the same working tree. (Phases 1-5 form one logically-coupled engine change; commit at the end of Phase 5 as a single `feat` commit so the gate sees a consistent tree.)
+- [ ] **Task 2.4: Build, fix fallout, commit Phases 1+2.** Run `go build ./...`. Fix any remaining callers of the old `Assemble` signature. Run `go test ./internal/render/... ./internal/project/...` (project golden tests asserting exact output will fail: that is expected and handled in Phase 5; for now run `go vet ./...` and `go build ./...` to confirm compilation). Once it compiles, **do not commit yet**: the project tests are red until Phase 5. Proceed to Phase 3 in the same working tree. (Phases 1-5 form one logically-coupled engine change; commit at the end of Phase 5 as a single `feat` commit so the gate sees a consistent tree.)
 
-## Phase 3 — Config: remove replaceWith
+## Phase 3: Config: remove replaceWith
 
-- [ ] **Task 3.1 — Drop the field in `internal/config/config.go`.** Change `SectionOverride` to:
+- [ ] **Task 3.1: Drop the field in `internal/config/config.go`.** Change `SectionOverride` to:
   ```go
   type SectionOverride struct {
   	Drop bool `yaml:"drop"`
   }
   ```
-  Delete `checkSections`' replaceWith branch — replace the whole `checkSections` function with a no-op-free version, or remove it and its call in `Sidecar` if nothing else remains. Since the only check was the drop+replaceWith conflict, remove `checkSections` entirely and delete the `if err := checkSections(...)` block in `Sidecar` (lines ~104-106).
+  Delete `checkSections`' replaceWith branch: replace the whole `checkSections` function with a no-op-free version, or remove it and its call in `Sidecar` if nothing else remains. Since the only check was the drop+replaceWith conflict, remove `checkSections` entirely and delete the `if err := checkSections(...)` block in `Sidecar` (lines ~104-106).
 
-- [ ] **Task 3.2 — Update `internal/config/config_test.go`.** Remove the test asserting the drop+replaceWith conflict error. Add `TestSidecarRejectsReplaceWith`: write a sidecar containing `sections:\n  x:\n    replaceWith: parts/p.md`, call `Sidecar`, and assert the returned error mentions `replaceWith` (the strict decoder's `field replaceWith not found` message). This locks in that stale v1 sidecars fail closed pre-migration.
+- [ ] **Task 3.2: Update `internal/config/config_test.go`.** Remove the test asserting the drop+replaceWith conflict error. Add `TestSidecarRejectsReplaceWith`: write a sidecar containing `sections:\n  x:\n    replaceWith: parts/p.md`, call `Sidecar`, and assert the returned error mentions `replaceWith` (the strict decoder's `field replaceWith not found` message). This locks in that stale v1 sidecars fail closed pre-migration.
 
-## Phase 4 — Migration: schema-2 drop-replacewith
+## Phase 4: Migration: schema-2 drop-replacewith
 
-- [ ] **Task 4.1 — Create `internal/migrate/dropreplacewith.go`.** Full content:
+- [ ] **Task 4.1: Create `internal/migrate/dropreplacewith.go`.** Full content:
   ```go
   package migrate
 
@@ -390,7 +390,7 @@ Modified:
   }
   ```
 
-- [ ] **Task 4.2 — Register the migration and bump Current.** In `internal/migrate/migrate.go`, change `registry` to:
+- [ ] **Task 4.2: Register the migration and bump Current.** In `internal/migrate/migrate.go`, change `registry` to:
   ```go
   var registry = []Migration{
   	{To: 1, Name: "tree-layout", Apply: applyTreeLayout},
@@ -399,48 +399,48 @@ Modified:
   ```
   `Current()` now returns 2 automatically.
 
-- [ ] **Task 4.3 — Tests in `internal/migrate/migrate_test.go`.** Add:
+- [ ] **Task 4.3: Tests in `internal/migrate/migrate_test.go`.** Add:
   - `TestDropReplaceWithNoop`: a tree project whose sidecars have no `replaceWith` → `applyDropReplaceWith` returns nil and leaves sidecars byte-identical.
-  - `TestDropReplaceWithConverts`: a sidecar `skills/x.yaml` carrying **all** the doc-assembly arms — a `replaceWith` section (drives `changed`), a `drop` section (drives the `kept[sec]` branch and `doc["sections"]`), `data:` (drives `doc["data"]`), and `local: true` (drives `doc["local"]`) — plus the referenced part file → after apply, `skills/parts/x/<sec>.md` exists with the legacy body, the rewritten sidecar retains data/drop/local and contains no `replaceWith`. Add a second target whose **only** section was `replaceWith` so the sidecar becomes empty and is removed (`os.Remove` arm). Also include the agents-doc singleton path (`agents-doc.yaml` → `parts/agents-doc/<sec>.md`) so `treeSidecars`' `fileExists` true arm is covered.
+  - `TestDropReplaceWithConverts`: a sidecar `skills/x.yaml` carrying **all** the doc-assembly arms (a `replaceWith` section (drives `changed`), a `drop` section (drives the `kept[sec]` branch and `doc["sections"]`), `data:` (drives `doc["data"]`), and `local: true` (drives `doc["local"]`)) plus the referenced part file → after apply, `skills/parts/x/<sec>.md` exists with the legacy body, the rewritten sidecar retains data/drop/local and contains no `replaceWith`. Add a second target whose **only** section was `replaceWith` so the sidecar becomes empty and is removed (`os.Remove` arm). Also include the agents-doc singleton path (`agents-doc.yaml` → `parts/agents-doc/<sec>.md`) so `treeSidecars`' `fileExists` true arm is covered.
   - `TestDropReplaceWithIdempotent`: destination convention part already exists with **identical** content → `relocatePart` returns nil (the `bytes.Equal` no-op arm) and the apply succeeds.
   - `TestDropReplaceWithConflict`: destination convention part already exists with different content → error contains `already exists with different content`.
   - `TestDropReplaceWithMissingPart`: `replaceWith` points at an absent part → error contains the missing path.
   - `TestCurrentIsTwo`: `migrate.Current() == 2`.
-  - **Update `TestUpgradeAppliesInOrderIdempotent` (migrate_test.go:130):** a legacy (gen-0) `Upgrade` now applies both migrations — change the expected `applied` from `"tree-layout"` to `"tree-layout,drop-replacewith"`. (Safe: `applyTreeLayout` already converts `replaceWith` into convention parts and drops the field, so the chained `drop-replacewith` is a no-op on the ported tree.)
+  - **Update `TestUpgradeAppliesInOrderIdempotent` (migrate_test.go:130):** a legacy (gen-0) `Upgrade` now applies both migrations: change the expected `applied` from `"tree-layout"` to `"tree-layout,drop-replacewith"`. (Safe: `applyTreeLayout` already converts `replaceWith` into convention parts and drops the field, so the chained `drop-replacewith` is a no-op on the ported tree.)
   - Update any other existing test asserting `Current() == 1` or schema-1 gate behavior to expect 2 (the `gateStateFor` cases use literal args and are unaffected; `GateState`/`Generation` cases that stamp `Current()` track it automatically).
-  - Coverage note: `treeSidecars`' `os.ReadDir` non-`IsNotExist` error arm and `relocatePart`'s `MkdirAll` arm are root-unreachable faults — mark each with a `// coverage-ignore:` directive (matching the existing migrate convention) rather than contriving a test, unless a `t.TempDir` permission setup hits them cleanly.
+  - Coverage note: `treeSidecars`' `os.ReadDir` non-`IsNotExist` error arm and `relocatePart`'s `MkdirAll` arm are root-unreachable faults: mark each with a `// coverage-ignore:` directive (matching the existing migrate convention) rather than contriving a test, unless a `t.TempDir` permission setup hits them cleanly.
 
-## Phase 5 — Regenerate, narrow leak assertions, update doc prose
+## Phase 5: Regenerate, narrow leak assertions, update doc prose
 
-- [ ] **Task 5.1 — Narrow `assertNoLeaks` and marker assertions.** In `internal/project/spine_test.go` `assertNoLeaks`, the `awf:section`/`awf:end` check stays. Add positive assertions that callers opt into where appropriate, OR add a sibling helper `assertProvenance(t, out)` asserting `strings.Contains(out, "GENERATED by awf")` and `strings.Contains(out, "<!-- awf:edit ")`. In `internal/project/project_test.go:78`, the condition `strings.Contains(string(b), "awf:section")` stays valid (we still never emit section markers); add an assertion that the rendered skill contains `GENERATED by awf` and `<!-- awf:edit `.
-- [ ] **Task 5.1a — Cover the new project-layer branches and rework obsolete tests.** These all live in `internal/project` and must be green in the same commit:
-  - **`planSections` non-`ErrNotExist` read arm** (`internal/project/project.go`, the `return nil, fmt.Errorf("read part …")` branch): add a test that makes `os.ReadFile(p.Cfg.PartPath(...))` fail with something other than not-exist — e.g. `MkdirAll` the convention part path itself so the read returns `EISDIR` — then assert `RenderAll` (or `planSections`) surfaces the wrapped `read part` error. This replaces the coverage the deleted `replaceWith` missing-part tests used to provide.
-  - **Rework `internal/project/coverage_test.go`** `TestRenderAllAgentAssembleErrorOnMissingPart` / `…Doc…` / `…AgentsDoc…`: their `replaceWith:` sidecars now fail the strict decoder at `Open`; convert them to the directory-as-part technique above (or delete the redundant ones once the `planSections` arm is covered once).
+- [ ] **Task 5.1: Narrow `assertNoLeaks` and marker assertions.** In `internal/project/spine_test.go` `assertNoLeaks`, the `awf:section`/`awf:end` check stays. Add positive assertions that callers opt into where appropriate, OR add a sibling helper `assertProvenance(t, out)` asserting `strings.Contains(out, "GENERATED by awf")` and `strings.Contains(out, "<!-- awf:edit ")`. In `internal/project/project_test.go:78`, the condition `strings.Contains(string(b), "awf:section")` stays valid (we still never emit section markers); add an assertion that the rendered skill contains `GENERATED by awf` and `<!-- awf:edit `.
+- [ ] **Task 5.1a: Cover the new project-layer branches and rework obsolete tests.** These all live in `internal/project` and must be green in the same commit:
+  - **`planSections` non-`ErrNotExist` read arm** (`internal/project/project.go`, the `return nil, fmt.Errorf("read part ...")` branch): add a test that makes `os.ReadFile(p.Cfg.PartPath(...))` fail with something other than not-exist (e.g. `MkdirAll` the convention part path itself so the read returns `EISDIR`), then assert `RenderAll` (or `planSections`) surfaces the wrapped `read part` error. This replaces the coverage the deleted `replaceWith` missing-part tests used to provide.
+  - **Rework `internal/project/coverage_test.go`** `TestRenderAllAgentAssembleErrorOnMissingPart` / `...Doc...` / `...AgentsDoc...`: their `replaceWith:` sidecars now fail the strict decoder at `Open`; convert them to the directory-as-part technique above (or delete the redundant ones once the `planSections` arm is covered once).
   - **`injectBanner` no-newline hook fallback** (`content + "\n" + line` when a hook body has no `\n`): real hook templates always have a shebang + newline, so this arm is unreachable via `Sync`. Add a direct unit test calling `injectBanner("#!/usr/bin/env bash", "hooks/pre-commit")` and asserting the banner appended, **or** mark the arm `// coverage-ignore:`. Pick the unit test (cheap, exercises the contract).
   - **Rework `internal/project/render_tree_test.go`** `TestConventionPartPrecedence` per the File-structure note: remove case (3), keep the `// invariant: parts-convention` comment.
-- [ ] **Task 5.2 — Fix golden/exact-output project tests.** Any `internal/project` test comparing rendered output to an exact expected string now mismatches by the banner + pointers. Update each expected string to include the banner line and the `awf:edit` pointers in the exact positions `Assemble`/`injectBanner` produce (run the focused test, copy the actual into the expected after eyeballing it is correct). Run `go test ./internal/project/...` → expect `ok`.
-- [ ] **Task 5.3 — Update precedence prose in convention parts.** Edit `.claude/awf/docs/parts/architecture/overview.md`: change the two precedence references from `drop > explicit replaceWith > convention part > template default` to `drop > convention part > template default`, and remove the `replaceWith` mentions (sidecars now hold only `data` / `sections: drop` / `local`; convention parts are the sole body-override). Edit `.claude/awf/docs/parts/architecture/data-flow.md` similarly. Also, per ADR-0015's Consequences doc-currency obligation, add a sentence to one of these parts noting that rendered output now carries an in-file `GENERATED by awf` banner and per-section `awf:edit` provenance pointers (so the regenerated `docs/architecture.md` documents the new behaviour, not just the precedence change). The AGENTS.md agent-guide parts (`.claude/awf/parts/agents-doc/identity.md`, `you-and-this-project.md`) carry no `replaceWith` wording — confirmed, no edit needed.
-- [ ] **Task 5.3a — Reword `replaceWith` placeholder prose in the refactor-coupling-audit skill template.** In `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, the literal field name collides with the removed config field. Change line ~89 `<!-- replaceWith: project-specific codegen tables...` → `<!-- customise: project-specific codegen tables...` (same trailing text); line ~104 `<!-- replaceWith: project-specific constructor...` → `<!-- customise: project-specific constructor...` (same trailing text); line ~158 `see the \`replaceWith\` sections above; fill those in when patterns repeat.` → `see the \`customise:\` hints above; capture them via a convention part when patterns repeat.`. Note: the `category-4-codegen`/`category-5-constructors` sections (lines 89/104) are dropped in this repo's config, so only the `notes`-section edit (line 158) changes this repo's rendered `.claude/skills/awf-refactor-coupling-audit/SKILL.md`; the section edits ship to other adopters. Add `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` to the staged files in Task 5.5.
-- [ ] **Task 5.4 — Regenerate rendered files and restamp the lock.** Run `./x sync`. This re-renders every managed file with banner + pointers and stamps `SchemaVersion: 2` into `awf.lock`. Run `./x check` → expect `awf check: clean`. Run `git status --short` and confirm the changes are exactly: every `docs/*.md`, `.claude/skills/**/*.md`, `.claude/agents/*.md`, `.githooks/pre-commit`, `.githooks/pre-push`, `AGENTS.md`, `docs/domains/*.md`, and `.claude/awf/awf.lock` (plus the two edited architecture parts). Spot-check `docs/architecture.md` begins with `<!-- GENERATED by awf` and a section shows `<!-- awf:edit overview — from .claude/awf/docs/parts/architecture/overview.md -->`; spot-check `.githooks/pre-commit` line 2 is `# GENERATED by awf …`; spot-check a skill's banner sits after its frontmatter `---`.
-- [ ] **Task 5.5 — Gate and commit the engine change.** Run `./x gate` → expect `coverage: 100.0%` and `0 issues`. Stage explicitly: the four engine source files, the four/five test files, the new migration file, the two architecture parts, and every regenerated rendered file + `awf.lock`. Commit:
+- [ ] **Task 5.2: Fix golden/exact-output project tests.** Any `internal/project` test comparing rendered output to an exact expected string now mismatches by the banner + pointers. Update each expected string to include the banner line and the `awf:edit` pointers in the exact positions `Assemble`/`injectBanner` produce (run the focused test, copy the actual into the expected after eyeballing it is correct). Run `go test ./internal/project/...` → expect `ok`.
+- [ ] **Task 5.3: Update precedence prose in convention parts.** Edit `.claude/awf/docs/parts/architecture/overview.md`: change the two precedence references from `drop > explicit replaceWith > convention part > template default` to `drop > convention part > template default`, and remove the `replaceWith` mentions (sidecars now hold only `data` / `sections: drop` / `local`; convention parts are the sole body-override). Edit `.claude/awf/docs/parts/architecture/data-flow.md` similarly. Also, per ADR-0015's Consequences doc-currency obligation, add a sentence to one of these parts noting that rendered output now carries an in-file `GENERATED by awf` banner and per-section `awf:edit` provenance pointers (so the regenerated `docs/architecture.md` documents the new behaviour, not just the precedence change). The AGENTS.md agent-guide parts (`.claude/awf/parts/agents-doc/identity.md`, `you-and-this-project.md`) carry no `replaceWith` wording: confirmed, no edit needed.
+- [ ] **Task 5.3a: Reword `replaceWith` placeholder prose in the refactor-coupling-audit skill template.** In `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, the literal field name collides with the removed config field. Change line ~89 `<!-- replaceWith: project-specific codegen tables...` → `<!-- customise: project-specific codegen tables...` (same trailing text); line ~104 `<!-- replaceWith: project-specific constructor...` → `<!-- customise: project-specific constructor...` (same trailing text); line ~158 `see the \`replaceWith\` sections above; fill those in when patterns repeat.` → `see the \`customise:\` hints above; capture them via a convention part when patterns repeat.`. Note: the `category-4-codegen`/`category-5-constructors` sections (lines 89/104) are dropped in this repo's config, so only the `notes`-section edit (line 158) changes this repo's rendered `.claude/skills/awf-refactor-coupling-audit/SKILL.md`; the section edits ship to other adopters. Add `templates/skills/refactor-coupling-audit/SKILL.md.tmpl` to the staged files in Task 5.5.
+- [ ] **Task 5.4: Regenerate rendered files and restamp the lock.** Run `./x sync`. This re-renders every managed file with banner + pointers and stamps `SchemaVersion: 2` into `awf.lock`. Run `./x check` → expect `awf check: clean`. Run `git status --short` and confirm the changes are exactly: every `docs/*.md`, `.claude/skills/**/*.md`, `.claude/agents/*.md`, `.githooks/pre-commit`, `.githooks/pre-push`, `AGENTS.md`, `docs/domains/*.md`, and `.claude/awf/awf.lock` (plus the two edited architecture parts). Spot-check `docs/architecture.md` begins with `<!-- GENERATED by awf` and a section shows `<!-- awf:edit overview: from .claude/awf/docs/parts/architecture/overview.md -->`; spot-check `.githooks/pre-commit` line 2 is `# GENERATED by awf ...`; spot-check a skill's banner sits after its frontmatter `---`.
+- [ ] **Task 5.5: Gate and commit the engine change.** Run `./x gate` → expect `coverage: 100.0%` and `0 issues`. Stage explicitly: the four engine source files, the four/five test files, the new migration file, the two architecture parts, and every regenerated rendered file + `awf.lock`. Commit:
   `feat(awf): in-file provenance banner + awf:edit pointers; drop replaceWith`
   Body: name ADR-0015; note schema bump to 2 and convention-only overrides.
 
-## Phase 6 — Back invariants and flip ADR to Implemented
+## Phase 6: Back invariants and flip ADR to Implemented
 
-- [ ] **Task 6.1 — Back the four invariant slugs with `// invariant:` comments.** Add a `// invariant: <slug>` comment (marker `//`, matches `*.go` per `config.yaml` `invariants.sources`) at the enforcing site for each:
-  - `// invariant: provenance-banner` — at `injectBanner` in `internal/project/project.go`.
-  - `// invariant: section-edit-pointer` — at `editPointer` in `internal/render/render.go`.
-  - `// invariant: no-section-marker-leak` — at `Assemble` in `internal/render/render.go` (markers are consumed, never emitted) and/or at `assertNoLeaks`.
-  - `// invariant: no-replacewith` — at `SectionOverride` in `internal/config/config.go`.
+- [ ] **Task 6.1: Back the four invariant slugs with `// invariant:` comments.** Add a `// invariant: <slug>` comment (marker `//`, matches `*.go` per `config.yaml` `invariants.sources`) at the enforcing site for each:
+  - `// invariant: provenance-banner`: at `injectBanner` in `internal/project/project.go`.
+  - `// invariant: section-edit-pointer`: at `editPointer` in `internal/render/render.go`.
+  - `// invariant: no-section-marker-leak`: at `Assemble` in `internal/render/render.go` (markers are consumed, never emitted) and/or at `assertNoLeaks`.
+  - `// invariant: no-replacewith`: at `SectionOverride` in `internal/config/config.go`.
   Run `./x invariants` (or `./x check`) → with the ADR still `Accepted` these are not yet enforced, but the comments must be present before the status flip.
-  - ADR-0009 supersedence obligation (ADR-0015 Decision item 6 / Consequences): ADR-0009's `inv: parts-convention` backing test is `TestConventionPartPrecedence` in `render_tree_test.go`, already updated to the three-tier precedence in Task 5.1a. ADR-0009 stays `Implemented`, so keep its `// invariant: parts-convention` comment intact — no further change owed here, but verify it still resolves after the flip.
-- [ ] **Task 6.2 — Flip ADR-0015 to Implemented.** Edit `docs/decisions/0015-*.md` frontmatter `status: Accepted` → `status: Implemented`. Run `./x sync` (regenerates `ACTIVE.md` and the rendering/config domain Decisions indexes to show Implemented) and stage the regenerated files. Run `./x check` → clean; now invariant backing IS enforced, so confirm all four slugs resolve.
-- [ ] **Task 6.3 — Final gate and commit.** Run `./x gate` → 100% / 0 issues. Stage the ADR, the four source files (invariant comments), `ACTIVE.md`, the two domain docs, and `awf.lock`. Commit:
+  - ADR-0009 supersedence obligation (ADR-0015 Decision item 6 / Consequences): ADR-0009's `inv: parts-convention` backing test is `TestConventionPartPrecedence` in `render_tree_test.go`, already updated to the three-tier precedence in Task 5.1a. ADR-0009 stays `Implemented`, so keep its `// invariant: parts-convention` comment intact: no further change owed here, but verify it still resolves after the flip.
+- [ ] **Task 6.2: Flip ADR-0015 to Implemented.** Edit `docs/decisions/0015-*.md` frontmatter `status: Accepted` → `status: Implemented`. Run `./x sync` (regenerates `ACTIVE.md` and the rendering/config domain Decisions indexes to show Implemented) and stage the regenerated files. Run `./x check` → clean; now invariant backing IS enforced, so confirm all four slugs resolve.
+- [ ] **Task 6.3: Final gate and commit.** Run `./x gate` → 100% / 0 issues. Stage the ADR, the four source files (invariant comments), `ACTIVE.md`, the two domain docs, and `awf.lock`. Commit:
   `feat(awf): back ADR-0015 invariants and mark Implemented`
 
 ## Notes
 
 - Phases 1-5 deliberately land as one commit (Task 5.5): the engine signature change makes intermediate trees non-building or test-red, so splitting would break the green-gate-before-every-commit invariant. Phase 6 is a separate commit because it is a clean status+backing step on a green tree.
-- The legacy schema-0 reader (`internal/migrate/legacy.go`, `treelayout.go`) keeps its own `replaceWith` field — it parses frozen historical `.claude/awf.yaml` input and must not change.
+- The legacy schema-0 reader (`internal/migrate/legacy.go`, `treelayout.go`) keeps its own `replaceWith` field; it parses frozen historical `.claude/awf.yaml` input and must not change.
 - After implementation, the chain's terminal review is `awf-reviewing-impl`.

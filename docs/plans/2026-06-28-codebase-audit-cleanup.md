@@ -3,7 +3,7 @@
 # Plan: Codebase audit cleanup
 
 **Date:** 2026-06-28
-**ADR:** [ADR-0027](../decisions/0027-unified-kind-descriptor.md) (covers Phase 5 only; Phases 1–4 are routine refactors/fixes, no ADR).
+**ADR:** [ADR-0027](../decisions/0027-unified-kind-descriptor.md) (covers Phase 5 only; Phases 1-4 are routine refactors/fixes, no ADR).
 
 ## Goal
 
@@ -14,14 +14,14 @@ changes CLI exit codes and flag handling; both are pre-1.0, intentional).
 
 ## Architecture summary
 
-The work is ordered smallest-blast-radius first. Phases 1–2 are internal refactors with no
+The work is ordered smallest-blast-radius first. Phases 1-2 are internal refactors with no
 behavioural change. Phase 3 is the one user-visible behaviour change (CLI flag rejection + exit
 codes). Phase 4 re-homes audit resolution from `internal/config` into `internal/audit`,
 mirroring the existing `internal/invariants` boundary. Phase 5 implements ADR-0027 and flips it
 to `Implemented`.
 
 Several tasks touch the same files (`check.go`, `render.go`); the phase order avoids conflicts.
-Execute **inline and sequentially** (`awf-executing-plans`) — the tasks are coupled through
+Execute **inline and sequentially** (`awf-executing-plans`): the tasks are coupled through
 shared files, not independent.
 
 ## Tech stack
@@ -59,39 +59,39 @@ domain narratives.
 
 ---
 
-## Phase 1 — Mechanical cleanups
+## Phase 1: Mechanical cleanups
 
-### Task 1.1 — `coverage.marker` → `const`
+### Task 1.1: `coverage.marker` → `const`
 - [ ] In `internal/coverage/coverage.go:22`, change `var marker = "//" + " coverage-ignore"` to
   `const marker = "//" + " coverage-ignore"`. (Constant expression; the concatenation trick still
   keeps the literal directive off the line.)
 - [ ] Verify: `go build ./internal/coverage/ && go test ./internal/coverage/` → PASS.
 - [ ] `./x gate` → green. Commit: `refactor(awf): make coverage marker a const`.
 
-### Task 1.2 — Delete the dead `render.Render` wrapper
+### Task 1.2: Delete the dead `render.Render` wrapper
 `render.Render` (`internal/render/render.go:70-74`) is referenced only by tests; production
 (`renderTarget`) calls `Assemble`/`Execute` directly. **Decided approach: delete** `Render` and
 update its test callers (verified: the only callers are `internal/project/docs_sections_test.go:43,132`,
-`frontmatter_test.go:54`, `spine_test.go:19` — all `*_test.go`). This is the clean outcome: no
+`frontmatter_test.go:54`, `spine_test.go:19`: all `*_test.go`). This is the clean outcome: no
 double parse, smaller API. `renderTarget` is left untouched (it already calls `Assemble`/`Execute`
 directly and needs `assembled` locally for the hash).
 - [ ] First confirm no production caller appeared: `rg 'render\.Render\(' --type go` shows only
   `*_test.go`. (If a production caller exists, instead route it through `render.Render` and skip the
-  delete — but at plan time there is none.)
+  delete, but at plan time there is none.)
 - [ ] Delete `Render` (`internal/render/render.go:70-74`) and rewrite each test call
   `render.Render(src, nil, data)` → `render.Execute(render.Assemble(render.ParseSections(src), nil), data)`
   (the test calls pass `nil` for the plan).
 - [ ] Verify: `go test ./internal/render/ ./internal/project/` → PASS.
 - [ ] `./x gate` → green. Commit: `refactor(awf): drop unused render.Render wrapper`.
 
-### Task 1.3 — Shared invariant-finding formatter
+### Task 1.3: Shared invariant-finding formatter
 `cmd/awf/check.go:30` and `cmd/awf/invariants.go:24` format the same `invariants.Finding` two
 ways with a duplicated format string.
 - [ ] In `internal/invariants/invariants.go`, add a method on `Finding`:
   ```go
   // Line renders the finding as a single human-readable line (no leading indent/column).
   func (f Finding) Line() string {
-  	return fmt.Sprintf("%s — invariant %q %s", f.ADR, f.Slug, f.Detail())
+  	return fmt.Sprintf("%s: invariant %q %s", f.ADR, f.Slug, f.Detail())
   }
   ```
   (Add `"fmt"` to imports if not already present.)
@@ -100,12 +100,12 @@ ways with a duplicated format string.
 - [ ] In `cmd/awf/check.go:30`, replace the `Fprintf` with:
   `fmt.Fprintf(stdout, "  %-14s %s\n", "invariant", f.Line())`.
 - [ ] Verify: `go test ./internal/invariants/ ./cmd/awf/` → PASS (existing tests assert the same
-  output strings; they must still match — the rendered text is byte-identical).
+  output strings; they must still match: the rendered text is byte-identical).
 - [ ] `./x gate` → green. Commit: `refactor(awf): share invariant-finding line formatter`.
 
-### Task 1.4 — `orphans()` distinguishes absent from unreadable
+### Task 1.4: `orphans()` distinguishes absent from unreadable
 `internal/project/check.go:73` and `:91` swallow all `os.ReadDir` errors as "absent", masking IO
-faults — inconsistent with the project's `errors.Is(err, os.ErrNotExist)` discipline elsewhere.
+faults: inconsistent with the project's `errors.Is(err, os.ErrNotExist)` discipline elsewhere.
 - [ ] Change `internal/project/check.go` so `orphans()` returns an error. Update its signature to
   `func (p *Project) orphans() ([]manifest.Drift, error)` and:
   - line 73-76: `if err != nil { continue }` → `if errors.Is(err, os.ErrNotExist) { continue } else if err != nil { return nil, err }`
@@ -113,7 +113,7 @@ faults — inconsistent with the project's `errors.Is(err, os.ErrNotExist)` disc
   - The existing `coverage-ignore`'d read at line 108-111 (enabled target's parts dir) stays as-is
     (it is already discriminated by being unreachable except on permission fault).
   - Final `return drift` → `return drift, nil` (line 126).
-- [ ] Add `"errors"` to `check.go` imports if absent (it is — confirm; the file imports
+- [ ] Add `"errors"` to `check.go` imports if absent (it is; confirm; the file imports
   `fmt, maps, os, path/filepath, slices, sort, strings`).
 - [ ] Update the sole caller. Find it: `rg 'p\.orphans\(\)|\.orphans\(\)' internal/project/`.
   In `Check()` (the call appends orphan drift), thread the error: `od, err := p.orphans(); if err != nil { return nil, err }` and append `od`.
@@ -121,16 +121,16 @@ faults — inconsistent with the project's `errors.Is(err, os.ErrNotExist)` disc
   orphans test file): create a project, make `.awf/skills` a regular file (not a dir) so
   `os.ReadDir` returns a non-`NotExist` error, assert `orphans()`/`Check()` returns that error.
   This is required for the 100% gate (new error arm). If the arm is genuinely unreachable as
-  non-root, annotate with `// coverage-ignore: <reason>` instead — but a file-in-place-of-dir
+  non-root, annotate with `// coverage-ignore: <reason>` instead, but a file-in-place-of-dir
   ReadDir fault IS reachable and testable, so prefer the test.
 - [ ] Verify: `go test ./internal/project/ -run Orphan` → PASS.
 - [ ] `./x gate` → green. Commit: `fix(awf): surface non-absent ReadDir faults in orphan scan`.
 
 ---
 
-## Phase 2 — Internal cohesion refactors
+## Phase 2: Internal cohesion refactors
 
-### Task 2.1 — Route docsDir consumers through the typed `Layout`
+### Task 2.1: Route docsDir consumers through the typed `Layout`
 Six inline `strings.TrimRight(p.Cfg.DocsDir, "/")` derivations bypass the `Layout` that exists to
 own them. The two *definitions* (`layout()` at render.go:60, `docOutPath()` at render.go:112) stay;
 the four *consumers* and the three absolute `filepath.Join(root, DocsDir, "decisions")` sites route
@@ -159,14 +159,14 @@ through `Layout`/a helper.
   	domainsPrefix := lay.DomainsDir + "/"
   ```
   Drop the now-unused `strings` import from `check.go` only if no other use remains
-  (`rg 'strings\.' internal/project/check.go` — `orphans()` uses `strings.HasSuffix`/`TrimSuffix`,
+  (`rg 'strings\.' internal/project/check.go`: `orphans()` uses `strings.HasSuffix`/`TrimSuffix`,
   so it stays).
 - [ ] Verify byte-stable ConfigHash: `./x check` → `awf check: clean` (these are path/display
-  sites, never hash inputs — confirmed in brainstorm grounding).
+  sites, never hash inputs, confirmed in brainstorm grounding).
 - [ ] Verify: `go test ./internal/project/` → PASS.
 - [ ] `./x gate` → green. Commit: `refactor(awf): route docsDir paths through typed Layout`.
 
-### Task 2.2 — `writeSidecarDoc` helper in `internal/migrate`
+### Task 2.2: `writeSidecarDoc` helper in `internal/migrate`
 Three sites build `map[string]any` from data/sections/local then marshal-and-write, differing only
 on the empty case (`treelayout.go` portSidecar/portAgentsDoc return nil; `dropreplacewith.go`
 convertSidecar calls `os.Remove`).
@@ -200,7 +200,7 @@ convertSidecar calls `os.Remove`).
   }
   ```
   (Match the exact marshal/write idiom the three sites currently use; `writeFile` already exists
-  at `treelayout.go:200`. Confirm the kept-sections collection shape — `map[string]map[string]any{"drop": true}` — matches all three before substituting.)
+  at `treelayout.go:200`. Confirm the kept-sections collection shape, `map[string]map[string]any{"drop": true}`, matches all three before substituting.)
 - [ ] Replace the three inline blocks (`treelayout.go:102-115`, `treelayout.go:160-173`,
   `dropreplacewith.go:105-122`) with calls to `writeSidecarDoc`, passing `removeIfEmpty=false`
   for the two `port*` sites and `true` for `convertSidecar`.
@@ -208,19 +208,19 @@ convertSidecar calls `os.Remove`).
   cover both empty and non-empty cases; confirm coverage holds).
 - [ ] `./x gate` → green. Commit: `refactor(awf): extract writeSidecarDoc in migrate`.
 
-### Task 2.3 — Split `Project.Check` into per-phase helpers
+### Task 2.3: Split `Project.Check` into per-phase helpers
 `Check()` (check.go:151-264) does five jobs sharing only a `drift` accumulator.
 - [ ] Extract four unexported methods on `*Project`, each taking the inputs it needs and returning
   `([]manifest.Drift, error)` (or appending to a passed slice): `checkLockedFiles(lock, rendered, lay)`,
   `checkActiveMD(rendered, lay)`, `checkDomainDocs(rendered, lay)`, `checkDeadRefs(files)`. Move the
   corresponding blocks verbatim; `Check()` becomes a short orchestrator that calls each and
   concatenates drift. Preserve exact ordering and the `activeMdRel`/`domainsPrefix` skip logic.
-- [ ] This is a pure move — no behaviour change. Verify ConfigHash/drift unaffected: `./x check` →
+- [ ] This is a pure move: no behaviour change. Verify ConfigHash/drift unaffected: `./x check` →
   `awf check: clean`.
 - [ ] Verify: `go test ./internal/project/` → PASS; coverage still 100% (no new branches).
 - [ ] `./x gate` → green. Commit: `refactor(awf): split Project.Check into per-phase helpers`.
 
-### Task 2.4 — Split `render.go` into cohesive files
+### Task 2.4: Split `render.go` into cohesive files
 `render.go` is 459 lines spanning six concerns. Pure moves within package `project` (no signature
 changes).
 - [ ] Create `internal/project/layout.go`: move `Layout` type (42-57), `layout()` (59-86),
@@ -239,9 +239,9 @@ changes).
 
 ---
 
-## Phase 3 — CLI strictness (behaviour change)
+## Phase 3: CLI strictness (behaviour change)
 
-### Task 3.1 — Reject unknown flags / extra positionals; usage errors exit 2
+### Task 3.1: Reject unknown flags / extra positionals; usage errors exit 2
 Today `hasFlag`/`baseFlag` silently ignore unrecognized `--flags` and extra positionals, and usage
 errors return a mix of exit 1 and 2. Make misuse explicit and exit-2-consistent.
 - [ ] In `cmd/awf/main.go`, add a usage-error sentinel and a validator:
@@ -275,7 +275,7 @@ errors return a mix of exit 1 and 2. Make misuse explicit and exit-2-consistent.
   ```
   NOTE on `--base <value>`: `audit` takes a value-flag. At execution, either (a) special-case
   `--base`'s following token as consumed (skip `i++`), or (b) accept that the value token counts as
-  a positional and set `audit`'s `maxPos` accordingly. Prefer (a) — make `checkArgs` take a
+  a positional and set `audit`'s `maxPos` accordingly. Prefer (a): make `checkArgs` take a
   `valueFlags []string` set and advance `i` past a recognized value-flag's argument, erroring if it
   is the trailing token (this also fixes the `awf audit --base` silent-default edge).
 - [ ] Wire each subcommand to call `checkArgs` before dispatch, with its flag/positional spec:
@@ -289,7 +289,7 @@ errors return a mix of exit 1 and 2. Make misuse explicit and exit-2-consistent.
   the top of the relevant `case`, or validate once before the switch via a per-command spec table.
 - [ ] Convert the inline `return 1` usage errors to `usageErr` and fall through to the central
   handler: `add` arity (main.go:85,88), `remove` arity (main.go:93), unknown command
-  (main.go:106-107). Keep their exact messages (preserve the helpful `awf add requires a kind…`
+  (main.go:106-107). Keep their exact messages (preserve the helpful `awf add requires a kind...`
   text) but wrap in `&usageErr{...}` and `cmdErr = ...; break` instead of `Fprintln + return 1`.
 - [ ] Update the central handler (main.go:109-112):
   ```go
@@ -312,25 +312,25 @@ errors return a mix of exit 1 and 2. Make misuse explicit and exit-2-consistent.
 
 ---
 
-## Phase 4 — Re-home audit resolution (config → audit)
+## Phase 4: Re-home audit resolution (config → audit)
 
-### Task 4.1 — Move `AuditSettings`/`ResolveAudit`/defaults into `internal/audit`
+### Task 4.1: Move `AuditSettings`/`ResolveAudit`/defaults into `internal/audit`
 Mirrors the `internal/invariants` boundary (config holds only the raw schema). `internal/audit`
 already imports `internal/config` (audit.go:15), so no cycle (config imports no audit).
 - [ ] Create `internal/audit/settings.go`:
-  - Define `type Settings struct { … }` with the exact fields currently on
+  - Define `type Settings struct { ... }` with the exact fields currently on
     `config.AuditSettings` (config.go:82-92): `BaseBranch, AllowedTypes, AllowedScopes,
     DependencyManifests []string; SubjectMaxLength, DiffThreshold int; DomainDocStaleness,
     UndocumentedDomain, UncommittedChanges bool`.
   - Move `defaultAllowedTypes()` (config.go:138-140) and `defaultDependencyManifests()`
     (config.go:142-149) verbatim.
-  - Add `func Resolve(a *config.AuditConfig) Settings { … }` — the body of
+  - Add `func Resolve(a *config.AuditConfig) Settings { ... }`: the body of
     `config.ResolveAudit` (config.go:95-136) with `c.Audit` replaced by the `a` parameter and
-    `AuditSettings{…}` → `Settings{…}`.
+    `AuditSettings{...}` → `Settings{...}`.
 - [ ] In `internal/audit/audit.go`: change `Inputs` (audit.go:76-77) to embed `Settings` instead of
   `config.AuditSettings`; update the doc comment (audit.go:71-75). Remove the now-unused
   `internal/config` import **only if** nothing else in `audit.go` references `config`
-  (`rg 'config\.' internal/audit/audit.go` — `Resolve` lives in settings.go and still needs the
+  (`rg 'config\.' internal/audit/audit.go`: `Resolve` lives in settings.go and still needs the
   import there, so `audit.go`'s import may drop; `settings.go` keeps it).
 - [ ] In `internal/config/config.go`: delete `AuditSettings` (82-92), `ResolveAudit` (94-136),
   `defaultAllowedTypes` (138-140), `defaultDependencyManifests` (142-149). Keep the raw
@@ -348,9 +348,9 @@ already imports `internal/config` (audit.go:15), so no cycle (config imports no 
 
 ---
 
-## Phase 5 — Unified kind descriptor (ADR-0027)
+## Phase 5: Unified kind descriptor (ADR-0027)
 
-### Task 5.1 — Introduce the descriptor table and route all dispatch through it
+### Task 5.1: Introduce the descriptor table and route all dispatch through it
 Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-accessor table.
 - [ ] Create `internal/project/kind.go`:
   ```go
@@ -411,7 +411,7 @@ Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-ac
   	{
   		Plural: "domains", Singular: "domain",
   		enable:    func(c *config.Config) []string { return c.Domains },
-  		poolNames: nil, // freeform — no catalog pool
+  		poolNames: nil, // freeform: no catalog pool
   		sections:  func(c *catalog.Catalog, _ string) ([]string, bool) { return c.DomainDoc.Sections, false },
   		outPath:   nil,
   	},
@@ -481,14 +481,14 @@ Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-ac
     `project.Kinds()`; `enabledNames(cfg, kind)` → `project.EnabledNames(cfg, kind)`;
     `catalogNames(cat, kind)` → `project.CatalogNames(cat, kind)`.
     NOTE: `PluralKind`/`EnabledNames`/`CatalogNames` all return `(value, bool)`, so the
-    single-value call sites do not substitute verbatim — bind/discard the bool at each:
+    single-value call sites do not substitute verbatim; bind/discard the bool at each:
     `slices.Contains(enabledNames(p.Cfg, kind), name)` (lines 82, 107, 184) →
     `names, _ := project.EnabledNames(p.Cfg, kind); slices.Contains(names, name)`;
     `kindKey[kind]` in `Fprintf` (165) and `p.Cfg.Sidecar(kindKey[kind], name)` (189) →
-    `plural, _ := project.PluralKind(kind); …`. The two-value sites (`key, ok := kindKey[kind]`
+    `plural, _ := project.PluralKind(kind); ...`. The two-value sites (`key, ok := kindKey[kind]`
     at 67/99, `_, ok := kindKey[kindFilter]` at 159, `pool, ok := catalogNames(...)` at 75/166)
     map directly.
-  - Keep `unknownKind` and the `// invariant: cli-config-kinds` marker semantics — but the marker
+  - Keep `unknownKind` and the `// invariant: cli-config-kinds` marker semantics, but the marker
     **moves** to `kind.go`'s `kindDescriptors` (done above). Remove the marker comment from
     `list_add.go:17`. (Per ADR-0027 Decision 5 / the re-homed-marker note: ADR-0024 stays the sole
     declaring ADR; only the source comment relocates. Do **not** add a new `inv:` bullet anywhere.)
@@ -497,10 +497,10 @@ Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-ac
   - `localOutPath` (18-27) → resolve via descriptor: `if d, ok := descriptorByPlural(kind); ok && d.outPath != nil { return d.outPath(p.Target, p.Cfg.Prefix, name) }; return ""`.
   - `declaredSections` (130-142) → `if d, ok := descriptorByPlural(kind); ok && d.sections != nil { s, _ := d.sections(p.Cat, name); return s }; return nil`.
   - `strings.TrimSuffix(kind, "s")` at check.go:48 → `d, _ := descriptorByPlural(kv.kind); d.Singular`
-    (`descriptorByPlural` returns `(kindDescriptor, bool)`, so bind it — no method chain on the
+    (`descriptorByPlural` returns `(kindDescriptor, bool)`, so bind it: no method chain on the
     two-value result; `kv.kind` here is `"skills"`/`"agents"`, always found).
 - [ ] Rewrite `internal/project/validate.go` `validateAgainstCatalog` (34-61): replace the three
-  `checkKind("skills"/"agents"/"docs", …)` closures and the separate hooks block with a loop over
+  `checkKind("skills"/"agents"/"docs", ...)` closures and the separate hooks block with a loop over
   the catalog-backed descriptors:
   ```go
   for _, d := range kindDescriptors {
@@ -517,10 +517,10 @@ Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-ac
   bool**: `slices.Contains(d.poolNames(p.Cat), name)` is the "is in the catalog" check (equivalent to
   today's `_, ok := p.Cat.Skills[name]` for skills/agents/docs, and the only correct check for hooks).
   The `sections` facet is used **only** for section validation: hooks return `sections == (nil,false)`
-  for every name, so using that bool for presence would reject every enabled hook — instead, when
+  for every name, so using that bool for presence would reject every enabled hook; instead, when
   `d.sections(p.Cat, name)`'s declared slice is `nil`/empty, skip `checkSectionsAllowed` (preserving
   today's hooks behaviour: catalog-membership check only, no section validation). The singleton blocks
-  (agents-doc, adr-readme, …) below line 62 are NOT kinds — leave them untouched.
+  (agents-doc, adr-readme, ...) below line 62 are NOT kinds; leave them untouched.
   `strings.TrimSuffix(kind,"s")` at validate.go:26 → `d.Singular`.
 - [ ] Create `internal/project/kind_test.go` backing `inv: kind-dispatch-single-table`:
   ```go
@@ -551,7 +551,7 @@ Implements ADR-0027. Replaces ~6 parallel per-kind switches with one function-ac
   `rendering`/`tooling` domain narratives (`.awf/domains/parts/...` or the domain doc source). Run
   `./x sync`; stage regenerated `docs/architecture.md` + domain docs.
 - [ ] Verify: `go test ./...` → PASS; `./x check` → `awf check: clean` (the
-  `kind-dispatch-single-table` slug is now enforced because ADR-0027 is Implemented — the backing
+  `kind-dispatch-single-table` slug is now enforced because ADR-0027 is Implemented: the backing
   test must exist and the `cli-config-kinds` marker must resolve at its new location).
 - [ ] `./x gate` → green. Commit:
   `refactor(awf): unify per-kind dispatch behind a descriptor table (ADR-0027)`.

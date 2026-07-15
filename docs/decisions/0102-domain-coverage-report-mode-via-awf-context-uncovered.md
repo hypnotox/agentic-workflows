@@ -13,9 +13,9 @@ domains: [tooling]
 ## Context
 
 Domains (ADR-0014) are awf's coarse territory model: each domain declares `paths`
-globs, and every domain-derived signal — the per-domain ADR index, the
+globs, and every domain-derived signal (the per-domain ADR index, the
 domain-code-staleness audit (ADR-0077), and the ADR/pitfall relatedness that
-`awf context <paths>` (ADR-0092) surfaces — is only as complete as that glob
+`awf context <paths>` (ADR-0092) surfaces) is only as complete as that glob
 coverage. Coverage is entirely adopter configuration, and **nothing surfaces the
 gaps**. A repository can leave whole packages owned by no domain, silently, and
 the only symptom is thin context for those paths.
@@ -23,7 +23,7 @@ the only symptom is thin context for those paths.
 awf itself demonstrates the problem: the five configured domains cover
 `internal/adr`; `internal/config|migrate|manifest`; `internal/invariants`;
 `internal/render`, `internal/catalog`, and top-level `templates/`; and `cmd/`,
-`internal/audit|coverage|changelog|evals`, plus the top-level `x` runner — but
+`internal/audit|coverage|changelog|evals`, plus the top-level `x` runner, but
 **not** several `internal/` packages (e.g. `internal/project`, `internal/plan`,
 `internal/frontmatter`, `internal/pathglob`, `internal/git`, `internal/clispec`,
 `internal/configspec`). Querying
@@ -34,20 +34,20 @@ until someone runs a query and notices the silence.
 `awf context <paths>` already computes, per queried path, whether any domain glob
 matches it (`ContextResult.Unowned`). What is missing is the **inverse, whole-tree**
 question an adopter needs while configuring domains: *which tracked paths does no
-domain own?* That is a coverage report, not a per-path lookup — a signal an adopter
+domain own?* That is a coverage report, not a per-path lookup: a signal an adopter
 runs on demand to decide where new domains are warranted.
 
 ## Decision
 
 1. **Add an `--uncovered` mode to `awf context`.** It reports the repository's
-   git-tracked paths that are matched by **no** configured domain `paths` glob —
+   git-tracked paths that are matched by **no** configured domain `paths` glob:
    the inverse of the domain-ownership test `awf context <paths>` already performs.
 
 2. **Argument contract in `--uncovered` mode.** Positional arguments are optional
    **scan-root directories** that restrict the report to tracked paths beneath them;
    with none given the scan root is the repository root. Matching is on
    slash-separated path-segment boundaries (a directory subtree), not raw string
-   prefixes — `internal/git` scans that directory's subtree and never a sibling like
+   prefixes: `internal/git` scans that directory's subtree and never a sibling like
    `internal/gitlab`. `--staged` and `--range` (which resolve *changed* paths, a
    different intent) are rejected in this mode with a usage error. This inverts the
    normal-mode contract, where at least one path or selector is required.
@@ -61,7 +61,7 @@ runs on demand to decide where new domains are warranted.
 
 4. **Collapse fully-uncovered directories.** A directory all of whose scanned
    tracked descendants are uncovered is reported as that single topmost directory,
-   not as its individual files — mirroring the closed-config-tree collapse of
+   not as its individual files, mirroring the closed-config-tree collapse of
    ADR-0086. An uncovered file in an otherwise-covered directory is reported
    individually. The report is therefore a short, actionable mix of subtree
    directories and stray files, not an exhaustive file dump.
@@ -75,21 +75,21 @@ runs on demand to decide where new domains are warranted.
 6. **Advisory, not gating.** `--uncovered` is a pull report the adopter runs; it is
    not an audit rule and never affects an exit code. A project with zero configured
    domains reports its whole tracked tree as uncovered (collapsed to the root),
-   which is correct — nothing is owned.
+   which is correct: nothing is owned.
 
 ## Invariants
 
-- `invariant: uncovered-lists-unowned-only` — In `--uncovered` mode the reported entries
+- `invariant: uncovered-lists-unowned-only`: In `--uncovered` mode the reported entries
   cover exactly the scanned tracked paths (under the given scan roots, or the whole
   tree) matched by no configured domain `paths` glob: every such uncovered path is
-  represented by exactly one reported entry — itself or a reported ancestor
-  directory — and no path owned by a domain is represented by any entry. (Whether an
+  represented by exactly one reported entry (itself or a reported ancestor
+  directory) and no path owned by a domain is represented by any entry. (Whether an
   entry is a file or a collapsed directory is the separate
   `uncovered-collapses-directories` contract.)
-- `invariant: uncovered-collapses-directories` — A directory all of whose scanned tracked
+- `invariant: uncovered-collapses-directories`: A directory all of whose scanned tracked
   descendants are uncovered is reported as that topmost directory, never as its
   individual descendant files.
-- `invariant: uncovered-output-parity` — The human and `--json` renderings of
+- `invariant: uncovered-output-parity`: The human and `--json` renderings of
   `--uncovered` report the same uncovered set, because both derive from one
   assembled result (the `--uncovered`-mode analogue of `context-output-parity`).
 

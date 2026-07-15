@@ -15,13 +15,13 @@ ADR-0013 reserved `<docsDir>/domains` (`.layout.domainsDir`) as the awf-given ho
 per-domain "current state" docs, and `proposing-adr`/`adr-lifecycle` already instruct
 authors to "update the domain doc under `docs/domains` when an ADR shifts a domain's state."
 Today those skills also mandate hand-maintaining a "Load-bearing ADRs table" inside each
-domain doc — a manual index that drifts the moment an ADR is added, retagged, or superseded
+domain doc: a manual index that drifts the moment an ADR is added, retagged, or superseded
 without someone remembering to edit the table.
 
 The data to generate that table automatically already exists. Every ADR's frontmatter carries
 `tags`, `supersedes`, `superseded_by`, and `related` (e.g. ADR-0013), and a superseded ADR
 records its successor in `superseded_by`. But `internal/adr.adrFrontmatter` parses **only**
-`status` — the rest is authored and discarded. So an auto-generated per-domain index is
+`status`; the rest is authored and discarded. So an auto-generated per-domain index is
 mostly "parse fields that already exist and render," reusing the exact grouping/link machinery
 that already builds `ACTIVE.md` (`internal/adr.RenderActiveMD`).
 
@@ -46,14 +46,14 @@ data-injection, convention-part-resolution, and regenerate-and-compare patterns 
 it, so a controlled coarse key keeps it clean and `tags` free for keywords.
 
 **Ownership decision (settled in brainstorm):** domain docs are **fully awf-managed** (awf owns
-what it renders) — Approach B — rather than a generated region spliced into a user-owned file
+what it renders), Approach B, rather than a generated region spliced into a user-owned file
 (partial-ownership) or a separate generated file beside a hand-authored one (two files, breaks
 single-read). A more direct partial-ownership model may be worth a future general engine change
 applied uniformly, but not as a one-off exception here.
 
 ## Decision
 
-1. **New `domains: [<name>...]` config array** in `.claude/awf/config.yaml` — a
+1. **New `domains: [<name>...]` config array** in `.claude/awf/config.yaml`: a
    *project-defined* enable list. Unlike `skills`/`agents`/`docs`, domain names are **not**
    validated against the catalog (they are arbitrary project concepts). `config.Validate`
    instead applies name-sanity: a domain name containing a path separator (`/` or `\`, matching
@@ -61,11 +61,11 @@ applied uniformly, but not as a one-off exception here.
 
 2. **New domain-doc artifact kind.** A single template `templates/domains/domain.md.tmpl` is
    instantiated once per declared domain, rendered to `<docsDir>/domains/<name>.md`. It has
-   exactly **one overlay section**, `current-state` (hand-authored narrative —
+   exactly **one overlay section**, `current-state` (hand-authored narrative:
    convention-part-overridable at `.claude/awf/domains/parts/<name>/current-state.md`,
    template default = skeleton prompt). The generated `## Decisions` index is **forced body**,
    not an overlay section: it is plain template (outside any `awf:section` marker) with the
-   index injected as render data, rendered last, beneath the narrative — always present and
+   index injected as render data, rendered last, beneath the narrative, always present and
    structurally un-overridable (no marker → no overlay → a convention part cannot replace it).
    It is treated like frontmatter: awf-owned and forced, not author-controlled. Because
    `decisions` is not a declared section, `orphans()` flags any domain part other than
@@ -81,7 +81,7 @@ applied uniformly, but not as a one-off exception here.
 
 4. **Regenerate-and-compare drift for domain docs.** Each domain doc is excluded from the
    generic lock-hash drift loop and instead regenerated fresh in `Check` and diffed against
-   disk — the `ACTIVE.md` pattern generalized from one file to N. Drift kinds: `stale`
+   disk: the `ACTIVE.md` pattern generalized from one file to N. Drift kinds: `stale`
    (content diverged), `missing`, `orphaned` (domain removed from config). Lock entries carry
    empty `TemplateID`/`TemplateHash`, like `ACTIVE.md`.
 
@@ -96,8 +96,8 @@ applied uniformly, but not as a one-off exception here.
    `adr-lifecycle` require setting it. `adr-lifecycle`'s domain-doc step today reads "Add to the
    Load-bearing ADRs table; refresh the Current-state prose" (the explicit table mandate lives
    there; `proposing-adr` carries only a generic "update the domain doc" instruction). The
-   table-maintenance half is **dropped** — the per-domain index now maintains that table
-   automatically — while the current-state prose-refresh obligation is **retained**. Setting
+   table-maintenance half is **dropped** (the per-domain index now maintains that table
+   automatically) while the current-state prose-refresh obligation is **retained**. Setting
    `domains:` on a new ADR is thus the single action that keeps every affected domain doc's
    generated `decisions` index current; the hand-authored `current-state` narrative is still
    refreshed by hand when a domain's position materially shifts.
@@ -110,14 +110,14 @@ applied uniformly, but not as a one-off exception here.
 
 Constraints that must hold while this decision stands; a violation should trigger a new ADR.
 
-- `invariant: domain-index-matches-domains` — `RenderDomainIndex(dir, d)` lists exactly the ADRs under
+- `invariant: domain-index-matches-domains`: `RenderDomainIndex(dir, d)` lists exactly the ADRs under
   `dir` whose parsed `domains` frontmatter includes `d`, and no others.
-- `invariant: domain-doc-regenerated` — `Check` regenerates each enabled domain doc from current ADR
+- `invariant: domain-doc-regenerated`: `Check` regenerates each enabled domain doc from current ADR
   state and reports it `stale` when on-disk content diverges; retagging or superseding an ADR
   without `sync` is detected (the domain doc is not validated by the lock hash alone).
-- `invariant: domain-name-validated` — `config.Validate` rejects a domain name containing a path
+- `invariant: domain-name-validated`: `config.Validate` rejects a domain name containing a path
   separator (`/` or `\`, as the `prefix` check already does) or `..`.
-- **Publication-safe** (textual) — a domain doc with zero matching ADRs renders a placeholder,
+- **Publication-safe** (textual): a domain doc with zero matching ADRs renders a placeholder,
   never a `<no value>` token or an empty `## Decisions` index.
 
 ## Consequences
@@ -125,7 +125,7 @@ Constraints that must hold while this decision stands; a violation should trigge
 - The manual "Load-bearing ADRs table" doc-currency burden is removed: tagging an ADR's
   `domains:` is the one action that keeps every affected domain doc's index current, enforced
   by regenerate-and-compare drift.
-- A new managed artifact kind and an optional config field are added; both are backward-safe —
+- A new managed artifact kind and an optional config field are added; both are backward-safe:
   no `awf upgrade` migration (additive optional field, like the `Invariants` block).
 - `domains` is the first awf enable-array that is *not* catalog-bound; validation is name-sanity
   only, and `Open` must route it around the catalog `checkKind` path.
@@ -147,4 +147,4 @@ Constraints that must hold while this decision stands; a violation should trigge
 | Separate generated index file beside a hand-authored narrative (`<d>.md` + `<d>.adrs.md`) | Reuses the `ACTIVE.md` whole-file generator verbatim with zero new capability, but two files per domain breaks the "a single read gives the full picture" requirement. |
 | Reuse the existing `tags` frontmatter for the domain linkage | `tags` are granular freeform keywords, not a controlled coarse key; matching a domain index against noisy tags makes the generated table untrustworthy and forces tag-as-domain discipline on every author. |
 | Plain managed doc (whole-file hash drift like `architecture.md`) | A domain doc's content depends on external ADR state not captured in the lock hashes, so an ADR retag without re-sync would pass `check` while the index is silently stale. Regenerate-and-compare is required. |
-| Bundle the `domains:` frontmatter/workflow change as its own ADR | The field exists *for* the domain index — the two are tightly coupled, not independently load-bearing. One ADR. |
+| Bundle the `domains:` frontmatter/workflow change as its own ADR | The field exists *for* the domain index; the two are tightly coupled, not independently load-bearing. One ADR. |

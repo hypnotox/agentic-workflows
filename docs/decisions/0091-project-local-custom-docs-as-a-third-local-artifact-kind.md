@@ -15,14 +15,14 @@ domains: [config, rendering, tooling]
 ADR-0068 gave adopters project-local *skills and agents*: an enabled name outside
 `catalog.Standard`, declared by a sidecar, synthesized into a per-project catalog
 clone, and rendered from an awf-owned base template. Docs were left out. Today an
-adopter cannot create a doc that awf manages — the doc pool is catalog-only
+adopter cannot create a doc that awf manages: the doc pool is catalog-only
 (`internal/project/validate.go` `nodeEnabled` reads `Cfg.Docs` against
 `NonMandatoryDocNames`), `awf new` scaffolds only `adr`/`skill`/`agent`
 (`cmd/awf/new.go`), and every catalog doc has its own bespoke embedded template.
 
 The absence is felt in awf's own dogfooding. awf keeps a hand-authored
-`docs/releasing.md` that is not awf-managed — no drift check, no dead-link check
-(ADR-0020), no publication-safety guarantee — and bolts it onto the AGENTS.md
+`docs/releasing.md` that is not awf-managed (no drift check, no dead-link check
+(ADR-0020), no publication-safety guarantee) and bolts it onto the AGENTS.md
 document map through the `docMap` sidecar escape hatch (`.awf/agents-doc.yaml`).
 The example adopter `examples/sundial` uses the same escape hatch for its README.
 Every use of `docMap` is a doc awf cannot manage; retiring it means giving adopters
@@ -33,7 +33,7 @@ Grounding this decision against the code surfaced four facts that shape it:
 - **The doc render loop resolves its template id from the package global, not the
   effective catalog.** `RenderAll`'s docs pass reads the template id via
   `mustDescriptor("docs").tid`, whose body is
-  `catalog.Standard.Docs[n].TID` (`internal/project/kind.go`) — the process-wide
+  `catalog.Standard.Docs[n].TID` (`internal/project/kind.go`), the process-wide
   global, not the per-project `p.Cat`. A synthesized local doc (absent from
   `catalog.Standard.Docs`) would resolve to an empty id and fail to render. The
   same loop already reads *sections* from `p.Cat`, so the code is internally split;
@@ -49,7 +49,7 @@ Grounding this decision against the code surfaced four facts that shape it:
 - **`DocEntry` already carries an explicit `TID` field** (ADR-0061), unlike
   `SkillSpec`/`TargetSpec`, which grew a `Base` flag only so a name-derived path
   could be overridden (ADR-0068 item 4). A synthesized `DocEntry` can simply set
-  `TID` to the base doc template — no new struct field is needed. Doc synthesis is
+  `TID` to the base doc template; no new struct field is needed. Doc synthesis is
   strictly simpler than the skill/agent case.
 
 - **The document map reads `DocEntry.Title`/`Desc`, not sidecar data.**
@@ -84,8 +84,8 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
    entries into the clone.** A synthesized `DocEntry` sets `Sections: ["content"]`,
    `TID` = the base doc template, `Mandatory: false`, and `Title`/`Desc` lifted from
    the declaring sidecar's `data.title`/`data.description`. When the sidecar omits a
-   key, synthesis applies a default — `Title` derived from the last name segment,
-   `Desc` a generic managed-doc summary — so the synthesized entry always carries a
+   key, synthesis applies a default (`Title` derived from the last name segment,
+   `Desc` a generic managed-doc summary), so the synthesized entry always carries a
    non-empty `Title`/`Desc` and `inv: local-doc-map-fields` holds regardless of
    whether the sidecar was hand-edited. This default is applied at synthesis (in the
    `DocEntry` the document map reads), not only in the template render.
@@ -107,14 +107,14 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
    guarded so an unset value degrades to publication-safe generic prose, never
    `<no value>` (ADR-0045). The base template **must** reference `.data.description`
    (the lede) so the sidecar's `data.description` is template-consumed and does not
-   trip ADR-0086's unused-data-drift check — mirroring how the base skill/agent
+   trip ADR-0086's unused-data-drift check, mirroring how the base skill/agent
    templates reference `.data.description` in their frontmatter.
 
 6. **Doc names are path-aware; skills and agents stay flat.** A doc-name validator
    accepts one or more `/`-separated segments, each lowercase kebab-case, rejecting
    `..`, a leading or trailing slash, an empty segment, and a `.md` suffix. It
-   branches in at both call sites keyed on the docs kind — `awf new doc` and the
-   synthesis path — while skills/agents keep the flat `ValidateArtifactName`. A
+   branches in at both call sites keyed on the docs kind (`awf new doc` and the
+   synthesis path) while skills/agents keep the flat `ValidateArtifactName`. A
    local doc name equal to the reserved base-template stem (`_base`) is rejected.
 
 7. **`awf new doc <name> "<description>"` scaffolds a complete local doc:** it
@@ -123,40 +123,40 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
    the `awf:stub` marker (ADR-0070) whose prose points the author at the
    documentation standard, enables the name in `docs:`, and syncs. The seed's
    pointer to the documentation standard is prose or a repo-root-anchored link,
-   never a file-relative markdown link — which would resolve dead from a nested
+   never a file-relative markdown link, which would resolve dead from a nested
    doc's directory and trip the ADR-0020 check. The `new` help text and unknown-kind
    error (and its test) update in the same commit.
 
-8. **`local: true` is unchanged.** The flag keeps its meaning — opt out of rendering
-   for a fully hand-authored doc — and composes with local doc names. No new sidecar
+8. **`local: true` is unchanged.** The flag keeps its meaning (opt out of rendering
+   for a fully hand-authored doc) and composes with local doc names. No new sidecar
    field is introduced, so no schema change and no drift-hash churn.
 
 9. **Managed-doc coverage is inherited, not built.** Because a synthesized local doc
    lives in the effective catalog with a `Title`/`Desc`, it flows into the AGENTS.md
    document map through the existing `resolvedDocs` path and into the ADR-0020
-   dead-link check through the existing rendered-doc walk — with no new doc-map or
+   dead-link check through the existing rendered-doc walk, with no new doc-map or
    link-check code.
 
 ## Invariants
 
-- `invariant: local-doc-catalog-clone` — `effectiveCatalog` synthesizes local doc entries
+- `invariant: local-doc-catalog-clone`: `effectiveCatalog` synthesizes local doc entries
   into a clone of `catalog.Standard.Docs`; the package global's `Docs` map is never
   mutated by opening a project.
-- `invariant: local-doc-requires-declaration` — a non-Standard, non-`local:true` enabled
+- `invariant: local-doc-requires-declaration`: a non-Standard, non-`local:true` enabled
   doc name without a declaring sidecar is a hard error at project open.
-- `invariant: local-doc-no-shadow` — a local (non-Standard) doc name equal to a
+- `invariant: local-doc-no-shadow`: a local (non-Standard) doc name equal to a
   `catalog.Standard.Docs` name is rejected.
-- `invariant: local-doc-renders-from-base` — a rendered local doc resolves its template id
+- `invariant: local-doc-renders-from-base`: a rendered local doc resolves its template id
   through the effective catalog to the shared base doc template, not the
   name-derived or empty path.
-- `invariant: local-doc-map-fields` — a synthesized local doc entry always carries a
-  non-empty `Title` and `Desc` — lifted from its declaring sidecar, or a name-derived
-  (`Title`) / generic (`Desc`) default when the sidecar omits the key — so the
+- `invariant: local-doc-map-fields`: a synthesized local doc entry always carries a
+  non-empty `Title` and `Desc` (lifted from its declaring sidecar, or a name-derived
+  (`Title`) / generic (`Desc`) default when the sidecar omits the key), so the
   document map lists it with a non-empty title and description.
-- `invariant: local-doc-base-publication-safe` — the base doc template renders leak-free
+- `invariant: local-doc-base-publication-safe`: the base doc template renders leak-free
   (no `<no value>`, no marker or leak residue) under empty data and no `content`
   part.
-- `invariant: local-doc-name-path-validated` — a local doc name is accepted only as one or
+- `invariant: local-doc-name-path-validated`: a local doc name is accepted only as one or
   more lowercase-kebab `/`-separated segments and is rejected for a path-escape
   (`..`), a leading/trailing/empty segment, a `.md` suffix, or the reserved
   base-template stem `_base`; skill and agent names remain flat.
@@ -169,11 +169,11 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   escape hatch only approximated.
 - **The releasing gap closes by dogfooding, via a distinct (catalog) mechanism.**
   The motivating application is a new toggleable *Standard catalog* doc `releasing`
-  — a single freeform `content` section whose default is a stub-classified authoring
-  prompt (ADR-0070), imposing no release structure — that any adopter enables with
+  (a single freeform `content` section whose default is a stub-classified authoring
+  prompt (ADR-0070), imposing no release structure) that any adopter enables with
   `awf add doc releasing`. This is *not* the local-doc path this ADR defines: it is a
   compile-time `DocEntry` in `catalog.Standard.Docs` rendering from its own embedded
-  `templates/docs/releasing.md.tmpl`, and it adds a bounded but real surface — the
+  `templates/docs/releasing.md.tmpl`, and it adds a bounded but real surface: the
   new catalog entry and template, its ADR-0070 stub classification, the
   config-reference regeneration (ADR-0088), and automatic full-catalog eval coverage
   (ADR-0053, which renders it under empty data, so its stub default must be
@@ -203,12 +203,12 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
 - **`local-doc-no-shadow` is a live collision risk for generic names.** A future
   release adding a catalog doc named identically to an adopter's existing local doc
   (plausible for generic names like `releasing` or `security`) demotes the adopter's
-  local sidecar and parts to unclaimed closed-tree drift with no rename guidance —
+  local sidecar and parts to unclaimed closed-tree drift with no rename guidance:
   the same trade-off ADR-0068 accepted for skills/agents, but more likely here.
 - **The closed-tree drift *guidance* degrades for deeply-nested unclaimed paths.**
   `classify()` keys its advisory detail strings on fixed segment counts, so a stray
   file inside a nested doc tree falls to the generic "unclaimed" message. Pass/fail
-  correctness is unaffected — the entry is still flagged; only the guidance text is
+  correctness is unaffected: the entry is still flagged; only the guidance text is
   generic. Accepted, not fixed.
 - **No schema migration.** Toggleable docs are opt-in (`awf add doc`), so shipping
   `releasing` needs no seed; adopters gain it by enabling it.
@@ -219,16 +219,16 @@ name. The single blocker is name validation: `ValidateArtifactName` rejects `/`.
   `working-with-awf` alongside its `awf new skill|agent` list (the agent guide does
   not enumerate the `awf new` scaffolding commands, so it gets no `new doc` line),
   and regenerate `docs/decisions/ACTIVE.md` via `./x sync` (the generated per-ADR
-  index — `docs/decisions/README.md` is the static explainer and carries no per-ADR
+  index; `docs/decisions/README.md` is the static explainer and carries no per-ADR
   row).
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| Add a `Base` flag to `DocEntry` mirroring `SkillSpec`/`TargetSpec` | Unnecessary — `DocEntry` already carries an explicit `TID` (ADR-0061); synthesis sets it to the base template directly. A flag would add state with no behaviour the `TID` does not already give. |
-| Section-declaring custom docs (sidecar declares its own `sections:`) | Heavier: a new sidecar field, section-parity handling for synthesized entries, more to validate — over-built for a freeform project doc, which a single `content` part already carries. A clean future increment if declared structure is ever needed. |
+| Add a `Base` flag to `DocEntry` mirroring `SkillSpec`/`TargetSpec` | Unnecessary: `DocEntry` already carries an explicit `TID` (ADR-0061); synthesis sets it to the base template directly. A flag would add state with no behaviour the `TID` does not already give. |
+| Section-declaring custom docs (sidecar declares its own `sections:`) | Heavier: a new sidecar field, section-parity handling for synthesized entries, more to validate (over-built for a freeform project doc, which a single `content` part already carries). A clean future increment if declared structure is ever needed. |
 | Registered pass-through (awf tracks the doc for map/link coverage but does not render it) | Undershoots "awf-managed": no render or drift management. It merely formalizes the `docMap` escape hatch this ADR retires. |
-| Flat doc names only, subfolders later | Rejected by the design intent — nested output, sidecar, and part paths already work via string/`filepath.Join` concatenation; only name validation blocked it, so the increment is small and worth doing once. |
+| Flat doc names only, subfolders later | Rejected by the design intent: nested output, sidecar, and part paths already work via string/`filepath.Join` concatenation; only name validation blocked it, so the increment is small and worth doing once. |
 | `releasing` as a bespoke multi-section catalog doc (versioning / artifacts / steps) | Forces a release structure no single project shares; a stub-default single section lets each adopter document its own process. |
-| Root-output docs (README as a managed doc) | Managed docs are `docsDir`-relative; root output is the `agents-doc`/AGENTS.md special case only. Deliberately deferred — a larger, separate decision. |
+| Root-output docs (README as a managed doc) | Managed docs are `docsDir`-relative; root output is the `agents-doc`/AGENTS.md special case only. Deliberately deferred: a larger, separate decision. |
