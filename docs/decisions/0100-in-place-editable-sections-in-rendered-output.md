@@ -141,8 +141,10 @@ section and the file's structure.
 
 8. **A rendered `#!`-shebang file is written executable.** On sync, a rendered file whose content
    begins with a `#!` shebang is written with mode `0755` (executable); every other rendered file
-   stays `0644`. The shebang sniff is the same one Decision 7 and `injectBanner` use, so "is this a
-   script?" has one definition across the banner, the pointer comment style, and the file mode. The
+   stays `0644`. The test is the one `#!`-prefix predicate Decision 7 and `injectBanner` already use —
+   there it reads the expanded template source, here the rendered content, and the two agree because
+   the shebang is the first line of both — so "is this a script?" has one definition across the
+   banner, the pointer comment style, and the file mode. The
    mode is enforced on every sync (a pre-existing file's mode is corrected, not just set at
    creation), so the runner is runnable as `./x` immediately after the first render, and the
    bootstrap and hook payloads — already `#!` scripts — become executable too (harmless: they are
@@ -177,9 +179,9 @@ section and the file's structure.
   an in-place-editable section carries it. (That this attribute *replaces* the former hardcoded
   path list is enforced by the dead-code gate on the removed literals, not by this bullet.)
 - `invariant: shebang-rendered-executable` — a rendered file whose content begins with a `#!` shebang
-  is written with an executable mode (`0755`) and every other rendered file with `0644`; the mode is
-  the `#!` sniff's alone (shared with the banner and pointer comment style) and is enforced on every
-  sync, not only at file creation.
+  is written with an executable mode (`0755`) and every other rendered file with `0644`; the mode
+  follows the one `#!`-prefix predicate (shared with the banner and pointer comment style) and is
+  enforced on every sync, not only at file creation.
 
 ## Consequences
 
