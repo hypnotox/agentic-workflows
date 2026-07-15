@@ -36,12 +36,13 @@ its own.
 ADR-0115's gate test scans three surfaces at once (the embedded `templates.FS`, the embedded
 `changelog.FS`, and every string literal in production Go under `internal/` and `cmd/`), so all
 three must already be clean when it lands. Phases 1 to 3 clean two of them plus the one behavioural
-change. Phase 4 cleans the third **and lands the test in the same commit**, because no grep can
-post-check the Go surface: a whole-file grep over non-test Go returns 95 hits where only 79 are in
-string literals, the other 16 sitting in comments that ADR-0115 Decision item 4 puts out of scope
-deliberately. The test is therefore the only honest post-check for its own phase, and ADR-0115's
-Invariants section independently requires the old-test deletion and the new-test addition to be
-atomic. Phase 4 satisfies both constraints in one commit.
+change. Phase 4 cleans the third **and lands the test in the same commit**. No *grep* can
+post-check the Go surface (a whole-file grep over non-test Go returns 95 hits where only 79 are in
+string literals, the other 16 sitting in comments that ADR-0115 Decision item 4 excludes
+deliberately), so the only mechanical check that fits is an AST walk, which is precisely what the
+test is. Splitting the phase would therefore land 31 files of prose edits in a commit whose
+completeness nothing committed ever proves, and ADR-0115's Invariants section independently
+requires the old-test deletion and the new-test addition to be atomic.
 
 Phase 5 retitles three ADRs (ADR-0115 Decision item 5). Phase 6 states the widened rule in the
 documentation standard and flips ADR-0115 to `Implemented`. Phase 7 widens that same line's scope
@@ -57,8 +58,12 @@ advisory rule and flips ADR-0117.
   `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, `templates/skills/bugfix/SKILL.md.tmpl`,
   `templates/docs/workflow.md.tmpl`, `templates/partials/review-spine-tail.md`,
   `templates/adr-readme/README.md.tmpl`, `templates/docs/doc-standard.md.tmpl`,
-  `changelog/CHANGELOG.md`, `internal/adr/adr.go`, `internal/adr/adr_test.go`,
-  `internal/project/residue_scan_test.go`, the 31 production Go files phase 4 names,
+  `changelog/CHANGELOG.md`, `.awf/domains/parts/adr-system/current-state.md`,
+  `.awf/domains/parts/tooling/current-state.md`, `internal/adr/adr.go`, `internal/adr/adr_test.go`,
+  `internal/project/residue_scan_test.go`, the 31 production Go files phase 4 names, the six test
+  files phase 4 names (`cmd/awf/context_test.go`, `cmd/awf/config_test.go`, `cmd/awf/init_test.go`,
+  `internal/project/notes_test.go`, `internal/project/sweep_test.go`,
+  `internal/initspec/initspec_test.go`),
   `internal/audit/audit.go`, `internal/audit/settings.go`, `internal/audit/settings_test.go`,
   `internal/audit/audit_test.go`, `internal/config/config.go`, `internal/configspec/spec.go`,
   `internal/project/configreference.go`, `internal/project/project.go`,
@@ -216,10 +221,14 @@ advisory rule and flips ADR-0117.
 
 ## Phase 4: Clean production Go literals and land the gate
 
-This phase's tasks share one closing commit and cannot be sliced: the cleanup has no deterministic
-post-check other than the test, and the test cannot land before the cleanup without failing the
-gate. ADR-0115's Invariants section independently requires the old-test deletion and the new-test
-addition to be atomic.
+This phase's tasks share one closing commit and are not sliced, for two reasons that are worth
+stating precisely. First, the test is the cleanup's only **permanent** completeness proof: an
+implementer can rebuild an equivalent AST scan ad hoc (task 4.1 gives the recipe), but a 4a/4b
+split would land 31 files of prose edits in a commit that no committed check ever validates, and
+the throwaway scan would leave no trace in the tree. Second, ADR-0115's Invariants section requires
+the old-test deletion and the new-test addition to be atomic, which pins the swap to a single
+commit regardless. Both halves would in fact be gate-green if split, so this is a deliberate choice
+about what the history proves, not a mechanical necessity.
 
 - [ ] **Task 4.1: Replace the 70 remaining em-dashes, 3 en-dashes, and 5 ellipses in production Go
   string literals.** A batch task. Scope is string literals only, in non-test files under
@@ -271,10 +280,42 @@ addition to be atomic.
   `internal/` and `cmd/`, skip `_test.go`, parse each file with `go/parser`, and inspect every
   `*ast.BasicLit` of kind `STRING`, which is exactly what task 4.2's test then does permanently.
 
+  **Two of these files feed rendered output, so this task creates drift that task 4.3 must sync.**
+  `internal/catalog/standard.go` carries the reviewer `digestSummary` data that renders through
+  `templates/partials/review-spine-tail.md` into `.claude/agents/adr-reviewer.md`,
+  `.claude/agents/plan-reviewer.md`, `.claude/agents/code-reviewer.md`, their `.cursor/agents/`
+  copies, and the `examples/sundial/.claude/agents/` copies. `internal/configspec/spec.go` carries
+  the descriptions that render into `docs/config-reference.md` and
+  `examples/sundial/docs/config-reference.md`.
+
   **Post-check:** task 4.2's test, run as
   `go test ./internal/project/ -run TestEmittedProseNoTypographicSubstitutes`, which must pass.
-  Some of these literals are asserted verbatim by tests; `./x gate` in task 4.3 catches any
-  assertion left stale, and those assertions are updated in this same commit.
+
+- [ ] **Task 4.1b: Update the test assertions that mirror the cleaned literals.** Six test files
+  assert these production strings verbatim and fail the moment task 4.1 lands. Task 4.2's test
+  cannot catch them (it skips `_test.go` by design), so `./x gate` in task 4.3 is their only
+  arbiter; they are enumerated here rather than left to be discovered.
+
+  **The rule.** An assertion that mirrors a production string changed in task 4.1 changes with it,
+  to match the new punctuation exactly. A test-owned fixture, input, or failure message keeps its
+  glyph untouched: `_test.go` is out of the ban's scope (ADR-0115 Decision item 4), and these files
+  change here only because the production behaviour they assert changed.
+
+  - `cmd/awf/context_test.go:94,95` (mirror `cmd/awf/context.go:137`), `:102,104` (mirror
+    `context.go:156,162`), `:107` (mirrors `context.go:168`), `:109` (mirrors `context.go:174`).
+    **Leave `:56,61,62` and `:100` alone**: those are fixture text and the output derived from it,
+    not a production separator.
+  - `internal/project/notes_test.go:176,177,202,216,233` (mirror `internal/project/check.go:192`)
+    and `:260` (mirrors the marker-shaped-line note in `check.go`). **Leave `:370` alone**: it is a
+    `t.Errorf` failure message.
+  - `internal/project/sweep_test.go:22,23` (mirror `internal/project/sweep.go:152` and the
+    stale-backup detail). **Leave `:35` alone**: it is fixture content.
+  - `cmd/awf/config_test.go:27` (mirrors `cmd/awf/config.go:28`).
+  - `internal/initspec/initspec_test.go:276,279` (mirror `internal/initspec/initspec.go:248,293`).
+  - `cmd/awf/init_test.go:198` (mirrors the same `initspec.go` format string, via the `gateCmd` key).
+
+  **Post-check:** `./x gate` in task 4.3. To confirm none was missed, no test may assert a string
+  that production no longer emits; the gate fails loudly and by name if one does.
 
 - [ ] **Task 4.2: Swap the gate test.** In `internal/project/residue_scan_test.go`, delete the
   `emDash` const (lines 81 to 84), `TestTemplateNoEmDash`, and its
@@ -286,17 +327,18 @@ addition to be atomic.
 
   ```go
   // bannedRunes are the seven typographic punctuation substitutes banned from
-  // emitted prose (ADR-0115). Notation (arrows, mathematical symbols, accented
-  // letters) is deliberately absent: this is a closed blocklist of substitutes for
-  // ASCII punctuation, never an ASCII-only allowlist.
+  // emitted prose (ADR-0115). Each key is written as an escape so this file states
+  // the rule without typing the glyphs it bans. Notation (arrows, mathematical
+  // symbols, accented letters) is deliberately absent: this is a closed blocklist
+  // of substitutes for ASCII punctuation, never an ASCII-only allowlist.
   var bannedRunes = map[rune]string{
-  	'—': "em-dash (U+2014)",
-  	'–': "en-dash (U+2013)",
-  	'…': "ellipsis (U+2026)",
-  	'‘': "left single quote (U+2018)",
-  	'’': "right single quote (U+2019)",
-  	'“': "left double quote (U+201C)",
-  	'”': "right double quote (U+201D)",
+  	'\u2014': "em-dash (U+2014)",
+  	'\u2013': "en-dash (U+2013)",
+  	'\u2026': "ellipsis (U+2026)",
+  	'\u2018': "left single quote (U+2018)",
+  	'\u2019': "right single quote (U+2019)",
+  	'\u201c': "left double quote (U+201C)",
+  	'\u201d': "right double quote (U+201D)",
   }
 
   // scanEmbedded reports every banned rune in every file of an embedded FS and
@@ -409,15 +451,20 @@ addition to be atomic.
   the walk-and-parse shape and the vacuous-pass guard is `internal/testsupport/deps_test.go`. The
   test adds no production function, so neither the dead-code gate nor the coverage gate is affected.
 
-- [ ] **Task 4.3: Verify and commit.** Run
-  `go test ./internal/project/ -run TestEmittedProseNoTypographicSubstitutes` (expect `ok`), then
-  `./x gate` (expect it to pass; it fails here if task 4.1 left a test asserting a cleaned literal,
-  in which case update that assertion and re-run). Run `./x check` and expect `check: clean` with
-  one advisory note, now naming `emitted-prose-no-typographic-substitutes` as a slug no Implemented
-  ADR declares. The note is expected until phase 6: its subject simply moves from the deleted marker
-  to the new one, and the ban stays enforced throughout because the test runs in the gate regardless
-  of its ledger status. Stage the 31 files from task 4.1, `internal/project/residue_scan_test.go`,
-  and any test file whose assertion moved, then commit:
+- [ ] **Task 4.3: Re-render, verify, and commit.** Run `./x sync` first: task 4.1 changed two
+  render *sources*, so skipping it leaves `./x check` reporting drift rather than `check: clean`.
+  The sync regenerates `.claude/agents/adr-reviewer.md`, `.claude/agents/plan-reviewer.md`,
+  `.claude/agents/code-reviewer.md`, their `.cursor/agents/` copies, `docs/config-reference.md`,
+  and the `examples/sundial/` copies of all of them.
+
+  Then run `go test ./internal/project/ -run TestEmittedProseNoTypographicSubstitutes` (expect
+  `ok`), then `./x gate` (expect it to pass; it fails here if task 4.1b missed an assertion, in
+  which case fix it and re-run), then `./x check` (expect `check: clean` with one advisory note,
+  now naming `emitted-prose-no-typographic-substitutes` as a slug no Implemented ADR declares). The
+  note is expected until phase 6: its subject simply moves from the deleted marker to the new one,
+  and the ban stays enforced throughout because the test runs in the gate regardless of its ledger
+  status. Stage the 31 files from task 4.1, the six test files from task 4.1b,
+  `internal/project/residue_scan_test.go`, and every file the sync regenerated, then commit:
 
   ```commit
   refactor(awf): gate plain punctuation in emitted prose
@@ -501,15 +548,33 @@ addition to be atomic.
   `Superseded by ADR-0115` already dropped `template-em-dash-free` from the required set. ADR-0115's
   Invariants section explains this at length; do not "repair" it.
 
-- [ ] **Task 6.4: Re-render, verify, and commit.** Run `./x sync` (regenerates
+- [ ] **Task 6.4: Record the append-only carve-out in the adr-system narrative.** Docs travel with
+  the change, and `.awf/domains/parts/adr-system/current-state.md:3` opens "Decisions live as
+  append-only ADRs under `docs/decisions/`", which ADR-0115 Decision item 5 now narrows. Recording
+  it here is the point: this narrative is what `awf context` feeds a future agent, and without it
+  the next agent reads ADR-0028 and refuses an identical normalization, or reads the retitles as
+  licence to edit ADR rationale. Append the following to that paragraph, after the sentence ending
+  "drift-checked by a regenerate-and-compare path.":
+
+  ```markdown
+  Append-only protects rationale, not orthography (ADR-0115): an Implemented ADR's arguments, decision items, alternatives, and consequences are never rewritten, but a meaning-preserving punctuation fix to its `# ` heading line is normalization rather than revision, and is permitted with explicit maintainer approval; the carve-out reaches the heading only, never the body.
+  ```
+
+  This narrative is a convention part, not a rendered artifact, so it is authored directly. The
+  other three domains ADR-0115 tags need no refresh, and the reason is worth stating rather than
+  leaving as an omission: `rendering`'s narrative describes the render engine, `invariants`' the
+  backing machinery, and `tooling`'s the commands, and none of the three asserts anything about
+  prose punctuation, the ban's scope, or the ACTIVE.md row format.
+
+- [ ] **Task 6.5: Re-render, verify, and commit.** Run `./x sync` (regenerates
   `docs/doc-standard.md`, `examples/sundial/docs/doc-standard.md`, `docs/decisions/ACTIVE.md` for
   the status change, the domain docs, and the sundial ACTIVE.md), then `./x check` (expect
   `check: clean`, and **the advisory note about an unbacked slug is now gone**, because ADR-0115 is
   Implemented and `TestEmittedProseNoTypographicSubstitutes` backs its slug), then `./x invariants`
   (expect `emitted-prose-no-typographic-substitutes` reported as backed, and `template-em-dash-free`
   reported nowhere), then `./x gate` (expect it to pass). Stage
-  `templates/docs/doc-standard.md.tmpl`, `changelog/CHANGELOG.md`, the ADR, and every regenerated
-  file, then commit:
+  `templates/docs/doc-standard.md.tmpl`, `changelog/CHANGELOG.md`, the ADR,
+  `.awf/domains/parts/adr-system/current-state.md`, and every regenerated file, then commit:
 
   ```commit
   feat(rendering): state the plain-punctuation rule (ADR-0115)
@@ -597,10 +662,23 @@ addition to be atomic.
 
 - [ ] **Task 8.2: Cover the new toggle in the settings tests.** The 100% coverage gate (ADR-0012)
   fails if the override branch added in task 8.1 is uncovered, and the existing assertions enumerate
-  every toggle. In `internal/audit/settings_test.go`, extend the toggle assertions at lines 15, 37,
-  and 60 to include `PlainPunctuation` (in both the condition and the `t.Errorf` arguments), and add
-  `PlainPunctuation: boolPtr(false),` to the explicit-false `AuditConfig` literal at line 57. Follow
-  the shape already used for `UncommittedChanges` in each.
+  the toggles. In `internal/audit/settings_test.go`, three assertions each span a condition line and
+  its `t.Errorf` line, and both lines change together:
+
+  - `TestResolveDefaultsWhenNil`, lines 15/16: add `|| !s.PlainPunctuation` to the condition and
+    `plain=%v` plus `s.PlainPunctuation` to the `t.Errorf`, following `UncommittedChanges`' shape.
+    This is what proves the new default is `true`.
+  - `TestResolveZeroAuditFallsBackToDefaults`, lines 37/38: add `|| !s.PlainPunctuation` and the
+    matching `t.Errorf` argument. Follow **`UndocumentedDomain`'s** shape here, not
+    `UncommittedChanges`': this assertion deliberately omits `UncommittedChanges`, so there is no
+    `UncommittedChanges` referent on these lines to copy.
+  - `TestResolveExplicitOverrides`, lines 60/61: add `|| s.PlainPunctuation` (unnegated, as its
+    siblings are) and the matching `t.Errorf` argument. This is the assertion that covers the new
+    override branch.
+
+  In the same test's `AuditConfig` literal, insert `PlainPunctuation:    boolPtr(false),` between
+  `UndocumentedDomain:` (line 57) and `UncommittedChanges:` (line 58), matching the field
+  declaration order established in task 8.1.
 
 - [ ] **Task 8.3: Thread `DocsDir` into the audit inputs.** ADR-0117 Decision item 3 names this the
   rule's one piece of new plumbing. In `internal/audit/audit.go`, in the `Inputs` struct, after the
@@ -636,13 +714,13 @@ addition to be atomic.
   // standard bans. Each is written as an escape so this file states the rule
   // without typing the glyphs it bans.
   var bannedProseRunes = map[rune]string{
-  	'—': "em-dash (U+2014)",
-  	'–': "en-dash (U+2013)",
-  	'…': "ellipsis (U+2026)",
-  	'‘': "left single quote (U+2018)",
-  	'’': "right single quote (U+2019)",
-  	'“': "left double quote (U+201C)",
-  	'”': "right double quote (U+201D)",
+  	'\u2014': "em-dash (U+2014)",
+  	'\u2013': "en-dash (U+2013)",
+  	'\u2026': "ellipsis (U+2026)",
+  	'\u2018': "left single quote (U+2018)",
+  	'\u2019': "right single quote (U+2019)",
+  	'\u201c': "left double quote (U+201C)",
+  	'\u201d': "right double quote (U+201D)",
   }
 
   // countBanned tallies each banned rune in s.
@@ -706,7 +784,7 @@ addition to be atomic.
   		return []Commit{{Hash: "abc1234", Subject: "docs(adr): x",
   			Changes: []FileChange{{Path: path, Action: Modified, OldText: oldText, NewText: newText}}}}
   	}
-  	dash, dots := "—", "…"
+  	dash, dots := "\u2014", "\u2026"
 
   	// A rising count warns, naming the file, the codepoint, and the commit.
   	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
@@ -757,7 +835,21 @@ addition to be atomic.
   }
   ```
 
-- [ ] **Task 8.6: Flip ADR-0117, re-render, verify, and commit.** In
+- [ ] **Task 8.6: Add the rule to the tooling narrative.** Docs travel with the change.
+  `.awf/domains/parts/tooling/current-state.md:7` enumerates every `awf audit` rule ("Its rules
+  cover Conventional-Commits, ... `domain-doc-staleness`, `undocumented-domain`, and
+  `domain-code-staleness`. One rule, `uncommitted-changes` ... is range-independent"), so shipping
+  a rule without listing it there leaves the enumeration wrong. In the sentence naming the
+  domain-doc-currency rules, after the `domain-code-staleness` clause and before the
+  `uncommitted-changes` sentence, add:
+
+  ```markdown
+  A further advisory rule, `plain-punctuation` (ADR-0117), warns when a commit raises the count of a typographic punctuation substitute (the em-dash, en-dash, ellipsis, or a curly quote) in a non-generated markdown file under `docsDir`: the trigger is a net increase per commit per file, comparing the change's old and new text, so existing prose is grandfathered without an allowlist and a doc that legitimately depicts a glyph warns rather than blocks.
+  ```
+
+  This narrative is a convention part, not a rendered artifact, so it is authored directly.
+
+- [ ] **Task 8.7: Flip ADR-0117, re-render, verify, and commit.** In
   `docs/decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md`, the frontmatter
   `status:` line becomes `status: Implemented`. Add to the `### Features` list under
   `## [Unreleased]` in `changelog/CHANGELOG.md`:
@@ -777,7 +869,10 @@ addition to be atomic.
   (expect `audit-plain-punctuation` reported as backed). Confirm the rule is live with `./x audit`:
   it exits zero and warns on the plan and ADR files this effort itself added, which is the rule
   working as designed (ADR-0117 Decision item 6: advisory severity is the depiction escape hatch).
-  Stage every changed and regenerated file, then commit:
+  Two further advisory warnings are expected here and are not defects: `domain-doc-staleness` and
+  `domain-code-staleness` fire for the domains this effort churns, and the narratives that were
+  factually affected are refreshed by tasks 6.4 and 8.6. Stage every changed and regenerated file,
+  including `.awf/domains/parts/tooling/current-state.md`, then commit:
 
   ```commit
   feat(tooling): add the plain-punctuation audit rule (ADR-0117)
@@ -818,9 +913,10 @@ Whole-effort acceptance checks, run from a clean tree at the end:
   ship a scope claim that ADR-0115 does not own and that nothing yet enforces. Two edits to one line
   keep each ADR's flip commit self-consistent, and each carries its own changelog entry because each
   is separately adopter-facing.
-- **Phase 4 is the plan's one unsliceable commit**, and the reason is stated in its header rather
-  than assumed: the Go-literal cleanup's only deterministic post-check is the test that must land
-  with it.
+- **Phase 4 is the plan's one coupled commit**, and its header states why rather than assuming it:
+  the test is the cleanup's only permanent completeness proof, and ADR-0115 requires the test swap
+  to be atomic anyway. Both halves would pass the gate if split, so the reason is what the history
+  proves, not what the gate forces.
 - **Deferred deliberately** (ADR-0115 Consequences records both): the sidecar blind spot (23
   ellipses reach `docs/pitfalls.md`, `docs/glossary.md`, and `docs/decisions/README.md` from
   per-project sources the gate does not read, which ADR-0115 Decision item 7 depends on), and the
