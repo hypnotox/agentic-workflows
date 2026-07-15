@@ -75,12 +75,18 @@ would fire only on newly-added amendments and would need no corpus backfill.
    corrected to name the linkage on both ADRs. The section renders from the template default with
    no local override, so the rule reaches every adopter.
 
-2. **Reconcile the skill's append-only statements, which currently forbid the rule.** Five other
-   surfaces of the same skill state that a live ADR is status-only: the lifecycle table's
-   `Accepted`, `Implemented`, and `Superseded` rows ("Status field only; the body is frozen"), the
-   `supersedence-full` bullet ("the only allowed edit on a non-Proposed ADR"), and the append-only
-   note ("only the `status` field is editable in place"). Left alone they contradict Decision 1
-   outright, and an agent has no way to obey both. Each is reworded to permit the `status` field
+2. **Reconcile the skill's append-only statements, which currently forbid the rule.** Seven
+   surfaces state that a live ADR is status-only, and they live in two files. Three are the
+   lifecycle table's `Accepted`, `Implemented`, and `Superseded` rows ("Status field only; the
+   body is frozen"), which are **catalog data** (`adrStates` in `internal/catalog/standard.go`)
+   rendered into the table, not template prose. Four are template prose in
+   `templates/skills/adr-lifecycle/SKILL.md.tmpl`: the `supersedence-full` bullet ("the only
+   allowed edit on a non-Proposed ADR"), `procedure-status-edit` step 1 ("the only allowed
+   in-place edit on a live ADR"), the `amendment-while-proposed` closing sentence, and the
+   `## Notes` append-only rule (the last two both reading "only the `status` field is editable in
+   place"). Unlike Decision 4's list, `adrStates` is not overridden in `.awf/`, so it needs no
+   second site. Left alone these contradict Decision 1 outright, and an agent has no way to obey
+   both. Each is reworded to permit the `status` field
    **and cross-reference metadata** (`superseded_by:`, `related:`), on the principle that
    append-only protects rationale, not bookkeeping: the body stays frozen, and appending a number
    to `related:` rewrites no rationale. Sibling ADR-0115 draws the same line for orthography
@@ -102,8 +108,12 @@ would fire only on newly-added amendments and would need no corpus backfill.
    places in the same commit: the catalog default (`docCurrencyItems` in
    `internal/catalog/standard.go`), so every adopter inherits it, **and**
    `.awf/agents/adr-reviewer.yaml`, because that file already overrides `docCurrencyItems`
-   wholesale and would otherwise silently drop the new item for awf's own reviewer. This mirrors
-   the deliberate pattern `.awf/agents/code-reviewer.yaml` already documents in a comment. The
+   wholesale and would otherwise silently drop the new item for awf's own reviewer.
+   `.awf/agents/code-reviewer.yaml` records the same hazard against its own `focusItems` override
+   in a comment ("the first two entries are the catalog defaults, kept deliberately"), though that
+   override restates the defaults it wants to keep while `adr-reviewer.yaml`'s `docCurrencyItems`
+   restates none; the shared lesson is that a wholesale `data:` list override must be maintained
+   deliberately at both sites, not that the two files are shaped alike. The
    ADR-0114 Decision 3 precedent is cited for *where the rule belongs* (the catalog, because the
    property is general to the standard), not for the mechanism: 0114 extended a template section,
    which awf does not override, whereas this is a `data:` list, which awf does.
