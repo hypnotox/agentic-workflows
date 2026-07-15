@@ -20,7 +20,7 @@ func sampleData() map[string]any {
 const tmpl = "# {{ .prefix }}\n\n<!-- awf:section surfaces -->\nS:{{ range .data.testSurfaces }}{{ .name }}{{ end }}\n<!-- awf:end -->\n\nrun {{ .vars.testCmd }}\n<!-- awf:section notes -->\nNOTE\n<!-- awf:end -->\n"
 
 func TestRenderDefault(t *testing.T) {
-	asm, parts := Assemble(ParseSections(tmpl), nil)
+	asm, parts := Assemble(ParseSections(tmpl), nil, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestRenderDefault(t *testing.T) {
 
 func TestRenderDropsSection(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {Drop: true}}
-	asm, parts := Assemble(ParseSections(tmpl), plan)
+	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestRenderDropsSection(t *testing.T) {
 
 func TestRenderConventionPart(t *testing.T) {
 	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM {{ .prefix }}", EditPath: ".awf/x.md"}}
-	asm, parts := Assemble(ParseSections(tmpl), plan)
+	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func TestEmptyPartRendersEmptyNotDropped(t *testing.T) {
 	// ADR-0034 item 4: an empty part yields an empty section body (the section and
 	// its awf:edit pointer remain), distinct from a drop which removes both.
 	plan := map[string]SectionPlan{"notes": {HasPart: true, PartBody: "", EditPath: ".awf/x.md"}}
-	asm, parts := Assemble(ParseSections(tmpl), plan)
+	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestEmptyPartRendersEmptyNotDropped(t *testing.T) {
 
 func TestEditPointerStub(t *testing.T) {
 	stubTmpl := "<!-- awf:section notes stub -->\nNOTE\n<!-- awf:end -->\n"
-	asm, parts := Assemble(ParseSections(stubTmpl), map[string]SectionPlan{"notes": {EditPath: ".awf/x.md"}})
+	asm, parts := Assemble(ParseSections(stubTmpl), map[string]SectionPlan{"notes": {EditPath: ".awf/x.md"}}, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestEditPointerStub(t *testing.T) {
 		t.Errorf("stub default must render the stub pointer:\n%s", out)
 	}
 	asm, parts = Assemble(ParseSections(stubTmpl),
-		map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM", EditPath: ".awf/x.md"}})
+		map[string]SectionPlan{"notes": {HasPart: true, PartBody: "CUSTOM", EditPath: ".awf/x.md"}}, HTMLComment)
 	out, err = Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestEditPointerStub(t *testing.T) {
 		t.Errorf("part-backed stub section must keep the from-pointer:\n%s", out)
 	}
 	// Non-stub default pointer unchanged (also asserted by TestRenderDefault).
-	asm, parts = Assemble(ParseSections(tmpl), nil)
+	asm, parts = Assemble(ParseSections(tmpl), nil, HTMLComment)
 	out, err = Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	// A non-empty read-back body is emitted verbatim (internal blank line kept)
 	// after the distinct awf:edit-in-place pointer — no re-templating.
 	body := "line one\n\nline two\n"
-	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: body}})
+	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: body}}, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -147,13 +147,87 @@ func TestAssembleInPlaceSection(t *testing.T) {
 
 	// An empty read-back body (first render, absent output) falls to the
 	// template default.
-	asm, parts = Assemble(segs, map[string]SectionPlan{"body": {InPlace: true}})
+	asm, parts = Assemble(segs, map[string]SectionPlan{"body": {InPlace: true}}, HTMLComment)
 	out, err = Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out, "<!-- awf:edit-in-place body —") || !strings.Contains(out, "DEFAULT") {
 		t.Errorf("empty in-place body must fall to the template default:\n%s", out)
+	}
+}
+
+// The pointer comment style follows the target (ADR-0100 Decision 7): a
+// #!-shebang target emits #-comment pointers, everything else HTML. All four
+// awf:edit-family variants switch style; neither trips the residual-marker guard.
+func TestCommentStyleForSourceAndPointers(t *testing.T) {
+	if got := CommentStyleForSource("#!/usr/bin/env bash\ncase x in\n"); got != HashComment {
+		t.Errorf("a #!-shebang source must sniff HashComment, got %v", got)
+	}
+	if got := CommentStyleForSource("# Markdown H1 is not a shebang\n"); got != HTMLComment {
+		t.Errorf("a non-shebang source must sniff HTMLComment, got %v", got)
+	}
+
+	// invariant: in-place-pointer-distinct
+	// The distinct awf:edit-in-place pointer renders in the target's comment
+	// syntax — # for a shebang target, <!-- --> otherwise.
+	src := "#!/usr/bin/env bash\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\n"
+	segs := ParseSections(src)
+	style := CommentStyleForSource(src)
+	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: "echo hi\n"}}, style)
+	out, err := Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "# awf:edit-in-place body — your edits below are preserved across syncs; awf owns the rest\n") {
+		t.Errorf("shell target must render a #-comment in-place pointer:\n%s", out)
+	}
+	if strings.Contains(out, "<!-- awf:edit-in-place") {
+		t.Errorf("shell target must NOT render an HTML pointer:\n%s", out)
+	}
+	if err := CheckResidualMarkers(asm); err != nil {
+		t.Errorf("#-style pointer must not trip the residual-marker guard: %v", err)
+	}
+
+	// The three ordinary awf:edit variants (from-part / stub / default) also
+	// switch style. Each is exercised in HashComment vs HTMLComment.
+	variants := []struct {
+		name  string
+		tmpl  string
+		plan  map[string]SectionPlan
+		token string
+	}{
+		{"from-part", "<!-- awf:section s -->\nD\n<!-- awf:end -->\n",
+			map[string]SectionPlan{"s": {HasPart: true, PartBody: "P", EditPath: ".awf/s.md"}},
+			"awf:edit s — from .awf/s.md"},
+		{"stub", "<!-- awf:section s stub -->\nD\n<!-- awf:end -->\n",
+			map[string]SectionPlan{"s": {EditPath: ".awf/s.md"}},
+			"awf:edit s — stub; replace by creating .awf/s.md"},
+		{"default", "<!-- awf:section s -->\nD\n<!-- awf:end -->\n",
+			map[string]SectionPlan{},
+			"awf:edit s — default; create .awf/s.md to override"},
+	}
+	for _, v := range variants {
+		vsegs := ParseSections(v.tmpl)
+		if v.name == "default" {
+			v.plan = map[string]SectionPlan{"s": {EditPath: ".awf/s.md"}}
+		}
+		hashAsm, hp := Assemble(vsegs, v.plan, HashComment)
+		hashOut, err := Execute(hashAsm, sampleData(), hp, "t")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(hashOut, "# "+v.token+"\n") {
+			t.Errorf("%s: HashComment must render `# %s`:\n%s", v.name, v.token, hashOut)
+		}
+		htmlAsm, tp := Assemble(vsegs, v.plan, HTMLComment)
+		htmlOut, err := Execute(htmlAsm, sampleData(), tp, "t")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(htmlOut, "<!-- "+v.token+" -->\n") {
+			t.Errorf("%s: HTMLComment must render `<!-- %s -->`:\n%s", v.name, v.token, htmlOut)
+		}
 	}
 }
 
@@ -184,7 +258,7 @@ func TestAssembleStubPartRendersVerbatim(t *testing.T) {
 		PartStub: true,
 		EditPath: ".awf/x.md",
 	}}
-	asm, parts := Assemble(ParseSections(tmpl), plan)
+	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -222,7 +296,7 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 		PartBody: "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}.",
 		EditPath: ".awf/x/parts/y/body.md",
 	}}
-	asm, parts := Assemble(ParseSections(tmpl), plan)
+	asm, parts := Assemble(ParseSections(tmpl), plan, HTMLComment)
 	out, err := Execute(asm, sampleData(), parts, "raw-test")
 	if err != nil {
 		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
@@ -251,7 +325,7 @@ func TestSectionDefaultSplice(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			plan := map[string]SectionPlan{"body": {HasPart: true, PartBody: c.part}}
-			asm, parts := Assemble(segs, plan)
+			asm, parts := Assemble(segs, plan, HTMLComment)
 			out, err := Execute(asm, data, parts, "t")
 			if err != nil {
 				t.Fatalf("Execute: %v", err)
@@ -266,7 +340,7 @@ func TestSectionDefaultSplice(t *testing.T) {
 func TestSectionDefaultSpliceEmptyDefault(t *testing.T) {
 	segs := ParseSections("<!-- awf:section body -->\n<!-- awf:end -->\n")
 	plan := map[string]SectionPlan{"body": {HasPart: true, PartBody: "PRE" + SectionDefaultSentinel + "POST"}}
-	asm, parts := Assemble(segs, plan)
+	asm, parts := Assemble(segs, plan, HTMLComment)
 	out, err := Execute(asm, map[string]any{}, parts, "t")
 	if err != nil {
 		t.Fatalf("Execute: %v", err)

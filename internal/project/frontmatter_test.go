@@ -45,7 +45,7 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 			vars[v] = ""
 		}
 		data := map[string]any{"prefix": "awf", "vars": vars, "layout": layout, "data": map[string]any{}, "skills": map[string]bool{}}
-		asm, parts := render.Assemble(render.ParseSections(string(src)), nil)
+		asm, parts := render.Assemble(render.ParseSections(string(src)), nil, render.HTMLComment)
 		out, err := render.Execute(asm, data, parts, "test")
 		if err != nil {
 			t.Fatalf("render %s: %v", tid, err)

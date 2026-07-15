@@ -492,7 +492,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(segs, plan)
+	assembled, parts := render.Assemble(segs, plan, render.CommentStyleForSource(expanded))
 	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through RenderAll; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}

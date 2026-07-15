@@ -40,25 +40,58 @@ type SectionPlan struct {
 	InPlaceBody string
 }
 
-// editPointer is the awf:edit provenance comment emitted before a section body.
-// A stub-attributed section rendering its template default gets a distinct
-// pointer so the rendered file itself distinguishes a must-replace default from
-// a valid one (ADR-0070). An in-place section gets a distinct `awf:edit-in-place`
-// pointer whose token is deliberately not awf:section/awf:end-shaped, so it
-// survives into the shipped output (unlike structural markers) and bounds the
-// read-back region without tripping the residual-marker guards (ADR-0100).
+// CommentStyle is the comment syntax a rendered target uses for the surviving
+// awf:edit-family provenance pointers. Because the pointers survive into output as
+// comments, they must be valid comments in the target's language (ADR-0100
+// Decision 7): a `#`-line comment for a `#!`-shebang target such as a shell script,
+// an HTML comment otherwise. The zero value is HTMLComment, the historical default.
+type CommentStyle int
+
+const (
+	HTMLComment CommentStyle = iota // <!-- <text> -->
+	HashComment                     // # <text>
+)
+
+// CommentStyleForSource picks the pointer comment style for a target from its
+// (expanded) template source, by the same `#!`-shebang sniff injectBanner uses so
+// the pointer emitter and the read-back matcher derive the style identically and
+// cannot diverge (ADR-0100 Decision 7).
+func CommentStyleForSource(src string) CommentStyle {
+	if strings.HasPrefix(src, "#!") {
+		return HashComment
+	}
+	return HTMLComment
+}
+
+// wrap renders inner as a one-line comment in this style, trailing newline included.
+func (style CommentStyle) wrap(inner string) string {
+	if style == HashComment {
+		return "# " + inner + "\n"
+	}
+	return "<!-- " + inner + " -->\n"
+}
+
+// editPointer is the awf:edit provenance comment emitted before a section body,
+// in the target's CommentStyle (ADR-0100 Decision 7). A stub-attributed section
+// rendering its template default gets a distinct pointer so the rendered file
+// itself distinguishes a must-replace default from a valid one (ADR-0070). An
+// in-place section gets a distinct `awf:edit-in-place` pointer whose token is
+// deliberately not awf:section/awf:end-shaped, so it survives into the shipped
+// output (unlike structural markers) and bounds the read-back region without
+// tripping the residual-marker guards (ADR-0100). Only the comment delimiters
+// vary by style; the token and phrasing are constant.
 // touches-invariant: section-edit-pointer — awf:edit provenance pointer emission; proof in render_test.go
-func editPointer(name string, stub bool, p SectionPlan) string {
-	if p.InPlace {
-		return fmt.Sprintf("<!-- awf:edit-in-place %s — your edits below are preserved across syncs; awf owns the rest -->\n", name)
+func editPointer(name string, stub bool, p SectionPlan, style CommentStyle) string {
+	switch {
+	case p.InPlace:
+		return style.wrap(fmt.Sprintf("awf:edit-in-place %s — your edits below are preserved across syncs; awf owns the rest", name))
+	case p.HasPart:
+		return style.wrap(fmt.Sprintf("awf:edit %s — from %s", name, p.EditPath))
+	case stub:
+		return style.wrap(fmt.Sprintf("awf:edit %s — stub; replace by creating %s", name, p.EditPath))
+	default:
+		return style.wrap(fmt.Sprintf("awf:edit %s — default; create %s to override", name, p.EditPath))
 	}
-	if p.HasPart {
-		return fmt.Sprintf("<!-- awf:edit %s — from %s -->\n", name, p.EditPath)
-	}
-	if stub {
-		return fmt.Sprintf("<!-- awf:edit %s — stub; replace by creating %s -->\n", name, p.EditPath)
-	}
-	return fmt.Sprintf("<!-- awf:edit %s — default; create %s to override -->\n", name, p.EditPath)
 }
 
 // partSentinel is the brace-free, NUL-delimited placeholder emitted in a part's
@@ -82,7 +115,7 @@ const SectionDefaultSentinel = "\x00awf:section-default\x00"
 // either a sentinel standing in for its part body (restored after Execute) or the
 // template default. Section markers are consumed here and never written.
 // touches-invariant: no-section-marker-leak — section markers consumed, never written; proof in render_test.go
-func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]string) {
+func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
 	var b strings.Builder
 	parts := map[string]string{}
 	for _, s := range segs {
@@ -94,7 +127,7 @@ func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]s
 		if p.Drop {
 			continue
 		}
-		b.WriteString(editPointer(s.Name, s.Stub, p))
+		b.WriteString(editPointer(s.Name, s.Stub, p, style))
 		switch {
 		case p.InPlace:
 			// touches-invariant: in-place-pointer-distinct — distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
