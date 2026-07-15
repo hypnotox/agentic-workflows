@@ -83,6 +83,10 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
 
+### Proposed
+
+- [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
+
 ### Superseded
 
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md) → superseded by ADR-0115

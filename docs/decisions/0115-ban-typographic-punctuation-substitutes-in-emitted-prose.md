@@ -5,7 +5,7 @@ supersedes: [113]
 retires_invariants: []
 superseded_by: ""
 tags: [template-residue, doc-standard, active-md, adr-lifecycle]
-related: [28, 31, 73, 82, 112, 113, 117]
+related: [28, 31, 73, 82, 112, 113, 117, 118]
 domains: [rendering, adr-system, invariants, tooling]
 ---
 # ADR-0115: Ban typographic punctuation substitutes in emitted prose
