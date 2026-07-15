@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [doc-standard, adr-lifecycle, plan-taxonomy, active-md, verification-discipline]
-related: [28, 113, 115, 117]
+related: [28, 113, 115, 116, 117]
 domains: [adr-system, rendering, tooling]
 ---
 # ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose
@@ -35,10 +35,17 @@ tiering feeds them. The premise reaches further than the conclusion the chain dr
 
 Two measurements shape the decision, both verifiable at the time of writing:
 
-- **The corpus is large but bounded.** `docs/decisions`: 113 files carrying 2341 em-dashes, 27
-  en-dashes, 133 ellipses, 0 curly quotes. `docs/plans`: 78 files carrying 4347, 154, 228, 0. About
-  7200 sites across 191 files. No occurrence in any ADR body sits inside a fenced code block (0 of
-  2341), so no code example is at risk.
+- **The corpus is large but bounded.** The authored files are 113 numbered ADRs carrying 2341
+  em-dashes, 26 en-dashes, 130 ellipses, 0 curly quotes, and 78 dated plans carrying 4347, 154, 228,
+  0. About 7200 sites across 191 files. These counts describe the authored corpus only; the
+  whole-directory figures are 1 en-dash and 3 ellipses higher because `docs/decisions/` also holds
+  generated files, which item 1 excludes.
+- **The two halves of the corpus behave differently, and the difference is load-bearing.** No
+  occurrence in any ADR body sits inside a fenced code block (0 of 2341). The plans are the
+  opposite: about 895 occurrences sit inside fences, across 77 of the 78 files (424 unlabeled, 312
+  `go`, 94 `markdown`, 31 `yaml`, 29 `diff`, 5 `bash`), because the plan convention requires a task
+  to give exact content. A rule derived from the ADR half alone would be wrong about the larger
+  half.
 - **The convention is already half-followed, exactly as item 5 warned.** ADR-0028's title carries an
   en-dash: "ADR-first ordering and a visible plan-ADR resync loop in the workflow chain". Item 5
   swept the three *em-dashed* titles, but ADR-0115 bans seven codepoints, so the en-dashed title
@@ -61,16 +68,30 @@ act or re-litigates it.
    every ADR and plan.** This is partial-item supersedence of **ADR-0115 Decision item 5**, whose
    "the heading line only, never the body" clause is overridden; ADR-0115 stays Implemented and
    every other item stands, and it carries `related: [118]` as the back-pointer (ADR-0116). The
-   scope is `docs/decisions/**.md` and `docs/plans/**.md`. `docs/research/` is deliberately out of
-   scope: it is not part of the decision corpus agents are steered by, and no approval covers it.
+   scope is the **authored** files only: `docs/decisions/[0-9]*.md` and the dated plans under
+   `docs/plans/`. Generated files are excluded by construction, not by exemption: `ACTIVE.md`,
+   `docs/decisions/README.md`, and `docs/plans/template.md` are rendered, and hand-editing a
+   rendered file is forbidden outright, so a sweep could not reach them even in principle. Their
+   residue is item 3's and the follow-up's business, not this item's. `docs/research/` is
+   deliberately out of scope: it is not part of the decision corpus agents are steered by, and no
+   approval covers it.
 
-2. **Prose that is about a banned glyph keeps its glyph.** Where a document names, depicts, or
-   discusses one of the seven codepoints as its subject, the occurrence stays; normalizing it would
-   destroy the meaning the sentence carries. At the time of writing this exempts exactly one file,
-   `docs/decisions/0113-em-dash-free-shipped-templates.md`, the ADR about the em-dash. The rule is
-   stated by intent rather than as a file list, so it stays true as the corpus grows. This is a
-   judgement, not a mechanical test, which is why the completeness check in item 6 names the
-   exemption explicitly rather than inferring it.
+2. **ADR-0113 is exempt by maintainer designation, and the exemption rests on that alone.**
+   `docs/decisions/0113-em-dash-free-shipped-templates.md`, the ADR about the em-dash, keeps its
+   seven occurrences because the maintainer designated it, on the judgement that the record of a
+   decision about a glyph should be left as it stood. No meaning-preservation claim is made, because
+   none is available: all seven of its occurrences are ordinary prose punctuation, and normalizing
+   them would destroy nothing. It could be swept safely; it is not, by choice.
+
+   **The tempting general rule, "prose that depicts a banned glyph keeps it", is deliberately not
+   adopted, because it would select the empty set.** This project's convention is to name a
+   codepoint rather than type it (ADR-0113 Decision item 4 mandates exactly that for the
+   doc-standard template), and the corpus already follows it: ADR-0113 names its subject as
+   "U+2014" and "Em-dash characters (U+2014)" without ever typing one, and ADR-0115, ADR-0117, and
+   the plan that implemented them carry zero occurrences between them for the same reason. An
+   intent-rule would therefore exempt nothing while appearing to exempt something, which is worse
+   than a named file. If a future document genuinely needs to depict a glyph, that is a new decision
+   with a real case behind it, not a rule written in advance for a case that has never arisen.
 
 3. **The sweep covers all seven banned codepoints, not just the em-dash, and it includes headings.**
    ADR-0028's en-dashed title is normalized here, closing the gap ADR-0115 item 5 left when it swept
@@ -92,23 +113,44 @@ act or re-litigates it.
    delta was exactly the three words of one intended rephrasing.
 
 6. **Completeness is proven by a scoped probe, run at the granularity the rule governs.** The sweep
-   is done when a scan of `docs/decisions/**.md` and `docs/plans/**.md` for the seven codepoints
-   returns nothing outside the item-2 exemption. The probe names the exemption rather than reading a
-   wider unit and tolerating a residue, so a nonzero result is a defect and not a judgement call.
+   is done when a scan of the authored files named in item 1 for the seven codepoints returns
+   nothing outside the single file item 2 names. The probe reads the authored corpus and names the
+   one exemption, rather than reading a wider unit and tolerating a residue, so a nonzero result is
+   a defect and not a judgement call. This is deliberate: ADR-0115 item 5's own post-check read
+   whole files for a heading-scoped rule and was therefore unsatisfiable, and that failure is
+   recorded in the pitfalls doc.
 
-7. **Replacement is by sentence structure, never a blind substitution.** An em-dash becomes the
+7. **Fenced code blocks are swept, and the sweep reaches inside them.** The roughly 895 in-fence
+   occurrences in the plans are not spared. A `go` fence quoting an em-dashed string literal is
+   quoting code that ADR-0115 has since made illegal and the parent effort has already cleaned, so
+   normalizing the fence makes the frozen plan agree with the code that actually shipped rather than
+   preserving a specimen of a form the project now bans. The word-stream proof of item 5 applies
+   inside fences exactly as it does outside, so no content can be lost there either.
+
+8. **Replacement is by sentence structure, never a blind substitution.** An em-dash becomes the
    punctuation the sentence wants: a colon where what follows explains what precedes, a semicolon
    between independent clauses, a comma for a light aside, and parentheses for a parenthetical. A
    pair of em-dashes bracketing a clause becomes a pair of parentheses. An en-dash in a numeric or
    token range becomes an ASCII hyphen. An ellipsis becomes three periods. A bare hyphen is never
-   substituted for an em-dash. A blind rule would corrupt the roughly 700 occurrences that sit on
-   lines carrying two or more, and the corpus is hard-wrapped, so a bracketing pair can span lines.
+   substituted for an em-dash. A blind rule would corrupt the 694 occurrences that sit on lines
+   carrying two or more, and the corpus is hard-wrapped, so a bracketing pair can span lines. Inside
+   a fence the same rules apply to the prose the fence contains; where a fence holds code, the
+   replacement is whatever the surrounding language makes correct, which for a Go string literal is
+   the same colon-or-parentheses choice the parent effort applied to the real source.
 
-8. **This authorises one act; it creates no new ongoing rule.** The forward-looking regime is
-   unchanged and already owned: ADR-0115 gates the emitted surfaces, ADR-0117 warns on newly
-   authored prose. This ADR declares no invariant and adds no check, because a completed sweep is
-   history rather than a property to maintain: nothing reintroduces the glyphs except new authoring,
-   which ADR-0117 already covers.
+9. **This authorises one act; it creates no new ongoing rule, and it closes no gate.** The
+   forward-looking regime is unchanged and already owned: ADR-0115 gates the emitted surfaces,
+   ADR-0117 warns on newly authored prose. This ADR declares no invariant and adds no check, because
+   a completed sweep is history rather than a property to maintain.
+
+   The reach of that regime is narrower than "everything", and this item states the gap rather than
+   implying coverage that does not exist. ADR-0117's rule reads `.md` files under the docs directory
+   and skips generated paths, so three live sources are checked by nothing: `.awf/docs/pitfalls.yaml`,
+   `.awf/docs/glossary.yaml`, and `.awf/parts/adr-readme/invariants.md` are neither `.md` nor under
+   the docs directory, while their render targets are generated and therefore excluded at the other
+   end. A new pitfall entry containing an em-dash reaches emitted prose with no check at either end.
+   That gap is real, it is out of scope here because it is a question about what counts as an emitted
+   surface rather than about append-only, and it is left to an immediate follow-up ADR.
 
 ## Invariants
 
@@ -127,8 +169,12 @@ already declared by ADR-0115 (`emitted-prose-no-typographic-substitutes`) and AD
 - **The decision corpus stops teaching what it forbids.** An agent reading any ADR or plan for
   context sees prose that follows the standard the same corpus states, so the corpus and the rule
   agree. That is the whole return on the effort.
-- **ADR-0028's en-dashed title is fixed, and with it the last banned codepoint in generated
-  output.** `docs/decisions/ACTIVE.md` and `docs/domains/adr-system.md` re-render clean.
+- **ADR-0028's en-dashed title is fixed, and two generated files re-render clean**
+  (`docs/decisions/ACTIVE.md` and `docs/domains/adr-system.md`). It is **not** the last banned
+  codepoint in generated output: 24 remain, in `docs/pitfalls.md` (20), `docs/decisions/README.md`
+  (3), and `docs/glossary.md` (1), rendered from the three `.awf/` sources item 9 names. Those are
+  the same defect class as the ADR-0028 title, a banned codepoint reaching emitted output through
+  data no gate reads, and they are the follow-up's business.
 - **191 files are touched in a single sweep, and the diff is large and mechanical.** It is
   reviewable only by the word-stream proof plus spot reading, not by reading 7200 hunks. That is
   accepted deliberately: the proof is stronger evidence than a human diff read would be, because it
@@ -155,5 +201,8 @@ already declared by ADR-0115 (`emitted-prose-no-typographic-substitutes`) and AD
 | Amend ADR-0115 in place | It is Implemented, so its body is frozen; append-only permits editing only status and cross-reference metadata on a live ADR. Partial-item supersedence with a back-pointer is the sanctioned form (ADR-0116). |
 | Declare an invariant and gate the authored corpus | Needs a permanent exemption mechanism for item 2's judgement, which ADR-0113 and ADR-0115 both refused; converts elective hygiene into a standing gate over hand-authored records, which is what ADR-0117's advisory severity deliberately avoids. |
 | Blind mechanical substitution (every em-dash to a colon) | Corrupts bracketing pairs: "the template - and any future template - must describe" becomes ": and any future template:". Roughly 700 occurrences sit on lines carrying two or more, and pairs span the hard-wrapped lines. |
+| Exempt fenced code blocks as specimens | Tempting, and it was the initial recommendation: a fence preserves the code as it stood at plan time. Rejected because most `go` fences quote string literals ADR-0115 has since made illegal and the parent effort already cleaned, so the "preserved" specimen is a record of a form the project bans, and it would leave about 895 occurrences and a probe that never returns clean. |
+| Sweep prose fences but exempt code fences | Splits the 895 by language and needs a per-fence judgement the probe cannot express; the 424 unlabeled fences, the largest group, are heterogeneous and would each need classifying. |
 | Extend the sweep to `docs/research/` | Not part of the decision corpus agents are steered by, and no approval covers it. Left out deliberately rather than swept for tidiness. |
+| Fold the emitted-surface gap (the 24 glyphs in generated docs) into this ADR | A different topic: what counts as an emitted surface, not how far append-only bends. It would pull `invariants` into this ADR's domains and widen its tags to domain scale, and it changes a gate where this ADR changes none. Left to an immediate follow-up. |
 | Sweep `docs/decisions` now, `docs/plans` later | Two efforts, two reviews, and a corpus that stays half-converted in between, for no reduction in total risk: the word-stream proof scales to both at once. |
