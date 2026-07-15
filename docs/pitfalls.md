@@ -278,7 +278,7 @@ taught the one-directional model outright. **If you are about to record a recurr
 the corpus before you count.**
 
 The detector this entry used to propose (for each ADR body citing another ADR's "Decision
-item", require a back-pointer) fires on well over a hundred sites against ~16 real ones and
+item", require a back-pointer) fires on well over a hundred sites against ~19 real ones and
 is not viable; a verb-anchored trigger (`amends`, `revises`, `supersedes`, optionally
 prefixed `partially`) is a different and plausible proposition, because a bare parenthetical
 citation carries no verb. ADR-0116 states the rule in the skill procedure and the
