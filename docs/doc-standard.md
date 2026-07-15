@@ -13,6 +13,7 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 - **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
 - **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
+- **Plain punctuation.** Shipped prose uses plain punctuation (colons, semicolons, commas, parentheses); the em-dash character (U+2014) is banned, as it reads as machine-set.
 - **Present-tense, authoritative voice.** Describe what is; use the imperative for instructions.
 - **Tool-agnostic, action-first.** Rendered skill and agent prose names the action an agent takes, not the tool one runtime exposes to take it: "dispatch a fresh-context subagent", not a runtime's tool name. Project-specific identifiers (skill names, command names) are not runtime tools and stay.
 - **Reference optional docs only when enabled.** Link a toggleable doc only if it is currently enabled in the project's `docs:` array; the dead-reference gate enforces this mechanically for markdown links.

@@ -77,3 +77,35 @@ func TestTemplateSourceResidue(t *testing.T) {
 		}
 	}
 }
+
+// emDash is the em-dash character (U+2014) banned from shipped templates by
+// ADR-0113. It reads as machine-set punctuation, a tell of unedited AI
+// authoring, so shipped prose uses plain punctuation instead.
+const emDash = "—"
+
+// TestTemplateNoEmDash scans every embedded template source and fails on an
+// em-dash. The ban is scoped to shipped templates only: hand-authored ADRs and
+// plans, and adopter parts and sidecar data, are deliberately out of scope
+// (ADR-0113).
+// invariant: template-em-dash-free
+func TestTemplateNoEmDash(t *testing.T) {
+	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		b, err := fs.ReadFile(templates.FS, path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(b), emDash) {
+			t.Errorf("%s contains an em-dash (U+2014); shipped templates use plain punctuation (ADR-0113)", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

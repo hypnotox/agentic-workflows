@@ -14,8 +14,8 @@ data:
           desc: scaffold a dated plan under docs/plans from the rendered plans template
     # Core-only invariants (ADR-0112): the guide lists only cross-cutting rules
     # not scoped to a single subsystem's files. Path/subsystem-specific invariants
-    # live in their owning ADR and are reached via `awf context` / ACTIVE.md — do
-    # not re-add them here. Retention criterion: docs/agents-md-standard.md.
+    # live in their owning ADR and are reached via `awf context` / ACTIVE.md;
+    # do not re-add them here. Retention criterion: docs/agents-md-standard.md.
     invariants:
         - ref: ADR-0001, ADR-0045
           text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'

@@ -141,6 +141,12 @@ query a single version or a range.
   `awf sync`.
 
 ### Others
+- Shipped templates are now gate-checked em-dash-free (ADR-0113). A new gate
+  scans awf's embedded templates and fails on the em-dash character (U+2014),
+  and the documentation authoring standard gains a plain-punctuation rule.
+  The ban is scoped to shipped templates; hand-authored ADRs and plans, and
+  adopter-authored parts and sidecar data, are out of scope. Adopters get the
+  reworded standard on their next `awf sync`.
 - The agent guide's Invariants section is now core-only (ADR-0112). The
   `agents-md-standard.md` authoring guidance gains a decidable retention
   criterion: a rule belongs in the guide only when it is not scoped to a single
