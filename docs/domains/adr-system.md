@@ -27,4 +27,5 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 ### Proposed
 
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
+- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
 

@@ -102,6 +102,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 ### Proposed
 
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
+- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
 
 ### Superseded
 

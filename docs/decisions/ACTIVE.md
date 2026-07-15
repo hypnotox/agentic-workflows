@@ -120,6 +120,7 @@
 ## Proposed
 
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md) — Proposed
+- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) — Proposed
 
 ## Superseded
 
