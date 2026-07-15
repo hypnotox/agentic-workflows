@@ -172,7 +172,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
 					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
 				}
-				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: p.isGeneratedIndex(f.Path)})
+				backups = append(backups, Backup{Path: f.Path, Bak: bak, Index: f.RegenChecked})
 			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat returns a non-NotExist error only on a permission/IO fault that root bypasses
 				return nil, nil, nil, statErr
 			}
@@ -183,6 +183,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		lock.Files[f.Path] = manifest.Entry{
 			TemplateID: f.TemplateID, TemplateHash: f.TemplateHash,
 			ConfigHash: f.ConfigHash, OutputHash: manifest.Hash([]byte(f.Content)),
+			RegenChecked: f.RegenChecked,
 		}
 		want[f.Path] = true
 	}
@@ -254,9 +255,10 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 				cause = "template"
 			case cMoved:
 				cause = "config"
-			case e.TemplateHash == "":
-				// Generated indexes carry no hashes to attribute; their
-				// inputs are the scanned decision records.
+			case e.RegenChecked:
+				// Regeneration-checked entries carry no frozen-hash attribution:
+				// generated indexes (whose inputs are the scanned decision
+				// records) and in-place files (whose read-back body moved).
 				cause = "regenerated"
 			default:
 				// Real hashes, neither moved: a non-hashed input such as
@@ -268,14 +270,6 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
 	}
 	return backups, changes, pruned, lock.Save(p.lockPath())
-}
-
-// isGeneratedIndex reports whether rel is the generated ADR index, a per-domain
-// index, or the generated config reference — the awf-owned generated docs whose
-// first-time takeover warrants a note.
-func (p *Project) isGeneratedIndex(rel string) bool {
-	lay := p.layout()
-	return rel == lay.ActiveMd || strings.HasPrefix(rel, lay.DomainsDir+"/") || rel == p.crefRel()
 }
 
 func (p *Project) lockPath() string {

@@ -471,7 +471,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	crefRel := p.crefRel()
 
 	var drift []manifest.Drift
-	drift = append(drift, p.checkLockedFiles(lock, rendered, activeMdRel, domainsPrefix, crefRel)...)
+	drift = append(drift, p.checkLockedFiles(lock, rendered)...)
 	// Local skills/agents are not rendered, so their hand-authored frontmatter is
 	// validated directly on disk.
 	if err := p.checkLocalFrontmatter(func(path string, e error) {
@@ -558,12 +558,12 @@ func (p *Project) checkConfigReference(lock *manifest.Lock, crefRel string, cref
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
-// generated ACTIVE.md / domain docs) against the freshly-rendered output and the
-// on-disk file: orphaned, stale, missing, hand-edited, or invalid-frontmatter.
-// The reverse direction is checked too: a rendered path with no lock entry — an
-// artifact enabled since the last sync — is flagged unsynced rather than
-// silently skipped.
-func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile, activeMdRel, domainsPrefix, crefRel string) []manifest.Drift {
+// regeneration-checked artifacts — the generated ACTIVE.md / domain docs / config
+// reference) against the freshly-rendered output and the on-disk file: orphaned,
+// stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
+// checked too: a rendered path with no lock entry — an artifact enabled since the
+// last sync — is flagged unsynced rather than silently skipped.
+func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]RenderedFile) []manifest.Drift {
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
 		if _, ok := lock.Files[path]; !ok {
@@ -571,10 +571,10 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
-		if path == activeMdRel || path == crefRel || strings.HasPrefix(path, domainsPrefix) {
-			continue // generated artifacts — checked separately
-		}
 		e := lock.Files[path]
+		if e.RegenChecked {
+			continue // regeneration-checked artifacts — checked separately
+		}
 		rf, ok := rendered[path]
 		if !ok {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})

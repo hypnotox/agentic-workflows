@@ -270,13 +270,15 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:04c41aa6b0aac50606b0a1c0dfb3a42844fe85d14350d07b6a87929673256cf0"
+      "outputHash": "sha256:04c41aa6b0aac50606b0a1c0dfb3a42844fe85d14350d07b6a87929673256cf0",
+      "regenChecked": true
     },
     "docs/decisions/ACTIVE.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:94822d6ec60c49143e7c5a9b40a4a8ff31e2d0a5536e38d7600b94f382ff9022"
+      "outputHash": "sha256:94822d6ec60c49143e7c5a9b40a4a8ff31e2d0a5536e38d7600b94f382ff9022",
+      "regenChecked": true
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
@@ -306,31 +308,36 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:029823ec243b3d79d2ff780d9293f388c57f0b1284f057b81f215b23158effb2"
+      "outputHash": "sha256:029823ec243b3d79d2ff780d9293f388c57f0b1284f057b81f215b23158effb2",
+      "regenChecked": true
     },
     "docs/domains/config.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:762fdc56266ff13aeaef88b6b84bdc7124d5c9c1b8af1b3d08a7ce6814e04a24"
+      "outputHash": "sha256:762fdc56266ff13aeaef88b6b84bdc7124d5c9c1b8af1b3d08a7ce6814e04a24",
+      "regenChecked": true
     },
     "docs/domains/invariants.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:900435cd17bfd87fbedce72c7b8f038d9708ab6302fe4e2618ca46e007010160"
+      "outputHash": "sha256:900435cd17bfd87fbedce72c7b8f038d9708ab6302fe4e2618ca46e007010160",
+      "regenChecked": true
     },
     "docs/domains/rendering.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:1781fa2f87b190f9db34c95cd74e1a5e0937a7779fb61adfd4249b6a775b395e"
+      "outputHash": "sha256:1781fa2f87b190f9db34c95cd74e1a5e0937a7779fb61adfd4249b6a775b395e",
+      "regenChecked": true
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:6c826924f727a74d1a2053877d8f7a93fcb913c6a9ae9a7e0e9e91a0821aca67"
+      "outputHash": "sha256:6c826924f727a74d1a2053877d8f7a93fcb913c6a9ae9a7e0e9e91a0821aca67",
+      "regenChecked": true
     },
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",

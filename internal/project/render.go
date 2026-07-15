@@ -41,6 +41,10 @@ type RenderedFile struct {
 	TemplateID   string
 	TemplateHash string
 	ConfigHash   string
+	// RegenChecked excludes this file from the frozen-OutputHash compare; its
+	// drift is checked by regeneration instead (ADR-0100). Set on the generated
+	// indexes and on any file carrying an in-place-editable section.
+	RegenChecked bool
 	// assembled is the executed template source (post section-overlay, pre
 	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
@@ -532,7 +536,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 		return RenderedFile{}, err
 	}
 	content = injectBanner(content, "")
-	return RenderedFile{Path: p.layout().ActiveMd, Content: content}, nil
+	return RenderedFile{Path: p.layout().ActiveMd, Content: content, RegenChecked: true}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -560,7 +564,7 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
-			partVarRefs: rf.partVarRefs})
+			partVarRefs: rf.partVarRefs, RegenChecked: true})
 	}
 	return out, nil
 }

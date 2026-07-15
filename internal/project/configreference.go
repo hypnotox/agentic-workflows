@@ -370,7 +370,7 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 	return &RenderedFile{Path: rf.Path, Content: rf.Content,
 		stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 		markerParts: rf.markerParts, assembled: rf.assembled,
-		partVarRefs: rf.partVarRefs}, true, nil
+		partVarRefs: rf.partVarRefs, RegenChecked: true}, true, nil
 }
 
 // ConfigReferenceModel computes the reference's four collections

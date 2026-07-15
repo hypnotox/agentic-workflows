@@ -1006,21 +1006,54 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	}
 }
 
-func TestIsGeneratedIndex(t *testing.T) {
-	root := scaffold(t, sampleYAML)
+// The generated indexes carry RegenChecked=true (drift checked by regeneration,
+// not the frozen OutputHash); an ordinary rendered file carries false. This is the
+// single source of truth that replaced the hardcoded index-path literals.
+func TestRegenCheckedAttribute(t *testing.T) {
+	root := scaffold(t, domainCfg)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lay := p.layout()
-	if !p.isGeneratedIndex(lay.ActiveMd) {
-		t.Errorf("ActiveMd must be a generated index (true via ==)")
+	// invariant: regeneration-checked-attribute
+	amd, err := p.generateActiveMD()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !p.isGeneratedIndex(lay.DomainsDir + "/rendering.md") {
-		t.Errorf("a per-domain index must be a generated index (true via prefix)")
+	if !amd.RegenChecked {
+		t.Errorf("ACTIVE.md must be regeneration-checked")
 	}
-	if p.isGeneratedIndex(lay.DocsDir + "/architecture.md") {
-		t.Errorf("an ordinary doc must not be a generated index (false)")
+	dds, err := p.generateDomainDocs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dds) == 0 {
+		t.Fatal("fixture must declare at least one domain")
+	}
+	for _, dd := range dds {
+		if !dd.RegenChecked {
+			t.Errorf("domain doc %s must be regeneration-checked", dd.Path)
+		}
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || !cref.RegenChecked {
+		t.Errorf("config reference must be regeneration-checked (ok=%v)", ok)
+	}
+	// An ordinary rendered file (skill/agent/doc) is frozen-OutputHash-checked.
+	if len(files) == 0 {
+		t.Fatal("RenderAll produced no files")
+	}
+	for _, f := range files {
+		if f.RegenChecked {
+			t.Errorf("ordinary rendered file %s must not be regeneration-checked", f.Path)
+		}
 	}
 }
 
