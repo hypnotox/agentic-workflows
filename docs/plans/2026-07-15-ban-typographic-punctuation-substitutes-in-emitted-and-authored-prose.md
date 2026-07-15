@@ -155,17 +155,18 @@ whole argument. Phase 7 then ships the advisory rule and flips ADR-0117.
   em-dashes bracketing a clause becomes a pair of parentheses. Never substitute a bare hyphen.
   Replace each ellipsis (U+2026) with three periods.
 
-  **Representative** (`changelog/CHANGELOG.md:16`, an em-dash introducing an explanation): the line
+  **Representative** (`changelog/CHANGELOG.md:14`, an em-dash introducing an explanation): the line
   becomes
 
   ```markdown
     unified from `inv: <slug>` to `invariant: <slug>`: the same token the source
   ```
 
-  **Edge** (`changelog/CHANGELOG.md:429`, a bracketing pair, and `:68`, an ellipsis inside code
-  formatting): at line 429 the paired em-dashes bracketing the `which is inert inside a ...` clause
-  become a pair of parentheses; at line 68 the fragment becomes
-  `` (harmless; still `bash ...`-invoked) ``.
+  **Edge** (`changelog/CHANGELOG.md:428-429`, a bracketing pair spanning two lines, and `:68`, an
+  ellipsis inside code formatting): the em-dash pair opens at the end of line 428 and closes
+  mid-line-429, bracketing the `<!-- awf:section ... -->` / `<!-- awf:end -->` examples, and becomes
+  a pair of parentheses around those examples, leaving the `which is inert inside a part` clause
+  outside them. At line 68 the fragment becomes `` (harmless; still `bash ...`-invoked) ``.
 
   **Affected-site set**, exhaustively:
 
@@ -656,7 +657,7 @@ about what the history proves, not a mechanical necessity.
   ```
 
   `TestConfigspecKeyParity` fails the gate if the `AuditConfig` field and the descriptor disagree, so
-  this task is verified by `./x gate` in task 7.6 rather than by a command of its own.
+  this task is verified by `./x gate` in task 7.7 rather than by a command of its own.
 
 - [ ] **Task 7.2: Cover the new toggle in the settings tests.** The 100% coverage gate (ADR-0012)
   fails if the override branch added in task 7.1 is uncovered, and the existing assertions enumerate
