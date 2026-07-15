@@ -19,7 +19,7 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
-- [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
+- [ADR-0022: Curated Init Default: Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)

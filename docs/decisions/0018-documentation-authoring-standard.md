@@ -7,7 +7,7 @@ tags: [doc-standard, agents-guide]
 related: [4, 11, 15]
 domains: [rendering]
 ---
-# ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`
+# ADR-0018: Documentation Authoring Standard: `doc-standard.md` and `agents-md-standard.md`
 
 ## Context
 

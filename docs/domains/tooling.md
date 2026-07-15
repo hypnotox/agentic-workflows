@@ -38,7 +38,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
-- [ADR-0022: Curated Init Default — Workflow-Core Targets](../decisions/0022-curated-init-default.md)
+- [ADR-0022: Curated Init Default: Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)

@@ -7,7 +7,7 @@ tags: [invariant-backing, adr-parsing]
 related: [5, 6]
 domains: [invariants]
 ---
-# ADR-0007: Invariant-Backing Tooling — `inv:` Tags and the `awf invariants` Checker
+# ADR-0007: Invariant-Backing Tooling: `inv:` Tags and the `awf invariants` Checker
 
 ## Context
 

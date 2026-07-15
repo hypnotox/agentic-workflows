@@ -27,7 +27,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
 - [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
-- [ADR-0018: Documentation Authoring Standard — `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
+- [ADR-0018: Documentation Authoring Standard: `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 - [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)

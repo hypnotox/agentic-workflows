@@ -7,7 +7,7 @@ tags: [init-scaffolding]
 related: [4, 11, 86]
 domains: [config, tooling]
 ---
-# ADR-0022: Curated Init Default — Workflow-Core Targets
+# ADR-0022: Curated Init Default: Workflow-Core Targets
 
 ## Context
 
