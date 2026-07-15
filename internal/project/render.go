@@ -291,6 +291,17 @@ func trimBlankFraming(lines []string) string {
 	return strings.Join(lines[lo:hi], "\n")
 }
 
+// anyInPlace reports whether a section plan contains an in-place-editable section —
+// the property that makes a rendered file regeneration-checked (ADR-0100).
+func anyInPlace(plan map[string]render.SectionPlan) bool {
+	for _, sp := range plan {
+		if sp.InPlace {
+			return true
+		}
+	}
+	return false
+}
+
 // hasAnyPrefix reports whether s begins with any of the given prefixes.
 func hasAnyPrefix(s string, prefixes []string) bool {
 	for _, p := range prefixes {
@@ -630,7 +641,10 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// partial flags every including artifact stale (ADR-0052).
 		// touches-invariant: include-in-templatehash — TemplateHash over expanded (post-include) source; proof in golden_test.go
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
-		assembled: assembled, stubDefaults: stubDefaults, stubParts: stubParts,
+		// A file carrying an in-place-editable section is drift-checked by
+		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
+		RegenChecked: anyInPlace(plan),
+		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 	}, nil
 }

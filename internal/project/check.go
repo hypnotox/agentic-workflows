@@ -572,10 +572,28 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		e := lock.Files[path]
-		if e.RegenChecked {
-			continue // regeneration-checked artifacts — checked separately
-		}
 		rf, ok := rendered[path]
+		if e.RegenChecked {
+			// A regeneration-checked entry not in the RenderAll set is a generated
+			// index — checked separately by its regen checker. One that IS in the
+			// set is an in-place file: drift by regeneration-with-read-back. The
+			// freshly rendered content already read the in-place body back from
+			// disk, so an edit confined to an in-place section matches and an edit
+			// to an awf-owned region or the structure surfaces as drift (ADR-0100).
+			if !ok {
+				continue
+			}
+			onDisk, err := os.ReadFile(filepath.Join(p.Root, path))
+			if err != nil {
+				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf sync"})
+				continue
+			}
+			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
+				// touches-invariant: in-place-tamper-drift — awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
+				drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
+			}
+			continue
+		}
 		if !ok {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
 			continue

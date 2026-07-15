@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -135,6 +136,60 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	}
 	if !plan["s"].InPlace || plan["s"].InPlaceBody != "adopter line\n\nsecond line" {
 		t.Errorf("present output: got InPlaceBody %q", plan["s"].InPlaceBody)
+	}
+}
+
+func TestAnyInPlace(t *testing.T) {
+	if !anyInPlace(map[string]render.SectionPlan{"a": {}, "b": {InPlace: true}}) {
+		t.Error("a plan with an in-place section must report true")
+	}
+	if anyInPlace(map[string]render.SectionPlan{"a": {}, "b": {HasPart: true}}) {
+		t.Error("a plan with no in-place section must report false")
+	}
+}
+
+// An in-place file is drift-checked by regeneration-with-read-back: on-disk is
+// compared to the freshly regenerated content, not the frozen OutputHash. An edit
+// to an awf-owned region surfaces as drift; a matching file does not.
+func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
+	// invariant: in-place-tamper-drift
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical := "#!/bin/sh\n# awf:edit-in-place s — your edits\nadopter line\n"
+	xPath := filepath.Join(root, "x")
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{
+		"x": {RegenChecked: true, OutputHash: manifest.Hash([]byte(canonical))},
+	}}
+	rendered := map[string]RenderedFile{"x": {Path: "x", Content: canonical, RegenChecked: true}}
+
+	// On-disk equals the regenerated content (in-place body already read back) → clean.
+	if err := os.WriteFile(xPath, []byte(canonical), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if d := p.checkLockedFiles(lock, rendered); len(d) != 0 {
+		t.Errorf("a matching in-place file must not drift, got %v", d)
+	}
+
+	// An awf-owned region edited on disk → regenerated content differs → hand-edited.
+	tampered := "#!/bin/sh\n# awf owns this and it was TAMPERED\n# awf:edit-in-place s — your edits\nadopter line\n"
+	if err := os.WriteFile(xPath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	d := p.checkLockedFiles(lock, rendered)
+	if len(d) != 1 || d[0].Kind != "hand-edited" {
+		t.Fatalf("a tampered awf region must drift hand-edited, got %v", d)
+	}
+
+	// Absent file → missing.
+	if err := os.Remove(xPath); err != nil {
+		t.Fatal(err)
+	}
+	d = p.checkLockedFiles(lock, rendered)
+	if len(d) != 1 || d[0].Kind != "missing" {
+		t.Fatalf("an absent in-place file → missing, got %v", d)
 	}
 }
 
