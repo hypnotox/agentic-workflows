@@ -17,9 +17,9 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 | State | Meaning | Mutability |
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
-| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status field only; the body is frozen |
-| `Implemented` | Design and implementation have both landed in the repository | Status field only; the body is frozen |
-| `Superseded` | Replaced by a later ADR; kept for historical record | Status field only; the body is frozen |
+| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
+| `Implemented` | Design and implementation have both landed in the repository | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
+| `Superseded` | Replaced by a later ADR; kept for historical record | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
 
 
 ## Transitions
@@ -38,7 +38,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 The successor replaces the predecessor wholesale. Apply when most of the predecessor is mechanically obsolete.
 
 - Successor frontmatter: `supersedes: [predecessor-number]`.
-- Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; the only allowed edit on a non-Proposed ADR).
+- Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; on a non-Proposed ADR only `status` and cross-reference metadata may be edited).
 - `docs/decisions/ACTIVE.md` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
 
 <!-- awf:edit supersedence-partial: default; create .awf/skills/parts/adr-lifecycle/supersedence-partial.md to override -->
@@ -47,16 +47,19 @@ The successor replaces the predecessor wholesale. Apply when most of the predece
 The successor overrides specific Decision items or Invariants of the predecessor without replacing it as a whole. Apply when most of the predecessor still holds and only one decision needs revisiting.
 
 - Successor frontmatter: `related: [predecessor-number]` (NOT `supersedes:`).
+- Predecessor frontmatter: add the successor's number to `related:`, in the **same commit**. Without this back-pointer the overridden Decision item reads as current guidance and a reader of the predecessor gets no signal it was overridden. This is a metadata-only edit, allowed on a live ADR; the body stays append-only.
 - Predecessor's `status` field is **NOT** flipped; it stays `Accepted`/`Implemented`.
 - Successor's prose **explicitly cites the overridden items** (e.g. "Supersedes predecessor Decision item M and Invariant N").
-- `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the override information lives in the successor's prose and `related:` linkage.
+- `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the override information lives in the successor's prose and in the `related:` linkage on **both** ADRs.
+
+The back-pointer is owed when **this** ADR overrides a **live** (`Accepted`/`Implemented`) predecessor's **Decision item or Invariant**. It is not owed for a citation that does not override, for an amendment of a `Proposed` ADR (edit that ADR in place instead), or for an edit that changes wording without changing meaning.
 
 ## Procedure
 
 Pick the status transition, then:
 
 <!-- awf:edit procedure-status-edit: default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
-1. **Edit the ADR's frontmatter `status` field** in place. This is the only allowed in-place edit on a live ADR; the body remains append-only once the ADR leaves `Proposed`.
+1. **Edit the ADR's frontmatter `status` field** in place. On a live ADR only `status` and cross-reference metadata (`superseded_by:`, `related:`) may be edited in place; the body remains append-only once the ADR leaves `Proposed`.
 
 <!-- awf:edit procedure-predecessor-flip: default; create .awf/skills/parts/adr-lifecycle/procedure-predecessor-flip.md to override -->
 2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
@@ -87,12 +90,12 @@ While `status: Proposed`, all sections may be amended freely as edge cases or sc
 - **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
 - **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
 
-Once `Accepted` or `Implemented`, the body is frozen; only the `status` field is editable in place.
+Once `Accepted` or `Implemented`, the body is frozen; only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place.
 
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 - **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
-- **Append-only rule:** once any live state is reached, only the `status` field is editable in place. The body is the historical record.
+- **Append-only rule:** once any live state is reached, only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place. The body is the historical record: append-only protects rationale, not bookkeeping.
 - **`docs/decisions/ACTIVE.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

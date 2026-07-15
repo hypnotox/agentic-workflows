@@ -230,22 +230,39 @@ data:
         of these as blockers precisely because the plan hadn't.
     - title: "A partial amendment needs a forward pointer on the amended ADR"
       domains: [adr-system]
+      related: [116]
       tags: [adr-lifecycle, cross-references]
       body: |
-        ADR-0079 Decision 4 revised one sentence of Implemented ADR-0065's Decision 3 (partial-item
-        supersedence: the successor cites the item in prose and carries `related: [65]`, the
-        predecessor stays live), but nothing pointed 0065 → 0079, so 0065's Decision 3 read as
-        current guidance with no signal it had been amended; caught only at impl review. The
-        lifecycle rules regulate amendment-while-Proposed and full supersedence (predecessor status
-        flips) but say nothing about the reverse edge of a partial amendment. Convention: when ADR X
-        partially amends ADR Y, add X to Y's `related:` frontmatter in the same commit, a
-        metadata-only edit, consistent with the mutable `superseded_by` field; the body stays
-        append-only. This recurred despite the note; ADR-0093's partial supersedence of ADR-0024's
-        Decision items 1 and 6 landed with no 0024 → 0093 back-pointer, again caught only in
-        retrospective (fixed 2026-07-11). The recurrence has fired the promotion trigger: a
-        deterministic check is now warranted, a gate or `repoaudit` rule that, for each ADR body
-        citing another ADR's specific "Decision item", requires the cited ADR's `related:` to name
-        the citing ADR.
+        When ADR X overrides ADR Y's Decision item without superseding Y wholesale (partial-item
+        supersedence: X cites the item in prose and carries `related: [Y]`, Y stays live), Y's
+        `related:` must name X in the same commit. Without that back-pointer Y's overridden item
+        reads as current guidance and a reader of Y gets no signal. It is a metadata-only edit; the
+        body stays append-only.
+
+        **This entry was wrong twice over, and the corrections are the lesson.** It recorded two
+        instances (0079 → 0065, 0093 → 0024) and inferred a promotion trigger from them. A corpus
+        sweep on 2026-07-15 found **16 partial amendments, 10 of them missing the back-pointer**;
+        the two recorded here were merely the ones review happened to catch, and both had since
+        been fixed. Counting only the failures someone noticed understated the problem by five
+        times and pointed the diagnosis at the wrong place: prose *had* been tried (this note
+        landed 2026-07-08 stating the rule verbatim, and 0093, 0105, and 0106 broke it anyway),
+        while the rule had never been written into `awf-adr-lifecycle`'s partial-supersedence
+        section, the procedure an agent actually loads while performing the act. That section
+        taught the one-directional model outright. **If you are about to record a recurrence, sweep
+        the corpus before you count.**
+
+        The detector this entry used to propose (for each ADR body citing another ADR's "Decision
+        item", require a back-pointer) fires on well over a hundred sites against ~16 real ones and
+        is not viable; a verb-anchored trigger (`amends`, `revises`, `supersedes`, optionally
+        prefixed `partially`) is a different and plausible proposition, because a bare parenthetical
+        citation carries no verb. ADR-0116 states the rule in the skill procedure and the
+        `adr-reviewer` doc-currency lens, and **deliberately defers** any check: the procedure had
+        never been tried, so the next failure is the first informative one. Promote only on a
+        recurrence **despite** the stated procedure and the lens, and see ADR-0116's Alternatives
+        for the two shapes already analysed (an advisory range-scoped `repoaudit` rule; a declared
+        `amends:` field with a derived back-edge). The corpus is knowingly left at 6 of 16
+        conformant (ADR-0116 Decision 6), so a fresh sweep will find residue: do not mistake it for
+        recurrence.
     - title: "A milestone-time check must not double as an every-commit test"
       domains: [tooling]
       tags: [release-pipeline, changelog]

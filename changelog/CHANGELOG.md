@@ -141,6 +141,14 @@ query a single version or a range.
   `awf sync`.
 
 ### Others
+- The `adr-lifecycle` skill now states the partial-amendment back-pointer rule, and the
+  `adr-reviewer` checks it (ADR-0116). When an ADR overrides a live ADR's Decision item
+  without superseding it wholesale, the overridden ADR's `related:` must name the
+  overriding ADR in the same commit; previously the skill named only the successor's
+  `related:`, so the amended ADR's item read as current guidance with no signal. The
+  skill's append-only statements are reworded to match: a live ADR now permits in-place
+  edits to `status` **and** cross-reference metadata (`superseded_by:`, `related:`),
+  since append-only protects rationale, not bookkeeping. The body stays frozen.
 - Invariant backing is documented as a ledger, not a proof (ADR-0114). The marker
   scan is a textual line match with no assertion awareness, so a backed `invariant:`
   slug records that a test is declared to back it, not that the property is proven.
