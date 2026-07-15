@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to `awf` are documented here, newest first. Entries are grouped per release
-into up to four categories — Breaking changes, Features, Bug fixes, Others — chosen by actual
+into up to four categories (Breaking changes, Features, Bug fixes, Others) chosen by actual
 adopter-facing effect (does it change rendered template output, CLI behavior, or config/lock
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
@@ -11,11 +11,11 @@ query a single version or a range.
 ### Breaking changes
 - Invariant backing is redesigned into enforced test-backing with a two-marker
   vocabulary (ADR-0105, ADR-0106). The ADR Invariants-section declaration token is
-  unified from `inv: <slug>` to `invariant: <slug>` — the same token the source
+  unified from `inv: <slug>` to `invariant: <slug>`: the same token the source
   proof marker uses (**adopters must rewrite `inv:`→`invariant:` in their own
   `docs/decisions/**`; awf cannot auto-migrate user-owned ADR prose**). Source
   markers split into a proof `invariant: <slug>` marker and an advisory
-  `touches-invariant: <slug> — <note>` context marker. A new `invariants.testGlobs`
+  `touches-invariant: <slug>, <note>` context marker. A new `invariants.testGlobs`
   config scopes the proof marker to test files (backing then means an executed test
   line); when it is empty or absent, backing falls back to source-glob scope, so
   the change is additive for projects that do not set it. Each invariant is declared
@@ -26,12 +26,12 @@ query a single version or a range.
   `touches-invariant:` are non-failing advisories. `awf context` now labels each
   governing invariant `backed`/`unbacked` and surfaces its `Verify:`/touches site
   notes (the `--json` invariant refs carry per-invariant `class` and notes), reading
-  as a risk map — its Tier-1 scan spans both markers across the source and test globs.
+  as a risk map: its Tier-1 scan spans both markers across the source and test globs.
 - `awf context <paths>` output is now relevance-tiered (ADR-0104). It no longer
   dumps every ADR/pitfall sharing a queried path's domain. The human render gains
-  `## Governing ADRs (invariants backed here)` (Tier 1 — ADRs whose invariants are
+  `## Governing ADRs (invariants backed here)` (Tier 1: ADRs whose invariants are
   backed under the queried paths), `## Related ADRs (shared tag)` / `## Related
-  pitfalls (shared tag)` (Tier 2 — sharing a finer-than-domain precise tag or
+  pitfalls (shared tag)` (Tier 2: sharing a finer-than-domain precise tag or
   `related:`-linked), and a one-line `## Domain background: N more ADR(s)` (Tier 3,
   collapsed). The `--json` shape changes accordingly: the flat `adrs` array is
   replaced by `governing` + `related` + an integer `background`; each ADR ref drops
@@ -48,7 +48,7 @@ query a single version or a range.
   next `awf upgrade`: it auto-splits an existing `entries.md` on its top-level
   `##` headings (fenced-code `##` lines skipped) into `data.pitfalls` entries with
   empty `domains`, deletes the part, and prints one provenance line per entry plus
-  a review instruction. **Review the split and tag each entry's `domains:`** —
+  a review instruction. **Review the split and tag each entry's `domains:`**;
   untagged entries render but do not surface in `awf context`. An entry's optional
   `related:` ADR numbers render as plain `ADR-NNNN` text and are link-validated.
   `awf check` now fails on unparseable pitfalls data, a bad entry shape, an unknown
@@ -57,15 +57,15 @@ query a single version or a range.
 ### Features
 - awf can now render **co-owned files with in-place-editable sections** (ADR-0100) and ships
   a **managed command-runner `x`** as their first consumer (ADR-0101). A section declared with
-  the `inplace` marker has its body read back from the existing rendered output — bounded by its
-  `awf:edit-in-place` provenance pointer and awf's next section pointer — and preserved across
+  the `inplace` marker has its body read back from the existing rendered output (bounded by its
+  `awf:edit-in-place` provenance pointer and awf's next section pointer) and preserved across
   syncs, while awf regenerates every other section and the file structure; such a file is
   drift-checked by regeneration-with-read-back (a first-class `RegenChecked` attribute that
   replaced awf's hardcoded generated-index list). Two shell-script properties are now rendered per
   target off the one `#!`-shebang predicate: the surviving `awf:edit`-family pointers take the
   target's comment syntax (`#` for a shebang script, HTML otherwise), and a rendered `#!` file is
-  written executable (`0755`, enforced every sync) — so **the bootstrap and hook payloads flip
-  from `0644` to `0755` on the next sync** (harmless; still `bash …`-invoked). Enable the new
+  written executable (`0755`, enforced every sync), so **the bootstrap and hook payloads flip
+  from `0644` to `0755` on the next sync** (harmless; still `bash ...`-invoked). Enable the new
   `runner` singleton (`awf enable runner`, or set `runner.enabled` in `.awf/config.yaml`) to render
   `x` at the repo root: awf owns the awf-verb dispatch (`sync check invariants audit context
   commit-gate new`, delegating to the pinned binary via the bootstrap), and the setup and
@@ -73,8 +73,8 @@ query a single version or a range.
   `examples/sundial` adopter demonstrates the feature.
 - `awf check` now validates planned commit subjects in plans (ADR-0111). A plan marks
   a phase's closing-commit subject with a fenced code block tagged `commit`; `awf check`
-  reads its first non-empty line and validates it against the project's `audit` settings
-  — an over-length subject, a disallowed type, or a malformed shape is drift, while an
+  reads its first non-empty line and validates it against the project's `audit` settings:
+  an over-length subject, a disallowed type, or a malformed shape is drift, while an
   unknown scope is a non-failing advisory note (a plan may be the change that adds the
   scope). Tag a display-only example `commit awf-ignore` to skip that one block. The rule
   is presence-triggered, so bare-fence plans are unaffected; the plans template and the
@@ -82,8 +82,8 @@ query a single version or a range.
 - `awf context --uncovered` now reports a clean coverage floor (ADR-0110). Every
   code package has a domain home, and the report additionally subtracts awf's own
   generated outputs (`PlannedOutputs`) and a new absent-safe top-level
-  `contextIgnore` config key — a list of anchored globs naming genuinely non-domain
-  paths (config source, docs, the example adopter, top-level non-code files) — so a
+  `contextIgnore` config key, a list of anchored globs naming genuinely non-domain
+  paths (config source, docs, the example adopter, top-level non-code files), so a
   newly-unowned path surfaces as a real signal rather than standing noise. An empty
   or absent `contextIgnore` adds no exclusion.
 - Narrow-topic tag taxonomy for precise `awf context` relevance (ADR-0109). Tags are
@@ -91,22 +91,22 @@ query a single version or a range.
   if any `tags:` vocabulary member equals a configured domain name, and Tier 2 drops
   its domain-name filter (the precise set is the plain union of the Tier-1 tags), so
   a domain-scoped query returns a tight topical cluster instead of a third of the
-  corpus. Two advisory, non-failing `awf check` notes flag tag health — a coarsening
+  corpus. Two advisory, non-failing `awf check` notes flag tag health: a coarsening
   note for any tag on more than 25% of the tag-bearing artifacts, and an
-  under-tagging note for any ADR or pitfall with zero tags — both inert under an
+  under-tagging note for any ADR or pitfall with zero tags; both inert under an
   empty vocabulary.
 - Governed tag vocabulary and revived ADR/pitfall metadata (ADR-0103). ADR
-  `tags:` and `related:` frontmatter — long authored but parsed-then-dropped —
+  `tags:` and `related:` frontmatter (long authored but parsed-then-dropped)
   are now lifted into `adr.ADR`, and pitfall entries gain an optional `tags:`
   field. A new top-level `tags:` config key declares a vocabulary mapping each
   tag to a one-line meaning; when it is non-empty, `awf check` fails on any ADR
   or pitfall tag that is not a declared member and on any member with an empty
   meaning (an empty or absent vocabulary is inert, so tags stay free-form until
   you opt in). `awf check` also now resolves every ADR's `related:` numbers
-  against `docs/decisions/`. The key is additive and absent-safe — no schema
-  migration — and changes nothing about `awf context` output yet.
+  against `docs/decisions/`. The key is additive and absent-safe (no schema
+  migration) and changes nothing about `awf context` output yet.
 - `awf context --uncovered [<scan-root>...]` reports git-tracked-at-HEAD paths
-  matched by no configured domain glob — the inverse of the per-path domain
+  matched by no configured domain glob: the inverse of the per-path domain
   resolution, and an on-demand signal for where a domain is missing (ADR-0102).
   A fully-uncovered directory collapses to its topmost node; positional args are
   optional scan roots (matched on directory-segment boundaries), while
@@ -115,12 +115,12 @@ query a single version or a range.
   static-fallback contracts.
 - `awf context <path>` now surfaces the pitfalls relevant to a queried area
   (ADR-0099): when the toggleable `pitfalls` doc is enabled, it lists each pitfall
-  whose own `domains:` owns a queried path — by the entry's tag, like an ADR, not
-  transitively like a plan — in both the human and `--json` output, on the same
+  whose own `domains:` owns a queried path (by the entry's tag, like an ADR, not
+  transitively like a plan) in both the human and `--json` output, on the same
   read-only `ContextResult`.
 - Plans get a machine-readable spine and a uniform authored shape (ADR-0097,
-  ADR-0098, ADR-0108). A new `plans-template` singleton renders `docs/plans/template.md`
-  — the canonical taxonomy: `date`/`adrs`/`status` frontmatter, a `# Plan:` H1,
+  ADR-0098, ADR-0108). A new `plans-template` singleton renders `docs/plans/template.md`,
+  the canonical taxonomy: `date`/`adrs`/`status` frontmatter, a `# Plan:` H1,
   the Goal/Architecture-summary/File-structure header (Goal carries a one-line non-goals
   statement; the template interpolates the project's configured gate command, not a
   hard-coded literal), phases, and
@@ -170,15 +170,15 @@ query a single version or a range.
   subsystem's files (process, gate, commit-hygiene, the flagship rendering
   guarantee, the toolchain preconditions, and the invariant-backing meta-rule).
   Path- or subsystem-specific invariants stay in their owning ADR and are reached
-  on demand via `awf context` and the generated ADR status index — do not mirror
+  on demand via `awf context` and the generated ADR status index; do not mirror
   the ADR ledger into the guide. Adopters get the reworded standard on their next
   `awf sync`; awf's own guide list is trimmed from 84 bullets to 10 to match.
 - Em-dashes are removed from the shipped template prose across every skill,
   review agent, doc, the agent guide, and the ADR/plan scaffolds, and from the
   `GENERATED by awf` banner atop every rendered file, in favour of plain
   punctuation (colons, semicolons, commas, parentheses). The `awf:edit` /
-  `awf:edit-in-place` provenance-pointer separator likewise changes from ` — ` to
-  `: `. The rendered wording is unchanged in meaning; only the punctuation reads
+  `awf:edit-in-place` provenance-pointer separator likewise changes from an em-dash
+  to `: `. The rendered wording is unchanged in meaning; only the punctuation reads
   less machine-set. Adopters get the reworded output on their next `awf sync`.
 
 ## [0.16.0] - 2026-07-11
@@ -188,7 +188,7 @@ query a single version or a range.
   (ADR-0095): for a transformation repeated across many sites, a plan task may
   show one representative diff (plus an edge case, unless the shape is identical
   everywhere), name the affected-site set as an exhaustive list or a reproducing
-  command, and a deterministic post-check that fails if any site is missed —
+  command, and a deterministic post-check that fails if any site is missed,
   instead of N near-identical diffs. The `awf-writing-plans` skill, the plans
   README, and the `plan-reviewer` `step-exactness` lens are reconciled so a
   well-formed batch task is not flagged as under-specified. Adopters get it on
@@ -196,7 +196,7 @@ query a single version or a range.
 - Read-only `awf context <path>...` query command (ADR-0092): for a set of
   repo-relative paths it reports their owning domain(s), the invariant slugs
   backed by markers under those paths, and the related ADRs (with each ADR's
-  own declared invariants) — the deterministic context awf already holds,
+  own declared invariants): the deterministic context awf already holds,
   surfaced instead of reconstructed by grep. Human and `--json` output;
   `--staged`/`--range <a>..<b>` resolve the paths from git. Gated and degrading
   to a static notice outside an adopted tree, like `awf config`. The workflow
@@ -207,8 +207,8 @@ query a single version or a range.
 ### Breaking changes
 - The config-toggle commands are renamed `awf add`/`awf remove` →
   `awf enable`/`awf disable` (ADR-0093), with no backward-compat alias. The
-  verb now matches the operation — toggling an artifact's membership in the
-  config enable arrays — instead of implying it creates or deletes something
+  verb now matches the operation (toggling an artifact's membership in the
+  config enable arrays) instead of implying it creates or deletes something
   (which `awf new` does). Kinds, flags (`--dry-run`, `--with-dependents`), the
   closure/dependent behavior, and `awf list` are unchanged. An adopter's
   rendered `AGENTS.md` and docs switch to the new verbs on their next
@@ -244,8 +244,8 @@ query a single version or a range.
 
 ### Features
 - Project-local custom docs (ADR-0091): `awf new doc <name> "<description>"`
-  scaffolds a managed doc — a declaring sidecar plus a `content` convention
-  part rendered from awf's base doc template — that joins the AGENTS.md
+  scaffolds a managed doc (a declaring sidecar plus a `content` convention
+  part rendered from awf's base doc template) that joins the AGENTS.md
   document map and the dead-link check like any catalog doc. Names may be
   nested (e.g. `guides/ci`). A new toggleable `releasing` catalog doc
   (`awf add doc releasing`) ships a stub-default release runbook that imposes
@@ -258,11 +258,11 @@ query a single version or a range.
   overwriting the other file.
 - `docs/config-reference.md` (and `awf config`) now document a project-local
   artifact's base data keys when a *synthesized* local skill, agent, or doc is
-  enabled — the case where the base template actually renders those keys.
+  enabled: the case where the base template actually renders those keys.
   Previously, for skills and agents the `_base` rows surfaced only for a
   hand-authored `local: true` opt-out (which renders nothing from the base
   template) and never for a `awf new`-created artifact, and for docs they never
-  surfaced at all — so a real custom artifact's keys went undocumented.
+  surfaced at all, so a real custom artifact's keys went undocumented.
 
 ## [0.14.1] - 2026-07-10
 
@@ -271,7 +271,7 @@ query a single version or a range.
   subdirectory carrying its own `.git` entry (a directory in a primary clone,
   a gitdir-pointer file in a linked worktree or submodule) is another
   repository's working tree, so a marker inside it can no longer silently
-  keep this project's invariant "backed" — previously a stale session
+  keep this project's invariant "backed": previously a stale session
   worktree under `.claude/worktrees/` could preserve a deleted marker and
   hide an unbacked invariant from `awf check`.
 
@@ -281,30 +281,30 @@ query a single version or a range.
 - The glossary doc is data-driven (ADR-0089): terms live in
   `.awf/docs/glossary.yaml` under `data.terms` as a `term: meaning` YAML map,
   and awf renders the table always sorted (case-insensitive), with `|`
-  escaped in cells and content violations — empty terms or meanings, interior
-  newlines, non-string values, case-insensitive duplicate terms — failing the
+  escaped in cells and content violations (empty terms or meanings, interior
+  newlines, non-string values, case-insensitive duplicate terms) failing the
   render with the offending key named. The old `terms` section is gone: an
   authored `.awf/docs/parts/glossary/terms.md` part flags as orphaned drift
-  after upgrading — move each table row into `data.terms` and delete the part.
+  after upgrading: move each table row into `data.terms` and delete the part.
   Framing prose goes in the new empty-by-default `prepend`/`append` sections.
   With no terms configured, the doc renders a placeholder line naming the
   authoring surface.
 
 ### Features
 - `awf config [<key-or-var>]` (ADR-0088): print the configuration reference
-  from the CLI — the full reference or a single entry, with live state inside
+  from the CLI: the full reference or a single entry, with live state inside
   a project (current values, consumers, dormant hints) and a static
   catalog-wide fallback outside one for pre-adoption discovery.
 - `docs/config-reference.md`: a generated, always-on configuration reference
-  (ADR-0088) — every config key, var, sidecar field, and per-artifact data key
+  (ADR-0088): every config key, var, sidecar field, and per-artifact data key
   with full descriptions, defaults, availability, and the project's live state
   (which vars are set/empty/absent, what consumes them, what enabling would
   activate). Regeneration-checked like the domain docs; the intro section is
   overridable, the generated tables are not, and `data:` on its sidecar
   refuses at open.
 - Deleting a `vars:` key now acknowledges its unset-var note (ADR-0087): the
-  advisory fires only for a key that is present with an empty (or null) value —
-  the seeded open-to-do state — and an absent key is read as "considered and
+  advisory fires only for a key that is present with an empty (or null) value
+  (the seeded open-to-do state), and an absent key is read as "considered and
   declined", permanently silencing the note for that var. The note text names
   both exits ("set a value, or delete the key to accept the generic prose").
   Deleting a key changes the referenced-var config hash, so expect a one-time
@@ -318,14 +318,14 @@ query a single version or a range.
   worktree or submodule checkout, where `.git` is a `gitdir:` pointer file
   rather than a directory: the repo open resolves the pointer and routes
   shared state (objects, refs, config) through the worktree's `commondir`.
-  Previously it failed with `open repo: … .git/config: not a directory`.
+  Previously it failed with `open repo: ... .git/config: not a directory`.
 
 ### Others
-- The repository now carries a committed example adopter (`examples/sundial/`) —
+- The repository now carries a committed example adopter (`examples/sundial/`):
   a full-surface worked example of an awf adoption, browsable in the repo and
   kept render-synced from awf's source by the repo's own checks (its ADR-0090).
 - Dependency refresh: `golang.org/x/crypto` v0.51.0 → v0.53.0 (clears 13
-  published SSH-package advisories — none reachable from awf, which only
+  published SSH-package advisories: none reachable from awf, which only
   reads local git history), plus `x/mod` and `x/tools` to their
   current-minus-cooldown versions.
 
@@ -333,32 +333,32 @@ query a single version or a range.
 
 ### Breaking changes
 - The `.awf/` tree is now closed (ADR-0086): `awf check` fails on any file or
-  directory it cannot claim — strays like `.awf/notes.md`, files with the wrong
-  extension in kind/parts dirs, parts of a `local: true` artifact — with a
+  directory it cannot claim (strays like `.awf/notes.md`, files with the wrong
+  extension in kind/parts dirs, parts of a `local: true` artifact) with a
   repair hint per entry, collapsing to the topmost unclaimed directory.
   Sync-written `<path>.awf-bak[.N]` collision backups are flagged as stale
   backups to review and delete (a brownfield adopt is therefore red on its
-  first check until the backups are cleared — intended to-do surfacing).
+  first check until the backups are cleared; intended to-do surfacing).
   `.awf/memory/` stays exempt session scratch.
 - `awf check` now fails on authored-but-unconsumed configuration (ADR-0086): a
   non-empty `vars:` key no rendered artifact references (`unused-var`), and a
-  sidecar `data:` key the artifact's template never reads (`unused-data`) — the
+  sidecar `data:` key the artifact's template never reads (`unused-data`): the
   typo that publication-safe degradation used to hide. Empty vars stay legal
   (the init scaffold is unchanged), but note that leftover keys from removed
   catalog vars (e.g. ADR-0084's) are now flagged when non-empty, and disabling
-  a render unit (`awf remove hooks`) can strand the var only it consumed —
+  a render unit (`awf remove hooks`) can strand the var only it consumed;
   delete the key in the same change.
 - Inert sidecar fields now refuse at project open (ADR-0086): `paths:` on a
   non-domain sidecar, and anything but `paths:` on a domain sidecar (`data:`,
   `sections:`, `local: true`), fail every gated command with the exact file
-  and fix named. These fields were silently ignored before — delete them (or
+  and fix named. These fields were silently ignored before; delete them (or
   move `paths:` to a domain sidecar) and re-run.
-- The four prose-knob catalog vars — `docCurrencyTargets`, `adrProposeCommitFmt`,
-  `gateDuration`, `modulePrefix` — are removed (ADR-0084): catalog vars now carry
+- The four prose-knob catalog vars (`docCurrencyTargets`, `adrProposeCommitFmt`,
+  `gateDuration`, `modulePrefix`) are removed (ADR-0084): catalog vars now carry
   functional values only (commands, enforced identifiers, structural paths).
   The consuming templates render their former fallback prose unconditionally, so
   a project that set one of these sees the affected skill rewritten to the
-  generic wording on its next `awf sync` — no warning is emitted; override the
+  generic wording on its next `awf sync`: no warning is emitted; override the
   section with a convention part to restore concrete wording. Leftover keys in
   `vars:` are inert and can be deleted at leisure, but a saved init answers file
   (or `--set`) carrying a removed key now fails `awf init` on a fresh scaffold
@@ -373,13 +373,13 @@ query a single version or a range.
 - Single-command upgrades: the bootstrap singleton now renders `.awf/upgrade.sh`
   alongside `.awf/bootstrap.sh` (ADR-0085). `bash .awf/upgrade.sh` resolves the
   newest release (or takes an exact version argument), fetches and verifies it
-  through the bootstrap, and hands off to `awf upgrade` — closing the
+  through the bootstrap, and hands off to `awf upgrade`, closing the
   chicken-and-egg where every upgrade started with a manual binary fetch. The
   bootstrap itself now honors a pre-set `AWF_VERSION` environment override for
   which release to fetch; without one it resolves its pin exactly as before.
   `docs/working-with-awf.md` gains an "Upgrading awf" section covering the flow.
   (This upgrade is the bridging one: the script only exists in your tree after
-  upgrading to a release that ships it — use
+  upgrading to a release that ships it; use
   `AWF_VERSION=<new> bash .awf/bootstrap.sh`, then `<printed path> upgrade`.)
 
 ### Bug fixes
@@ -396,7 +396,7 @@ query a single version or a range.
   churn, `(config)` when your own vars/sidecars/parts caused it,
   `(template+config)` for both, `(internal)`/`(regenerated)` for non-hashed
   inputs (the pinned binary version; the generated decision indexes), and
-  `added <path>` for newly shipped files — the triage signal for reviewing a
+  `added <path>` for newly shipped files: the triage signal for reviewing a
   large upgrade diff. A byte-identical re-render stays silent, and a first
   sync into a fresh project reports nothing.
 - The rendered `docs/workflow.md` local-hooks section now documents the
@@ -409,13 +409,13 @@ query a single version or a range.
 
 ### Breaking changes
 - The catalog `requires*` declarations are now an enforced dependency graph
-  (schema 8 — run `awf upgrade`). A config enabling an artifact without its
+  (schema 8; run `awf upgrade`). A config enabling an artifact without its
   required skills/agents/docs is refused by every command; the migration
   closes your enabled set (adding missing requirements, printing each) and
-  drops dormant doc-gated skills (enabled while their doc was disabled —
+  drops dormant doc-gated skills (enabled while their doc was disabled;
   they rendered nothing before, so your output is unchanged). `awf add`
   now enables the full requirement closure in one edit, printing a plan;
-  `awf remove` refuses while enabled artifacts still require the target —
+  `awf remove` refuses while enabled artifacts still require the target;
   `--with-dependents` removes them together, `--dry-run` previews either
   plan. `awf init` follows the same rule: a trimmed selection is
   closure-completed (missing requirements added, each printed) and the
@@ -425,20 +425,20 @@ query a single version or a range.
 
 ### Others
 - `awf check` and `awf init` now print a non-failing note when a convention
-  part contains a whole line that is (or begins with) a section marker —
-  `<!-- awf:section … -->` / `<!-- awf:end -->` — which is inert inside a
+  part contains a whole line that is (or begins with) a section marker
+  (`<!-- awf:section ... -->` / `<!-- awf:end -->`) which is inert inside a
   part and previously rendered into output silently. Inline quoting and
   fenced code examples never trigger the note; fencing is the remedy the
   note itself suggests.
 - `awf sync` (and every command that ends in a sync: `upgrade`, `init`,
   `add`, `remove`, `new`) now prints `awf sync: pruned <path>` for each
-  file its prune actually removes — a disabled artifact, a dropped
+  file its prune actually removes: a disabled artifact, a dropped
   target's tree, or a path relocated across versions no longer disappears
   silently. A routine re-sync still prints nothing.
 - `awf upgrade` migrations now print one provenance line per config
   operation: the schema-6 migration reports each relocated sidecar/parts
   directory and each doc it strips from `docs:`, and the schema-7 migration
-  reports each glob it anchors — matching the schema-8 migration's existing
+  reports each glob it anchors, matching the schema-8 migration's existing
   per-op lines, so an upgrade's config changes are readable from the output
   instead of the diff.
 - Shipped templates no longer cite awf's own decision records: the agent
@@ -453,13 +453,13 @@ query a single version or a range.
 - The catalog now declares each skill's and agent's unconditional chain-skill
   coupling (`requiresSkills`), and the standard's test suite enforces the
   declarations both ways (undeclared reference and stale declaration each
-  fail). Data only — no CLI or rendering behavior changes.
+  fail). Data only: no CLI or rendering behavior changes.
 
 ## [0.11.0] - 2026-07-08
 ### Breaking changes
-- One anchored path-glob dialect everywhere (ADR-0077, schema 7 — run `awf upgrade`). Every
-  glob — `invariants.sources[].globs`, `audit.dependencyManifests`, and the new domain
-  `paths` — now matches a file's full slash-separated repo-relative path: `*.go` means
+- One anchored path-glob dialect everywhere (ADR-0077, schema 7; run `awf upgrade`). Every
+  glob (`invariants.sources[].globs`, `audit.dependencyManifests`, and the new domain
+  `paths`) now matches a file's full slash-separated repo-relative path: `*.go` means
   top-level `.go` files only, any-depth is written `**/*.go`, and path patterns like `cmd/**`
   or `internal/audit/*.go` are now legal. The migration rewrites existing no-slash patterns
   to `**/<pattern>`, so migrated configs behave exactly as before.
@@ -474,7 +474,7 @@ query a single version or a range.
 - Domain territories and the `domain-code-staleness` audit rule (ADR-0077): a domain sidecar
   `.awf/domains/<name>.yaml` may declare the domain's file territory as anchored path globs
   under `paths:`; when a branch changes matching files without refreshing
-  `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory Warning —
+  `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory Warning,
   closing the ADR-less half of the domain-doc currency gap (ADR-0019 covers the ADR-driven
   half). Opt-in per domain; disable via `audit.domainCodeStaleness: false`.
 - Trust-bearing writes are atomic (ADR-0076): `.awf/awf.lock` and migration rewrites of an
@@ -483,22 +483,22 @@ query a single version or a range.
 - The agent guide's working-memory check is now on-demand (ADR-0075). The rendered guidance
   no longer tells the agent to check `.awf/memory/` on *every* start of work; instead it reads
   memory when the request implies earlier work to continue, or as a safety net when a fresh or
-  context-compacted session finds `.awf/memory/` non-empty and unaccounted-for — and skips the
+  context-compacted session finds `.awf/memory/` non-empty and unaccounted-for, and skips the
   check for a self-contained request. The resume-discipline (match → resume; ambiguous → ask;
   never silently resume a stale effort) is unchanged. Partial-item supersedence of ADR-0069
   Decision item 5; ADR-0069 stays Implemented.
 - Review agents are now report-only (ADR-0074): the three reviewer subagents
   (`adr-reviewer`, `plan-reviewer`, `code-reviewer`) emit findings and a digest but no longer
   edit, commit, or re-review. The `<prefix>-reviewing-adr`/`-plan`/`-plan-resync`/`-impl`
-  skills now own fix application — routing findings by classification (mechanical directly /
-  reasoned with a one-line rationale / user-decision escalated) — and run exactly one fresh
+  skills now own fix application, routing findings by classification (mechanical directly /
+  reasoned with a one-line rationale / user-decision escalated), and run exactly one fresh
   verify-pass dispatch instead of the retired agent-side 3-round soft cap. Restores reviewer
   independence (a judge that never edits what it judged) and makes fix application visible on
   the main thread. Backed by the `reviewers-report-only` invariant.
 - Convention parts can re-inject their section's own rendered default via the new
   `{{=awf:sectionDefault}}` sandbox placeholder (ADR-0072). Placing it in a convention part
   splices the overridden section's rendered default at that point, so a part can *extend* a
-  shipped default — preamble, appendix, or wrap — instead of copying and forking it (which
+  shipped default (preamble, appendix, or wrap) instead of copying and forking it (which
   silently rots when awf revises the default). A part still replaces its section body; the
   placeholder just carries the default forward. Re-injecting a `stub` section's default (an
   authoring prompt) is a hard render error. Documented in the working-with-awf overrides
@@ -538,12 +538,12 @@ query a single version or a range.
 ### Breaking changes
 - The canonical workflow chain gains a terminal `retrospective` step, and the `reviewing-impl`
   skill now names `<prefix>-retrospective` unconditionally (ADR-0067). An existing project must
-  enable the new Core skill after upgrading — `awf add skill retrospective` — or the next
+  enable the new Core skill after upgrading (`awf add skill retrospective`) or the next
   `awf check` fails with a dead skill reference from `reviewing-impl`.
 ### Features
 - New `retrospective` chain skill (ADR-0067): a main-thread terminal step after `reviewing-impl`
   that reflects on the finished effort and routes recurring, codifiable findings up a four-rung
-  promotion ladder — project invariant, gate test/lint rule, code-reviewer focus item,
+  promotion ladder: project invariant, gate test/lint rule, code-reviewer focus item,
   pitfalls entry. First-occurrence observations are noted rather than promoted, and promotion
   is never delegated or auto-applied unverified.
 - Project-local skills and agents (ADR-0068): a project may enable skill/agent names outside
@@ -562,8 +562,8 @@ query a single version or a range.
 - Must-replace template defaults are now declared with a `stub` attribute on their section
   marker, and `awf new`'s starter parts open with a whole-line `<!-- awf:stub -->` marker.
   `awf check` and `awf init` print a non-failing note per artifact with unauthored stub
-  content; a stub section's rendered pointer reads `— stub; replace by creating <path>`
-  (ADR-0070). Upgrading re-renders every artifact whose template was swept — expect one large
+  content; a stub section's rendered pointer reads `stub; replace by creating <path>`
+  (ADR-0070). Upgrading re-renders every artifact whose template was swept; expect one large
   `awf sync` commit.
 - A malformed `awf:section`/`awf:end` marker is now a hard render error instead of leaking
   verbatim into rendered output (ADR-0070).
@@ -574,7 +574,7 @@ query a single version or a range.
 - `awf check` now reports an enabled artifact whose output file was never synced (the drift scan
   previously iterated only lock entries, so an artifact enabled by hand-editing
   `.awf/config.yaml` was invisible until the next sync), and flags orphaned singleton convention
-  parts under `.awf/parts/` — a typo'd section name or unknown kind directory was silently
+  parts under `.awf/parts/`: a typo'd section name or unknown kind directory was silently
   ignored.
 - The sync prune and `awf uninstall` now skip lock entries that are not local relative paths; a
   corrupted or malicious `.awf/awf.lock` entry could previously delete a file outside the repo
@@ -590,13 +590,13 @@ query a single version or a range.
   limit counts characters, not bytes.
 - Dead-link check fixes: a badge-wrapped link (`[![CI](ci.svg)](docs/x.md)`) now has its outer
   destination checked; an angle-bracket target containing spaces (`[spec](<my file.md>)`)
-  unwraps before checking; root-relative `/docs/…` targets resolve against the repo root; and a
+  unwraps before checking; root-relative `/docs/...` targets resolve against the repo root; and a
   target escaping the repo root is dead by definition instead of depending on host contents.
 - Invariant backing now requires the marker comment to open its line (after indentation), so a
-  marker-shaped string inside a literal — e.g. a test fixture — no longer silently backs a slug;
+  marker-shaped string inside a literal (e.g. a test fixture) no longer silently backs a slug;
   the rendered tagging guidance states the own-line contract.
 - `awf init` with an existing config no longer walks through interactive prompts it then
-  discards — it says it is keeping the config and flags ignored `--set`/`--answers` values —
+  discards (it says it is keeping the config and flags ignored `--set`/`--answers` values),
   and unknown answer keys or out-of-options enum values are rejected instead of silently
   no-op'ing.
 - Replayed migrations on a degraded lock no longer strip a modern `hooks:` mapping or overwrite
@@ -616,27 +616,27 @@ query a single version or a range.
 ## [0.9.0] - 2026-07-05
 ### Bug fixes
 - `awf check` / `awf sync` now reject an `invariants.sources` entry that carries a comment marker
-  but no globs — such a source scans no files, and was previously accepted silently (ADR-0064
+  but no globs: such a source scans no files, and was previously accepted silently (ADR-0064
   follow-up).
 ### Others
 - ADR-system invariant-tagging guidance (`docs/decisions/README.md`) now derives its comment
   marker from `invariants.sources` instead of a hardcoded `//`: the adr-readme template renders
   the glob→marker mapping (via `.invariantMarkers`, degrading to marker-agnostic prose when no
   sources are set), and editing `invariants.sources` reflags the guidance (ADR-0064). Two new
-  override placeholders — `invariantMarkerSentence`, `invariantMarkerTable` — are documented in
+  override placeholders (`invariantMarkerSentence`, `invariantMarkerTable`) are documented in
   the working-with-awf placeholder table.
 - `awf init` no longer prompts for `invariantsMarker` / `invariantsGlobs` or accepts
-  `--set invariantsMarker=…`; configure `invariants.sources` in `.awf/config.yaml` directly. The
+  `--set invariantsMarker=...`; configure `invariants.sources` in `.awf/config.yaml` directly. The
   out-of-box default is unchanged (both descriptors defaulted empty, seeding no invariants
   config), so only the interactive/`--set` seeding path is removed (ADR-0064).
 - Internal: the standard's catalog moves from an embedded `catalog.yaml` parsed at runtime to a
   compile-time Go value (`catalog.Standard`), and the toggleable docs and always-on singletons
-  merge into one `DocEntry` collection from which every projection derives — so adding a mandatory
+  merge into one `DocEntry` collection from which every projection derives, so adding a mandatory
   doc is a single entry instead of ~6 hand-edited sites (ADR-0060, ADR-0061). Rendered output is
   byte-identical; no adopter migration or schema change.
 - The `AGENTS.md` document map now renders its mandatory-doc lines from the catalog rather than
   hardcoded template lines, so a new mandatory doc appears with no template edit (ADR-0062). The
-  four mandatory lines reorder to alphabetical and drop their trailing periods — the only
+  four mandatory lines reorder to alphabetical and drop their trailing periods: the only
   adopter-visible output change.
 
 ## [0.8.0] - 2026-07-05
@@ -644,10 +644,10 @@ query a single version or a range.
 - Granular, domain-aligned commit scopes: `audit.allowedScopes` expands from `[adr, awf, plans]`
   to eight domain-named scopes, and each entry may carry a `{name, meaning}` mapping so the scope
   taxonomy renders from config (ADR-0055, ADR-0056).
-- Convention parts can splice awf-derived values via the `awf:`-namespaced placeholder syntax — a
+- Convention parts can splice awf-derived values via the `awf:`-namespaced placeholder syntax: a
   dynamic, non-empty-only registry (scope list/table/sentence, prefix, gate commands),
   hard-error guards, and a backslash escape for documenting the syntax (ADR-0057, ADR-0058).
-- New mandatory `working-with-awf` usage doc rendered into every project — a post-adoption guide
+- New mandatory `working-with-awf` usage doc rendered into every project: a post-adoption guide
   to the CLI, overrides, the placeholder registry, and the sync/check loop (ADR-0059).
 ### Others
 - The agent guide's commit-scope prose and the `docs/workflow.md` taxonomy table now derive from
@@ -666,7 +666,7 @@ query a single version or a range.
   overridable via `.awf/skills/parts/<skill>/red-flags.md`.
 ### Others
 - Add a deterministic golden-task eval suite (`internal/evals`) that renders every catalog skill
-  and agent through a full `Project.Sync` and asserts cross-artifact workflow-chain seams —
+  and agent through a full `Project.Sync` and asserts cross-artifact workflow-chain seams:
   forward handoffs name their successor on an invocation-verb line, and the chain graph is
   connected and reachable from `brainstorming` (ADR-0053, ADR-0054). Test-only; no change to
   rendered output or CLI behavior.
@@ -678,11 +678,11 @@ query a single version or a range.
 ### Others
 - The code-review agent's universal correctness lens is now paradigm-neutral: "race conditions,
   missing locks" broadens to "concurrency hazards (data races, unsynchronised shared state)" and
-  the storage-layer concurrency clause is dropped — a project with a storage layer re-adds those
+  the storage-layer concurrency clause is dropped: a project with a storage layer re-adds those
   traps via the reviewer sidecar's project-focus data.
-- Add a general `awf:include` template-partials directive — awf-owned embedded partials under
+- Add a general `awf:include` template-partials directive (awf-owned embedded partials under
   `templates/partials/`, spliced before section parsing, with the drift hash computed over the
-  expanded source so a partial edit still flags dependent artifacts stale — and use it to
+  expanded source so a partial edit still flags dependent artifacts stale) and use it to
   deduplicate the review-discipline spine shared by the three reviewer agents. An awf-internal
   change: rendered template output is byte-for-byte unchanged (ADR-0052).
 
@@ -706,7 +706,7 @@ query a single version or a range.
   A leftover var entry is inert; set `audit.allowedScopes` and re-sync to keep the prose.
 ### Features
 - Render three inert git-hook payload scripts (`pre-commit`/`commit-msg`/`pre-push`) under
-  `.awf/hooks/` via a `hooks` singleton — enabled by default at init, toggled with
+  `.awf/hooks/` via a `hooks` singleton: enabled by default at init, toggled with
   `awf add/remove hooks`; awf still never touches git config (ADR-0048).
 - Add `awf new adr`, scaffolding the next sequential ADR from the rendered template (ADR-0042).
 - Add `awf changelog` with `--version`/`--since`/`--range` filters over an embedded changelog
@@ -714,8 +714,8 @@ query a single version or a range.
 - `awf add domain` scaffolds the domain's `current-state.md` convention part alongside the
   config edit.
 - The rendered workflow doc gains gate-composition and CI-backstop sections.
-- Every var/data interpolation degrades to coherent generic prose when unset — an empty
-  `awf init` renders publication-safe output — and `awf check`/`awf init` print advisory
+- Every var/data interpolation degrades to coherent generic prose when unset (an empty
+  `awf init` renders publication-safe output), and `awf check`/`awf init` print advisory
   notes for referenced-but-unset vars (ADR-0045).
 - `awf check` fails on a rendered reference to a catalog skill outside the enabled set, and
   templates can read the enabled-skill set to conditionalize prose (ADR-0046).
@@ -772,10 +772,10 @@ query a single version or a range.
   enabled adapter via a `targets` config array (default `[claude]`), replacing the implicit
   Claude-only output path (ADR-0037, ADR-0038). Run `awf upgrade` after updating.
 ### Features
-- Add a Cursor adapter (`.cursor/skills`, `.cursor/agents`, no `CLAUDE.md`-style bridge — Cursor
+- Add a Cursor adapter (`.cursor/skills`, `.cursor/agents`, no `CLAUDE.md`-style bridge: Cursor
   reads `AGENTS.md` natively); manage adapters via `awf add/remove/list target <name>` (ADR-0037).
-- Skill and agent prose is now tool-agnostic — neutral vocabulary instead of Claude Code-specific
-  terms — so it reads correctly under any adapter (ADR-0038).
+- Skill and agent prose is now tool-agnostic (neutral vocabulary instead of Claude Code-specific
+  terms), so it reads correctly under any adapter (ADR-0038).
 
 ## [0.3.1] - 2026-06-29
 ### Others
@@ -784,13 +784,13 @@ query a single version or a range.
 
 ## [0.3.0] - 2026-06-29
 ### Features
-- Convention-part bodies now render as raw input — never template-interpolated — closing a class
+- Convention-part bodies now render as raw input (never template-interpolated), closing a class
   of accidental-`{{`-breakage bugs (ADR-0034).
 - `awf sync` now backs up any foreign file it would otherwise overwrite to a free
   `<path>.awf-bak[.N]` sibling, so adopting awf into an existing repo no longer risks silently
   clobbering unrelated files (ADR-0035).
 - Add `awf commit-gate`, the deterministic, blocking counterpart to `awf audit`'s advisory
-  Conventional-Commits rule — wire it into your own `commit-msg` hook (ADR-0036).
+  Conventional-Commits rule; wire it into your own `commit-msg` hook (ADR-0036).
 - Add `--help`/`-h` support to every subcommand.
 
 ## [0.2.0] - 2026-06-29
