@@ -431,6 +431,97 @@ func TestDispatchHooks(t *testing.T) {
 	}
 }
 
+// TestRunRunnerCLI mirrors TestRunBootstrapCLI for the command-runner singleton
+// (ADR-0101): list state, the add/remove toggle round-trip with render/prune, and
+// the guard errors.
+func TestRunRunnerCLI(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
+
+	// list runner before any change: available.
+	var buf bytes.Buffer
+	if err := runList(root, "runner", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if out := buf.String(); !strings.Contains(out, "runner:") ||
+		!strings.Contains(out, "x") || !strings.Contains(out, "available") {
+		t.Errorf("list runner (initial):\n%s", out)
+	}
+
+	// remove when disabled errors.
+	if err := runDisable(root, "runner", "", false, false, io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "is not enabled") {
+		t.Errorf("expected is-not-enabled error, got %v", err)
+	}
+
+	// add enables it (config gains enabled: true, sync renders x at the root).
+	if err := runEnable(root, "runner", "", false, io.Discard); err != nil {
+		t.Fatalf("add runner: %v", err)
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("runner not enabled in config:\n%s", readConfig(t, root))
+	}
+	if _, err := os.Stat(filepath.Join(root, "x")); err != nil {
+		t.Errorf("x not rendered after add: %v", err)
+	}
+
+	// list runner now reports enabled.
+	buf.Reset()
+	if err := runList(root, "runner", &buf); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "enabled") {
+		t.Errorf("list runner (enabled):\n%s", buf.String())
+	}
+
+	// add when already enabled errors.
+	if err := runEnable(root, "runner", "", false, io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "already enabled") {
+		t.Errorf("expected already-enabled error, got %v", err)
+	}
+
+	// remove disables it and prunes the rendered runner.
+	if err := runDisable(root, "runner", "", false, false, io.Discard); err != nil {
+		t.Fatalf("remove runner: %v", err)
+	}
+	if !strings.Contains(readConfig(t, root), "enabled: false") {
+		t.Errorf("runner not disabled in config:\n%s", readConfig(t, root))
+	}
+	if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
+		t.Errorf("x not pruned after remove: err=%v", err)
+	}
+}
+
+// TestDispatchRunner mirrors TestDispatchBootstrap: the runner is a nameless
+// singleton reached through the enable/disable dispatch, and handing it a name is
+// a usage error.
+func TestDispatchRunner(t *testing.T) {
+	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
+		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
+		t.Errorf("runner not enabled after add dispatch:\n%s", cfg)
+	}
+
+	// A name is a usage error — the runner is a nameless singleton.
+	errb.Reset()
+	if code := run([]string{"awf", "enable", "runner", "x"}, &out, &errb); code == 0 ||
+		!strings.Contains(errb.String(), "takes no name") {
+		t.Errorf("expected takes-no-name usage error, got code=%d err=%q", code, errb.String())
+	}
+
+	errb.Reset()
+	if code := run([]string{"awf", "disable", "runner"}, &out, &errb); code != 0 {
+		t.Fatalf("remove runner dispatch: code=%d err=%q", code, errb.String())
+	}
+	if cfg := readConfig(t, root); !strings.Contains(cfg, "enabled: false") {
+		t.Errorf("runner not disabled after remove dispatch:\n%s", cfg)
+	}
+}
+
 func TestRunAddRemoveFlowStyle(t *testing.T) {
 	root := scaffoldProject(t)
 	if err := runEnable(root, "skill", "bugfix", false, io.Discard); err != nil {

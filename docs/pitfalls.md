@@ -775,8 +775,9 @@ Adding the runner touched, and each was easy to miss: the `//go:embed` directive
 `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel` — an
 unclaimed `.awf/runner/parts` made a `create … to override` pointer's own advice fail `check`,
 caught only in impl review), the `internal/configspec` entry + regenerated config-reference
-(ADR-0088 parity), and the nameless-singleton enable-CLI arm (still hardcoding
-`bootstrap`/`hooks`, deferred). Lesson: when adding a config-tree singleton, walk the full
+(ADR-0088 parity), and the nameless-singleton enable-CLI arm (`cmd/awf` hardcodes each
+singleton kind in the dispatcher, the toggle, `enableDisableSingleton`, `awf list`, and the
+unknown-kind message — five sites, no central list). Lesson: when adding a config-tree singleton, walk the full
 list — embed, render block, sweep claim, configspec/reference, enable CLI, example adoption —
 rather than trusting the render to surface the gaps (ADR-0101, ADR-0086, ADR-0088; 2026-07-15).
 

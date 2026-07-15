@@ -219,7 +219,7 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
-		Path: "runner.enabled", Type: "bool", Default: "false (key absent) — opt in explicitly",
+		Path: "runner.enabled", Type: "bool", Default: "false (key absent) — opt in via `awf enable runner`",
 		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},

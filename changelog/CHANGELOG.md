@@ -66,10 +66,11 @@ query a single version or a range.
   target's comment syntax (`#` for a shebang script, HTML otherwise), and a rendered `#!` file is
   written executable (`0755`, enforced every sync) — so **the bootstrap and hook payloads flip
   from `0644` to `0755` on the next sync** (harmless; still `bash …`-invoked). Enable the new
-  `runner.enabled` config toggle to render `x` at the repo root: awf owns the awf-verb dispatch
-  (`sync check invariants audit context commit-gate new`, delegating to the pinned binary via the
-  bootstrap), and the setup and project-verb regions are yours to edit in place. awf itself keeps
-  its from-source runner; the `examples/sundial` adopter demonstrates the feature.
+  `runner` singleton (`awf enable runner`, or set `runner.enabled` in `.awf/config.yaml`) to render
+  `x` at the repo root: awf owns the awf-verb dispatch (`sync check invariants audit context
+  commit-gate new`, delegating to the pinned binary via the bootstrap), and the setup and
+  project-verb regions are yours to edit in place. awf itself keeps its from-source runner; the
+  `examples/sundial` adopter demonstrates the feature.
 - `awf check` now validates planned commit subjects in plans (ADR-0111). A plan marks
   a phase's closing-commit subject with a fenced code block tagged `commit`; `awf check`
   reads its first non-empty line and validates it against the project's `audit` settings

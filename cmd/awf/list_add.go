@@ -14,25 +14,28 @@ import (
 )
 
 func unknownKind(kind string) error {
-	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap, hooks)", kind)}
+	return &usageErr{fmt.Sprintf("unknown kind %q (want: skill, agent, doc, domain, target, bootstrap, hooks, runner)", kind)}
 }
 
 // enableDisableSingleton enables or disables a nested <key>.enabled singleton toggle
-// in the config — the bootstrap (ADR-0040) or the git-hook payloads (ADR-0048).
-// It is the bespoke path (singletons are not kindDescriptors — no catalog pool /
-// sections / plural enable array, so they stay out of the single dispatch table
-// that inv: kind-dispatch-single-table guards): a nested <key>.enabled scalar,
-// written via config.SetMappingScalar.
+// in the config — the bootstrap (ADR-0040), the git-hook payloads (ADR-0048), or the
+// command runner (ADR-0101). It is the bespoke path (singletons are not
+// kindDescriptors — no catalog pool / sections / plural enable array, so they stay
+// out of the single dispatch table that inv: kind-dispatch-single-table guards): a
+// nested <key>.enabled scalar, written via config.SetMappingScalar.
 func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
 	}
 	var enabled bool
-	if key == "bootstrap" {
+	switch key {
+	case "bootstrap":
 		enabled = p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled
-	} else {
+	case "hooks":
 		enabled = p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled
+	case "runner":
+		enabled = p.Cfg.Runner != nil && p.Cfg.Runner.Enabled
 	}
 	if add && enabled {
 		return fmt.Errorf("%s already enabled", key)
@@ -174,7 +177,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 	if kind == "target" {
 		return enableDisableTarget(root, name, add, stdout)
 	}
-	if kind == "bootstrap" || kind == "hooks" {
+	if kind == "bootstrap" || kind == "hooks" || kind == "runner" {
 		return enableDisableSingleton(root, kind, add, stdout)
 	}
 	key, ok := project.PluralKind(kind)
@@ -396,6 +399,15 @@ func listHooks(p *project.Project, stdout io.Writer) {
 	}
 }
 
+func listRunner(p *project.Project, stdout io.Writer) {
+	state := "available"
+	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
+		state = "enabled"
+	}
+	fmt.Fprintln(stdout, "runner:")
+	fmt.Fprintf(stdout, "  %-28s %s\n", "x", state)
+}
+
 func runList(root, kindFilter string, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
@@ -410,6 +422,9 @@ func runList(root, kindFilter string, stdout io.Writer) error {
 		return nil
 	case "hooks":
 		listHooks(p, stdout)
+		return nil
+	case "runner":
+		listRunner(p, stdout)
 		return nil
 	}
 	kinds := project.Kinds()

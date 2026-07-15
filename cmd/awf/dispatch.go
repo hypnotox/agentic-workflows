@@ -103,7 +103,7 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 	if isEnable {
 		verb, usage = "enable", "usage: awf enable <kind> <name> [--dry-run]"
 	}
-	isSingleton := len(pos) >= 1 && (pos[0] == "bootstrap" || pos[0] == "hooks") // nameless singleton forms (ADR-0040, ADR-0048)
+	isSingleton := len(pos) >= 1 && (pos[0] == "bootstrap" || pos[0] == "hooks" || pos[0] == "runner") // nameless singleton forms (ADR-0040, ADR-0048, ADR-0101)
 	switch {
 	case len(pos) == 1 && isSingleton:
 		return pos[0], "", nil
@@ -124,8 +124,8 @@ func enableDisableArgs(pos []string, isEnable bool) (kind, name string, err erro
 // descriptor kind (skill/agent/doc/domain, via the one kind table that
 // kind-dispatch-single-table guards) or the target adapter (which has no
 // descriptor). It lets enableDisableArgs tell "forgot the name" from "forgot the
-// kind". bootstrap/hooks are excluded — they are nameless singletons handled
-// before this check.
+// kind". bootstrap/hooks/runner are excluded — they are nameless singletons
+// handled before this check.
 func isKindToken(s string) bool {
 	if s == "target" {
 		return true
