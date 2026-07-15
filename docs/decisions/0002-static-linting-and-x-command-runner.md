@@ -32,7 +32,7 @@ Two couplings shaped the decision:
    the gate is a config edit plus a re-sync, not a hand-edit of rendered files.
 
 2. **The pre-push hook is currently broken.** `templates/hooks/pre-push.tmpl` renders
-   `{{ .vars.gateCmd }} full` — it assumes `gateCmd` is a *script that accepts a `full`
+   `{{ .vars.gateCmd }} full`: it assumes `gateCmd` is a *script that accepts a `full`
    subcommand* (the golden-test fixtures in `internal/project/spine_test.go` already
    expect `gateCmd: "./x gate"` / `gateCmdFull: "./x gate full"`). But awf set `gateCmd`
    to a raw command, so the on-disk `.githooks/pre-push` is
@@ -64,8 +64,8 @@ larger, separately load-bearing change.
 3. **Introduce `./x`**, an executable bash command-runner at the repo root, as the single
    entry point for repo interactions. Subcommands: `gate [full]`, `lint`, `test`, `sync`,
    `check`, `adr`, `build`, `install`, `fmt`. The awf-invoking subcommands run the CLI
-   **from source** — `./x sync` → `go run ./cmd/awf sync`, `./x check` → `go run ./cmd/awf
-   check` — so the dogfooded render always matches the current source tree and can never
+   **from source** (`./x sync` → `go run ./cmd/awf sync`, `./x check` → `go run ./cmd/awf
+   check`), so the dogfooded render always matches the current source tree and can never
    use a stale binary (awf renders its own `.claude/` files; a stale binary would emit
    wrong output). `./x build` (`go build`) and `./x install` (`go install ./cmd/awf`) are
    separate convenience wrappers and are **not** on the sync/check path. `./x` is not on
@@ -80,12 +80,12 @@ larger, separately load-bearing change.
    AGENTS.md overlay parts:** `.claude/awf/parts/agents-doc-conventions.md` line 4 hardcodes
    the gate string (`go test ./... && go vet ./... (≈10s)`) as literal prose, not a
    `{{ .vars.gateCmd }}` interpolation, so it must be hand-edited in the same change to read
-   `./x gate` and the new duration — otherwise the rendered AGENTS.md will contain two
+   `./x gate` and the new duration; otherwise the rendered AGENTS.md will contain two
    contradictory gate commands, and `awf check` will not flag it (the overlay part is a
    render *input*, so the lock still matches after re-sync).
 
 5. **`.golangci.yml` and `./x` are hand-maintained repo files outside the awf render/lock
-   set** — they are not rendered from templates and not tracked in `.claude/awf.lock`, so
+   set**: they are not rendered from templates and not tracked in `.claude/awf.lock`, so
    they do not affect `awf check`. Linting is adopted for this repo only; promoting it into
    the awf standard (a rendered template + catalog entry) is explicitly deferred to a
    future ADR.
@@ -95,7 +95,7 @@ larger, separately load-bearing change.
 - The gate invoked by `./x gate` runs golangci-lint; the pre-commit hook blocks any commit
   with lint failures **when hooks are active** (`git config core.hooksPath .githooks`). The
   hooks are currently dormant in this repo (`core.hooksPath` is unset), so activating them
-  is a prerequisite for this invariant to bind — the implementation plan must either set
+  is a prerequisite for this invariant to bind: the implementation plan must either set
   `core.hooksPath` or document the manual `./x gate` discipline; otherwise the gate is
   advisory only.
 - The golangci-lint version is pinned in `go.mod` via the `tool` directive; running the gate
@@ -103,7 +103,7 @@ larger, separately load-bearing change.
 - `.golangci.yml` and `./x` are absent from `.claude/awf.lock` and never cause `awf check`
   to report drift.
 - `gateCmd` / `gateCmdFull` in `.claude/awf.yaml` reference `./x gate` (and `./x gate full`);
-  the rendered `.githooks/pre-push` invokes a valid command — never a bare `go vet ./... full`.
+  the rendered `.githooks/pre-push` invokes a valid command, never a bare `go vet ./... full`.
 - No file under `.claude/awf/parts/` and no rendered file contains the literal string
   `go test ./... && go vet ./...` as a *gate* command after the flip (grep is the test);
   the only gate command that survives the change is `./x gate`. (`go vet ./...` may still
@@ -128,7 +128,7 @@ Harder / accepted trade-offs:
 - Editing `.claude/awf.yaml` (the gate vars) requires an immediate `./x sync` before
   committing, or the pre-commit `awf check` will fail on drift in the re-rendered files.
 - The gate string is hardcoded in `.claude/awf/parts/agents-doc-conventions.md` (a static
-  overlay part), so a gate change is *not* fully captured by re-sync — the part file must be
+  overlay part), so a gate change is *not* fully captured by re-sync; the part file must be
   hand-edited in lockstep. `awf check` cannot catch a stale gate string there because the
   part is a render input, not a rendered output. This is a pre-existing coupling the gate
   change surfaces, not one this ADR introduces.
@@ -137,19 +137,19 @@ Ruled out (for now):
 - Per-package exclusions and complexity gates in the baseline config.
 - Linting as part of the rendered awf standard (deferred to a future ADR).
 
-Downstream work unblocked: an implementation plan covering — add the tool dep + config,
+Downstream work unblocked: an implementation plan covering: add the tool dep + config,
 write `./x`, fix any lint findings the new config surfaces, flip the gate vars and re-sync,
 hand-edit the static gate string in `.claude/awf/parts/agents-doc-conventions.md`, and
 update the gate docs. When this ADR's status flips to Accepted or Implemented, the same
 commit must regenerate `docs/decisions/ACTIVE.md` via `go test ./internal/adrtools/`.
 (No `docs/decisions/README.md` index row is owed: this repo's README is a how-to guide with
-no per-ADR rows — `ACTIVE.md` is the generated index.)
+no per-ADR rows; `ACTIVE.md` is the generated index.)
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| Edit `pre-push.tmpl` to use `gateCmdFull` instead of introducing `./x` | Changes the shared, published hook template — alters the standard for every adopter; out of scope. A repo-local `./x` conforms to the existing template convention without touching the standard. |
+| Edit `pre-push.tmpl` to use `gateCmdFull` instead of introducing `./x` | Changes the shared, published hook template: alters the standard for every adopter; out of scope. A repo-local `./x` conforms to the existing template convention without touching the standard. |
 | golangci-lint via separate install / CI action | This repo has no CI; local hooks are the only gate. A `go tool` dep guarantees every contributor runs the same pinned version with zero setup. |
 | Lean curated linter set (~9 linters) | Lower signal; the codebase is clean enough to pass a stricter set, and the goal is highest practical quality. |
 | Comprehensive set with complexity gates + per-package exclusions | Requires tuning and exclusions that a small, clean codebase does not yet warrant; ratchet on later if needed. |

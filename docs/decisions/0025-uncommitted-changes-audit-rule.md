@@ -12,7 +12,7 @@ domains: [tooling]
 ## Context
 
 A recurring implementation failure mode is finishing a change with the working tree not fully
-committed — most insidiously, committing a rendered file (e.g. `AGENTS.md`) while leaving its source
+committed: most insidiously, committing a rendered file (e.g. `AGENTS.md`) while leaving its source
 (the template or `.awf/` config that produced it) uncommitted. The pre-commit `awf check` does not
 catch this: it renders from the *working tree*, which still holds the modified-but-unstaged source,
 so the rendered output matches and the check passes. The drift exists only in the committed tree, and
@@ -38,12 +38,12 @@ Consequences).
 1. **Add an `uncommitted-changes` audit rule.** It emits a single branch-level `Error` finding (empty
    commit hash) when the working tree is not clean, with a detail reporting the count of tracked
    changes and untracked files. It reads live working-tree state via go-git's `Worktree().Status()`
-   (honouring `.gitignore`), so it is evaluated in `Run` — which has the repo root — alongside, but
+   (honouring `.gitignore`), so it is evaluated in `Run` (which has the repo root) alongside, but
    distinct from, the commit-history rules in `evaluate`. Being a live-state check, it fires
    independent of the commit range (a clean range with a dirty tree is still flagged).
 
 2. **Severity is `Error`.** The rule's purpose is the end-of-implementation gate `awf-reviewing-impl`
-   surfaces, where a dirty tree means implementation changes were left uncommitted — the failure this
+   surfaces, where a dirty tree means implementation changes were left uncommitted: the failure this
    guards. The audit remains advisory and is never wired into the gate (ADR-0017), so the `Error`
    blocks nothing on its own; it is the reviewing-impl step that treats it as blocking.
 
@@ -56,7 +56,7 @@ Consequences).
 4. **Record the live-state broadening.** The audit package doc comment (`internal/audit/audit.go`)
    is updated to note that one rule (`uncommitted-changes`) additionally inspects the live working
    tree; the other rules remain pure over the commit range. ADR-0017's body is frozen (append-only
-   once Implemented), so it is **not** edited — this ADR is the record of the broadening, linked via
+   once Implemented), so it is **not** edited; this ADR is the record of the broadening, linked via
    `related: [0017]`. Because the live-state rule is range-independent it also qualifies ADR-0017's
    `audit-empty-range-clean` invariant: an empty range still yields zero *history-derived* findings,
    but a dirty tree on that same empty range now produces this rule's `Error` (intended). The
@@ -64,7 +64,7 @@ Consequences).
 
 ## Invariants
 
-- `invariant: audit-uncommitted-changes` — when enabled, `awf audit` reports an `Error` finding if the
+- `invariant: audit-uncommitted-changes`: when enabled, `awf audit` reports an `Error` finding if the
   working tree has any uncommitted change: a tracked modification, or an untracked file not matched
   by the repository's `.gitignore` or `.git/info/exclude`. "Not matched" here is exactly what go-git's
   `Worktree().Status()` reports (see the Consequences note on the global-`core.excludesFile` gap), so
@@ -73,8 +73,8 @@ Consequences).
 
 ## Consequences
 
-- The terminal review deterministically surfaces a forgotten or partially-staged change — including
-  the rendered-without-source case that prompted this ADR — instead of letting it slip into history.
+- The terminal review deterministically surfaces a forgotten or partially-staged change (including
+  the rendered-without-source case that prompted this ADR) instead of letting it slip into history.
 - The rule adds a live-working-tree read to a package that was previously pure over commit history; it
   is isolated to `Run` and the one rule, and uses the go-git dependency the package already carries
   (no new dependency, no shell-out).
@@ -83,7 +83,7 @@ Consequences).
 - **go-git ignore-scope gap.** `Worktree().Status()` consults the repository's `.gitignore` and
   `.git/info/exclude`, but **not** the user's global `core.excludesFile` (e.g. `~/.gitignore`) or
   `/etc/gitconfig`. A file ignored only globally shows as untracked and would trip the rule even
-  though `git status` stays silent — a live case in this repo, whose `.gitignore` carries `!CLAUDE.md`
+  though `git status` stays silent: a live case in this repo, whose `.gitignore` carries `!CLAUDE.md`
   precisely because the user globally ignores `CLAUDE.md`. The toggle and the advisory nature mitigate
   it; loading the global/system exclude patterns into the worktree matcher to fully mirror `git
   status` is possible future hardening if the false positives prove disruptive.
@@ -98,13 +98,13 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 
 - The `tooling` domain narrative gains the new audit rule.
 - The status flip to `Implemented` regenerates `docs/decisions/ACTIVE.md` via `./x sync`.
-- No `docs/decisions/README.md` row is owed — the index is the generated `ACTIVE.md` (ADR-0005).
+- No `docs/decisions/README.md` row is owed; the index is the generated `ACTIVE.md` (ADR-0005).
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| A clean-tree check in the `awf-reviewing-impl` skill prose only | Probabilistic — the agent might skip it; awf prefers a deterministic check it can surface mechanically. |
+| A clean-tree check in the `awf-reviewing-impl` skill prose only | Probabilistic: the agent might skip it; awf prefers a deterministic check it can surface mechanically. |
 | Pre-commit hook checking the staged tree for drift | Catches the rendered-without-source case at commit time (a hard gate), but is narrower (only drift, not a forgotten test file) and needs awf to render against staged blobs; the audit rule is generic and reuses existing wiring. Left as possible future hardening. |
 | Pre-push hook refusing a dirty tree | Wrong boundary (fires on any push, including unrelated WIP) and false-positive prone; the terminal review is the meaningful end-of-implementation moment. |
 | Severity `Warning` | A dirty tree at the audit's intended use is a real end-of-implementation violation, not a nudge; `Warning` would not block at reviewing-impl. |

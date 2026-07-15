@@ -17,9 +17,9 @@ Cursor, with the same `SKILL.md`/`AGENTS.md` body written to each target's paths
 content problem the single-runtime era hid: the shipped skill prose names **Claude-specific tools**.
 The chain skills say "Invoke the `Agent` tool with `subagent_type: Explore`", "via the `Skill`
 tool", and "Prefer multiple choice (`AskUserQuestion` tool)". A grep of the shipped templates finds
-this vocabulary in ~10 skill templates — `brainstorming`, the four `reviewing-*`,
+this vocabulary in ~10 skill templates (`brainstorming`, the four `reviewing-*`,
 `refactor-coupling-audit`, `executing-plans`, `proposing-adr`, `writing-plans`, and
-`subagent-driven-development` — in both capitalised (`Agent` tool) and lowercase ("the agent tool
+`subagent-driven-development`) in both capitalised (`Agent` tool) and lowercase ("the agent tool
 with subagent type") forms. Rendered verbatim into `.cursor/skills/`, these instruct a Cursor agent
 to call tools by names that are Claude's, not Cursor's.
 
@@ -28,7 +28,7 @@ ADR-0018 already established a documentation authoring standard (`doc-standard.m
 that same standard: awf's rendered prose is a multi-runtime standard, so it must describe **actions**
 the agent takes, not the **tool names** one runtime happens to expose. Cursor 2.4 ships subagents and
 skills, so action-language ("dispatch a fresh-context `<name>` subagent", "ask a multiple-choice
-question") reads correctly in both runtimes without per-adapter substitution — keeping ADR-0037's
+question") reads correctly in both runtimes without per-adapter substitution, keeping ADR-0037's
 "same body to every target, no transform" property intact.
 
 This was carved out of ADR-0037 (its original Decision 6) so each ADR records one load-bearing
@@ -56,14 +56,14 @@ one implementation plan.
    neutral `subagent` replacement language): `subagent_type` / "subagent type", "Agent tool" / "the
    agent tool", the "`Agent` prompt" phrasing (`brainstorming`, `subagent-driven-development`),
    "Skill tool", and "AskUserQuestion". This catches both the capitalised and lowercase forms the
-   `reviewing-*` skills use — not only the templates carrying the capitalised tokens.
+   `reviewing-*` skills use, not only the templates carrying the capitalised tokens.
 
 ## Invariants
 
 Tagged slugs are backed by tests landing with implementation (enforced by `awf check` once this ADR
 is `Implemented`); untagged bullets are textual contracts.
 
-- `invariant: skill-prose-tool-agnostic` — every rendered skill and agent body is free of runtime
+- `invariant: skill-prose-tool-agnostic`: every rendered skill and agent body is free of runtime
   tool-name tokens; the backing check matches the complete neutralised vocabulary
   **case-insensitively** and word-anchored (`subagent_type` / "subagent type", "Agent tool" / "the
   agent tool", the "`Agent` prompt" phrasing, "Skill tool", "AskUserQuestion"), so the lowercase "the
@@ -76,14 +76,14 @@ is `Implemented`); untagged bullets are textual contracts.
 ## Consequences
 
 - awf's rendered standard reads correctly under any runtime that follows the SKILL.md/AGENTS.md
-  conventions, not just Claude Code — completing the portability ADR-0037 begins at the mechanism
+  conventions, not just Claude Code, completing the portability ADR-0037 begins at the mechanism
   level.
 - The neutralisation is a one-time prose sweep of ~10 templates plus one `doc-standard.md` rule; the
   golden guard prevents regression. No engine, config, or schema change.
 - Because the same body still renders to every target unchanged, this preserves ADR-0037's
-  no-per-adapter-transform property — the prose is neutral, so no substitution is needed.
+  no-per-adapter-transform property: the prose is neutral, so no substitution is needed.
 - `doc-standard.md` is a managed doc (ADR-0011/0018) and the rule lands in its existing `rules`
-  section — no new section, so `docs_sections_test`'s section-parity is unaffected and stays green.
+  section: no new section, so `docs_sections_test`'s section-parity is unaffected and stays green.
 
 Doc-currency obligations the implementing commit(s) must satisfy:
 
@@ -91,7 +91,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
   re-render via `./x sync`, kept green by `./x check`, in the commit(s) that make them true.
 - In the commit that flips this ADR to `Implemented`, `docs/decisions/ACTIVE.md` is regenerated via
   `./x sync` (the same `./x sync` covers ADR-0037's flip in the shared plan). No
-  `docs/decisions/README.md` index row is owed — the README is a how-to guide; `ACTIVE.md` is the
+  `docs/decisions/README.md` index row is owed: the README is a how-to guide; `ACTIVE.md` is the
   generated index (ADR-0005).
 
 ## Alternatives Considered

@@ -19,7 +19,7 @@ hand-editing the enable arrays.
 
 Docs already follow the opposite, opt-in shape: ADR-0004 established that docs are not scaffolded
 and are added deliberately. The skill set never inherited that discipline, so adoption starts
-maximally invasive — the audit ahead of the first real adoption flagged "init enables the entire
+maximally invasive; the audit ahead of the first real adoption flagged "init enables the entire
 catalog" as the single largest first-run friction. The catalog is the full standard awf *offers*;
 it should not also be the default an adopter is forced to start from.
 
@@ -33,25 +33,25 @@ without a `<no value>` failure.
 
 1. **Introduce a `core` marker in the catalog.** Add a `Core bool` field (`yaml:"core"`) to
    `catalog.SkillSpec` and `catalog.DocSpec`. In `templates/catalog.yaml`, mark `core: true` on the
-   ten workflow-chain skills — `brainstorming`, `writing-plans`, `reviewing-plan`,
+   ten workflow-chain skills (`brainstorming`, `writing-plans`, `reviewing-plan`,
    `reviewing-plan-resync`, `proposing-adr`, `reviewing-adr`, `adr-lifecycle`, `executing-plans`,
-   `subagent-driven-development`, `reviewing-impl` — and on the three workflow docs — `workflow`,
-   `doc-standard`, `agents-md-standard`. All other skills and docs are non-core (opt-in).
-   (`adr-lifecycle` is core because ADR status flips happen mid-chain — `proposing-adr`,
+   `subagent-driven-development`, `reviewing-impl`) and on the three workflow docs (`workflow`,
+   `doc-standard`, `agents-md-standard`). All other skills and docs are non-core (opt-in).
+   (`adr-lifecycle` is core because ADR status flips happen mid-chain (`proposing-adr`,
    `executing-plans`/`subagent-driven-development`, and the review skills all drive lifecycle
-   transitions — so a fresh adopter running the chain needs it, even though AGENTS.md frames it
+   transitions), so a fresh adopter running the chain needs it, even though AGENTS.md frames it
    among the as-needed task skills.)
 
 2. **Scaffold only core targets.** `ScaffoldConfig` enables exactly the catalog's core skills and
-   emits a `docs:` section listing the core docs. Agents and hooks remain enabled wholesale — all
+   emits a `docs:` section listing the core docs. Agents and hooks remain enabled wholesale: all
    three review agents back core review skills and both hooks enforce the green-gate invariant, so
    every agent and hook is workflow-essential. Non-core skills/docs are omitted from the generated
    config.
 
 3. **Keep opt-in friction-free.** The enable mechanism is unchanged: an adopter opts a non-core
    target in by adding its name to the relevant config array (`awf add <skill>` for skills). To make
-   that safe, `ScaffoldConfig` continues to seed **every** template-referenced var — not only those
-   used by core targets — so a later `awf add` of an opt-in skill renders without a `<no value>`
+   that safe, `ScaffoldConfig` continues to seed **every** template-referenced var (not only those
+   used by core targets), so a later `awf add` of an opt-in skill renders without a `<no value>`
    failure. Because docs now appear in the scaffold output, `ScaffoldConfig`'s var-collection
    (`collectVars`) is extended to also walk the catalog's doc templates, not just its
    skill/agent/hook templates. Doc templates reference no vars today, but the extension keeps the
@@ -65,9 +65,9 @@ without a `<no value>` failure.
 
 ## Invariants
 
-- `invariant: scaffold-core-only` — the config `ScaffoldConfig` generates enables exactly the catalog's
+- `invariant: scaffold-core-only`: the config `ScaffoldConfig` generates enables exactly the catalog's
   core skills and core docs (plus all agents and all hooks), and no non-core skill or doc.
-- `invariant: scaffold-seeds-all-vars` — `ScaffoldConfig` seeds every var referenced by any catalog
+- `invariant: scaffold-seeds-all-vars`: `ScaffoldConfig` seeds every var referenced by any catalog
   skill, agent, hook, or doc template, independent of whether its target is core, so opt-in
   additions render cleanly. The backing test derives its expected var set directly from those
   template families (rather than mirroring `collectVars`'s inputs), so it fails if a future

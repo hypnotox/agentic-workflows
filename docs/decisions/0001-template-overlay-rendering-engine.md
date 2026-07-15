@@ -14,16 +14,16 @@ domains: [rendering]
 The `awf` generator must render project-specific `.claude` skill/agent/hook files from shared
 templates plus a small per-project `awf.yaml` config. Two engine shapes were considered:
 
-- **Engine A** — a DSL or structured format where sections are declared explicitly and composed
+- **Engine A**, a DSL or structured format where sections are declared explicitly and composed
   at a data level before any rendering.
-- **Engine B** — marker-delimited markdown + overlay: templates are plain markdown that read as
+- **Engine B**, marker-delimited markdown + overlay: templates are plain markdown that read as
   finished skills, with Go `text/template` interpolation and named section markers
   (`<!-- awf:section name -->` / `<!-- awf:end -->`) that the overlay can address per project.
 
 Templates need to accommodate variable interpolation (`{{ .vars.testCmd }}`), data loops
 (`{{ range .data.testSurfaces }}`), and per-project section overrides (replace a section body
 with a project-authored file, or drop it entirely). The rendered output must contain **no**
-generator metadata in its body — provenance lives only in `awf.lock`.
+generator metadata in its body; provenance lives only in `awf.lock`.
 
 Three internal reference Go projects share near-identical skill families that
 have already drifted. The engine must remain legible to skill authors reading raw templates.
@@ -34,14 +34,14 @@ Use **Engine B**: marker-delimited markdown + overlay rendered with Go `text/tem
 `missingkey=zero`.
 
 Overlay resolution per section, in priority order:
-1. `drop: true` — omit section and markers entirely.
-2. `replaceWith: parts/<file>.md` — replace section body with project-authored content (still
+1. `drop: true`: omit section and markers entirely.
+2. `replaceWith: parts/<file>.md`: replace section body with project-authored content (still
    interpolated).
-3. Default — render the spine section with the project's `vars`/`data`.
+3. Default: render the spine section with the project's `vars`/`data`.
 
 Section markers are stripped from rendered output. The `missingkey=zero` option means a skill
 enabled before its optional `data` is filled renders absent fields as empty rather than failing
-`awf sync` — so `awf add <skill>` always works.
+`awf sync`, so `awf add <skill>` always works.
 
 The typo/required-input safety net is provided by catalog-declared **required vars/data**
 validated at config load time (`config.Validate`), not by template execution errors. A
@@ -54,7 +54,7 @@ validated at config load time (`config.Validate`), not by template execution err
   breaking change requiring a new ADR.
 - Required vars declared in `catalog.yaml` are validated before rendering, not discovered
   by inspecting render output.
-- Section markers (`<!-- awf:section … -->` / `<!-- awf:end -->`) appear only in `.tmpl`
+- Section markers (`<!-- awf:section ... -->` / `<!-- awf:end -->`) appear only in `.tmpl`
   sources, never in committed rendered files.
 
 ## Consequences
