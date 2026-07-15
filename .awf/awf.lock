@@ -308,14 +308,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:c3498a78809317abd1e7e0474936af7d82ad0473bf918bd803b05e1dbe8d0d58",
+      "outputHash": "sha256:1f020d29674de4b6413f87e38a826e2fff790580aa9215659e70569c169fe394",
       "regenChecked": true
     },
     "docs/domains/config.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:f6eab4e5987b4e992738b351833ac87edb0f1f683e44d0ab32512f5ff5d18b55",
+      "outputHash": "sha256:206d1b67fc4cccc58849714f994845fe0c7d8241baebdf26618bea9fa17ea229",
       "regenChecked": true
     },
     "docs/domains/invariants.md": {
