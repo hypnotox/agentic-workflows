@@ -43,9 +43,16 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
 1. **A new advisory audit rule, `plain-punctuation`.** It emits a `Warning` naming the file and the
    codepoints found. It never errors, and `awf audit` continues to exit zero on warnings.
 
-2. **The trigger is a net increase, not a presence.** For each changed markdown file the rule counts
-   each banned codepoint in `OldText` and in `NewText`, and warns only where the new count exceeds
-   the old. Grandfathering is therefore emergent rather than configured: a newly added file has an
+2. **The trigger is a net increase, not a presence, measured per commit and per file.** For each
+   changed markdown file in each commit of the range, the rule counts each banned codepoint in that
+   commit's `OldText` and `NewText`, and warns only where the new count exceeds the old. The
+   granularity is stated because it is observable: a branch that adds a glyph in one commit and
+   removes it in a later one still warns on the first, and a file whose count rises across three
+   commits warns three times. That matches every other rule in `evaluate`, which reports per commit,
+   and it is the honest unit for a rule whose subject is what an author just wrote. Merge commits
+   carry no changes and so are never counted twice.
+
+   Grandfathering is therefore emergent rather than configured: a newly added file has an
    empty `OldText`, so every banned codepoint in it is new and is flagged; an edit that leaves a
    legacy file's existing glyphs untouched is silent, even when the file carries hundreds. There is
    no path allowlist, no cutoff date, and no exemption list to maintain. The 2344 authored ADR
@@ -101,23 +108,31 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
    here for *new* prose only, which is the entire reason the rule exists.
 
 8. **The documentation authoring standard widens from shipped prose to all awf-managed prose.**
-   `templates/docs/doc-standard.md.tmpl:16` scopes its plain-punctuation rule to "shipped prose";
-   it is rewritten to cover authored prose as well, so an adopter reads the convention in a
-   standard they render before any warning cites it. The rule text keeps naming each codepoint by
-   word and codepoint rather than typing the glyph, because ADR-0115's gate scans that template.
+   The plain-punctuation rule in `templates/docs/doc-standard.md.tmpl` scopes itself to "shipped
+   prose". Its scope clause widens to cover authored prose as well, so an adopter reads the
+   convention in a standard they render before any warning cites it.
 
-   This edits the same line ADR-0115 item 9 edits, and the two are complementary rather than
-   conflicting: item 9 widens the rule's *codepoint list* from one to seven, this item widens its
-   *scope* from shipped to authored prose. Whichever lands second must preserve the other's change,
-   and if both land in one effort the line is written once, carrying both.
+   **This item amends ADR-0115 item 9's rendering of that line and depends on ADR-0115 landing
+   first.** The two are complementary and strictly ordered, not conflicting: item 9 widens the
+   rule's *codepoint list* from one to seven, and this item then widens the *scope clause* of the
+   text item 9 leaves behind. The baseline to edit is therefore the post-ADR-0115 line, not the
+   line as it reads today. If the order ever reversed, an implementer following item 9 literally
+   would restore "Shipped prose" and silently undo this widening; if both land in one effort, the
+   line is written once, carrying both, under a single changelog entry.
+
+   Two constraints bind the replacement text, and both come from guards over `templates.FS`. It
+   must not type any banned glyph, because ADR-0115's gate scans that template. It also must not
+   cite an ADR number, because the source-level residue guard fails any shipped template carrying a
+   concrete `ADR-NNNN` citation: this rule is therefore stated in the standard without attribution,
+   which is why the line cites nothing today.
 
 ## Invariants
 
 - `` `invariant: audit-plain-punctuation` ``: with `audit.plainPunctuation` enabled, `awf audit`
-  emits a `Warning` for a changed non-generated markdown file under the docs, ADR, or plans
-  directory whose banned-codepoint count rises, and emits nothing when the count is unchanged or
-  falls, when the path is generated, or when the knob is `false`. Backed by
-  `TestPlainPunctuationRule` in `internal/audit/audit_test.go`.
+  emits a `Warning` for each commit in which a non-generated markdown file under `docsDir` has a
+  rising banned-codepoint count, and emits nothing when the count is unchanged or falls, when the
+  path is generated, when the file lies outside `docsDir`, or when the knob is `false`. Backed by
+  `TestRulePlainPunctuation` in `internal/audit/audit_test.go`.
 
 ## Consequences
 
@@ -127,8 +142,10 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
   backing test, regenerates `docs/decisions/ACTIVE.md` for the status change, re-renders
   `docs/doc-standard.md` from the template edited by Decision item 8 together with
   `examples/sundial`'s copy, regenerates both config-reference docs for the new key, and carries a
-  changelog entry: a default-on rule and a new config key are adopter-facing, and `cmd/repoaudit`'s
-  changelog rule flags such a change with no `[Unreleased]` entry.
+  changelog entry: a default-on rule and a new config key are adopter-facing. `cmd/repoaudit`'s
+  changelog rule would flag an unchanged `[Unreleased]` section, though only as a `warning` under
+  the ADR-0107 downgrade this ADR takes its severity precedent from, so the obligation is this
+  ADR's rather than the tooling's.
 - **The backlog stays silent without a carve-out.** Net-increase semantics mean the 6691 existing
   occurrences never warn. "Lands green" is a claim about noise, not about exit codes: `awf audit`
   never exits non-zero on a warning, and `./x gate` does not run it at all (it is a separate `./x
@@ -151,9 +168,18 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
   `internal/project/configreference.go` live-state case, and a regenerated `docs/config-reference.md`
   together with `examples/sundial/docs/config-reference.md`. Missing any one trips the
   closed-config-tree checks (ADR-0086) or leaves the reference stale. There is no separate
-  "promote the setting into `Inputs`" step: `Inputs` *embeds* `Settings`, so a new knob is readable
-  as `in.PlainPunctuation` for free. The sixth touchpoint is not the key at all but Decision item
-  3's plumbing: `docsDir` must be threaded into `audit.Inputs`, which no existing rule has needed.
+  "promote the setting into `Inputs`" step: `Inputs` *embeds* `Settings` and the audit inputs are
+  constructed with `Settings: s` unconditionally, so a new knob is readable as
+  `in.PlainPunctuation` for free; only the knob list in the `Inputs` doc comment needs refreshing.
+  The descriptor list is not alphabetical but a declaration order mirrored across all four files,
+  and the generated reference's row order derives from it, so the new key goes in at the same
+  relative position in each.
+- **The rule itself costs a separate group of edits, which is not the key's cost.** Threading
+  `DocsDir` into `audit.Inputs` and populating it where the inputs are built (Decision item 3),
+  registering the rule in `evaluate`, the rule function, its backing test, and the `Resolve`
+  override branch's coverage. That last one is not optional: the 100% coverage gate (ADR-0012)
+  fails if the new knob's override branch is uncovered, and the existing settings tests enumerate
+  every toggle, so a default-on knob joins those assertions.
 
 ## Alternatives Considered
 
