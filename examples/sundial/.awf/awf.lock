@@ -281,6 +281,13 @@
       "templateHash": "sha256:580d4534efea0e9aca30322a425430cda1f75d4548e7cba738caa82d2072efd6",
       "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
       "outputHash": "sha256:28051c2a0cf19386ad0de5cdee458fcf5a7cb82f251e1013e13bbbe4730d28d5"
+    },
+    "x": {
+      "templateId": "runner/x.tmpl",
+      "templateHash": "sha256:3e103f91eb097eb672004204bd2999d44c0656bc0fcb0de2553b3c76ce09c421",
+      "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
+      "outputHash": "sha256:18f1b7e6d56b80f6ade12870d60b4802d86860dad92122926c500c83340969c4",
+      "regenChecked": true
     }
   }
 }

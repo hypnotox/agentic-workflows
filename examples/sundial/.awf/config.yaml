@@ -46,6 +46,8 @@ bootstrap:
   enabled: true
 hooks:
   enabled: true
+runner:
+  enabled: true
 domains:
   - almanac
   - cli
