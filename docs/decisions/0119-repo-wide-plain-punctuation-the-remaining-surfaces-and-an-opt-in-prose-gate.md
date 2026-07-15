@@ -245,10 +245,27 @@ situation after ADR-0118; and because the maintainer has since required exactly 
 
    The analogy holds at both ends. **`templates/hooks/pre-commit.sh.tmpl` gains an unconditional
    `awf prose-gate` line**, exactly as `templates/hooks/commit-msg.sh.tmpl` already ends in
-   `awf commit-gate "$1"`, and using the same `with`/`else` var idiom so the line degrades
-   coherently when the var is unset (ADR-0001, ADR-0045). ADR-0032 is not contradicted: it removed
-   hook **activation**, and ADR-0048 renders an inert payload the adopter wires into a hook they
-   own. Wiring the line into that payload is not activation.
+   `awf commit-gate "$1"`, through a new `proseGateCmd` var on the same `with`/`else` idiom, so the
+   line renders `awf prose-gate` when the var is unset and degrades to no no-value token either way
+   (ADR-0001, ADR-0045). ADR-0032 is not contradicted: it removed hook **activation**, and ADR-0048
+   renders an inert payload the adopter wires into a hook they own. Wiring the line into that
+   payload is not activation.
+
+   **The payload's bootstrap shim guard widens with it, and this is a condition of the line rather
+   than a detail.** That template emits its `awf()` bootstrap-pinning shim only under
+   `{{ if not .vars.checkCmd }}`, and its `gateCmd` line carries no `{{ else }}`, so today it can
+   never render a bare unshimmed `awf`. A second line that falls back to `awf prose-gate` breaks
+   that property for any adopter who sets `checkCmd` and not `proseGateCmd`: they would render one
+   bare call that bypasses bootstrap pinning. The guard therefore becomes a disjunction over every
+   var that can render a bare `awf` (`or (not .vars.checkCmd) (not .vars.proseGateCmd)`), not a
+   conjunction: the shim is needed when **any** call site lacks its var, not only when all do.
+
+   awf sets `proseGateCmd` to a new `./x prose-gate` arm, because it sets `checkCmd` and builds from
+   source with `bootstrap.enabled: false`, so a bare PATH `awf` is exactly what it must not call.
+   The cost is that awf's own pre-commit scans twice, once through the payload's `./x gate` line
+   (item 11) and once through this one. It is accepted and named rather than engineered around: a
+   rendered payload cannot know what a project's runner already folds into its gate, and a second
+   pass over a clean tree is cheap.
 
 9. **The command self-gates on one knob, `proseGate.enabled` (bool, default `false`).** When it is
    false the command exits zero without scanning. Enforcement lives in the command rather than in
@@ -261,13 +278,20 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    enforcement on an unswept tree costs them their build, so they must ask for it.
 
 10. **The command is `Ungated`.** It joins `commit-gate` in ADR-0094's ungated set rather than the
-    gated one, and the reason is the wiring of item 8: a hook-wired blocking check must not fail a
-    commit because the binary is behind the project. ADR-0039's binary-version gate exists to stop a
-    stale binary from misreading a newer config tree, and refusing an adopter's commit over version
-    skew is a worse outcome than the risk it averts here, because a stale binary reading an unknown
-    knob simply leaves the rule off. This diverges from `check`, `invariants` and `audit`, which are
-    `Gated` and are not wired into a commit hook. The command still requires an adopted tree, and
-    still refuses without one, but it refuses on its own terms rather than through the version gate.
+    gated one, and for the same reason `commit-gate` is there: a check wired into a commit hook
+    (item 8) should not be the place ADR-0039's binary-version gate speaks, because refusing a
+    commit over version skew is a refusal unrelated to the adopter's prose. This diverges from
+    `check`, `invariants` and `audit`, which are `Gated` and are not hook-wired.
+
+    **`Ungated` does not make the command skew-proof, and no claim is made that it does.** A stale
+    binary meeting a newer tree still fails, by two paths this classification does not touch:
+    `internal/config` decodes with `KnownFields(true)`, so a binary that does not know
+    `proseGate` errors on the unknown key rather than leaving the rule off; and a binary old enough
+    to lack the knob lacks the subcommand too, so the payload's line fails whatever its `Gating`
+    says. The honest statement is narrower: the strict decoder already fails loudly on a newer tree,
+    so ADR-0039's gate adds no protection this command lacks, while it would add a second refusal
+    mode. `Ungated` removes the redundant one. The command still requires an adopted tree and still
+    refuses without one, on its own terms rather than through the version gate.
 
 11. **awf enables the knob for itself and wires the command into its own gate.** awf is the first
     adopter of what it ships, so it does not ship an opt-in it declines to take.
@@ -399,13 +423,18 @@ struct, its resolved default, `configspec` entries, and a live-state case in
 `internal/project/configreference.go`. Here that means five `configspec` entries rather than four,
 because item 9 adds `proseGate.enabled` alongside the list key and its three struct fields; a
 description that cites no ADR and names neither the repository nor its owner, which the description
-residue guard enforces; a `clispec` entry whose `Gating` field is what makes the doc-published gated
-list derive correctly, plus the hardcoded `want` slice in `internal/clispec/clispec_test.go`; a
-regenerated `docs/config-reference.md` and its `examples/sundial` counterpart; a regenerated
-`ACTIVE.md` on the status flip; and a changelog entry, which ADR-0115's gate scans, so it must
-describe the ban without typing what it bans. **No schema migration is owed**: `4889c0f` added an
-optional key with a default and touched no `internal/migrate` file, and bumping the schema
-generation would force every adopter through `awf upgrade` for nothing (ADR-0039).
+residue guard enforces; a `clispec` entry; a new `proseGateCmd` var and the widened shim guard of
+item 8; a regenerated `docs/config-reference.md` and its `examples/sundial` counterpart, plus both
+lock files; a regenerated `ACTIVE.md` on the status flip; and a changelog entry, which ADR-0115's
+gate scans, so it must describe the ban without typing what it bans.
+
+Two things that look owed and are not, stated so an implementer does not manufacture work.
+`GatedCommandNames()` filters on `Gating != Ungated`, so an `Ungated` command changes neither the
+derived list nor the `want` slice in `internal/clispec/clispec_test.go` nor the AGENTS.md bullet
+that renders from it: an implementer who adds `prose-gate` to any of the three has mis-classified
+the command under item 10. And **no schema migration is owed**: `4889c0f` added an optional key
+with a default and touched no `internal/migrate` file, and bumping the schema generation would
+force every adopter through `awf upgrade` for nothing (ADR-0039).
 
 ## Alternatives Considered
 
