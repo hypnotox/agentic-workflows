@@ -35,17 +35,18 @@ tiering feeds them. The premise reaches further than the conclusion the chain dr
 
 Two measurements shape the decision, both verifiable at the time of writing:
 
-- **The corpus is large but bounded.** The authored files are 113 numbered ADRs carrying 2341
-  em-dashes, 26 en-dashes, 130 ellipses, 0 curly quotes, and 78 dated plans carrying 4347, 154, 228,
-  0. About 7200 sites across 191 files. These counts describe the authored corpus only; the
-  whole-directory figures are 1 en-dash and 3 ellipses higher because `docs/decisions/` also holds
-  generated files, which item 1 excludes.
+- **The corpus is large but bounded.** 113 of the 118 numbered ADRs carry a banned codepoint,
+  2341 em-dashes, 26 en-dashes, 130 ellipses and 0 curly quotes between them; 78 of the 79 dated
+  plans carry 4347, 154, 228 and 0. About 7200 sites across 191 files. These counts describe the
+  authored corpus only; the whole-directory figures are 1 en-dash and 3 ellipses higher because
+  `docs/decisions/` also holds generated files, which item 1 excludes.
 - **The two halves of the corpus behave differently, and the difference is load-bearing.** No
   occurrence in any ADR body sits inside a fenced code block (0 of 2341). The plans are the
-  opposite: about 895 occurrences sit inside fences, across 77 of the 78 files (424 unlabeled, 312
-  `go`, 94 `markdown`, 31 `yaml`, 29 `diff`, 5 `bash`), because the plan convention requires a task
-  to give exact content. A rule derived from the ADR half alone would be wrong about the larger
-  half.
+  opposite: 928 occurrences sit inside fences, across 77 of the 78 (432 unlabeled, 312 `go`, 94
+  `markdown`, 31 `yaml`, 29 `diff`, 25 `text`, 5 `bash`; the fences are opened with backticks and
+  with tildes, and a count that reads only one delimiter misses 25), because the plan convention
+  requires a task to give exact content. A rule derived from the ADR half alone would be wrong about
+  the larger half.
 - **The convention is already half-followed, exactly as item 5 warned.** ADR-0028's title carries an
   en-dash: "ADR-first ordering and a visible plan-ADR resync loop in the workflow chain". Item 5
   swept the three *em-dashed* titles, but ADR-0115 bans seven codepoints, so the en-dashed title
@@ -84,14 +85,22 @@ act or re-litigates it.
    them would destroy nothing. It could be swept safely; it is not, by choice.
 
    **The tempting general rule, "prose that depicts a banned glyph keeps it", is deliberately not
-   adopted, because it would select the empty set.** This project's convention is to name a
-   codepoint rather than type it (ADR-0113 Decision item 4 mandates exactly that for the
-   doc-standard template), and the corpus already follows it: ADR-0113 names its subject as
-   "U+2014" and "Em-dash characters (U+2014)" without ever typing one, and ADR-0115, ADR-0117, and
-   the plan that implemented them carry zero occurrences between them for the same reason. An
-   intent-rule would therefore exempt nothing while appearing to exempt something, which is worse
-   than a named file. If a future document genuinely needs to depict a glyph, that is a new decision
-   with a real case behind it, not a rule written in advance for a case that has never arisen.
+   adopted, because within this ADR's scope it would select the empty set.** Depiction is already
+   solved, and not by an exemption: **ADR-0115 Decision item 7** holds that it is handled by
+   convention and scope, extending ADR-0113 item 4's rule that a doc discussing a banned character
+   names it by word and codepoint rather than typing it. The authored corpus already obeys that
+   convention, which is why an intent-rule finds nothing here: ADR-0113 names its subject as
+   "U+2014" and "Em-dash characters (U+2014)" without typing one, and ADR-0115, ADR-0117, and the
+   plan that implemented them carry zero occurrences between them.
+
+   The one genuine depiction in this repository sits outside this ADR's scope, and is the reason
+   the exemption principle is stated as intent rather than dropped. The `.awf/docs/pitfalls.yaml`
+   entry on gofmt's double-backtick rewrite types a curly quote to document what gofmt produces:
+   there, the glyph *is* the subject, and normalizing it would destroy the entry. It survives on the
+   maintainer's rule that prose which is legitimately about a banned glyph keeps it. That case is
+   sidecar data, which the follow-up in item 9 governs; it is not this ADR's to sweep and it is not
+   permanently exempt. Within the authored corpus, no such case exists, which is why item 2 names a
+   file rather than legislating a class.
 
 3. **The sweep covers all seven banned codepoints, not just the em-dash, and it includes headings.**
    ADR-0028's en-dashed title is normalized here, closing the gap ADR-0115 item 5 left when it swept
@@ -149,8 +158,16 @@ act or re-litigates it.
    `.awf/docs/glossary.yaml`, and `.awf/parts/adr-readme/invariants.md` are neither `.md` nor under
    the docs directory, while their render targets are generated and therefore excluded at the other
    end. A new pitfall entry containing an em-dash reaches emitted prose with no check at either end.
-   That gap is real, it is out of scope here because it is a question about what counts as an emitted
-   surface rather than about append-only, and it is left to an immediate follow-up ADR.
+
+   That gap is real and it is **deferred, not accepted**. It is out of scope here because it asks a
+   different question, what counts as a checked surface, where this ADR asks how far append-only
+   bends; answering both here would pull a fourth domain and a gate change into a record about
+   settled prose. An immediate follow-up ADR owns it, and owns the rest of the repository with it:
+   the maintainer's standing requirement is that the whole repository be clean and that nothing
+   reintroduce a banned codepoint afterwards, which needs a gate this ADR does not write. The
+   surfaces that follow-up must reach are the three sidecar sources above, production Go comments
+   (13 occurrences, all ellipses), the test files, and the tracked non-Go files. Sidecar data is
+   explicitly **not** exempt: its only lasting exemption is the depiction in item 2.
 
 ## Invariants
 
