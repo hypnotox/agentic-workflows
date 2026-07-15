@@ -246,6 +246,6 @@ func TestConfigspecAuditDefaultsPinned(t *testing.T) {
 		t.Errorf("audit.diffThreshold default prose %q does not carry the resolver default %s", byPath["audit.diffThreshold"].Default, want)
 	}
 	if !slices.Contains(defaults.AllowedTypes, "feat") {
-		t.Error("resolver default types lost feat — update the audit.allowedTypes default prose")
+		t.Error("resolver default types lost feat; update the audit.allowedTypes default prose")
 	}
 }

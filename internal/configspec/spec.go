@@ -74,7 +74,7 @@ var varAvailability = map[string]string{
 // invariant: configspec-key-parity
 var keys = []Entry{
 	{
-		Path: "prefix", Type: "string", Default: "none — required, set at init",
+		Path: "prefix", Type: "string", Default: "none: required, set at init",
 		Description:  "The name prefix for rendered skills: a skill renders to `<prefix>-<name>` (directory and frontmatter name), and rendered prose references skills by that prefixed name. Must be non-empty, without path separators.",
 		Availability: "Always.",
 	},
@@ -85,7 +85,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
-		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var — the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
+		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
 		Availability: "Each key is consumed only while an enabled artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it.",
 	},
 	{
@@ -95,12 +95,12 @@ var keys = []Entry{
 	},
 	{
 		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Enabled review agents. A reviewing skill's dispatched agent must stay enabled while the skill is — disabling refuses upfront; `awf enable skill` auto-enables the pair.",
+		Description:  "Enabled review agents. A reviewing skill's dispatched agent must stay enabled while the skill is: disabling refuses upfront; `awf enable skill` auto-enables the pair.",
 		Availability: "Always.",
 	},
 	{
 		Path: "docs", Type: "string list", Default: "empty at init (the always-on docs are not listed here)",
-		Description:  "Enabled toggleable docs (architecture, testing, development, …). The always-on docs — the agent guide, workflow, this reference — render regardless and are not listed here.",
+		Description:  "Enabled toggleable docs (architecture, testing, development, …). The always-on docs (the agent guide, workflow, this reference) render regardless and are not listed here.",
 		Availability: "Always.",
 	},
 	{
@@ -125,11 +125,11 @@ var keys = []Entry{
 	},
 	{
 		Path: "invariants.disabled", Type: "bool", Default: "false",
-		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants — set `sources` or set this true.",
+		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants; set `sources` or set this true.",
 		Availability: "Always.",
 	},
 	{
-		Path: "invariants.sources", Type: "list of {globs, marker} mappings", Default: "none — enforcement unconfigured",
+		Path: "invariants.sources", Type: "list of {globs, marker} mappings", Default: "none: enforcement unconfigured",
 		Description:  "Where invariant-backing comments live. Each entry pairs path globs with the literal comment marker that prefixes a backing `invariant: <slug>` tag in those files. Non-empty enables enforcement: every tagged invariant in an implemented decision doc must have a matching backing comment.",
 		Availability: "Always.",
 	},
@@ -144,8 +144,8 @@ var keys = []Entry{
 		Availability: "Within each `invariants.sources` entry.",
 	},
 	{
-		Path: "invariants.testGlobs", Type: "string list", Default: "none — proof markers fall back to source-glob scope",
-		Description:  "Anchored path globs (same dialect as `invariants.sources[].globs`) identifying test files. When non-empty, a proof `invariant: <slug>` marker backs an invariant only in a file matching one of these globs — backing means an executed test line. When empty or absent, backing falls back to source-glob scope. The `touches-invariant:` context marker is unaffected.",
+		Path: "invariants.testGlobs", Type: "string list", Default: "none: proof markers fall back to source-glob scope",
+		Description:  "Anchored path globs (same dialect as `invariants.sources[].globs`) identifying test files. When non-empty, a proof `invariant: <slug>` marker backs an invariant only in a file matching one of these globs; backing means an executed test line. When empty or absent, backing falls back to source-glob scope. The `touches-invariant:` context marker is unaffected.",
 		Availability: "Within `invariants`; opt-in teeth for the proof marker.",
 	},
 	{
@@ -160,7 +160,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",
-		Description:  "The project's Conventional Commits scope taxonomy — the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf commit-gate`/`awf audit` and editing them reflags referencing rendered artifacts.",
+		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf commit-gate`/`awf audit` and editing them reflags referencing rendered artifacts.",
 		Availability: "Read by `awf commit-gate`, `awf audit`, and every rendered artifact quoting the scope list.",
 	},
 	{
@@ -209,28 +209,28 @@ var keys = []Entry{
 		Availability: "Read by `awf audit`.",
 	},
 	{
-		Path: "bootstrap.enabled", Type: "bool", Default: "false (key absent) — awf init scaffolds it true",
+		Path: "bootstrap.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
 		Description:  "Renders the self-pinning `.awf/bootstrap.sh` installer (pinned to the rendering awf version, checksum-verified) and the `.awf/upgrade.sh` porcelain. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{
-		Path: "hooks.enabled", Type: "bool", Default: "false (key absent) — awf init scaffolds it true",
-		Description:  "Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config — wiring the payloads into your hook setup is yours.",
+		Path: "hooks.enabled", Type: "bool", Default: "false (key absent); awf init scaffolds it true",
+		Description:  "Renders the three inert git-hook payload scripts under `.awf/hooks/` (pre-commit, commit-msg, pre-push). awf never activates hooks or touches git config. Wiring the payloads into your hook setup is yours.",
 		Availability: "Always.",
 	},
 	{
-		Path: "runner.enabled", Type: "bool", Default: "false (key absent) — opt in via `awf enable runner`",
+		Path: "runner.enabled", Type: "bool", Default: "false (key absent); opt in via `awf enable runner`",
 		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, …) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{
-		Path: "sidecar.data", Type: "key → value map", Default: "empty — catalog defaults apply",
+		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
 		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
-		Availability: "Keys must be referenced by the artifact's template — an unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
+		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",
 	},
 	{
 		Path: "sidecar.sections", Type: "section-name → override map", Default: "empty",
-		Description:  "Per-section overrides for the artifact's declared sections. Body replacement is by convention part (a file at the section's parts path); this map holds the structured overrides — currently `drop`.",
+		Description:  "Per-section overrides for the artifact's declared sections. Body replacement is by convention part (a file at the section's parts path); this map holds the structured overrides: currently `drop`.",
 		Availability: "Section names must be catalog-declared for the artifact; unknown names refuse at open. Rejected on domain sidecars.",
 	},
 	{
@@ -246,7 +246,7 @@ var keys = []Entry{
 	{
 		Path: "sidecar.paths", Type: "string list (anchored path globs)", Default: "none",
 		Description:  "A domain's file territory, matched against slash-separated repo-relative paths. Powers the domain-code-staleness audit advisory: territory changes expect a co-change to the domain's `current-state` part.",
-		Availability: "Domain sidecars only — rejected at open on any other kind.",
+		Availability: "Domain sidecars only; rejected at open on any other kind.",
 	},
 }
 
@@ -262,31 +262,31 @@ var dataKeys = []DataKey{
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrSections", Description: "The required decision-record section names, in order (list); the default is Context through Alternatives Considered."},
 	{Kind: "skills", Artifact: "proposing-adr", Key: "adrTriggers", Description: "The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers."},
 	{Kind: "skills", Artifact: "executing-plans", Key: "e2eSuitePaths", Description: "Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders."},
-	{Kind: "skills", Artifact: "_base", Key: "slug", Description: "The local skill's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration — override only to diverge the rendered name token."},
-	{Kind: "skills", Artifact: "_base", Key: "description", Description: "The local skill's frontmatter description — the when-to-use line agent runtimes surface. `awf new skill` seeds it; keep it current."},
-	{Kind: "agents", Artifact: "_base", Key: "slug", Description: "The local agent's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration — override only to diverge the rendered name token."},
-	{Kind: "agents", Artifact: "_base", Key: "description", Description: "The local agent's frontmatter description — the dispatch-time summary agent runtimes surface. `awf new agent` seeds it; keep it current."},
-	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title — its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
-	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary — the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
+	{Kind: "skills", Artifact: "_base", Key: "slug", Description: "The local skill's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
+	{Kind: "skills", Artifact: "_base", Key: "description", Description: "The local skill's frontmatter description: the when-to-use line agent runtimes surface. `awf new skill` seeds it; keep it current."},
+	{Kind: "agents", Artifact: "_base", Key: "slug", Description: "The local agent's name identifier interpolated into its frontmatter; synthesized from the artifact name at declaration; override only to diverge the rendered name token."},
+	{Kind: "agents", Artifact: "_base", Key: "description", Description: "The local agent's frontmatter description: the dispatch-time summary agent runtimes surface. `awf new agent` seeds it; keep it current."},
+	{Kind: "docs", Artifact: "_base", Key: "title", Description: "The local doc's display title: its H1 and document-map label. `awf new doc` seeds it from the name; override to set a custom title."},
+	{Kind: "docs", Artifact: "_base", Key: "description", Description: "The local doc's one-line summary: the document-map description and the lede under its H1. `awf new doc` seeds it; keep it current."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses decision clarity and consequences honesty."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit doc updates and index regeneration."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction — what to read in full before applying lenses."},
+	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
 	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton — the bullet template the reviewer fills per review."},
+	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
 	{Kind: "agents", Artifact: "plan-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses step exactness and dependency order."},
 	{Kind: "agents", Artifact: "plan-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks that the plan schedules every doc update its changes invalidate."},
 	{Kind: "agents", Artifact: "plan-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the plan)."},
-	{Kind: "agents", Artifact: "plan-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction — what to read in full before applying lenses."},
+	{Kind: "agents", Artifact: "plan-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
 	{Kind: "agents", Artifact: "plan-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
-	{Kind: "agents", Artifact: "plan-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton — the bullet template the reviewer fills per review."},
+	{Kind: "agents", Artifact: "plan-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "correctnessTraps", Description: "The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the default focuses plan adherence and test coverage."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the diff)."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction — what to read in full before applying lenses."},
+	{Kind: "agents", Artifact: "code-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton — the bullet template the reviewer fills per review."},
+	{Kind: "agents", Artifact: "code-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
 	{Kind: "docs", Artifact: "glossary", Key: "terms", Description: "The glossary's terms as a `term: meaning` map; the table renders always sorted (case-insensitive, pipes escaped), and empty terms or meanings, interior newlines, or case-insensitive duplicates fail the render naming the key. Unset, the doc renders a pointer telling you where to add terms."},
 	{Kind: "docs", Artifact: "pitfalls", Key: "pitfalls", Description: "The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) drive `awf context` surfacing and must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries."},
 	{Kind: "docs", Artifact: "agents-doc", Key: "commands", Description: "Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders."},
