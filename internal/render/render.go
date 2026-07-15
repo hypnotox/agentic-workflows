@@ -32,14 +32,26 @@ type SectionPlan struct {
 	// part bodies in the assembled source (they are sentinel-substituted raw).
 	PartVarRefs []string
 	EditPath    string
+	// InPlace marks a section whose body the adopter edits directly in the
+	// rendered output, preserved across syncs (ADR-0100). Mutually exclusive
+	// with HasPart. InPlaceBody is the content read back from the existing
+	// output file — empty on first render, when the template default is used.
+	InPlace     bool
+	InPlaceBody string
 }
 
 // editPointer is the awf:edit provenance comment emitted before a section body.
 // A stub-attributed section rendering its template default gets a distinct
 // pointer so the rendered file itself distinguishes a must-replace default from
-// a valid one (ADR-0070).
+// a valid one (ADR-0070). An in-place section gets a distinct `awf:edit-in-place`
+// pointer whose token is deliberately not awf:section/awf:end-shaped, so it
+// survives into the shipped output (unlike structural markers) and bounds the
+// read-back region without tripping the residual-marker guards (ADR-0100).
 // touches-invariant: section-edit-pointer — awf:edit provenance pointer emission; proof in render_test.go
 func editPointer(name string, stub bool, p SectionPlan) string {
+	if p.InPlace {
+		return fmt.Sprintf("<!-- awf:edit-in-place %s — your edits below are preserved across syncs; awf owns the rest -->\n", name)
+	}
 	if p.HasPart {
 		return fmt.Sprintf("<!-- awf:edit %s — from %s -->\n", name, p.EditPath)
 	}
@@ -83,9 +95,20 @@ func Assemble(segs []Segment, plan map[string]SectionPlan) (string, map[string]s
 			continue
 		}
 		b.WriteString(editPointer(s.Name, s.Stub, p))
-		if p.HasPart {
+		switch {
+		case p.InPlace:
+			// touches-invariant: in-place-pointer-distinct — distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
+			// The read-back body (or the template default on first render) is
+			// emitted verbatim after the distinct awf:edit-in-place pointer — no
+			// re-templating of adopter-owned interior.
+			if p.InPlaceBody != "" {
+				b.WriteString(p.InPlaceBody)
+			} else {
+				b.WriteString(s.Text)
+			}
+		case p.HasPart:
 			writePartBody(&b, parts, s, p)
-		} else {
+		default:
 			b.WriteString(s.Text)
 		}
 	}

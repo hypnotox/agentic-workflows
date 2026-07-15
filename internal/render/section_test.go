@@ -78,6 +78,26 @@ func TestParseSectionsStubAttribute(t *testing.T) {
 	}
 }
 
+func TestParseSectionsInPlaceAttribute(t *testing.T) {
+	inplace := ParseSections("<!-- awf:section a inplace -->\nbody\n<!-- awf:end -->\n")
+	if len(inplace) < 1 || !inplace[0].IsSection {
+		t.Fatalf("want a section segment first, got %#v", inplace)
+	}
+	if inplace[0].Name != "a" || !inplace[0].InPlace || inplace[0].Stub || inplace[0].Text != "body" {
+		t.Errorf("inplace section = %#v", inplace[0])
+	}
+	// The attribute is exclusive: `stub` sets Stub only, `inplace` sets InPlace
+	// only, and a bare marker sets neither.
+	stub := ParseSections("<!-- awf:section a stub -->\nbody\n<!-- awf:end -->\n")
+	if !stub[0].Stub || stub[0].InPlace {
+		t.Errorf("stub section must parse InPlace=false: %#v", stub[0])
+	}
+	plain := ParseSections("<!-- awf:section a -->\nbody\n<!-- awf:end -->\n")
+	if plain[0].Stub || plain[0].InPlace {
+		t.Errorf("plain section must parse Stub=false, InPlace=false: %#v", plain[0])
+	}
+}
+
 func TestParseSectionsUnknownAttributeDoesNotParse(t *testing.T) {
 	src := "<!-- awf:section a bogus -->\nbody\n<!-- awf:end -->\n"
 	segs := ParseSections(src)

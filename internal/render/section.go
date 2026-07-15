@@ -13,15 +13,20 @@ type Segment struct {
 	// Stub marks a section whose template default is a must-replace authoring
 	// prompt, declared by the `stub` marker attribute (ADR-0070).
 	Stub bool
+	// InPlace marks a section declared by the `inplace` marker attribute
+	// (ADR-0100); its body is read back from the rendered output rather than a
+	// convention part, and preserved across syncs. Mutually exclusive with Stub.
+	InPlace bool
 }
 
 // The body capture is non-greedy; the optional `\n?` before the closing marker
 // absorbs the body's trailing newline so a normal body excludes it, while an
 // empty-body block (markers on consecutive lines) captures "". The optional
-// ` stub` attribute (ADR-0070) is the only legal marker attribute; any other
-// token makes the marker unparseable, which CheckResidualMarkers turns into a
-// hard render error instead of a silent leak.
-var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+)( stub)? -->\n(.*?)\n?<!-- awf:end -->`)
+// ` stub` (ADR-0070) and ` inplace` (ADR-0100) attributes are the only legal
+// marker attributes and are mutually exclusive; any other token makes the marker
+// unparseable, which CheckResidualMarkers turns into a hard render error instead
+// of a silent leak.
+var sectionRE = regexp.MustCompile(`(?s)<!-- awf:section (\S+)( stub| inplace)? -->\n(.*?)\n?<!-- awf:end -->`)
 
 // ParseSections splits src into ordered literal and section segments.
 // Marker lines are consumed; a section segment's Text is the inner body.
@@ -30,14 +35,19 @@ func ParseSections(src string) []Segment {
 	idx := sectionRE.FindAllStringSubmatchIndex(src, -1)
 	last := 0
 	for _, m := range idx {
-		// m[0]:m[1] whole match; m[2]:m[3] name; m[4]:m[5] stub attribute; m[6]:m[7] body
+		// m[0]:m[1] whole match; m[2]:m[3] name; m[4]:m[5] attribute; m[6]:m[7] body
 		if m[0] > last {
 			segs = append(segs, Segment{Text: src[last:m[0]]})
+		}
+		attr := ""
+		if m[4] >= 0 {
+			attr = strings.TrimSpace(src[m[4]:m[5]])
 		}
 		segs = append(segs, Segment{
 			IsSection: true,
 			Name:      src[m[2]:m[3]],
-			Stub:      m[4] >= 0,
+			Stub:      attr == "stub",
+			InPlace:   attr == "inplace",
 			Text:      src[m[6]:m[7]],
 		})
 		last = m[1]

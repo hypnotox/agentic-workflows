@@ -120,6 +120,43 @@ func TestEditPointerStub(t *testing.T) {
 	}
 }
 
+func TestAssembleInPlaceSection(t *testing.T) {
+	src := "head\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\ntail\n"
+	segs := ParseSections(src)
+
+	// invariant: in-place-pointer-distinct
+	// A non-empty read-back body is emitted verbatim (internal blank line kept)
+	// after the distinct awf:edit-in-place pointer — no re-templating.
+	body := "line one\n\nline two\n"
+	asm, parts := Assemble(segs, map[string]SectionPlan{"body": {InPlace: true, InPlaceBody: body}})
+	out, err := Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit-in-place body — your edits below are preserved across syncs; awf owns the rest -->") {
+		t.Errorf("in-place section must render the awf:edit-in-place pointer:\n%s", out)
+	}
+	if !strings.Contains(out, body) {
+		t.Errorf("in-place body must render verbatim (internal blank line kept):\n%s", out)
+	}
+	// The distinct pointer is not awf:section/awf:end-shaped, so it survives
+	// assembly without tripping the residual-marker guard.
+	if err := CheckResidualMarkers(asm); err != nil {
+		t.Errorf("awf:edit-in-place pointer must not trip the residual-marker guard: %v", err)
+	}
+
+	// An empty read-back body (first render, absent output) falls to the
+	// template default.
+	asm, parts = Assemble(segs, map[string]SectionPlan{"body": {InPlace: true}})
+	out, err = Execute(asm, sampleData(), parts, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "<!-- awf:edit-in-place body —") || !strings.Contains(out, "DEFAULT") {
+		t.Errorf("empty in-place body must fall to the template default:\n%s", out)
+	}
+}
+
 func TestStubSections(t *testing.T) {
 	src := "<!-- awf:section dropped stub -->\nD\n<!-- awf:end -->\n" +
 		"<!-- awf:section parted -->\nP\n<!-- awf:end -->\n" +
