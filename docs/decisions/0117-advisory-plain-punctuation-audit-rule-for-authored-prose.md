@@ -28,11 +28,12 @@ em-dashes in authored ADR bodies and 4347 under the plans directory. ADRs are ap
 historical records, so a repository-wide scan would fail on landing and demand a rewrite of settled
 rationale, which ADR-0115 Decision item 5 explicitly forbids.
 
-Two existing pieces make a cheap, precise rule possible, and neither needs new plumbing.
+Two existing pieces make a cheap, precise rule possible, and neither of the two needs new plumbing.
 `FileChange` already populates `OldText`/`NewText` for `.md` files, because the ADR rules need
 frontmatter. `Inputs` already carries `GeneratedPaths`, because other rules must distinguish
-authored files from rendered ones. A rule that reads changed markdown and skips generated output is
-assembled from parts already on the shelf.
+authored files from rendered ones. So a rule that reads changed markdown and skips generated output
+is mostly assembled from parts already on the shelf: the one piece missing is a `docsDir` field on
+`Inputs`, which Decision item 3 adds.
 
 ADR-0107 is the governing precedent for severity: it downgraded the changelog conformance rule from
 an error to an advisory warning rather than deleting it, establishing that a conformance concern
@@ -187,7 +188,7 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
 |---|---|
 | Flag presence, not net increase | Simpler to implement, but touching any legacy ADR or plan would flood the author with warnings about prose they did not write, which trains them to ignore the rule or switch it off. Net-increase makes grandfathering emergent instead of configured. |
 | Flag only newly added files (`Action == Added`) | Grandfathers just as cleanly and is simpler still, but it lets an author add an em-dash to an existing doc without a word, which is the most likely way new glyphs enter a mature repository. |
-| Put the rule in `cmd/repoaudit` (repo-local) | Honours ADR-0113's house-style boundary exactly, needs no config key, and drops the six touchpoints. Rejected because awf already ships the documentation standard that states this rule; shipping the standard without the check is the inconsistency worth fixing, not the other way round. |
+| Put the rule in `cmd/repoaudit` (repo-local) | Honours ADR-0113's house-style boundary exactly, needs no config key, and drops both the five config touchpoints and the `docsDir` plumbing. Rejected because Decision item 8 makes awf ship the documentation standard that states this rule; shipping that standard without the check is the inconsistency worth fixing, not the other way round. |
 | Make it an `Error` | Would give the rule teeth, but it is a style opinion awf cannot mechanically prove is right, and a doc legitimately depicting a glyph would be unfixable. ADR-0107's downgrade of the changelog rule is the governing precedent. |
 | Default the knob to `false` | Respects adopter autonomy maximally, but a default-off check is a check nobody runs, and it would leave the shipped documentation standard stating a rule nothing enforces, which is the exact gap ADR-0113 left. |
 | Extend the scope to `.awf/` sidecar data and convention parts | Would close ADR-0115's stated sidecar blind spot, but `FileChange` loads text only for `.md`, so YAML sidecars need new plumbing, and ADR-0115 Decision item 7 depends on sidecar data staying free to depict a glyph. Deferred as a separate question. |
