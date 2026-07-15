@@ -71,6 +71,30 @@ func (style CommentStyle) wrap(inner string) string {
 	return "<!-- " + inner + " -->\n"
 }
 
+// open is the comment opener this style prefixes a pointer line with.
+func (style CommentStyle) open() string {
+	if style == HashComment {
+		return "# "
+	}
+	return "<!-- "
+}
+
+// PointerLinePrefixes returns the awf:edit-family pointer line prefixes (the
+// awf:edit and awf:edit-in-place variants) for a section named `name` in the given
+// comment style, up to and including the ` — ` separator. Every editPointer variant
+// emits `<open>awf:edit[-in-place] <name> — …`, so a trimmed output line is that
+// section's pointer iff it begins with one of these prefixes. Read-back matches a
+// region boundary by these exact per-section strings — never a generic
+// pointer shape — so adopter text resembling a pointer for a non-registered name
+// cannot bound a region (ADR-0100 Decision 2 / in-place-readback).
+func PointerLinePrefixes(name string, style CommentStyle) []string {
+	o := style.open()
+	return []string{
+		o + "awf:edit " + name + " — ",
+		o + "awf:edit-in-place " + name + " — ",
+	}
+}
+
 // editPointer is the awf:edit provenance comment emitted before a section body,
 // in the target's CommentStyle (ADR-0100 Decision 7). A stub-attributed section
 // rendering its template default gets a distinct pointer so the rendered file

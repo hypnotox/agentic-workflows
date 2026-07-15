@@ -158,18 +158,61 @@ func (p *Project) partRel(kind, artifact, section string) string {
 }
 
 // planSections resolves each catalog-declared section into a render.SectionPlan:
-// a sidecar drop wins; otherwise an existing convention part substitutes its body;
-// otherwise the template default renders. Precedence: drop > convention part > default.
-func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride) (map[string]render.SectionPlan, error) {
+// a sidecar drop wins; an in-place-editable section (declared by the template's
+// `inplace` marker) is sourced by reading its body back from the existing output;
+// otherwise an existing convention part substitutes its body; otherwise the
+// template default renders. Precedence: drop > in-place read-back > convention
+// part > default. In-place and part sourcing are mutually exclusive per section
+// (ADR-0100 section-source-exclusive).
+func (p *Project) planSections(kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle) (map[string]render.SectionPlan, error) {
 	plan := map[string]render.SectionPlan{}
 	reg, err := p.placeholderRegistry()
 	if err != nil {
 		return nil, err
 	}
+	inPlace := map[string]bool{}
+	for _, s := range segs {
+		if s.IsSection && s.InPlace {
+			inPlace[s.Name] = true
+		}
+	}
+	// The existing output is read at most once, lazily, and only when the template
+	// actually declares an in-place section — every other artifact avoids the read.
+	var output string
+	outputRead := false
+	readOutput := func() (string, error) {
+		if !outputRead {
+			b, rerr := os.ReadFile(filepath.Join(p.Root, outPath))
+			if rerr != nil && !errors.Is(rerr, os.ErrNotExist) { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses; absence is folded into an empty read
+				return "", rerr
+			}
+			output, outputRead = string(b), true // "" when absent (first render)
+		}
+		return output, nil
+	}
 	for _, s := range declared {
 		sp := render.SectionPlan{EditPath: p.partRel(kind, artifact, s)}
 		if ov, ok := sec[s]; ok && ov.Drop {
 			sp.Drop = true
+			plan[s] = sp
+			continue
+		}
+		if inPlace[s] {
+			// section-source-exclusive: an in-place section must not also carry a
+			// convention part — the two override channels are mutually exclusive.
+			if _, statErr := os.Stat(p.Cfg.PartPath(kind, artifact, s)); statErr == nil {
+				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
+			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat errors only on a permission/IO fault that root bypasses
+				return nil, fmt.Errorf("stat part %s/%s/%s: %w", kind, artifact, s, statErr)
+			}
+			out, rerr := readOutput()
+			if rerr != nil { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses (NotExist is folded into an empty read above)
+				return nil, fmt.Errorf("read output %s: %w", outPath, rerr)
+			}
+			sp.InPlace = true
+			if body, found := readBackInPlaceBody(out, s, declared, style); found {
+				sp.InPlaceBody = body
+			}
 			plan[s] = sp
 			continue
 		}
@@ -192,6 +235,70 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		plan[s] = sp
 	}
 	return plan, nil
+}
+
+// readBackInPlaceBody extracts the current body of the in-place section `name`
+// from the existing rendered `output`. The region runs from just after `name`'s
+// awf:edit-in-place pointer line to the first later line that is the pointer of
+// any *other* registered (declared) section — matched by that section's expected
+// pointer prefix in the target's comment style, never a generic pointer shape, so
+// a pointer-shaped line for a non-registered name in adopter text cannot truncate
+// it — or end-of-file when none follows. Leading/trailing blank lines (awf-owned
+// framing) are trimmed; the interior, including internal blank lines, is returned
+// verbatim. Returns ("", false) when `name`'s own pointer is absent (first render
+// or a deleted anchor), so the caller falls back to the template default.
+// touches-invariant: in-place-readback — read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
+// touches-invariant: in-place-spacing-owned — verbatim interior, trimmed framing; proof in inplace_test.go
+func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
+	lines := strings.Split(output, "\n")
+	ownPrefixes := render.PointerLinePrefixes(name, style)
+	start := -1
+	for i, ln := range lines {
+		if hasAnyPrefix(strings.TrimSpace(ln), ownPrefixes) {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return "", false
+	}
+	var boundaryPrefixes []string
+	for _, d := range declared {
+		if d != name {
+			boundaryPrefixes = append(boundaryPrefixes, render.PointerLinePrefixes(d, style)...)
+		}
+	}
+	end := len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		if hasAnyPrefix(strings.TrimSpace(lines[i]), boundaryPrefixes) {
+			end = i
+			break
+		}
+	}
+	return trimBlankFraming(lines[start+1 : end]), true
+}
+
+// trimBlankFraming drops leading and trailing blank (whitespace-only) lines — the
+// awf-owned framing — and returns the interior lines joined verbatim.
+func trimBlankFraming(lines []string) string {
+	lo, hi := 0, len(lines)
+	for lo < hi && strings.TrimSpace(lines[lo]) == "" {
+		lo++
+	}
+	for hi > lo && strings.TrimSpace(lines[hi-1]) == "" {
+		hi--
+	}
+	return strings.Join(lines[lo:hi], "\n")
+}
+
+// hasAnyPrefix reports whether s begins with any of the given prefixes.
+func hasAnyPrefix(s string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func nonNil(m map[string]any) map[string]any {
@@ -484,15 +591,16 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	plan, err := p.planSections(kind, artifact, declared, sc.Sections)
+	segs := render.ParseSections(expanded)
+	style := render.CommentStyleForSource(expanded)
+	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	segs := render.ParseSections(expanded)
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	assembled, parts := render.Assemble(segs, plan, render.CommentStyleForSource(expanded))
+	assembled, parts := render.Assemble(segs, plan, style)
 	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through RenderAll; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
