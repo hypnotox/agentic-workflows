@@ -140,10 +140,14 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
 - **The rule that motivated the effort finally reaches the prose that motivated it.** Every ADR and
   plan an agent writes from now on is checked, without touching a line of settled rationale.
 - **Flip-commit obligations.** The commit flipping this ADR to `Implemented` ships the rule and its
-  backing test, regenerates `docs/decisions/ACTIVE.md` for the status change, re-renders
-  `docs/doc-standard.md` from the template edited by Decision item 8 together with
-  `examples/sundial`'s copy, regenerates both config-reference docs for the new key, and carries a
-  changelog entry: a default-on rule and a new config key are adopter-facing. `cmd/repoaudit`'s
+  backing test, regenerates `docs/decisions/ACTIVE.md` for the status change, regenerates both
+  config-reference docs for the new key, and carries a changelog entry: a default-on rule and a new
+  config key are adopter-facing. The documentation-standard re-render (`docs/doc-standard.md` and
+  `examples/sundial`'s copy) belongs to this commit **only when ADR-0115 landed in a separate
+  effort**. When both land in one effort, Decision item 8 has already folded that line into a single
+  edit under a single changelog entry, so it re-renders in the ADR-0115 flip commit and this commit
+  does not touch the template at all. Reading this bullet as unconditional would produce exactly the
+  second edit item 8 forbids. `cmd/repoaudit`'s
   changelog rule would flag an unchanged `[Unreleased]` section, though only as a `warning` under
   the ADR-0107 downgrade this ADR takes its severity precedent from, so the obligation is this
   ADR's rather than the tooling's.

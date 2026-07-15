@@ -5,7 +5,7 @@ supersedes: [113]
 retires_invariants: []
 superseded_by: ""
 tags: [template-residue, doc-standard, active-md, adr-lifecycle]
-related: [28, 31, 73, 82, 112, 113]
+related: [28, 31, 73, 82, 112, 113, 117]
 domains: [rendering, adr-system, invariants, tooling]
 ---
 # ADR-0115: Ban typographic punctuation substitutes in emitted prose
@@ -80,7 +80,8 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
    failure strings are not emitted prose, and `internal/project/residue_scan_test.go:41` already
    contains an em-dash in a `t.Error` message. Comments carry a hard mechanical reason: gofmt's
    doc-comment normalization rewrites a double-backtick pair into U+201C, so scanning comments
-   would pit the gate against gofmt in a loop neither wins (recorded in `.awf/docs/pitfalls.yaml:267`).
+   would pit the gate against gofmt in a loop neither wins (recorded in `.awf/docs/pitfalls.yaml`,
+   entry "gofmt rewrites double backticks in doc comments into curly quotes").
 
 5. **The three em-dashed ADR titles are normalized retroactively. This is elective, and it is not
    a prose edit.** ADR-0007, ADR-0018 and ADR-0022 have the em-dash in their `# ` heading replaced
@@ -125,9 +126,10 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
    3's no-escape-hatch posture carries over unchanged, and item 4's word-and-codepoint convention
    is extended from one codepoint to seven: a doc that must discuss a banned character names it by
    word and codepoint rather than typing the glyph, as this ADR does throughout. Where a doc must
-   genuinely *depict* the glyph, scope rather than exemption makes room for it:
-   `.awf/docs/pitfalls.yaml:267` types a curly quote to document gofmt's rewrite and stays legal
-   because sidecar data is out of scope per item 3. No exemption list ships.
+   genuinely *depict* the glyph, scope rather than exemption makes room for it: the
+   `.awf/docs/pitfalls.yaml` entry "gofmt rewrites double backticks in doc comments into curly
+   quotes" types a curly quote to document that rewrite and stays legal because sidecar data is out
+   of scope per item 3. No exemption list ships.
 
 8. **The generated ACTIVE.md status separator becomes parentheses.** A row renders as
    `- [ADR-0001: Title](0001-file.md) (Accepted)`. A colon is unavailable because ADR titles
@@ -139,6 +141,27 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
    in the same commit. This discharges the obligation ADR-0113 item 4 created: an author learns the
    rule from the standard, not from a failing gate. The template is itself scanned by the new gate,
    so its rule text must not type the glyphs it bans.
+
+10. **The agent guide carries the rule, reversing ADR-0113's judgement on the widened scope.**
+    ADR-0113 Consequences reasoned that `template-em-dash-free` earned no bullet in the agent
+    guide's Invariants list: under the core-only criterion (ADR-0112) it was "a subsystem-specific
+    rendering invariant reached on demand via `awf context`". That reasoning was sound for a ban
+    scoped to `templates.FS`. It does not survive this ADR's widening. The criterion
+    (`docs/agents-md-standard.md`) admits a rule *iff* it is not scoped to a single subsystem's
+    files and instead constrains a whole cross-cutting surface, naming "all code" among them; item
+    3's scope is every string literal in production Go under `internal/` and `cmd/`, which is all
+    code, plus two embedded FS values. The judgement is reversed here rather than left in a
+    Superseded document, because a premise that changed silently is how a rule gets re-litigated.
+
+    Item 9 is not sufficient on its own, and the gap is the reason this item exists. The
+    documentation standard is a *documentation* authoring standard: it teaches whoever writes a
+    doc. A Go string literal is not a doc, so an agent adding an error message would meet this rule
+    only by tripping the gate, which is the precise failure ADR-0113 item 4 was written to prevent.
+    The guide bullet is where that author actually reads.
+
+    The bullet is one terse line naming the seven codepoints and the three surfaces, added to the
+    `invariants:` list in the guide's sidecar data. It does not restate the mechanism: that lives
+    here, per the criterion's own rule.
 
 ## Invariants
 
@@ -200,6 +223,13 @@ continued to declare it. Do not "repair" this ADR by populating `retires_invaria
 - **The rule is easier to follow than its predecessor.** Seven banned codepoints with no
   conditional carve-out replaces "em-dash banned, en-dash and ellipsis permitted", which required
   an author to remember which typographic character was acceptable and why.
+- **The agent guide spends one of its scarce slots, and that cost is the point of item 10.** The
+  guide is always-on context, so every bullet is a recurring token cost on every session and the
+  core-only criterion (ADR-0112) exists to keep the list short. This rule earns the slot because it
+  binds every author of a production Go string, which is most changes to this repository, and
+  because no other always-on doc reaches that author: the documentation standard teaches doc
+  authors. The flip commit therefore also edits the guide's sidecar data and re-renders `AGENTS.md`,
+  an obligation ADR-0113's flip commit explicitly did not carry.
 - **Authored ADR and plan bodies remain untouched.** 2344 em-dashes in authored ADR bodies under
   `docs/decisions/` and 4347 under `docs/plans/` are out of scope and stay. The line is principled
   rather than pragmatic: titles are harvested into generated output, bodies are not.
