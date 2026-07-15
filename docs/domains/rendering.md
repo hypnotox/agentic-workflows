@@ -81,3 +81,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0112: Core-only agent-guide Invariants section](../decisions/0112-core-only-agent-guide-invariants-section.md)
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md)
 
+### Proposed
+
+- [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
+

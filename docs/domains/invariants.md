@@ -23,3 +23,7 @@ Each machine-enforceable ADR Invariant bullet is declared in one of two forms (A
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 
+### Proposed
+
+- [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
+
