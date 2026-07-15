@@ -11,8 +11,10 @@ Land ADR-0115 (a hard gate banning seven typographic punctuation substitutes fro
 ships) and ADR-0117 (an advisory `awf audit` rule warning when authored prose adds them), in that
 order. The two are planned together because both rewrite the same line,
 `templates/docs/doc-standard.md.tmpl:16`, and ADR-0117 Decision item 8 depends on ADR-0115 landing
-first: reversed, an implementer following ADR-0115 item 9 literally would restore the narrow scope
-clause and silently undo the widening.
+first. Because both land in one effort, that line is written **once**, carrying both widenings,
+exactly as item 8 directs; phase 6 does it. Planned apart, or landed in the reverse order, an
+implementer following ADR-0115 item 9 literally would restore the narrow scope clause and silently
+undo the widening.
 
 Non-goals: the 2344 em-dashes in authored ADR bodies and the 4347 under `docs/plans/` stay untouched
 (out of scope permanently, per ADR-0115 Consequences and ADR-0117 Decision item 2), and no exemption
@@ -30,8 +32,8 @@ reading a diff.
 
 ## Architecture summary
 
-Six phases land ADR-0115, then two land ADR-0117. Every phase's closing commit passes `./x gate` on
-its own.
+Six phases land ADR-0115, then a seventh lands ADR-0117. Every phase's closing commit passes
+`./x gate` on its own.
 
 ADR-0115's gate test scans three surfaces at once (the embedded `templates.FS`, the embedded
 `changelog.FS`, and every string literal in production Go under `internal/` and `cmd/`), so all
@@ -44,11 +46,13 @@ test is. Splitting the phase would therefore land 31 files of prose edits in a c
 completeness nothing committed ever proves, and ADR-0115's Invariants section independently
 requires the old-test deletion and the new-test addition to be atomic.
 
-Phase 5 retitles three ADRs (ADR-0115 Decision item 5). Phase 6 states the widened rule in the
-documentation standard and flips ADR-0115 to `Implemented`. Phase 7 widens that same line's scope
-clause to authored prose (ADR-0117 Decision item 8), which must precede the rule that enforces it
-(ADR-0117 Decision item 5: awf states the convention before it warns about it). Phase 8 ships the
-advisory rule and flips ADR-0117.
+Phase 5 retitles three ADRs (ADR-0115 Decision item 5). Phase 6 rewrites the documentation
+standard's plain-punctuation rule and flips ADR-0115 to `Implemented`. That one line carries both
+widenings at once, the codepoint list (ADR-0115 item 9) and the scope clause (ADR-0117 item 8),
+which is what item 8 directs when both ADRs land in one effort, under a single changelog entry. It
+lands before the rule that enforces it, satisfying ADR-0117 Decision item 5: awf states the
+convention in a standard the adopter renders before it warns about it, and that ordering is the
+whole argument. Phase 7 then ships the advisory rule and flips ADR-0117.
 
 ## File structure
 
@@ -512,17 +516,23 @@ about what the history proves, not a mechanical necessity.
 
 ## Phase 6: State the widened rule and flip ADR-0115
 
-- [ ] **Task 6.1: Widen the documentation standard's codepoint list.** ADR-0115 Decision item 9.
+- [ ] **Task 6.1: Rewrite the documentation standard's plain-punctuation rule, once, carrying
+  both widenings.** This single edit discharges **ADR-0115 Decision item 9** (the codepoint list
+  widens from one to seven) and **ADR-0117 Decision item 8** (the scope clause widens from shipped
+  prose to all awf-managed prose). Item 8 directs exactly this when both ADRs land in one effort:
+  "the line is written once, carrying both, under a single changelog entry".
   `templates/docs/doc-standard.md.tmpl:16` becomes, in full:
 
   ```markdown
-  - **Plain punctuation.** Shipped prose uses plain punctuation: a colon, semicolon, comma, or parentheses where an em-dash would go, an ASCII hyphen for a range, three periods for elision, and ASCII quotes for quoting. Seven typographic substitutes are banned, as they read as machine-set: the em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018, U+2019, U+201C, U+201D). Notation (arrows, mathematical symbols, accented letters) is unaffected.
+  - **Plain punctuation.** Every awf-managed doc, shipped or authored (ADRs, plans, and hand-written docs), uses plain punctuation: a colon, semicolon, comma, or parentheses where an em-dash would go, an ASCII hyphen for a range, three periods for elision, and ASCII quotes for quoting. Seven typographic substitutes are banned, as they read as machine-set: the em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018, U+2019, U+201C, U+201D). Notation (arrows, mathematical symbols, accented letters) is unaffected.
   ```
 
-  The scope clause stays `Shipped prose` here; phase 7 widens it, per ADR-0117 Decision item 8. Two
-  constraints bind this text, both from guards over `templates.FS`: it must type none of the glyphs
-  it bans (task 4.2's test scans this template), and it must cite no ADR number
-  (`TestTemplateSourceResidue`).
+  Writing it here, rather than after the audit rule, is what ADR-0117 Decision item 5 requires: awf
+  states the convention in a standard the adopter renders **before** the rule warns about it, and
+  phase 7's rule then enforces what this line already says. Two constraints bind the text, both from
+  guards over `templates.FS`: it must type none of the glyphs it bans (task 4.2's test scans this
+  template), and it must cite no ADR number (`TestTemplateSourceResidue`), which is why the line
+  attributes nothing.
 
 - [ ] **Task 6.2: Add the changelog entry.** This is an adopter-facing release: the ACTIVE.md
   separator change makes every adopter's committed `ACTIVE.md` drift against the new binary, so
@@ -530,15 +540,22 @@ about what the history proves, not a mechanical necessity.
   `## [Unreleased]` in `changelog/CHANGELOG.md`, in plain punctuation (task 4.2's test now scans
   this file):
 
+  This is the **single changelog entry** ADR-0117 Decision item 8 calls for: it covers both the ban
+  and the documentation standard's rewritten rule, because task 6.1 wrote that line once carrying
+  both widenings.
+
   ```markdown
   - Seven typographic punctuation substitutes are banned from the prose awf ships (ADR-0115): the
     em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018,
     U+2019, U+201C, U+201D). The generated `docs/decisions/ACTIVE.md` now renders a row's status in
     parentheses (`- [ADR-0001: Title](0001-file.md) (Accepted)`) instead of after an em-dash, so
     **every adopter's committed `ACTIVE.md` drifts until they run `awf sync`**, and `awf check`
-    reports it until they do. The shipped templates, the documentation standard, awf's own output
-    strings, and this changelog are cleaned to match. Notation (arrows, mathematical symbols,
-    accented letters) is unaffected.
+    reports it until they do. The shipped templates, awf's own output strings, and this changelog
+    are cleaned to match. The rendered documentation standard's plain-punctuation rule is rewritten
+    to name all seven codepoints and now covers authored prose (ADRs, plans, and hand-written docs)
+    as well as shipped prose (ADR-0117), so `docs/doc-standard.md` re-renders too. Nothing rewrites
+    prose you have already written. Notation (arrows, mathematical symbols, accented letters) is
+    unaffected.
   ```
 
 - [ ] **Task 6.3: Flip ADR-0115 to Implemented.** In
@@ -576,35 +593,16 @@ about what the history proves, not a mechanical necessity.
   `templates/docs/doc-standard.md.tmpl`, `changelog/CHANGELOG.md`, the ADR,
   `.awf/domains/parts/adr-system/current-state.md`, and every regenerated file, then commit:
 
-  ```commit
-  feat(rendering): state the plain-punctuation rule (ADR-0115)
-  ```
-
-## Phase 7: Widen the standard to authored prose
-
-- [ ] **Task 7.1: Widen the documentation standard's scope clause.** ADR-0117 Decision item 8. The
-  baseline is the post-phase-6 line, not the line as it read before this plan.
-  `templates/docs/doc-standard.md.tmpl:16` becomes, in full:
-
-  ```markdown
-  - **Plain punctuation.** Every awf-managed doc, shipped or authored (ADRs, plans, and hand-written docs), uses plain punctuation: a colon, semicolon, comma, or parentheses where an em-dash would go, an ASCII hyphen for a range, three periods for elision, and ASCII quotes for quoting. Seven typographic substitutes are banned, as they read as machine-set: the em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018, U+2019, U+201C, U+201D). Notation (arrows, mathematical symbols, accented letters) is unaffected.
-  ```
-
-  The same two constraints bind it: no banned glyph typed, and no ADR citation. This lands before
-  phase 8's rule deliberately: awf states a convention in a standard the adopter renders before it
-  warns about that convention (ADR-0117 Decision item 5, whose argument is the ordering itself).
-
-- [ ] **Task 7.2: Re-render, verify, and commit.** Run `./x sync` (regenerates
-  `docs/doc-standard.md` and `examples/sundial/docs/doc-standard.md`), then `./x gate` (expect it to
-  pass). Stage the template and both rendered copies, then commit:
+  The subject cites both ADRs because this commit discharges an item from each: it flips ADR-0115
+  and carries ADR-0117 item 8's scope widening in the same line.
 
   ```commit
-  feat(rendering): widen plain punctuation to authored prose
+  feat(rendering): state the plain-punctuation rule (ADR-0115, ADR-0117)
   ```
 
-## Phase 8: Ship the advisory audit rule and flip ADR-0117
+## Phase 7: Ship the advisory audit rule and flip ADR-0117
 
-- [ ] **Task 8.1: Add the config key.** Five coordinated touchpoints; missing one trips the
+- [ ] **Task 7.1: Add the config key.** Five coordinated touchpoints; missing one trips the
   closed-config-tree checks (ADR-0086) or leaves the reference stale. The descriptor list is not
   alphabetical but a declaration order mirrored across the files, and the generated reference's row
   order derives from it, so the new key goes in at the same relative position in each: immediately
@@ -658,10 +656,10 @@ about what the history proves, not a mechanical necessity.
   ```
 
   `TestConfigspecKeyParity` fails the gate if the `AuditConfig` field and the descriptor disagree, so
-  this task is verified by `./x gate` in task 8.6 rather than by a command of its own.
+  this task is verified by `./x gate` in task 7.6 rather than by a command of its own.
 
-- [ ] **Task 8.2: Cover the new toggle in the settings tests.** The 100% coverage gate (ADR-0012)
-  fails if the override branch added in task 8.1 is uncovered, and the existing assertions enumerate
+- [ ] **Task 7.2: Cover the new toggle in the settings tests.** The 100% coverage gate (ADR-0012)
+  fails if the override branch added in task 7.1 is uncovered, and the existing assertions enumerate
   the toggles. In `internal/audit/settings_test.go`, three assertions each span a condition line and
   its `t.Errorf` line, and both lines change together:
 
@@ -678,9 +676,9 @@ about what the history proves, not a mechanical necessity.
 
   In the same test's `AuditConfig` literal, insert `PlainPunctuation:    boolPtr(false),` between
   `UndocumentedDomain:` (line 57) and `UncommittedChanges:` (line 58), matching the field
-  declaration order established in task 8.1.
+  declaration order established in task 7.1.
 
-- [ ] **Task 8.3: Thread `DocsDir` into the audit inputs.** ADR-0117 Decision item 3 names this the
+- [ ] **Task 7.3: Thread `DocsDir` into the audit inputs.** ADR-0117 Decision item 3 names this the
   rule's one piece of new plumbing. In `internal/audit/audit.go`, in the `Inputs` struct, after the
   `ADRDir` field:
 
@@ -700,7 +698,7 @@ about what the history proves, not a mechanical necessity.
   needed. `Inputs` embeds `Settings`, so the knob is readable as `in.PlainPunctuation` with no
   further promotion.
 
-- [ ] **Task 8.4: Add the rule.** In `internal/audit/audit.go`, register it in `evaluate` after the
+- [ ] **Task 7.4: Add the rule.** In `internal/audit/audit.go`, register it in `evaluate` after the
   `ruleDomainCodeStaleness` line:
 
   ```go
@@ -772,7 +770,7 @@ about what the history proves, not a mechanical necessity.
   `strings`, and `slices` are already imported. Sorting `risen` keeps the message deterministic,
   since map iteration order is not.
 
-- [ ] **Task 8.5: Back the invariant with a test.** In `internal/audit/audit_test.go`, add the test
+- [ ] **Task 7.5: Back the invariant with a test.** In `internal/audit/audit_test.go`, add the test
   below, following the file's established shape: cases exercised against the rule function directly,
   with the `// invariant:` proof marker on the asserting statement.
 
@@ -835,7 +833,7 @@ about what the history proves, not a mechanical necessity.
   }
   ```
 
-- [ ] **Task 8.6: Add the rule to the tooling narrative.** Docs travel with the change.
+- [ ] **Task 7.6: Add the rule to the tooling narrative.** Docs travel with the change.
   `.awf/domains/parts/tooling/current-state.md:7` enumerates every `awf audit` rule ("Its rules
   cover Conventional-Commits, ... `domain-doc-staleness`, `undocumented-domain`, and
   `domain-code-staleness`. One rule, `uncommitted-changes` ... is range-independent"), so shipping
@@ -849,7 +847,7 @@ about what the history proves, not a mechanical necessity.
 
   This narrative is a convention part, not a rendered artifact, so it is authored directly.
 
-- [ ] **Task 8.7: Flip ADR-0117, re-render, verify, and commit.** In
+- [ ] **Task 7.7: Flip ADR-0117, re-render, verify, and commit.** In
   `docs/decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md`, the frontmatter
   `status:` line becomes `status: Implemented`. Add to the `### Features` list under
   `## [Unreleased]` in `changelog/CHANGELOG.md`:
@@ -871,7 +869,7 @@ about what the history proves, not a mechanical necessity.
   working as designed (ADR-0117 Decision item 6: advisory severity is the depiction escape hatch).
   Two further advisory warnings are expected here and are not defects: `domain-doc-staleness` and
   `domain-code-staleness` fire for the domains this effort churns, and the narratives that were
-  factually affected are refreshed by tasks 6.4 and 8.6. Stage every changed and regenerated file,
+  factually affected are refreshed by tasks 6.4 and 7.6. Stage every changed and regenerated file,
   including `.awf/domains/parts/tooling/current-state.md`, then commit:
 
   ```commit
@@ -906,13 +904,16 @@ Whole-effort acceptance checks, run from a clean tree at the end:
 
 ## Notes
 
-- **The doc-standard line is written twice, in phases 6 and 7, not once.** ADR-0117 Decision item 8
-  permits either ("if both land in one effort, the line is written once, carrying both"), but its
-  primary text mandates the ordering used here: ADR-0115 lands first, and "the baseline to edit is
-  therefore the post-ADR-0115 line". Writing it once, in phase 6, would make ADR-0115's flip commit
-  ship a scope claim that ADR-0115 does not own and that nothing yet enforces. Two edits to one line
-  keep each ADR's flip commit self-consistent, and each carries its own changelog entry because each
-  is separately adopter-facing.
+- **The doc-standard line is written once, in phase 6, carrying both widenings.** ADR-0117 Decision
+  item 8 directs this outright for the case at hand: "if both land in one effort, the line is
+  written once, carrying both, under a single changelog entry." An earlier draft of this plan split
+  it across two phases, reading item 8's clause as permissive; it is not, and review corrected it.
+  The one objection to the single edit, that ADR-0115's flip commit then ships a scope claim
+  ADR-0115 does not own and nothing yet enforces, does not survive contact with the ADRs: item 9
+  requires only that the line name all seven codepoints and says nothing about the scope clause, and
+  ADR-0117 item 5 requires only that the standard widen *before* the rule enforces it, which phase 6
+  satisfies by preceding phase 7. Recorded because the two-edit reading is the tempting one and a
+  future reader deserves to know it was considered and rejected on the ADR's own text.
 - **Phase 4 is the plan's one coupled commit**, and its header states why rather than assuming it:
   the test is the cleanup's only permanent completeness proof, and ADR-0115 requires the test swap
   to be atomic anyway. Both halves would pass the gate if split, so the reason is what the history
