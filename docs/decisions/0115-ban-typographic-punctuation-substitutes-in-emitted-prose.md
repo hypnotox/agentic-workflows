@@ -138,9 +138,15 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
 9. **The documentation authoring standard carries the widened rule.**
    `templates/docs/doc-standard.md.tmpl:16` currently bans the em-dash alone; it is rewritten to
    name all seven codepoints by word and codepoint, and `./x sync` re-renders `docs/doc-standard.md`
-   in the same commit. This discharges the obligation ADR-0113 item 4 created: an author learns the
-   rule from the standard, not from a failing gate. The template is itself scanned by the new gate,
-   so its rule text must not type the glyphs it bans.
+   in the same commit. This discharges ADR-0113 item 4's obligation **for the authors the standard
+   reaches**: whoever writes a doc learns the rule from the standard, not from a failing gate. It
+   does not reach the author of a Go string literal, who is item 10's subject. The template is
+   itself scanned by the new gate, so its rule text must not type the glyphs it bans.
+
+   ADR-0117 item 8 widens this same line's scope clause, from shipped prose to all awf-managed
+   prose. When both ADRs land in one effort the line is therefore written **once**, carrying both
+   widenings, under a single changelog entry; an implementer following this item alone would write
+   "Shipped prose" and silently undo that widening.
 
 10. **The agent guide carries the rule, reversing ADR-0113's judgement on the widened scope.**
     ADR-0113 Consequences reasoned that `template-em-dash-free` earned no bullet in the agent
@@ -150,8 +156,8 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
     (`docs/agents-md-standard.md`) admits a rule *iff* it is not scoped to a single subsystem's
     files and instead constrains a whole cross-cutting surface, naming "all code" among them; item
     3's scope is every string literal in production Go under `internal/` and `cmd/`, which is all
-    code, plus two embedded FS values. The judgement is reversed here rather than left in a
-    Superseded document, because a premise that changed silently is how a rule gets re-litigated.
+    production code, plus two embedded FS values. The judgement is reversed here rather than left in
+    a Superseded document, because a premise that changed silently is how a rule gets re-litigated.
 
     Item 9 is not sufficient on its own, and the gap is the reason this item exists. The
     documentation standard is a *documentation* authoring standard: it teaches whoever writes a
