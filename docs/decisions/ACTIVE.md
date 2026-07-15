@@ -116,6 +116,10 @@
 - [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md) — Implemented
 - [ADR-0112: Core-only agent-guide Invariants section](0112-core-only-agent-guide-invariants-section.md) — Implemented
 
+## Proposed
+
+- [ADR-0113: Em-dash-free shipped templates](0113-em-dash-free-shipped-templates.md) — Proposed
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) — Superseded by ADR-0032
