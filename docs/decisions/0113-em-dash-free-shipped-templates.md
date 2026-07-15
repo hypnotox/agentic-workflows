@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [template-residue, doc-standard]
-related: [82]
+related: [82, 112]
 domains: [rendering]
 ---
 # ADR-0113: Em-dash-free shipped templates
@@ -26,7 +26,7 @@ This is the same publication-cleanliness concern as the source-level residue gua
 
 3. **No escape hatch.** The templates are already em-dash-free, so the check ships with no exemption list — mirroring the strict, escape-hatch-free posture of the dead-code gate. A template that genuinely needs an em-dash would be a reason to revisit this decision, not to add a bypass.
 
-4. **The convention is documented, not only enforced.** The documentation authoring standard states the plain-punctuation rule in prose, so an author learns it before a failing gate teaches it. Because that standard is itself a shipped template scanned by the new gate, its rule text names the character by word and codepoint rather than typing the glyph.
+4. **The convention is documented, not only enforced.** The documentation authoring standard gains the plain-punctuation rule in prose, so an author learns it before a failing gate teaches it. Because that standard is itself a shipped template scanned by the new gate, its rule text names the character by word and codepoint rather than typing the glyph.
 
 ## Invariants
 
@@ -38,6 +38,7 @@ This is the same publication-cleanliness concern as the source-level residue gua
 - **Adopter-injected content is a stated blind spot, not an oversight.** Prose that reaches rendered output through a sidecar `data:` value or a convention part is not scanned, so a future em-dash there would render uncaught. This is the same boundary the residue guard draws around adopter content, and it is accepted deliberately: awf enforces its own shipped prose, not an adopter's house style. awf's current data and parts are em-dash-free.
 - **The documentation standard gains a durable rule.** Adopters re-rendering the standard receive the plain-punctuation guidance, so the convention travels beyond this repo.
 - **Minor authoring constraint on one template.** The doc-standard template — and any future template that discusses punctuation — must describe the em-dash without typing it, or the gate fails on its own convention doc.
+- **Flip-commit doc obligations, diverging from ADR-0082's pattern.** The commit flipping this ADR to Implemented ships the backing test, regenerates `docs/decisions/ACTIVE.md`, re-renders the documentation standard from its edited template, and carries a changelog entry for that adopter-facing rendered change. Unlike its sibling ADR-0082, it does **not** add a bullet to the agent guide's Invariants list: under the core-only guide criterion (ADR-0112), `template-em-dash-free` is a subsystem-specific rendering invariant reached on demand via `awf context`, not one of the every-change rules the guide enumerates.
 
 ## Alternatives Considered
 
