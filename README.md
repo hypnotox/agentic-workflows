@@ -26,35 +26,36 @@ it, nothing enforces it, and it quietly drifts away from how the project actuall
 awf treats the workflow as a build artifact instead. The source of truth is a committed
 config tree, so a change to how your agents work is a diff someone reviews, like any
 other change. Rendering is deterministic, so every contributor and every agent session
-reads the same skills and docs — there is nothing to retype per session. And a set of
-mechanical checks wraps the probabilistic agent: stale or hand-edited output, invalid
-skill frontmatter, dead internal links, references to disabled skills, and documented
-invariants with no backing comment in source all fail loudly instead of rotting.
+reads the same skills and docs, with nothing to retype per session. And a set of
+mechanical checks guards what the agent produces, not how it reasons: stale or
+hand-edited output, invalid skill frontmatter, dead internal links, references to disabled
+skills, and documented invariants with no backing comment in source all fail loudly
+instead of rotting.
 
 ## What gets rendered
 
-- **Workflow skills** (`.claude/skills/<prefix>-*/`) — the core chain: brainstorming,
+- **Workflow skills** (`.claude/skills/<prefix>-*/`). The core chain: brainstorming,
   ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
   styles (inline or subagent-per-task), implementation review, and a closing
   retrospective that promotes recurring findings toward deterministic checks. Task
   skills (TDD, bugfix, debugging, a refactor coupling audit, a roadmap-graduation
   pass) are opt-in.
-- **Review agents** (`.claude/agents/`) — `adr-reviewer`, `plan-reviewer`,
+- **Review agents** (`.claude/agents/`): `adr-reviewer`, `plan-reviewer`,
   `code-reviewer`. Each is dispatched with fresh context, so the author never grades
   its own work.
-- **Docs** — an `AGENTS.md` agent guide (with a `CLAUDE.md` bridge), workflow and
-  documentation standards, and opt-in project docs: architecture, testing,
+- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge), workflow and
+  documentation standards, plus opt-in project docs: architecture, testing,
   development, debugging, glossary, pitfalls, roadmap.
-- **Domain docs** (`docs/domains/<name>.md`) — one page per freeform domain you
+- **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
   plus a generated index of that domain's ADRs. A domain's sidecar can declare
-  `paths` globs — its code territory — and `awf audit` then warns when code in that
+  `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
-- **Git-hook payloads** (`.awf/hooks/`) — inert pre-commit / commit-msg / pre-push
+- **Git-hook payloads** (`.awf/hooks/`): inert pre-commit / commit-msg / pre-push
   scripts. You wire them up; awf never touches your git config.
-- **A pinned bootstrap** (`.awf/bootstrap.sh`) — an optional installer that fetches the
+- **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **A working-memory directory** (`.awf/memory/`) — always rendered with a
+- **A working-memory directory** (`.awf/memory/`): always rendered with a
   self-ignoring `.gitignore`; agents keep per-effort session notes there without ever
   committing them.
 
@@ -75,7 +76,7 @@ agents into `.cursor/` (`awf enable target cursor`); Cursor reads `AGENTS.md` na
 You change the config and run `awf sync`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
 silently diverge. To customise one section of an artifact, drop a *convention part*
-under `.awf/` — it replaces that section's body and inherits the rest of the template.
+under `.awf/`; it replaces that section's body and inherits the rest of the template.
 For skills and agents the catalog doesn't have, `awf new skill <name> "<desc>"` (or
 `agent`) scaffolds a project-local artifact that gets the same rendering, validation,
 and drift tracking as the built-in ones.
@@ -128,8 +129,8 @@ review agents, and the workflow docs. Everything else in the catalog is opt-in v
 ## Worked example
 
 A complete example adopter lives in [`examples/sundial/`](examples/sundial/README.md):
-a small fictional Go CLI with every catalog artifact enabled — authored parts,
-domains, ADRs, a plan — and every rendered file committed, kept in sync by this
+a small fictional Go CLI with every catalog artifact enabled (authored parts,
+domains, ADRs, a plan) and every rendered file committed, kept in sync by this
 repository's own checks. Browse it to see exactly what an adoption looks like on
 disk.
 
@@ -141,7 +142,7 @@ disk.
 | `awf sync` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
-| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter — `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`. Enabling a reviewing skill pulls in the agent it dispatches. |
+| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
 | `awf new skill\|agent <name> "<desc>"` | Scaffold a project-local skill or agent and enable it. |
 | `awf audit [--base <ref>]` | Report workflow-conformance findings over the branch's commits. Not part of any gate, but exits non-zero on error-severity findings. |
@@ -160,11 +161,11 @@ Run `awf help` for the full synopsis.
 existing `AGENTS.md`) is present and not awf-managed, init refuses and lists the
 collisions; `awf init --force` overwrites them after backing each original up to
 `<path>.awf-bak`. Rendered skills are named `<prefix>-<skill>`, with the prefix derived
-from the repo directory's basename — change it via `prefix` in `.awf/config.yaml`. And
+from the repo directory's basename; change it via `prefix` in `.awf/config.yaml`. And
 you can back out anytime: `awf uninstall` removes everything awf generated, leaving your
 config in place.
 
-awf renders git-hook *content* but never installs or activates hooks — the wiring is
+awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), three inert payload scripts
 land under `.awf/hooks/`: `pre-commit.sh` (drift check, then your gate),
 `commit-msg.sh` (`awf commit-gate`), and `pre-push.sh`. Invoke them from wiring you own,
@@ -191,17 +192,17 @@ jobs:
 
 ## Documentation
 
-- [`AGENTS.md`](AGENTS.md) — the (rendered) agent guide that orients an AI agent in this repo
-- [`docs/working-with-awf.md`](docs/working-with-awf.md) — day-to-day usage: commands, overrides, the sync/check loop
-- [`docs/workflow.md`](docs/workflow.md) — the brainstorm/ADR/plan chain and commit discipline
-- [`docs/architecture.md`](docs/architecture.md) — system shape, packages, key components
-- [`docs/decisions/README.md`](docs/decisions/README.md) — architecture decision records
-- [`docs/development.md`](docs/development.md) — local setup and the `./x` command runner
+- [`AGENTS.md`](AGENTS.md): the (rendered) agent guide that orients an AI agent in this repo
+- [`docs/working-with-awf.md`](docs/working-with-awf.md): day-to-day usage, commands, overrides, the sync/check loop
+- [`docs/workflow.md`](docs/workflow.md): the brainstorm/ADR/plan chain and commit discipline
+- [`docs/architecture.md`](docs/architecture.md): system shape, packages, key components
+- [`docs/decisions/README.md`](docs/decisions/README.md): architecture decision records
+- [`docs/development.md`](docs/development.md): local setup and the `./x` command runner
 
 ## Contributing
 
 This project develops itself with the workflow it ships, so the rules above apply here
-too: never hand-edit a rendered file — change `.awf/` (or a template) and run
+too: never hand-edit a rendered file; change `.awf/` (or a template) and run
 `awf sync`, then `awf check`. The gate (`./x gate`) must pass before every commit. Read
 [`AGENTS.md`](AGENTS.md) and [`docs/workflow.md`](docs/workflow.md) before non-trivial
 work.
@@ -211,4 +212,4 @@ work.
 [MIT](LICENSE) © hypnotox.
 
 `awf` renders configuration for, and interoperates with, Anthropic's Claude Code, but is
-an independent project — not affiliated with or endorsed by Anthropic.
+an independent project, not affiliated with or endorsed by Anthropic.

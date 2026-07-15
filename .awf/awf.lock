@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:9622053499cbe976d72205eb6c03530b181cb9b78dc4fc238a331da73a546e6e",
-      "configHash": "sha256:897bda87385252e140f6812d58bdb0d82460d54aff0eccaebd761e7a2486dafc",
-      "outputHash": "sha256:9e2a5ee7bddeb78961b5eb010558ac70acd420a59acef34ee25d5bd29f2e0934"
+      "configHash": "sha256:0e9880aa7c16c90600f7aa9deab800d93ccf7ed337bbf1c69db960e1dcd6561d",
+      "outputHash": "sha256:3f7416ea5faa64fb0258d285e67ae62fabbc3e80ff34526c13baaa0bb4f04493"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
