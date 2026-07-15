@@ -27,6 +27,8 @@ Build the primitive first (render + project + check layers), then the runner con
    shell runner), an HTML comment otherwise — sniffed from the expanded template source (mirroring
    `injectBanner`) and shared by the pointer emitter and the Phase-3 read-back matcher so they cannot
    diverge. Without this a shell runner's HTML-comment pointers are a bash syntax error.
+1c. Render `#!`-shebang files executable (ADR-0100 Decision 8): the sync write path sets mode `0755`
+   for a shebang file (`0644` otherwise), enforced every sync, so the runner is runnable as `./x`.
 2. Add a first-class `RegenChecked` attribute on `RenderedFile` and migrate the triplicated
    hardcoded generated-index exclusion onto it (behaviour-preserving refactor).
 3. Source an in-place section's body by reading it back from the existing output file, bounded by
@@ -36,7 +38,8 @@ Build the primitive first (render + project + check layers), then the runner con
 5. Add the `runner` config toggle, a dedicated render block (not a catalog `DocEntry`), and the
    `x` template with two `awf:edit-in-place` sections.
 6. Enable + migrate the `examples/sundial` runner; awf-the-repo stays opted out.
-7. Back all twelve invariant slugs (per phase) and flip both ADRs to Implemented in the final commit.
+7. Back all thirteen invariant slugs (per phase — twelve original plus `shebang-rendered-executable`
+   from the ADR-0100 executable-rendering amendment) and flip both ADRs to Implemented in the final commit.
 
 ## File structure
 
@@ -256,6 +259,31 @@ in-place, in-`rendered` case).
   internal/project/render.go internal/project/*_test.go`; commit `feat(rendering): regeneration-
   with-read-back drift for in-place files`.
 
+## Phase 4C — Executable rendering for shebang files (ADR-0100 Decision 8)
+
+Added by the second ADR-0100 amendment (executable rendering), discovered during implementation: a
+rendered runner at `0644` is a permission error on `./x`. Implemented after Phase 6 in commit order
+(Phases 1–6 are already committed), but logically a primitive concern. Backs
+`inv: shebang-rendered-executable`. Flips the already-rendered bootstrap/hooks/runner from `0644` to
+`0755` on the next sync.
+
+- [ ] **Task 4C.1 — Write the mode from content.** In `internal/project/project.go`, at the sync
+  write site (currently `os.WriteFile(abs, []byte(f.Content), 0o644)`, ~line 180): compute
+  `perm := 0o644`, set `perm = 0o755` when `f.Content` begins with `#!` (the one `#!`-prefix predicate
+  — `strings.HasPrefix(f.Content, "#!")`, agreeing with `render.CommentStyleForSource` on the leading
+  bytes), write with `perm`, then `os.Chmod(abs, perm)` to **enforce** the mode on a pre-existing file
+  (Go's `os.WriteFile` sets perm only at creation). Drift is unaffected — `checkLockedFiles` hashes
+  content, not mode.
+- [ ] **Task 4C.2 — Test.** In `internal/project`: sync a project whose rendered set includes a
+  shebang script (hooks or the runner) and a non-shebang file (a doc), then stat both — the shebang
+  file is `0755`, the doc `0644`. Assert the mode is *corrected* on a pre-existing file: pre-create
+  the output `0644`, sync, and confirm it becomes `0755` (this fails a perm-arg-only implementation).
+  Put the proof `// invariant: shebang-rendered-executable` on a line inside this test.
+- [ ] **Task 4C.3 — Verify and commit.** `./x gate`; then `./x sync` (flips the committed
+  bootstrap/hooks/runner — this repo's and the sundial example's — to `0755`); `git add
+  internal/project/project.go internal/project/*_test.go` and every rendered script whose mode
+  changed (git tracks the exec bit); commit `feat(rendering): render shebang scripts executable`.
+
 ## Phase 5 — The runner singleton
 
 Backs `inv: runner-singleton-toggle`, `inv: runner-awf-verbs-owned`, `inv: runner-project-verbs-in-place`,
@@ -381,12 +409,13 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
   `grep` is NOT faithful under ADR-0105 (it matches out-of-scope production markers, and
   `invariant: <slug>` is a substring of an advisory `touches-invariant: <slug>`). Use `./x invariants`
   (equivalently the invariant portion of `./x check`), which enforces the test-scoped proof rule
-  (`invariants.testGlobs: ['**/*_test.go']`). It must report all twelve slugs backed:
+  (`invariants.testGlobs: ['**/*_test.go']`). It must report all thirteen slugs backed:
   in-place-pointer-distinct, in-place-readback, in-place-tamper-drift, section-source-exclusive,
-  in-place-spacing-owned, regeneration-checked-attribute, runner-singleton-toggle,
-  runner-awf-verbs-owned, runner-project-verbs-in-place, runner-render-publication-safe,
-  runner-example-adopted, singleton-kinds-complete. Fix any "declared backed but no proof marker in
-  backing scope" finding by adding the proof `// invariant: <slug>` to the owning phase's `*_test.go`.
+  in-place-spacing-owned, regeneration-checked-attribute, shebang-rendered-executable,
+  runner-singleton-toggle, runner-awf-verbs-owned, runner-project-verbs-in-place,
+  runner-render-publication-safe, runner-example-adopted, singleton-kinds-complete. Fix any "declared
+  backed but no proof marker in backing scope" finding by adding the proof `// invariant: <slug>` to
+  the owning phase's `*_test.go`.
 - [ ] **Task 7.3 — Flip both ADRs to Implemented and freeze the plan.** In
   `docs/decisions/0100-*.md` and `docs/decisions/0101-*.md` set `status: Implemented`; set this
   plan's frontmatter `status: Implemented`. Add the partial-supersession back-pointer: append `101`
@@ -394,7 +423,8 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
   supersedes another (cf. ADR-0097/0098 each gaining `108`); ADR-0101 already lists `2`, so this
   makes the link bidirectional and `adr-related-link-resolved` stays green. Run `./x sync` to
   regenerate `docs/decisions/ACTIVE.md` and the domain ADR indexes. `./x check` must now enforce all
-  twelve backed invariants and pass.
+  thirteen backed invariants and pass (the flip also clears the Proposed-ADR advisory notes the
+  backed markers emit while the ADRs are still Proposed).
 - [ ] **Task 7.4 — Final verify and commit.** `./x gate` and `./x check` (both must pass, including
   the sundial example check and its `go test`). `git add` the two flipped ADRs (0100, 0101), the
   ADR-0002 back-pointer edit, the plan, `ACTIVE.md`, the regenerated domain docs (incl. AGENTS.md),
@@ -404,7 +434,7 @@ disabled); its hand-written `./x` is unchanged and stays outside the render set 
 ## Verification
 
 - `./x gate` green at every phase commit; `./x check` clean (main repo + sundial example, zero notes).
-- All twelve invariant slugs backed (Task 7.2: `./x invariants` reports all twelve backed); `./x check` enforces them post-flip.
+- All thirteen invariant slugs backed (Task 7.2: `./x invariants` reports all thirteen backed); `./x check` enforces them post-flip.
 - `examples/sundial/x` is a rendered file containing a `context` arm and sundial's own `gate`/`test`
   in its in-place section; editing the in-place section and re-syncing preserves it; editing an
   awf-owned arm and re-syncing overwrites it (spot-check the tamper/fixpoint behaviour by hand).
