@@ -47,7 +47,9 @@ completeness nothing committed ever proves, and ADR-0115's Invariants section in
 requires the old-test deletion and the new-test addition to be atomic.
 
 Phase 5 retitles three ADRs (ADR-0115 Decision item 5). Phase 6 rewrites the documentation
-standard's plain-punctuation rule and flips ADR-0115 to `Implemented`. That one line carries both
+standard's plain-punctuation rule, adds the rule to the agent guide's Invariants list (ADR-0115
+Decision item 10, which reverses ADR-0113's judgement now that the ban reaches all production Go
+and not one subsystem), and flips ADR-0115 to `Implemented`. That one line carries both
 widenings at once, the codepoint list (ADR-0115 item 9) and the scope clause (ADR-0117 item 8),
 which is what item 8 directs when both ADRs land in one effort, under a single changelog entry. It
 lands before the rule that enforces it, satisfying ADR-0117 Decision item 5: awf states the
@@ -62,7 +64,8 @@ whole argument. Phase 7 then ships the advisory rule and flips ADR-0117.
   `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, `templates/skills/bugfix/SKILL.md.tmpl`,
   `templates/docs/workflow.md.tmpl`, `templates/partials/review-spine-tail.md`,
   `templates/adr-readme/README.md.tmpl`, `templates/docs/doc-standard.md.tmpl`,
-  `changelog/CHANGELOG.md`, `.awf/domains/parts/adr-system/current-state.md`,
+  `changelog/CHANGELOG.md`, `.awf/agents-doc.yaml`,
+  `.awf/domains/parts/adr-system/current-state.md`,
   `.awf/domains/parts/tooling/current-state.md`, `internal/adr/adr.go`, `internal/adr/adr_test.go`,
   `internal/project/residue_scan_test.go`, the 31 production Go files phase 4 names, the six test
   files phase 4 names (`cmd/awf/context_test.go`, `cmd/awf/config_test.go`, `cmd/awf/init_test.go`,
@@ -584,7 +587,23 @@ about what the history proves, not a mechanical necessity.
   backing machinery, and `tooling`'s the commands, and none of the three asserts anything about
   prose punctuation, the ban's scope, or the ACTIVE.md row format.
 
-- [ ] **Task 6.5: Re-render, verify, and commit.** Run `./x sync` (regenerates
+- [ ] **Task 6.5: Add the rule to the agent guide's Invariants list.** ADR-0115 Decision item 10,
+  which reverses ADR-0113's judgement now that the ban reaches all production Go rather than one
+  subsystem. The guide's Invariants list is sidecar data, not a hand-edited doc: add the entry to
+  the `invariants:` list in `.awf/agents-doc.yaml`, immediately after the `ADR-0008` backed-invariants
+  entry and before the `ADR-0012` coverage-gate entry, matching the surrounding `ref` plus `text`
+  shape. Note the list's own guard comment ("Core-only invariants (ADR-0112) ... do not re-add
+  them here"): this entry is added deliberately and item 10 records why it now qualifies.
+
+  ```yaml
+        - ref: ADR-0115
+          text: '**Plain punctuation in emitted prose.** Everything awf ships carries no typographic punctuation substitute: not the embedded templates, not the embedded changelog, and not one string literal in production Go under `internal/` or `cmd/`. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation instead. Go comments and tests are out of scope; notation (arrows, mathematical symbols, accented letters) stays legal. (ADR-0115)'
+  ```
+
+  The bullet states the rule and its scope, not the mechanism, per the criterion in
+  `docs/agents-md-standard.md`. `./x sync` re-renders `AGENTS.md` from this data in task 6.6.
+
+- [ ] **Task 6.6: Re-render, verify, and commit.** Run `./x sync` (regenerates
   `docs/doc-standard.md`, `examples/sundial/docs/doc-standard.md`, `docs/decisions/ACTIVE.md` for
   the status change, the domain docs, and the sundial ACTIVE.md), then `./x check` (expect
   `check: clean`, and **the advisory note about an unbacked slug is now gone**, because ADR-0115 is
@@ -592,7 +611,8 @@ about what the history proves, not a mechanical necessity.
   (expect `emitted-prose-no-typographic-substitutes` reported as backed, and `template-em-dash-free`
   reported nowhere), then `./x gate` (expect it to pass). Stage
   `templates/docs/doc-standard.md.tmpl`, `changelog/CHANGELOG.md`, the ADR,
-  `.awf/domains/parts/adr-system/current-state.md`, and every regenerated file, then commit:
+  `.awf/domains/parts/adr-system/current-state.md`, `.awf/agents-doc.yaml`, and every regenerated
+  file (`AGENTS.md` among them, re-rendered from task 6.5's data), then commit:
 
   The subject cites both ADRs because this commit discharges an item from each: it flips ADR-0115
   and carries ADR-0117 item 8's scope widening in the same line.
