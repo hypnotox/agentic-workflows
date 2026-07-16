@@ -53,11 +53,12 @@ lane with a low steady-state cost.
    ADR-0122. `supersedes: ADR-0122#4`
 
 2. Register exactly three workflow-focused public tools backed by one private
-   runner:
-   - `subagent_explore {task}` for fresh-context investigation;
-   - `subagent_review {kind: adr|plan|code, task}` for governed report-only
-     review;
-   - `subagent_implement {task, allowCommits}` for fresh-context implementation.
+   runner. Every `task` is a required, non-empty string:
+   - `subagent_explore {task: string}` for fresh-context investigation;
+   - `subagent_review {kind: "adr"|"plan"|"code", task: string}` for governed
+     report-only review, with `kind` required;
+   - `subagent_implement {task: string, allowCommits: boolean}` for fresh-context
+     implementation, with `allowCommits` required.
    The review kind is a stable closed enum mapped to the rendered
    `adr-reviewer`, `plan-reviewer`, and `code-reviewer` Pi skill bodies.
    Arbitrary project-local skills or agents are not inferred as reviewers.
@@ -66,24 +67,33 @@ lane with a low steady-state cost.
    or depending on a separately installed package. Each call starts the current
    Pi executable in JSON mode with no persisted session, the parent session's
    provider/model and thinking level, an explicit role tool allowlist, and a
-   mode-0600 temporary role prompt. The runner streams bounded progress,
-   retains bounded output, propagates child diagnostics and usage, removes
-   temporary state on every exit path, and escalates cancellation from TERM to
-   KILL based on observed process exit rather than Node's signal-sent flag.
+   mode-0600 temporary role prompt. Final output is capped at 50 KiB or 2,000
+   lines, whichever comes first; stderr retains its last 50 KiB; progress and
+   details retain the last 20 event summaries at no more than 2 KiB each. These
+   limits are fixed rather than public configuration. Every truncation marker
+   reports omitted bytes, lines, or events, and no full raw transcript is
+   retained elsewhere. The runner propagates child diagnostics and usage,
+   removes temporary state on every exit path, and escalates cancellation from
+   TERM to KILL based on observed process exit rather than Node's signal-sent
+   flag.
    Pi 0.80.9 is the initial minimum supported runtime; an older incompatible
    runtime receives one actionable startup error instead of partially
    registered tools.
 
-4. Exploration and review children receive `read`, `grep`, `find`, `ls`, and
-   `bash`; their no-mutation contract is prompt policy rather than an OS-level
-   filesystem sandbox. Implementation children receive the normal coding tools,
-   run in the parent's checkout, and are serialized against other implementation
-   calls. Pi workflow guidance requires an implementation call to be alone in
-   its parent tool batch because the extension cannot serialize it against a
-   sibling parent `edit`, `write`, or unrestricted `bash` call. The runner
-   reports starting and ending HEAD plus dirty-state summaries. The orchestrator
-   selects whether commits are allowed; a policy violation is reported and
-   never auto-reverted. Non-git execution remains available with commit
+4. Exploration and review children receive exactly `read`, `grep`, `find`,
+   `ls`, and `bash`; their no-mutation contract is prompt policy rather than an
+   OS-level filesystem sandbox. Implementation children receive exactly `read`,
+   `bash`, `edit`, `write`, `grep`, `find`, and `ls`. Passing those closed
+   built-in allowlists through `--tools` excludes all three subagent tools and
+   every other extension tool from children, preventing recursive delegation.
+   Implementation children run in the parent's checkout and serialize against
+   other implementation calls. Pi workflow guidance requires an implementation
+   call to be alone in its parent tool batch because the extension cannot
+   serialize it against a sibling parent `edit`, `write`, unrestricted `bash`,
+   or delegation call. The runner reports starting and ending HEAD plus
+   dirty-state summaries. The orchestrator selects whether commits are allowed;
+   a changed HEAD when `allowCommits` is false is reported as a policy violation
+   and never auto-reverted. Non-git execution remains available with commit
    verification marked unavailable.
 
 5. Pi-target workflow copies explicitly bind grounding checks and large coupling
@@ -106,9 +116,20 @@ lane with a low steady-state cost.
 7. Test the actual dogfooded generated extension through TypeScript type checks,
    dependency-injected unit tests, and a fake Pi JSON child executable, with no
    live model or credentials in the gate. Go tests cover target rendering,
-   hashes, drift/sync repair, cleanup, and cross-target workflow wording. The
-   awf repository and Sundial example render the extension. A real Pi child run
-   is a documented manual smoke check, not a blocking test.
+   hashes, drift/sync repair, cleanup, public contracts, process boundaries,
+   compatibility behavior, gate wiring, and cross-target workflow wording; they
+   carry this ADR's proof markers because this repository scopes invariant
+   backing to `**/*_test.go`. The awf repository and Sundial example render the
+   extension. A real Pi child run is a documented manual smoke check, not a
+   blocking test.
+
+8. Implementation updates the generated AGENTS.md and its source identity part,
+   architecture, development, testing, working-with-awf and target guidance,
+   README and release notes where applicable, rendering/tooling current-state
+   docs, and the completed roadmap entry in the same commits as behavior. The
+   final ADR status change runs `./x sync` and commits regenerated `ACTIVE.md`
+   and domain indexes. No `docs/decisions/README.md` index row is owed: it is a
+   how-to guide and `ACTIVE.md` is the generated index, following ADR-0005.
 
 ## Invariants
 
@@ -122,17 +143,22 @@ lane with a low steady-state cost.
 - `invariant: pi-subagent-public-contract`: the generated extension exposes only
   `subagent_explore`, `subagent_review`, and `subagent_implement`, with the closed
   reviewer-kind mapping and public parameter shapes decided above.
-- `unbacked-invariant: pi-child-execution-boundaries`: children inherit model and
-  thinking state, receive only role-allowed tools, cannot recursively delegate,
-  bound retained output, clean temporary prompts, and use exit-aware
-  cancellation; implementation calls serialize and report git state without
-  automatic rollback. **Verify:** run the containerized Pi-extension type,
-  unit, fake-child integration, and coverage suite through `./x gate`.
-- `unbacked-invariant: pi-minimum-runtime`: the generated extension supports Pi
-  0.80.9 or newer and emits one actionable compatibility error on an older
-  runtime. **Verify:** run the containerized compatibility fixtures against the
-  minimum and an older-version stub, then perform the documented Pi 0.80.9
-  smoke check before release.
+- `invariant: pi-child-tool-boundaries`: children inherit model and thinking
+  state, receive exactly their closed role allowlists, cannot recursively
+  delegate, and enforce the fixed retained-output limits with explicit
+  truncation diagnostics.
+- `invariant: pi-child-process-safety`: every child exit path cleans temporary
+  prompts and listeners, cancellation escalates against observed process exit,
+  and child errors preserve bounded diagnostics.
+- `invariant: pi-implementation-state-boundary`: implementation calls serialize,
+  enforce the selected commit permission, and report git state without
+  automatic rollback, including an explicit unverifiable state outside git.
+- `invariant: pi-minimum-runtime`: the generated extension supports Pi 0.80.9 or
+  newer and emits one actionable compatibility error on an older runtime.
+- `unbacked-invariant: pi-real-runtime-smoke`: the containerized fixtures are the
+  deterministic gate, while release readiness also includes one real child run
+  on Pi 0.80.9 or newer. **Verify:** perform the documented real-Pi smoke check
+  before release and record any compatibility finding in the release work.
 - `invariant: pi-extension-container-gate`: the normal gate invokes the
   dependency-fingerprinted persistent Docker test environment without creating
   host Node/npm artifacts, and its explicit cleanup commands remain available.
