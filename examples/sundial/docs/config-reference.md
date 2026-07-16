@@ -63,6 +63,8 @@ declined; the generic prose renders).
   State: set (`./x check`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push, skill proposing-adr.
 - `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim. Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.
   State: set (`./x commit-gate`). Consumed by: hooks commit-msg.
+- `proseGateCmd`: Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to have the payload run the pinned awf via the bootstrap shim. Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.
+  State: absent, declined; the generic prose renders. Consumed by: hooks pre-commit.
 - `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`./x test`). Consumed by: agents-doc, doc workflow, skill tdd.
 - `activeMdRegenCmd`: Command that regenerates the generated ADR index (ACTIVE.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).

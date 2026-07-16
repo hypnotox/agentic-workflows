@@ -3,7 +3,7 @@
 # into a hook setup you own, e.g. a .git/hooks/pre-commit stub containing:
 #   exec bash .awf/hooks/pre-commit.sh "$@"
 set -euo pipefail
-{{ if not .vars.checkCmd }}
+{{ if or (not .vars.checkCmd) (not .vars.proseGateCmd) }}
 # Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
 awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
 {{ end }}
@@ -11,3 +11,4 @@ awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstr
 {{- with .vars.gateCmd }}
 {{ . }}
 {{- end }}
+{{ with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}

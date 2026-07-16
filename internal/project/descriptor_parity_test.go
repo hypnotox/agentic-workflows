@@ -74,11 +74,12 @@ func TestVarDescriptorParity(t *testing.T) {
 }
 
 // functionalVarKeys pins the catalog's value-carrying descriptor set to the
-// eight functional keys ADR-0084 enumerates. Extending this list is a
-// successor-ADR act: a descriptor exists only for a value the rendered
-// artifacts or the tooling execute or enforce, never to tune prose wording.
+// nine functional keys the ADR-0084 set plus ADR-0119's proseGateCmd enumerate.
+// Extending this list is a successor-ADR act: a descriptor exists only for a
+// value the rendered artifacts or the tooling execute or enforce, never to tune
+// prose wording.
 var functionalVarKeys = []string{
-	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd",
+	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd", "proseGateCmd",
 	"testCmd", "commitScopes", "activeMdRegenCmd", "invariantTestPath",
 }
 

@@ -76,6 +76,9 @@ case "$cmd" in
   commit-gate)
     go run ./cmd/awf commit-gate "$@"
     ;;
+  prose-gate)
+    go run ./cmd/awf prose-gate "$@"
+    ;;
   new)
     # Scaffold a new ADR (or other awf artifact) from source, e.g. ./x new adr "<title>".
     go run ./cmd/awf new "$@"
@@ -111,7 +114,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|new|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|prose-gate|new|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

@@ -182,6 +182,7 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
+  proseGateCmd: ./x prose-gate
   testCmd: go test ./...
 bootstrap:
   enabled: false

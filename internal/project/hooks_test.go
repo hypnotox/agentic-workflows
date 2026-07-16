@@ -91,11 +91,12 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   commitGateCmd: ./x commit-gate
+  proseGateCmd: ./x prose-gate
 hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit": {"./x check\n./x gate\n"},
+		"pre-commit": {"./x check\n./x gate\n./x prose-gate\n"},
 		"commit-msg": {"./x commit-gate \"$1\"\n"},
 		"pre-push":   {"./x gate full\n"},
 	}

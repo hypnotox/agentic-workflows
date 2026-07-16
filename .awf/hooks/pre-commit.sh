@@ -6,3 +6,4 @@
 set -euo pipefail
 ./x check
 ./x gate
+./x prose-gate

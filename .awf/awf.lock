@@ -10,9 +10,9 @@
     },
     ".awf/hooks/pre-commit.sh": {
       "templateId": "hooks/pre-commit.sh.tmpl",
-      "templateHash": "sha256:16368141a88e43c70a8832e99ba4bab14237c37636d32da24b854b13fe634f4c",
-      "configHash": "sha256:3586516ce3ef6d69947fc71ecf71870203528b7fcb0fd9fbce25c12dcd549095",
-      "outputHash": "sha256:62deff1282292f8e061691902f30de1e75c66fa1c19df911248abee69d559e7b"
+      "templateHash": "sha256:bbced5e3d19ec7bc6e6b4bf80200c29ebe2f0a7b933c52799f4fda02741a5071",
+      "configHash": "sha256:581ed28d944238160015f565f046debfe90b92c1279b984835527aaafaee6f77",
+      "outputHash": "sha256:584bf2dfd704c5911fbebe90bafa374ad887a691bc90f2fc9ce9acc0a0c61314"
     },
     ".awf/hooks/pre-push.sh": {
       "templateId": "hooks/pre-push.sh.tmpl",
@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:5adb63ac29bb85113028b9d4d9c4a6cb911425a38b4ea6062ea156d861d0badc",
+      "outputHash": "sha256:d246be211f61d7d9d5d1e7c64792688017158a2ea94437745a7f93af974cee17",
       "regenChecked": true
     },
     "docs/decisions/ACTIVE.md": {

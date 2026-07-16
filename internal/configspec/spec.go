@@ -63,6 +63,7 @@ var varAvailability = map[string]string{
 	"gateCmdFull":       "Consumed while an enabled artifact's template references it.",
 	"checkCmd":          "Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
 	"commitGateCmd":     "Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.",
+	"proseGateCmd":      "Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.",
 	"testCmd":           "Consumed while an enabled artifact's template references it.",
 	"activeMdRegenCmd":  "Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).",
 	"invariantTestPath": "Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
