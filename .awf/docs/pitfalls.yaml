@@ -839,3 +839,25 @@ data:
         executed the command. Grep at the granularity the rule governs (line, literal, heading), and
         when a task's scope is narrower than a file, say so in the probe rather than the prose
         around it.
+    - title: "Source that is about the banned glyphs must type them as escapes, not literals"
+      domains: [tooling]
+      related: [119]
+      tags: [verification-discipline, template-residue]
+      body: |
+        A file whose subject is the banned typographic substitutes (the scanner's rune map, a test
+        fixture that plants an em-dash to prove the gate fires, an ADR example) is itself a tracked
+        text file the `awf prose-gate` scan reads, so a literal glyph in it is a finding against the
+        file that defines or tests the rule. Write the glyph as its Go escape (a backslash-u rune
+        or string literal, which compiles to the real rune while the source stays ASCII), exactly as
+        `internal/project/residue_scan_test.go`'s `bannedRunes` map and `internal/prosegate`'s
+        `Banned` map both do; name it as `U+2014` in prose, config, or YAML.
+
+        The trap is that an editor or a Write tool renders a `\u`-escape back as the glyph on screen,
+        so a draft typed with real glyphs looks identical to the escaped version and the mistake is
+        invisible until a codepoint probe (or the gate) flags it. This bit repeatedly across the
+        ADR-0119 implementation: the scanner map and three separate test files were each first
+        drafted with literal glyphs. The gate catches it on a tracked file at commit, but a
+        work-in-progress file wastes a draft-then-convert cycle. Before writing a file that is about
+        the glyphs, reach for the escape first; after, run
+        `python3 -c "import sys;print(sum(c in chr(0x2014)+chr(0x2013)+chr(0x2026)+chr(0x2018)+chr(0x2019)+chr(0x201c)+chr(0x201d) for c in open(sys.argv[1]).read()))" <file>`
+        and expect `0`.
