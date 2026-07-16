@@ -15,7 +15,6 @@ Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: i
 
 - [ADR-0007: Invariant-Backing Tooling: `inv:` Tags and the `awf invariants` Checker](../decisions/0007-invariant-backing-tooling.md)
 - [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](../decisions/0008-language-agnostic-invariant-backing.md)
-- [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md)
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
@@ -27,4 +26,12 @@ Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: i
 - [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
+
+### Proposed
+
+- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
+
+### Superseded
+
+- [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120
 

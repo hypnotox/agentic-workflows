@@ -33,7 +33,6 @@
 - [ADR-0028: ADR-first ordering and a visible plan-ADR resync loop in the workflow chain](0028-workflow-chain-adr-first-visible-resync.md) (Implemented)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](0029-interactive-agent-prefillable-init.md) (Implemented)
 - [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](0030-prebuilt-binary-distribution-and-release.md) (Implemented)
-- [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) (Implemented)
 - [ADR-0032: Remove Automatic Git-Hook Handling](0032-remove-automatic-hook-handling.md) (Implemented)
 - [ADR-0033: Audit ADR→Domain-Index Co-change](0033-audit-adr-domain-index-cochange.md) (Implemented)
 - [ADR-0034: Convention Parts Are Raw Input](0034-convention-parts-are-raw-input.md) (Implemented)
@@ -122,7 +121,12 @@
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md) (Implemented)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
 
+## Proposed
+
+- [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
+- [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) (Superseded by ADR-0120)
 - [ADR-0113: Em-dash-free shipped templates](0113-em-dash-free-shipped-templates.md) (Superseded by ADR-0115)

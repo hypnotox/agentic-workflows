@@ -5,7 +5,7 @@ supersedes: []
 retires_invariants: []
 superseded_by: ""
 tags: [adr-lifecycle, cross-references, review-agents]
-related: [73, 79, 93, 103, 112, 114, 115]
+related: [73, 79, 93, 103, 112, 114, 115, 120]
 domains: [adr-system, rendering]
 ---
 # ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check
