@@ -25,10 +25,12 @@ retro-tags awf's own parts and templates with `touches-invariant` markers. Phase
 `parts-raw` markers to the successor slug, updates the three domain narratives and the changelog,
 and flips ADR-0121 and this plan to Implemented.
 
-Expected transient state: the proof markers for ADR-0121's six new slugs land with their tests in
-phases 1-2, while the slugs are declared by a still-`Proposed` ADR, so `./x check` prints one
-non-failing `invariant marker "<slug>" names a slug no Implemented ADR declares` note per new
-slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
+Expected transient state: the proof markers for five of ADR-0121's six new slugs land with their
+tests in phases 1-2 (the sixth, `parts-raw-except-authoring-comments`, arrives only with the
+phase 4 rename), while the slugs are declared by a still-`Proposed` ADR, so `./x check` prints
+one non-failing `invariant marker "<slug>" names a slug no Implemented ADR declares` note per
+marker-carrying slug from its landing phase until the phase 4 flip clears them. Notes never fail
+the gate.
 
 ## File structure
 
@@ -49,8 +51,8 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
   - `.awf/docs/parts/architecture/data-flow.md` (render-flow note)
   - `.awf/docs/glossary.yaml` (authoring-comment term)
   - `.awf/config.yaml` (dogfood sources entry)
-  - `.awf/domains/parts/rendering/current-state.md`, `.awf/domains/parts/invariants/current-state.md`,
-    `.awf/domains/parts/config/current-state.md` (narratives + retro tags)
+  - `.awf/domains/parts/rendering/current-state.md`, `.awf/domains/parts/invariants/current-state.md`
+    (narratives + retro tags), `.awf/domains/parts/config/current-state.md` (narrative only)
   - `.awf/parts/adr-readme/invariants.md`, `templates/adr-readme/README.md.tmpl` (retro tags)
   - `changelog/CHANGELOG.md` (Unreleased feature entry)
   - `docs/decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md` (status flip)
@@ -153,7 +155,9 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
 - [ ] **Task 1.4: close-token tests.** In `internal/invariants/invariants_test.go`, add a test
   `TestCloseTokenStripping` covering, over a temp tree with a source
   `{globs: ["*.md"], marker: "<!-- awf:comment", close: "-->"}` (plus the existing `//` source
-  shape for the mixed case):
+  shape for the mixed case) and a decisions-dir fixture whose Implemented ADR declares
+  `close-a`, `close-b`, and `close-c` (the bare-touches branch is reachable only for a
+  declared slug - an undeclared one routes to the dangling note instead):
 
   - a proof line `<!-- awf:comment invariant: close-a -->` backs `close-a` (close stripped
     before `slugRe`);
@@ -161,6 +165,9 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
     `close-b` with note exactly `- a note` (no trailing `-->`);
   - a note-less `<!-- awf:comment touches-invariant: close-c -->` yields an empty note and
     fires the bare-touches advisory;
+  - a marker line whose close token is absent (`<!-- awf:comment invariant: close-a` with no
+    trailing `-->`) parses unchanged - the `trimClose` best-effort `return rest` branch, owed
+    for the coverage gate;
   - a close-less `//`-marker line in the same tree parses unchanged (mixed sources);
   - a `MarkersUnder` query over the same tree returns the close-stripped notes (both paths
     proven).
@@ -363,20 +370,27 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
 - [ ] **Task 2.6: project-level tests.** Add e2e tests (in `internal/project/render_test.go`
   unless a sibling file is the better home; name the file in the commit):
 
-  - a scaffolded project whose convention part carries a whole-line directive, a mid-line
-    occurrence, and a fenced directive renders output containing the mid-line and fenced forms
-    and not the whole-line form; a template-source directive is covered by the render-layer
-    unit tests plus one project fixture if a suitable one exists. Proof marker:
+  - In `internal/project/render_test.go`: a scaffolded project whose convention part carries a
+    whole-line directive, a mid-line occurrence, and a fenced directive renders output
+    containing the mid-line and fenced forms and not the whole-line form (the template-source
+    seam is covered by the render-layer unit tests of task 2.2). Proof marker:
     `// invariant: authoring-comment-stripped`.
-  - a part whose only content is directive lines renders its section empty with the pointer
-    present (ADR-0034 Decision 4 semantics preserved).
-  - a part with a malformed opener fails sync naming the part path.
-  - an in-place section (ADR-0100 fixture, `internal/project/inplace_test.go`) whose on-disk
+  - In `internal/project/render_test.go`: a part whose only content is directive lines renders
+    its section empty with the pointer present (ADR-0034 Decision 4 semantics preserved).
+  - In `internal/project/render_test.go`: a part with a malformed opener fails sync naming the
+    part path.
+  - In `internal/project/render_test.go`: a part whose authoring comment contains an unknown
+    placeholder (`{{=awf:nonexistent}}`) renders without error - the strip-before-substitution
+    motivation of ADR-0121 Decision 2.
+  - In `internal/project/inplace_test.go`: an in-place section (ADR-0100 fixture) whose on-disk
     output region contains a directive-shaped line survives re-render byte-for-byte. Proof
     marker: `// invariant: authoring-comment-inplace-inert`.
-  - a part referencing a `{{=awf:commitScope*}}` placeholder only inside an authoring comment
-    does not fold scopes into its ConfigHash (extend the ADR-0057 folding test where it lives),
-    and a `{{ .vars.x }}`-shaped reference inside a comment does not join `partVarRefs`.
+  - In `internal/project/drift_test.go` (beside the existing part-scopes-in-confighash test): a
+    part referencing a `{{=awf:commitScope*}}` placeholder only inside an authoring comment
+    does not fold scopes into its ConfigHash, and a var-reading placeholder (e.g.
+    `{{=awf:gateCmd}}`) appearing only inside an authoring comment does not join `PartVarRefs`
+    (note: `PlaceholderVarRefs` matches `{{=awf:key}}` registry tokens, never raw
+    `{{ .vars.x }}` text, so the placeholder form is the meaningful case).
 
 - [ ] **Task 2.7: adopter documentation.** Three doc surfaces (no ADR citations in the template
   edit - the ADR-0082 residue scan bans them):
@@ -392,9 +406,12 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
      not ship:
 
      ```
-     <!-- awf:comment touches-invariant: my-slug - this section narrates the contract -->
+     <!-- awf:comment an internal note that never renders -->
      ```
 
+     A tag rides the same form: the comment text `touches-invariant: <slug> - <note>` makes
+     the line a scannable invariant tag (kept out of the fenced example above deliberately -
+     a fenced demo carrying real tag grammar would be recorded by the fence-unaware scanner).
      The rule is whole-line and exact-literal: the line must open with `<!-- awf:comment` and
      end with `-->`. A mid-line occurrence and a whitespace variant render verbatim; a
      whole-line opener that does not end with `-->` is a hard render error naming the part or
@@ -495,11 +512,13 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
 
   1. `go run ./cmd/awf context .awf/domains/parts/rendering/current-state.md` lists
      `section-default-splice` and `part-scopes-in-confighash` under Invariants with their notes;
-  2. `./x check 2>&1 | grep -c 'names a slug no Implemented ADR declares'` prints exactly `6`
-     (ADR-0121's own slugs; no retro tag added a dangling slug);
+  2. `./x check 2>&1 | grep -c 'names a slug no Implemented ADR declares'` prints exactly `5`
+     (the five ADR-0121 slugs carrying markers so far - the successor slug's markers arrive
+     with the phase 4 rename; no retro tag added a dangling slug);
   3. `./x check 2>&1 | grep -c 'carries no note'` prints `0`;
-  4. `git grep -l 'awf:comment touches-invariant' -- .awf templates` lists exactly the five
-     files in the site table, and the total tag-line count across them is 8.
+  4. `git grep -h 'awf:comment touches-invariant' -- .awf templates | wc -l` prints `8`, and
+     `git grep -l 'awf:comment touches-invariant' -- .awf templates` lists exactly the five
+     files in the site table.
 
 - [ ] **Task 3.3: verify and commit.** `./x sync` (the sources edit re-renders the
   invariant-marker tables in `docs/decisions/README.md` and every artifact folding
@@ -525,8 +544,9 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
     `touches-invariant: parts-raw - ...` marker line becomes
     `touches-invariant: parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go`.
 
-  Post-check: `git grep -n 'invariant: parts-raw\b' -- '*.go'` prints nothing (the successor
-  slug always continues with `-except`, so the word-boundary grep must go quiet).
+  Post-check: `git grep -nE 'invariant: parts-raw( |$)' -- '*.go'` prints nothing (a `\b`
+  word-boundary grep would still match the successor slug at its `w`/`-` boundary, so the
+  space-or-end alternation is the one that goes quiet).
 
 - [ ] **Task 4.2: successor tag and prose in the rendering narrative.** Append to the
   authoring-comment tag block at the top of `.awf/domains/parts/rendering/current-state.md`
@@ -536,8 +556,8 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
   <!-- awf:comment touches-invariant: parts-raw-except-authoring-comments - the verbatim-parts contract and its carve-outs narrated below -->
   ```
 
-  And update that part's prose: in the paragraph beginning "Convention-part bodies are **raw
-  input** (ADR-0034)", after the sentence ending "a part is never variable-interpolated.",
+  And update that part's prose: in the sentence run beginning "Convention parts are raw input
+  (ADR-0034):", immediately after the text ending "and is never variable-interpolated.",
   insert:
 
   ```markdown
@@ -586,7 +606,8 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
 - [ ] **Task 4.5: flip and close.** Edit
   `docs/decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md` frontmatter
   `status: Proposed` to `status: Implemented`, and this plan's frontmatter to
-  `status: Implemented`. Run `./x sync` (regenerates `docs/decisions/ACTIVE.md` and
+  `status: Implemented`; append any implementation findings (deviations, discoveries) to this
+  plan's Notes section in the same flip commit (the plan freezes at Implemented). Run `./x sync` (regenerates `docs/decisions/ACTIVE.md` and
   `docs/domains/{rendering,invariants,config}.md`; the retirement activates and the six new
   slugs become owed). Run `./x gate`: green, and
   `./x check 2>&1 | grep -c 'names a slug no Implemented ADR declares'` now prints `0`.
@@ -603,15 +624,17 @@ slug from phase 1 until the phase 4 flip clears them. Notes never fail the gate.
 - `go run ./cmd/awf context .awf/domains/parts/rendering/current-state.md templates/adr-readme`
   surfaces the retro tags with notes.
 - No whole-line directive survives into rendered output:
-  `grep -rn '^<!-- awf:comment' docs/ .claude/ AGENTS.md` prints nothing.
+  `grep -rn '^<!-- awf:comment' docs/ .claude/ AGENTS.md` prints exactly one hit - the fenced
+  demo line in `docs/working-with-awf.md` (fences are preserved by design) - and nothing else.
 - A manual smoke: add `<!-- awf:comment smoke -->` as a whole line to any consumed part, run
   `./x sync`, confirm the rendered artifact is byte-identical, then remove the line and
   re-sync (the lock settles both times).
 
 ## Notes
 
-- The six new proof markers dangle (non-failing notes) from their landing phase until the
-  phase 4 flip; expected and listed per phase.
+- Five of the six new proof markers dangle (non-failing notes) from their landing phase until
+  the phase 4 flip; the successor slug's markers land in the flip commit itself. Expected and
+  listed per phase.
 - The `supersedes-invariant: ADR-0034#parts-raw` retirement and the successor declaration
   activate together at the flip, so no window opens where `parts-raw` is owed but its markers
   are renamed away: renames land in the same commit as the flip.
