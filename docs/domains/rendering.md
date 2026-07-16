@@ -87,6 +87,10 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 
+### Proposed
+
+- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md)
+
 ### Superseded
 
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md) → superseded by ADR-0115

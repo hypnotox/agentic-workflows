@@ -123,6 +123,10 @@
 - [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Implemented)
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Implemented)
 
+## Proposed
+
+- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
