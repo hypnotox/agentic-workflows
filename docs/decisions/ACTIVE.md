@@ -130,3 +130,26 @@
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
 - [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) (Superseded by ADR-0120)
 - [ADR-0113: Em-dash-free shipped templates](0113-em-dash-free-shipped-templates.md) (Superseded by ADR-0115)
+
+## Supersedence
+
+### Chains
+
+- ADR-0003 superseded by ADR-0032
+- ADR-0031 superseded by ADR-0120
+- ADR-0113 superseded by ADR-0115
+
+### Superseded anchors on live ADRs
+
+- ADR-0008: slug `invariants-glob-basename` superseded by ADR-0077
+- ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
+- ADR-0016: slug `target-output-paths` superseded by ADR-0037
+- ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
+- ADR-0030: slug `version-ldflags-precedence` superseded by ADR-0049
+- ADR-0040: slug `bootstrap-pin` superseded by ADR-0085
+- ADR-0043: slug `mandatory-docs-not-in-docs-catalog` superseded by ADR-0061; slug `singleton-kind-single-source` superseded by ADR-0061
+- ADR-0098: slug `context-surfaces-linked-plans` superseded by ADR-0104
+- ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104
+- ADR-0102: slug `uncovered-lists-unowned-only` superseded by ADR-0110
+- ADR-0104: slug `context-tier1-governs` superseded by ADR-0106; slug `context-tier2-topical` superseded by ADR-0109
+- ADR-0116: item 2 superseded by ADR-0120; item 5 superseded by ADR-0120

@@ -95,6 +95,73 @@ func (a ADR) DecisionItems() []int {
 	return items
 }
 
+// Override is one superseded anchor on a live ADR: the anchor (item number or
+// slug) and the successor that superseded it (ADR-0120 item 10).
+type Override struct {
+	Item      int    // 0 for a slug override
+	Slug      string // "" for an item override
+	Successor string // 4-digit successor number
+}
+
+// SupersessionIndex derives the render view: full chains (predecessor,
+// successor) sorted by predecessor, and per-target overrides from every
+// non-Superseded ADR's refs, item refs before slug refs, in (anchor,
+// successor) order. Only entries whose target is live (Accepted/Implemented)
+// are kept - ADR-0120 item 10 scopes annotations to live ADRs whose anchors
+// are superseded; a token into a Superseded target is already surfaced as a
+// check advisory rather than an annotation on a dead record. Proposed
+// carriers are deliberately included where the conflict advisory excludes
+// them: the annotation is discoverability, not enforcement.
+func SupersessionIndex(adrs []ADR) ([][2]string, map[string][]Override) {
+	byNum := map[string]ADR{}
+	for _, a := range adrs {
+		byNum[a.Number] = a
+	}
+	var chains [][2]string
+	overrides := map[string][]Override{}
+	for _, a := range adrs {
+		for _, n := range a.Supersedes {
+			chains = append(chains, [2]string{fmt.Sprintf("%04d", n), a.Number})
+		}
+		if strings.HasPrefix(a.Status, "Superseded") {
+			continue
+		}
+		for _, r := range a.Refs {
+			t, ok := byNum[r.Target]
+			if !ok || (t.Status != "Accepted" && t.Status != "Implemented") {
+				continue
+			}
+			overrides[r.Target] = append(overrides[r.Target], Override{Item: r.Item, Slug: r.Slug, Successor: a.Number})
+		}
+	}
+	sort.Slice(chains, func(i, j int) bool { return chains[i][0] < chains[j][0] })
+	for _, list := range overrides {
+		sort.Slice(list, func(i, j int) bool {
+			a, b := list[i], list[j]
+			if (a.Slug == "") != (b.Slug == "") {
+				return a.Slug == "" // item refs before slug refs
+			}
+			if a.Slug == "" && a.Item != b.Item {
+				return a.Item < b.Item
+			}
+			if a.Slug != b.Slug {
+				return a.Slug < b.Slug
+			}
+			return a.Successor < b.Successor
+		})
+	}
+	return chains, overrides
+}
+
+// Label renders the override's anchor for a human line: "item N" or
+// "slug `<slug>`".
+func (o Override) Label() string {
+	if o.Slug != "" {
+		return "slug `" + o.Slug + "`"
+	}
+	return fmt.Sprintf("item %d", o.Item)
+}
+
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
 var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 
@@ -179,6 +246,35 @@ func RenderActiveMD(dir string) (string, error) {
 		sb.WriteString("\n\n")
 		for _, a := range groups[status] {
 			fmt.Fprintf(&sb, "- [%s](%s) (%s)\n", a.Title, a.Filename, a.Status)
+		}
+	}
+	// Supersedence rendering (ADR-0120 item 10). Either subsection is omitted
+	// when empty: publication-safe degradation, and a supersession-free corpus
+	// renders byte-identically to the pre-ADR-0120 index.
+	// touches-invariant: active-md-supersedence-rendering - the section render below; proof in adr_test.go
+	chains, overrides := SupersessionIndex(adrs)
+	if len(chains) > 0 || len(overrides) > 0 {
+		sb.WriteString("\n## Supersedence\n")
+		if len(chains) > 0 {
+			sb.WriteString("\n### Chains\n\n")
+			for _, c := range chains {
+				fmt.Fprintf(&sb, "- ADR-%s superseded by ADR-%s\n", c[0], c[1])
+			}
+		}
+		if len(overrides) > 0 {
+			sb.WriteString("\n### Superseded anchors on live ADRs\n\n")
+			targets := make([]string, 0, len(overrides))
+			for num := range overrides {
+				targets = append(targets, num)
+			}
+			sort.Strings(targets)
+			for _, num := range targets {
+				parts := make([]string, len(overrides[num]))
+				for i, o := range overrides[num] {
+					parts[i] = o.Label() + " superseded by ADR-" + o.Successor
+				}
+				fmt.Fprintf(&sb, "- ADR-%s: %s\n", num, strings.Join(parts, "; "))
+			}
 		}
 	}
 	return sb.String(), nil

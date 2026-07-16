@@ -137,6 +137,46 @@ func TestContextForAssembles(t *testing.T) {
 	}
 }
 
+// TestContextForAnnotatesSupersededAnchors covers the ADR-0120 item 10
+// context annotation: a surfaced ADR with overridden anchors carries the
+// bracketed suffix (successors grouped), while an ADR without overrides
+// renders unchanged.
+// invariant: context-annotates-superseded-anchors
+func TestContextForAnnotatesSupersededAnchors(t *testing.T) {
+	root := scaffoldFiles(t, ctxYAML, map[string]string{
+		"domains/alpha.yaml": "paths:\n  - cmd/**\n",
+		"domains/beta.yaml":  "paths: []\n",
+		"domains/gamma.yaml": "paths: []\n",
+	})
+	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: gov-slug\n")
+	// 0001: Tier-1 governor with three Decision items, items 1 and 3 overridden
+	// by 0002's tokens (one successor, grouped in the suffix).
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
+		testsupport.ADR("Implemented", testsupport.WithDate("2026-07-16"),
+			testsupport.WithTags("precise"), testsupport.WithRelated(2),
+			testsupport.WithTitle("0001: Governor"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n3. c.\n\n## Invariants\n- `invariant: gov-slug` - a.\n")))
+	// 0002: Tier-2 via related:, carries the tokens, itself override-free.
+	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-16"), testsupport.WithTags("nomatch"),
+			testsupport.WithTitle("0002: Successor"), testsupport.WithDomains("alpha"),
+			testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1` and `supersedes: ADR-0001#3`.\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.ContextFor([]string{"cmd/x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Governing) != 1 || res.Governing[0].Title != "Governor [item 1, item 3 superseded by ADR-0002]" {
+		t.Fatalf("governing: got %+v, want the annotated Governor entry", res.Governing)
+	}
+	if len(res.Related) != 1 || res.Related[0].Title != "Successor" {
+		t.Fatalf("related: got %+v, want the unannotated Successor entry", res.Related)
+	}
+}
+
 // invariant: context-surfaces-tiered-plans
 func TestContextForSurfacesTieredPlans(t *testing.T) {
 	_, p := ctxProject(t, ctxYAML)

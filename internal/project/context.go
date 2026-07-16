@@ -128,6 +128,10 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		return ContextResult{}, err
 	}
 
+	// Superseded-anchor annotations, computed once per context run from the
+	// already-parsed corpus (ADR-0120 item 10).
+	_, overrides := adr.SupersessionIndex(adrs)
+
 	// Tier 1 - "governs this code": ADRs declaring an invariant slug present as a
 	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
 	// Each surfaced slug is labelled backed/unbacked from its declaring ADR's
@@ -155,7 +159,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 			if !tier1[a.Number] {
 				tier1[a.Number] = true
 				t1 = append(t1, a)
-				res.Governing = append(res.Governing, adrRefOf(a, lay))
+				res.Governing = append(res.Governing, adrRefOf(a, lay, overrides))
 			}
 		}
 		res.Invariants = append(res.Invariants, ref)
@@ -188,7 +192,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		n, _ := strconv.Atoi(a.Number)
 		if sharesTag(a.Tags, precise) || relatedNum[n] {
 			inTier2[a.Number] = true
-			res.Related = append(res.Related, adrRefOf(a, lay))
+			res.Related = append(res.Related, adrRefOf(a, lay, overrides))
 		}
 	}
 	sort.Slice(res.Related, func(i, j int) bool { return res.Related[i].Number < res.Related[j].Number })
@@ -257,14 +261,41 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	return res, nil
 }
 
-// adrRefOf projects an ADR to its context reference (Title prefix stripped).
-func adrRefOf(a adr.ADR, lay Layout) ADRRef {
+// adrRefOf projects an ADR to its context reference (Title prefix stripped),
+// suffixing the superseded-anchor annotation when the ADR carries overridden
+// anchors. Tier 3 collapsed lines are counts, not entries, and are never
+// annotated.
+// touches-invariant: context-annotates-superseded-anchors - the Title suffix below; proof in context_test.go
+func adrRefOf(a adr.ADR, lay Layout, overrides map[string][]adr.Override) ADRRef {
 	return ADRRef{
 		Number: a.Number,
-		Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
+		Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ") + overrideAnnotation(overrides[a.Number]),
 		Status: a.Status,
 		Path:   lay.DocsDir + "/decisions/" + a.Filename,
 	}
+}
+
+// overrideAnnotation renders a live ADR's superseded anchors as a bracketed
+// suffix - items then slugs, each anchor qualified by its successor once,
+// successors grouped where equal: " [item 2, item 5 superseded by ADR-0120]".
+// Empty overrides render nothing, so an ADR without overrides is unchanged.
+func overrideAnnotation(list []adr.Override) string {
+	if len(list) == 0 {
+		return ""
+	}
+	var order []string
+	grouped := map[string][]string{}
+	for _, o := range list {
+		if _, ok := grouped[o.Successor]; !ok {
+			order = append(order, o.Successor)
+		}
+		grouped[o.Successor] = append(grouped[o.Successor], o.Label())
+	}
+	parts := make([]string, len(order))
+	for i, s := range order {
+		parts[i] = strings.Join(grouped[s], ", ") + " superseded by ADR-" + s
+	}
+	return " [" + strings.Join(parts, ", ") + "]"
 }
 
 // sharesTag reports whether any of tags is in set.

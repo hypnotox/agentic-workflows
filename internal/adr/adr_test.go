@@ -138,6 +138,57 @@ func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 	}
 }
 
+// TestRenderActiveMDSupersedence covers the ADR-0120 item 10 rendering: a
+// full chain, an item annotation, and a slug annotation each render under
+// ## Supersedence, and a supersession-free corpus renders neither subsection.
+// invariant: active-md-supersedence-rendering
+func TestRenderActiveMDSupersedence(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"0001-old.md": testsupport.ADR("Superseded by ADR-0002",
+			testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0001: Old")),
+		"0002-new.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1),
+			testsupport.WithTitle("0002: New")),
+		"0003-target.md": testsupport.ADR("Accepted", testsupport.WithRelated(4),
+			testsupport.WithTitle("0003: Target"),
+			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: some-slug` - x.\n")),
+		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithTitle("0004: Citer"),
+			testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0003#2` and `supersedes-invariant: ADR-0003#some-slug`.\n")),
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := adr.RenderActiveMD(dir)
+	if err != nil {
+		t.Fatalf("RenderActiveMD: %v", err)
+	}
+	for _, want := range []string{
+		"## Supersedence",
+		"### Chains\n\n- ADR-0001 superseded by ADR-0002\n",
+		"### Superseded anchors on live ADRs\n\n- ADR-0003: item 2 superseded by ADR-0004; slug `some-slug` superseded by ADR-0004\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+
+	// A supersession-free corpus renders neither subsection.
+	plain := t.TempDir()
+	if err := os.WriteFile(filepath.Join(plain, "0001-a.md"),
+		[]byte(testsupport.ADR("Accepted", testsupport.WithTitle("0001: A"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = adr.RenderActiveMD(plain)
+	if err != nil {
+		t.Fatalf("RenderActiveMD: %v", err)
+	}
+	if strings.Contains(got, "Supersedence") || strings.Contains(got, "###") {
+		t.Errorf("supersession-free corpus must not render the section:\n%s", got)
+	}
+}
+
 // invariant: render-active-md
 func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()
@@ -285,6 +336,53 @@ func TestDecisionItems(t *testing.T) {
 				t.Errorf("DecisionItems: got %#v, want %#v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestSupersessionIndex covers the render view's derivation: chains sorted by
+// predecessor, refs into missing or non-live targets dropped, and the override
+// order (items by number, then slugs by slug, ties by successor).
+func TestSupersessionIndex(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		// Two chains, written successor-first to exercise the chain sort.
+		"0001-old.md": testsupport.ADR("Superseded by ADR-0004", testsupport.WithSupersededBy("0004"), testsupport.WithTitle("0001: Old")),
+		"0002-target.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: Target"),
+			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: s-one` - x.\n- `invariant: s-two` - y.\n")),
+		"0003-elder.md": testsupport.ADR("Superseded by ADR-0005", testsupport.WithSupersededBy("0005"), testsupport.WithTitle("0003: Elder")),
+		// 0004 carries every ref shape: items out of order, two slugs out of
+		// order, a ref into a Superseded target (dropped), a dangling ref
+		// (dropped), and claims chain 0001.
+		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1), testsupport.WithTitle("0004: Citer"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#2`, `supersedes: ADR-0002#1`, "+
+				"`supersedes-invariant: ADR-0002#s-two`, `supersedes-invariant: ADR-0002#s-one`, "+
+				"`supersedes: ADR-0003#1`, `supersedes: ADR-0042#1`.\n")),
+		// 0005 claims chain 0003 and re-claims 0002 item 1 (successor tiebreak).
+		"0005-later.md": testsupport.ADR("Accepted", testsupport.WithSupersedes(3), testsupport.WithTitle("0005: Later"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`.\n")),
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chains, overrides := adr.SupersessionIndex(adrs)
+	if !reflect.DeepEqual(chains, [][2]string{{"0001", "0004"}, {"0003", "0005"}}) {
+		t.Errorf("chains: got %#v", chains)
+	}
+	want := map[string][]adr.Override{"0002": {
+		{Item: 1, Successor: "0004"},
+		{Item: 1, Successor: "0005"},
+		{Item: 2, Successor: "0004"},
+		{Slug: "s-one", Successor: "0004"},
+		{Slug: "s-two", Successor: "0004"},
+	}}
+	if !reflect.DeepEqual(overrides, want) {
+		t.Errorf("overrides:\ngot  %#v\nwant %#v", overrides, want)
 	}
 }
 
