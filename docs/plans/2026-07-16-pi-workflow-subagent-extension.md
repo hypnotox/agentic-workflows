@@ -368,7 +368,11 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   Update rendering/tooling current-state authored parts for `Target.Outputs`, TypeScript provenance,
   config-hash ownership, subprocess shape, trust boundary, Pi 0.80.9 minimum, role permissions,
   same-checkout behavior, and test container. Update README's target paragraph: Pi now receives the
-  three generated delegation tools rather than generic-only delegation. Run `./x sync`; inspect both
+  three generated delegation tools rather than generic-only delegation. In this same Phase 2 commit,
+  add the Unreleased Breaking changes entry to `changelog/CHANGELOG.md`: existing Pi adopters receive
+  executable project extension files on sync, project trust applies, Pi 0.80.9 is minimum, and
+  `awf sync` repairs drift. Add a Features entry for the three role tools, isolated no-session
+  children, same-checkout implementation, and explicit commit permission. Run `./x sync`; inspect both
   repository and Sundial extension files and lock entries. Run `./x check`, `./x gate`, and
   `./x pi-test stop && ./x gate` to cover restart. Stage the Go/render changes, templates, tests,
   dogfood files/locks, README, and authored/generated docs. Commit:
@@ -431,8 +435,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   sets `allowCommits`; missing/modified files are check drift repaired by sync. Apply the same facts
   to README's target paragraph and Pi quickstart example. `./x sync` must fan this mandatory doc to
   `docs/working-with-awf.md` and `examples/sundial/docs/working-with-awf.md`; Sundial's identity
-  override remains adopter-specific unless its existing text makes a contradictory Pi claim.
-  Update the roadmap ideas part to
+  override remains adopter-specific unless its existing text makes a contradictory Pi claim. Extend
+  Phase 2's Unreleased Features entry in this same Phase 3 commit to name the explicit workflow-site
+  bindings and alone/sequential implementation rule. Update the roadmap ideas part to
   `No other roadmap ideas are recorded.` if the Pi orchestrator was its only entry; preserve the
   separate Pi/shared-skills collision deferred entry because ADR-0123 does not solve it.
 
@@ -457,13 +462,12 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 ## Phase 4: Release surface and lifecycle freeze
 
-- [ ] **Task 4.1: Complete adopter-facing release documentation.** Add an Unreleased Breaking changes
-  entry to `changelog/CHANGELOG.md`: existing Pi adopters get executable project extension files on
-  sync, Pi project trust applies, minimum Pi is 0.80.9, and `awf sync` repairs extension drift. Add a
-  Features bullet describing the three roles, isolated no-session children, shared checkout, and
-  Docker being only an awf-contributor gate dependency rather than an adopter runtime dependency.
-  Ensure architecture, development, testing, working guidance, README, AGENTS identity, domain
-  current-state docs, and roadmap all state current reality without the ADR-0122 deferral.
+- [ ] **Task 4.1: Audit adopter-facing release documentation.** Confirm Phase 2's Breaking changes and
+  Features entries and Phase 3's binding extension are present in `changelog/CHANGELOG.md`; do not
+  defer a behavior's release note to this lifecycle phase. Ensure architecture, development, testing,
+  working guidance, README, AGENTS identity, domain current-state docs, and roadmap all state current
+  reality without the ADR-0122 deferral. Change documentation here only for a verified omission and
+  record that omission in Notes.
 
 - [ ] **Task 4.2: Run the real-runtime smoke check.** Use this disposable-repository recipe with Pi
   0.80.9 or newer and an already configured provider:
@@ -507,8 +511,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   ADR-0123 backed invariant has one matching marker under `**/*_test.go`, and the
   `pi-real-runtime-smoke` unbacked invariant has no proof marker.
 
-- [ ] **Task 4.4: Commit the final lifecycle and release surface.** Stage only changelog, final docs,
-  roadmap source/render, ADR, plan, generated indexes, dogfood outputs, and lock changes. Commit:
+- [ ] **Task 4.4: Commit the final lifecycle and release surface.** Stage only any omission fixes from
+  Task 4.1, ADR, plan, generated indexes/domain docs, dogfood outputs, and lock changes. The changelog
+  should already be clean from Phases 2-3. Commit:
 
   ```commit
   feat(rendering): complete Pi subagent rollout
