@@ -160,7 +160,11 @@ export function createRunner(deps: RunnerDependencies): Runner {
             if (!line.trim()) return;
             let event: any;
             try { event = JSON.parse(line); }
-            catch { addSummary(summaries, { kind: "error", text: `Malformed child event: ${line}` }); return; }
+            catch {
+              child.kill("SIGTERM");
+              finish(new Error(`Malformed child event: ${truncateOutput(line)}`));
+              return;
+            }
             if (event.type === "message_end" && event.message?.role === "assistant") {
               const text = finalText(event.message);
               if (text) { output = text; addSummary(summaries, { kind: "text", text }); }
@@ -203,6 +207,7 @@ export function createRunner(deps: RunnerDependencies): Runner {
             timer = deps.setTimer(() => { if (!closed) child.kill("SIGKILL"); }, KILL_DELAY_MS);
           };
           request.signal?.addEventListener("abort", abortListener, { once: true });
+          if (request.signal?.aborted) abortListener();
         });
         return result;
       } finally {

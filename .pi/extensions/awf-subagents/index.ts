@@ -106,7 +106,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
     if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
     return deps.runner.run({
-      role, task, cwd: ctx.cwd,
+      role, task, cwd: root,
       model: { provider: ctx.model.provider, id: ctx.model.id },
       thinkingLevel: pi.getThinkingLevel() as ThinkingLevel,
       tools, systemPrompt, signal,
@@ -159,9 +159,9 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       await previous;
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
-        const before = await snapshot(pi, ctx.cwd);
+        const before = await snapshot(pi, root);
         const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", params.allowCommits), signal, onUpdate, ctx);
-        const after = await snapshot(pi, ctx.cwd);
+        const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
         if (violation) throw new Error(`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`);
         return toolResult(result, { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" });

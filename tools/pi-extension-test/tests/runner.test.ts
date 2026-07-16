@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 import {
@@ -56,14 +57,41 @@ function message(text: string, stopReason = "end") {
   return JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text }], model: "child", stopReason, usage: { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: { total: 0.25 } } } });
 }
 
-test("production spawn adapter executes a child", async () => {
-  const child = productionRunnerDependencies.spawn(process.execPath, ["-e", "process.exit(0)"], {
-    cwd: process.cwd(), shell: false, stdio: ["ignore", "pipe", "pipe"],
+test("production runner executes the fake Pi fixture", async () => {
+  const fixture = resolve("tools/pi-extension-test/fixtures/fake-pi.mjs");
+  const runner = createRunner({ ...productionRunnerDependencies, argv: ["node", fixture], execPath: process.execPath });
+  const result = await runner.run({
+    role: "explore", task: "inspect", cwd: process.cwd(),
+    model: { provider: "test", id: "model" }, thinkingLevel: "high", tools: ["read"], systemPrompt: "system",
   });
-  await new Promise<void>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code) => code === 0 ? resolve() : reject(new Error(`exit ${code}`)));
+  assert.equal(result.output, "fixture output");
+});
+
+test("production runner escalates a TERM-resistant fixture", async () => {
+  const fixture = resolve("tools/pi-extension-test/fixtures/term-resistant-pi.mjs");
+  const signals: string[] = [];
+  const deps: RunnerDependencies = {
+    ...productionRunnerDependencies,
+    argv: ["node", fixture],
+    execPath: process.execPath,
+    spawn: (command, args, options) => {
+      const child = productionRunnerDependencies.spawn(command, args, options);
+      const kill = child.kill.bind(child);
+      child.kill = (signal) => { signals.push(signal); return kill(signal); };
+      return child;
+    },
+    setTimer: (callback) => setImmediate(callback) as any,
+    clearTimer: (timer) => clearImmediate(timer as any),
+  };
+  const controller = new AbortController();
+  const pending = createRunner(deps).run({
+    role: "implement", task: "wait", cwd: process.cwd(),
+    model: { provider: "test", id: "model" }, thinkingLevel: "high", tools: ["bash"], systemPrompt: "system", signal: controller.signal,
   });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  controller.abort();
+  await assert.rejects(pending);
+  assert.deepEqual(signals, ["SIGTERM", "SIGKILL"]);
 });
 
 test("invocation resolution covers script, generic runtime fallback, and binary", () => {
@@ -109,7 +137,6 @@ test("runner bounds malformed and repeated summaries", async () => {
   const h = harness();
   const pending = createRunner(h.deps).run(h.request);
   await new Promise((resolve) => setImmediate(resolve));
-  h.process.stdout.write("not-json\n");
   h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: "invalid" } }) + "\n");
   h.process.stdout.write("\n");
   h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [null, { type: "toolCall" }, { type: "text" }] } }) + "\n");
@@ -122,6 +149,16 @@ test("runner bounds malformed and repeated summaries", async () => {
   const result = await pending;
   assert.equal(result.summaries.length, 20);
   assert.match(result.summaries[0].text, /summary truncated/);
+});
+
+test("runner rejects malformed terminal streams with bounded diagnostics", async () => {
+  const h = harness();
+  const pending = createRunner(h.deps).run(h.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  h.process.stdout.write("not-json\n");
+  h.process.close();
+  await assert.rejects(pending, /Malformed child event: not-json/);
+  assert.deepEqual(h.process.signals, ["SIGTERM"]);
 });
 
 test("runner rejects pre-abort, spawn errors, exits, and model failures", async () => {
@@ -143,6 +180,15 @@ test("runner rejects pre-abort, spawn errors, exits, and model failures", async 
 });
 
 test("abort sends TERM, escalates only while open, and removes listener", async () => {
+  const raced = harness();
+  const raceSignal = new EventTarget() as AbortSignal;
+  let abortedReads = 0;
+  Object.defineProperty(raceSignal, "aborted", { get: () => ++abortedReads > 1 });
+  const racedRun = createRunner(raced.deps).run({ ...raced.request, signal: raceSignal });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(raced.process.signals, ["SIGTERM"]);
+  raced.process.stdout.write(message("stopped") + "\n"); raced.process.close(); await racedRun;
+
   const h = harness();
   const controller = new AbortController();
   const pending = createRunner(h.deps).run({ ...h.request, signal: controller.signal });

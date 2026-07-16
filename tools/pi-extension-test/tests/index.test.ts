@@ -36,7 +36,7 @@ function harness(options: { version?: string; reviewer?: string; git?: Array<{ c
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
   };
   registerSubagentTools(pi, deps);
-  const ctx: any = { cwd: "/repo", model: { provider: "test", id: "parent" }, ui: { notify: (...args: unknown[]) => notifications.push(args) } };
+  const ctx: any = { cwd: "/repo/subdirectory", model: { provider: "test", id: "parent" }, ui: { notify: (...args: unknown[]) => notifications.push(args) } };
   return { pi, deps, tools, handlers, requests, notifications, ctx };
 }
 
@@ -90,6 +90,7 @@ test("explore inherits parent state, streams, and rejects invalid context", asyn
   assert.equal(value.content[0].text, "child output");
   assert.equal(updates.length, 1);
   assert.deepEqual(h.requests[0].model, { provider: "test", id: "parent" });
+  assert.equal(h.requests[0].cwd, "/repo");
   assert.equal(h.requests[0].thinkingLevel, "high");
   assert.deepEqual(h.requests[0].tools, EXPLORE_TOOLS);
   assert.match(h.requests[0].systemPrompt, /do not edit files or commit/);
