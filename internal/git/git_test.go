@@ -243,3 +243,43 @@ func TestOpenRepoMalformedGitfile(t *testing.T) {
 		t.Error("expected a read error on an unreadable .git pointer file")
 	}
 }
+
+func TestIndexPaths(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	// keep.txt in both HEAD and index; gone.txt committed then staged-deleted.
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"keep.txt": "k", "gone.txt": "g"})
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Stage a new file (in index, not in HEAD) and stage a deletion (in HEAD, not
+	// in index), and leave a third file untracked.
+	if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("new.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Remove("gone.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("u"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := awfgit.IndexPaths(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// git ls-files semantics: keep.txt and new.txt are in the index; gone.txt was
+	// removed from it; untracked.txt was never added.
+	if strings.Join(got, ",") != "keep.txt,new.txt" {
+		t.Errorf("IndexPaths: got %v, want [keep.txt new.txt]", got)
+	}
+}
+
+func TestIndexPathsOpenError(t *testing.T) {
+	if _, err := awfgit.IndexPaths(t.TempDir()); err == nil {
+		t.Error("want an error outside a git repository, got nil")
+	}
+}

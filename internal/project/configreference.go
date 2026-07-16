@@ -178,6 +178,13 @@ func (p *Project) currentValue(path string) string {
 		return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
 	case "hooks.enabled":
 		return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
+	case "proseGate.enabled":
+		return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
+	case "proseGate.exemptions":
+		if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
+			return "(none)"
+		}
+		return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
 	default: // per-entry leaves (invariants.sources[]...., audit.allowedScopes[]....)
 		return "n/a"
 	}

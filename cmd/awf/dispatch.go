@@ -88,7 +88,8 @@ var handlers = map[string]handler{
 	"changelog": func(c *cmdCtx) error {
 		return runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout)
 	},
-	"version": func(c *cmdCtx) error { runVersion(c.stdout); return nil },
+	"version":    func(c *cmdCtx) error { runVersion(c.stdout); return nil },
+	"prose-gate": func(c *cmdCtx) error { return runProseGate(c.root, c.stdout) },
 }
 
 // enableDisableArgs resolves the shared positional forms of enable/disable -

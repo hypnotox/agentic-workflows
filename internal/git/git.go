@@ -112,6 +112,31 @@ func TrackedPaths(repoRoot string) ([]string, error) {
 	return out, nil
 }
 
+// IndexPaths returns the sorted, unique repo-relative slash paths in the index,
+// which is exactly what `git ls-files` reports. It reads the repository only.
+//
+// This differs from TrackedPaths, which reads HEAD: the index carries a staged
+// new file that HEAD does not yet, and drops a staged deletion that HEAD still
+// holds. A presence-level scan wired into a pre-commit hook (ADR-0119) needs the
+// index set, so a file added in the very commit being made is in scope, and a
+// file being deleted is not (reading it would fail).
+func IndexPaths(repoRoot string) ([]string, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	idx, err := repo.Storer.Index()
+	if err != nil { // coverage-ignore: a repo OpenRepo just opened has a readable index
+		return nil, fmt.Errorf("read index: %w", err)
+	}
+	out := make([]string, 0, len(idx.Entries))
+	for _, e := range idx.Entries {
+		out = append(out, e.Name)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // treeAt resolves a revision to its commit tree.
 func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 	h, err := repo.ResolveRevision(plumbing.Revision(rev))

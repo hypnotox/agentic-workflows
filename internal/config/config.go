@@ -56,6 +56,7 @@ type Config struct {
 	Bootstrap     *BootstrapConfig  `yaml:"bootstrap"`
 	Hooks         *HooksConfig      `yaml:"hooks"`
 	Runner        *RunnerConfig     `yaml:"runner"`
+	ProseGate     *ProseGateConfig  `yaml:"proseGate"`
 	root          string            // <project>/.awf, for sidecar/part resolution
 	raw           []byte            // the exact config.yaml bytes Load read, for in-place byte edits
 }
@@ -117,6 +118,29 @@ type HooksConfig struct {
 // default-off - no schema-generation migration, and adopters opt in explicitly.
 type RunnerConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// ProseGateConfig configures `awf prose-gate` (ADR-0119): a presence-level scan
+// of every tracked text file for the seven banned typographic punctuation
+// substitutes. BootstrapConfig semantics: a nil *ProseGateConfig (key absent)
+// and Enabled false both mean "the command exits zero without scanning". The
+// default is off because the scan blocks a commit, and a tree that has never
+// been swept would fail it on the day it lands.
+type ProseGateConfig struct {
+	Enabled    bool             `yaml:"enabled"`
+	Exemptions []ProseExemption `yaml:"exemptions"`
+}
+
+// ProseExemption exempts one codepoint in one path. Codepoint is spelled
+// "U+2014", never the character itself: config.yaml is a tracked file the scan
+// reads, so a typed glyph here would be a finding against the file that
+// configures the exemptions. A nil Count permits any number of occurrences; a
+// non-nil Count pins the expected number, so an added occurrence in an exempt
+// file still fails.
+type ProseExemption struct {
+	Path      string `yaml:"path"`
+	Codepoint string `yaml:"codepoint"`
+	Count     *int   `yaml:"count"`
 }
 
 // AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all

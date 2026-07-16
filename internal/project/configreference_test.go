@@ -235,6 +235,12 @@ invariants:
       marker: '//'
   testGlobs:
     - '**/*_test.go'
+proseGate:
+  enabled: true
+  exemptions:
+    - path: docs/x.md
+      codepoint: U+2014
+      count: 1
 `
 	root, _ := syncedProject(t, auditYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
@@ -248,6 +254,7 @@ invariants:
 		"| rule off |",
 		"| 1 sources |", // invariants.sources live-state count
 		"| 1 globs |",   // invariants.testGlobs live-state count (ADR-0088 projection)
+		"| 1 entries |", // proseGate.exemptions live-state count
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)

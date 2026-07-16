@@ -229,6 +229,31 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
+		Path: "proseGate.enabled", Type: "bool", Default: "false (key absent)",
+		Description:  "Whether `awf prose-gate` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
+		Availability: "Always.",
+	},
+	{
+		Path: "proseGate.exemptions", Type: "list of {path, codepoint, count} mappings", Default: "empty (nothing is exempt)",
+		Description:  "Places where a typographic punctuation substitute is permitted, typically prose that is genuinely about the character it contains, where punctuating it would make a true statement false. An entry exempts one codepoint in one path.",
+		Availability: "While `proseGate.enabled` is true.",
+	},
+	{
+		Path: "proseGate.exemptions[].path", Type: "string", Default: "required",
+		Description:  "The repo-relative path the exemption covers. A rendered file and the source it renders from each need their own entry, because each holds its own copy of the character.",
+		Availability: "While `proseGate.enabled` is true.",
+	},
+	{
+		Path: "proseGate.exemptions[].codepoint", Type: "string", Default: "required",
+		Description:  "The exempted codepoint, spelled `U+2014`, never the character itself: this file is scanned, so a typed character here would be a finding against the file that configures the exemption. Only the seven banned substitutes are accepted; anything else is an error rather than a silently wider exemption.",
+		Availability: "While `proseGate.enabled` is true.",
+	},
+	{
+		Path: "proseGate.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
+		Description:  "The exact number of occurrences expected. Set, an added occurrence in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another depiction.",
+		Availability: "While `proseGate.enabled` is true.",
+	},
+	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
 		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
 		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",

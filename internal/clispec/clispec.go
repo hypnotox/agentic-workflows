@@ -103,6 +103,21 @@ payload runs it when the hooks artifact is enabled).
 `,
 	},
 	{
+		Name: "prose-gate", Summary: "Scan tracked text files for typographic punctuation, blocking",
+		Gating: Ungated,
+		HelpBody: `Usage: awf prose-gate
+
+Report every typographic punctuation substitute in the project's tracked text
+files and exit non-zero on any finding: the presence-level analog of the audit
+rule, which only warns when a commit adds one. Exits zero without scanning
+unless proseGate.enabled is true, so a hook or a runner may invoke it
+unconditionally. Permit a character that is genuinely being written about with
+proseGate.exemptions. awf installs no hook; wire this into your own pre-commit
+hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
+artifact is enabled).
+`,
+	},
+	{
 		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf list [<kind>]

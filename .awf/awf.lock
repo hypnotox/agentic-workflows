@@ -270,7 +270,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "",
-      "outputHash": "sha256:676c3c31bc7617f3d11f79dda4f8409fb342901e661247b78477212ec6359658",
+      "outputHash": "sha256:5adb63ac29bb85113028b9d4d9c4a6cb911425a38b4ea6062ea156d861d0badc",
       "regenChecked": true
     },
     "docs/decisions/ACTIVE.md": {
