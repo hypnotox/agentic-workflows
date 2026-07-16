@@ -166,3 +166,20 @@ func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
 		t.Fatalf("gateCmd is consumed via the domain part placeholder and must not flag, got %#v", hits)
 	}
 }
+
+// A var-reading placeholder appearing only inside an authoring comment never
+// renders, so PartVarRefs must not mark the var consumed: it flags unused
+// (ADR-0121 Decision 2; the stripped counterpart of
+// TestPartPlaceholderConsumesVar, same fixture).
+func TestCommentWrappedPlaceholderDoesNotConsumeVar(t *testing.T) {
+	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - refactor-coupling-audit\nagents: []\n"
+	with := map[string]string{
+		"agents-doc.yaml": "local: true\n",
+		"workflow.yaml":   "local: true\n",
+		"skills/parts/refactor-coupling-audit/notes.md": "<!-- awf:comment run {{=awf:checkCmd}} first -->\nplain notes.\n",
+	}
+	hits := driftOfKind(checkDrift(t, scaffoldFiles(t, cfg, with)), "unused-var")
+	if len(hits) != 1 || !strings.Contains(hits[0].Detail, `"checkCmd"`) {
+		t.Fatalf("a comment-wrapped placeholder must not consume checkCmd, want one unused-var hit, got %#v", hits)
+	}
+}

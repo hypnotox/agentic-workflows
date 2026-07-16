@@ -157,6 +157,14 @@ restored byte-for-byte: it *extends* the shipped default instead of copy-forking
 a `stub`-classified default is a hard render error: a stub is an authoring prompt, not shippable
 prose (ADR-0070).
 
+Both seams strip **whole-line authoring comments** first (ADR-0121): a line that is exactly
+an `<!-- awf:comment ... -->` HTML comment is removed from template source (after include
+expansion) and from part bodies (before placeholder substitution), so parts and templates
+carry `touches-invariant:` tags and internal notes that never render. Fenced examples are
+preserved; a malformed whole-line opener is a hard render error; in-place regions
+(ADR-0100), read back from output, are never stripped. The lock hashes see the unstripped
+bytes, so a comment-only edit reflags stale and self-settles.
+
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->
 ## Key dependencies

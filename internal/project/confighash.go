@@ -57,13 +57,21 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		if err != nil {
 			return "", err
 		}
-		if render.ReferencesScopePlaceholder(string(b)) {
+		// The detectors read the stripped body (ADR-0121 Decision 2): a
+		// placeholder mentioned only inside an authoring comment never renders,
+		// so it must not fold config into the hash. The hash itself stays over
+		// the raw on-disk bytes below.
+		stripped, serr := render.StripAuthoringComments(string(b))
+		if serr != nil { // coverage-ignore: planSections stripped this same consumed part earlier in the render pass and errored there, so a malformed opener cannot reach this re-read
+			return "", serr
+		}
+		if render.ReferencesScopePlaceholder(stripped) {
 			// A convention part using {{=awf:commitScope*}} re-renders when
 			// audit.allowedScopes changes (ADR-0057).
 			// invariant: part-scopes-in-confighash
 			foldScopes = true
 		}
-		if render.ReferencesInvariantMarkerPlaceholder(string(b)) {
+		if render.ReferencesInvariantMarkerPlaceholder(stripped) {
 			// A convention part using {{=awf:invariantMarker*}} re-renders when
 			// invariants.sources changes (ADR-0064).
 			// invariant: invariant-markers-in-confighash

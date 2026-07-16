@@ -466,3 +466,39 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 		t.Fatalf("CollisionsAt: %v", err)
 	}
 }
+
+// A {{=awf:commitScope*}} placeholder appearing only inside an authoring
+// comment never renders, so it must not fold audit.allowedScopes into the
+// artifact's ConfigHash: a scopes edit leaves the artifact in sync
+// (ADR-0121 Decision 2, the stripped-detector counterpart of
+// TestScopesEditReflagsPlaceholderPart).
+func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
+	cfg := func(meaning string) string {
+		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
+			"audit:\n  allowedScopes:\n    - {name: adr, meaning: " + meaning + "}\n"
+	}
+	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
+		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n<!-- awf:comment demo of {{=awf:commitScopeTable}} -->\nplain text\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
+	p2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p2.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range drift {
+		if d.Path == "docs/workflow.md" {
+			t.Errorf("comment-wrapped placeholder must not fold scopes into the hash; drift = %v", drift)
+		}
+	}
+}

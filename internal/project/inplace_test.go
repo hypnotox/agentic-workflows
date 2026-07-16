@@ -327,3 +327,35 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 		}
 	}
 }
+
+// An in-place region is read back from rendered output, a channel the
+// authoring-comment strip never touches (ADR-0121 Decision 2): a
+// directive-shaped line an adopter writes inside the region survives
+// re-render byte-for-byte.
+// invariant: authoring-comment-inplace-inert
+func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	segs := render.ParseSections(
+		"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
+			"<!-- awf:section next -->\nN\n<!-- awf:end -->\n")
+	declared := []string{"s", "next"}
+	out := "banner\n" +
+		"<!-- awf:edit-in-place s: your edits -->\n" +
+		"kept above\n<!-- awf:comment shaped, but user-owned output -->\nkept below\n" +
+		"<!-- awf:edit next: default; create x -->\nN\n"
+	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.planSections("skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "kept above\n<!-- awf:comment shaped, but user-owned output -->\nkept below"
+	if plan["s"].InPlaceBody != want {
+		t.Errorf("in-place body must survive verbatim\ngot  %q\nwant %q", plan["s"].InPlaceBody, want)
+	}
+}

@@ -226,17 +226,25 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		}
 		b, err := os.ReadFile(p.Cfg.PartPath(kind, artifact, s))
 		if err == nil {
-			body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), string(b), reg)
+			// Stripped before substitution (ADR-0121 Decision 2): a substituted
+			// value can never create or mask a whole-line directive, and an
+			// unknown placeholder demonstrated inside a comment must not error.
+			raw, serr := render.StripAuthoringComments(string(b))
+			if serr != nil {
+				return nil, fmt.Errorf("part %s: %w", p.partRel(kind, artifact, s), serr)
+			}
+			body, serr := p.substitutePlaceholders(p.partRel(kind, artifact, s), raw, reg)
 			if serr != nil {
 				return nil, serr
 			}
 			sp.HasPart = true
 			sp.PartBody = body
 			sp.PartStub = render.HasStubMarker(body)
-			// Scanned on the raw on-disk bytes, never the substituted body
-			// (ADR-0083 Decision 4), with fenced examples excluded.
-			sp.PartMarker = render.HasMarkerLine(refs.WithoutFences(string(b)))
-			sp.PartVarRefs = render.PlaceholderVarRefs(string(b))
+			// Scanned on the stripped pre-substitution bytes (ADR-0083 Decision 4's
+			// raw-bytes contract preserved in effect - the strip cannot add or
+			// remove a marker-shaped line; ADR-0121), fenced examples excluded.
+			sp.PartMarker = render.HasMarkerLine(refs.WithoutFences(raw))
+			sp.PartVarRefs = render.PlaceholderVarRefs(raw)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
@@ -622,8 +630,12 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	segs := render.ParseSections(expanded)
-	style := render.CommentStyleForSource(expanded)
+	stripped, err := render.StripAuthoringComments(expanded)
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through RenderAll; its error branch is unit-tested in internal/render
+		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+	}
+	segs := render.ParseSections(stripped)
+	style := render.CommentStyleForSource(stripped)
 	plan, err := p.planSections(kind, artifact, declared, sc.Sections, segs, outPath, style)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
@@ -660,6 +672,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// TemplateHash covers the post-expansion source so an edit to an included
 		// partial flags every including artifact stale (ADR-0052).
 		// touches-invariant: include-in-templatehash - TemplateHash over expanded (post-include) source; proof in golden_test.go
+		// touches-invariant: authoring-comment-stripped - TemplateHash covers the pre-strip source, so a comment-only template edit reflags stale and self-settles
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
