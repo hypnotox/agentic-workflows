@@ -175,9 +175,12 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 			if slices.Contains(a.Supersedes, tn) {
 				add(a, "adr-token-exclusive", fmt.Sprintf("ADR-%s: token into ADR-%s, which it also fully supersedes", a.Number, r.Target))
 			}
-			anchor := r.Target + "#" + r.Slug
+			// The claim key is kind-prefixed: the slug grammar admits an
+			// all-digit slug, so an item ref #2 and a slug ref #2 into one
+			// target are distinct anchors, never a conflict pair.
+			anchor := "slug:" + r.Target + "#" + r.Slug
 			if r.Slug == "" {
-				anchor = r.Target + "#" + strconv.Itoa(r.Item)
+				anchor = "item:" + r.Target + "#" + strconv.Itoa(r.Item)
 			}
 			if live && !seenAnchor[anchor] {
 				seenAnchor[anchor] = true
@@ -212,11 +215,13 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 		}
 	}
 
-	// Advisory: one anchor claimed by two or more live ADRs.
+	// Advisory: one anchor claimed by two or more live ADRs. The kind prefix
+	// is keying only; the note names the anchor as written.
 	for _, anchor := range slices.Sorted(maps.Keys(anchorClaim)) {
 		cs := anchorClaim[anchor]
+		display := anchor[strings.Index(anchor, ":")+1:]
 		for i := 1; i < len(cs); i++ {
-			notes = append(notes, fmt.Sprintf("anchor ADR-%s claimed by ADR-%s and ADR-%s", anchor, cs[0], cs[i]))
+			notes = append(notes, fmt.Sprintf("anchor ADR-%s claimed by ADR-%s and ADR-%s", display, cs[0], cs[i]))
 		}
 	}
 	return drift, notes

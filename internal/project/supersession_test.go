@@ -417,6 +417,23 @@ func TestSupersessionAdvisories(t *testing.T) {
 			t.Fatalf("want %q, got %#v", want, notes)
 		}
 	})
+	t.Run("an item ref and an all-digit slug ref are distinct anchors", func(t *testing.T) {
+		// The slug grammar admits an all-digit slug ("2"); the conflict
+		// advisory keys anchors by kind, so item #2 and slug #2 into one
+		// target never pair.
+		_, notes := runSupersession(t, map[string]string{
+			"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+				testsupport.WithRelated(2, 3),
+				testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: 2` - an all-digit slug.\n")),
+			"0002-first.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: First"),
+				testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#2`.\n")),
+			"0003-second.md": testsupport.ADR("Accepted", testsupport.WithTitle("0003: Second"),
+				testsupport.WithBody("## Decision\n\n1. Retires `supersedes-invariant: ADR-0001#2`.\n")),
+		})
+		if len(notes) != 0 {
+			t.Fatalf("want no conflict note across anchor kinds, got %#v", notes)
+		}
+	})
 	t.Run("a Proposed claimant is not in force", func(t *testing.T) {
 		token := "## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"
 		_, notes := runSupersession(t, map[string]string{
