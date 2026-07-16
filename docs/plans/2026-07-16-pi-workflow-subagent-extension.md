@@ -51,7 +51,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
     `subagent-driven-development`, `reviewing-adr`, `reviewing-plan`,
     `reviewing-plan-resync`, and `reviewing-impl`, plus goldens in
     `internal/project/spine_test.go` and cross-artifact assertions in `internal/evals`.
-  - `.awf/parts/agents-doc/identity.md`, `.awf/docs/parts/development/{setup,command-runner,dependencies}.md`,
+  - `.awf/parts/agents-doc/identity.md`,
+    `.awf/docs/parts/architecture/{overview,components,data-flow,dependencies}.md`,
+    `.awf/docs/parts/development/{setup,command-runner,dependencies}.md`,
     `.awf/docs/parts/testing/{gate,layout,tiers}.md`, `.awf/docs/parts/roadmap/ideas.md`,
     `.awf/domains/parts/rendering/current-state.md`,
     `.awf/domains/parts/tooling/current-state.md`, and
@@ -281,8 +283,10 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   runner. Export role allowlist constants and `registerSubagentTools(pi, dependencies?)`; the default
   export calls it with production dependencies. At registration:
   - read Pi's package version through `getPackageDir()` and require semver at least `0.80.9` using a
-    local strict numeric parser; unsupported or unparseable versions register no partial tool set and
-    notify one actionable minimum-version error;
+    local strict numeric parser; unsupported or unparseable versions register no partial tool set,
+    register one `session_start` handler, and call `ctx.ui.notify(<actionable minimum-version
+    message>, "error")` once from that handler (notification is a no-op in non-UI modes by Pi's
+    normal UI contract);
   - register exactly `subagent_explore`, `subagent_review`, and `subagent_implement`, each with the
     ADR-required strict schema, prompt snippet, and tool-named guidelines;
   - reject empty/whitespace tasks before child creation;
@@ -330,19 +334,38 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   truncation marker; spawn/exit/stop failures; temp permissions and cleanup; ordinary completion,
   pre-abort, TERM completion, and TERM-resistant KILL with listener/timer cleanup. Fake Pi scripts
   emit recorded JSON and never call a provider. Put proof markers for
-  `pi-subagent-public-contract`, `pi-child-tool-boundaries`, `pi-child-process-safety`,
-  `pi-implementation-state-boundary`, and `pi-minimum-runtime` on the Go tests that own these
-  generated/runtime contracts; TypeScript tests remain behavioral coverage, not invariant markers.
+  Assign proof markers exactly as follows (TypeScript tests remain behavioral coverage, not invariant
+  markers):
+  - `internal/project/target_test.go` `TestPiSubagentPublicContract` carries
+    `pi-subagent-public-contract`;
+  - `internal/project/target_test.go` `TestPiSubagentToolBoundaries` carries
+    `pi-child-tool-boundaries`;
+  - `internal/project/target_test.go` `TestPiSubagentProcessSafetyContract` carries
+    `pi-child-process-safety`;
+  - `internal/project/target_test.go` `TestPiImplementationStateBoundary` carries
+    `pi-implementation-state-boundary`;
+  - `internal/project/target_test.go` `TestPiMinimumRuntimeContract` carries
+    `pi-minimum-runtime`;
+  - Task 2.1's `TestPiTargetRendersExtension` carries `pi-extension-target-render`;
+  - Phase 3's dispatch table test carries `pi-explicit-workflow-dispatch`;
+  - Task 1.3's `internal/project/example_wiring_test.go` test carries
+    `pi-extension-container-gate`.
   The representative runner test feeds one `message_end` JSON record in three chunks and asserts
   exact output/usage; the edge test uses `term-resistant-pi.mjs`, aborts, advances the injected timer,
   and asserts TERM then KILL plus one cleanup. The representative index test uses a fake
   `ExtensionAPI`, records registrations, invokes explore, and asserts model/thinking/tools; edge
-  tables cover every invalid version, missing reviewer, git state, and queue state listed above.
+  tables cover every invalid version, missing reviewer, git state, and queue state listed above;
+  invalid-version cases assert zero tool registrations, exactly one `session_start` handler, and one
+  error notification with the 0.80.9 upgrade instruction.
   Run the replacement command directly through `container.sh run`; expected output is all tests
   passing and 100% line/function/branch coverage for both generated modules.
 
-- [ ] **Task 2.7: Dogfood, document the new output, and commit.** Update architecture and
-  rendering/tooling current-state authored parts for `Target.Outputs`, TypeScript provenance,
+- [ ] **Task 2.7: Dogfood, document the new output, and commit.** Update architecture authored
+  parts exactly: `overview.md` adds Pi's target-owned extension to adapter outputs; `components.md`
+  adds the extension templates and Docker harness; `data-flow.md` adds target-output hashing,
+  TypeScript provenance, and check/sync ownership; `dependencies.md` distinguishes Pi 0.80.9/TypeBox
+  generated-extension peers and Docker-only developer dependencies from the standalone Go binary.
+  Update rendering/tooling current-state authored parts for `Target.Outputs`, TypeScript provenance,
   config-hash ownership, subprocess shape, trust boundary, Pi 0.80.9 minimum, role permissions,
   same-checkout behavior, and test container. Update README's target paragraph: Pi now receives the
   three generated delegation tools rather than generic-only delegation. Run `./x sync`; inspect both
@@ -420,7 +443,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   ./x check
   ./x gate
   rg -n 'available reviewer or delegation mechanism' .pi/skills templates/skills
-  rg -n 'subagent_(explore|review|implement)' .pi/skills
+  rg -n 'subagent_(explore|review|implement)' .pi/skills .pi/extensions/awf-subagents
   ```
 
   Expected: sync/check/gate pass; the generic phrase has zero Pi/template matches; the tool search
@@ -447,6 +470,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
   ```bash
   smoke="$(mktemp -d)"
+  smoke_token="awf-pi-smoke-$$"
+  trap 'pkill -f "$smoke_token" 2>/dev/null || true; rm -rf "$smoke"' EXIT
   cp -a examples/sundial/. "$smoke/"
   git -C "$smoke" init -q
   git -C "$smoke" add .
@@ -462,16 +487,18 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   git -C "$smoke" rev-parse HEAD
   git -C "$smoke" status --short
   timeout --signal=INT 5s sh -c "cd '$smoke' && pi -p --no-session \
-    'Call subagent_implement alone with allowCommits false and run sleep 60 before reporting.'" || test "$?" -eq 124
-  pgrep -af '[p]i.*--no-session' && exit 1 || true
+    'Smoke marker $smoke_token. Call subagent_implement alone with allowCommits false and run sleep 60 before reporting.'" || test "$?" -eq 124
+  pgrep -af "$smoke_token" && exit 1 || true
+  trap - EXIT
   rm -rf "$smoke"
   ```
 
   Expected: version is at least 0.80.9; explore reports the module line; review returns its structured
   digest and `git status --short` remains empty before implementation; implementation leaves baseline
   HEAD unchanged and status shows only `?? smoke.txt`; timeout exits 124; the child-process search has
-  no match. Record only deviations in this plan's Notes; credentials and transcripts are never
-  committed. Always run the cleanup command, including after a failed assertion.
+  no process carrying the unique token. Record only deviations in this plan's Notes; credentials and
+  transcripts are never committed. The EXIT trap kills only token-bearing leftovers and removes the
+  repository after any failed assertion; the final trap clear plus removal covers success.
 
 - [ ] **Task 4.3: Freeze the design and execution record.** Change ADR-0123 from `Proposed` to
   `Implemented` and this plan from `Proposed` to `Implemented`. Run `./x sync` to regenerate
