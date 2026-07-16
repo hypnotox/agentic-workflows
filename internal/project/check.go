@@ -53,7 +53,12 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(notes, pcs...), nil
+	notes = append(notes, pcs...)
+	sn, err := p.supersessionNotes()
+	if err != nil {
+		return nil, err
+	}
+	return append(notes, sn...), nil
 }
 
 // tagFrequencyThreshold is the share of tag-bearing artifacts above which a tag

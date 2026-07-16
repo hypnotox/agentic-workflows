@@ -176,6 +176,20 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 	return required, nil
 }
 
+// DeclaredSlugs returns the invariant slugs a's Invariants section declares
+// (backed and unbacked alike), in declaration order. Status-independent: the
+// ref-validity check and the retirement migration resolve slug anchors against
+// any ADR's declarations, not just Implemented ones (ADR-0120 item 2).
+func DeclaredSlugs(a adr.ADR) []string {
+	var slugs []string
+	for _, bullet := range invariantBullets(a.Sections["Invariants"]) {
+		if m := declRe.FindStringSubmatch(bullet); m != nil {
+			slugs = append(slugs, m[2])
+		}
+	}
+	return slugs
+}
+
 // invariantBullets splits an Invariants section into markdown list items, each
 // joined with its wrapped continuation lines. A bullet starts at a list-item lead
 // and runs until the next list-item lead, a blank line, or the section end - so a

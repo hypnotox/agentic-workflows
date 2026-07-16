@@ -38,6 +38,17 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 }
 
+// TestRunCheckNoLock covers p.Check's error propagating out of runCheck: on a
+// never-synced tree AdvisoryNotes renders in memory and stays green, so the
+// failure surfaces at the Check() call (the lock is loaded only there).
+func TestRunCheckNoLock(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, checkYAML)
+	if err := runCheck(root, io.Discard); err == nil || !strings.Contains(err.Error(), "no lock") {
+		t.Fatalf("expected the no-lock error, got %v", err)
+	}
+}
+
 // repinLockVersion rewrites the synced project's lock awfVersion in place (schema
 // unchanged) so the ahead/equal version comparison can be exercised.
 func repinLockVersion(t *testing.T, root, version string) {
