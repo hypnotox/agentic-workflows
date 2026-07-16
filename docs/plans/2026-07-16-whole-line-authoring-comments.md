@@ -540,7 +540,7 @@ the gate.
     asserting a part body containing literal `{{ }}` text renders the braces byte-for-byte
     (the strip runs upstream of the render layer, so this test's contract is unchanged; the
     strip-plus-verbatim composition is proven by the task 2.6 project-level test).
-  - `internal/render/render.go` (~line 253, the `writePartBody` area): the
+  - `internal/render/render.go` (~line 253, the `Execute` doc comment): the
     `touches-invariant: parts-raw - ...` marker line becomes
     `touches-invariant: parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go`.
 
