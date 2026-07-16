@@ -1,7 +1,7 @@
 ---
 date: 2026-07-16
 adrs: [123]
-status: Proposed
+status: Implemented
 ---
 # Plan: Pi Workflow Subagent Extension
 
@@ -68,7 +68,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 ## Phase 1: Fast containerized TypeScript gate
 
-- [ ] **Task 1.1: Add the pinned test image and dependency manifest.** Create
+- [x] **Task 1.1: Add the pinned test image and dependency manifest.** Create
   `tools/pi-extension-test/Dockerfile` with this shape:
 
   ```dockerfile
@@ -99,7 +99,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   root or host `node_modules`, and `grep -n '0.80.9' tools/pi-extension-test/package-lock.json`
   matches the coding-agent package.
 
-- [ ] **Task 1.2: Implement the persistent container manager.** Create executable
+- [x] **Task 1.2: Implement the persistent container manager.** Create executable
   `tools/pi-extension-test/container.sh` with `set -euo pipefail` and commands `run`, `stop`, and
   `reset`. It must:
   - derive the absolute repository root through `git rev-parse --show-toplevel`;
@@ -127,7 +127,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   bind source so paths containing spaces work. A missing Docker daemon exits with one actionable
   `pi-extension-test: Docker is required by ./x gate` error.
 
-- [ ] **Task 1.3: Prove type-checking and coverage before wiring the gate.** Add
+- [x] **Task 1.3: Prove type-checking and coverage before wiring the gate.** Add
   `tools/pi-extension-test/tsconfig.json` with `strict: true`, `noEmit: true`, ESNext module,
   Bundler resolution, `skipLibCheck: true`, `allowImportingTsExtensions: true`, target ES2022,
   `types: ["node"]`, and an initial
@@ -157,7 +157,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   container creation, only one `docker exec` test run. Run `find . -name node_modules -print` from
   the host; expected no output.
 
-- [ ] **Task 1.4: Make the lane mandatory and document its lifecycle.** In `x`, call
+- [x] **Task 1.4: Make the lane mandatory and document its lifecycle.** In `x`, call
   `tools/pi-extension-test/container.sh run` after Go tests/coverage and before vet, and add a
   `pi-test)` case accepting only `run`, `stop`, or `reset`; update the usage line. Update authored
   development and testing parts so setup requires Go plus Docker (not host Node/npm), the gate table
@@ -167,7 +167,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   image rebuild/container creation. Test `./x pi-test stop`, rerun the gate, and expect only a
   container start; test `./x pi-test reset`, rerun, and expect one cached or clean image setup.
 
-- [ ] **Task 1.5: Commit the container test lane.** Run `./x gate` and `./x check`. Stage only `x`,
+- [x] **Task 1.5: Commit the container test lane.** Run `./x gate` and `./x check`. Stage only `x`,
   `tools/pi-extension-test/**`, the authored development/testing parts, and their generated docs and
   lock changes. Commit:
 
@@ -177,7 +177,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 ## Phase 2: Target-owned extension and subprocess engine
 
-- [ ] **Task 2.1: Add TypeScript provenance and target output descriptors test-first.** In
+- [x] **Task 2.1: Add TypeScript provenance and target output descriptors test-first.** In
   `internal/render/render.go`, add `SlashComment` to `CommentStyle`; make `wrap` and `open` emit
   `// ` for it. In `internal/project/banner.go`, make `injectBanner` use `// ` when the supplied
   style is `SlashComment`. Add failing tests first:
@@ -206,7 +206,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   Add `Outputs []TargetOutput` and `SubagentTools bool` to `Target`; Pi carries the two outputs and
   sets `SubagentTools: true`. Do not hard-code `t.Name == "pi"` in `RenderAll`.
 
-- [ ] **Task 2.2: Make every adapter artifact target-hash-aware.** Replace `renderEncoding` with
+- [x] **Task 2.2: Make every adapter artifact target-hash-aware.** Replace `renderEncoding` with
   `renderOutputOptions` containing optional `encode`, `bannerStyle`, and a `target *Target`.
   `renderKind` constructs options for every target-scoped skill and agent, not only encoded agents.
   `renderTarget` applies `encode` only when non-nil, applies an explicit banner style when present,
@@ -215,7 +215,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   byte-identical non-Pi output. Add a focused drift assertion that changing only
   `Target.SubagentTools` changes a Pi skill config hash.
 
-- [ ] **Task 2.3: Render descriptor-owned outputs.** Embed `all:pi` in `templates/embed.go`. In the
+- [x] **Task 2.3: Render descriptor-owned outputs.** Embed `all:pi` in `templates/embed.go`. In the
   target loop in `RenderAll`, after skills/agents, iterate `t.Outputs` in descriptor order and call
   `renderTarget` with kind `target-output`, no sidecar/sections, the normal data map, explicit style,
   and the target pointer. Add each returned file exactly once. The template source must render with
@@ -223,7 +223,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `TestAllTargetPathsAndBridges`, `PlannedOutputs`, sync/check, uninstall/planned cleanup, and target
   dialect tests rather than adding a second ownership path.
 
-- [ ] **Task 2.4: Implement the shared runner template.** Create
+- [x] **Task 2.4: Implement the shared runner template.** Create
   `templates/pi/awf-subagents/runner.ts.tmpl` as TypeScript with Node built-ins only. Export constants
   for the ADR limits and these test seams:
 
@@ -287,7 +287,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `./x sync` and `tools/pi-extension-test/container.sh run`; expected success is the smoke test at
   100% plus strict type-checking of generated `runner.ts`.
 
-- [ ] **Task 2.5: Implement the three-tool entry template.** Create
+- [x] **Task 2.5: Implement the three-tool entry template.** Create
   `templates/pi/awf-subagents/index.ts.tmpl`. Import only Pi peer APIs and TypeBox plus the local
   runner. Export role allowlist constants and `registerSubagentTools(pi, dependencies?)`; the default
   export calls it with production dependencies. At registration:
@@ -323,7 +323,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `tools/pi-extension-test/container.sh run`; expected success is the smoke test at 100% plus strict
   type-checking of both generated extension files.
 
-- [ ] **Task 2.6: Replace the smoke fixture with full deterministic tests.** Delete the Phase 1
+- [x] **Task 2.6: Replace the smoke fixture with full deterministic tests.** Delete the Phase 1
   fixture. Expand `tsconfig.json` to include the dogfooded `.pi/extensions/awf-subagents/*.ts` and
   `tests/**/*.ts`. Replace the manager's test command atomically with:
 
@@ -371,7 +371,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   Run the replacement command directly through `container.sh run`; expected output is all tests
   passing and 100% line/function/branch coverage for both generated modules.
 
-- [ ] **Task 2.7: Dogfood, document the new output, and commit.** Update architecture authored
+- [x] **Task 2.7: Dogfood, document the new output, and commit.** Update architecture authored
   parts exactly: `overview.md` adds Pi's target-owned extension to adapter outputs; `components.md`
   adds the extension templates and Docker harness; `data-flow.md` adds target-output hashing,
   TypeScript provenance, and check/sync ownership; `dependencies.md` distinguishes Pi 0.80.9/TypeBox
@@ -394,7 +394,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 ## Phase 3: Explicit Pi workflow dispatch
 
-- [ ] **Task 3.1: Add failing cross-target dispatch tests.** Replace
+- [x] **Task 3.1: Add failing cross-target dispatch tests.** Replace
   `TestPiReviewDispatchUsesGenericRuntimeWording` with proof marker
   `// invariant: pi-explicit-workflow-dispatch` and table assertions over all affected skills. Pi
   copies must contain the exact tool names and role arguments below; Claude, Codex, Copilot, Cursor,
@@ -402,7 +402,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   tool names. Extend `internal/evals` so the Pi reviewing-skill-to-reviewer edge remains connected and
   the tool wording occurs on the actual invocation step, not incidental prose.
 
-- [ ] **Task 3.2: Bind exploration dispatch sites as one batch transformation.** In
+- [x] **Task 3.2: Bind exploration dispatch sites as one batch transformation.** In
   `templates/skills/brainstorming/SKILL.md.tmpl`, the representative site is step 6: when
   `.targetSubagentTools`, say `Call subagent_explore once with the self-contained grounding brief in
   task`; preserve the existing neutral/native sentence in the else branch. The edge site is
@@ -416,7 +416,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   Expected two paths. Post-check: the Phase 3 table test passes and empty-var render sweeps remain
   coherent.
 
-- [ ] **Task 3.3: Bind governed review sites as one batch transformation.** In each reviewing
+- [x] **Task 3.3: Bind governed review sites as one batch transformation.** In each reviewing
   template's initial dispatch and verify-pass instruction, branch on `.targetSubagentTools` and call
   `subagent_review` with `kind: "adr"`, `"plan"`, or `"code"` plus the existing self-contained brief
   as `task`. Plan resync uses kind `plan` and keeps resync-mode constraints in the task. The exhaustive
@@ -424,7 +424,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   pass'` over that set must print exactly four paths. Preserve report-only, one-verify-pass, and
   classification routing text.
 
-- [ ] **Task 3.4: Bind subagent-driven development.** In step 4 of
+- [x] **Task 3.4: Bind subagent-driven development.** In step 4 of
   `subagent-driven-development/SKILL.md.tmpl`, Pi calls `subagent_implement` with the assembled task
   and an explicit `allowCommits` chosen from the plan task; it issues that call alone in the parent
   tool batch and stays sequential. Step 6 calls `subagent_review` with `kind: "code"` and the task
@@ -432,7 +432,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   unchanged. Add golden assertions for `allowCommits`, alone-in-batch, sequential-only, and per-task
   code review.
 
-- [ ] **Task 3.5: Remove the temporary generic fallback and update workflow docs.** Pi's review
+- [x] **Task 3.5: Remove the temporary generic fallback and update workflow docs.** Pi's review
   style no longer renders `available reviewer or delegation mechanism`. Keep the descriptor field
   only if another target still consumes generic style; otherwise remove `GenericReviewDispatch` and
   simplify the conditional without changing native target output. In
@@ -452,7 +452,7 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `No other roadmap ideas are recorded.` if the Pi orchestrator was its only entry; preserve the
   separate Pi/shared-skills collision deferred entry because ADR-0123 does not solve it.
 
-- [ ] **Task 3.6: Sync, verify, and commit explicit dispatch.** Run:
+- [x] **Task 3.6: Sync, verify, and commit explicit dispatch.** Run:
 
   ```bash
   ./x sync
@@ -473,14 +473,14 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 ## Phase 4: Release surface and lifecycle freeze
 
-- [ ] **Task 4.1: Audit adopter-facing release documentation.** Confirm Phase 2's Breaking changes and
+- [x] **Task 4.1: Audit adopter-facing release documentation.** Confirm Phase 2's Breaking changes and
   Features entries and Phase 3's binding extension are present in `changelog/CHANGELOG.md`; do not
   defer a behavior's release note to this lifecycle phase. Ensure architecture, development, testing,
   working guidance, README, AGENTS identity, domain current-state docs, and roadmap all state current
   reality without the ADR-0122 deferral. Change documentation here only for a verified omission and
   record that omission in Notes.
 
-- [ ] **Task 4.2: Run the real-runtime smoke check.** Use this disposable-repository recipe with Pi
+- [x] **Task 4.2: Run the real-runtime smoke check.** Use this disposable-repository recipe with Pi
   0.80.9 or newer and an already configured provider:
 
   ```bash
@@ -515,14 +515,14 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   transcripts are never committed. The EXIT trap kills only token-bearing leftovers and removes the
   repository after any failed assertion; the final trap clear plus removal covers success.
 
-- [ ] **Task 4.3: Freeze the design and execution record.** Change ADR-0123 from `Proposed` to
+- [x] **Task 4.3: Freeze the design and execution record.** Change ADR-0123 from `Proposed` to
   `Implemented` and this plan from `Proposed` to `Implemented`. Run `./x sync` to regenerate
   `ACTIVE.md`, domain indexes, both dogfood trees, and locks. Run `./x check`, `./x gate`, and
   `./x audit-local main..HEAD`; expected no check/gate errors and no audit-local Error. Verify every
   ADR-0123 backed invariant has one matching marker under `**/*_test.go`, and the
   `pi-real-runtime-smoke` unbacked invariant has no proof marker.
 
-- [ ] **Task 4.4: Commit the final lifecycle and release surface.** Stage only any omission fixes from
+- [x] **Task 4.4: Commit the final lifecycle and release surface.** Stage only any omission fixes from
   Task 4.1, ADR, plan, generated indexes/domain docs, dogfood outputs, and lock changes. The changelog
   should already be clean from Phases 2-3. Commit:
 
@@ -550,6 +550,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   the implemented behavior and no longer claim Pi orchestration is deferred.
 
 ## Notes
+
+- The real-runtime smoke passed on Pi 0.80.9 with the configured OpenAI Codex provider; the default Claude provider was quota-blocked before delegation began.
 
 - The current separate roadmap item about Pi discovering both `.pi/skills` and shared
   `.agents/skills` when Pi and Codex targets coexist remains out of scope. The extension reads

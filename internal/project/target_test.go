@@ -68,7 +68,6 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
-// invariant: pi-generic-review-dispatch
 // invariant: pi-extension-target-render
 func TestPiTargetRendersExtension(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
