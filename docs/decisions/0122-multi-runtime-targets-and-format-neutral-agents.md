@@ -94,6 +94,11 @@ agent seam must instead represent an agent independently of its output dialect.
   awf's supply-chain and test surface.
 - The repository and Sundial example must dogfood every new adapter and commit
   their rendered output trees, increasing sync and review fan-out.
+- The implementation updates the architecture, configuration reference, working
+  guide, agent guide, README, and rendering/tooling current-state narratives in
+  the same commits as the code. It adds a tracked roadmap entry for the deferred
+  Pi orchestrator, and adds any needed ignore negations before committing the
+  new output trees.
 
 ## Alternatives Considered
 
