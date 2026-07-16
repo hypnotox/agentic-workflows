@@ -283,8 +283,8 @@
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
       "templateHash": "sha256:9edc9cc857ed8b57ae8233e87fc73a8fbd4d37fcfaaf553d30f873c89b70c728",
-      "configHash": "sha256:3030712dbbd9d74faec0e8ecc9ba9d8294a9f021f10cff7d23c20bd205004b3c",
-      "outputHash": "sha256:330e31cf9d78d8e51287fd1eba27fb5268d12fe49a1e5c4e3790c0c155a47795"
+      "configHash": "sha256:79390fabcb9008f71b5c47ff90c51de13fd9703f17c4b5b2fa8aafc3557cdd33",
+      "outputHash": "sha256:1fc79121155abda7bb8b1ff276d7f58c5c08b96e5e189bcc7605ad348ea123bf"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",
@@ -342,14 +342,14 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:dea317267825b2a162913b21ca25bbab32fc93767434deb40a27897a51e5f9e2",
-      "outputHash": "sha256:34ec4ae9f876e4775d7fce22d18eedf3cd4343f95453e81497ea8182d7b66890"
+      "configHash": "sha256:dc4acc9f6707a3f7e2a35a3ac45448f94c730f12a3cb708afb5521eb853024e6",
+      "outputHash": "sha256:d2fdab42ce11557021da1938471e3dd57a29b26c934363184946d03c0636dead"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:662b253d94f32fb670e6c52adfd05bc6b74cb7d4f1e8ab469bf00f101c0908a1",
-      "outputHash": "sha256:754bb138825952d5a47e8e1e24fe7f60ebbca8411e0fbeaa55f4fb10488dfd37"
+      "configHash": "sha256:e8bebc58d93301a28d09dba7a37105e26bb29eb7d2148b7043e0335eaaf07a9e",
+      "outputHash": "sha256:a928f39848107da40fd3dce8c2f8089cd013d0eff74734cdbc9a0bee0653e7f0"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

@@ -70,7 +70,7 @@ _Domains: rendering_
 The project-local base templates live at `templates/skills/_base/SKILL.md.tmpl` and
 `templates/agents/_base.md.tmpl` (ADR-0068). Go's `//go:embed` walk **excludes** every file or
 directory whose name begins with `_` or `.` unless the pattern is `all:`-prefixed; so the bare
-`//go:embed skills agents …` form embeds neither `_base`, and `fs.ReadFile(templates.FS, …)` fails
+`//go:embed skills agents ...` form embeds neither `_base`, and `fs.ReadFile(templates.FS, ...)` fails
 at render with a bare `file does not exist`. `templates/embed.go` therefore uses
 `all:skills all:agents`. Do not "simplify" it back: dropping `all:` silently drops the base
 templates. `TestUnsetFallbackRenders` reads both base templates from `templates.FS`, so a
@@ -80,7 +80,7 @@ bug, hence this note.
 The same directive is an **explicit directory allowlist**, not a glob, so it has a second edge: a
 brand-new top-level template directory (a new singleton's `templates/<name>/`) is silently *not*
 embedded until its name is added to the `//go:embed` line. The symptom is identical; `awf sync`
-fails with `read template <name>/…: file does not exist` even though the file is on disk, because
+fails with `read template <name>/...: file does not exist` even though the file is on disk, because
 the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
 `templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
 
@@ -90,7 +90,7 @@ Two agents working in the same checkout share one staging area: `git commit` com
 **whole index**, so another agent's `git add` between your `git add` and `git commit` sweeps
 their files into your commit (this bit the ADR-0069 session; a foreign 526-line plan file
 landed in a feat commit). Always pathspec-limit the commit itself (`git add <paths> && git
-commit -m … -- <paths>`), so only your named paths land regardless of index state; note an
+commit -m ... -- <paths>`), so only your named paths land regardless of index state; note an
 untracked file must still be `git add`-ed first, a bare pathspec commit rejects it. Two more
 shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
 dirty files (a false positive for your session; never commit or discard their work to appease
@@ -117,7 +117,7 @@ the artifact on `awf check`/`awf init`. awf's own repo sets the common vars (`ga
 the edit looks silent here and the new advisory only surfaces downstream. Before adding a var
 reference, decide whether the sentence really needs it; generic wording avoids the advisory
 entirely (this kept `gateCmd` out of the plans README when the self-contained-phases rule
-landed), and if it does, keep the `{{ with }}…{{ else }}` fallback publication-safe and accept
+landed), and if it does, keep the `{{ with }}...{{ else }}` fallback publication-safe and accept
 the advisory as intended signal.
 
 ## A `data:` list override replaces the catalog defaults wholesale
@@ -200,7 +200,7 @@ convention part run through the same substitution.)
 
 A dispatched subagent that applies fixes as commits, the implementer subagents in
 `<prefix>-subagent-driven-development` (as of ADR-0074 the review subagents are report-only and no
-longer commit), occasionally creates a `resync/…` or `review/…` branch and commits there instead
+longer commit), occasionally creates a `resync/...` or `review/...` branch and commits there instead
 of on the working branch (`main`), leaving the main-thread session behind by those commits (seen
 with a resync agent's `89a80c9` on 2026-07-07, and earlier during the ADR-0064 effort). It surfaces as
 `git branch --show-current` returning an unexpected branch after a subagent returns, or the
@@ -465,7 +465,7 @@ but the ADR is still `Proposed` there; writing "the four prose knobs are removed
 catalog still carries all four makes the state doc false until implementation lands, and
 permanently false if the ADR is rejected (ADR-0084 review, 2026-07-09). Write the
 propose-commit sentence in decision tense anchored to the status, "ADR-NNNN (Proposed)
-narrows the policy … and will remove …", and flip it to present tense in the
+narrows the policy ... and will remove ...", and flip it to present tense in the
 implementation commit that makes it true, alongside the status flip.
 
 ## Retiring an Implemented ADR's invariant couples the feature to the successor's status flip
@@ -518,7 +518,7 @@ area: a bare `git commit` after `git add <own files>` commits the *whole index*,
 sweeping whatever the other session had staged; it happened between the ADR-0087 and
 ADR-0088 efforts (2026-07-10), folding one effort's staged review fixes into the other's
 feature commit. Repair: `git reset --soft HEAD~1`, then re-commit with an explicit pathspec
-(`git commit -m … -- <paths>`), which also leaves the foreign entries staged exactly as
+(`git commit -m ... -- <paths>`), which also leaves the foreign entries staged exactly as
 found. Prevention: when a `git status` shows staged entries you did not stage, commit with a
 pathspec (tracked files only; stage a brand-new file first) or move one effort to a
 worktree; also prefer targeted reverts over `git checkout <file>` while your own edits are
@@ -547,10 +547,10 @@ only, not `docs/decisions/`. `ls docs/decisions/ | grep <number>` first, then li
 
 _Domains: adr-system_
 
-`adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: …` heading, so it includes the
+`adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: ...` heading, so it includes the
 `ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints
 both, as `awf context`'s `ADRRef` did in its first draft (2026-07-11), double-prints the
-number (`ADR-0092 … ADR-0092: Title`); plan review caught it. Strip the prefix
+number (`ADR-0092 ... ADR-0092: Title`); plan review caught it. Strip the prefix
 (`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
 `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
 so the gotcha only surfaces as awf grows ADR-aware tooling.
@@ -561,7 +561,7 @@ _Domains: tooling_
 
 In a linked worktree (`git worktree add`), and the submodule layout, `.git` is a
 `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
-`open repo: … .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
+`open repo: ... .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
 ADR-0090 impl review in a session worktree; every parallel session uses one). Fixed the
 same day: `OpenRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
 `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
@@ -692,18 +692,18 @@ real tag build). When adding a future pre-release step, keep its output under `$
 the path to `.gitignore`; do not assume a build-time artifact in the worktree is harmless
 (2026-07-12).
 
-## Sidecar `data` is not placeholder-substituted, drop `{{=awf:…}}` escapes when converting a part
+## Sidecar `data` is not placeholder-substituted, drop `{{=awf:...}}` escapes when converting a part
 
 _Domains: rendering_
 
 _Related: ADR-0089, ADR-0099_
 
-A raw convention part is run through awf's `{{=awf:…}}` sandbox substitution before Go templating
+A raw convention part is run through awf's `{{=awf:...}}` sandbox substitution before Go templating
 (ADR-0057), so a part that *documents* a placeholder token backslash-escapes it (`\{{=awf:key}}`)
 to render the literal token. A sidecar-derived doc's `data` value is different: the transform hands
 it to the template as a plain string spliced in via Go `{{ . }}`, with no awf-placeholder pass over
-it; so a `\{{=awf:…}}` escape copied verbatim from a raw part into `data.<key>` renders the
-backslash literally, and an unescaped `{{=awf:…}}` renders as the literal token (never substituted).
+it; so a `\{{=awf:...}}` escape copied verbatim from a raw part into `data.<key>` renders the
+backslash literally, and an unescaped `{{=awf:...}}` renders as the literal token (never substituted).
 This bit the ADR-0099 pitfalls conversion: the 40-entry hand-migration copied entries.md's escaped
 tokens straight into `data.pitfalls`, and the backslashes leaked into the rendered doc; `awf check`
 stayed clean (the output is exactly what the data says), so only diffing the rendered file against
@@ -819,7 +819,7 @@ The in-place-editable-sections primitive (ADR-0100) was designed and unit-tested
 against Markdown, then its first *shell* consumer (the managed runner `x`, ADR-0101) exposed
 two gaps invisible until a shell file was rendered *and executed/parsed*; each forcing a
 mid-implementation ADR amendment. (1) The `awf:edit`-family provenance pointers survive into
-output *as comments*, and an HTML `<!-- … -->` pointer is a hard `bash` syntax error, so the
+output *as comments*, and an HTML `<!-- ... -->` pointer is a hard `bash` syntax error, so the
 pointers had to become comment-syntax-aware (`#` for a `#!`-shebang target, HTML otherwise;
 the same sniff `injectBanner` already used). (2) awf's sync wrote every file `0644`, but the
 runner is invoked as `./x`, so it had to be rendered executable. Both were invisible to
@@ -841,7 +841,7 @@ place the table would otherwise cover, and each omission surfaces far from the r
 Adding the runner touched, and each was easy to miss: the `//go:embed` directive
 (`templates/embed.go`, a template absent from the embed FS fails only at first render), the
 `RenderAll` block, the closed-tree sweep's claimed-path model (`buildClaimedModel`, an
-unclaimed `.awf/runner/parts` made a `create … to override` pointer's own advice fail `check`,
+unclaimed `.awf/runner/parts` made a `create ... to override` pointer's own advice fail `check`,
 caught only in impl review), the `internal/configspec` entry + regenerated config-reference
 (ADR-0088 parity), and the nameless-singleton enable-CLI arm (`cmd/awf` hardcodes each
 singleton kind in the dispatcher, the toggle, `enableDisableSingleton`, `awf list`, and the
