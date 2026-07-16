@@ -351,9 +351,16 @@ situation after ADR-0118; and because the maintainer has since required exactly 
   knob is false. An exemption with a pinned `count` fails when the file's count for that codepoint
   differs; an exemption without one permits any count. Backed by a test.
 
-- `` `invariant: prose-gate-refuses-without-git` ``: outside a git repository, or wherever the
-  tracked-file set cannot be enumerated, `awf prose-gate` refuses with a diagnostic and exits
-  non-zero rather than degrading to a filesystem walk or reporting a clean tree. Backed by a test.
+- `` `invariant: prose-gate-refuses-without-git` ``: **with `proseGate.enabled` true**, outside a git
+  repository, or wherever the tracked-file set cannot be enumerated, `awf prose-gate` refuses with a
+  diagnostic and exits non-zero rather than degrading to a filesystem walk or reporting a clean tree.
+  Backed by a test.
+
+  The knob qualifier is load-bearing rather than throat-clearing, and it is the same one the
+  invariant above carries. Item 9 has the command check the knob **before** it enumerates, which is
+  what lets a hook invoke it unconditionally; so with the knob false and no git, the command exits
+  zero and refuses nothing. Stated unqualified, this invariant would be false of the implementation
+  item 9 specifies, and the ledger would carry a claim it cannot honour (ADR-0114).
 
 The property "awf's own tree contains no banned codepoint" is deliberately **not** declared. It is
 not what the invariants above check: they are backed by tests of the command's behaviour against
