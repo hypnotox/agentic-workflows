@@ -348,8 +348,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:f720edceefabf18bfd51110fde51f542de57927b5fe082b14ce82d89b54911fe",
-      "outputHash": "sha256:470bc8285a6515fab5424699562fcd281536c00aeb07819e24385551e1166607"
+      "configHash": "sha256:432d369cf5808c01cd5a80f3b3e3863466b652445dc299ee2dce9eecaece39c8",
+      "outputHash": "sha256:f6a5591c28d888f8ebdf935504d24e8704536cc3a99041295db5211d75f2bffe"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

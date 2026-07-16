@@ -343,7 +343,11 @@ ADR-0080 flip commit staged `docs/domains/rendering.md` (its part changed) but m
 index-only refresh of `docs/domains/tooling.md`, a gap the plan's file list and three review
 passes also missed, caught only by `git status` after the commit (2026-07-09). After the sync
 in a status-flip commit, stage from `git status`, not from a memorised file list; every
-`domains:` entry implies its rendered doc.
+`domains:` entry implies its rendered doc. The class recurred in ADR-0121's phase 1
+(2026-07-16: a configspec edit staged without the example adopter's regenerated config
+reference), so the `.githooks/pre-commit` staged-slice validation now drift-checks
+`examples/sundial` in the slice too - the deterministic net for every
+rendered-file-left-unstaged variant, repo and example alike.
 
 ## The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit
 

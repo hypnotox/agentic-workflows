@@ -93,3 +93,26 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 		t.Errorf("comment-wrapped unknown placeholder must strip cleanly:\n%s", out)
 	}
 }
+
+// The template seam end-to-end: the embedded adr-readme template carries a real
+// dogfooded touches-invariant authoring comment, so any regression in the
+// renderTarget strip wiring (which the render-layer unit tests cannot see)
+// leaks it into every scaffolded project's rendered README.
+// touches-invariant: authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
+func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", nil)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "awf:comment") {
+		t.Errorf("the embedded template's authoring comment leaked into rendered output:\n%s", b)
+	}
+}

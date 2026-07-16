@@ -15,8 +15,16 @@ if ! (cd "$tmp" && go build ./... >/dev/null); then
   echo "pre-commit: the staged slice does not build on its own - a foreign or missing hunk is staged" >&2
   exit 1
 fi
-if ! (cd "$tmp" && go run ./cmd/awf check >/dev/null); then
+(cd "$tmp" && go build -o awf-slice ./cmd/awf)
+if ! (cd "$tmp" && ./awf-slice check >/dev/null); then
   echo "pre-commit: the staged slice has drift - a rendered, lock, or config hunk is missing from the commit (run ./x sync and stage the result)" >&2
+  exit 1
+fi
+# The example adopter is part of the slice too: a template/configspec hunk whose
+# sundial re-render is left unstaged committed clean three times (a85bd6a, the
+# ADR-0080 flip, the ADR-0121 phase 1) before this check existed.
+if ! (cd "$tmp/examples/sundial" && ../../awf-slice check >/dev/null); then
+  echo "pre-commit: the staged slice has drift in examples/sundial - stage the example's re-rendered files and lock (run ./x sync and stage the result)" >&2
   exit 1
 fi
 exec bash .awf/hooks/pre-commit.sh "$@"
