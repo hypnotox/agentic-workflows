@@ -28,7 +28,7 @@ Terminal step of `sundial-proposing-adr`. Invoked once the ADR file is written a
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-adr/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `adr-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:

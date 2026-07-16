@@ -62,6 +62,62 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
+// invariant: pi-generic-review-dispatch
+func TestPiReviewDispatchUsesGenericRuntimeWording(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills:\n  - executing-plans\n  - retrospective\n  - reviewing-impl\n  - subagent-driven-development\nagents:\n  - code-reviewer\ntargets:\n  - pi\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var content string
+	for _, f := range files {
+		if f.Path == ".pi/skills/example-reviewing-impl/SKILL.md" {
+			content = f.Content
+		}
+	}
+	if !strings.Contains(content, "available reviewer or delegation mechanism") {
+		t.Fatalf("Pi review dispatch is not generic:\n%s", content)
+	}
+	for _, prohibited := range []string{"native subagent", "separate session", "separate from the implementer"} {
+		if strings.Contains(content, prohibited) {
+			t.Errorf("Pi review wording claims %q:\n%s", prohibited, content)
+		}
+	}
+}
+
+func TestAllTargetPathsAndBridges(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - codex\n  - copilot\n  - cursor\n  - gemini\n  - pi\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := map[string]bool{}
+	for _, f := range files {
+		paths[f.Path] = true
+	}
+	for _, want := range []string{"CLAUDE.md", "GEMINI.md"} {
+		if !paths[want] {
+			t.Errorf("missing bridge %q", want)
+		}
+	}
+	for _, absent := range []string{"CODEX.md", "COPILOT.md", "CURSOR.md", "PI.md"} {
+		if paths[absent] {
+			t.Errorf("unexpected bridge %q", absent)
+		}
+	}
+	if got := KnownTargets(); strings.Join(got, ",") != "claude,codex,copilot,cursor,gemini,pi" {
+		t.Fatalf("KnownTargets = %v", got)
+	}
+}
+
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(root)

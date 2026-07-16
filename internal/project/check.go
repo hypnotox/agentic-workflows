@@ -697,7 +697,7 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile, effective map[string]bool) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {
-		if isManagedMarkdown(f.TemplateID) {
+		if isManagedMarkdown(f.TemplateID) && !strings.HasSuffix(f.Path, ".toml") {
 			scan = append(scan, f)
 		}
 	}
@@ -726,7 +726,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds
 func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {
-		if isManagedMarkdown(f.TemplateID) {
+		if isManagedMarkdown(f.TemplateID) && !strings.HasSuffix(f.Path, ".toml") {
 			scan = append(scan, f)
 		}
 	}

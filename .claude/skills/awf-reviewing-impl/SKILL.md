@@ -29,12 +29,13 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
 3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
+
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The affected context (paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, backed invariants, and related ADRs without re-deriving them.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-impl/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `code-reviewer` agent returns. Route the classified findings by classification kind, not severity:

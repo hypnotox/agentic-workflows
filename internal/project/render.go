@@ -343,6 +343,7 @@ func nonNil(m map[string]any) map[string]any {
 type renderEncoding struct {
 	encode      func(string) (string, error)
 	bannerStyle render.CommentStyle
+	target      Target
 }
 
 type renderKindSpec struct {
@@ -409,11 +410,15 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 			}
 		}
 		data := p.data(sc)
+		if spec.target.Name != "" {
+			data["targetReviewStyle"] = string(spec.target.ReviewStyle)
+		}
 		var encoding *renderEncoding
 		if spec.encode != nil {
 			encoding = &renderEncoding{
 				encode:      func(body string) (string, error) { return spec.encode(name, body, data) },
 				bannerStyle: spec.target.agentCommentStyle(),
+				target:      spec.target,
 			}
 		}
 		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), encoding)
@@ -503,7 +508,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 			if t.BridgeFile == "" {
 				continue
 			}
-			brf, err := p.renderTarget("claude", "", bridgeTID,
+			brf, err := p.renderTarget("claude", "", t.BridgeTemplate,
 				nil, config.Sidecar{}, p.data(config.Sidecar{}), t.BridgeFile)
 			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
 				return nil, err
@@ -696,7 +701,11 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	} else {
 		content = injectBanner(content, tid)
 	}
-	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan))
+	var targetInput []Target
+	if encoding != nil {
+		targetInput = []Target{encoding.target}
+	}
+	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), targetInput...)
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}

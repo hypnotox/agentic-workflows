@@ -26,11 +26,12 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
-   - The absolute ADR path.
+{{ if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `adr-reviewer`.** Provide it a brief that includes:
+{{ else }}3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
+{{ end }}   - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->

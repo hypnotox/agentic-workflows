@@ -30,13 +30,15 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
+{{ if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `code-reviewer`.** Provide it a brief that includes:
+{{ else }}3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
+{{ end }}
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The affected context (paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, backed invariants, and related ADRs without re-deriving them.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->

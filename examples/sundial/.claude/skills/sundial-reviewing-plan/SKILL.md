@@ -33,7 +33,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - The affected context (collect the created/modified paths from the plan's file-structure header and paste the output of `awf context <those paths>`) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-plan/classify-route-findings.md to override -->
 4. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:

@@ -21,11 +21,12 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:edit dispatch-subagent-narrowed: default; create .awf/skills/parts/reviewing-plan-resync/dispatch-subagent-narrowed.md to override -->
 1. **Dispatch the `plan-reviewer` subagent in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most recently-modified file under `docs/plans/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
+
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:edit classify-route-findings: default; create .awf/skills/parts/reviewing-plan-resync/classify-route-findings.md to override -->
 2. **Surface the digest, then route the findings.** Display the digest the `plan-reviewer` agent returns to the user. Then route the classified findings by classification kind, not severity:

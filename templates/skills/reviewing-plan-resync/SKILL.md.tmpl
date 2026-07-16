@@ -20,12 +20,14 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 ## Procedure
 
 <!-- awf:section dispatch-subagent-narrowed -->
-1. **Dispatch the `plan-reviewer` subagent in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most recently-modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
+{{ if eq .targetReviewStyle "generic" }}1. **Use an available reviewer or delegation mechanism for `plan-reviewer` in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most-recently modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
+{{ else }}1. **Dispatch the `plan-reviewer` subagent in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most recently-modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
+{{ end }}
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
-   The agent handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the agent to edit, commit, or re-review.
+   The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
 <!-- awf:end -->
 
 <!-- awf:section classify-route-findings -->

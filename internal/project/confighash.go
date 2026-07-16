@@ -30,9 +30,12 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string) (string, error) {
+func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
+	if len(targets) != 0 {
+		proj["target"] = targets[0]
+	}
 	vs := map[string]any{}
 	for _, r := range refs {
 		vs[r] = p.Cfg.Vars[r]

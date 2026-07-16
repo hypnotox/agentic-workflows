@@ -17,15 +17,25 @@ const (
 	TOMLAgentDialect     AgentDialect = "toml"
 )
 
+// ReviewDispatchStyle names how a target directs a workflow to a reviewer.
+type ReviewDispatchStyle string
+
+const (
+	NativeReviewDispatch  ReviewDispatchStyle = "native"
+	GenericReviewDispatch ReviewDispatchStyle = "generic"
+)
+
 // Target places adapter (tool-specific) artifacts for one runtime. Neutral
 // artifacts (AGENTS.md, docs, domains) are not target-scoped (ADR-0016).
 type Target struct {
-	Name         string
-	SkillDir     string // dir holding rendered skills, e.g. ".claude/skills"
-	AgentDir     string // dir holding rendered agents, e.g. ".claude/agents"
-	AgentSuffix  string // agent filename suffix, including its extension
-	AgentDialect AgentDialect
-	BridgeFile   string // adapter bridge file at repo root, "" if none
+	Name           string
+	SkillDir       string // dir holding rendered skills, e.g. ".claude/skills"
+	AgentDir       string // dir holding rendered agents, e.g. ".claude/agents"
+	AgentSuffix    string // agent filename suffix, including its extension
+	AgentDialect   AgentDialect
+	BridgeFile     string // adapter bridge file at repo root, "" if none
+	BridgeTemplate string
+	ReviewStyle    ReviewDispatchStyle
 }
 
 // SkillPath is the output path for a rendered skill under this target.
@@ -52,12 +62,14 @@ func (t Target) agentCommentStyle() render.CommentStyle {
 // claudeTarget and cursorTarget are the built-in adapters. Adding a runtime is a
 // new Target value plus a registry entry, not a render-loop change (ADR-0037).
 var claudeTarget = Target{
-	Name:         "claude",
-	SkillDir:     ".claude/skills",
-	AgentDir:     ".claude/agents",
-	AgentSuffix:  ".md",
-	AgentDialect: MarkdownAgentDialect,
-	BridgeFile:   "CLAUDE.md",
+	Name:           "claude",
+	SkillDir:       ".claude/skills",
+	AgentDir:       ".claude/agents",
+	AgentSuffix:    ".md",
+	AgentDialect:   MarkdownAgentDialect,
+	BridgeFile:     "CLAUDE.md",
+	BridgeTemplate: bridgeTID,
+	ReviewStyle:    NativeReviewDispatch,
 }
 
 // cursorTarget renders to Cursor's SKILL.md/subagent layout. Cursor reads
@@ -69,6 +81,7 @@ var cursorTarget = Target{
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
 	BridgeFile:   "",
+	ReviewStyle:  NativeReviewDispatch,
 }
 
 var codexTarget = Target{
@@ -77,14 +90,47 @@ var codexTarget = Target{
 	AgentDir:     ".codex/agents",
 	AgentSuffix:  ".toml",
 	AgentDialect: TOMLAgentDialect,
+	ReviewStyle:  NativeReviewDispatch,
+}
+
+var piTarget = Target{
+	Name:         "pi",
+	SkillDir:     ".pi/skills",
+	AgentDir:     ".pi/skills",
+	AgentSuffix:  ".md",
+	AgentDialect: MarkdownAgentDialect,
+	ReviewStyle:  GenericReviewDispatch,
+}
+
+var geminiTarget = Target{
+	Name:           "gemini",
+	SkillDir:       ".gemini/skills",
+	AgentDir:       ".gemini/agents",
+	AgentSuffix:    ".md",
+	AgentDialect:   MarkdownAgentDialect,
+	BridgeFile:     "GEMINI.md",
+	BridgeTemplate: "gemini/GEMINI.md.tmpl",
+	ReviewStyle:    NativeReviewDispatch,
+}
+
+var copilotTarget = Target{
+	Name:         "copilot",
+	SkillDir:     ".github/skills",
+	AgentDir:     ".github/agents",
+	AgentSuffix:  ".agent.md",
+	AgentDialect: MarkdownAgentDialect,
+	ReviewStyle:  NativeReviewDispatch,
 }
 
 // targetRegistry maps an adapter name to its Target. It is the sole enumeration
 // of known adapters; resolveTargets rejects any name absent from it.
 var targetRegistry = map[string]Target{
-	"claude": claudeTarget,
-	"codex":  codexTarget,
-	"cursor": cursorTarget,
+	"claude":  claudeTarget,
+	"codex":   codexTarget,
+	"copilot": copilotTarget,
+	"cursor":  cursorTarget,
+	"gemini":  geminiTarget,
+	"pi":      piTarget,
 }
 
 // KnownTargets returns the known adapter names in sorted order. The bespoke

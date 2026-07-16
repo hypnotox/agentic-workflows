@@ -41,19 +41,19 @@
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:91e79d592356b1ff00d352fa43602d5dd47384fe5c6651c201853a4e97deb3a8",
-      "configHash": "sha256:20048d5bf54259c0e349bc6fd8d47154da377ba26e4b48e63abec55a3c12a433",
+      "configHash": "sha256:b5564a83197e9de635786c36027c9e2fc78d8501928f2b4b9c73eb11799796a1",
       "outputHash": "sha256:4573e09fd8bc2988453f484e929c165c65194b5fd96e9cfee707c2b92a60dd21"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:3d5dca6cb716149a634cbc8d6cb2776fdd4a9c8d4aa232627f3a7c2c618d0e7a",
-      "configHash": "sha256:c46785d1af11109a78485416bc6e8dd3ac5938b049f45a2877a2f1d3dd152a47",
+      "configHash": "sha256:905de6e575be990fd1e5835444f3e295c9da18a061138f43e86ec4724006a22a",
       "outputHash": "sha256:9a1638efc525e8cd7973853dd51c4b85caf7b8f8011ec56b5ecb7bdfdcf03a74"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
-      "configHash": "sha256:db707fa918408fd2e829e55f24831ffb5bc85de4c3128748c7fa607d2c373698",
+      "configHash": "sha256:d3aaea262a73ba37070435edaffd4a18401d94598406054f374e3daead98d8fe",
       "outputHash": "sha256:6de3aa850307122f2c83e05013e66e621502e448ca2c346e1b63d90a907e9284"
     },
     ".claude/skills/sundial-adr-lifecycle/SKILL.md": {
@@ -106,27 +106,27 @@
     },
     ".claude/skills/sundial-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:c24f840abbb3c35979514cee71d2be97a5eeabb83b72d2430923f945c9aa75a2",
+      "templateHash": "sha256:a4a00410d17ea037aa1adfdea78ba11dbfc8ccdcf9bd726f4f35a3e148c8af3e",
       "configHash": "sha256:0e8489d45b781fdf3173075159a23d464e58b3d6290ad7873fc1df9dfa59c033",
-      "outputHash": "sha256:b026a2bc977276ab6dda0b3c0a536939c59335cc84640259fe696f2d5fb54f80"
+      "outputHash": "sha256:8d7d14238cba3b1c69be57854526eb1cc174d3a375d9089343edc6fc53dceee5"
     },
     ".claude/skills/sundial-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:7b015040bbe469cc5672841dc2d6a62259f67717997715d624082052441fa134",
+      "templateHash": "sha256:23849d344ef56defb4cab22dc0a2f922d68114a00631ee84dd0690435502f984",
       "configHash": "sha256:6d8e7d574d9066196032d278a11773fe479ad93116a19cfb7795637be02460ca",
-      "outputHash": "sha256:feb7b49195a7a5f0c482b1f1a56b1a408e05a0e61579fa519398c3167cd7cc67"
+      "outputHash": "sha256:c3e980b420c58d6bb6fdd6055379f1a3b81da7887415398afc8cfab50b8e6756"
     },
     ".claude/skills/sundial-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
-      "templateHash": "sha256:4b55188859e10a9ea7ee499b265a68fa594f82e44c6e30f07624600e17fd5bd9",
+      "templateHash": "sha256:068bff3ad9994ae8959e86a991a7db049b463c8de9fec8a47032cafa4e122fe1",
       "configHash": "sha256:8d15a5fdaba65ea513f9bbc6571b981477b8f923a10dea0aee06bafa0dcb4238",
-      "outputHash": "sha256:d414b767e80d54b161d8d616152da6b6b2647bce974e5063bcb5d3697270bac2"
+      "outputHash": "sha256:ca0b5a45f16a41638705d837a22e1dec77ad06615f7f1ab57d0303428c86147e"
     },
     ".claude/skills/sundial-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
-      "templateHash": "sha256:22d27c38c3220b987c54d2950089ba0dc477a395e5449baeb432ab2bcd6cce6a",
+      "templateHash": "sha256:16fb3149c2bb63c83ae7cb7c912b29eb850accdac1b7e5a4ca3dc9611c181bbd",
       "configHash": "sha256:0e8489d45b781fdf3173075159a23d464e58b3d6290ad7873fc1df9dfa59c033",
-      "outputHash": "sha256:4ccbd8d2afd98cbe8bcc1ff33d125c0c62d7cd1ebfe311f4b754e8e8d0713254"
+      "outputHash": "sha256:5dd0d93b179b6f3cfaf349a1498406c7ee722fd80ba17158959f6cb1c2732dfe"
     },
     ".claude/skills/sundial-roadmap-graduation/SKILL.md": {
       "templateId": "skills/roadmap-graduation/SKILL.md.tmpl",
