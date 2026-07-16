@@ -124,6 +124,10 @@
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Implemented)
 - [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Implemented)
 
+## Proposed
+
+- [ADR-0123: Pi Workflow Subagent Extension](0123-pi-workflow-subagent-extension.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
@@ -169,3 +173,4 @@
 - ADR-0116: item 2 superseded by ADR-0120; item 5 superseded by ADR-0120
 - ADR-0117: item 5 superseded by ADR-0119
 - ADR-0118: item 1 superseded by ADR-0119; item 9 superseded by ADR-0119
+- ADR-0122: item 3 superseded by ADR-0123; item 4 superseded by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123

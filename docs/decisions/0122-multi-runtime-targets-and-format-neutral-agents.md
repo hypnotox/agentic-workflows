@@ -4,7 +4,7 @@ date: 2026-07-16
 supersedes: []
 superseded_by: ""
 tags: [multi-target, target-seam, template-overlay]
-related: [16, 37, 38, 68]
+related: [16, 37, 38, 68, 123]
 domains: [rendering, tooling]
 ---
 # ADR-0122: Multi-Runtime Targets and Format-Neutral Agents
