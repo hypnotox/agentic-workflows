@@ -699,6 +699,8 @@ Implementation findings (recorded at the freeze):
 - The Task 7.5 post-check grep forced two historical mentions of the removed key ("porting
   `retires_invariants:`") to be reworded as "the legacy ADR-0031 retirement frontmatter"; the key
   name stays documented in the invariants domain part, which the grep deliberately excludes.
+- Task 7.5 named four domain current-state parts; only adr-system and invariants carried a
+  retirement/supersedence narrative to rewrite, so the config and rendering parts are untouched.
 - Task 8.1's hand-review settled 25 tokens across 14 carriers, all into live targets, so the
   expected advisory-note set is empty. Skipped-site classes beyond the plan's three exclusions:
   an overridden *invariant whose slug survives declared and backed* (0020's, 0023's, 0059's,
@@ -707,7 +709,6 @@ Implementation findings (recorded at the freeze):
   living outside the Decision section (0089's in Context, 0028's in Consequences - a token there
   is inert), a textual invariant with no slug (0015 -> ADR-0001 Invariants bullet 1), and a
   citation with no enumerable anchor (0023 -> ADR-0003's textual setup contracts).
-- Of Task 8.2's ten deferred edges, five had already landed via the Phase 4 migration
-  (23<-32, 30<-49, 104<-106, and the two 104-adjacent edges) and two via Task 8.1's token
-  back-pointers (7<-8, 39<-76, 16<-76 among them); only 3<-30, 1<-45, and 11<-89 needed manual
-  backfill.
+- Of Task 8.2's ten deferred edges, seven had already arrived: three via the Phase 4 migration
+  (23<-32, 30<-49, 104<-106) and four via Task 8.1's token back-pointers (8<-105, 7<-8, 39<-76,
+  16<-76); only 3<-30, 1<-45, and 11<-89 needed manual backfill.
