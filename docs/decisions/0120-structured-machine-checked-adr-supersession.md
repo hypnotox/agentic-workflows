@@ -206,7 +206,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
 - `invariant: upgrade-migrates-retirements` - the generation-10 migration strips the
   `retires_invariants` key from every ADR under the configured docs dir and appends, to each
   ADR that had a non-empty list, one bookkeeping Decision item whose tokens name each retired
-  slug's declaring ADR.
+  slug's declaring ADR; it inserts the carrier's number into each target's `related:` when
+  absent, and fails naming the carrier and slug when a retired slug resolves to no declaring
+  ADR.
 - `invariant: active-md-supersedence-rendering` - ACTIVE.md renders every full-supersession
   chain and an annotation on each live ADR that has a superseded anchor.
 - `invariant: context-annotates-superseded-anchors` - `awf context` output marks a surfaced
@@ -218,9 +220,10 @@ renders no such thing. That drift is repaired by making the claim true rather th
   is a strictness increase on every adopter: corpora with asymmetric full supersessions, missing
   back-pointers on tokenized citations, or leftover `retires_invariants:` keys fail `awf check`
   after upgrading. The migration handles the key mechanically and writes the back-pointers its
-  own tokens owe, so an upgraded corpus passes the new checks as-is; beyond that, back-pointers
-  and tokens only fail where an adopter chooses to write tokens, since freeform prose citations
-  stay inert.
+  own tokens owe, so the migration's own output passes the checks it accompanies; a corpus with
+  an asymmetric full-supersession record still fails item 3's check and is repaired by hand.
+  Beyond that, back-pointers and tokens only fail where an adopter chooses to write tokens,
+  since freeform prose citations stay inert.
 - The append-only rule is no longer absolute. The carve-out is deliberately narrow (three
   enumerated edit shapes, all meaning-preserving), but it is a real weakening: reviewers must
   now distinguish encoding edits from content edits when a diff touches a frozen body.
