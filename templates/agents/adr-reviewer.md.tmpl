@@ -1,10 +1,3 @@
----
-name: adr-reviewer
-description: >
-  Independent, lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.
-  Returns structured findings per the shared review-discipline spine.
----
-
 # adr-reviewer
 
 Independent, lens-diverse reviewer for ADRs under `{{ .layout.adrDir }}/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.

@@ -86,6 +86,9 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- Codex is now a selectable target for agent artifacts: it renders skills under
+  `.agents/skills/` and validated custom-agent profiles under `.codex/agents/` as
+  TOML with `name`, `description`, and `developer_instructions` fields.
 - Whole-line `<!-- awf:comment ... -->` authoring comments in templates and convention parts
   (ADR-0121): stripped at render with their newline, so parts and templates can carry
   internal notes and `touches-invariant:` tags that never reach rendered output. Whole-line

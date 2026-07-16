@@ -112,9 +112,11 @@ var Standard = &Catalog{
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},
 	},
-	Agents: map[string]TargetSpec{
+	Agents: map[string]AgentSpec{
 		"adr-reviewer": {
-			Sections: []string{"universal-lenses", "project-focus", "doc-currency"},
+			Name:        "adr-reviewer",
+			Description: "Independent, lens-diverse reviewer for ADRs under {{ .layout.adrDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
+			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
 			Data: map[string]any{
 				"focusItems": []any{
 					map[string]any{"name": "decision-clarity", "description": "each Decision item is a discrete, implementable commitment a reader could act on without further consultation"},
@@ -133,6 +135,8 @@ var Standard = &Catalog{
 			},
 		},
 		"plan-reviewer": {
+			Name:           "plan-reviewer",
+			Description:    "Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
 			Sections:       []string{"universal-lenses", "project-focus", "doc-currency", "resync-note"},
 			RequiresSkills: []string{"reviewing-plan-resync"},
 			Data: map[string]any{
@@ -150,7 +154,9 @@ var Standard = &Catalog{
 			},
 		},
 		"code-reviewer": {
-			Sections: []string{"universal-lenses", "project-focus", "doc-currency"},
+			Name:        "code-reviewer",
+			Description: "Independent fresh-context reviewer for {{ .prefix }} implementation diffs, covering correctness, plan-adherence, testing discipline, doc currency, and convention alignment.",
+			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
 			Data: map[string]any{
 				"correctnessTraps": []any{
 					map[string]any{"description": "error paths: every returned error is checked or explicitly ignored with a stated reason"},

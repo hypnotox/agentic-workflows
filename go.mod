@@ -3,6 +3,7 @@ module github.com/hypnotox/agentic-workflows
 go 1.26
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/go-git/go-billy/v5 v5.9.0
 	github.com/go-git/go-git/v5 v5.19.1
@@ -26,7 +27,6 @@ require (
 	github.com/Antonboom/errname v1.1.1 // indirect
 	github.com/Antonboom/nilnil v1.1.1 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/ClickHouse/clickhouse-go-linter v1.2.0 // indirect
 	github.com/Djarvur/go-err113 v0.1.1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect

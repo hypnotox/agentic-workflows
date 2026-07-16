@@ -60,7 +60,7 @@ func TestKindAccessors(t *testing.T) {
 	}
 	cat := &catalog.Catalog{
 		Skills:    map[string]catalog.SkillSpec{"tdd": {Sections: []string{"a"}}},
-		Agents:    map[string]catalog.TargetSpec{"rev": {Sections: []string{"b"}}},
+		Agents:    map[string]catalog.AgentSpec{"rev": {Name: "rev", Description: "reviewer", Sections: []string{"b"}}},
 		Docs:      map[string]catalog.DocEntry{"arch": {Sections: []string{"c"}, TID: "docs/arch.md.tmpl"}},
 		DomainDoc: catalog.TargetSpec{Sections: []string{"d"}},
 	}

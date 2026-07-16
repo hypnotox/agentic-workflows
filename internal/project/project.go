@@ -114,8 +114,8 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	}
 	for _, f := range files {
 		if isSkillOrAgent(f.TemplateID) {
-			if err := validateFrontmatter([]byte(f.Content)); err != nil { // coverage-ignore: rendered catalog skill/agent frontmatter is template-fixed (non-empty name/description guaranteed by inv templates-valid-frontmatter); it cannot be invalid at sync time
-				return nil, nil, nil, fmt.Errorf("invalid frontmatter in %s: %w", f.Path, err)
+			if err := validateArtifact([]byte(f.Content), f.Path); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
+				return nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path, err)
 			}
 		}
 	}

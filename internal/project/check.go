@@ -378,7 +378,17 @@ func (p *Project) localOutPaths(kind, name string) []string {
 	return paths
 }
 
-// checkLocalFrontmatter validates the on-disk frontmatter of every declared local
+// validateArtifact validates the target-native syntax of a rendered skill or
+// agent. TOML paths are Codex profiles; all other current skill/agent paths use
+// YAML-frontmatter Markdown.
+func validateArtifact(content []byte, path string) error {
+	if strings.HasSuffix(path, ".toml") {
+		return validateTOMLAgent(content)
+	}
+	return validateFrontmatter(content)
+}
+
+// checkLocalFrontmatter validates the on-disk syntax of every declared local
 // skill/agent at its conventional output path. fail wraps a path+error into the
 // caller's accumulator (a hard error for Sync, a drift entry for Check).
 func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error {
@@ -402,7 +412,7 @@ func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error
 					fail(rel, fmt.Errorf("local %s file absent", d.Singular))
 					continue
 				}
-				if err := validateFrontmatter(b); err != nil {
+				if err := validateArtifact(b, rel); err != nil {
 					fail(rel, err)
 				}
 			}
@@ -626,7 +636,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate
 		// to the hash kinds above - a re-sync is the fix for those).
 		if isSkillOrAgent(rf.TemplateID) {
-			if err := validateFrontmatter(onDisk); err != nil {
+			if err := validateArtifact(onDisk, path); err != nil {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()})
 			}
 		}

@@ -62,8 +62,11 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := synthesizeLocals(p, cat.Agents, p.Cfg.Agents, "agents", func(n string) catalog.TargetSpec {
-		return catalog.TargetSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}
+	if err := synthesizeLocals(p, cat.Agents, p.Cfg.Agents, "agents", func(n string) catalog.AgentSpec {
+		return catalog.AgentSpec{
+			Name: n, Description: "{{ with .data.description }}{{ . }}{{ else }}A project-local {{ $.prefix }} agent.{{ end }}",
+			Base: true, Sections: []string{"content"}, Data: localData(n),
+		}
 	}); err != nil {
 		return nil, err
 	}

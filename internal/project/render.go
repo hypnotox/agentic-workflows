@@ -340,6 +340,11 @@ func nonNil(m map[string]any) map[string]any {
 // and sections derive from the artifact name; outPath also takes the adapter
 // target (ignored by neutral kinds like docs); target is the adapter this pass
 // renders for (zero for neutral kinds).
+type renderEncoding struct {
+	encode      func(string) (string, error)
+	bannerStyle render.CommentStyle
+}
+
 type renderKindSpec struct {
 	kind     string
 	names    []string
@@ -353,6 +358,9 @@ type renderKindSpec struct {
 	// merge, upstream of BOTH renderTarget and artifactConfigHash so the
 	// computation participates in the drift signal (ADR-0089; nil = none).
 	transform func(name string, sc config.Sidecar) (config.Sidecar, error)
+	// encode projects the rendered instruction body into an output dialect before
+	// provenance injection (nil leaves ordinary skill/doc rendering unchanged).
+	encode func(name, body string, data map[string]any) (string, error)
 }
 
 // skillTID resolves a skill's template id: the shared base template for a
@@ -400,7 +408,15 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 				return nil, err
 			}
 		}
-		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, p.data(sc), spec.outPath(spec.target, name))
+		data := p.data(sc)
+		var encoding *renderEncoding
+		if spec.encode != nil {
+			encoding = &renderEncoding{
+				encode:      func(body string) (string, error) { return spec.encode(name, body, data) },
+				bannerStyle: spec.target.agentCommentStyle(),
+			}
+		}
+		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), encoding)
 		if err != nil {
 			return nil, err
 		}
@@ -446,6 +462,9 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 				sections: func(n string) []string { return p.Cat.Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
 				defaults: func(n string) map[string]any { return p.Cat.Agents[n].Data },
+				encode: func(n, body string, data map[string]any) (string, error) {
+					return p.encodeAgent(t, n, body, data)
+				},
 			},
 		} {
 			rfs, err := p.renderKind(spec)
@@ -621,7 +640,11 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
-func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string) (RenderedFile, error) {
+func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, encodings ...*renderEncoding) (RenderedFile, error) {
+	var encoding *renderEncoding
+	if len(encodings) != 0 {
+		encoding = encodings[0]
+	}
 	src, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
@@ -659,10 +682,20 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	if encoding != nil {
+		content, err = encoding.encode(content)
+		if err != nil {
+			return RenderedFile{}, fmt.Errorf("render %s: encode artifact: %w", tid, err)
+		}
+	}
 	if strings.Contains(content, "<no value>") {
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\"; a referenced var or data key is unset", outPath)
 	}
-	content = injectBanner(content, tid)
+	if encoding != nil {
+		content = injectBanner(content, tid, encoding.bannerStyle)
+	} else {
+		content = injectBanner(content, tid)
+	}
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan))
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
@@ -680,6 +713,24 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 	}, nil
+}
+
+// encodeAgent renders catalog metadata with normal template data and combines it
+// with the independently section-rendered instruction body in the target dialect.
+func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) (string, error) {
+	description, err := render.Execute(p.Cat.Agents[name].Description, data, nil, "agent description")
+	if err != nil {
+		return "", err
+	}
+	a := agent{Name: p.Cat.Agents[name].Name, Description: description, Body: body}
+	switch t.AgentDialect {
+	case MarkdownAgentDialect:
+		return encodeMarkdownAgent(a)
+	case TOMLAgentDialect:
+		return encodeTOMLAgent(a)
+	default:
+		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
+	}
 }
 
 // generateActiveMD renders the ADR index for the project's decisions directory.

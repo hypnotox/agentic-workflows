@@ -4,9 +4,8 @@ package catalog
 import "slices"
 
 // TargetSpec declares the render sections of a target that has no further
-// per-target configuration (agents and the domain doc). Data carries the
-// artifact's default render data; sidecars override it per top-level key
-// (ADR-0045).
+// per-target configuration (the domain doc). Data carries the artifact's
+// default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
 	Sections []string `yaml:"sections"`
 	// Base marks a synthesized project-local agent (ADR-0068); see SkillSpec.Base.
@@ -17,6 +16,18 @@ type TargetSpec struct {
 	// unit"). Declarations are exact: the template test sweep fails on an
 	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
 	// not gated validation - promoting it to enable/disable pairing UX is deferred.
+	RequiresSkills []string       `yaml:"requiresSkills"`
+	Data           map[string]any `yaml:"data"`
+}
+
+// AgentSpec declares an output-format-neutral agent. Name is literal while
+// Description is a normally rendered template fragment; the instruction body
+// comes from the section-rendered agent template.
+type AgentSpec struct {
+	Name           string
+	Description    string
+	Sections       []string       `yaml:"sections"`
+	Base           bool           `yaml:"base"`
 	RequiresSkills []string       `yaml:"requiresSkills"`
 	Data           map[string]any `yaml:"data"`
 }
@@ -119,9 +130,9 @@ type VarDescriptor struct {
 }
 
 type Catalog struct {
-	Skills    map[string]SkillSpec  `yaml:"skills"`
-	Agents    map[string]TargetSpec `yaml:"agents"`
-	DomainDoc TargetSpec            `yaml:"domainDoc"`
-	Docs      map[string]DocEntry   `yaml:"docs"`
-	Vars      []VarDescriptor       `yaml:"vars"`
+	Skills    map[string]SkillSpec `yaml:"skills"`
+	Agents    map[string]AgentSpec `yaml:"agents"`
+	DomainDoc TargetSpec           `yaml:"domainDoc"`
+	Docs      map[string]DocEntry  `yaml:"docs"`
+	Vars      []VarDescriptor      `yaml:"vars"`
 }

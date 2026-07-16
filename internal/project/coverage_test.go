@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -254,6 +255,20 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 // render.Execute error branches are unit-tested directly in internal/render.
 
 // --- renderTarget: template-read error (direct) ---
+
+func TestRenderTargetEncoderError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc := config.Sidecar{}
+	if _, err := p.renderTarget("memory", "", memoryTID, nil, sc, p.data(sc), ".awf/memory/.gitignore", &renderEncoding{encode: func(string) (string, error) {
+		return "", errors.New("encode failure")
+	}}); err == nil {
+		t.Fatal("expected renderTarget to return the encoder error")
+	}
+}
 
 func TestRenderTargetMissingTemplate(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")

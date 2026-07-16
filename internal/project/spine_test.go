@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -77,7 +78,16 @@ func assertNoLeaks(t *testing.T, out string) {
 
 func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
 	t.Helper()
-	return renderGolden(t, "agents/"+name+".md.tmpl", data)
+	body := renderGolden(t, "agents/"+name+".md.tmpl", data)
+	description, err := render.Execute(catalog.Standard.Agents[name].Description, data, nil, "agent description")
+	if err != nil {
+		t.Fatalf("render agent description: %v", err)
+	}
+	out, err := encodeMarkdownAgent(agent{Name: catalog.Standard.Agents[name].Name, Description: description, Body: body})
+	if err != nil {
+		t.Fatalf("encode agent: %v", err)
+	}
+	return out
 }
 
 func TestAdrReviewerAgent(t *testing.T) {
@@ -933,8 +943,7 @@ var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "agents/_base.md.tmpl",
 		want: []string{
-			"name: local-agent",
-			"A project-local example agent.",
+			"# local-agent",
 			"Describe this agent's role",
 		},
 		ban: []string{"<no value>"},

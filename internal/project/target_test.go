@@ -23,6 +23,45 @@ func TestClaudeTargetPaths(t *testing.T) {
 }
 
 // invariant: claude-md-bridge
+// invariant: target-dialect-render
+func TestCodexTargetRendersTOMLAgents(t *testing.T) {
+	if got := codexTarget.AgentPath("code-reviewer"); got != ".codex/agents/code-reviewer.toml" {
+		t.Fatalf("Codex AgentPath = %q", got)
+	}
+	root := scaffold(t, sampleYAML+"targets:\n  - codex\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *RenderedFile
+	for i := range files {
+		if files[i].Path == ".codex/agents/code-reviewer.toml" {
+			got = &files[i]
+		}
+	}
+	if got == nil {
+		t.Fatal("Codex agent not rendered")
+	}
+	if err := validateArtifact([]byte(got.Content), got.Path); err != nil {
+		t.Fatalf("validate Codex profile: %v\n%s", err, got.Content)
+	}
+	if !strings.HasPrefix(got.Content, "# "+bannerText+"\n") {
+		t.Fatalf("Codex profile missing TOML banner:\n%s", got.Content)
+	}
+	if !strings.Contains(got.Content, "developer_instructions") {
+		t.Fatalf("Codex profile missing instructions:\n%s", got.Content)
+	}
+	for _, f := range files {
+		if f.TemplateID == "skills/tdd/SKILL.md.tmpl" && f.Path != ".agents/skills/example-tdd/SKILL.md" {
+			t.Fatalf("Codex skill path = %q", f.Path)
+		}
+	}
+}
+
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(root)

@@ -28,19 +28,19 @@
     },
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
-      "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
+      "templateHash": "sha256:91e79d592356b1ff00d352fa43602d5dd47384fe5c6651c201853a4e97deb3a8",
       "configHash": "sha256:8cfe8ec20b46f5e522ff9c58a2bfb1fa544544fdccce277292886ecaad8c3e20",
       "outputHash": "sha256:80b38f184cdd24ae31b031629ff1d025efa2cd8e299bffa3df096be97ed7d902"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
-      "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
+      "templateHash": "sha256:3d5dca6cb716149a634cbc8d6cb2776fdd4a9c8d4aa232627f3a7c2c618d0e7a",
       "configHash": "sha256:965f74236dff9daac6674bc0bc453cda7e26783ec359331945b2e9636db2b871",
       "outputHash": "sha256:73db060f391ef22dca4c8b3009d3a836833317a45753d9f9f766f3af3d39bd0a"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
+      "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
       "configHash": "sha256:11b31b42598eb8e5b96b627e5c82e9e692ea9634ebd2d27aa97ba9191c035efd",
       "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
     },
@@ -136,19 +136,19 @@
     },
     ".cursor/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
-      "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
+      "templateHash": "sha256:91e79d592356b1ff00d352fa43602d5dd47384fe5c6651c201853a4e97deb3a8",
       "configHash": "sha256:8cfe8ec20b46f5e522ff9c58a2bfb1fa544544fdccce277292886ecaad8c3e20",
       "outputHash": "sha256:80b38f184cdd24ae31b031629ff1d025efa2cd8e299bffa3df096be97ed7d902"
     },
     ".cursor/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
-      "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
+      "templateHash": "sha256:3d5dca6cb716149a634cbc8d6cb2776fdd4a9c8d4aa232627f3a7c2c618d0e7a",
       "configHash": "sha256:965f74236dff9daac6674bc0bc453cda7e26783ec359331945b2e9636db2b871",
       "outputHash": "sha256:73db060f391ef22dca4c8b3009d3a836833317a45753d9f9f766f3af3d39bd0a"
     },
     ".cursor/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
+      "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
       "configHash": "sha256:11b31b42598eb8e5b96b627e5c82e9e692ea9634ebd2d27aa97ba9191c035efd",
       "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
     },

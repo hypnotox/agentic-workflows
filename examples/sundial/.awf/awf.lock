@@ -40,19 +40,19 @@
     },
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
-      "templateHash": "sha256:52aa259684458c9cec54ebf980eeebae9549ce02751a191a82998a84ba662119",
+      "templateHash": "sha256:91e79d592356b1ff00d352fa43602d5dd47384fe5c6651c201853a4e97deb3a8",
       "configHash": "sha256:20048d5bf54259c0e349bc6fd8d47154da377ba26e4b48e63abec55a3c12a433",
       "outputHash": "sha256:4573e09fd8bc2988453f484e929c165c65194b5fd96e9cfee707c2b92a60dd21"
     },
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
-      "templateHash": "sha256:ccb35e7f0fe7c558566451d3850d18d0f766cf66a53b1f9360f41e1c96fe88ea",
+      "templateHash": "sha256:3d5dca6cb716149a634cbc8d6cb2776fdd4a9c8d4aa232627f3a7c2c618d0e7a",
       "configHash": "sha256:c46785d1af11109a78485416bc6e8dd3ac5938b049f45a2877a2f1d3dd152a47",
       "outputHash": "sha256:9a1638efc525e8cd7973853dd51c4b85caf7b8f8011ec56b5ecb7bdfdcf03a74"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
-      "templateHash": "sha256:8f30c7947856fc338d47e27adbadc8ff7df357dc349d813bfad9a96e59c53a43",
+      "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
       "configHash": "sha256:db707fa918408fd2e829e55f24831ffb5bc85de4c3128748c7fa607d2c373698",
       "outputHash": "sha256:6de3aa850307122f2c83e05013e66e621502e448ca2c346e1b63d90a907e9284"
     },

@@ -12,10 +12,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// TestAllTemplatesProduceValidFrontmatter renders every catalog skill and agent
-// template with a minimal-adopter data set (prefix + every referenced var seeded
-// empty + full layout) and asserts the frontmatter parses with non-empty
-// name/description and no leaked <no value> token.
+// TestAllTemplatesProduceValidFrontmatter renders every catalog skill template
+// with a minimal-adopter data set (prefix + every referenced var seeded empty +
+// full layout) and asserts the frontmatter parses with non-empty name/description
+// and no leaked <no value> token. Agent metadata is encoded separately.
 // invariant: templates-valid-frontmatter
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	cat := catalog.Standard
@@ -71,8 +71,5 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	}
 	for name, spec := range cat.Skills {
 		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
-	}
-	for name := range cat.Agents {
-		check(fmt.Sprintf("agents/%s.md.tmpl", name), "")
 	}
 }
