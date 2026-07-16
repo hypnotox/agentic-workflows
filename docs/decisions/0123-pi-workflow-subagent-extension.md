@@ -49,7 +49,10 @@ lane with a low steady-state cost.
    targets render no such output. TypeScript uses `//` provenance comments.
    Extension descriptor data participates explicitly in config hashes, and the
    files join the normal planned-output, manifest drift, stale cleanup, sync,
-   and uninstall ownership model. This replaces the orchestration deferral in
+   and uninstall ownership model. Every new extension and target-specific skill
+   template preserves awf's `missingkey=zero` publication-safety contract: empty
+   variables render coherent generic output and no unresolved-value token.
+   This replaces the orchestration deferral in
    ADR-0122. `supersedes: ADR-0122#4`
 
 2. Register exactly three workflow-focused public tools backed by one private
@@ -61,7 +64,11 @@ lane with a low steady-state cost.
      implementation, with `allowCommits` required.
    The review kind is a stable closed enum mapped to the rendered
    `adr-reviewer`, `plan-reviewer`, and `code-reviewer` Pi skill bodies.
-   Arbitrary project-local skills or agents are not inferred as reviewers.
+   Arbitrary project-local skills or agents are not inferred as reviewers. If
+   the mapped reviewer is absent from a reduced agent set, invocation fails
+   before spawning with an actionable error naming the missing file and
+   directing the adopter to enable the matching agent and run `awf sync`; public
+   contract tests cover all three missing-reviewer cases.
 
 3. Adapt Pi's subprocess example rather than embedding in-process SDK sessions
    or depending on a separately installed package. Each call starts the current
@@ -125,7 +132,7 @@ lane with a low steady-state cost.
 
 8. Implementation updates the generated AGENTS.md and its source identity part,
    architecture, development, testing, working-with-awf and target guidance,
-   README and release notes where applicable, rendering/tooling current-state
+   README, `CHANGELOG.md`, rendering/tooling current-state
    docs, and the completed roadmap entry in the same commits as behavior. The
    final ADR status change runs `./x sync` and commits regenerated `ACTIVE.md`
    and domain indexes. No `docs/decisions/README.md` index row is owed: it is a
@@ -193,7 +200,7 @@ lane with a low steady-state cost.
 | Alternative | Why not chosen |
 |---|---|
 | One generic subagent tool | A role switch centralizes the API but gives weaker model steering and mixes incompatible permission contracts in one schema. |
-| Three public tools with one shared runner | Chosen: explicit schemas and permission intent with no duplication of process machinery. |
+| Three public tools with one shared runner | Chosen: explicit schemas and permission intent outweigh maintaining three public schemas and a broader tool API, while shared process machinery avoids implementation duplication. |
 | In-process Pi SDK sessions | Lower startup overhead, but weaker process isolation and substantially more resource-loader, extension-recursion, and lifecycle coupling. |
 | Depend on an external generic Pi package | Makes the workflow non-self-contained and introduces package/version coordination around awf-owned reviewer paths and semantics. |
 | Temporary worktree per implementation child | Stronger checkout isolation, but adds branch, merge, conflict, and cleanup policy that contradicts the existing sequential per-task commit workflow. |
