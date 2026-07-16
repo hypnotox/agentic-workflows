@@ -228,22 +228,24 @@ so the dead-code gate passes.
   `internal/project/supersession.go`, fill the aggregator:
 
   ```go
-  // checkSupersessionAll runs the ADR-0120 corpus checks: Decision format,
-  // full-supersession three-way symmetry, token ref validity, partial
-  // back-pointers, and flavour exclusivity, plus the two advisory notes.
-  func (p *Project) checkSupersessionAll() ([]manifest.Drift, []string, error) {
+  // checkSupersessionAll runs the drift half of the ADR-0120 corpus checks:
+  // Decision format, full-supersession three-way symmetry, token ref validity,
+  // partial back-pointers, and flavour exclusivity. The advisory-note half is
+  // supersessionNotes' (AdvisoryNotes' source); both consume computeSupersession.
+  func (p *Project) checkSupersessionAll() ([]manifest.Drift, error) {
   	adrs, err := adr.ParseDir(p.decisionsDir())
   	if err != nil { // reachable via a direct call over a malformed ADR; pre-empted inside full Check()
-  		return nil, nil, err
+  		return nil, err
   	}
   	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
   	drift := p.checkDecisionFormat(adrs, rel)
-  	d2, notes := p.checkSupersession(adrs, rel)
-  	return append(drift, d2...), notes, nil
+  	d2, _ := computeSupersession(adrs, rel)
+  	return append(drift, d2...), nil
   }
   ```
 
-  `checkSupersession` implements, over one pass with `byNum map[string]adr.ADR` and an
+  `computeSupersession(adrs, rel) ([]manifest.Drift, []string)` implements, over one pass with
+  `byNum map[string]adr.ADR` and an
   `add(a, kind, detail)` helper appending `manifest.Drift{Path: rel + "/" + a.Filename, ...}`:
 
   - **Full symmetry (`Kind: "adr-supersession"`):** for each `a.Supersedes` entry `n`
@@ -274,8 +276,7 @@ so the dead-code gate passes.
   corpus checks' existing per-check parse pattern.
 
 - [ ] **Task 2.3: Tests.** In `internal/project/supersession_test.go`, fixture corpora via
-  `internal/testsupport` ADR builders - extend them with `WithSupersedes([]int)` and a
-  Decision-body option if none exists - covering: symmetric full pair passes; each one-sided
+  `internal/testsupport` ADR builders, covering: symmetric full pair passes; each one-sided
   form fails; two full claimants fail; dangling item ref, out-of-range item, unknown slug, and
   Proposed target each fail; live target without back-pointer fails, with back-pointer passes;
   token plus frontmatter into one target fails; token into a Superseded target yields a note and
