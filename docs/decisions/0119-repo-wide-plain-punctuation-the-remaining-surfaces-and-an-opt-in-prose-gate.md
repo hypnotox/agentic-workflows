@@ -351,7 +351,7 @@ situation after ADR-0118; and because the maintainer has since required exactly 
   knob is false. An exemption with a pinned `count` fails when the file's count for that codepoint
   differs; an exemption without one permits any count. Backed by a test.
 
-- `` `invariant: prose-gate-refuses-without-git` ``: **with `proseGate.enabled` true**, outside a git
+- `` `invariant: prose-gate-refuses-without-git` ``: with `proseGate.enabled` true, outside a git
   repository, or wherever the tracked-file set cannot be enumerated, `awf prose-gate` refuses with a
   diagnostic and exits non-zero rather than degrading to a filesystem walk or reporting a clean tree.
   Backed by a test.
