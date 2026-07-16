@@ -1,7 +1,7 @@
 # Deterministic mutation-testing config for `./x mutants` (ADR-0066). Integration
 # mode + a single worker + a generous timeout coefficient drive per-mutant timeouts
 # to zero on this sub-second suite, so verdicts are reproducible. Keys MUST nest
-# under `unleash:` — a flat file is silently ignored by viper. Trust a run only when
+# under `unleash:` - a flat file is silently ignored by viper. Trust a run only when
 # it reports `Timed out: 0`.
 unleash:
   integration: true

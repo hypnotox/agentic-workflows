@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Repo wiring for the rendered pre-commit payload, plus a repo-local staged-slice
 # validation: concurrent sessions share this worktree's index, and a commit is a
-# slice of the index while the payload below validates the worktree — a
+# slice of the index while the payload below validates the worktree - a
 # cross-session or partial-staging accident can therefore land a commit that, on
 # its own, does not BUILD (bit the ADR-0088 session) or is DRIFT-inconsistent (a
-# rendered/lock hunk left unstaged; bit commit a85bd6a — HEAD's `./x check`
+# rendered/lock hunk left unstaged; bit commit a85bd6a - HEAD's `./x check`
 # failed while the worktree was clean). Build AND drift-check the exact staged
 # slice in a throwaway checkout so a non-hermetic or drifted commit refuses here.
 set -euo pipefail
@@ -12,11 +12,11 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git checkout-index --prefix="$tmp/" -a
 if ! (cd "$tmp" && go build ./... >/dev/null); then
-  echo "pre-commit: the staged slice does not build on its own — a foreign or missing hunk is staged" >&2
+  echo "pre-commit: the staged slice does not build on its own - a foreign or missing hunk is staged" >&2
   exit 1
 fi
 if ! (cd "$tmp" && go run ./cmd/awf check >/dev/null); then
-  echo "pre-commit: the staged slice has drift — a rendered, lock, or config hunk is missing from the commit (run ./x sync and stage the result)" >&2
+  echo "pre-commit: the staged slice has drift - a rendered, lock, or config hunk is missing from the commit (run ./x sync and stage the result)" >&2
   exit 1
 fi
 exec bash .awf/hooks/pre-commit.sh "$@"

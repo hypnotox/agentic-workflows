@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Command runner for the awf repo — the single entry point for repo interactions.
+# Command runner for the awf repo - the single entry point for repo interactions.
 # Usage: ./x <command> [args]
 set -euo pipefail
 
@@ -58,7 +58,7 @@ case "$cmd" in
     fi
     printf '%s\n' "$out"
     if grep -q '^note: ' <<<"$out"; then
-      echo "check: the example adopter has advisory notes — author the missing content or clear the smell (ADR-0090)" >&2
+      echo "check: the example adopter has advisory notes - author the missing content or clear the smell (ADR-0090)" >&2
       exit 1
     fi
     (cd examples/sundial && "$bindir/awf" invariants)
@@ -105,7 +105,7 @@ case "$cmd" in
     go run ./cmd/mutants "$tmp"
     ;;
   audit-local)
-    # Repo-local conformance audit (ADR-0073) — repo-specific, NOT part of the shipped
+    # Repo-local conformance audit (ADR-0073) - repo-specific, NOT part of the shipped
     # awf audit. Default range origin/main..HEAD; pass <base>..<head> to scope it (the
     # reviewing-impl override passes the review's session range). Never wired into ./x gate.
     go run ./cmd/repoaudit "$@"

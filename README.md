@@ -65,12 +65,12 @@ agents into `.cursor/` (`awf enable target cursor`); Cursor reads `AGENTS.md` na
 ## How it works
 
 ```
-.awf/  (you commit this)          rendered output (awf writes & tracks this)
-├── config.yaml   enable arrays   ├── AGENTS.md            agent guide
-│                 + vars          ├── CLAUDE.md            imports AGENTS.md
-├── <kind>/<name>.yaml  sidecars  ├── .claude/skills/…     workflow skills
-├── <kind>/parts/…/…    overrides ├── .claude/agents/…     review agents
-└── parts/<name>/…    singletons  └── docs/…               project docs
+.awf/  (you commit this)            rendered output (awf writes & tracks this)
+├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
+│                 + vars            ├── CLAUDE.md            imports AGENTS.md
+├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
+├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
+└── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
 You change the config and run `awf sync`; you never hand-edit a rendered file.

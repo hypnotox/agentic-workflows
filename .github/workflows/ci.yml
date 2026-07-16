@@ -27,11 +27,11 @@ jobs:
         run: go test ./... -coverpkg=./... -coverprofile=coverage.out
       - name: Filtered coverage profile (coverage-ignore blocks dropped)
         run: go run ./cmd/covercheck --emit-filtered coverage.out > coverage.covered.out
-      # disable_search so each flag uploads ONLY its named file — otherwise the CLI
+      # disable_search so each flag uploads ONLY its named file - otherwise the CLI
       # auto-discovers both .out files and merges them into every flag, collapsing
       # raw and covered to the same number.
       # Fork and dependabot PRs run without repo secrets: both uploads skip there
-      # (ADR-0079) — coverage enforcement is ./x gate, Codecov is reporting only.
+      # (ADR-0079) - coverage enforcement is ./x gate, Codecov is reporting only.
       - name: Upload raw coverage to Codecov
         if: env.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
