@@ -469,7 +469,10 @@ so the dead-code gate passes.
   ```
 
   Chains come from each ADR's `Supersedes` (formatted `%04d`); overrides from each ADR whose
-  status lacks the `Superseded` prefix, one entry per ref. Rendering deliberately includes
+  status lacks the `Superseded` prefix, one entry per ref, keeping only entries whose *target*
+  is live (`Accepted`/`Implemented`) - ADR-0120 item 10 scopes annotations to "live ADRs whose
+  anchors are superseded", and a token into a Superseded target is already surfaced as the
+  Task 2.2 advisory rather than an annotation on a dead record. Rendering deliberately includes
   Proposed carriers where the conflict advisory (Task 2.2) does not: the annotation is
   discoverability, not enforcement, the window is transient (authoritative at the Task 8.4
   flip), and Phase 6's own verification needs the 0116 annotations observable while 0120 is
