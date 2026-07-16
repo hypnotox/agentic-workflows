@@ -36,7 +36,7 @@ Phases 1 to 5 sweep, cleaning the tree from the outside in and leaving it at zer
 the four exemption entries. Each is a batch task over a measured site set, each closes with `./x
 gate` green, and each is independently revertible.
 
-Phase 6 adds `internal/prosegate` (the scanner), an index-aware tracked-path enumeration in
+Phase 6 adds `internal/prosegate` (the scanner), an index-scoped path enumeration in
 `internal/git`, the `proseGate` config block, its five `configspec` entries, and the `clispec`
 command, with the knob defaulting false and awf's own knob still unset: the command exists and
 no-ops, so the gate cannot fail on it.
@@ -65,7 +65,7 @@ ships a check the tree would fail.
   `.goreleaser.yaml`, `.gremlins.yaml`, `README.md`, `internal/config/config.go`,
   `internal/configspec/spec.go`, `internal/catalog/standard.go`,
   `internal/project/configreference.go`, `internal/clispec/clispec.go`, `internal/git/git.go` and
-  `internal/git/git_test.go` (the index-aware enumeration of Task 6.3a),
+  `internal/git/git_test.go` (the `IndexPaths` enumeration of Task 6.3a),
   `cmd/awf/dispatch.go`, `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/doc-standard.md.tmpl`,
   `.awf/agents-doc.yaml`, `.awf/config.yaml`, `changelog/CHANGELOG.md`, plus regenerated
   `docs/pitfalls.md`, `docs/glossary.md`, `docs/decisions/README.md`, `docs/config-reference.md`,
@@ -143,8 +143,12 @@ surface. Every later sweep phase reuses it.
   +++ b/docs/research/agentic-workflow-landscape-and-awf-standing-2026-07.md
   @@ -62,1 +62,1 @@
   -- Chroma Research, *Context Rot* <U+2014> research.trychroma.com/context-rot (independently corroborates 15<U+2013>30% retrieval-accuracy drop from ~8K→128K tokens across 18 frontier models) ⬤
-  +- Chroma Research, *Context Rot*: research.trychroma.com/context-rot (independently corroborates a 15-30% retrieval-accuracy drop from ~8K→128K tokens across 18 frontier models) ⬤
+  +- Chroma Research, *Context Rot*: research.trychroma.com/context-rot (independently corroborates 15-30% retrieval-accuracy drop from ~8K→128K tokens across 18 frontier models) ⬤
   ```
+
+  Note what the `+` line does **not** do: it does not insert an article before `15-30%`, however much
+  the prose might read better with one. ADR-0119 item 2 makes the zero-delta word-stream proof the
+  condition of the sweep, so a single added word fails the phase. Punctuation changes; words do not.
 
   The en-dash range becomes an ASCII hyphen. The rightwards arrow (U+2192) and the circle glyphs
   (U+2B24, U+25D0) are notation, not punctuation substitutes: they are **not** banned and must not be
@@ -254,6 +258,12 @@ rendered file is forbidden.
   Do not hand-edit any of the three. If a glyph survives in a render target, its source is
   unconverted: fix the source and re-run `./x sync`.
 
+  **Word-stream proof:** re-run the Task 1.1 harness verbatim, passing `HEAD .awf/docs .awf/parts`,
+  against the commit preceding this phase. It must print `word-stream: PASS` and no
+  `WORD DELTA` line. ADR-0119 item 2 makes this the condition of the sweep, not a
+  recommendation; it runs per phase rather than only in the tail Verification so a lost
+  word costs one task to fix rather than four phases.
+
 - [ ] **Task 2.5: Verify and commit.** Run `./x gate` (green) and `./x check` (`awf check: clean`).
   Stage the three sources and the three regenerated docs plus `.awf/awf.lock`, then commit:
 
@@ -306,6 +316,12 @@ occurrences across 11 files, 16 U+2026 and one U+2014.
   ```bash
   git grep -oP '[\x{2014}\x{2013}\x{2026}\x{2018}\x{2019}\x{201C}\x{201D}]' -- '*.go' ':!*_test.go' | wc -l
   ```
+
+  **Word-stream proof:** re-run the Task 1.1 harness verbatim, passing `HEAD '*.go' ':!*_test.go'`,
+  against the commit preceding this phase. It must print `word-stream: PASS` and no
+  `WORD DELTA` line. ADR-0119 item 2 makes this the condition of the sweep, not a
+  recommendation; it runs per phase rather than only in the tail Verification so a lost
+  word costs one task to fix rather than four phases.
 
   **The gofmt check that matters:** run `gofmt -l ./internal ./cmd ./changelog`. It must print
   nothing. If gofmt rewrites one of your edits into a U+201C, you wrote a double backtick in a
@@ -371,6 +387,12 @@ and stop at the space before it).
   ```bash
   git grep -oP '[\x{2014}\x{2013}\x{2026}\x{2018}\x{2019}\x{201C}\x{201D}]' -- '*_test.go' | wc -l
   ```
+
+  **Word-stream proof:** re-run the Task 1.1 harness verbatim, passing `HEAD '*_test.go'`,
+  against the commit preceding this phase. It must print `word-stream: PASS` and no
+  `WORD DELTA` line. ADR-0119 item 2 makes this the condition of the sweep, not a
+  recommendation; it runs per phase rather than only in the tail Verification so a lost
+  word costs one task to fix rather than four phases.
 
   **Third named site: `internal/project/residue_scan_test.go`.** ADR-0119's Consequences names three
   sites needing care beyond the mechanical rule; this is the one the batch would otherwise swallow.
@@ -469,6 +491,15 @@ edited directly. Do **not** generalise that to `.awf/hooks/*.sh`: those **are** 
   Expected: every line reports `right-col starts at 37`, except line 68 (the header, which has no
   second tree character and reports `0`). No test or rendered artifact asserts on this block, so
   alignment is the only acceptance criterion.
+
+  **Word-stream proof:** re-run the Task 1.1 harness verbatim against the commit preceding this
+  phase, passing `HEAD x .githooks codecov.yml .github .goreleaser.yaml .gremlins.yaml README.md`.
+  It must print `word-stream: PASS` and no `WORD DELTA` line. ADR-0119 item 2 makes this the
+  condition of the sweep, not a recommendation; it runs per phase rather than only in the tail
+  Verification so a lost word costs one task to fix rather than four phases.
+
+  The README is in this proof's scope deliberately: Task 5.2 re-pads a diagram, which is the single
+  most likely place in the sweep to drop or duplicate a token by hand.
 
 - [ ] **Task 5.3: Verify and commit.** Run `./x gate` (green) and `./x check` (`awf check: clean`).
   Confirm the whole-tree count now stands at exactly the 10 exempt occurrences:
@@ -690,7 +721,7 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   		}
   		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
   	}
-  	paths, err := git.TrackedPathsWithIndex(root)
+  	paths, err := git.IndexPaths(root)
   	if err != nil {
   		return fmt.Errorf("prose-gate: cannot enumerate tracked files: %w", err)
   	}
@@ -723,23 +754,36 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   resolver, and do not invent one: no `cmd/awf` handler calls `config.Load` today, so there is no
   sibling to copy.
 
-- [ ] **Task 6.3a: Add index-aware tracked-path enumeration to `internal/git`.** ADR-0119 item 1
-  defines the scope as `git ls-files` and promises a file is in scope "the moment it is tracked".
-  The existing `git.TrackedPaths` (`internal/git/git.go:87`) walks `repo.Head()`'s commit tree, so it
-  returns paths tracked **at HEAD**. In the pre-commit hook this command is wired into, a
-  newly-added staged file is not yet in HEAD, so a brand-new file full of banned codepoints would be
-  invisible to the scan on the very commit that adds it, which is the "no new additions" property
-  the gate exists to deliver.
+- [ ] **Task 6.3a: Add `IndexPaths` to `internal/git`.** ADR-0119 item 1 defines the scope as
+  `git ls-files` and promises a file is in scope "the moment it is tracked". The existing
+  `git.TrackedPaths` (`internal/git/git.go:87`) walks `repo.Head()`'s commit tree, so it returns
+  paths tracked **at HEAD**, which is a different set. In the pre-commit hook this command is wired
+  into, a newly-added staged file is not yet in HEAD, so a brand-new file full of banned codepoints
+  would be invisible to the scan on the very commit that adds it, which is the "no new additions"
+  property the gate exists to deliver.
 
-  Add `TrackedPathsWithIndex(repoRoot string) ([]string, error)` beside it: the union of the index
-  entries and the HEAD tree, sorted and de-duplicated, mirroring the staged path `ChangedPaths`
-  already takes (`git.go:37-51`) to read the index. Leave `TrackedPaths` alone; it has its own
-  callers and its own meaning.
+  Add `IndexPaths(repoRoot string) ([]string, error)` beside it, reading **the index only**
+  (`repo.Storer.Index()`), sorted. Leave `TrackedPaths` alone; it has its own callers and its own
+  meaning.
 
-  Cover it with a git fixture (`internal/testsupport/gitfixture`) exercising four states: a file in
-  HEAD only, a file staged but not in HEAD (the case that motivates the function), a file in both,
-  and an untracked file (which must **not** appear). The 100% floor applies, so the error paths need
-  cases too.
+  **The index alone is exactly `git ls-files`; do not union it with HEAD.** Verified: in a repo with
+  `gone.md` deleted and `new.md` staged, `git ls-files` returns `{keep.md, new.md}` while the HEAD
+  tree returns `{gone.md, keep.md}`. The index already carries the staged new file, which is this
+  task's whole motivation. The HEAD half would add only paths that are no longer on disk, and
+  `prosegate.Scan` (Task 6.2) treats an unreadable path as an error rather than a silent pass, so a
+  union would make **every file deletion in the repo unlandable**: `git rm docs/foo.md` then commit,
+  and the scan reads a path that is not there, errors, and the pre-commit hook refuses the commit
+  with no config edit able to clear it.
+
+  Cover it with a git fixture (`internal/testsupport/gitfixture`) exercising four states: a file
+  staged but not in HEAD (must appear: the motivating case); a file in both (must appear); a file in
+  HEAD but staged-deleted (must **not** appear: this is the case a HEAD union would wrongly return);
+  and an untracked file (must **not** appear). The 100% floor applies, so the error paths need cases
+  too.
+
+  No ADR change is owed: item 1's `git ls-files` was already precise, and this is the implementation
+  catching up to it. `internal/git` is an unexported internal with no config key, var, or CLI
+  surface, so it does not belong in the ADR's "New adopter-facing surface" bullet either.
 
 - [ ] **Task 6.4: Add the `clispec` entry.** In `internal/clispec/clispec.go`, add the command with
   `Gating: Ungated` (ADR-0119 item 10). Place it beside `commit-gate`, its species sibling.
@@ -880,13 +924,22 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   fails first with `not an awf project (run `awf init`)`, so the test would pass while never
   exercising the path it claims to prove. Write `<tmp>/.awf/config.yaml` with `proseGate.enabled:
   true` and no `.git` directory, so the knob check passes, the exemption loop runs, and
-  `TrackedPathsWithIndex` is the thing that fails.
+  `IndexPaths` is the thing that fails.
 
   Assert both that the returned error is non-nil **and** that its message names the enumeration
   failure. An exit-code-only assertion would pass against a command that silently reported a clean
   tree, which is exactly the failure mode ADR-0119 item 12 forbids. Note the handler returns an
   `error` and writes no stderr itself (Task 6.3); `main.go` renders it. Assert on the error, not on a
   stderr buffer.
+
+- [ ] **Task 6.6a: Update the architecture map.** Phase 6 adds a subcommand and a package, and both
+  are enumerated in prose that goes stale in the same commit ("docs travel with the change"). In
+  `.awf/docs/parts/architecture/components.md`, append `prose-gate` to the `cmd/awf/` subcommand
+  list (`:2-4`, which currently ends `changelog`, `version`), and add an `internal/prosegate/` bullet
+  in its siblings' style, naming the presence-versus-net-increase split against `internal/audit` that
+  Task 6.2's package doc already states. Nothing mechanical catches this: `awf check` compares the
+  render to its source, and both would be consistently wrong. Run `./x sync` and stage
+  `docs/architecture.md`.
 
 - [ ] **Task 6.7: Verify and commit.** Run `./x gate` (green: 100% coverage, no dead code). Run
   `./x sync` first so `docs/config-reference.md` regenerates from the new configspec entries, and
@@ -1079,6 +1132,21 @@ carries both status flips.
   awf's pre-commit therefore scans twice, once through the payload's `./x gate` line and once
   through its own `./x prose-gate` line. ADR-0119 item 8 accepts and names this: a rendered payload
   cannot know what a project's runner folds into its gate.
+
+- [ ] **Task 8.2a: Update the two docs that enumerate the gate.** Task 8.2 adds an arm to `./x gate`
+  and Task 7.3 added the `./x prose-gate` arm, and two rendered docs carry closed enumerations that
+  become false in this commit. Both are sidecar edits plus `./x sync`, never a hand-edit of the
+  rendered file.
+
+  In `.awf/docs/parts/development/command-runner.md`: extend line 9's `./x gate` enumeration (which
+  currently ends "the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin check
+  (`cmd/pincheck`, ADR-0079)") with the prose scan, and add `./x prose-gate` to line 28's subcommand
+  row. In `.awf/docs/parts/testing/gate.md`: extend line 6's enumeration, which closes with a
+  terminal "and" that reads as exhaustive. Note the scan is default-off for adopters and on for this
+  repo, so say so rather than implying every adopter's gate runs it.
+
+  Run `./x sync` and stage `docs/development.md` and `docs/testing.md`. `awf check` will not catch a
+  miss here: the render matches its source either way.
 
 - [ ] **Task 8.3: Correct the agent guide's invariant bullet.** `.awf/agents-doc.yaml:29-30` still
   tells the Go author that "Go comments and tests are out of scope", which items 1, 4 and 11 make
