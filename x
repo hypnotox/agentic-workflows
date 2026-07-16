@@ -16,6 +16,7 @@ case "$cmd" in
     trap 'rm -f "$prof"' EXIT
     go test ./... -coverpkg=./... -coverprofile="$prof"
     go run ./cmd/covercheck "$prof"
+    tools/pi-extension-test/container.sh run
     go vet ./...
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
@@ -80,6 +81,14 @@ case "$cmd" in
   prose-gate)
     go run ./cmd/awf prose-gate "$@"
     ;;
+  pi-test)
+    action="${1:-run}"
+    if [ "$#" -gt 1 ]; then
+      echo "usage: ./x pi-test <run|stop|reset>" >&2
+      exit 2
+    fi
+    tools/pi-extension-test/container.sh "$action"
+    ;;
   new)
     # Scaffold a new ADR (or other awf artifact) from source, e.g. ./x new adr "<title>".
     go run ./cmd/awf new "$@"
@@ -115,7 +124,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|prose-gate|new|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|commit-gate|prose-gate|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

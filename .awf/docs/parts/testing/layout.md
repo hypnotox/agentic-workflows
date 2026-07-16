@@ -25,6 +25,11 @@ a hand-authored `unsetFallbackCases` entry per conditional template, and a
 golden-completeness guard machine-enforcing the one-golden-per-artifact convention in
 `spine_test.go`.
 
+Pi-extension tests live under `tools/pi-extension-test/`. A digest-pinned container keeps locked
+dependencies in a named volume, snapshots the read-only checkout inside the container for each run,
+and executes strict TypeScript and coverage checks without host npm state. `./x pi-test stop|reset`
+controls its lifecycle.
+
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through
 `internal/testsupport` (and its `gitfixture` subpackage), a leaf package with no dependency on

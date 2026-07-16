@@ -81,7 +81,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   ```
 
   Add `docker-entrypoint.sh`: initialize the mounted `/workspace/node_modules` volume from
-  `/opt/awf-pi-test/node_modules` only when its fingerprint marker is absent, then `exec tail -f
+  `/opt/awf-pi-test/node_modules` only when its fingerprint marker is absent, keep an empty
+  `/workspace/repo` directory available for `docker exec`, then `exec tail -f
   /dev/null`. Use plain POSIX `sh`; do not install an OS package. Add exact dev dependencies in
   `package.json`: `@earendil-works/pi-coding-agent` `0.80.9`, `typebox` `1.1.38`, `typescript`
   `5.9.3`, `tsx` `4.21.0`, and `@types/node` `22.20.1`. Generate `package-lock.json` inside the
@@ -107,11 +108,15 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   - build from the narrow `tools/pi-extension-test` context only when the fingerprinted image is
     absent;
   - remove stale containers carrying the same repository label before creating the desired one;
-  - mount the checkout read-only at `/workspace` and the named volume at
+  - mount the checkout read-only at `/source` and the named dependency volume at
     `/workspace/node_modules`, pass `AWF_PI_TEST_FINGERPRINT=<dependency hash>` for the entrypoint
     marker, then keep the container alive;
-  - on `run`, start a stopped matching container and use one timed
-    `docker exec --workdir /workspace` to run the exact type-check/test command from Task 1.3;
+  - on `run`, start a stopped matching container and use one timed `docker exec` that clears only
+    `/workspace/repo`'s contents, copies `/source/.` into it, creates a container-only
+    `/workspace/repo/node_modules` symlink to `/workspace/node_modules`, and runs the exact
+    type-check/test command from Task 1.3 with `--workdir /workspace/repo`; after starting a
+    container, poll its fingerprint marker before the first exec so dependency-volume initialization
+    cannot race the test command;
   - on `stop`, stop matching repository containers without deleting their dependency volume;
   - on `reset`, remove matching containers, volumes, and locally labeled images;
   - when `CI` is non-empty, trap exit and remove the current container and volume after the run;
@@ -123,7 +128,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
 - [ ] **Task 1.3: Prove type-checking and coverage before wiring the gate.** Add
   `tools/pi-extension-test/tsconfig.json` with `strict: true`, `noEmit: true`, NodeNext module and
-  resolution, target ES2022, `types: ["node"]`, and an initial include for `fixture/**/*.ts`.
+  resolution, `allowImportingTsExtensions: true`, target ES2022, `types: ["node"]`, and an initial
+  include for `fixture/**/*.ts`.
   Add `fixture/smoke.ts` exporting `boundedAdd(a, b, maximum)` and a Node test covering both the
   capped and uncapped branches. The manager's test command is:
 
@@ -139,7 +145,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   container, volume, build, create, start, exec, stop, and remove operations. Cover absent image,
   existing/running container, stopped container, stale same-repo container, `CI=1` cleanup, a repo
   path containing spaces, and daemon failure. Assert labels/fingerprints, one exec with
-  `--workdir /workspace`, cleanup selection, and the exact actionable error. Put
+  the `/source` bind, source-copy/symlink prelude, `--workdir /workspace/repo`, cleanup selection,
+  and the exact actionable error. Put
   `// invariant: pi-extension-container-gate` on this test. This fake seam is chosen over
   integration-only verification because the manager is mandatory gate code.
 
@@ -545,3 +552,6 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   reviewer files by exact Pi path and does not solve duplicate workflow-skill discovery.
 - Execute Phases 1-4 inline with `awf-executing-plans`: rendering, generated dogfood, the mandatory
   gate, and lifecycle flips are tightly ordered. Do not dispatch implementation phases in parallel.
+- Phase 1 finding: Docker cannot create a nested named-volume mount below a read-only repository
+  bind. The approved implementation mounts source at `/source`, snapshots it inside the persistent
+  container for each exec, and waits for dependency-volume initialization before testing.

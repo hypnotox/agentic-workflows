@@ -6,7 +6,8 @@
 
 `./x gate` runs the project's checks and must be green before every commit: the test suite
 with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
-blocks (ADR-0012), `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
+blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
+coverage, `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 
@@ -52,7 +53,7 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 ## Tiers
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical steps; the `full` argument is accepted only so the rendered pre-push hook
+identical Go and containerized TypeScript steps; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit.
 
@@ -89,6 +90,11 @@ Three further catalog-derived guards live in `internal/project/catalog_sweep_tes
 a hand-authored `unsetFallbackCases` entry per conditional template, and a
 golden-completeness guard machine-enforcing the one-golden-per-artifact convention in
 `spine_test.go`.
+
+Pi-extension tests live under `tools/pi-extension-test/`. A digest-pinned container keeps locked
+dependencies in a named volume, snapshots the read-only checkout inside the container for each run,
+and executes strict TypeScript and coverage checks without host npm state. `./x pi-test stop|reset`
+controls its lifecycle.
 
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through

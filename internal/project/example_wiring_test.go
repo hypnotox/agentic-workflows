@@ -43,6 +43,38 @@ func TestExampleAdopterWiring(t *testing.T) {
 // in-place section.
 //
 // invariant: runner-example-adopted
+// invariant: pi-extension-container-gate
+func TestPiExtensionContainerGateWiring(t *testing.T) {
+	raw, err := os.ReadFile("../../x")
+	if err != nil {
+		t.Fatalf("read x: %v", err)
+	}
+	script := string(raw)
+	for _, want := range []string{
+		"tools/pi-extension-test/container.sh run",
+		"pi-test)",
+		"<run|stop|reset>",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("x lost Pi extension test wiring %q", want)
+		}
+	}
+	manager, err := os.ReadFile("../../tools/pi-extension-test/container.sh")
+	if err != nil {
+		t.Fatalf("read container manager: %v", err)
+	}
+	for _, want := range []string{
+		`AWF_PI_TEST_DOCKER`,
+		`dst=/source,readonly`,
+		`--workdir /workspace/repo`,
+		`pi-extension-test: Docker is required by ./x gate`,
+	} {
+		if !strings.Contains(string(manager), want) {
+			t.Errorf("container manager lost contract %q", want)
+		}
+	}
+}
+
 func TestExampleAdoptsRunner(t *testing.T) {
 	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
 	if err != nil {

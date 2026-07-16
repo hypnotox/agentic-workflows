@@ -1,0 +1,11 @@
+{
+  "name": "awf-pi-extension-test",
+  "private": true,
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.80.9",
+    "@types/node": "22.20.1",
+    "tsx": "4.21.0",
+    "typebox": "1.1.38",
+    "typescript": "5.9.3"
+  }
+}
