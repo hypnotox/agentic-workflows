@@ -486,7 +486,7 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 					bannerStyle: targetOutput.CommentStyle,
 					target:      &target,
 				})
-			if err != nil { // coverage-ignore: target-output templates are embedded, section-free, sidecar-free, and empty-data swept, so their renderTarget errors are unreachable here
+			if err != nil {
 				return nil, err
 			}
 			out = append(out, rf)

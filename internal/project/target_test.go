@@ -106,6 +106,20 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	}
 }
 
+func TestTargetOutputRenderError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := p.Targets[0].Outputs[0].TemplateID
+	defer func() { p.Targets[0].Outputs[0].TemplateID = original }()
+	p.Targets[0].Outputs[0].TemplateID = "missing-target-output.tmpl"
+	if _, err := p.RenderAll(); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
+		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
+	}
+}
+
 // invariant: pi-subagent-public-contract
 func TestPiSubagentPublicContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
