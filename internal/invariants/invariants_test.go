@@ -738,6 +738,94 @@ func TestCheckRetirementDangling(t *testing.T) {
 	}
 }
 
+// writeTokenADR writes an ADR whose Decision section carries a
+// `supersedes-invariant: ADR-0001#<slug>` token (ADR-0120 token retirement).
+func writeTokenADR(t *testing.T, dir, name, status, slug string) {
+	t.Helper()
+	content := testsupport.ADR(status, testsupport.WithDate("2026-07-16"), testsupport.WithTags("x"),
+		testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Decision\n\n1. Retires `supersedes-invariant: ADR-0001#"+slug+"`.\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, name), content)
+}
+
+// An Implemented carrier's token drops the slug from owed backing; a Proposed,
+// an Accepted, and a Superseded carrier each leave it owed - the Superseded
+// case is the lapse semantics of ADR-0120 item 6 (fully superseding a
+// token-carrier lapses its retirements).
+// invariant: token-retirement-implemented-only
+func TestCheckTokenRetirementImplementedOnly(t *testing.T) {
+	cases := []struct {
+		status string
+		owed   bool
+	}{
+		{"Implemented", false},
+		{"Proposed", true},
+		{"Accepted", true},
+		{"Superseded by ADR-0003", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.status, func(t *testing.T) {
+			dir, root := t.TempDir(), t.TempDir()
+			writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-tok` - x.")
+			writeTokenADR(t, dir, "0002-b.md", tc.status, "fixture-tok")
+			f, _, err := invariants.Check(dir, root, goSrcConfig())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.owed {
+				if len(f) != 1 || f[0].Slug != "fixture-tok" || f[0].Status != invariants.Unbacked {
+					t.Errorf("a %s carrier's token must leave the slug owed, got %#v", tc.status, f)
+				}
+			} else if len(f) != 0 {
+				t.Errorf("an Implemented carrier's token must drop the slug from enforcement, got %#v", f)
+			}
+		})
+	}
+}
+
+// An item token (`supersedes: ADR-NNNN#<item>`) on an Implemented carrier is
+// not a retirement: only `supersedes-invariant:` tokens drop slugs.
+// invariant: token-retirement-implemented-only
+func TestCheckTokenRetirementIgnoresItemTokens(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-item` - x.")
+	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-07-16"), testsupport.WithTags("x"),
+		testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-b.md"), content)
+	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-item" || f[0].Status != invariants.Unbacked {
+		t.Errorf("an item token must not retire the slug, got %#v", f)
+	}
+}
+
+// A token for a slug no ADR declares errors loudly; a slug declared only by a
+// Superseded ADR is not owed, so retiring it is a no-op, not an error.
+// invariant: token-retirement-dangling-errors
+func TestCheckTokenRetirementDangling(t *testing.T) {
+	t.Run("undeclared slug errors", func(t *testing.T) {
+		dir, root := t.TempDir(), t.TempDir()
+		writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-real` - x.")
+		writeTokenADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost")
+		_, _, err := invariants.Check(dir, root, goSrcConfig())
+		if err == nil || !strings.Contains(err.Error(), "dangling retirement") || !strings.Contains(err.Error(), "fixture-ghost") {
+			t.Errorf("a dangling token retirement must error mentioning the slug, got %v", err)
+		}
+	})
+	t.Run("slug declared only by a Superseded ADR is a no-op", func(t *testing.T) {
+		dir, root := t.TempDir(), t.TempDir()
+		writeADR(t, dir, "0001-a.md", "Superseded by ADR-0002", "- `invariant: fixture-lapsed` - x.")
+		writeTokenADR(t, dir, "0002-b.md", "Implemented", "fixture-lapsed")
+		f, _, err := invariants.Check(dir, root, goSrcConfig())
+		if err != nil || len(f) != 0 {
+			t.Errorf("retiring a slug only a non-Implemented ADR declares must be a clean no-op, got %#v err=%v", f, err)
+		}
+	})
+}
+
 // invariant: invariants-zero-slugs-clean
 func TestCheckZeroSlugsClean(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()

@@ -173,6 +173,32 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 			delete(required, slug)
 		}
 	}
+	// Token retirements (ADR-0120 item 6): a `supersedes-invariant:` token
+	// carried by an Implemented ADR drops its slug from owed backing. Dangling
+	// detection scans every ADR's declarations - a slug declared only by a
+	// non-Implemented ADR is not owed, so retiring it is a no-op, not an error.
+	// touches-invariant: token-retirement-implemented-only - the status test below; proof in invariants_test.go
+	// touches-invariant: token-retirement-dangling-errors - the declaredAnywhere refusal; proof in invariants_test.go
+	declaredAnywhere := map[string]bool{}
+	for _, a := range adrs {
+		for _, slug := range DeclaredSlugs(a) {
+			declaredAnywhere[slug] = true
+		}
+	}
+	for _, a := range adrs {
+		if a.Status != "Implemented" {
+			continue
+		}
+		for _, r := range a.Refs {
+			if r.Slug == "" {
+				continue
+			}
+			if !declaredAnywhere[r.Slug] {
+				return nil, fmt.Errorf("dangling retirement: ADR %s supersedes invariant %q, which no ADR declares", a.Filename, r.Slug)
+			}
+			delete(required, r.Slug)
+		}
+	}
 	return required, nil
 }
 
