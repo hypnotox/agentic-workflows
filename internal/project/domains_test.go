@@ -69,7 +69,7 @@ func TestDomainDocRendersIndexAndNarrative(t *testing.T) {
 // invariant: domain-doc-regenerated
 func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
+	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine"), testsupport.WithBody("## Decision\n\n1. x.\n")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -81,7 +81,7 @@ func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 		t.Fatalf("expected clean after sync, got: %#v", drift)
 	}
 	// Retag a NEW ADR into the rendering domain without re-syncing.
-	writeADR(t, root, "0002-new.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: New")))
+	writeADR(t, root, "0002-new.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: New"), testsupport.WithBody("## Decision\n\n1. x.\n")))
 	drift, err := p.Check()
 	if err != nil {
 		t.Fatalf("Check: %v", err)

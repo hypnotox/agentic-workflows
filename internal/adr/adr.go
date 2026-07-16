@@ -42,8 +42,58 @@ type ADR struct {
 	Tags              []string          // `tags:` frontmatter (keyword labels)
 	Related           []int             // `related:` frontmatter (ADR numbers)
 	SupersededBy      string            // `superseded_by:` frontmatter (e.g. "0008", or "")
+	Supersedes        []int             // `supersedes:` frontmatter: full-supersession claims (ADR-0120)
 	RetiresInvariants []string          // `retires_invariants:` frontmatter (ADR-0031)
+	Refs              []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
 	Sections          map[string]string // `## ` heading -> section body
+}
+
+// SupersessionRef is one inline partial-supersession token (ADR-0120):
+// `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>`
+// as an inline code token inside a Decision section. Exactly one of
+// Item/Slug is set; the key names the kind, never the anchor's shape.
+type SupersessionRef struct {
+	Target string // 4-digit target ADR number, e.g. "0116"
+	Item   int    // Decision item number; 0 for an invariant ref
+	Slug   string // invariant slug; "" for an item ref
+}
+
+var (
+	// itemRefRe / invRefRe match the two token keys inside inline code. The
+	// superseded kind is named by the key, never inferred from the anchor
+	// (ADR-0120 item 1): items are [1-9][0-9]*, slugs the declRe grammar.
+	itemRefRe = regexp.MustCompile("`supersedes: ADR-([0-9]{4})#([1-9][0-9]*)`")
+	invRefRe  = regexp.MustCompile("`supersedes-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
+	// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
+	// anchoring is load-bearing: 0067 and 0115 carry indented numbered
+	// sub-lists that must not enumerate (ADR-0120 item 2).
+	decisionItemRe = regexp.MustCompile(`(?m)^([0-9]+)\. `)
+)
+
+// parseRefs extracts every supersession token from a Decision section body.
+// Tokens anywhere else in the ADR are inert prose (ADR-0120 item 1), which
+// parse guarantees by passing only Sections["Decision"].
+func parseRefs(decision string) []SupersessionRef {
+	var refs []SupersessionRef
+	for _, m := range itemRefRe.FindAllStringSubmatch(decision, -1) {
+		n, _ := strconv.Atoi(m[2]) // the regex admits only digits
+		refs = append(refs, SupersessionRef{Target: m[1], Item: n})
+	}
+	for _, m := range invRefRe.FindAllStringSubmatch(decision, -1) {
+		refs = append(refs, SupersessionRef{Target: m[1], Slug: m[2]})
+	}
+	return refs
+}
+
+// DecisionItems returns the numbers of the column-0 numbered items of the
+// Decision section, in order of appearance.
+func (a ADR) DecisionItems() []int {
+	var items []int
+	for _, m := range decisionItemRe.FindAllStringSubmatch(a.Sections["Decision"], -1) {
+		n, _ := strconv.Atoi(m[1])
+		items = append(items, n)
+	}
+	return items
 }
 
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
@@ -83,6 +133,7 @@ type adrFrontmatter struct {
 	Tags              []string `yaml:"tags"`
 	Related           []int    `yaml:"related"`
 	SupersededBy      string   `yaml:"superseded_by"`
+	Supersedes        []int    `yaml:"supersedes"`
 	RetiresInvariants []string `yaml:"retires_invariants"`
 }
 
@@ -93,7 +144,8 @@ func parse(data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, RetiresInvariants: fm.RetiresInvariants, Sections: sections(string(body))}
+	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, Supersedes: fm.Supersedes, RetiresInvariants: fm.RetiresInvariants, Sections: sections(string(body))}
+	a.Refs = parseRefs(a.Sections["Decision"])
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")

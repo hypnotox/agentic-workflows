@@ -791,7 +791,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 		t.Fatal(err)
 	}
 	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
+		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Decision\n\n1. x.\n"))
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adrBody)
 
 	p, err := Open(root)

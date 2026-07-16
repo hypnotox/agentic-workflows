@@ -3,6 +3,7 @@ package adr_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -200,6 +201,100 @@ func TestParseDirExtractsTagsAndRelated(t *testing.T) {
 	}
 	if len(got.Related) != 2 || got.Related[0] != 1 || got.Related[1] != 92 {
 		t.Errorf("related: got %#v", got.Related)
+	}
+}
+
+// parseOne writes content as a single ADR fixture and returns its parse.
+func parseOne(t *testing.T, content string) adr.ADR {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "0001-fixture.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	adrs, err := adr.ParseDir(dir)
+	if err != nil {
+		t.Fatalf("ParseDir: %v", err)
+	}
+	if len(adrs) != 1 {
+		t.Fatalf("expected 1 ADR, got %d", len(adrs))
+	}
+	return adrs[0]
+}
+
+// TestSupersessionRefExtraction covers the ADR-0120 token grammar: both keys
+// extracted from the Decision section with the kind named by the key, tokens
+// elsewhere inert, and the anchor shape rules (no leading-zero items, no
+// uppercase slugs).
+func TestSupersessionRefExtraction(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want []adr.SupersessionRef
+	}{
+		{
+			name: "both kinds extracted",
+			body: "## Decision\n\n1. Overrides `supersedes: ADR-0116#2`.\n2. Retires `supersedes-invariant: ADR-0031#retired-slug`.\n",
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
+		},
+		{
+			name: "token outside the Decision section is inert",
+			body: "## Context\n\nMentions `supersedes: ADR-0116#2` in passing.\n\n## Decision\n\n1. No tokens.\n",
+			want: nil,
+		},
+		{
+			name: "leading-zero item and uppercase slug do not match",
+			body: "## Decision\n\n1. `supersedes: ADR-0116#03` and `supersedes-invariant: ADR-0031#Bad-Slug`.\n",
+			want: nil,
+		},
+		{
+			name: "backticked token inside a fenced block is read raw",
+			body: "## Decision\n\n1. Grammar example:\n\n```\n`supersedes: ADR-0999#7`\n```\n",
+			want: []adr.SupersessionRef{{Target: "0999", Item: 7}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(tc.body)))
+			if !reflect.DeepEqual(a.Refs, tc.want) {
+				t.Errorf("Refs: got %#v, want %#v", a.Refs, tc.want)
+			}
+		})
+	}
+}
+
+// TestDecisionItems covers column-0 item enumeration: indented sub-lists
+// skipped, multi-digit items matched, and a fenced column-0 numbered line
+// counted - pinning that the Decision body is read raw, fences included (the
+// corpus is fence-clean at column 0 today; the pin makes any future surprise
+// a test failure, not silent drift).
+func TestDecisionItems(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want []int
+	}{
+		{"indented sub-item not enumerated", "## Decision\n\n1. First.\n   1. Sub-item.\n2. Second.\n", []int{1, 2}},
+		{"multi-digit item enumerated", "## Decision\n\n13. Thirteenth.\n", []int{13}},
+		{"fenced column-0 numbered line counts (raw-read pin)", "## Decision\n\n1. Example:\n\n```\n1. fenced line\n```\n", []int{1, 1}},
+		{"no items", "## Decision\n\nProse only.\n", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(tc.body)))
+			if got := a.DecisionItems(); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("DecisionItems: got %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestParseDirExtractsSupersedes confirms `supersedes:` frontmatter round-trips
+// into adr.ADR (full-supersession claims, ADR-0120).
+func TestParseDirExtractsSupersedes(t *testing.T) {
+	content := "---\nstatus: Implemented\nsupersedes: [31]\n---\n# ADR-0120: T\n\n## Decision\n\n1. x.\n"
+	a := parseOne(t, content)
+	if !reflect.DeepEqual(a.Supersedes, []int{31}) {
+		t.Errorf("Supersedes: got %#v, want [31]", a.Supersedes)
 	}
 }
 
