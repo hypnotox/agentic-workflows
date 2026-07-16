@@ -75,8 +75,12 @@
   generated `docs/config-reference.md` (rendered by `internal/project` outside `RenderAll`,
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
-- **`templates/`**: embedded skill, agent, doc, and agent-guide template bodies the catalog names
-  (the catalog itself is the compile-time `catalog.Standard` value in `internal/catalog`).
+- **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
+  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension; the catalog itself is
+  the compile-time `catalog.Standard` value in `internal/catalog`.
+- **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
+  the dogfooded generated extension. Its repo-keyed persistent container snapshots current source
+  and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
 - **`internal/changelog/`**: parses the embedded changelog into filterable entries; powers `awf

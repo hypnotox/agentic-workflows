@@ -181,6 +181,14 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 	if got := CommentStyleForSource("# Markdown H1 is not a shebang\n"); got != HTMLComment {
 		t.Errorf("a non-shebang source must sniff HTMLComment, got %v", got)
 	}
+	slashAsm, _ := Assemble(ParseSections("<!-- awf:section body -->\nconst x = 1;\n<!-- awf:end -->\n"),
+		map[string]SectionPlan{"body": {EditPath: ".awf/body.md"}}, SlashComment)
+	if !strings.Contains(slashAsm, "// awf:edit body: default; create .awf/body.md to override\n") {
+		t.Errorf("SlashComment must render a TypeScript line comment:\n%s", slashAsm)
+	}
+	if got := PointerLinePrefixes("body", SlashComment); got[0] != "// awf:edit body: " || got[1] != "// awf:edit-in-place body: " {
+		t.Errorf("SlashComment pointer prefixes = %v", got)
+	}
 
 	// invariant: in-place-pointer-distinct
 	// The distinct awf:edit-in-place pointer renders in the target's comment

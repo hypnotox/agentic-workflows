@@ -61,8 +61,10 @@ instead of rotting.
 
 Claude Code is the default target. awf also supports Cursor, Pi, Codex, Gemini,
 and GitHub Copilot: skills and agents render into each runtime's native paths.
-Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge; Pi reviewer
-skills use generic delegation wording because Pi has no native subagents.
+Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge. Pi 0.80.9+
+automatically receives a trusted project extension with fresh-context exploration,
+governed review, and serialized implementation tools; Pi itself still has no native
+subagents.
 
 ## How it works
 

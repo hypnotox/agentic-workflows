@@ -84,8 +84,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `/opt/awf-pi-test/node_modules` only when its fingerprint marker is absent, keep an empty
   `/workspace/repo` directory available for `docker exec`, then `exec tail -f
   /dev/null`. Use plain POSIX `sh`; do not install an OS package. Add exact dev dependencies in
-  `package.json`: `@earendil-works/pi-coding-agent` `0.80.9`, `typebox` `1.1.38`, `typescript`
-  `5.9.3`, `tsx` `4.21.0`, and `@types/node` `22.20.1`. Generate `package-lock.json` inside the
+  `package.json`: `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` `0.80.9`,
+  `typebox` `1.1.38`, `typescript` `5.9.3`, `tsx` `4.21.0`, `c8` `10.1.3`, and
+  `@types/node` `22.20.1`. Generate `package-lock.json` inside the
   pinned image, never on the host:
 
   ```bash
@@ -127,8 +128,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `pi-extension-test: Docker is required by ./x gate` error.
 
 - [ ] **Task 1.3: Prove type-checking and coverage before wiring the gate.** Add
-  `tools/pi-extension-test/tsconfig.json` with `strict: true`, `noEmit: true`, NodeNext module and
-  resolution, `allowImportingTsExtensions: true`, target ES2022, `types: ["node"]`, and an initial
+  `tools/pi-extension-test/tsconfig.json` with `strict: true`, `noEmit: true`, ESNext module,
+  Bundler resolution, `skipLibCheck: true`, `allowImportingTsExtensions: true`, target ES2022,
+  `types: ["node"]`, and an initial
   include for `fixture/**/*.ts`.
   Add `fixture/smoke.ts` exporting `boundedAdd(a, b, maximum)` and a Node test covering both the
   capped and uncapped branches. The manager's test command is:
@@ -327,8 +329,10 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
   ```bash
   tsc -p tools/pi-extension-test/tsconfig.json && \
-  node --import tsx --test --experimental-test-coverage \
-    --test-coverage-lines=100 --test-coverage-functions=100 --test-coverage-branches=100 \
+  c8 --all --include='.pi/extensions/awf-subagents/*.ts' \
+    --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage \
+    --lines=100 --functions=100 --branches=100 \
+    node --import tsx --test --experimental-test-isolation=none \
     tools/pi-extension-test/tests/*.test.ts
   ```
 
@@ -552,6 +556,8 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   reviewer files by exact Pi path and does not solve duplicate workflow-skill discovery.
 - Execute Phases 1-4 inline with `awf-executing-plans`: rendering, generated dogfood, the mandatory
   gate, and lifecycle flips are tightly ordered. Do not dispatch implementation phases in parallel.
+- Phase 2 finding: Node's built-in coverage merged tsx source maps with a phantom zero-width branch;
+  c8 over the same V8 data maps both generated modules correctly and is the pinned threshold oracle.
 - Phase 1 finding: Docker cannot create a nested named-volume mount below a read-only repository
   bind. The approved implementation mounts source at `/source`, snapshots it inside the persistent
   container for each exec, and waits for dependency-volume initialization before testing.

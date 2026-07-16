@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // TestInjectBannerShebang covers the shebang branch: the banner becomes a
@@ -30,6 +32,21 @@ func TestInjectBannerPlain(t *testing.T) {
 	// invariant: provenance-banner
 	if !strings.HasPrefix(got, "<!-- "+bannerText+" -->\n") {
 		t.Fatalf("plain content missing leading HTML banner: %q", got)
+	}
+}
+
+func TestInjectBannerExplicitCommentStyles(t *testing.T) {
+	for _, tc := range []struct {
+		style render.CommentStyle
+		want  string
+	}{
+		{render.HashComment, "# " + bannerText + "\n"},
+		{render.TOMLComment, "# " + bannerText + "\n"},
+		{render.SlashComment, "// " + bannerText + "\n"},
+	} {
+		if got := injectBanner("body\n", "", tc.style); got != tc.want+"body\n" {
+			t.Errorf("style %v banner = %q", tc.style, got)
+		}
 	}
 }
 

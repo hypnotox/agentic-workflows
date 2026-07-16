@@ -25,6 +25,13 @@ const (
 	GenericReviewDispatch ReviewDispatchStyle = "generic"
 )
 
+// TargetOutput declares a target-owned non-catalog output such as a project extension.
+type TargetOutput struct {
+	Path         string
+	TemplateID   string
+	CommentStyle render.CommentStyle
+}
+
 // Target places adapter (tool-specific) artifacts for one runtime. Neutral
 // artifacts (AGENTS.md, docs, domains) are not target-scoped (ADR-0016).
 type Target struct {
@@ -36,6 +43,8 @@ type Target struct {
 	BridgeFile     string // adapter bridge file at repo root, "" if none
 	BridgeTemplate string
 	ReviewStyle    ReviewDispatchStyle
+	SubagentTools  bool
+	Outputs        []TargetOutput
 }
 
 // SkillPath is the output path for a rendered skill under this target.
@@ -94,12 +103,17 @@ var codexTarget = Target{
 }
 
 var piTarget = Target{
-	Name:         "pi",
-	SkillDir:     ".pi/skills",
-	AgentDir:     ".pi/skills",
-	AgentSuffix:  ".md",
-	AgentDialect: MarkdownAgentDialect,
-	ReviewStyle:  GenericReviewDispatch,
+	Name:          "pi",
+	SkillDir:      ".pi/skills",
+	AgentDir:      ".pi/skills",
+	AgentSuffix:   ".md",
+	AgentDialect:  MarkdownAgentDialect,
+	ReviewStyle:   GenericReviewDispatch,
+	SubagentTools: true,
+	Outputs: []TargetOutput{
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", CommentStyle: render.SlashComment},
+		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", CommentStyle: render.SlashComment},
+	},
 }
 
 var geminiTarget = Target{

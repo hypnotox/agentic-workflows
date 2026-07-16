@@ -340,10 +340,10 @@ func nonNil(m map[string]any) map[string]any {
 // and sections derive from the artifact name; outPath also takes the adapter
 // target (ignored by neutral kinds like docs); target is the adapter this pass
 // renders for (zero for neutral kinds).
-type renderEncoding struct {
+type renderOutputOptions struct {
 	encode      func(string) (string, error)
 	bannerStyle render.CommentStyle
-	target      Target
+	target      *Target
 }
 
 type renderKindSpec struct {
@@ -410,18 +410,18 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 			}
 		}
 		data := p.data(sc)
+		var options *renderOutputOptions
 		if spec.target.Name != "" {
 			data["targetReviewStyle"] = string(spec.target.ReviewStyle)
+			data["targetSubagentTools"] = spec.target.SubagentTools
+			target := spec.target
+			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target}
 		}
-		var encoding *renderEncoding
 		if spec.encode != nil {
-			encoding = &renderEncoding{
-				encode:      func(body string) (string, error) { return spec.encode(name, body, data) },
-				bannerStyle: spec.target.agentCommentStyle(),
-				target:      spec.target,
-			}
+			options.bannerStyle = spec.target.agentCommentStyle()
+			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
-		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), encoding)
+		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), options)
 		if err != nil {
 			return nil, err
 		}
@@ -477,6 +477,21 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 				return nil, err
 			}
 			out = append(out, rfs...)
+		}
+		for _, targetOutput := range t.Outputs {
+			target := t
+			data := p.data(config.Sidecar{})
+			data["targetReviewStyle"] = string(t.ReviewStyle)
+			data["targetSubagentTools"] = t.SubagentTools
+			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
+				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
+					bannerStyle: targetOutput.CommentStyle,
+					target:      &target,
+				})
+			if err != nil { // coverage-ignore: target-output templates are embedded, section-free, sidecar-free, and empty-data swept, so their renderTarget errors are unreachable here
+				return nil, err
+			}
+			out = append(out, rf)
 		}
 	}
 	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral - once.
@@ -645,10 +660,10 @@ func (p *Project) PlannedOutputs() ([]string, error) {
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
-func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, encodings ...*renderEncoding) (RenderedFile, error) {
-	var encoding *renderEncoding
-	if len(encodings) != 0 {
-		encoding = encodings[0]
+func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
+	var options *renderOutputOptions
+	if len(outputOptions) != 0 {
+		options = outputOptions[0]
 	}
 	src, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {
@@ -687,8 +702,8 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	if encoding != nil {
-		content, err = encoding.encode(content)
+	if options != nil && options.encode != nil {
+		content, err = options.encode(content)
 		if err != nil {
 			return RenderedFile{}, fmt.Errorf("render %s: encode artifact: %w", tid, err)
 		}
@@ -696,14 +711,14 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if strings.Contains(content, "<no value>") {
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\"; a referenced var or data key is unset", outPath)
 	}
-	if encoding != nil {
-		content = injectBanner(content, tid, encoding.bannerStyle)
+	if options != nil {
+		content = injectBanner(content, tid, options.bannerStyle)
 	} else {
 		content = injectBanner(content, tid)
 	}
 	var targetInput []Target
-	if encoding != nil {
-		targetInput = []Target{encoding.target}
+	if options != nil && options.target != nil {
+		targetInput = []Target{*options.target}
 	}
 	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), targetInput...)
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths

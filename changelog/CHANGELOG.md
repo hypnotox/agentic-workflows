@@ -9,6 +9,9 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Pi target adopters now receive executable project extension files under
+  `.pi/extensions/awf-subagents/` on sync (ADR-0123). Pi's project-trust boundary applies and Pi
+  0.80.9 or newer is required; `awf check` reports extension drift and `awf sync` repairs it.
 - ADR supersession is structured and machine-checked (ADR-0120), and the `retires_invariants:`
   frontmatter key is removed from the ADR schema. **Run `awf upgrade`: the generation-10
   migration rewrites `docs/decisions/`**, stripping every `retires_invariants:` key and
@@ -86,6 +89,9 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- The Pi target ships `subagent_explore`, `subagent_review`, and `subagent_implement`: isolated
+  no-session child processes for read-oriented exploration, the three governed reviewer bodies,
+  and serialized same-checkout implementation with explicit commit permission (ADR-0123).
 - Codex, Pi, Gemini, and Copilot are now selectable targets for agent artifacts.
   Codex renders skills under `.agents/skills/` and validated custom-agent profiles
   under `.codex/agents/` as TOML with `name`, `description`, and

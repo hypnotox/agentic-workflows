@@ -29,8 +29,15 @@ func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 		return content[:nl+1] + "# " + bannerText + "\n" + content[nl+1:]
 	}
 	line := "<!-- " + bannerText + " -->\n"
-	if len(styles) != 0 && styles[0] == render.TOMLComment {
-		line = "# " + bannerText + "\n"
+	if len(styles) != 0 {
+		switch styles[0] {
+		case render.HTMLComment:
+			// Keep the default HTML banner.
+		case render.TOMLComment, render.HashComment:
+			line = "# " + bannerText + "\n"
+		case render.SlashComment:
+			line = "// " + bannerText + "\n"
+		}
 	}
 	if yamlBlock, body, found := frontmatter.Split([]byte(content)); found {
 		return "---\n" + string(yamlBlock) + "---\n" + line + string(body)

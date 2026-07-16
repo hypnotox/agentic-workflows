@@ -1,0 +1,180 @@
+import { readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  getPackageDir,
+  parseFrontmatter,
+  type ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
+import { StringEnum } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
+import {
+  createRunner,
+  productionRunnerDependencies,
+  type RunRequest,
+  type Runner,
+  type ThinkingLevel,
+} from "./runner.ts";
+
+export const MIN_PI_VERSION = "0.80.9";
+export const EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
+export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
+export const IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;
+export const REVIEWER_PATHS = {
+  adr: ".pi/skills/adr-reviewer.md",
+  plan: ".pi/skills/plan-reviewer.md",
+  code: ".pi/skills/code-reviewer.md",
+} as const;
+
+type ReviewKind = keyof typeof REVIEWER_PATHS;
+interface GitSnapshot { available: boolean; head?: string; status?: string; }
+
+export interface ExtensionDependencies {
+  readFile(path: string, encoding: "utf8"): Promise<string>;
+  runner: Runner;
+  packageVersion: string;
+  extensionFile: string;
+}
+
+function parseVersion(value: string): [number, number, number] | undefined {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
+}
+
+export function versionSupported(value: string): boolean {
+  const actual = parseVersion(value);
+  const minimum = parseVersion(MIN_PI_VERSION)!;
+  if (!actual) return false;
+  for (let i = 0; i < minimum.length; i++) {
+    if (actual[i] !== minimum[i]) return actual[i] > minimum[i];
+  }
+  return true;
+}
+
+function projectRoot(extensionFile: string): string {
+  return resolve(dirname(extensionFile), "../../..");
+}
+
+function rolePrompt(role: "explore" | "implement", allowCommits?: boolean): string {
+  if (role === "explore") {
+    return "You are a fresh-context exploration subagent. Read and run evidence-producing commands, but do not edit files or commit. Return concise findings with file:line grounding.";
+  }
+  return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
+}
+
+async function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKind): Promise<string> {
+  const relative = REVIEWER_PATHS[kind];
+  let content: string;
+  try { content = await deps.readFile(join(root, relative), "utf8"); }
+  catch {
+    throw new Error(`Missing Pi reviewer ${relative}. Enable the matching ${kind}-reviewer agent and run awf sync.`);
+  }
+  const parsed = parseFrontmatter<Record<string, unknown>>(content);
+  if (!parsed.body.trim()) throw new Error(`Pi reviewer ${relative} has no instruction body; run awf sync.`);
+  return `You are the governed ${kind} reviewer. You are report-only: never edit or commit.\n\n${parsed.body}`;
+}
+
+async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
+  const head = await pi.exec("git", ["rev-parse", "HEAD"], { cwd });
+  if (head.code !== 0) return { available: false };
+  const status = await pi.exec("git", ["status", "--short"], { cwd });
+  return { available: status.code === 0, head: head.stdout.trim(), status: status.stdout };
+}
+
+function toolResult(result: Awaited<ReturnType<Runner["run"]>>, details: Record<string, unknown> = {}) {
+  return {
+    content: [{ type: "text" as const, text: result.output }],
+    details: { ...details, stderr: result.stderr, summaries: result.summaries, usage: result.usage, model: result.model },
+  };
+}
+
+export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
+  if (!versionSupported(deps.packageVersion)) {
+    pi.on("session_start", async (_event, ctx) => {
+      ctx.ui.notify(`awf Pi subagents require Pi ${MIN_PI_VERSION} or newer; found ${deps.packageVersion}. Upgrade Pi and reload.`, "error");
+    });
+    return;
+  }
+
+  const root = projectRoot(deps.extensionFile);
+  let implementationTail: Promise<void> = Promise.resolve();
+  const run = async (
+    role: RunRequest["role"], task: string, tools: readonly string[], systemPrompt: string,
+    signal: AbortSignal | undefined, onUpdate: ((value: any) => void) | undefined, ctx: any,
+  ) => {
+    if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
+    if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
+    return deps.runner.run({
+      role, task, cwd: ctx.cwd,
+      model: { provider: ctx.model.provider, id: ctx.model.id },
+      thinkingLevel: pi.getThinkingLevel() as ThinkingLevel,
+      tools, systemPrompt, signal,
+      onUpdate: (update) => onUpdate?.({ content: [{ type: "text", text: update.text }], details: { summaries: update.summaries } }),
+    });
+  };
+
+  pi.registerTool({
+    name: "subagent_explore",
+    label: "Explore Subagent",
+    description: "Run one fresh-context, no-mutation exploration child.",
+    promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context",
+    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task."],
+    parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+    async execute(_id, params, signal, onUpdate, ctx) {
+      return toolResult(await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
+    },
+  });
+
+  pi.registerTool({
+    name: "subagent_review",
+    label: "Review Subagent",
+    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context.",
+    promptSnippet: "Delegate governed ADR, plan, or code review to fresh context",
+    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief."],
+    parameters: Type.Object({
+      kind: StringEnum(["adr", "plan", "code"] as const),
+      task: Type.String({ minLength: 1 }),
+    }, { additionalProperties: false }),
+    async execute(_id, params, signal, onUpdate, ctx) {
+      const prompt = await loadReviewer(deps, root, params.kind);
+      return toolResult(await run("review", params.task, REVIEW_TOOLS, prompt, signal, onUpdate, ctx), { kind: params.kind });
+    },
+  });
+
+  pi.registerTool({
+    name: "subagent_implement",
+    label: "Implementation Subagent",
+    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch.",
+    promptSnippet: "Delegate one sequential implementation task to fresh context",
+    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly."],
+    parameters: Type.Object({
+      task: Type.String({ minLength: 1 }),
+      allowCommits: Type.Boolean(),
+    }, { additionalProperties: false }),
+    async execute(_id, params, signal, onUpdate, ctx) {
+      let release!: () => void;
+      const previous = implementationTail;
+      implementationTail = new Promise<void>((resolve) => { release = resolve; });
+      await previous;
+      try {
+        if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
+        const before = await snapshot(pi, ctx.cwd);
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", params.allowCommits), signal, onUpdate, ctx);
+        const after = await snapshot(pi, ctx.cwd);
+        const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
+        if (violation) throw new Error(`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`);
+        return toolResult(result, { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" });
+      } finally { release(); }
+    },
+  });
+}
+
+export default async function (pi: ExtensionAPI): Promise<void> {
+  const packageJSON = JSON.parse(await readFile(join(getPackageDir(), "package.json"), "utf8")) as { version?: string };
+  registerSubagentTools(pi, {
+    readFile,
+    runner: createRunner(productionRunnerDependencies),
+    packageVersion: packageJSON.version as string,
+    extensionFile: fileURLToPath(import.meta.url),
+  });
+}

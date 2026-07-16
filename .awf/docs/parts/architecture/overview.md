@@ -28,4 +28,6 @@ enabled adapter**, each placed at a runtime-specific path supplied by a `Target`
 hardcoded literal. A project selects adapters through the `targets` array (default `[claude]`); the
 built-in registry holds `claudeTarget` (`.claude/skills/`, `.claude/agents/`, a `CLAUDE.md` bridge)
 and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge; Cursor reads `AGENTS.md`
-natively). awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+natively). A target may also declare non-catalog outputs: Pi automatically renders the
+project-local `.pi/extensions/awf-subagents/` TypeScript delegation extension. awf's own config
+tree lives at `.awf/`, decoupled from any one runtime's directory.

@@ -56,13 +56,156 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 		t.Fatalf("Codex profile missing instructions:\n%s", got.Content)
 	}
 	for _, f := range files {
-		if f.TemplateID == "skills/tdd/SKILL.md.tmpl" && f.Path != ".agents/skills/example-tdd/SKILL.md" {
-			t.Fatalf("Codex skill path = %q", f.Path)
+		if f.TemplateID == "skills/tdd/SKILL.md.tmpl" {
+			if f.Path != ".agents/skills/example-tdd/SKILL.md" {
+				t.Fatalf("Codex skill path = %q", f.Path)
+			}
+			if !strings.Contains(f.Content, "<!-- "+bannerText+" -->") {
+				t.Fatalf("Codex markdown skill lost HTML provenance:\n%s", f.Content)
+			}
 		}
 	}
 }
 
 // invariant: pi-generic-review-dispatch
+// invariant: pi-extension-target-render
+func TestPiTargetRendersExtension(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, file := range files {
+		got[file.Path] = file.Content
+	}
+	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+		if !strings.HasPrefix(got[path], "// "+bannerText+"\n") {
+			t.Errorf("Pi extension %s missing TypeScript banner", path)
+		}
+	}
+	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini"} {
+		other := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: ["+target+"]\n")
+		op, err := Open(other)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rendered, err := op.RenderAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, file := range rendered {
+			if strings.HasPrefix(file.Path, ".pi/extensions/") {
+				t.Errorf("target %s unexpectedly rendered %s", target, file.Path)
+			}
+		}
+	}
+}
+
+// invariant: pi-subagent-public-contract
+func TestPiSubagentPublicContract(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, name := range []string{"subagent_explore", "subagent_review", "subagent_implement"} {
+		if strings.Count(content, `name: "`+name+`"`) != 1 {
+			t.Errorf("tool %s registration count differs from one", name)
+		}
+	}
+}
+
+// invariant: pi-child-tool-boundaries
+func TestPiSubagentToolBoundaries(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{
+		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
+		`IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing boundary %q", want)
+		}
+	}
+}
+
+// invariant: pi-child-process-safety
+func TestPiSubagentProcessSafetyContract(t *testing.T) {
+	content := renderPiExtensionFile(t, "runner.ts")
+	for _, want := range []string{"SIGTERM", "SIGKILL", "removeEventListener", "await deps.rm"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("runner missing process-safety contract %q", want)
+		}
+	}
+}
+
+// invariant: pi-implementation-state-boundary
+func TestPiImplementationStateBoundary(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{"implementationTail", "allowCommits=false", "changes were not reverted", "commitVerification"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing implementation-state contract %q", want)
+		}
+	}
+}
+
+// invariant: pi-minimum-runtime
+func TestPiMinimumRuntimeContract(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	if !strings.Contains(content, `MIN_PI_VERSION = "0.80.9"`) || !strings.Contains(content, `pi.on("session_start"`) {
+		t.Fatal("extension missing minimum-version startup contract")
+	}
+}
+
+func renderPiExtensionFile(t *testing.T, name string) string {
+	t.Helper()
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := ".pi/extensions/awf-subagents/" + name
+	for _, file := range files {
+		if file.Path == path {
+			return file.Content
+		}
+	}
+	t.Fatalf("missing %s", path)
+	return ""
+}
+
+func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\nvars: {testCmd: go test ./..., gateCmd: make gate}\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var before string
+	for _, file := range files {
+		if file.Path == ".pi/skills/example-tdd/SKILL.md" {
+			before = file.ConfigHash
+		}
+	}
+	p.Targets[0].SubagentTools = false
+	files, err = p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		if file.Path == ".pi/skills/example-tdd/SKILL.md" && file.ConfigHash == before {
+			t.Fatal("Pi target descriptor change did not change skill config hash")
+		}
+	}
+}
+
 func TestPiReviewDispatchUsesGenericRuntimeWording(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills:\n  - executing-plans\n  - retrospective\n  - reviewing-impl\n  - subagent-driven-development\nagents:\n  - code-reviewer\ntargets:\n  - pi\n")
 	p, err := Open(root)

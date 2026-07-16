@@ -263,7 +263,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := p.renderTarget("memory", "", memoryTID, nil, sc, p.data(sc), ".awf/memory/.gitignore", &renderEncoding{encode: func(string) (string, error) {
+	if _, err := p.renderTarget("memory", "", memoryTID, nil, sc, p.data(sc), ".awf/memory/.gitignore", &renderOutputOptions{encode: func(string) (string, error) {
 		return "", errors.New("encode failure")
 	}}); err == nil {
 		t.Fatal("expected renderTarget to return the encoder error")

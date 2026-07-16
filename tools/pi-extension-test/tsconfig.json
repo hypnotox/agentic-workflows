@@ -3,10 +3,11 @@
     "strict": true,
     "noEmit": true,
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["fixture/**/*.ts"]
+  "include": ["tests/**/*.ts", "../../.pi/extensions/awf-subagents/*.ts"]
 }

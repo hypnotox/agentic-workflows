@@ -3,5 +3,5 @@ package templates
 
 import "embed"
 
-//go:embed all:skills all:agents agents-doc all:docs domains claude gemini adr-readme adr-template plans-readme plans-template bootstrap hooks runner partials memory
+//go:embed all:skills all:agents agents-doc all:docs domains claude gemini all:pi adr-readme adr-template plans-readme plans-template bootstrap hooks runner partials memory
 var FS embed.FS

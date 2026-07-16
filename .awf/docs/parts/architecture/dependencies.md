@@ -15,6 +15,10 @@
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
+- **Pi 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi extension at runtime;
+  they are supplied by the adopter's Pi installation and are not dependencies of the awf binary.
+- **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
+  `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`
   runs it under the deterministic `.gremlins.yaml` config and `cmd/mutants` reports survived mutants
   (ADR-0066). Advisory only; never part of the gate. This repo only, not part of the rendered standard.

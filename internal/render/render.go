@@ -53,9 +53,10 @@ type SectionPlan struct {
 type CommentStyle int
 
 const (
-	HTMLComment CommentStyle = iota // <!-- <text> -->
-	HashComment                     // # <text>
-	TOMLComment                     // # <text>
+	HTMLComment  CommentStyle = iota // <!-- <text> -->
+	HashComment                      // # <text>
+	TOMLComment                      // # <text>
+	SlashComment                     // // <text>
 )
 
 // CommentStyleForSource picks the pointer comment style for a target from its
@@ -74,6 +75,9 @@ func (style CommentStyle) wrap(inner string) string {
 	if style == HashComment || style == TOMLComment {
 		return "# " + inner + "\n"
 	}
+	if style == SlashComment {
+		return "// " + inner + "\n"
+	}
 	return "<!-- " + inner + " -->\n"
 }
 
@@ -81,6 +85,9 @@ func (style CommentStyle) wrap(inner string) string {
 func (style CommentStyle) open() string {
 	if style == HashComment || style == TOMLComment {
 		return "# "
+	}
+	if style == SlashComment {
+		return "// "
 	}
 	return "<!-- "
 }
