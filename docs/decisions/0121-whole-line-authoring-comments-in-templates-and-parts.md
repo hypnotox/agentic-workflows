@@ -64,8 +64,9 @@ carve-out minimal.
 ## Decision
 
 1. **The `awf:comment` authoring directive.** A line whose trimmed form begins with the
-   exact literal `<!-- awf:comment` followed by whitespace or an immediate `-->`, and
-   closes with `-->` at the end of the same line, is an authoring comment. It is removed
+   exact literal `<!-- awf:comment` followed by whitespace, an immediate `-->`, or the
+   end of the line (the token boundary), and closes with `-->` at the end of the same
+   line, is an authoring comment. It is removed
    at source ingestion, together with its trailing newline, and never reaches rendered
    output. The token boundary is load-bearing: `<!-- awf:commentary -->` is not the
    directive. The literal is exact - a whitespace variant such as `<!--  awf:comment` is
@@ -96,12 +97,15 @@ carve-out minimal.
 
 3. **Fences preserve; malformed openers fail.** Inside a fenced code block, directive
    lines (and malformed openers) are preserved verbatim, so parts and templates can
-   demonstrate the syntax. Outside a fence, a whole line that opens with the directive
-   literal but is not the directive - it does not end with `-->`, whether because the
-   close is missing or because text trails it (`<!-- awf:comment x --> extra`) - is a
-   hard render error naming the source (template id or part path): the directive is new
-   and namespaced, no legacy corpus exists in this tree, a malformed opener has no
-   legitimate use, and passing it through would leak.
+   demonstrate the syntax. Outside a fence, a whole line that opens per Decision 1's
+   token boundary (the literal followed by whitespace, `-->`, or end-of-line) but is
+   not the directive - it does not end with `-->`, whether because the close is missing
+   (including the bare `<!-- awf:comment` line) or because text trails it
+   (`<!-- awf:comment x --> extra`) - is a hard render error naming the source
+   (template id or part path): the directive is new and namespaced, no legacy corpus
+   exists in this tree, a malformed opener has no legitimate use, and passing it
+   through would leak. A prefix-sharing token (`<!-- awf:commentary`), closed or
+   unclosed, fails the boundary and is inert prose, never an error.
    This is the first rejection of part content; it does not disturb ADR-0083's advisory
    (whose matcher names only `awf:section`/`awf:end` and cannot fire on this directive),
    and the accidental-residue stance recorded there stands for everything that is not
@@ -113,10 +117,10 @@ carve-out minimal.
    `awf:comment` lines". Unlike ADR-0057/0072's substitutions - which splice in content
    the part author requested at the marked spot - the strip *removes* author-written
    lines, so the retirement is owed rather than another narrow re-reading. The successor
-   invariant `parts-raw-except-authoring-comments` is declared below; the implementing
-   effort renames the existing `parts-raw` proof and touches markers to the successor
-   slug in the flip commit and backfills ADR-0034's `related:` (the ADR-0120 item-4
-   back-pointer obligation).
+   invariant `parts-raw-except-authoring-comments` is declared below; ADR-0034's
+   `related:` back-pointer (the ADR-0120 item-4 obligation) landed with this proposal,
+   and the implementing effort renames the existing `parts-raw` proof and touches
+   markers to the successor slug in the flip commit.
 
 5. **`invariants.sources` entries gain an optional `close` token.** A source entry may
    declare `close: "-->"` (any literal); when a marker line matches, one trailing close
@@ -152,12 +156,12 @@ carve-out minimal.
   rendered output, across every render unit.
 - `invariant: authoring-comment-whole-line-only`, a mid-line `awf:comment` occurrence
   and a fenced whole-line directive both render verbatim; the strip never rewrites
-  either, and a non-directive token sharing the prefix (`<!-- awf:commentary -->`) is
-  untouched.
-- `invariant: authoring-comment-unclosed-fails`, a whole line outside a fence that opens
-  with the directive literal but does not end with `-->` (missing close, or text
-  trailing the close) fails the render with an error naming the source; inside a fence
-  it is preserved.
+  either, and a non-directive token sharing the prefix (`<!-- awf:commentary`, closed
+  or unclosed) is untouched and never an error.
+- `invariant: authoring-comment-malformed-fails`, a whole line outside a fence that
+  opens per the Decision 1 token boundary but does not end with `-->` (missing close,
+  or text trailing the close) fails the render with an error naming the source; inside
+  a fence it is preserved.
 - `invariant: authoring-comment-inplace-inert`, an in-place section body read back from
   rendered output is never subject to the strip: a directive-shaped line inside an
   in-place region survives re-render byte-for-byte.
