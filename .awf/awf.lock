@@ -47,8 +47,8 @@
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
       "templateHash": "sha256:53c376e3e9d5bc59a65998a5b17120c33b8a68b4f73d95f109e415289c71d6d9",
-      "configHash": "sha256:072f12ce6ec6fc27ecc872b819013240c270916abbebcc11970a2148827e8364",
-      "outputHash": "sha256:390b3467c48c9132c4c6352c82654c62892f6351191bbb050209d4c46ee02bd9"
+      "configHash": "sha256:0a0609ace4864cf3b0d54b6b09b1f7c56226de1f2f99a203e3d3a10d35bf0363",
+      "outputHash": "sha256:4d972cf57750fca08ab31a2db246981bdfd723a8fea2e09bddff9a1a7ef6ab84"
     },
     ".claude/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
@@ -155,8 +155,8 @@
     ".cursor/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
       "templateHash": "sha256:53c376e3e9d5bc59a65998a5b17120c33b8a68b4f73d95f109e415289c71d6d9",
-      "configHash": "sha256:072f12ce6ec6fc27ecc872b819013240c270916abbebcc11970a2148827e8364",
-      "outputHash": "sha256:390b3467c48c9132c4c6352c82654c62892f6351191bbb050209d4c46ee02bd9"
+      "configHash": "sha256:0a0609ace4864cf3b0d54b6b09b1f7c56226de1f2f99a203e3d3a10d35bf0363",
+      "outputHash": "sha256:4d972cf57750fca08ab31a2db246981bdfd723a8fea2e09bddff9a1a7ef6ab84"
     },
     ".cursor/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
@@ -342,8 +342,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:ae282e16e10821f506d19122ad283cae6b4acf8279e02d8f98f07f33ca4b12cc",
-      "outputHash": "sha256:38967a623d240d9c8d2866e0c68b832902c726493ea8c8c9b5bc21b112c85594"
+      "configHash": "sha256:8e4f1b8a07f9a02ebb5c14b6350deaad4fc3a2bc47e913b86f998b789471f1cf",
+      "outputHash": "sha256:13436856e716f142da1b23552da3ae053fe5757b70f80502b609ada382e03df4"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",

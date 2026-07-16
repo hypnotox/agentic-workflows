@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -81,6 +82,72 @@ func TestTemplateSourceResidue(t *testing.T) {
 		if !used[path] {
 			t.Errorf("stale identity exemption %q - the template no longer carries a repo-identity literal; remove the entry via a successor ADR", path)
 		}
+	}
+}
+
+// collectStrings walks an any-typed catalog Data value and appends every
+// string it holds (map values and list elements, recursively) to out.
+func collectStrings(v any, out *[]string) {
+	switch x := v.(type) {
+	case string:
+		*out = append(*out, x)
+	case map[string]any:
+		for _, mv := range x {
+			collectStrings(mv, out)
+		}
+	case []any:
+		for _, e := range x {
+			collectStrings(e, out)
+		}
+	}
+}
+
+// TestCatalogDataResidue extends the ADR-0082 residue rule to the catalog's
+// shipped prose: every Data string of every skill, agent, doc, and the domain
+// doc, plus each doc's Title/Desc, renders into adopter artifacts exactly like
+// template source does, so a concrete awf ADR citation or a repo-identity
+// literal there is the same leak the templates scan catches (a citation
+// resolves to nothing - or to the adopter's own unrelated ADR - in every
+// corpus but awf's). Var descriptor prose is covered separately by
+// configspec-description-residue, which reads the descriptors verbatim. No
+// exemptions: unlike the bootstrap templates, no catalog string references
+// awf-the-product. An ordinary gate test, deliberately slug-free: ADR-0082
+// owns the principle and this is its enforcement catching up with the
+// catalog's move to Go (ADR-0060 postdates its scan scope).
+// touches-invariant: template-source-residue - the catalog-strings sibling of the templates scan; proof stays on TestTemplateSourceResidue
+func TestCatalogDataResidue(t *testing.T) {
+	cat := catalog.Standard
+	check := func(site string, strs []string) {
+		t.Helper()
+		for _, s := range strs {
+			if m := residueADRRe.FindString(s); m != "" {
+				t.Errorf("%s cites %s - decision rationale lives in the decisions directory, never in shipped catalog prose (ADR-0082)", site, m)
+			}
+			for _, lit := range identityLiterals {
+				if strings.Contains(s, lit) {
+					t.Errorf("%s carries repo-identity literal %q (ADR-0082)", site, lit)
+				}
+			}
+		}
+	}
+	for name, spec := range cat.Skills {
+		var strs []string
+		collectStrings(spec.Data, &strs)
+		check("skill "+name, strs)
+	}
+	for name, spec := range cat.Agents {
+		var strs []string
+		collectStrings(spec.Data, &strs)
+		check("agent "+name, strs)
+	}
+	var strs []string
+	collectStrings(cat.DomainDoc.Data, &strs)
+	check("domainDoc", strs)
+	for name, d := range cat.Docs {
+		var strs []string
+		collectStrings(d.Data, &strs)
+		strs = append(strs, d.Title, d.Desc)
+		check("doc "+name, strs)
 	}
 }
 

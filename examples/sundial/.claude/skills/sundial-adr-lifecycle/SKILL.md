@@ -17,9 +17,9 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 | State | Meaning | Mutability |
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
-| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
-| `Implemented` | Design and implementation have both landed in the repository | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
-| `Superseded` | Replaced by a later ADR; kept for historical record | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
+| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding |
+| `Implemented` | Design and implementation have both landed in the repository | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding |
+| `Superseded` | Replaced by a later ADR; kept for historical record | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding |
 
 
 ## Transitions
