@@ -316,7 +316,7 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
 	}
 	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}."
-	// invariant: parts-raw
+	// invariant: parts-raw-except-authoring-comments
 	if !strings.Contains(out, want) {
 		t.Fatalf("part body must render verbatim (not interpolated)\n got: %q\nwant substring: %q", out, want)
 	}

@@ -8,6 +8,8 @@ Each machine-enforceable ADR Invariant bullet is declared in one of two forms (A
 
 Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: it strips leading whitespace and tests whether a line begins with the marker, with no awareness of whether the marker sits inside a test function or relates to any assertion. So the check confirms a proof marker for the slug exists in scope; it does not confirm the backing test actually asserts the invariant, and a marker over a trivial or non-asserting test still passes. Backing is therefore bookkeeping that a test is *declared* to back the slug (the ADR-to-marker ledger `awf check` polices tightly), not evidence the property holds. Confirming that a backing test asserts what it claims is the `code-reviewer`'s job, not the scanner's. This is the invariant-scanner counterpart of the coverage gate's limitation (see "Coverage is not verification" in the testing doc): the coverage floor proves a line runs, the marker scan proves a marker exists, and neither proves an assertion.
 
+ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may declare a `close:` token (`-->`, `*/`) stripped once from a matched marker line's end before tag parsing, in both the backing scan and the `MarkersUnder` context query, so block-comment markers yield clean touches notes and a note-less touches marker still fires the bare-touches advisory. awf's own config points a `<!-- awf:comment` marker at `.awf/**/parts/**/*.md` and `templates/**`, so parts and templates carry `touches-invariant` tags that `awf context` surfaces and the render strip keeps out of output.
+
 
 ## Decisions
 
@@ -27,9 +29,6 @@ Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: i
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
-
-### Proposed
-
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 
 ### Superseded

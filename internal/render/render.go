@@ -250,7 +250,7 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 // sentinels) under missingkey=zero, then restores each raw part body verbatim - so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
-// touches-invariant: parts-raw - part bodies restored verbatim, never templated; proof in render_test.go
+// touches-invariant: parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {

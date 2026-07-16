@@ -121,10 +121,7 @@
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md) (Implemented)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
 - [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Implemented)
-
-## Proposed
-
-- [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Proposed)
+- [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Implemented)
 
 ## Superseded
 

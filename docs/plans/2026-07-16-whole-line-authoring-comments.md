@@ -1,7 +1,7 @@
 ---
 date: 2026-07-16
 adrs: [121]
-status: Proposed
+status: Implemented
 ---
 # Plan: Whole-line authoring comments
 
@@ -646,3 +646,16 @@ the gate.
   are renamed away: renames land in the same commit as the flip.
 - After phase 4, ADR-0120's same-anchor advisory notes `ADR-0034#1` claimed by ADR-0057 and
   ADR-0121 - accepted, per ADR-0121's Consequences.
+
+Implementation findings (recorded at the flip):
+
+- `internal/project` had no pre-existing `render_test.go`; the file was created rather than
+  extended. The task 2.6 var-consumption case landed in `unused_test.go` beside
+  `TestPartPlaceholderConsumesVar` (its fixture home) instead of `drift_test.go`; the
+  scope-folding case landed in `drift_test.go` as planned.
+- `trimClose`'s second parameter is named `closeTok`, not `close`: the linter's `predeclared`
+  rule rejects shadowing the builtin.
+- Phase 1 needed a follow-up commit (`d349de7a`): the configspec entry also regenerates the
+  sundial example's config reference and lock, which the closing commit had not staged.
+- All pinned post-checks passed at their stated values (5 dangling notes through phases 2-3,
+  8 tag lines across 5 files, context surfacing both representative tags).

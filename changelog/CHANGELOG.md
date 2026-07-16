@@ -86,6 +86,14 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- Whole-line `<!-- awf:comment ... -->` authoring comments in templates and convention parts
+  (ADR-0121): stripped at render with their newline, so parts and templates can carry
+  internal notes and `touches-invariant:` tags that never reach rendered output. Whole-line
+  and exact-literal only (mid-line and whitespace-variant forms still render; a malformed
+  whole-line opener is a hard render error naming the source; fenced demos are preserved).
+  `invariants.sources` entries gain an optional `close:` token (`-->`, `*/`) stripped from
+  marker lines before tag parsing, so block-comment-family markers - the new tagging recipe
+  included - yield clean touches notes.
 - New `awf prose-gate` command (ADR-0119): a blocking, presence-level scan of every tracked text
   file for the seven banned typographic punctuation substitutes, the counterpart to the advisory
   `plain-punctuation` audit rule. It is opt-in through `proseGate.enabled` (bool, default off,

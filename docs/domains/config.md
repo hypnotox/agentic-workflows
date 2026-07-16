@@ -8,6 +8,10 @@ Per-project configuration lives in a `.awf/` tree (relocated out of the runtime'
 
 ADR-0091 lets the `docs:` array carry project-local names absent from the catalog, the doc analogue of ADR-0068's skills/agents: such a name is declared by a `.awf/docs/<name>.yaml` sidecar (its `data.title`/`data.description` feeding the rendered doc and its document-map entry) and validated by a new path-aware `config.ValidateDocName` beside `ValidateArtifactName` (one or more lowercase-kebab `/`-separated segments, each carrying at least one letter or digit, rejecting a path escape, a leading/trailing/empty segment, a `.md` suffix, and the reserved `_base` stem) while skill and agent names stay flat. `awf new doc` scaffolds exactly that declaration; the base doc template's `title`/`description` data keys join the `internal/configspec` description authority. ADR-0103 adds a top-level `tags:` vocabulary (a governed map of cross-cutting keyword tag to one-line meaning, described in `internal/configspec` like any other key) against which `awf check` validates every ADR and pitfall tag (an empty or absent vocabulary is inert; a member with an empty meaning is drift; an unused member is allowed); it feeds no rendered artifact, so it stays out of the config hash and needs no schema migration. ADR-0119 adds a fourth config-tree block beside `bootstrap`/`hooks`/`runner`: `proseGate`, an additive default-off mapping (no schema migration) carrying `proseGate.enabled` and a `proseGate.exemptions` list of `{path, codepoint, count}` entries, each described in `internal/configspec` (the codepoint spelled `U+2014` rather than typed, so `config.yaml` does not trip the scan it configures) and projected into the config reference with a live-state entry count.
 
+`invariants.sources[].close` (ADR-0121) is the schema's newest optional key: a literal close
+token for block-comment markers, additive with no schema-generation bump (the `testGlobs`
+precedent) - empty or absent means no stripping.
+
 
 ## Decisions
 
@@ -58,8 +62,5 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
-
-### Proposed
-
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 
