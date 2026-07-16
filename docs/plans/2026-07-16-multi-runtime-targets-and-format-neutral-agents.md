@@ -22,7 +22,7 @@ Codex uses a typed TOML encoder. Pi receives generic review-dispatch prose.
 
 - **Created:** `internal/project/agent_test.go`, `templates/gemini/GEMINI.md.tmpl`,
   `docs/roadmap.md` and its `.awf` source when enabled.
-- **Modified:** `go.mod`, `go.sum`, `internal/catalog/{catalog.go,standard.go}`,
+- **Modified:** `go.mod`, `go.sum`, `changelog/CHANGELOG.md`, `internal/catalog/{catalog.go,standard.go}`,
   `internal/project/{target.go,target_test.go,render.go,check.go,local.go,local_test.go,coverage_test.go}`,
   `templates/agents/*.md.tmpl`, review skill templates, target/config tests,
   adapter documentation, both adopter configs, generated output trees and locks.
@@ -66,7 +66,11 @@ Codex uses a typed TOML encoder. Pi receives generic review-dispatch prose.
   output, assert strict TOML round-trip and multiline escaping, and assert that no
   Markdown parser is called by the TOML path. Update catalog, local, coverage, and
   render tests to preserve byte-identical Claude/Cursor Markdown output.
-- [ ] **Task 1.5: Verify and commit.** Run `./x gate` with expected `coverage:
+- [ ] **Task 1.5: Record the adopter-facing Codex profile capability.** Add a
+  `changelog/CHANGELOG.md` `[Unreleased]` Features entry that names Codex TOML
+  agent-profile rendering and the new `codex` target. This lands with the code
+  that makes the target selectable, not with Phase 3 dogfooding.
+- [ ] **Task 1.6: Verify and commit.** Run `./x gate` with expected `coverage:
   100.0%` and `0 issues.`
 ```commit
 refactor(rendering): model agents independently of output dialect
