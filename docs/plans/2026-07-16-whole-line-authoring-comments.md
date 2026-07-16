@@ -415,11 +415,15 @@ the gate.
      The rule is whole-line and exact-literal: the line must open with `<!-- awf:comment` and
      end with `-->`. A mid-line occurrence and a whitespace variant render verbatim; a
      whole-line opener that does not end with `-->` is a hard render error naming the part or
-     template. Fenced code blocks are preserved, so examples like the one above are safe. To
-     scan such tags, point an `invariants.sources` entry at your parts with
+     template. Fenced code blocks are preserved, so examples like the one above are safe. A
+     part whose only content is authoring comments strips to an empty body and renders its
+     section empty (the pointer stays) rather than falling back to the default. To scan such
+     tags, point an `invariants.sources` entry at your parts with
      `marker: '<!-- awf:comment'` and `close: '-->'`; in a fenced demo, break the tag token so
      the fence-unaware scanner does not record it. Inside an include partial, comment text must
-     avoid the `awf:include`/`awf:section`/`awf:end` substrings.
+     avoid the `awf:include`/`awf:section`/`awf:end` substrings, and comment text is ordinary
+     prose to every other check that reads the source (a punctuation gate included, where one
+     is on).
      ~~~
 
   2. `.awf/docs/parts/architecture/data-flow.md`, append as a new final paragraph:
@@ -563,7 +567,9 @@ the gate.
   ```markdown
   ADR-0121 adds the one removal to the substitutions: whole-line `awf:comment` authoring
   comments are stripped from part bodies (and template sources) at ingestion, retiring
-  `parts-raw` for `parts-raw-except-authoring-comments`.
+  `parts-raw` for `parts-raw-except-authoring-comments`. Comment text in embedded templates
+  stays subject to the ADR-0082 residue scan (invariant slugs only, no ADR citations or
+  repo-identity literals) and the plain-punctuation gates.
   ```
 
 - [ ] **Task 4.3: invariants and config domain narratives.** Append to
