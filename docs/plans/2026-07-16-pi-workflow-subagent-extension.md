@@ -29,8 +29,9 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 ## File structure
 
 - **Created:**
-  - `tools/pi-extension-test/Dockerfile`, `package.json`, `package-lock.json`, `tsconfig.json`,
-    `container.sh`: digest-pinned, dependency-fingerprinted persistent test environment.
+  - `tools/pi-extension-test/Dockerfile`, `docker-entrypoint.sh`, `package.json`,
+    `package-lock.json`, `tsconfig.json`, `container.sh`: digest-pinned,
+    dependency-fingerprinted persistent test environment.
   - `tools/pi-extension-test/fixture/smoke.ts` and `smoke.test.ts`: Phase 1 proof that the container
     type-check/coverage lane is live; deleted when real extension tests replace it.
   - `tools/pi-extension-test/tests/index.test.ts`, `runner.test.ts`, and
@@ -43,19 +44,22 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   - `templates/embed.go`: embed the new `pi` template tree.
   - `internal/render/render.go`, `internal/render/render_test.go`: TypeScript line-comment style.
   - `internal/project/{target.go,render.go,banner.go,confighash.go}` and focused tests in
-    `banner_test.go`, `target_test.go`, `drift_test.go`, `project_test.go`, and
-    `tool_agnostic_test.go`: target-owned extension outputs, target-sensitive hashes, provenance,
-    drift, and cleanup.
+    `banner_test.go`, `target_test.go`, `drift_test.go`, `project_test.go`,
+    `tool_agnostic_test.go`, and `example_wiring_test.go`: target-owned extension outputs,
+    target-sensitive hashes, provenance, drift, cleanup, and container-gate wiring.
   - Workflow templates under `templates/skills/` for `brainstorming`, `refactor-coupling-audit`,
     `subagent-driven-development`, `reviewing-adr`, `reviewing-plan`,
     `reviewing-plan-resync`, and `reviewing-impl`, plus goldens in
     `internal/project/spine_test.go` and cross-artifact assertions in `internal/evals`.
   - `.awf/parts/agents-doc/identity.md`, `.awf/docs/parts/development/{setup,command-runner,dependencies}.md`,
     `.awf/docs/parts/testing/{gate,layout,tiers}.md`, `.awf/docs/parts/roadmap/ideas.md`,
-    `.awf/domains/parts/rendering/current-state.md`, and
-    `.awf/domains/parts/tooling/current-state.md`.
+    `.awf/domains/parts/rendering/current-state.md`,
+    `.awf/domains/parts/tooling/current-state.md`, and
+    `templates/docs/working-with-awf.md.tmpl`.
   - Generated `AGENTS.md`, `docs/{architecture,development,testing,roadmap}.md`,
-    `docs/domains/{rendering,tooling}.md`, and corresponding Sundial outputs.
+    `docs/{working-with-awf.md,domains/{rendering,tooling}.md}`, and corresponding Sundial
+    `AGENTS.md`, workflow skills, `docs/{architecture,development,testing,roadmap,working-with-awf}.md`,
+    extension files, and lock outputs.
   - `README.md`, `changelog/CHANGELOG.md`, `.awf/awf.lock`,
     `examples/sundial/.awf/awf.lock`, ADR-0123, and this plan.
 - **Deleted:** `tools/pi-extension-test/fixture/{smoke.ts,smoke.test.ts}` after the real tests land.
@@ -102,9 +106,10 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
     absent;
   - remove stale containers carrying the same repository label before creating the desired one;
   - mount the checkout read-only at `/workspace` and the named volume at
-    `/workspace/node_modules`, then keep the container alive;
-  - on `run`, start a stopped matching container and use one timed `docker exec` to run the exact
-    type-check/test command from Task 1.3;
+    `/workspace/node_modules`, pass `AWF_PI_TEST_FINGERPRINT=<dependency hash>` for the entrypoint
+    marker, then keep the container alive;
+  - on `run`, start a stopped matching container and use one timed
+    `docker exec --workdir /workspace` to run the exact type-check/test command from Task 1.3;
   - on `stop`, stop matching repository containers without deleting their dependency volume;
   - on `reset`, remove matching containers, volumes, and locally labeled images;
   - when `CI` is non-empty, trap exit and remove the current container and volume after the run;
@@ -127,18 +132,27 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
     tools/pi-extension-test/fixture/*.test.ts
   ```
 
+  Add deterministic cases to `internal/project/example_wiring_test.go` using a temporary fake
+  `docker` selected through `AWF_PI_TEST_DOCKER`: record argv and return fixture output for image,
+  container, volume, build, create, start, exec, stop, and remove operations. Cover absent image,
+  existing/running container, stopped container, stale same-repo container, `CI=1` cleanup, a repo
+  path containing spaces, and daemon failure. Assert labels/fingerprints, one exec with
+  `--workdir /workspace`, cleanup selection, and the exact actionable error. Put
+  `// invariant: pi-extension-container-gate` on this test. This fake seam is chosen over
+  integration-only verification because the manager is mandatory gate code.
+
   Run `tools/pi-extension-test/container.sh run` twice. Expected first run: image/container setup,
   one passing test, and 100% line/function/branch coverage. Expected second run: no build and no
-  container creation, only one `docker exec` test run. Run
-  `find . -maxdepth 2 -name node_modules -print`; expected no output outside Docker mounts as seen
-  from the host.
+  container creation, only one `docker exec` test run. Run `find . -name node_modules -print` from
+  the host; expected no output.
 
 - [ ] **Task 1.4: Make the lane mandatory and document its lifecycle.** In `x`, call
   `tools/pi-extension-test/container.sh run` after Go tests/coverage and before vet, and add a
   `pi-test)` case accepting only `run`, `stop`, or `reset`; update the usage line. Update authored
   development and testing parts so setup requires Go plus Docker (not host Node/npm), the gate table
   names TypeScript type/coverage tests, and `./x pi-test stop|reset` behavior is exact. Run
-  `./x sync && ./x check`, then `./x gate` twice. Expected: both gates pass; the second reports no
+  `go test ./internal/project -run 'TestPiExtensionContainer|TestCommandRunner'`, expecting `ok`,
+  then `./x sync && ./x check`, then `./x gate` twice. Expected: both gates pass; the second reports no
   image rebuild/container creation. Test `./x pi-test stop`, rerun the gate, and expect only a
   container start; test `./x pi-test reset`, rerun, and expect one cached or clean image setup.
 
@@ -204,12 +218,50 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 
   ```typescript
   export type Role = "explore" | "review" | "implement";
-  export interface RunnerDependencies { spawn; fs; makeTempDir; removeTempDir; gitSnapshot; now; }
-  export interface RunRequest { role; task; cwd; model; thinkingLevel; tools; systemPrompt; signal; onUpdate; }
-  export function createRunner(deps: RunnerDependencies): { run(request: RunRequest): Promise<RunResult> };
-  export function resolvePiInvocation(argv: string[], execPath: string): { command: string; args: string[] };
+  export type ChildSignal = "SIGTERM" | "SIGKILL";
+  export interface SpawnedProcess {
+    stdout: NodeJS.ReadableStream;
+    stderr: NodeJS.ReadableStream;
+    once(event: "close", listener: (code: number | null) => void): this;
+    once(event: "error", listener: (error: Error) => void): this;
+    kill(signal: ChildSignal): boolean;
+  }
+  export interface SpawnOptions { cwd: string; shell: false; stdio: ["ignore", "pipe", "pipe"]; }
+  export interface RunnerDependencies {
+    spawn(command: string, args: readonly string[], options: SpawnOptions): SpawnedProcess;
+    mkdtemp(prefix: string): Promise<string>;
+    writeFile(path: string, content: string, options: { encoding: "utf8"; mode: number }): Promise<void>;
+    rm(path: string, options: { recursive: true; force: true }): Promise<void>;
+    setTimer(callback: () => void, delayMs: number): ReturnType<typeof setTimeout>;
+    clearTimer(timer: ReturnType<typeof setTimeout>): void;
+    argv: readonly string[];
+    execPath: string;
+    tempRoot: string;
+  }
+  export interface RunRequest {
+    role: Role;
+    task: string;
+    cwd: string;
+    model: { provider: string; id: string };
+    thinkingLevel: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+    tools: readonly string[];
+    systemPrompt: string;
+    signal?: AbortSignal;
+    onUpdate?: (update: RunUpdate) => void;
+  }
+  export interface RunUpdate { text: string; summaries: readonly EventSummary[]; }
+  export interface EventSummary { kind: "text" | "tool" | "error"; text: string; }
+  export interface Usage { input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; turns: number; }
+  export interface RunResult { output: string; stderr: string; summaries: readonly EventSummary[]; usage: Usage; model?: string; stopReason?: string; }
+  export interface Runner { run(request: RunRequest): Promise<RunResult>; }
+  export function createRunner(deps: RunnerDependencies): Runner;
+  export function resolvePiInvocation(argv: readonly string[], execPath: string): { command: string; args: string[] };
   ```
 
+  Implement `runner.ts.tmpl` in this exact order: constants and types above; UTF-8-safe
+  `truncateHead`/`truncateTail`; capped summary-ring append; final-assistant/usage extraction;
+  invocation resolution; secure temporary prompt creation; one Promise around spawn and NDJSON
+  buffering; exit/error/abort settlement through one idempotent cleanup closure; exported factory.
   Follow Pi's official current-script/Bun/Node fallback logic. Spawn with `shell: false`, JSON mode,
   print mode, `--no-session`, `--model provider/id`, `--thinking`, `--tools`, and
   `--append-system-prompt`. Write the prompt under a mode-0700 temp directory as a mode-0600 file.
@@ -219,7 +271,10 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   TERM starts one five-second timer, KILL fires only when still open, and ordinary close removes timer
   and abort listener. Always remove the temporary directory. A non-zero exit, stop reason `error` or
   `aborted`, spawn error, malformed terminal stream, or compatibility failure throws one bounded
-  diagnostic error.
+  diagnostic error. Extend `tsconfig.json` at this point to include
+  `.pi/extensions/awf-subagents/*.ts` beside the smoke fixture. After writing the file, run
+  `./x sync` and `tools/pi-extension-test/container.sh run`; expected success is the smoke test at
+  100% plus strict type-checking of generated `runner.ts`.
 
 - [ ] **Task 2.5: Implement the three-tool entry template.** Create
   `templates/pi/awf-subagents/index.ts.tmpl`. Import only Pi peer APIs and TypeBox plus the local
@@ -245,9 +300,29 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
     violation without rollback;
   - state in `subagent_implement` metadata that it must be the only tool call in its parent batch.
 
+  Export these exact constants for assertions: `MIN_PI_VERSION`, `EXPLORE_TOOLS`, `REVIEW_TOOLS`,
+  `IMPLEMENT_TOOLS`, and `REVIEWER_PATHS`. Export `ExtensionDependencies` with typed `readFile`,
+  `runner`, `gitSnapshot`, `packageVersion`, and `extensionFile` fields; production construction is
+  the only code that reads process/filesystem state. Implement in this exact order: constants and
+  schemas; strict semver parser; project-root/reviewer loader; role-prompt builders; git snapshot;
+  implementation promise queue; three execute functions; registrations; default factory. Run
+  `./x sync` and assert both `.pi/extensions/awf-subagents/*.ts` now exist, then run
+  `tools/pi-extension-test/container.sh run`; expected success is the smoke test at 100% plus strict
+  type-checking of both generated extension files.
+
 - [ ] **Task 2.6: Replace the smoke fixture with full deterministic tests.** Delete the Phase 1
   fixture. Expand `tsconfig.json` to include the dogfooded `.pi/extensions/awf-subagents/*.ts` and
-  `tests/**/*.ts`. Add `index.test.ts` and `runner.test.ts` covering every branch named by ADR-0123:
+  `tests/**/*.ts`. Replace the manager's test command atomically with:
+
+  ```bash
+  tsc -p tools/pi-extension-test/tsconfig.json && \
+  node --import tsx --test --experimental-test-coverage \
+    --test-coverage-lines=100 --test-coverage-functions=100 --test-coverage-branches=100 \
+    tools/pi-extension-test/tests/*.test.ts
+  ```
+
+  Run `./x sync` before this command and assert the two generated paths exist, so test imports never
+  depend on Task 2.7. Add `index.test.ts` and `runner.test.ts` covering every branch named by ADR-0123:
   three registrations and strict schemas; unsupported/unparseable version; all reviewer mappings and
   missing files; model/thinking inheritance; exact allowlists and recursive-tool absence; task
   validation; role prompts; queue ordering and queued abort; git/non-git snapshots; allowed,
@@ -258,6 +333,13 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   `pi-subagent-public-contract`, `pi-child-tool-boundaries`, `pi-child-process-safety`,
   `pi-implementation-state-boundary`, and `pi-minimum-runtime` on the Go tests that own these
   generated/runtime contracts; TypeScript tests remain behavioral coverage, not invariant markers.
+  The representative runner test feeds one `message_end` JSON record in three chunks and asserts
+  exact output/usage; the edge test uses `term-resistant-pi.mjs`, aborts, advances the injected timer,
+  and asserts TERM then KILL plus one cleanup. The representative index test uses a fake
+  `ExtensionAPI`, records registrations, invokes explore, and asserts model/thinking/tools; edge
+  tables cover every invalid version, missing reviewer, git state, and queue state listed above.
+  Run the replacement command directly through `container.sh run`; expected output is all tests
+  passing and 100% line/function/branch coverage for both generated modules.
 
 - [ ] **Task 2.7: Dogfood, document the new output, and commit.** Update architecture and
   rendering/tooling current-state authored parts for `Target.Outputs`, TypeScript provenance,
@@ -315,10 +397,19 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
 - [ ] **Task 3.5: Remove the temporary generic fallback and update workflow docs.** Pi's review
   style no longer renders `available reviewer or delegation mechanism`. Keep the descriptor field
   only if another target still consumes generic style; otherwise remove `GenericReviewDispatch` and
-  simplify the conditional without changing native target output. Update AGENTS identity source to
-  state that Pi receives awf's extension-backed subprocess orchestration rather than having no
-  orchestration. Update working/target guidance and README examples with the three tool contracts,
-  trust boundary, minimum version, and `allowCommits` ownership. Update the roadmap ideas part to
+  simplify the conditional without changing native target output. In
+  `.awf/parts/agents-doc/identity.md`, replace the no-native-orchestration clause with: `Pi receives
+  three generated project-extension tools that run isolated no-session child processes for
+  exploration, governed review, and sequential implementation.` In
+  `templates/docs/working-with-awf.md.tmpl`, add a `### Pi workflow subagents` subsection under the
+  targets/setup guidance stating: Pi 0.80.9 minimum; project trust loads executable generated code;
+  the exact three schemas; exploration/review are no-mutation policy with `bash`, not an OS sandbox;
+  implementation shares the checkout, must be called alone and sequentially, and the orchestrator
+  sets `allowCommits`; missing/modified files are check drift repaired by sync. Apply the same facts
+  to README's target paragraph and Pi quickstart example. `./x sync` must fan this mandatory doc to
+  `docs/working-with-awf.md` and `examples/sundial/docs/working-with-awf.md`; Sundial's identity
+  override remains adopter-specific unless its existing text makes a contradictory Pi claim.
+  Update the roadmap ideas part to
   `No other roadmap ideas are recorded.` if the Pi orchestrator was its only entry; preserve the
   separate Pi/shared-skills collision deferred entry because ADR-0123 does not solve it.
 
@@ -351,12 +442,36 @@ message retention, or `proc.killed` cancellation test. Reviewer bodies remain ow
   Ensure architecture, development, testing, working guidance, README, AGENTS identity, domain
   current-state docs, and roadmap all state current reality without the ADR-0122 deferral.
 
-- [ ] **Task 4.2: Run the real-runtime smoke check.** With Pi 0.80.9 or newer, invoke each generated
-  tool once in a disposable clean test repository: exploration reads one file; review uses one
-  rendered reviewer and reports without edits; implementation writes a disposable file with
-  `allowCommits: false` and leaves HEAD unchanged. Abort one long-running fake-command child and
-  confirm the parent returns promptly with no child process. Record only deviations in this plan's
-  Notes; credentials and transcripts are never committed. Expected: all four checks succeed.
+- [ ] **Task 4.2: Run the real-runtime smoke check.** Use this disposable-repository recipe with Pi
+  0.80.9 or newer and an already configured provider:
+
+  ```bash
+  smoke="$(mktemp -d)"
+  cp -a examples/sundial/. "$smoke/"
+  git -C "$smoke" init -q
+  git -C "$smoke" add .
+  git -C "$smoke" commit -qm baseline
+  pi --version
+  (cd "$smoke" && pi -p --no-session \
+    'Call subagent_explore once to read go.mod and report its module line.')
+  (cd "$smoke" && pi -p --no-session \
+    'Call subagent_review with kind code to review HEAD and report findings without edits.')
+  test -z "$(git -C "$smoke" status --short)"
+  (cd "$smoke" && pi -p --no-session \
+    'Call subagent_implement alone with allowCommits false to create smoke.txt containing ok; do not commit.')
+  git -C "$smoke" rev-parse HEAD
+  git -C "$smoke" status --short
+  timeout --signal=INT 5s sh -c "cd '$smoke' && pi -p --no-session \
+    'Call subagent_implement alone with allowCommits false and run sleep 60 before reporting.'" || test "$?" -eq 124
+  pgrep -af '[p]i.*--no-session' && exit 1 || true
+  rm -rf "$smoke"
+  ```
+
+  Expected: version is at least 0.80.9; explore reports the module line; review returns its structured
+  digest and `git status --short` remains empty before implementation; implementation leaves baseline
+  HEAD unchanged and status shows only `?? smoke.txt`; timeout exits 124; the child-process search has
+  no match. Record only deviations in this plan's Notes; credentials and transcripts are never
+  committed. Always run the cleanup command, including after a failed assertion.
 
 - [ ] **Task 4.3: Freeze the design and execution record.** Change ADR-0123 from `Proposed` to
   `Implemented` and this plan from `Proposed` to `Implemented`. Run `./x sync` to regenerate
