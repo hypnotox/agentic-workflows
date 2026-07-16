@@ -26,7 +26,8 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-{{ if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `adr-reviewer`.** Provide it a brief that includes:
+{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; it must include:
+{{ else if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `adr-reviewer`.** Provide it a brief that includes:
 {{ else }}3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
 {{ end }}   - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -46,7 +47,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-6. **Verify pass.** After applying fixes, dispatch exactly one fresh `adr-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+6. **Verify pass.** After applying fixes, {{ if .targetSubagentTools }}call `subagent_review` exactly once with `kind: "adr"` and a verify brief in `task`{{ else }}dispatch exactly one fresh `adr-reviewer` verify pass{{ end }} to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->

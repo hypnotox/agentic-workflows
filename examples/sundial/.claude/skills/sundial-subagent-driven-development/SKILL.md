@@ -57,6 +57,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 <!-- awf:edit per-task-review: default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
 6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 
+
 <!-- awf:edit final-task-adr-flip: default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
 7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `./x sync` to regenerate `docs/decisions/ACTIVE.md` and stage it; the ADR commit runs the gate, so the drift test must pass.
 

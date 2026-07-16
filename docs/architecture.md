@@ -116,8 +116,10 @@ tree lives at `.awf/`, decoupled from any one runtime's directory.
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
-  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension; the catalog itself is
-  the compile-time `catalog.Standard` value in `internal/catalog`.
+  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
+  skills name its `subagent_explore`, `subagent_review`, and `subagent_implement` tools explicitly;
+  other targets retain their native or generic dispatch language. The catalog itself is the
+  compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
   the dogfooded generated extension. Its repo-keyed persistent container snapshots current source
   and keeps npm dependencies off the host.

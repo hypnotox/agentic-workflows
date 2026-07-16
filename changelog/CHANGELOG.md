@@ -11,7 +11,9 @@ query a single version or a range.
 ### Breaking changes
 - Pi target adopters now receive executable project extension files under
   `.pi/extensions/awf-subagents/` on sync (ADR-0123). Pi's project-trust boundary applies and Pi
-  0.80.9 or newer is required; `awf check` reports extension drift and `awf sync` repairs it.
+  0.80.9 or newer is required; `awf check` reports extension drift and `awf sync` repairs it. Pi
+  workflow skills call the three governed extension tools explicitly, while other targets retain
+  their existing dispatch language.
 - ADR supersession is structured and machine-checked (ADR-0120), and the `retires_invariants:`
   frontmatter key is removed from the ADR schema. **Run `awf upgrade`: the generation-10
   migration rewrites `docs/decisions/`**, stripping every `retires_invariants:` key and

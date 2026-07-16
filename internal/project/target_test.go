@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -206,28 +207,43 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 	}
 }
 
-func TestPiReviewDispatchUsesGenericRuntimeWording(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills:\n  - executing-plans\n  - retrospective\n  - reviewing-impl\n  - subagent-driven-development\nagents:\n  - code-reviewer\ntargets:\n  - pi\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var content string
-	for _, f := range files {
-		if f.Path == ".pi/skills/example-reviewing-impl/SKILL.md" {
-			content = f.Content
+func TestPiSkillsNameGovernedSubagentTools(t *testing.T) {
+	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
+	for _, tc := range []struct {
+		target string
+		paths  map[string]string
+	}{
+		{"pi", map[string]string{
+			".pi/skills/example-brainstorming/SKILL.md":               "subagent_explore",
+			".pi/skills/example-reviewing-impl/SKILL.md":              "subagent_review",
+			".pi/skills/example-subagent-driven-development/SKILL.md": "subagent_implement",
+		}},
+		{"claude", map[string]string{
+			".claude/skills/example-brainstorming/SKILL.md":               "",
+			".claude/skills/example-reviewing-impl/SKILL.md":              "",
+			".claude/skills/example-subagent-driven-development/SKILL.md": "",
+		}},
+	} {
+		root := scaffold(t, fmt.Sprintf(config, tc.target))
+		p, err := Open(root)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if !strings.Contains(content, "available reviewer or delegation mechanism") {
-		t.Fatalf("Pi review dispatch is not generic:\n%s", content)
-	}
-	for _, prohibited := range []string{"native subagent", "separate session", "separate from the implementer"} {
-		if strings.Contains(content, prohibited) {
-			t.Errorf("Pi review wording claims %q:\n%s", prohibited, content)
+		files, err := p.RenderAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for _, file := range files {
+			got[file.Path] = file.Content
+		}
+		for path, tool := range tc.paths {
+			if tool != "" && !strings.Contains(got[path], "`"+tool+"`") {
+				t.Errorf("%s does not name %s", path, tool)
+			}
+			if tool == "" && strings.Contains(got[path], "subagent_") {
+				t.Errorf("non-Pi skill %s names Pi tool", path)
+			}
 		}
 	}
 }

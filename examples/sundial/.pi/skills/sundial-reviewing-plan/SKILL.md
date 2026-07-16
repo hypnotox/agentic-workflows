@@ -27,7 +27,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 2. **Path detection detail.** When no explicit path is given: list `docs/plans/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-plan/dispatch-subagent.md to override -->
-3. **Use an available reviewer or delegation mechanism for `plan-reviewer`.** Provide it a brief that includes:
+3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; it must include:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The affected context (collect the created/modified paths from the plan's file-structure header and paste the output of `awf context <those paths>`) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.
@@ -45,7 +45,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `almanac`, `schedule`, `cli`, `docs`. Only the plan file is edited; no other repository files are touched.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-plan/re-review-loop.md to override -->
-6. **Verify pass.** After applying fixes, dispatch exactly one fresh `plan-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+6. **Verify pass.** After applying fixes, call `subagent_review` exactly once with `kind: "plan"` and a verify brief in `task` to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):

@@ -45,8 +45,9 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section dispatch-conventions -->
-4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
-   - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
+{{ if .targetSubagentTools }}4. **Per task, call `subagent_implement` alone in its parent tool batch.** Put the complete fresh-context task in `task`, set `allowCommits` explicitly according to whether this task is authorized to create its planned commit, and wait for it before any other tool call or delegation. Never dispatch tasks in parallel. Bake these conventions into `task` verbatim:
+{{ else }}4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
+{{ end }}   - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **{{ with .vars.gateCmd }}`{{ . }}`{{ else }}Gate{{ end }} per commit.** Fast tier by default{{ with .vars.gateCmdFull }}; `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
@@ -62,8 +63,9 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:end -->
 
 <!-- awf:section per-task-review -->
-6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-<!-- awf:end -->
+{{ if .targetSubagentTools }}6. **After a `DONE` implementer reports, call `subagent_review` once with `kind: "code"`.** Put the task requirements, created SHA(s), enforced invariants, spec-adherence check, and code-quality check in `task` before marking the task done. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+{{ else }}6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+{{ end }}<!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
 7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.

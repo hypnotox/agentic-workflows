@@ -28,7 +28,7 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-3. **Use an available reviewer or delegation mechanism for `code-reviewer`.** Provide it a brief that includes:
+3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; it must include:
 
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
@@ -54,7 +54,7 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
    gates commits; it does not replace the gate or the drift check.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task` to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Invoke `sundial-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.

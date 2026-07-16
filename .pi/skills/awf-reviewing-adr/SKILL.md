@@ -24,7 +24,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 2. **Path detection detail.** When no explicit path is given: list `docs/decisions/NNNN-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
-3. **Use an available reviewer or delegation mechanism for `adr-reviewer`.** Provide it a brief that includes:
+3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; it must include:
    - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
@@ -40,7 +40,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
-6. **Verify pass.** After applying fixes, dispatch exactly one fresh `adr-reviewer` verify pass to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+6. **Verify pass.** After applying fixes, call `subagent_review` exactly once with `kind: "adr"` and a verify brief in `task` to confirm the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit status-flip: default; create .awf/skills/parts/reviewing-adr/status-flip.md to override -->
 7. **Do not flip the ADR status here.** The ADR stays `Proposed` through the implementation sequence; the flip to `Accepted`/`Implemented` is owned by the implementation step's final commit (`awf-executing-plans` / `awf-subagent-driven-development`, or `awf-adr-lifecycle` for the no-plan direct-implementation case). "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
