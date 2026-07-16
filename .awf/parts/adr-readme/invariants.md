@@ -1,3 +1,5 @@
+<!-- awf:comment touches-invariant: invariant-markers-derived - this guidance renders the sources-derived marker mapping -->
+<!-- awf:comment touches-invariant: invariant-markers-in-confighash - a sources edit reflags this artifact via the marker placeholders -->
 ## Invariant tagging
 
 Declare each machine-enforceable Invariants bullet with an explicit slug in one of two forms: a

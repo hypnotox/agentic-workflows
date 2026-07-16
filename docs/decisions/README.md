@@ -56,7 +56,7 @@ Declare each machine-enforceable Invariants bullet with an explicit slug in one 
 backed ``- `invariant: <slug>` - ...`` for a property a test is declared to back, or an
 ``- `unbacked-invariant: <slug>` - .... **Verify:** ...`` for a reasoned contract with no automatic test
 (the `Verify:` note says how to confirm it by hand). Back a backed slug with a matching
-`` `invariant: <slug>` `` proof comment on a test (Its marker follows the file's type: `**/*.go` → `//`; the marker comment must open its line (indentation aside).) and, when
+`` `invariant: <slug>` `` proof comment on a test (Its marker follows the file's type: `**/*.go` → `//`, `.awf/**/parts/**/*.md`, `templates/**` → `<!-- awf:comment`; the marker comment must open its line (indentation aside).) and, when
 `invariants.testGlobs` is configured, that proof must live in a test file. A separate advisory
 `` `touches-invariant: <slug> - <note>` `` marker records a related production site and never backs.
 `awf check` (here `./x check`) and the standalone `awf invariants` (`./x invariants`) fail when an

@@ -39,6 +39,11 @@ invariants:
     - globs:
         - '**/*.go'
       marker: //
+    - globs:
+        - '.awf/**/parts/**/*.md'
+        - 'templates/**'
+      marker: '<!-- awf:comment'
+      close: '-->'
   testGlobs:
     - '**/*_test.go'
 prefix: awf
