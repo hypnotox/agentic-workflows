@@ -207,6 +207,7 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 	}
 }
 
+// invariant: pi-explicit-workflow-dispatch
 func TestPiSkillsNameGovernedSubagentTools(t *testing.T) {
 	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	for _, tc := range []struct {

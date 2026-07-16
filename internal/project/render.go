@@ -412,7 +412,6 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		data := p.data(sc)
 		var options *renderOutputOptions
 		if spec.target.Name != "" {
-			data["targetReviewStyle"] = string(spec.target.ReviewStyle)
 			data["targetSubagentTools"] = spec.target.SubagentTools
 			target := spec.target
 			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target}
@@ -481,7 +480,6 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		for _, targetOutput := range t.Outputs {
 			target := t
 			data := p.data(config.Sidecar{})
-			data["targetReviewStyle"] = string(t.ReviewStyle)
 			data["targetSubagentTools"] = t.SubagentTools
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{

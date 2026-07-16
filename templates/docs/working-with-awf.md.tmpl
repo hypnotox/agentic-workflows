@@ -101,6 +101,17 @@ description. `awf new doc <name> "<description>"` works the same way for a manag
 may be nested (`guides/ci`), the body lives at `.awf/docs/parts/<name>/content.md`, and the doc
 joins the document map and dead-link checks like any catalog doc.
 
+### Pi workflow subagents
+
+The Pi target requires Pi 0.80.9 or newer and renders executable project-extension code that Pi
+loads only after project trust. It registers exactly three tools: `subagent_explore` takes a
+required `task`; `subagent_review` takes required `kind` (`adr`, `plan`, or `code`) and `task`;
+and `subagent_implement` takes required `task` and `allowCommits`. Exploration and review follow a
+no-mutation prompt policy and can use `bash`; they are not OS-sandboxed. Implementation shares the
+parent checkout, must run alone in its parent tool batch and sequentially, and may commit only when
+the orchestrator sets `allowCommits: true`. Missing or modified extension files are `awf check`
+drift; run `awf sync` to repair them.
+
 ### Path globs and domain territories
 
 Every glob in awf (`invariants.sources[].globs`, `audit.dependencyManifests`, and domain

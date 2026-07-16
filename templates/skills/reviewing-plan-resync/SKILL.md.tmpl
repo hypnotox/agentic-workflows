@@ -21,7 +21,6 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:section dispatch-subagent-narrowed -->
 {{ if .targetSubagentTools }}1. **Call `subagent_review` with `kind: "plan"` in resync mode.** Put the complete resync brief below in `task`.
-{{ else if eq .targetReviewStyle "generic" }}1. **Use an available reviewer or delegation mechanism for `plan-reviewer` in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most-recently modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
 {{ else }}1. **Dispatch the `plan-reviewer` subagent in resync mode.** Identify the plan path (named in the just-settled ADR(s) or the most recently-modified file under `{{ .layout.plansDir }}/` matching `YYYY-MM-DD-*.md`). Provide it a brief that includes:
 {{ end }}
    - The absolute plan path.

@@ -27,7 +27,6 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 
 <!-- awf:section dispatch-subagent -->
 {{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; it must include:
-{{ else if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `adr-reviewer`.** Provide it a brief that includes:
 {{ else }}3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes:
 {{ end }}   - The absolute ADR path.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.

@@ -31,7 +31,6 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 
 <!-- awf:section dispatch-subagent -->
 {{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; it must include:
-{{ else if eq .targetReviewStyle "generic" }}3. **Use an available reviewer or delegation mechanism for `code-reviewer`.** Provide it a brief that includes:
 {{ else }}3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
 {{ end }}
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).

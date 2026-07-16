@@ -62,9 +62,10 @@ instead of rotting.
 Claude Code is the default target. awf also supports Cursor, Pi, Codex, Gemini,
 and GitHub Copilot: skills and agents render into each runtime's native paths.
 Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge. Pi 0.80.9+
-automatically receives a trusted project extension with fresh-context exploration,
-governed review, and serialized implementation tools; Pi itself still has no native
-subagents.
+automatically receives a trusted project extension with `subagent_explore`, `subagent_review`,
+and `subagent_implement`. Exploration and review are no-mutation prompt policy, not an OS sandbox;
+implementation shares the checkout, runs alone and sequentially, and commits only when its
+orchestrator sets `allowCommits`.
 
 ## How it works
 
@@ -125,6 +126,10 @@ Windows, put `awf` on `PATH` and call it directly.
     awf list             # see what's enabled vs available
     awf enable skill tdd    # opt a skill in
     awf enable doc pitfalls # opt a doc in
+    awf enable target pi    # render Pi 0.80.9+ skills and trusted subagent extension
+
+The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
+files are drift-checked; use `awf sync` to restore missing or modified copies.
 
 `awf init` enables a curated core by default: the workflow-chain skills, the three
 review agents, and the workflow docs. Everything else in the catalog is opt-in via

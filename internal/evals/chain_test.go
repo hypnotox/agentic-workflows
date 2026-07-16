@@ -2,6 +2,7 @@ package evals
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -22,8 +23,8 @@ func read(t *testing.T, path string) string {
 
 // invocationVerb matches a workflow-chain invocation instruction - the verb that
 // makes a line a handoff/dispatch rather than an incidental mention (ADR-0054).
-// Case-insensitive so "invoke"/"Invoke"/"Dispatch"/"chains through" all anchor.
-var invocationVerb = regexp.MustCompile(`(?i)(invoke|dispatch|hands off|chains through)`)
+// Case-insensitive so "invoke"/"Call"/"Dispatch"/"chains through" all anchor.
+var invocationVerb = regexp.MustCompile(`(?i)(invoke|call|dispatch|hands off|chains through)`)
 
 // namesOnInvocationLine reports whether body has a line carrying both an
 // invocation verb and the token as a whole skill/agent name - i.e. the token is
@@ -127,6 +128,25 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 
 // TestReviewerDispatchCarriesSpine asserts each reviewing skill dispatches its
 // reviewer agent (on an invocation line) and that agent carries the spine partial.
+func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalogForTarget(t, cat, "pi")
+	extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
+	for _, tc := range []struct{ skill, agent string }{
+		{"reviewing-impl", "code-reviewer"},
+		{"reviewing-adr", "adr-reviewer"},
+		{"reviewing-plan", "plan-reviewer"},
+	} {
+		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
+		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
+			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
+		}
+		if reviewer := read(t, filepath.Join(root, ".pi", "skills", tc.agent+".md")); !strings.Contains(reviewer, "## Classification rules") {
+			t.Errorf("Pi reviewer %q missing shared spine", tc.agent)
+		}
+	}
+}
+
 func TestReviewerDispatchCarriesSpine(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)

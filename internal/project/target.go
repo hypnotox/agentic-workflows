@@ -17,14 +17,6 @@ const (
 	TOMLAgentDialect     AgentDialect = "toml"
 )
 
-// ReviewDispatchStyle names how a target directs a workflow to a reviewer.
-type ReviewDispatchStyle string
-
-const (
-	NativeReviewDispatch  ReviewDispatchStyle = "native"
-	GenericReviewDispatch ReviewDispatchStyle = "generic"
-)
-
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
 	Path         string
@@ -42,7 +34,6 @@ type Target struct {
 	AgentDialect   AgentDialect
 	BridgeFile     string // adapter bridge file at repo root, "" if none
 	BridgeTemplate string
-	ReviewStyle    ReviewDispatchStyle
 	SubagentTools  bool
 	Outputs        []TargetOutput
 }
@@ -78,7 +69,6 @@ var claudeTarget = Target{
 	AgentDialect:   MarkdownAgentDialect,
 	BridgeFile:     "CLAUDE.md",
 	BridgeTemplate: bridgeTID,
-	ReviewStyle:    NativeReviewDispatch,
 }
 
 // cursorTarget renders to Cursor's SKILL.md/subagent layout. Cursor reads
@@ -90,7 +80,6 @@ var cursorTarget = Target{
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
 	BridgeFile:   "",
-	ReviewStyle:  NativeReviewDispatch,
 }
 
 var codexTarget = Target{
@@ -99,7 +88,6 @@ var codexTarget = Target{
 	AgentDir:     ".codex/agents",
 	AgentSuffix:  ".toml",
 	AgentDialect: TOMLAgentDialect,
-	ReviewStyle:  NativeReviewDispatch,
 }
 
 var piTarget = Target{
@@ -108,7 +96,6 @@ var piTarget = Target{
 	AgentDir:      ".pi/skills",
 	AgentSuffix:   ".md",
 	AgentDialect:  MarkdownAgentDialect,
-	ReviewStyle:   GenericReviewDispatch,
 	SubagentTools: true,
 	Outputs: []TargetOutput{
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", CommentStyle: render.SlashComment},
@@ -124,7 +111,6 @@ var geminiTarget = Target{
 	AgentDialect:   MarkdownAgentDialect,
 	BridgeFile:     "GEMINI.md",
 	BridgeTemplate: "gemini/GEMINI.md.tmpl",
-	ReviewStyle:    NativeReviewDispatch,
 }
 
 var copilotTarget = Target{
@@ -133,7 +119,6 @@ var copilotTarget = Target{
 	AgentDir:     ".github/agents",
 	AgentSuffix:  ".agent.md",
 	AgentDialect: MarkdownAgentDialect,
-	ReviewStyle:  NativeReviewDispatch,
 }
 
 // targetRegistry maps an adapter name to its Target. It is the sole enumeration

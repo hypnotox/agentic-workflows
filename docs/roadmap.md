@@ -2,11 +2,10 @@
 # Roadmap
 
 <!-- awf:edit ideas: from .awf/docs/parts/roadmap/ideas.md -->
-## Pi subagent orchestrator
+## Ideas
 
-Deferred from ADR-0122. Provide an optional Pi extension that can orchestrate the
-rendered reviewer skills when the runtime offers a suitable delegation mechanism.
-It must not imply native Pi subagents or require a separate reviewer session.
+No other roadmap ideas are recorded.
+
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 No other deferred work is recorded.

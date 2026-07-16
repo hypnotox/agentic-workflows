@@ -47,10 +47,10 @@ func writeList(b *strings.Builder, key string, vals []string) {
 // (ADR-0022) - so the rendered set exercises every workflow-chain seam. The
 // enabled set is derived from the catalog (never hand-listed) so it cannot
 // silently rot as the catalog grows (ADR-0053).
-func fullCatalogConfig(cat *catalog.Catalog) string {
+func fullCatalogConfigForTarget(cat *catalog.Catalog, target string) string {
 	var b strings.Builder
 	b.WriteString("prefix: " + evalPrefix + "\n")
-	b.WriteString("targets:\n  - claude\n")
+	b.WriteString("targets:\n  - " + target + "\n")
 	writeList(&b, "skills", sortedKeys(cat.Skills))
 	writeList(&b, "agents", sortedKeys(cat.Agents))
 	// Only toggleable docs go in the docs: enable array; Mandatory singletons
@@ -64,9 +64,13 @@ func fullCatalogConfig(cat *catalog.Catalog) string {
 // testsupport primitives rather than internal/project's package-private
 // scaffold helper (ADR-0053 Decision item 5).
 func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
+	return syncFullCatalogForTarget(t, cat, "claude")
+}
+
+func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, fullCatalogConfig(cat))
+	testsupport.WriteAwfConfig(t, root, fullCatalogConfigForTarget(cat, target))
 	p, err := project.Open(root)
 	if err != nil {
 		t.Fatalf("open: %v", err)
