@@ -120,10 +120,7 @@
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md) (Implemented)
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) (Implemented)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md) (Implemented)
-
-## Proposed
-
-- [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Proposed)
+- [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
 
 ## Superseded
 

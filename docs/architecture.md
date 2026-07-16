@@ -39,7 +39,7 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
-  `audit`, `invariants`, `commit-gate`, `upgrade`, `uninstall`, `changelog`, `version`
+  `audit`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`, `changelog`, `version`
   subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
@@ -79,6 +79,10 @@ natively). awf's own config tree lives at `.awf/`, decoupled from any one runtim
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
+- **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
+  typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
+  The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
+  it answers whether the tree is clean, not whether a commit made it worse.
 - **`internal/invariants/`**: verifies every Implemented ADR's `invariant:` slugs against
   `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
   powers `awf invariants` and the gated check.

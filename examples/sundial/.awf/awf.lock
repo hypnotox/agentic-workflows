@@ -216,9 +216,9 @@
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
-      "templateHash": "sha256:69d74a9623226c95806267f3a93fef88e4b868e68133edeb684d674698a3f5ab",
+      "templateHash": "sha256:348fb40019f05d73a3da29335070fe393959a77b1483f3a42761579d65ffddbd",
       "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
-      "outputHash": "sha256:2d48e73993fd64681b6051fa6101076a9624b137aa9fa9b3feeb4ccd0bfb88e0"
+      "outputHash": "sha256:0098f9e1582c5194bf956993b2c4b5c625c49221c6554274fe3c01dd2ccdd0f0"
     },
     "docs/domains/almanac.md": {
       "templateId": "",
@@ -278,9 +278,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:6b3728de37caee60dc3d4780fadde9d5144e30dc26f3370a0006e715188001fb",
+      "templateHash": "sha256:0ae05c1e2f2e9cdefc926c57943f2f32cdc58ca4bfa0f2e52ac91015824b533c",
       "configHash": "sha256:4e28a6099d999be99c8a621019a95c246116c70b841164f2983616a9742c3fa6",
-      "outputHash": "sha256:ac07320f1bf2dc533854feb81c4c1895a730c086c7f678410b0ebda4f11e915d"
+      "outputHash": "sha256:e4150cf319f590705149b01dd95b9fe5766dc2d4d1d584b04bfefb7ed5580cfa"
     },
     "x": {
       "templateId": "runner/x.tmpl",

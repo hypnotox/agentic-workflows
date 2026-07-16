@@ -25,6 +25,7 @@ awf also always renders `.awf/memory/.gitignore`: a self-ignoring gitignore that
 - `awf audit`: report Conventional-Commits / workflow-conformance findings over the branch (advisory).
 - `awf invariants`: report Implemented-ADR `invariant:` slugs that lack a backing proof comment in source.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
+- `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
 - `awf version`: print the binary's version.

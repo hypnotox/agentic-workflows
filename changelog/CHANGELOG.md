@@ -66,6 +66,17 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- New `awf prose-gate` command (ADR-0119): a blocking, presence-level scan of every tracked text
+  file for the seven banned typographic punctuation substitutes, the counterpart to the advisory
+  `plain-punctuation` audit rule. It is opt-in through `proseGate.enabled` (bool, default off,
+  because a presence gate would fail an unswept tree on the day it lands) and exits zero without
+  scanning when off, so a hook may invoke it unconditionally. Genuine depictions are pinned in
+  `proseGate.exemptions` (a list of `path` plus `codepoint`, the codepoint spelled as `U+2014`
+  rather than typed, with an optional `count`). Adopters wire it into a pre-commit hook: the
+  rendered `.awf/hooks/pre-commit.sh` payload gains an `awf prose-gate` line, so **an adopter who
+  upgrades sees their committed payload drift until they run `awf sync`**, even with the knob off.
+  The documentation standard's plain-punctuation rule now also lists the bare hyphen as a valid
+  em-dash replacement.
 - `awf audit` gains an advisory `plain-punctuation` rule (ADR-0117), on by default and switched
   off with `audit.plainPunctuation: false`. It warns, and never errors, when a commit **raises**
   the count of a typographic punctuation substitute in an authored markdown file under `docsDir`.

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-16
 adrs: [119]
-status: Proposed
+status: Implemented
 ---
 # Plan: Repo-wide plain punctuation sweep and the opt-in prose gate
 
@@ -1288,3 +1288,24 @@ The effort is done when all of the following hold:
   punctuating it would make a true statement false), do not sweep it and do not invent an exemption
   silently: ADR-0118 item 3's precedent is that the sweep agent flags it and the ADR is amended to
   authorise it. ADR-0119 is Proposed until Phase 8, so its body is still mutable.
+
+## Implementation notes (recorded at the freeze)
+
+- **Task 6.6a (the architecture-map update) was executed in Phase 8, not Phase 6.** It was a
+  doc-currency edit with no code dependency, so folding it into the single Phase 8 doc-currency
+  commit alongside Tasks 8.2a and 8.5a kept the related edits together. Phase 6's gate passed
+  without it because architecture-doc staleness is an `awf audit` warning, not a gate step.
+- **The scanner and every test fixture were first drafted with literal glyphs, then converted to
+  `\u` escapes**, exactly as the plan's two-conventions preamble warned. The conversion is
+  mechanical and was caught before each commit by the same codepoint probe the sweep phases use.
+  Confirmation the plan's warning was load-bearing, not decorative.
+- **Task 8.5's "cite no ADR number" instruction was not followed, deliberately.** The changelog
+  cites ADR numbers throughout (96 existing citations) and has no residue guard forbidding them;
+  that constraint belongs to `internal/configspec` descriptions, and the plan carried it over in
+  error. The entry cites ADR-0119 like every sibling. The glyph constraint (ADR-0115 scans
+  `changelog.FS`) was honoured.
+- **Phase 6 needed extra coverage cases beyond the plan's enumeration**: the exemption-append path
+  (a valid exemption that parses and is applied), the non-empty `proseGate.exemptions` live-state
+  branch in the config reference, and the dispatch handler closure (driven through `run()`). All
+  three were foreseeable from the 100% floor; the plan's case list named the branches but not every
+  distinct fixture needed to reach them.

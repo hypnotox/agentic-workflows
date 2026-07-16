@@ -20,6 +20,7 @@ case "$cmd" in
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck
+    go run ./cmd/awf prose-gate
     ;;
   lint)
     go tool golangci-lint run "$@"
