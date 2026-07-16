@@ -45,8 +45,9 @@ Codex uses a typed TOML encoder. Pi receives generic review-dispatch prose.
   encoders. The Markdown encoder emits the existing YAML frontmatter shape. Add a
   pinned TOML dependency in `go.mod`/`go.sum`; encode a typed Codex profile with
   exactly `name`, `description`, and `developer_instructions`, and strictly decode
-  it before returning output. Do not parse a rendered Markdown file in either
-  encoder.
+  it before returning output. Extend `render.CommentStyle` and banner injection
+  so a TOML profile receives valid `#` provenance comments rather than HTML
+  comments. Do not parse a rendered Markdown file in either encoder.
 - [ ] **Task 1.3: Route agent rendering and validation through the new model.**
   Change `internal/project/render.go` so agent body assembly still uses the normal
   section/part pipeline but encoding happens before banner injection and manifest
@@ -78,10 +79,11 @@ refactor(rendering): model agents independently of output dialect
 - [ ] **Task 2.2: Propagate target inputs into render and drift.** In
   `internal/project/render.go`, pass the target's agent dialect and review style
   to agent/skill rendering and fold the complete descriptor into affected config
-  hashes. Ensure bridge rendering chooses `CLAUDE.md` or `GEMINI.md` without
-  rendering bridges for native-AGENTS targets. Add
-  `templates/gemini/GEMINI.md.tmpl` containing the supported `@AGENTS.md` import
-  and embed it in `templates/embed.go`.
+  hashes. Classify Codex profiles as non-Markdown so dead-reference and
+  managed-Markdown scans do not parse TOML as Markdown. Ensure bridge rendering
+  chooses `CLAUDE.md` or `GEMINI.md` without rendering bridges for native-AGENTS
+  targets. Add `templates/gemini/GEMINI.md.tmpl` containing the supported
+  `@AGENTS.md` import and embed it in `templates/embed.go`.
 - [ ] **Task 2.3: Make Pi review wording generic.** In every standard reviewing
   skill template that directs `adr-reviewer`, `plan-reviewer`, or `code-reviewer`
   dispatch, branch only on the target review style. Native targets retain current
