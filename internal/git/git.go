@@ -126,7 +126,10 @@ func IndexPaths(repoRoot string) ([]string, error) {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
 	idx, err := repo.Storer.Index()
-	if err != nil { // coverage-ignore: a repo OpenRepo just opened has a readable index
+	if err != nil {
+		// OpenRepo does not decode the index; Storer.Index() reads .git/index on
+		// first call, so a corrupt index file fails here even though the open
+		// succeeded.
 		return nil, fmt.Errorf("read index: %w", err)
 	}
 	out := make([]string, 0, len(idx.Entries))

@@ -75,8 +75,17 @@ func TestScanExemptionModes(t *testing.T) {
 	}
 	// mismatched pinned Count reports, carrying the pin.
 	got, _ := Scan(root, []string{"f.md"}, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(1)}})
-	if len(got) != 1 || got[0].Pinned != 1 || got[0].Count != 2 {
+	if len(got) != 1 || got[0].Pinned == nil || *got[0].Pinned != 1 || got[0].Count != 2 {
 		t.Fatalf("mismatched pin: want one finding pinned 1 count 2, got %+v", got)
+	}
+	// a pin of zero is a real pin, not the "unexempted" sentinel: a file that
+	// still carries the codepoint mismatches, and Format names the zero pin.
+	zero, _ := Scan(root, []string{"f.md"}, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(0)}})
+	if len(zero) != 1 || zero[0].Pinned == nil || *zero[0].Pinned != 0 {
+		t.Fatalf("zero pin: want one finding pinned 0, got %+v", zero)
+	}
+	if msg := Format(zero[0]); !strings.Contains(msg, "pins 0") {
+		t.Errorf("zero pin message: %q", msg)
 	}
 }
 
@@ -92,7 +101,7 @@ func TestFormat(t *testing.T) {
 	if !strings.Contains(plain, "a.md") || !strings.Contains(plain, "em-dash (U+2014)") || !strings.Contains(plain, "3") {
 		t.Errorf("plain: %q", plain)
 	}
-	pinned := Format(Finding{Path: "b.md", Rune: '\u201c', Count: 2, Pinned: 1})
+	pinned := Format(Finding{Path: "b.md", Rune: '\u201c', Count: 2, Pinned: ptr(1)})
 	if !strings.Contains(pinned, "pins 1") || !strings.Contains(pinned, "2 time") {
 		t.Errorf("pinned: %q", pinned)
 	}

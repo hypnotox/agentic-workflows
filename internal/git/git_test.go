@@ -283,3 +283,16 @@ func TestIndexPathsOpenError(t *testing.T) {
 		t.Error("want an error outside a git repository, got nil")
 	}
 }
+
+func TestIndexPathsCorruptIndex(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	// OpenRepo succeeds without touching the index; Storer.Index() decodes
+	// .git/index on demand, so a garbage index fails there, not at open.
+	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.IndexPaths(dir); err == nil || !strings.Contains(err.Error(), "read index") {
+		t.Fatalf("corrupt index: want a read-index error, got %v", err)
+	}
+}

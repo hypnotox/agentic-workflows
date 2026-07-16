@@ -39,12 +39,13 @@ type Exemption struct {
 }
 
 // Finding is one banned codepoint in one file, with the number found. Pinned is
-// set when an exemption pinned a count that did not match.
+// non-nil when an exemption pinned a count that did not match, carrying the pin
+// (which may legitimately be zero); nil when the codepoint was not exempt at all.
 type Finding struct {
 	Path   string
 	Rune   rune
 	Count  int
-	Pinned int
+	Pinned *int
 }
 
 // ParseCodepoint turns a "U+2014" spelling into its rune. It rejects anything
@@ -94,7 +95,7 @@ func Scan(root string, paths []string, exemptions []Exemption) ([]Finding, error
 			case !ok:
 				out = append(out, Finding{Path: p, Rune: r, Count: n})
 			case pin != nil && *pin != n:
-				out = append(out, Finding{Path: p, Rune: r, Count: n, Pinned: *pin})
+				out = append(out, Finding{Path: p, Rune: r, Count: n, Pinned: pin})
 			}
 		}
 	}
@@ -109,9 +110,9 @@ func Scan(root string, paths []string, exemptions []Exemption) ([]Finding, error
 
 // Format renders one finding as a diagnostic line.
 func Format(f Finding) string {
-	if f.Pinned > 0 {
+	if f.Pinned != nil {
 		return fmt.Sprintf("%s: %s appears %d time(s); the exemption pins %d",
-			f.Path, Banned[f.Rune], f.Count, f.Pinned)
+			f.Path, Banned[f.Rune], f.Count, *f.Pinned)
 	}
 	return fmt.Sprintf("%s: %s appears %d time(s); use plain punctuation",
 		f.Path, Banned[f.Rune], f.Count)
