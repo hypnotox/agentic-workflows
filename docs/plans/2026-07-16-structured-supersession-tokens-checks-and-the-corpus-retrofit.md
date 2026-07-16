@@ -264,7 +264,8 @@ so the dead-code gate passes.
     in `a.Supersedes` is a drift.
   - **Advisories (returned as `[]string`):** (1) a ref whose target's status has the
     `Superseded` prefix: `"ADR-%s token targets ADR-%s, which was fully superseded"`; (2) an
-    anchor (target + item or slug) claimed by refs in two or more non-Superseded ADRs:
+    anchor (target + item or slug) claimed by refs in two or more **live** ADRs - `Accepted`
+    or `Implemented`, ADR-0120 item 4's definition; a Proposed claimant is not yet in force:
     `"anchor ADR-%s#%s claimed by ADR-%s and ADR-%s"`. Notes never enter the drift slice.
 
   Wiring, one shape, no either/or: split the compute from the plumbing. A
@@ -468,7 +469,11 @@ so the dead-code gate passes.
   ```
 
   Chains come from each ADR's `Supersedes` (formatted `%04d`); overrides from each ADR whose
-  status lacks the `Superseded` prefix, one entry per ref.
+  status lacks the `Superseded` prefix, one entry per ref. Rendering deliberately includes
+  Proposed carriers where the conflict advisory (Task 2.2) does not: the annotation is
+  discoverability, not enforcement, the window is transient (authoritative at the Task 8.4
+  flip), and Phase 6's own verification needs the 0116 annotations observable while 0120 is
+  still Proposed.
 
 - [ ] **Task 6.2: ACTIVE.md.** In `RenderActiveMD`, after the status groups, when
   `SupersessionIndex` returns anything, append (omitting either subsection when empty:
@@ -537,11 +542,17 @@ independently shippable.
     carve-out wording: "the body's meaning is frozen; a schema retrofit may migrate its
     machine-readable encoding (ADR-0120)".
 
-- [ ] **Task 7.2: The two-site AGENTS.md bullet.** Replace the retirement clause in **both**
-  `templates/agents-doc/AGENTS.md.tmpl` (embedded default) and `.awf/agents-doc.yaml` line 28
-  (this repo's override - the ADR-0116 Decision 4 two-site hazard):
-  `Retirement by an Implemented successor ADR drops a slug (ADR-0031).` becomes
+- [ ] **Task 7.2: The two-site AGENTS.md bullet, plus the append-only bullet.** Replace the
+  retirement clause in **both** `templates/agents-doc/AGENTS.md.tmpl` (embedded default) and
+  `.awf/agents-doc.yaml` line 28 (this repo's override - the ADR-0116 Decision 4 two-site
+  hazard): `Retirement by an Implemented successor ADR drops a slug (ADR-0031).` becomes
   ``A `supersedes-invariant:` token on an Implemented successor ADR retires a slug (ADR-0120).``
+
+  Also qualify the "Append-only ADRs" invariants bullet at
+  `templates/agents-doc/AGENTS.md.tmpl` line 38 with the item-9 carve-out: append "Decision
+  meaning is frozen once an ADR leaves Proposed; a meaning-preserving schema retrofit may
+  migrate its encoding (ADR-0120)." Single site: the `.awf/agents-doc.yaml` override does not
+  carry this bullet.
 
 - [ ] **Task 7.3: The decisions README template.** In `templates/adr-readme/README.md.tmpl`: in
   the frontmatter block, document `supersedes:` as three-way-checked; add a
