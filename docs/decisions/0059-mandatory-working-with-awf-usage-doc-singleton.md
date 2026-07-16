@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-04
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [doc-singletons, adopter-reference]
 related: [4, 11, 13, 20, 34, 43, 57, 58]

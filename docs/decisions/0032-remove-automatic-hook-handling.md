@@ -6,7 +6,6 @@ superseded_by: ""
 tags: [git-hooks, schema-migration]
 related: [23, 30, 31]
 domains: [tooling, rendering]
-retires_invariants: [setup-guards-hookspath]
 ---
 # ADR-0032: Remove Automatic Git-Hook Handling
 
@@ -111,6 +110,9 @@ Grounding discoveries that shape the design:
    (`uninstall` now only removes lock-tracked files). ADR-0023's `inv: init-force-backs-up` and
    the lock-tracked-removal substance of `inv: uninstall-removes-lock-tracked` remain in force
    and backed; only the retired slug above is dropped.
+
+8. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0023#setup-guards-hookspath`.
 
 ## Invariants
 

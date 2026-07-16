@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-11
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [plan-taxonomy]
 related: [1, 45, 54, 80, 82, 90]

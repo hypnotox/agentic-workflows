@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-01
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [skill-ref-integrity, chain-handoffs]
 related: [13, 20, 22, 28, 34, 45, 81]

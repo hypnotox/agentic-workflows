@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-07-01
 supersedes: []
-retires_invariants: [workflow-ref-fallback]
 superseded_by: ""
 tags: [doc-singletons, schema-migration]
-related: [4, 13, 18, 20, 21, 22, 29, 31, 37]
+related: [4, 13, 18, 20, 21, 22, 29, 31, 37, 61]
 domains: [rendering, config]
 ---
 # ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards
@@ -150,6 +149,9 @@ merely guarded by a parity test.
 13. **This ADR partially reverses ADR-0022's Decision item 4** for exactly these three docs.
     ADR-0022 is not superseded or status-flipped; it continues to govern core-but-toggleable skills
     and any future core doc, should one be added without warranting mandatory status.
+
+14. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0013#workflow-ref-fallback`.
 
 ## Invariants
 

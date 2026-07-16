@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-05
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [coverage-gate]
 related: [12, 63, 79]

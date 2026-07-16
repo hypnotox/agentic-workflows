@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-06-30
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [bootstrap-porcelain, checksum-verify]
-related: [24, 27, 30, 39]
+related: [24, 27, 30, 39, 85]
 domains: [tooling, rendering, config]
 ---
 # ADR-0040: Self-Pinning Rendered Bootstrap

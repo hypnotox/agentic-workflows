@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.17.0",
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "files": {
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -263,8 +263,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:1a221ef4174b2fed2de627877ff5703301ba749abed0a0881e4124c4a56e2034",
-      "outputHash": "sha256:6132f697bbfb03d0d3aa493d477eb17ce8791863d260ff165232230ed7fa126b"
+      "configHash": "sha256:497631afa05ea0efcba2c3be32a7998bf8bbcef21cd8496182e221af4b8f56e1",
+      "outputHash": "sha256:fc10f0a30f2052df7fd3a9266c3fb38a7f818946948eac787e4606d6cb076624"
     },
     "docs/config-reference.md": {
       "templateId": "",

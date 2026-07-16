@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-12
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [command-runner, editable-sections]
 related: [2, 40, 48, 49, 60, 61, 84, 85, 86, 90, 92, 100]

@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-15
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [invariant-backing, review-agents]
 related: [8, 12, 105, 106, 112]

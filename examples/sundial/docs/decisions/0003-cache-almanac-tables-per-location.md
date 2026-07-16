@@ -2,7 +2,6 @@
 status: Proposed
 date: 2026-07-09
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [performance]
 related: [1]

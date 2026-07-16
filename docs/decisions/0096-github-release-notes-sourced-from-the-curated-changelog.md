@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-12
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [changelog, release-pipeline]
 related: [30, 41, 78, 79]

@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-07-12
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [plan-artifact, frontmatter-validation]
-related: [6, 60, 92, 95, 97, 108]
+related: [6, 60, 92, 95, 97, 108, 104]
 domains: [rendering, tooling]
 ---
 # ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking

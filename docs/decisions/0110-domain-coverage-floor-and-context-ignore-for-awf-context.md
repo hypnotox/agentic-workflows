@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: [uncovered-lists-unowned-only]
 superseded_by: ""
 tags: [uncovered-coverage, domain-index]
 related: [77, 86, 88, 102, 104, 109]
@@ -95,6 +94,9 @@ Grounding fixed the mechanics and boundaries:
    `uncovered-lists-unowned-unignored`, widening its contract, and re-citing ADR-0110), re-syncs
    `AGENTS.md`, and regenerates `docs/decisions/ACTIVE.md` via `./x sync` at the eventual
    Proposed→Implemented status flip.
+
+6. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0102#uncovered-lists-unowned-only`.
 
 ## Invariants
 

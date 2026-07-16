@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-08
 supersedes: []
-retires_invariants: [invariants-glob-basename]
 superseded_by: ""
 tags: [anchored-globs, domain-staleness]
 related: [17, 19, 26, 33, 39, 49, 76, 86]
@@ -115,6 +114,9 @@ Grounding facts that shaped the decision (verified against source):
    `docs/domains/<X>.md` (in the generated-paths set and regenerated on unrelated ADR changes). It
    is inert for a domain without `paths` and gets its own `*bool` toggle in `AuditConfig`
    (nil = enabled), per the established per-rule config semantics.
+
+6. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0008#invariants-glob-basename`.
 
 ## Invariants
 

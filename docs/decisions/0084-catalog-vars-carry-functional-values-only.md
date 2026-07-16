@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-09
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [catalog-vars, placeholder-degradation]
 related: [2, 29, 51, 80]

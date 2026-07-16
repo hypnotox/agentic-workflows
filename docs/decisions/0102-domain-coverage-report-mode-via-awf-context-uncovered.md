@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-07-12
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [uncovered-coverage, context-query]
-related: [14, 77, 86, 92, 94]
+related: [14, 77, 86, 92, 94, 110]
 domains: [tooling]
 ---
 # ADR-0102: Domain-Coverage Report Mode via awf context --uncovered

@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-07-12
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [pitfalls-surface, context-query, sidecar-derived-doc]
-related: [67, 86, 88, 89, 90, 92, 98]
+related: [67, 86, 88, 89, 90, 92, 98, 104]
 domains: [rendering, tooling]
 ---
 # ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context

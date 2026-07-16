@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-06-29
 supersedes: []
-retires_invariants: [target-output-paths]
 superseded_by: ""
 tags: [multi-target, target-seam]
 related: [14, 16, 24]
@@ -95,6 +94,9 @@ plan; nothing in this ADR depends on it.
 6. **Rename the artifact-sense "target" to "artifact"** across `renderTarget`, `targetConfigHash`,
    `planSections`, `consumedParts`, `partRel`, `config.PartPath`, and the orphan-loop vocabulary:
    a mechanical, behaviour-preserving rename that leaves `catalog.VarDescriptor.Target` untouched.
+
+7. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0016#target-output-paths`.
 
 ## Invariants
 

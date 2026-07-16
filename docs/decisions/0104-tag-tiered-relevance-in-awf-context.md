@@ -2,10 +2,9 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: [context-surfaces-linked-plans, context-surfaces-pitfalls]
 superseded_by: ""
 tags: [context-tiering]
-related: [8, 31, 92, 98, 99, 102, 103]
+related: [8, 31, 92, 98, 99, 102, 103, 106, 109]
 domains: [tooling, invariants]
 ---
 # ADR-0104: Tag-Tiered Relevance in awf context
@@ -104,6 +103,9 @@ Grounding fixed the constraints:
    from the one restructured value), and `awf context`'s read-only and static-fallback contracts
    (ADR-0092) are unchanged: the assembly reads only committed state and the command mutates
    nothing.
+
+7. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0098#context-surfaces-linked-plans`, `supersedes-invariant: ADR-0099#context-surfaces-pitfalls`.
 
 ## Invariants
 

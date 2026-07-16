@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-15
 supersedes: [113]
-retires_invariants: []
 superseded_by: ""
 tags: [template-residue, doc-standard, active-md, adr-lifecycle]
 related: [28, 31, 73, 82, 112, 113, 117, 118, 119]

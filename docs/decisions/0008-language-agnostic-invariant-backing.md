@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [invariant-backing, anchored-globs]
-related: [7]
+related: [7, 77]
 domains: [invariants]
 ---
 # ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard

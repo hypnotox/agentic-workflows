@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-10
 supersedes: []
-retires_invariants: [bootstrap-pin]
 superseded_by: ""
 tags: [upgrade-flow, bootstrap-porcelain]
 related: [39, 40, 49, 76, 79, 82]
@@ -127,6 +126,9 @@ Forces and observations shaping the design:
    ADR-0039 version gate refuses it with its standard message: the schema-ahead arm when
    the config's schema generation is newer, the lock-behind arm for a same-schema
    downgrade.
+
+9. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0040#bootstrap-pin`.
 
 ## Invariants
 

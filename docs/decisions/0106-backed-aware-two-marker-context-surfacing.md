@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: [context-tier1-governs]
 superseded_by: ""
 tags: [context-tiering, invariant-backing]
 related: [8, 31, 92, 104, 105]
@@ -64,6 +63,9 @@ shifts but whose downstream rules do not. ADR-0104 stays `Implemented`; this ADR
    marker's `- <note>`. Both ride the single assembled `ContextResult`, preserving `awf context`'s
    read-only, output-parity, and static-fallback contracts (ADR-0092, ADR-0104): the human and
    `--json` renderings derive from the one value, and the command mutates nothing.
+
+4. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0104#context-tier1-governs`.
 
 ## Invariants
 

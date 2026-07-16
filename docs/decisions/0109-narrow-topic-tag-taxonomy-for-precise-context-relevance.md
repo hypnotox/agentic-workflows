@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: [context-tier2-topical]
 superseded_by: ""
 tags: [tag-vocabulary, context-tiering]
 related: [92, 99, 102, 103, 104, 106]
@@ -130,6 +129,9 @@ Grounding fixed the boundaries this decision must respect:
    `tag-frequency-note`, and `tag-coverage-note` (the list is hand-maintained with no gate)) and
    re-synced in the same change (docs travel with the change), alongside the `./x sync` regeneration
    of `docs/decisions/ACTIVE.md` at the eventual Proposed→Implemented status flip.
+
+7. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0104#context-tier2-topical`.
 
 ## Invariants
 

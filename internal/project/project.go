@@ -30,10 +30,11 @@ const Version = "0.17.0"
 // project.Version allowed to render it; adding a migration without an entry
 // here (and a matching const bump) fails the gate (ADR-0049 Decision 4).
 var minVersionBySchema = map[int]string{
-	6: "0.6.0",
-	7: "0.11.0",
-	8: "0.12.0",
-	9: "0.17.0",
+	6:  "0.6.0",
+	7:  "0.11.0",
+	8:  "0.12.0",
+	9:  "0.17.0",
+	10: "0.17.0",
 }
 
 type Project struct {

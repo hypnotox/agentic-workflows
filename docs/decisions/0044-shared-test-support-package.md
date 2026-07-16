@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-01
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [test-support]
 related: [6, 20]

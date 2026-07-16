@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-02
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [commit-scopes]
 related: [17, 29, 36, 45, 46]

@@ -2,7 +2,6 @@
 status: Superseded by ADR-0115
 date: 2026-07-15
 supersedes: []
-retires_invariants: []
 superseded_by: "0115"
 tags: [template-residue, doc-standard]
 related: [82, 112]

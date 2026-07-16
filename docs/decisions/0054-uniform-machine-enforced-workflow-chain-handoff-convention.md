@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-04
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [chain-handoffs, eval-suite]
 related: [12, 15, 22, 46, 53]

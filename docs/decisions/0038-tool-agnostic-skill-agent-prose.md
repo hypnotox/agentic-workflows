@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-06-29
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [multi-target, doc-standard]
 related: [18, 37]

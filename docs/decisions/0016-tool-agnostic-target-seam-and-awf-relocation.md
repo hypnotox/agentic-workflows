@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [target-seam, multi-target]
-related: [4, 9, 10, 15]
+related: [4, 9, 10, 15, 37]
 domains: [config, tooling, rendering]
 ---
 # ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter

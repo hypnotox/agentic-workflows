@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-07
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [mutation-testing]
 related: [66]

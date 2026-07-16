@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-05
 supersedes: []
-retires_invariants: [mandatory-docs-not-in-docs-catalog, singleton-kind-single-source]
 superseded_by: ""
 tags: [doc-model, compile-time-catalog]
 related: [4, 21, 22, 27, 31, 37, 43, 59, 60]
@@ -135,6 +134,9 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
    hardcoded singleton document-map link text and descriptions this pass; the `.layout.*` references
    still resolve from the catalog-derived `Layout`, so the merge does not force touching them. Driving
    the whole document map from catalog `Title`/`Desc` is a clean follow-up, not part of this ADR.
+
+8. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0043#mandatory-docs-not-in-docs-catalog`, `supersedes-invariant: ADR-0043#singleton-kind-single-source`.
 
 ## Invariants
 

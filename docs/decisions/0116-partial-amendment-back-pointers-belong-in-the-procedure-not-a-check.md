@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-15
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [adr-lifecycle, cross-references, review-agents]
 related: [73, 79, 93, 103, 112, 114, 115, 120]

@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [plan-taxonomy, placeholder-degradation]
 related: [97, 98]

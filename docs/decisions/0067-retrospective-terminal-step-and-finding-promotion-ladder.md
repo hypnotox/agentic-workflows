@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-06
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [retrospective, workflow-chain]
 related: [8, 17, 22, 46, 50, 52, 53, 54]

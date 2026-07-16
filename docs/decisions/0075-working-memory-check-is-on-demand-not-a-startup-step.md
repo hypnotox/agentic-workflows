@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-08
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [working-memory]
 related: [69]

@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-04
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [eval-suite]
 related: [12, 13, 17, 22, 46, 52]

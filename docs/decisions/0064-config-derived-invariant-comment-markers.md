@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-05
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [invariant-backing, placeholder-registry]
 related: [8, 29, 45, 51, 55, 57]

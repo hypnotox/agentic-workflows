@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-13
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [commit-gate, plan-artifact, plan-taxonomy]
 related: [36, 70, 98, 108]

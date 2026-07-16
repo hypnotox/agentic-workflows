@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-02
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [bootstrap-porcelain, config-tree]
 related: [9, 23, 32, 35, 40]

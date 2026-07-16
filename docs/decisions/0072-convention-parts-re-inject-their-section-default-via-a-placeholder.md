@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-07
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [convention-parts, placeholder-registry]
 related: [1, 15, 34, 45, 57, 58, 70]

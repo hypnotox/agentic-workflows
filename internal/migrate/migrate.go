@@ -39,6 +39,7 @@ var registry = []Migration{
 	{To: 7, Name: "anchored-globs", Apply: applyAnchoredGlobs},
 	{To: 8, Name: "close-enabled-set", Apply: applyCloseEnabledSet},
 	{To: 9, Name: "pitfalls-data", Apply: applyPitfallsData},
+	{To: 10, Name: "retirement-tokens", Apply: applyRetirementTokens},
 }
 
 // Current is the current schema generation (the highest registered To).

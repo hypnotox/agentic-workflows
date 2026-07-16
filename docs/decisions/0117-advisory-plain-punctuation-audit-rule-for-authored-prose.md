@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-15
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [audit-rules, doc-standard, commit-conformance]
 related: [17, 107, 113, 115, 119]

@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-02
 supersedes: []
-retires_invariants: [version-ldflags-precedence]
 superseded_by: ""
 tags: [version-authority, bootstrap-porcelain]
 related: [30, 39, 40, 48]
@@ -105,6 +104,9 @@ removes the split behind failures 1 and 2.
    re-rendered via `awf sync`), and add the `0.6.0` changelog entry (ADR-0041 grouping) at
    release-prep. The commit that flips this ADR's status regenerates `docs/decisions/ACTIVE.md`
    via `./x sync`.
+
+9. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0030#version-ldflags-precedence`.
 
 ## Invariants
 

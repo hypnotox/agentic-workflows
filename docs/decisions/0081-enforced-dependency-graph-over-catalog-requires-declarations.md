@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-09
 supersedes: []
-retires_invariants: [doc-gated-skill-suppressed]
 superseded_by: ""
 tags: [enable-closure, schema-migration]
 related: [13, 24, 31, 46, 49, 50, 68, 76, 77, 80]
@@ -160,6 +159,9 @@ invariant, so folding docs into the graph reaches that ADR too.
    meaningless for chain members. The untrimmed curated default keeps all
    agents (a default, not a derived set) and is already closed; a test locks
    that.
+
+10. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
+   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0013#doc-gated-skill-suppressed`.
 
 ## Invariants
 

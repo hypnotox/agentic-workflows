@@ -2,7 +2,6 @@
 status: Implemented
 date: 2026-07-15
 supersedes: []
-retires_invariants: []
 superseded_by: ""
 tags: [agents-guide, doc-standard]
 related: []
