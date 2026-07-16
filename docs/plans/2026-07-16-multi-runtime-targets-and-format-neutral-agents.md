@@ -50,12 +50,17 @@ Codex uses a typed TOML encoder. Pi receives generic review-dispatch prose.
   it before returning output. Extend `render.CommentStyle` and banner injection
   so a TOML profile receives valid `#` provenance comments rather than HTML
   comments. Do not parse a rendered Markdown file in either encoder.
-- [ ] **Task 1.3: Route agent rendering and validation through the new model.**
-  Change `internal/project/render.go` so agent body assembly still uses the normal
-  section/part pipeline but encoding happens before banner injection and manifest
-  hashing. Keep skills and docs unchanged. Change `check.go`/sync validation so
-  Markdown agents use frontmatter validation and Codex profiles use strict TOML
-  validation; retain local artifact validation on every enabled target path.
+- [ ] **Task 1.3: Route Markdown and Codex rendering through the new model.**
+  Change `internal/project/target.go` to give the target descriptor an agent
+  dialect and complete agent-path fields, then register `codex` with
+  `.agents/skills` and `.codex/agents/*.toml`; retain the existing Claude and
+  Cursor paths and Markdown dialect. In `internal/project/render.go`, keep agent
+  body assembly on the normal section/part pipeline but select the target encoder
+  before banner injection and manifest hashing. Keep skills and docs unchanged.
+  Change `check.go`/sync validation so Markdown agents use frontmatter validation
+  and Codex profiles use strict TOML validation; retain local artifact validation
+  on every enabled target path. This task deliberately makes the Phase 1 TOML
+  encoder production-reachable, as required by the dead-code gate.
 - [ ] **Task 1.4: Prove format neutrality.** Add `internal/project/agent_test.go`
   cases that construct a standard and local agent, assert Markdown metadata/body
   output, assert strict TOML round-trip and multiline escaping, and assert that no
@@ -69,23 +74,22 @@ refactor(rendering): model agents independently of output dialect
 
 ## Phase 2: Target capabilities and adapter outputs
 
-- [ ] **Task 2.1: Generalize the target descriptor.** In
-  `internal/project/target.go`, replace the fixed `.md` agent-path formula with
-  per-target path/dialect fields and add bridge and review-dispatch style fields.
-  Register `pi` (`.pi/skills`, root Markdown reviewer skills, generic review),
-  `codex` (`.agents/skills`, `.codex/agents/*.toml`, native review), `gemini`
-  (`.gemini/skills`, `.gemini/agents/*.md`, `GEMINI.md` bridge, native review),
-  and `copilot` (`.github/skills`, `.github/agents/*.agent.md`, native review).
-  Preserve Claude and Cursor mappings. Make unknown-target errors and
-  `KnownTargets` derive their sorted names from the registry.
-- [ ] **Task 2.2: Propagate target inputs into render and drift.** In
-  `internal/project/render.go`, pass the target's agent dialect and review style
-  to agent/skill rendering and fold the complete descriptor into affected config
-  hashes. Classify Codex profiles as non-Markdown so dead-reference and
-  managed-Markdown scans do not parse TOML as Markdown. Ensure bridge rendering
-  chooses `CLAUDE.md` or `GEMINI.md` without rendering bridges for native-AGENTS
-  targets. Add `templates/gemini/GEMINI.md.tmpl` containing the supported
-  `@AGENTS.md` import and embed it in `templates/embed.go`.
+- [ ] **Task 2.1: Complete target capabilities and registry.** In
+  `internal/project/target.go`, extend the Phase 1 path/dialect descriptor with
+  bridge and review-dispatch style fields. Register `pi` (`.pi/skills`, root
+  Markdown reviewer skills, generic review), `gemini` (`.gemini/skills`,
+  `.gemini/agents/*.md`, `GEMINI.md` bridge, native review), and `copilot`
+  (`.github/skills`, `.github/agents/*.agent.md`, native review); preserve the
+  Phase 1 Codex and existing Claude/Cursor mappings. Make unknown-target errors
+  and `KnownTargets` derive their sorted names from the registry.
+- [ ] **Task 2.2: Propagate the completed descriptor into render and drift.** In
+  `internal/project/render.go`, pass the target's review style to skill rendering
+  and fold the complete descriptor into affected config hashes. Classify Codex
+  profiles as non-Markdown so dead-reference and managed-Markdown scans do not
+  parse TOML as Markdown. Ensure bridge rendering chooses `CLAUDE.md` or
+  `GEMINI.md` without rendering bridges for native-AGENTS targets. Add
+  `templates/gemini/GEMINI.md.tmpl` containing the supported `@AGENTS.md` import
+  and embed it in `templates/embed.go`.
 - [ ] **Task 2.3: Make Pi review wording generic.** In every standard reviewing
   skill template that directs `adr-reviewer`, `plan-reviewer`, or `code-reviewer`
   dispatch, branch only on the target review style. Native targets retain current
@@ -143,3 +147,8 @@ feat(awf): ship multi-runtime targets and agent encoders
 
 A Pi orchestrator extension is deliberately out of scope. The roadmap entry is
 its handoff point; it may use the stable Pi reviewer-skill paths introduced here.
+
+Phase 1 was amended before implementation because a standalone TOML encoder would
+violate the repository's dead-code gate. It therefore includes the minimal Codex
+path/dialect registration and encoder selection needed to make that production
+path reachable; Phase 2 completes the remaining adapter capabilities.
