@@ -44,7 +44,7 @@ func TestTemplateSourceResidue(t *testing.T) {
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, and agents-doc templates — extending it requires a successor ADR (ADR-0082, last extended by ADR-0085)")
+		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, and agents-doc templates - extending it requires a successor ADR (ADR-0082, last extended by ADR-0085)")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
@@ -60,7 +60,7 @@ func TestTemplateSourceResidue(t *testing.T) {
 		}
 		src := string(b)
 		if m := residueADRRe.FindString(src); m != "" {
-			t.Errorf("%s cites %s — decision rationale lives in the decisions directory, never in shipped templates (ADR-0082)", path, m)
+			t.Errorf("%s cites %s - decision rationale lives in the decisions directory, never in shipped templates (ADR-0082)", path, m)
 		}
 		for _, lit := range identityLiterals {
 			if !strings.Contains(src, lit) {
@@ -79,7 +79,7 @@ func TestTemplateSourceResidue(t *testing.T) {
 	}
 	for path := range identityExempt {
 		if !used[path] {
-			t.Errorf("stale identity exemption %q — the template no longer carries a repo-identity literal; remove the entry via a successor ADR", path)
+			t.Errorf("stale identity exemption %q - the template no longer carries a repo-identity literal; remove the entry via a successor ADR", path)
 		}
 	}
 }

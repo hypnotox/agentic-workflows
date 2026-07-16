@@ -182,7 +182,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 			t.Fatal(err)
 		}
 		if render.ReferencesBareVars(string(b)) || len(render.ReferencedVars(string(b))) > 0 {
-			t.Errorf("partial %s references .vars — the raw-source dormancy scan would go blind", e.Name())
+			t.Errorf("partial %s references .vars - the raw-source dormancy scan would go blind", e.Name())
 		}
 	}
 }

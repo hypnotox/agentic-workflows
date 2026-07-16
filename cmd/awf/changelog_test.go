@@ -24,7 +24,7 @@ func TestChangelogMonotonicOrder(t *testing.T) {
 		t.Fatalf("load embedded changelog: %v", err)
 	}
 	if semver.Compare("v"+entries[0].Version, "v"+project.Version) > 0 {
-		t.Errorf("newest changelog entry %q is ahead of project.Version %q — the binary cannot carry notes for a version it does not know",
+		t.Errorf("newest changelog entry %q is ahead of project.Version %q - the binary cannot carry notes for a version it does not know",
 			entries[0].Version, project.Version)
 	}
 	for i := 0; i+1 < len(entries); i++ {

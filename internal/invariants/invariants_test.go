@@ -19,12 +19,12 @@ import (
 // tests), which now routes through DeclaringADRs.
 func TestDeclaringADRs(t *testing.T) {
 	dir := t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: kept` — x.\n- `invariant: gone` — y.")
-	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: ignored` — z.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: kept` - x.\n- `invariant: gone` - y.")
+	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: ignored` - z.")
 	// 0003 retires 0001's `gone` slug.
 	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 		testsupport.WithRetiresInvariants("gone"), testsupport.WithTitle("X: T"),
-		testsupport.WithBody("## Invariants\n- `invariant: fresh` — w.\n## Consequences\nc\n"))
+		testsupport.WithBody("## Invariants\n- `invariant: fresh` - w.\n## Consequences\nc\n"))
 	testsupport.WriteFile(t, filepath.Join(dir, "0003-c.md"), content)
 
 	adrs, err := adr.ParseDir(dir)
@@ -56,9 +56,9 @@ func TestDeclaringADRs(t *testing.T) {
 func TestDeclaringADRsUnbackedClass(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented",
-		"- `unbacked-invariant: reasoned` — a contract. **Verify:** run it by hand.\n"+
-			"- `unbacked-invariant: bare` — a contract with no guidance.\n"+
-			"- `invariant: proven` — a backed one.")
+		"- `unbacked-invariant: reasoned` - a contract. **Verify:** run it by hand.\n"+
+			"- `unbacked-invariant: bare` - a contract with no guidance.\n"+
+			"- `invariant: proven` - a backed one.")
 	adrs, err := adr.ParseDir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestDeclaringADRsUnbackedClass(t *testing.T) {
 func TestDeclaringADRsVerifyWrapped(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented",
-		"- `unbacked-invariant: wrapped` — a reasoned contract whose property\n"+
+		"- `unbacked-invariant: wrapped` - a reasoned contract whose property\n"+
 			"  description runs long. **Verify:** inspect the assembled result and\n"+
 			"  confirm no writer dependency is held.")
 	adrs, err := adr.ParseDir(dir)
@@ -129,10 +129,10 @@ func goSrcConfig() *config.InvariantConfig {
 // invariant: invariants-implemented-only
 func TestCheckImplementedOnly(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-impl` — x.")
-	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: fixture-prop` — x.")
-	writeADR(t, dir, "0003-c.md", "Accepted", "- `invariant: fixture-acc` — x.")
-	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `invariant: fixture-sup` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-impl` - x.")
+	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: fixture-prop` - x.")
+	writeADR(t, dir, "0003-c.md", "Accepted", "- `invariant: fixture-acc` - x.")
+	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `invariant: fixture-sup` - x.")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestCheckImplementedOnly(t *testing.T) {
 // invariant: invariants-unbacked-detected
 func TestCheckUnbackedAndBacked(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-backed` — x.\n- `invariant: fixture-missing` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-backed` - x.\n- `invariant: fixture-missing` - y.")
 	goSrc(t, root, "package x\n// invariant: fixture-backed\nfunc T() {}\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -160,7 +160,7 @@ func TestCheckUnbackedAndBacked(t *testing.T) {
 // test file backs the slug (structural teeth, ADR-0105).
 func TestCheckBackedProofInTestFile(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: t-backed` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: t-backed` - x.")
 	testsupport.WriteFile(t, filepath.Join(root, "x_test.go"), "package x\n// invariant: t-backed\n")
 	cfg := goSrcConfig()
 	cfg.TestGlobs = []string{"**/*_test.go"}
@@ -177,7 +177,7 @@ func TestCheckBackedProofInTestFile(t *testing.T) {
 // fails (backed-requires-proof).
 func TestCheckBackedNoProof(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: b-missing` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: b-missing` - x.")
 	goSrc(t, root, "package x\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -194,7 +194,7 @@ func TestCheckBackedNoProof(t *testing.T) {
 // identical marker backs it with testGlobs empty (absent-testglobs-source-fallback).
 func TestCheckProofInNonTestFileScoped(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: b-prod` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: b-prod` - x.")
 	goSrc(t, root, "package x\n// invariant: b-prod\n") // x.go: a non-test source file
 
 	scoped := goSrcConfig()
@@ -226,7 +226,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 // and no proof marker is clean.
 func TestCheckUnbackedWithVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-ok` — a contract. **Verify:** inspect by hand.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-ok` - a contract. **Verify:** inspect by hand.")
 	goSrc(t, root, "package x\n// touches-invariant: u-ok - the reasoned site.\n")
 	f, notes, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -244,7 +244,7 @@ func TestCheckUnbackedWithVerify(t *testing.T) {
 // note fails (unbacked-requires-verify-note).
 func TestCheckUnbackedWithoutVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-noverify` — a contract with no guidance.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-noverify` - a contract with no guidance.")
 	goSrc(t, root, "package x\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -260,7 +260,7 @@ func TestCheckUnbackedWithoutVerify(t *testing.T) {
 // exists in scope fails (unbacked-refuses-proof).
 func TestCheckUnbackedWithProof(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-proof` — a contract. **Verify:** by hand.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-proof` - a contract. **Verify:** by hand.")
 	goSrc(t, root, "package x\n// invariant: u-proof\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -278,7 +278,7 @@ func TestCheckUnbackedWithProof(t *testing.T) {
 // finding tie-break.
 func TestCheckUnbackedProofAndMissingVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-both` — a contract with no guidance.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-both` - a contract with no guidance.")
 	goSrc(t, root, "package x\n// invariant: u-both\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -297,7 +297,7 @@ func TestCheckUnbackedProofAndMissingVerify(t *testing.T) {
 // a slug named by both a proof and a touches marker is noted once.
 func TestCheckDanglingMarkerNote(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: real` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: real` - x.")
 	goSrc(t, root, "package x\n"+
 		"// invariant: real\n"+ // backs the declared slug
 		"// invariant: ghost\n"+ // undeclared proof marker → dangling
@@ -324,7 +324,7 @@ func TestCheckDanglingMarkerNote(t *testing.T) {
 // marker with a note stays silent.
 func TestCheckBareTouchesNote(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: real` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: real` - x.")
 	goSrc(t, root, "package x\n"+
 		"// invariant: real\n"+
 		"// touches-invariant: real\n"+ // bare touches on a declared slug
@@ -346,7 +346,7 @@ func TestCheckBareTouchesNote(t *testing.T) {
 // a touches marker (an ordinary comment) is ignored without a note or finding.
 func TestCheckPlainCommentIgnored(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: plain` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: plain` - x.")
 	goSrc(t, root, "package x\n// invariant: plain\n// just an ordinary comment\n")
 	f, notes, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -361,7 +361,7 @@ func TestCheckPlainCommentIgnored(t *testing.T) {
 // a tag outside it does not back the slug, with no basename fallback.
 func TestCheckAnchoredGlobScope(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-scoped` — x.\n- `invariant: fixture-outside` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-scoped` - x.\n- `invariant: fixture-outside` - y.")
 	testsupport.WriteFile(t, filepath.Join(root, "sub", "x.go"), "package x\n// invariant: fixture-scoped\n")
 	goSrc(t, root, "package y\n// invariant: fixture-outside\n") // top-level y.go: outside sub/**
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"sub/**"}, Marker: "//"}}}
@@ -379,7 +379,7 @@ func TestCheckAnchoredGlobScope(t *testing.T) {
 // indentation, counts as a backing comment.
 func TestCheckMarkerMustOpenLine(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-literal` — x.\n- `invariant: fixture-indented` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-literal` - x.\n- `invariant: fixture-indented` - y.")
 	goSrc(t, root, "package x\n"+
 		"var s = \"src\\n// invariant: fixture-literal\\n\"\n"+ // mid-line, inside a literal
 		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment - still backs
@@ -395,8 +395,8 @@ func TestCheckMarkerMustOpenLine(t *testing.T) {
 // invariant: invariants-duplicate-slug
 func TestCheckDuplicateSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-dup` — x.")
-	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: fixture-dup` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-dup` - x.")
+	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: fixture-dup` - y.")
 	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil {
 		t.Error("expected error for duplicate slug")
 	}
@@ -405,7 +405,7 @@ func TestCheckDuplicateSlug(t *testing.T) {
 // invariant: invariants-three-state
 func TestCheckThreeState(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-one` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-one` - x.")
 	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
 	// nil config -> unchecked
@@ -442,7 +442,7 @@ func TestCheckThreeState(t *testing.T) {
 // invariant: invariants-multilang-scan
 func TestCheckMultiLangScan(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-py` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-py` - x.")
 	if err := os.WriteFile(filepath.Join(root, "t.py"), []byte("# invariant: fixture-py\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -459,7 +459,7 @@ func TestCheckMultiLangScan(t *testing.T) {
 // invariant: invariants-marker-literal
 func TestCheckMarkerLiteral(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-lit` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-lit` - x.")
 	// marker contains regex metacharacters; must be matched literally.
 	if err := os.WriteFile(filepath.Join(root, "t.txt"), []byte("[x] invariant: fixture-lit\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -474,7 +474,7 @@ func TestCheckMarkerLiteral(t *testing.T) {
 // invariant: invariants-marker-whitespace
 func TestCheckMarkerWhitespace(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-a` — x.\n- `invariant: fixture-b` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-a` - x.\n- `invariant: fixture-b` - y.")
 	// one with a space after the marker, one without.
 	goSrc(t, root, "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
 	f, _, _ := invariants.Check(dir, root, goSrcConfig())
@@ -492,9 +492,9 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	// ADR-1 declares real-slug and, in prose, cross-references ADR-2's slug.
 	writeADR(t, dir, "0001-a.md", "Implemented",
-		"- `invariant: real-slug` — the real one (co-owned with ADR-2 `invariant: shared-slug`).")
+		"- `invariant: real-slug` - the real one (co-owned with ADR-2 `invariant: shared-slug`).")
 	// ADR-2 legitimately declares shared-slug.
-	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: shared-slug` — the real declaration.")
+	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: shared-slug` - the real declaration.")
 	goSrc(t, root, "package x\n// invariant: real-slug\n// invariant: shared-slug\n")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -511,7 +511,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 // as a declaration - see the fixture body for the exact shape.
 func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `invariant: dbl-slug` `` — declared with double backticks.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `invariant: dbl-slug` `` - declared with double backticks.")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -567,7 +567,7 @@ func TestCheckParseDirError(t *testing.T) {
 // paths when more than one slug is required.
 func TestCheckSortsMultipleFindings(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-zeta` — z.\n- `invariant: fixture-alpha` — a.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-zeta` - z.\n- `invariant: fixture-alpha` - a.")
 	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
 	f, _, err := invariants.Check(dir, root, nil)
@@ -592,7 +592,7 @@ func TestCheckSortsMultipleFindings(t *testing.T) {
 // that a file not matching any source glob is ignored without error.
 func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-skip` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-skip` - x.")
 	for _, skip := range []string{".git", "vendor", "node_modules"} {
 		sub := filepath.Join(root, skip)
 		if err := os.Mkdir(sub, 0o755); err != nil {
@@ -624,7 +624,7 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 // not suppress the scan.
 func TestCheckSkipsNestedCheckouts(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-nested` — x.\n- `invariant: fixture-own` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-nested` - x.\n- `invariant: fixture-own` - y.")
 	// The scanned project is itself a checkout; its root must still scan.
 	testsupport.WriteFile(t, filepath.Join(root, ".git", "HEAD"), "ref: refs/heads/main\n")
 	goSrc(t, root, "package x\n// invariant: fixture-own\n")
@@ -649,7 +649,7 @@ func TestCheckSkipsNestedCheckouts(t *testing.T) {
 // dangling advisory here.
 func TestCheckSkipsNestedAwfProject(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-own` — y.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-own` - y.")
 	goSrc(t, root, "package x\n// invariant: fixture-own\n")
 	// A nested adopter tree: its .awf/ marks it as a separate awf project.
 	testsupport.WriteFile(t, filepath.Join(root, "example", ".awf", "config.yaml"), "prefix: ex\n")
@@ -671,7 +671,7 @@ func TestCheckSkipsNestedAwfProject(t *testing.T) {
 // a non-existent root) propagates out of Check rather than being swallowed.
 func TestCheckScanWalkError(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-walk` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-walk` - x.")
 	if _, _, err := invariants.Check(dir, filepath.Join(root, "does-not-exist"), goSrcConfig()); err == nil {
 		t.Error("expected WalkDir error for non-existent root")
 	}
@@ -683,7 +683,7 @@ func TestCheckScanWalkError(t *testing.T) {
 // fixtures, which are unportable and root-fragile.
 func TestCheckScanReadError(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-sym` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-sym` - x.")
 	if err := os.Symlink(filepath.Join(root, "missing-target"), filepath.Join(root, "bad.go")); err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +703,7 @@ func writeRetiringADR(t *testing.T, dir, name, status, retires, invBody string) 
 // invariant: inv-retirement-drops-slug
 func TestCheckRetirementDropsSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-retired` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-retired` - x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-retired", "- a textual invariant with no slug.")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -717,7 +717,7 @@ func TestCheckRetirementDropsSlug(t *testing.T) {
 // invariant: inv-retirement-implemented-only
 func TestCheckRetirementImplementedOnly(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-live` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-live` - x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Proposed", "fixture-live", "- a textual invariant with no slug.")
 	f, _, err := invariants.Check(dir, root, goSrcConfig())
 	if err != nil {
@@ -731,7 +731,7 @@ func TestCheckRetirementImplementedOnly(t *testing.T) {
 // invariant: inv-retirement-dangling-errors
 func TestCheckRetirementDangling(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-real` — x.")
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-real` - x.")
 	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost", "- a textual invariant with no slug.")
 	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil || !strings.Contains(err.Error(), "fixture-ghost") {
 		t.Errorf("a dangling retirement must error mentioning the slug, got %v", err)

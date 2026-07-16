@@ -249,7 +249,7 @@ func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
 		t.Fatalf("runNew skill: %v", err)
 	}
 	partPath := filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md")
-	const authored = "Authored body — must survive a re-run.\n"
+	const authored = "Authored body - must survive a re-run.\n"
 	if err := os.WriteFile(partPath, []byte(authored), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +371,7 @@ func TestRunNewSeedsNoVarsToday(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(refs) != 0 {
-			t.Errorf("base %s template gained var refs %v — confirm awf new seeding and update this pin", kind, refs)
+			t.Errorf("base %s template gained var refs %v - confirm awf new seeding and update this pin", kind, refs)
 		}
 	}
 }

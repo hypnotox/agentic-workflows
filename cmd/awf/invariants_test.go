@@ -30,7 +30,7 @@ func backedPlusDangling(t *testing.T) string {
 		t.Fatal(err)
 	}
 	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: real-one` — x.\n## Consequences\nc\n"))
+		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: real-one` - x.\n## Consequences\nc\n"))
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
 	// real-one backed; ghost is a dangling proof marker → advisory note only.
 	src := "package x\n// invariant: real-one\n// invariant: ghost\n"
@@ -89,7 +89,7 @@ func TestRunCheckFailsOnUnbackedInvariant(t *testing.T) {
 		t.Fatal(err)
 	}
 	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: cmd-needs-backing` — x.\n## Consequences\nc\n"))
+		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: cmd-needs-backing` - x.\n## Consequences\nc\n"))
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
 	// Re-sync so ACTIVE.md is generated and the tree stays drift-clean; the only
 	// outstanding issue is the unbacked invariant.

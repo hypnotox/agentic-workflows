@@ -47,7 +47,7 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
 			testsupport.WithTags("precise", "alpha"), testsupport.WithRelated(3, 5),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — a.\n- `invariant: gov-slug2` — b.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - a.\n- `invariant: gov-slug2` - b.\n## Consequences\nc\n")))
 	// 0002 Proposed, tag `other`, domain beta (owns cmd) → Tier 3 background only.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
 		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("other"),
@@ -76,7 +76,7 @@ func ctxProject(t *testing.T, configYAML string) (string, *Project) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0006-f.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("alpha"),
 			testsupport.WithTitle("0006: Second governor"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug3` — c.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug3` - c.\n## Consequences\nc\n")))
 	// Plans: link Tier-1/2 ADRs (0001, 0003) → surfaced, sorted by filename; the
 	// plan linking the Tier-3 ADR 0002 and the frontmatter-less legacy plan do not.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
@@ -170,7 +170,7 @@ func TestContextForDuplicateSlugError(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0007-dup.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 			testsupport.WithTitle("0007: Dup"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — clash.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - clash.\n## Consequences\nc\n")))
 	if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
 		t.Fatal("expected a duplicate inv slug error from DeclaringADRs")
 	}
@@ -217,9 +217,9 @@ func TestContextForLabelsAndNotes(t *testing.T) {
 	// Production file: an unbacked slug's touches note and a slug marked by both a
 	// proof and a touches marker.
 	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x.go"), "package x\n"+
-		"// touches-invariant: unbacked-slug — the reasoned site.\n"+
+		"// touches-invariant: unbacked-slug - the reasoned site.\n"+
 		"// invariant: dual-slug\n"+
-		"// touches-invariant: dual-slug — dual note.\n")
+		"// touches-invariant: dual-slug - dual note.\n")
 	// Test file under the same production directory: a proof marker only. The union
 	// scan surfaces it when the production directory is queried (ADR-0106).
 	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x_test.go"), "package x\n// invariant: backed-slug\n")
@@ -227,9 +227,9 @@ func TestContextForLabelsAndNotes(t *testing.T) {
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 			testsupport.WithTitle("0001: Labels"), testsupport.WithDomains("foo"),
 			testsupport.WithBody("## Invariants\n"+
-				"- `invariant: backed-slug` — b.\n"+
-				"- `invariant: dual-slug` — d.\n"+
-				"- `unbacked-invariant: unbacked-slug` — a reasoned contract. **Verify:** inspect by hand.\n"+
+				"- `invariant: backed-slug` - b.\n"+
+				"- `invariant: dual-slug` - d.\n"+
+				"- `unbacked-invariant: unbacked-slug` - a reasoned contract. **Verify:** inspect by hand.\n"+
 				"## Consequences\nc\n")))
 	p, err := Open(root)
 	if err != nil {
@@ -314,7 +314,7 @@ func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("ptag"),
 			testsupport.WithTitle("0001: P"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: p-slug` — x.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: p-slug` - x.\n## Consequences\nc\n")))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)

@@ -305,7 +305,7 @@ func TestRenderActiveMDSortsWithinStatusAndOrdersExtra(t *testing.T) {
 func TestParseDirExtractsSections(t *testing.T) {
 	dir := t.TempDir()
 	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0009: S"), testsupport.WithBody("## Context\nctx body\n## Invariants\n- `invariant: example-slug` — a thing.\n## Consequences\ncons\n"))
+		testsupport.WithTitle("0009: S"), testsupport.WithBody("## Context\nctx body\n## Invariants\n- `invariant: example-slug` - a thing.\n## Consequences\ncons\n"))
 	if err := os.WriteFile(filepath.Join(dir, "0009-s.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

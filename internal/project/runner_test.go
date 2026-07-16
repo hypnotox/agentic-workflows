@@ -122,7 +122,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 }
 
 // A convention part authored for an awf-owned runner section (as its
-// `create … to override` pointer invites) is claimed by the closed-tree sweep, so
+// `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
 // override renders and `awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")

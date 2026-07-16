@@ -66,20 +66,20 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 				}
 				found[name] = true
 				if name != self && !slices.Contains(requiresSkills, name) {
-					t.Errorf("undeclared unconditional reference %q — guard it behind .skills.%s or declare it in RequiresSkills", m, name)
+					t.Errorf("undeclared unconditional reference %q - guard it behind .skills.%s or declare it in RequiresSkills", m, name)
 				}
 			}
 			for _, r := range requiresSkills {
 				if !found[r] {
-					t.Errorf("stale RequiresSkills entry %q — no longer referenced unconditionally; remove the declaration", r)
+					t.Errorf("stale RequiresSkills entry %q - no longer referenced unconditionally; remove the declaration", r)
 				}
 			}
 			hasDouble := doubleBacktickRe.MatchString(out)
 			if hasDouble && !doubleBacktickExempt[tid] {
-				t.Errorf("double-backtick span rendered under empty data — fix the template or add a doubleBacktickExempt entry:\n%s", out)
+				t.Errorf("double-backtick span rendered under empty data - fix the template or add a doubleBacktickExempt entry:\n%s", out)
 			}
 			if !hasDouble && doubleBacktickExempt[tid] {
-				t.Errorf("stale doubleBacktickExempt entry — the template no longer renders a double-backtick span")
+				t.Errorf("stale doubleBacktickExempt entry - the template no longer renders a double-backtick span")
 			}
 		})
 	}
@@ -115,7 +115,7 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 			t.Fatalf("expand %s: %v", tid, err)
 		}
 		if conditionalActionRe.MatchString(expanded) && !covered[tid] {
-			t.Errorf("%s has conditional fallback prose but no unsetFallbackCases entry — add a hand-authored case pinning its degraded output", tid)
+			t.Errorf("%s has conditional fallback prose but no unsetFallbackCases entry - add a hand-authored case pinning its degraded output", tid)
 		}
 	}
 	for name := range catalog.Standard.Skills {
@@ -148,12 +148,12 @@ func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
 	}
 	for name := range catalog.Standard.Skills {
 		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(string(src), needle) {
-			t.Errorf("no golden test for skill %q — add %s to internal/project/spine_test.go", name, needle)
+			t.Errorf("no golden test for skill %q - add %s to internal/project/spine_test.go", name, needle)
 		}
 	}
 	for name := range catalog.Standard.Agents {
 		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(string(src), needle) {
-			t.Errorf("no golden test for agent %q — add %s to internal/project/spine_test.go", name, needle)
+			t.Errorf("no golden test for agent %q - add %s to internal/project/spine_test.go", name, needle)
 		}
 	}
 }
@@ -196,9 +196,9 @@ func TestNoOrphanGoldenTest(t *testing.T) {
 		case kind == "Template" && nonArtifactGoldens[stem]:
 			seenExempt[stem] = true
 		case kind == "Template" && !skills[stem]:
-			t.Errorf("orphan golden Test%sTemplate: no catalog skill matches — remove it or list it in nonArtifactGoldens", stem)
+			t.Errorf("orphan golden Test%sTemplate: no catalog skill matches - remove it or list it in nonArtifactGoldens", stem)
 		case kind == "Agent" && !agents[stem]:
-			t.Errorf("orphan golden Test%sAgent: no catalog agent matches — remove it", stem)
+			t.Errorf("orphan golden Test%sAgent: no catalog agent matches - remove it", stem)
 		}
 	}
 	for stem := range nonArtifactGoldens {

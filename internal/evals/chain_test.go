@@ -94,7 +94,7 @@ func TestWorkflowChainHandoffs(t *testing.T) {
 			holds := namesOnInvocationLine(body, evalPrefix+"-"+req)
 			switch {
 			case nonHandoffRequires[pair] && holds:
-				t.Errorf("stale nonHandoffRequires entry %q: the reference now sits on an invocation line — remove the entry", pair)
+				t.Errorf("stale nonHandoffRequires entry %q: the reference now sits on an invocation line - remove the entry", pair)
 			case !nonHandoffRequires[pair] && !holds:
 				t.Errorf("skill %q does not hand off to %q on an invocation line", name, evalPrefix+"-"+req)
 			}

@@ -42,10 +42,10 @@ func TestZeroInternalDeps(t *testing.T) {
 				t.Fatalf("%s: unquote import %s: %v", path, imp.Path.Value, uerr)
 			}
 			if strings.HasPrefix(p, "github.com/hypnotox/agentic-workflows/internal/") {
-				t.Errorf("%s imports internal package %q — internal/testsupport must stay a leaf package (ADR-0044)", path, p)
+				t.Errorf("%s imports internal package %q - internal/testsupport must stay a leaf package (ADR-0044)", path, p)
 			}
 			if !allowGoGit && strings.HasPrefix(p, "github.com/go-git/") {
-				t.Errorf("%s imports go-git package %q — only gitfixture/ may depend on go-git", path, p)
+				t.Errorf("%s imports go-git package %q - only gitfixture/ may depend on go-git", path, p)
 			}
 		}
 		return nil
@@ -56,6 +56,6 @@ func TestZeroInternalDeps(t *testing.T) {
 	// Guard against a vacuous pass: testsupport.go and gitfixture/gitfixture.go
 	// must both be present, so the check can never silently inspect nothing.
 	if seen < 2 {
-		t.Fatalf("inspected only %d non-test source file(s); expected at least testsupport.go and gitfixture/gitfixture.go — did they move?", seen)
+		t.Fatalf("inspected only %d non-test source file(s); expected at least testsupport.go and gitfixture/gitfixture.go - did they move?", seen)
 	}
 }

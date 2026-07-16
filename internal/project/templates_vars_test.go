@@ -33,7 +33,7 @@ func TestNoDocPathVarsInTemplates(t *testing.T) {
 		}
 		for _, v := range banned {
 			if strings.Contains(string(b), v) {
-				t.Errorf("%s references removed var %q — doc refs are awf-given via .layout", path, v)
+				t.Errorf("%s references removed var %q - doc refs are awf-given via .layout", path, v)
 			}
 		}
 		return nil
@@ -61,7 +61,7 @@ func TestCommitScopeSingleStorage(t *testing.T) {
 			return err
 		}
 		if strings.Contains(string(b), ".vars.commitScope") {
-			t.Errorf("%s references .vars.commitScope — commit scopes live in audit.allowedScopes (ADR-0051)", path)
+			t.Errorf("%s references .vars.commitScope - commit scopes live in audit.allowedScopes (ADR-0051)", path)
 		}
 		return nil
 	})

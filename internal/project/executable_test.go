@@ -19,8 +19,8 @@ func TestShebangRenderedExecutable(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	shebang := filepath.Join(root, ".awf/hooks/pre-commit.sh") // "#!/usr/bin/env bash…"
-	markdown := filepath.Join(root, "AGENTS.md")               // "<!-- GENERATED… -->…"
+	shebang := filepath.Join(root, ".awf/hooks/pre-commit.sh") // "#!/usr/bin/env bash..."
+	markdown := filepath.Join(root, "AGENTS.md")               // "<!-- GENERATED... -->..."
 	assertPerm(t, shebang, 0o755)
 	assertPerm(t, markdown, 0o644)
 

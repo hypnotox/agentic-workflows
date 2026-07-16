@@ -96,12 +96,12 @@ func TestAdrReviewerAgent(t *testing.T) {
 				},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md — state-doc update or creation when ADR shifts a domain"},
+				{"check": "docs/decisions/state/<domain>.md - state-doc update or creation when ADR shifts a domain"},
 				{"check": "Predecessor status flip when supersedes: is non-empty"},
-				{"check": "docs/workflow.md — update when ADR changes a workflow rule"},
-				{"check": "AGENTS.md — update when ADR changes chain, principles, or invariants"},
+				{"check": "docs/workflow.md - update when ADR changes a workflow rule"},
+				{"check": "AGENTS.md - update when ADR changes chain, principles, or invariants"},
 				{"check": "Frontmatter completeness: status, date, supersedes, superseded_by, tags, related"},
-				{"check": "docs/decisions/ACTIVE.md — regenerate when status lands as Accepted or Implemented"},
+				{"check": "docs/decisions/ACTIVE.md - regenerate when status lands as Accepted or Implemented"},
 			},
 		},
 	}
@@ -140,10 +140,10 @@ func TestPlanReviewerAgent(t *testing.T) {
 				},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md — update when plan shifts a tracked domain"},
-				{"check": "docs/workflow.md — update when plan changes a workflow rule"},
-				{"check": "AGENTS.md — update when plan changes chain, principles, or invariants"},
-				{"check": "docs/decisions/ACTIVE.md — regenerate when plan flips an ADR status"},
+				{"check": "docs/decisions/state/<domain>.md - update when plan shifts a tracked domain"},
+				{"check": "docs/workflow.md - update when plan changes a workflow rule"},
+				{"check": "AGENTS.md - update when plan changes chain, principles, or invariants"},
+				{"check": "docs/decisions/ACTIVE.md - regenerate when plan flips an ADR status"},
 			},
 		},
 	}
@@ -191,8 +191,8 @@ func TestCodeReviewerAgent(t *testing.T) {
 				{"description": "Flag nil pointer dereferences in struct methods where the receiver may be nil."},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md — update when the implementation shifts a tracked domain"},
-				{"check": "docs/decisions/ACTIVE.md — regenerate when ADR status flips to Implemented"},
+				{"check": "docs/decisions/state/<domain>.md - update when the implementation shifts a tracked domain"},
+				{"check": "docs/decisions/ACTIVE.md - regenerate when ADR status flips to Implemented"},
 			},
 		},
 	}

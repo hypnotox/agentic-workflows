@@ -53,13 +53,13 @@ func ctxFixture(t *testing.T) string {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n"+
 		"// invariant: gov-slug\n"+
-		"// touches-invariant: unbk-slug — the reasoned production site.\n"+
+		"// touches-invariant: unbk-slug - the reasoned production site.\n"+
 		"// invariant: orphan-slug\n") // present but declared by no ADR → no class label
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
 		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
 			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` — a contract.\n"+
-				"- `unbacked-invariant: unbk-slug` — a reasoned contract. **Verify:** inspect by hand.\n## Consequences\nc\n")))
+			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - a contract.\n"+
+				"- `unbacked-invariant: unbk-slug` - a reasoned contract. **Verify:** inspect by hand.\n## Consequences\nc\n")))
 	// 0002 shares the precise tag → Tier 2 (Related). 0003 is domain-owned only →
 	// Tier 3 background count. Both exercise their render blocks.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
@@ -97,7 +97,7 @@ func TestRunContextHuman(t *testing.T) {
 		"unbk-slug [unbacked]",
 		"\n  orphan-slug\n", // present but undeclared → rendered without a class label
 		"Verify: inspect by hand.",
-		"touches: — the reasoned production site.",
+		"touches: - the reasoned production site.",
 		"## Governing ADRs (invariants backed here)",
 		"ADR-0001 (Implemented) Alpha decision: docs/decisions/0001-a.md",
 		"## Related ADRs (shared tag)",

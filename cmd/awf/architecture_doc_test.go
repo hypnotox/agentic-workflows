@@ -28,7 +28,7 @@ func TestArchitectureDocNamesEveryCmd(t *testing.T) {
 		// No closing backtick: the doc writes `cmd/awf/` with a trailing slash
 		// but `cmd/covercheck` without one.
 		if needle := "`cmd/" + e.Name(); !strings.Contains(string(doc), needle) {
-			t.Errorf("docs/architecture.md does not name %s` — add it via .awf/docs/parts/architecture/components.md and ./x sync", needle)
+			t.Errorf("docs/architecture.md does not name %s` - add it via .awf/docs/parts/architecture/components.md and ./x sync", needle)
 		}
 	}
 }

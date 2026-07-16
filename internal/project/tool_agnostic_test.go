@@ -62,7 +62,7 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 		}
 		for _, re := range forbidden {
 			if tok := re.FindString(out); tok != "" {
-				t.Errorf("%s: rendered body names runtime tool %q — use action-language (ADR-0038)", tid, tok)
+				t.Errorf("%s: rendered body names runtime tool %q - use action-language (ADR-0038)", tid, tok)
 			}
 		}
 	}

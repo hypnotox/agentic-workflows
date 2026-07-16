@@ -32,7 +32,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		"skills/readme.txt":               "stray\n",
 		"skills/parts/tdd/stray.txt":      "stray\n",
 		"skills/parts/tdd/bogus.md":       "undeclared section\n",
-		"memory/anything.md":              "session scratch — exempt\n",
+		"memory/anything.md":              "session scratch - exempt\n",
 		"memory/deep/file.awf-bak":        "exempt too\n",
 		"config.yaml.awf-bak.2":           "numbered backup\n",
 		"hooks/pre-commit.sh.awf-bak":     "backup beside a claimed unit\n",

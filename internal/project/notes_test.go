@@ -367,7 +367,7 @@ func TestTagHealthNotes(t *testing.T) {
 		t.Errorf("a non-vocabulary tag must not surface a frequency note; got %v", notes)
 	}
 	if strings.Contains(joined, "0006-f.md carries no tags") {
-		t.Errorf("a bogus-only artifact has tags — no coverage note expected; got %v", notes)
+		t.Errorf("a bogus-only artifact has tags - no coverage note expected; got %v", notes)
 	}
 	// invariant: tag-coverage-note - 0005 carries no tags
 	if !strings.Contains(joined, "0005-e.md carries no tags") {
