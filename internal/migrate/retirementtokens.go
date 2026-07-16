@@ -154,7 +154,11 @@ func applyRetirementTokens(root string, out io.Writer) error {
 			return err
 		}
 		raw := string(b)
-		m := relatedLineRe.FindStringSubmatchIndex(raw)
+		// Scope the scan to the frontmatter block, as the key-strip pass does: a
+		// column-0 "related:" line in a body (a quoted frontmatter example) must
+		// not be silently edited in place of the loud no-line failure.
+		fmEnd := strings.Index(raw[3:], "\n---") + 3 + 1
+		m := relatedLineRe.FindStringSubmatchIndex(raw[:fmEnd])
 		if m == nil {
 			return fmt.Errorf("retirement-tokens: %s: no related: line for the back-pointer to ADR-%s", target.Filename, e.carrier)
 		}
@@ -168,7 +172,7 @@ func applyRetirementTokens(root string, out io.Writer) error {
 	}
 
 	for path, b := range edited {
-		if err := os.WriteFile(path, b, 0o644); err != nil { // coverage-ignore: writing back a file just read fails only on a permission fault a test cannot trigger
+		if err := os.WriteFile(path, b, 0o644); err != nil { // coverage-ignore: writing back a file just read fails only on a permission fault that root bypasses (chmod fixtures are unportable and root-fragile)
 			return err
 		}
 	}

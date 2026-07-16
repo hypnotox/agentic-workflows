@@ -275,6 +275,15 @@ func TestRetirementTokensLoudFailures(t *testing.T) {
 			},
 			wantErr: []string{"0001-target.md", "no related: line"},
 		},
+		{
+			name: "a body related: line does not stand in for the frontmatter key",
+			files: map[string]string{
+				"0001-target.md": strings.Replace(rtTarget, "related: []\n", "", 1) +
+					"\nA quoted example:\n\nrelated: [9]\n",
+				"0002-carrier.md": rtCarrier,
+			},
+			wantErr: []string{"0001-target.md", "no related: line"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
