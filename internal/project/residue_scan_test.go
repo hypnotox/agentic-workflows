@@ -86,30 +86,40 @@ func TestTemplateSourceResidue(t *testing.T) {
 }
 
 // collectStrings walks an any-typed catalog Data value and appends every
-// string it holds (map values and list elements, recursively) to out.
-func collectStrings(v any, out *[]string) {
+// string it holds (map values and list elements, recursively) to out. Any
+// other composite type is reported instead of silently dropped - a Data entry
+// written as []string or map[string]string would otherwise escape the scan
+// with no signal, recreating the unscanned-surface class this guard closes.
+func collectStrings(t *testing.T, site string, v any, out *[]string) {
+	t.Helper()
 	switch x := v.(type) {
+	case nil, bool, int, float64:
+		// Non-prose scalars: nothing to scan.
 	case string:
 		*out = append(*out, x)
 	case map[string]any:
 		for _, mv := range x {
-			collectStrings(mv, out)
+			collectStrings(t, site, mv, out)
 		}
 	case []any:
 		for _, e := range x {
-			collectStrings(e, out)
+			collectStrings(t, site, e, out)
 		}
+	default:
+		t.Errorf("%s carries a Data value of unexpected type %T - use map[string]any/[]any/scalars so the residue scan sees every string", site, v)
 	}
 }
 
 // TestCatalogDataResidue extends the ADR-0082 residue rule to the catalog's
 // shipped prose: every Data string of every skill, agent, doc, and the domain
-// doc, plus each doc's Title/Desc, renders into adopter artifacts exactly like
-// template source does, so a concrete awf ADR citation or a repo-identity
+// doc, each doc's Title/Desc, and every var descriptor's Description, Default,
+// and Options render into adopter artifacts or adopter-facing prompts exactly
+// like template source does, so a concrete awf ADR citation or a repo-identity
 // literal there is the same leak the templates scan catches (a citation
 // resolves to nothing - or to the adopter's own unrelated ADR - in every
-// corpus but awf's). Var descriptor prose is covered separately by
-// configspec-description-residue, which reads the descriptors verbatim. No
+// corpus but awf's). Descriptors are scanned here directly rather than
+// deferred to configspec-description-residue, which reads VarEntries and so
+// skips the routing-target descriptors and never sees Default/Options. No
 // exemptions: unlike the bootstrap templates, no catalog string references
 // awf-the-product. An ordinary gate test, deliberately slug-free: ADR-0082
 // owns the principle and this is its enforcement catching up with the
@@ -132,22 +142,25 @@ func TestCatalogDataResidue(t *testing.T) {
 	}
 	for name, spec := range cat.Skills {
 		var strs []string
-		collectStrings(spec.Data, &strs)
+		collectStrings(t, "skill "+name, spec.Data, &strs)
 		check("skill "+name, strs)
 	}
 	for name, spec := range cat.Agents {
 		var strs []string
-		collectStrings(spec.Data, &strs)
+		collectStrings(t, "agent "+name, spec.Data, &strs)
 		check("agent "+name, strs)
 	}
 	var strs []string
-	collectStrings(cat.DomainDoc.Data, &strs)
+	collectStrings(t, "domainDoc", cat.DomainDoc.Data, &strs)
 	check("domainDoc", strs)
 	for name, d := range cat.Docs {
 		var strs []string
-		collectStrings(d.Data, &strs)
+		collectStrings(t, "doc "+name, d.Data, &strs)
 		strs = append(strs, d.Title, d.Desc)
 		check("doc "+name, strs)
+	}
+	for _, v := range cat.Vars {
+		check("var "+v.Key, append([]string{v.Description, v.Default}, v.Options...))
 	}
 }
 
