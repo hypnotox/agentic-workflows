@@ -45,7 +45,8 @@ change is acceptable ("The bare `awf add <name>` form is removed").
    rendered docs switch to the new verbs on their next `sync` and their agent follows
    the rendered instructions: the migration propagates without hand-editing.
 
-2. **Supersede ADR-0024 Decision items 1 and 6 (partial-item supersedence):** the
+2. **Supersede ADR-0024 Decision items 1 and 6 (partial-item supersedence:
+   `supersedes: ADR-0024#1`, `supersedes: ADR-0024#6`):** the
    command names and the help/README/guide grammar. Every other ADR-0024 commitment
    (kind dispatch, per-kind validation, the block-scoped array editor, the doc-gate
    warning and orphan note, `awf list`) stands unchanged, as do its invariants

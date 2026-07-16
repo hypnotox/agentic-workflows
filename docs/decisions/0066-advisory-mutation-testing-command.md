@@ -4,7 +4,7 @@ date: 2026-07-05
 supersedes: []
 superseded_by: ""
 tags: [mutation-testing]
-related: [2, 12, 63]
+related: [2, 12, 63, 71]
 domains: [tooling]
 ---
 # ADR-0066: Advisory mutation-testing command

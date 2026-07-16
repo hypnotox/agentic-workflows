@@ -122,7 +122,7 @@ adopters own all hook *wiring*: awf never touches `.git/` or git config.
    inert until the adopter invokes them from wiring they own: a hand-written stub, a
    `core.hooksPath` directory, husky/lefthook, or CI. This ADR **partially supersedes
    ADR-0032** (recorded via `related`; ADR-0032 stays `Implemented`): its Decision item 1
-   (no rendered hook files) and the `hooks`-key clause of its textual invariant "the
+   (`supersedes: ADR-0032#1`; no rendered hook files) and the `hooks`-key clause of its textual invariant "the
    catalog and config schema declare no `hook` kind or `hooks` key" are superseded by
    items 1-2 above; the rest of that invariant stays true: the catalog still declares no
    `hook` kind, and `.githooks/` still receives no rendered files. Its Decision

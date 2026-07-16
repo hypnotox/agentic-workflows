@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [target-seam, multi-target]
-related: [4, 9, 10, 15, 37]
+related: [4, 9, 10, 15, 37, 76]
 domains: [config, tooling, rendering]
 ---
 # ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter
@@ -148,7 +148,7 @@ Grounding discoveries that shape the design (verified against source):
    migrations then syncs; `Sync` stamps `SchemaVersion: migrate.Current()`. `runSync`/`runCheck`
    keep calling `gate()` before `project.Open` (`main.go:92-98`).
 
-7. **Supersedence scope.** This ADR overrides **ADR-0009 Decision item 1** and its
+7. **Supersedence scope.** This ADR overrides **ADR-0009 Decision item 1** (`supersedes: ADR-0009#1`) and its
    `inv: config-root` (config now loads from `.awf/config.yaml`, lock at `.awf/awf.lock`), and
    narrows **ADR-0015 `inv: provenance-banner`** only insofar as the banner text now names `.awf/`
    rather than `.claude/awf/`. Both predecessors keep their `Implemented` status (this is

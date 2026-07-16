@@ -45,8 +45,8 @@ attention signal, not as a gate.
    finding for "an adopter-facing change in the range but `[Unreleased]` is unchanged" is emitted at
    Warning severity, not Error. It still prints in the audit output and surfaces in the
    `awf-reviewing-impl` digest (attention is preserved) but it no longer sets a non-zero exit or
-   blocks the review. This **partial-supersedes ADR-0073 Decision item 2** ("emit one Error finding")
-   and **item 4** ("Error blocks the review from concluding") for this rule only; ADR-0073 stays
+   blocks the review. This **partial-supersedes ADR-0073 Decision item 2** (`supersedes: ADR-0073#2`; "emit one
+   Error finding") and **item 4** (`supersedes: ADR-0073#4`) ("Error blocks the review from concluding") for this rule only; ADR-0073 stays
    `Implemented` and gains a `related:` back-pointer.
 
 2. **Infrastructure failures inside the rule stay Errors.** A `git merge-base`/`git diff` failure or a

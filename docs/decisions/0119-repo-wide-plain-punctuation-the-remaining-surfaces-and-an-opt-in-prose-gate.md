@@ -160,7 +160,8 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    below), and a word-stream comparison must report zero delta across every swept file, proving
    that only punctuation moved.
 
-3. **`docs/research/` is swept.** This partially supersedes **ADR-0118 Decision item 1**, which
+3. **`docs/research/` is swept.** This partially supersedes **ADR-0118 Decision item 1**
+   (`supersedes: ADR-0118#1`), which
    excluded it as "not part of the decision corpus agents are steered by, and no approval covers
    it". The second clause was the operative one, and this ADR is that approval. The corpus is safe
    to sweep on a ground the earlier exclusion did not consider: it carries zero curly quotes and no
@@ -168,7 +169,7 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    are awf's own headings and callouts.
 
 4. **Go comments and `_test.go` files are in scope.** This partially supersedes **ADR-0115 Decision
-   item 4**, whose two reasons are both answered: the gofmt reason is refuted above, and "test
+   item 4** (`supersedes: ADR-0115#4`), whose two reasons are both answered: the gofmt reason is refuted above, and "test
    failure strings are not emitted prose" is true but irrelevant to a rule whose subject is now the
    repository rather than the shipped artifact. All seven codepoints are scanned in comments,
    including the curly quotes, because the single-backtick fix makes that loop winnable.
@@ -179,7 +180,8 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    `proseGate` because every root key in the config tree is structural and every behavioural knob is
    namespaced, as `audit.*`, `invariants.*`, `bootstrap.enabled` and `hooks.enabled` all are.
 
-   **This partially supersedes ADR-0115 Decision item 7** on all three of its clauses. Item 7 holds
+   **This partially supersedes ADR-0115 Decision item 7** (`supersedes: ADR-0115#7`) on all
+   three of its clauses. Item 7 holds
    that "depiction is handled by convention and scope rather than an exemption list", that the
    `.awf/docs/pitfalls.yaml` curly quote "stays legal because sidecar data is out of scope", and
    that "No exemption list ships". Item 1 above brings sidecar data into scope and so removes the
@@ -303,7 +305,7 @@ situation after ADR-0118; and because the maintainer has since required exactly 
     reason a mis-anchored walk must fail loudly rather than pass vacuously.
 
 13. **A bare hyphen is a legitimate replacement.** This partially supersedes **ADR-0118 Decision
-    item 9**'s "A bare hyphen is never substituted for an em-dash". A hyphen is ASCII and was never
+    item 9**'s (`supersedes: ADR-0118#9`) "A bare hyphen is never substituted for an em-dash". A hyphen is ASCII and was never
     within the ban; item 9 raised a style preference to a prohibition, and commit `8338840` had
     already swept the Go comments using one. The prohibition is withdrawn rather than enforced
     retroactively. This costs nothing already done: the ADR-0118 sweep used no hyphens, so no
@@ -315,7 +317,8 @@ situation after ADR-0118; and because the maintainer has since required exactly 
     decides. ADR-0117 item 8 already widened that line's scope to "shipped or authored", so scope is
     not touched here; only the replacement list is.
 
-15. **This overrides ADR-0117 Decision item 5's "never fails an adopter's build over house style".**
+15. **This overrides ADR-0117 Decision item 5's "never fails an adopter's build over house
+    style".** (`supersedes: ADR-0117#5`)
     The override is named rather than glossed, because item 5 is an absolute and this ADR ships a
     check that fails a build over house style.
 

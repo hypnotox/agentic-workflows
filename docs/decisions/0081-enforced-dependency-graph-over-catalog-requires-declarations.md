@@ -77,7 +77,8 @@ invariant, so folding docs into the graph reaches that ADR too.
    every gated command with a repair hint that names the exact config edit and
    `awf upgrade` as the pre-migration recovery path. This generalizes ADR-0050
    Decision item 2 (its `RequiresAgent` check becomes the skill→agent edge of
-   the same loop) and supersedes ADR-0046 Decision item 4 in two respects: the
+   the same loop) and supersedes ADR-0046 Decision item 4
+   (`supersedes: ADR-0046#4`) in two respects: the
    check-time failure strengthens to open time, and its documented
    trim-with-overrides escape hatch (disable a chain skill, override the
    referencing sections via convention parts) is **deliberately foreclosed**;
@@ -151,7 +152,7 @@ invariant, so folding docs into the graph reaches that ADR too.
    silently.** A catalog trim (interactive or `--answers`) first derives its
    agent set from the trimmed skills' requirements (agents nothing in the
    selection requires are dropped, superseding ADR-0050 Decision item 6's
-   unconditional all-agents scaffold) and is then closure-completed (missing
+   unconditional all-agents scaffold, `supersedes: ADR-0050#6`) and is then closure-completed (missing
    requirements added, each noted) instead of scaffolding a config that
    init's own chained sync refuses. Without the agent derivation, the
    always-enabled `plan-reviewer`'s edge to `reviewing-plan-resync` would

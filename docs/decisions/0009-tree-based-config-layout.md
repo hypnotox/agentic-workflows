@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [config-tree, sidecar-fields]
-related: [1, 5, 6, 7, 8, 10]
+related: [1, 5, 6, 7, 8, 10, 15, 16]
 domains: [config]
 ---
 # ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root

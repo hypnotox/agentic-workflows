@@ -4,7 +4,7 @@ date: 2026-06-24
 supersedes: []
 superseded_by: ""
 tags: [template-overlay, section-assembly]
-related: []
+related: [15, 45]
 domains: [rendering]
 ---
 # ADR-0001: Template Overlay Rendering Engine

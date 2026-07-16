@@ -83,7 +83,8 @@ Three couplings shaped the design:
    `x` rather than renaming the rendered file: a renamed file would simply be foreign to the lock.
    The command vars remain the seam the hooks/skills/docs reference; the runner is what they now
    point at, and they keep their `./x` defaults.
-7. **This ADR partially supersedes ADR-0002 Decision item 5** (the deferral of the runner into the
+7. **This ADR partially supersedes ADR-0002 Decision item 5** (`supersedes: ADR-0002#5`;
+   the deferral of the runner into the
    standard). ADR-0002's status stays live (its linting decision is unaffected) and its legacy
    `.claude/awf.yaml`/`.claude/awf.lock` paths are the pre-relocation names of today's `.awf/`
    tree; no `supersedes` flip.

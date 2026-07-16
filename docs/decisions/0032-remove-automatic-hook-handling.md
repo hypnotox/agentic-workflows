@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: [3]
 superseded_by: ""
 tags: [git-hooks, schema-migration]
-related: [23, 30, 31]
+related: [23, 30, 31, 48]
 domains: [tooling, rendering]
 ---
 # ADR-0032: Remove Automatic Git-Hook Handling

@@ -4,7 +4,7 @@ date: 2026-06-26
 supersedes: []
 superseded_by: ""
 tags: [section-assembly, publication-safety]
-related: [4, 9, 86]
+related: [4, 9, 86, 89]
 domains: [rendering]
 ---
 # ADR-0011: Docs Default Content and Per-Doc Section Taxonomy

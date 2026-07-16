@@ -26,9 +26,6 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
-
-### Proposed
-
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
 
 ### Superseded

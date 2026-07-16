@@ -1,7 +1,7 @@
 ---
 date: 2026-07-16
 adrs: [120]
-status: Proposed
+status: Implemented
 ---
 # Plan: Structured supersession tokens, checks, and the corpus retrofit
 
@@ -680,3 +680,34 @@ independently shippable.
 - Out of scope, for the backlog: an `awf audit` rule flagging body edits to non-Proposed ADRs
   (none exists today; the item-9 carve-out makes reviewer discipline the only guard), and
   tokenizing adopter corpora beyond sundial.
+
+Implementation findings (recorded at the freeze):
+
+- Task 4.3's sundial expectation was wrong: its three ADRs carried *empty* `retires_invariants: []`
+  keys, so the migration printed three strip lines rather than none. Behavior as specified.
+- The migration was first written reading the slug list from the parsed struct field; Phase 5's
+  field removal forced the raw-line read Task 4.1 had specified. Caught by the migration tests.
+- Two updates the plan did not schedule: `minVersionBySchema` needed a `10: "0.17.0"` entry (the
+  ADR-0049 Decision 4 gate test enforces it alongside any new migration), and the Task 4.4
+  `docs/architecture.md` currency edit had to land in `.awf/docs/parts/architecture/components.md`
+  (the doc is rendered; the plan named the rendered path).
+- The Task 7.1/7.2 "(ADR-0120)" citations could not survive in the embedded templates: the
+  ADR-0082 residue gate bans concrete ADR numbers in shipped template sources. The rules stand
+  cite-free in the templates; the config-side surfaces keep their citations. The lifecycle skill
+  also joined the deliberate double-backtick exemption list beside proposing-adr (its token
+  grammar is quoted with nested backticks).
+- The Task 7.5 post-check grep forced two historical mentions of the removed key ("porting
+  `retires_invariants:`") to be reworded as "the legacy ADR-0031 retirement frontmatter"; the key
+  name stays documented in the invariants domain part, which the grep deliberately excludes.
+- Task 8.1's hand-review settled 25 tokens across 14 carriers, all into live targets, so the
+  expected advisory-note set is empty. Skipped-site classes beyond the plan's three exclusions:
+  an overridden *invariant whose slug survives declared and backed* (0020's, 0023's, 0059's,
+  0081's, 0016's, 0057's invariant citations - a `supersedes-invariant:` token would retire a
+  still-owed slug, a behavior change insertion-only tokenization must not make), a citation
+  living outside the Decision section (0089's in Context, 0028's in Consequences - a token there
+  is inert), a textual invariant with no slug (0015 -> ADR-0001 Invariants bullet 1), and a
+  citation with no enumerable anchor (0023 -> ADR-0003's textual setup contracts).
+- Of Task 8.2's ten deferred edges, five had already landed via the Phase 4 migration
+  (23<-32, 30<-49, 104<-106, and the two 104-adjacent edges) and two via Task 8.1's token
+  back-pointers (7<-8, 39<-76, 16<-76 among them); only 3<-30, 1<-45, and 11<-89 needed manual
+  backfill.

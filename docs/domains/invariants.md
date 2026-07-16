@@ -26,9 +26,6 @@ Backing is a ledger, not a proof (ADR-0114). The scan is a textual line match: i
 - [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
 - [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
-
-### Proposed
-
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
 
 ### Superseded

@@ -4,7 +4,7 @@ date: 2026-06-28
 supersedes: []
 superseded_by: ""
 tags: [init-scaffolding, catalog-vars]
-related: [22]
+related: [22, 64]
 domains: [tooling, config]
 ---
 # ADR-0029: Interactive and Agent-Prefillable `awf init`

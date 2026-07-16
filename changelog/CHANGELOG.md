@@ -9,6 +9,26 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- ADR supersession is structured and machine-checked (ADR-0120), and the `retires_invariants:`
+  frontmatter key is removed from the ADR schema. **Run `awf upgrade`: the generation-10
+  migration rewrites `docs/decisions/`**, stripping every `retires_invariants:` key and
+  appending a retirement-bookkeeping Decision item carrying one
+  `` `supersedes-invariant: ADR-NNNN#<slug>` `` token per retired slug (plus the target's
+  `related:` back-pointer); a corpus still carrying the raw key fails `awf check` until the
+  migration runs. Two token grammars express partial supersession inside a successor's Decision
+  section: `` `supersedes: ADR-NNNN#<item>` `` (a Decision item) and
+  `` `supersedes-invariant: ADR-NNNN#<slug>` `` (an invariant, which an Implemented carrier
+  retires from owed backing). New `awf check` errors, any status: every ADR's Decision section
+  must be column-0 numbered items sequential from 1 (item numbers are the stable anchors);
+  `supersedes:` frontmatter is finally parsed and its three-way symmetry enforced (claim,
+  `Superseded by ADR-NNNN` status flip, scalar `superseded_by:`); every token's ref must
+  resolve (existing non-Proposed target, in-range item or declared slug); a token into a live
+  target requires the target's `related:` back-pointer; and one successor cannot both fully and
+  partially supersede the same target. Two non-failing advisories: a token whose target was
+  later fully superseded, and one anchor claimed by two live ADRs. `ACTIVE.md` gains a
+  `## Supersedence` section (full chains plus superseded anchors on live ADRs; omitted for a
+  supersession-free corpus) and `awf context` annotates surfaced ADRs with their overridden
+  anchors.
 - Seven typographic punctuation substitutes are banned from the prose awf ships (ADR-0115): the
   em-dash (U+2014), en-dash (U+2013), ellipsis (U+2026), and the four curly quotes (U+2018,
   U+2019, U+201C, U+201D). The generated `docs/decisions/ACTIVE.md` now renders a row's status in

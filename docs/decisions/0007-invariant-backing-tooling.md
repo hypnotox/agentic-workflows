@@ -4,7 +4,7 @@ date: 2026-06-25
 supersedes: []
 superseded_by: ""
 tags: [invariant-backing, adr-parsing]
-related: [5, 6]
+related: [5, 6, 8]
 domains: [invariants]
 ---
 # ADR-0007: Invariant-Backing Tooling: `inv:` Tags and the `awf invariants` Checker

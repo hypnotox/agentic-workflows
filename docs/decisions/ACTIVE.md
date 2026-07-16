@@ -120,10 +120,7 @@
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md) (Implemented)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md) (Implemented)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
-
-## Proposed
-
-- [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Proposed)
+- [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Implemented)
 
 ## Superseded
 
@@ -141,15 +138,32 @@
 
 ### Superseded anchors on live ADRs
 
-- ADR-0008: slug `invariants-glob-basename` superseded by ADR-0077
+- ADR-0001: item 2 superseded by ADR-0015
+- ADR-0002: item 5 superseded by ADR-0101
+- ADR-0007: item 3 superseded by ADR-0008
+- ADR-0008: item 4 superseded by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
+- ADR-0009: item 1 superseded by ADR-0016; item 4 superseded by ADR-0015
 - ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
-- ADR-0016: slug `target-output-paths` superseded by ADR-0037
+- ADR-0016: item 6 superseded by ADR-0076; slug `target-output-paths` superseded by ADR-0037
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
+- ADR-0024: item 1 superseded by ADR-0093; item 6 superseded by ADR-0093
+- ADR-0029: item 1 superseded by ADR-0064
 - ADR-0030: slug `version-ldflags-precedence` superseded by ADR-0049
+- ADR-0032: item 1 superseded by ADR-0048
+- ADR-0034: item 1 superseded by ADR-0057
+- ADR-0039: item 5 superseded by ADR-0076
 - ADR-0040: slug `bootstrap-pin` superseded by ADR-0085
 - ADR-0043: slug `mandatory-docs-not-in-docs-catalog` superseded by ADR-0061; slug `singleton-kind-single-source` superseded by ADR-0061
-- ADR-0098: slug `context-surfaces-linked-plans` superseded by ADR-0104
+- ADR-0046: item 4 superseded by ADR-0081
+- ADR-0050: item 6 superseded by ADR-0081
+- ADR-0066: item 3 superseded by ADR-0071
+- ADR-0073: item 2 superseded by ADR-0107; item 4 superseded by ADR-0107
+- ADR-0097: item 1 superseded by ADR-0108
+- ADR-0098: item 2 superseded by ADR-0108; slug `context-surfaces-linked-plans` superseded by ADR-0104
 - ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104
 - ADR-0102: slug `uncovered-lists-unowned-only` superseded by ADR-0110
 - ADR-0104: slug `context-tier1-governs` superseded by ADR-0106; slug `context-tier2-topical` superseded by ADR-0109
+- ADR-0115: item 4 superseded by ADR-0119; item 7 superseded by ADR-0119
 - ADR-0116: item 2 superseded by ADR-0120; item 5 superseded by ADR-0120
+- ADR-0117: item 5 superseded by ADR-0119
+- ADR-0118: item 1 superseded by ADR-0119; item 9 superseded by ADR-0119
