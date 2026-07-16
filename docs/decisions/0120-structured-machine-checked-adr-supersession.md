@@ -39,8 +39,8 @@ once they leave `Proposed` (ADR-0116 Decision 2), so Decision item numbers are s
 corpus sweep confirms all ADRs carry clean sequential column-0 `1.`-style items under
 `## Decision` (two ADRs, 0067 and 0115, contain indented numbered sub-lists, so enumeration must
 anchor at column 0). Second, invariant slugs are already extracted by a fixed grammar
-(`declRe`, `internal/invariants/invariants.go`) from each ADR's Invariants section; no existing
-slug is all-digit, and refs can share that extraction.
+(`declRe`, `internal/invariants/invariants.go`) from each ADR's Invariants section, so refs can
+share that extraction.
 
 The user's directive for this change: supersession must be either full-ADR or partial and pointed
 at superseded decisions specifically; and "changes to our ADR schema should be retrofitted, since
@@ -55,24 +55,28 @@ renders no such thing. That drift is repaired by making the claim true rather th
 
 ## Decision
 
-1. **Inline partial-supersession tokens.** A partial supersession is declared by a
-   machine-readable inline code token in the **successor's** `## Decision` section, at the
-   citation site where the overriding item explains itself: `` `supersedes: ADR-NNNN#<anchor>` ``.
-   One token per overridden anchor. Tokens are recognized only inside `## Decision`; anywhere
-   else the same text is inert prose. Full (whole-ADR) supersession never uses a token; it stays
-   in frontmatter (item 3). This follows ADR-0105's inline-over-frontmatter precedent: the claim
-   lives with its rationale and cannot drift from a separate list.
+1. **Inline partial-supersession tokens, one key per superseded kind.** A partial supersession
+   is declared by a machine-readable inline code token in the **successor's** `## Decision`
+   section, at the citation site where the overriding item explains itself:
+   `` `supersedes: ADR-NNNN#<item>` `` overrides a Decision item, and
+   `` `supersedes-invariant: ADR-NNNN#<slug>` `` overrides an invariant. The superseded kind is
+   named by the key, never inferred from the anchor's shape, matching how the inline marker
+   family already namespaces kinds by key suffix (`invariant:`, `unbacked-invariant:`,
+   `touches-invariant:`). One token per overridden anchor. Tokens are recognized only inside
+   `## Decision`; anywhere else the same text is inert prose. Full (whole-ADR) supersession
+   never uses a token; it stays in frontmatter (item 3). This follows ADR-0105's
+   inline-over-frontmatter precedent: the claim lives with its rationale and cannot drift from
+   a separate list.
 
-2. **Anchor grammar.** `<anchor>` is either a Decision item number (`[1-9][0-9]*`, no leading
-   zeros) or an invariant slug (`[a-z][a-z0-9-]*`, letter-leading). The shapes are disjoint by
-   construction; to keep them so, an invariant slug declaration that is all-digit or
-   digit-leading is refused by `awf check`. An item-number anchor resolves against the target
-   ADR's `## Decision` section, enumerating only column-0 `N.` items. A slug anchor resolves by
-   a status-independent raw scan of the target ADR's `## Invariants` section using the same
-   declaration grammar as invariant backing (not via the post-retirement declared-slug map,
-   which would make a token dangle against its own retirement effect). A token's target must not
-   be `Proposed`: a Proposed body is still mutable, so its item numbers are not yet anchors, and
-   the convention amends a Proposed ADR in place instead of superseding it.
+2. **Anchor grammar.** A `supersedes:` token's anchor is a Decision item number
+   (`[1-9][0-9]*`, no leading zeros), resolved against the target ADR's `## Decision` section,
+   enumerating only column-0 `N.` items. A `supersedes-invariant:` token's anchor is an
+   invariant slug (`[a-z0-9-]+`, the declaration grammar), resolved by a status-independent raw
+   scan of the target ADR's `## Invariants` section using the same declaration grammar as
+   invariant backing (not via the post-retirement declared-slug map, which would make a token
+   dangle against its own retirement effect). Either token's target must not be `Proposed`: a
+   Proposed body is still mutable, so its item numbers are not yet anchors, and the convention
+   amends a Proposed ADR in place instead of superseding it.
 
 3. **Full supersession becomes symmetric and checked.** `supersedes:` frontmatter (bare ADR
    numbers) is parsed, and `awf check` fails unless the three records agree: successor
@@ -93,14 +97,14 @@ renders no such thing. That drift is repaired by making the claim true rather th
    supersede and partially supersede the same target; `awf check` fails on it. Two conditions
    degrade to advisory notes on `awf check`'s note channel rather than errors, because tokens
    are immutable prose and a hard error could turn permanently red with no legal remediation:
-   a token whose target ADR has since been fully superseded, and one anchor claimed by tokens in
-   two or more live ADRs (clause-level splits of one item are legitimate, per ADR-0119's item 7
+   a token (of either kind) whose target ADR has since been fully superseded, and one anchor
+   claimed by tokens in two or more live ADRs (clause-level splits of one item are legitimate, per ADR-0119's item 7
    treatment). These advisories live in `awf check`, not `awf audit`: audit rules are pure over
    the commit range (ADR-0025 records the single sanctioned exception), while check has native
    corpus access.
 
-6. **Invariant retirement is subsumed by slug-anchor tokens.** A token
-   `` `supersedes: ADR-NNNN#<slug>` `` carried by an **Implemented** ADR drops that slug from
+6. **Invariant retirement is subsumed by `supersedes-invariant:` tokens.** A token
+   `` `supersedes-invariant: ADR-NNNN#<slug>` `` carried by an **Implemented** ADR drops that slug from
    owed backing, exactly as `retires_invariants:` does today: same Implemented-only activation,
    same dangling-reference error when the slug resolves to nothing. Retirement lapse semantics
    are preserved: if the token-carrying ADR is itself later fully superseded, its retirements
@@ -122,7 +126,7 @@ renders no such thing. That drift is repaired by making the claim true rather th
    migration over `<docsDir>/decisions/`: for every ADR file whose frontmatter carries
    `retires_invariants:`, the key is stripped; where the list was non-empty, a new numbered
    bookkeeping item is **appended** to that ADR's `## Decision` section carrying one equivalent
-   `` `supersedes: ADR-NNNN#<slug>` `` token per retired slug, resolving each slug to its
+   `` `supersedes-invariant: ADR-NNNN#<slug>` `` token per retired slug, resolving each slug to its
    declaring ADR from the pre-retirement corpus view. Appending never renumbers existing items.
    The ADR-0039 binary-version gate forces unmigrated projects through `awf upgrade` as usual.
    This is the first migration that writes outside the config tree; `internal/migrate` may
@@ -160,9 +164,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
 ## Invariants
 
 - `invariant: supersession-token-ref-validity` - `awf check` fails on a Decision-section token
-  whose target ADR does not exist, whose item-number anchor exceeds the target's column-0
-  Decision item count, whose slug anchor matches no declaration in the target's Invariants
-  section, or whose target ADR is `Proposed`.
+  (either key) whose target ADR does not exist, whose `supersedes:` anchor exceeds the target's
+  column-0 Decision item count, whose `supersedes-invariant:` anchor matches no declaration in
+  the target's Invariants section, or whose target ADR is `Proposed`.
 - `invariant: supersession-full-symmetry` - `awf check` fails on any one-sided full
   supersession: a `supersedes:` entry without the predecessor's matching
   `Superseded by ADR-NNNN` status and `superseded_by:`, either of those without the successor's
@@ -174,13 +178,11 @@ renders no such thing. That drift is repaired by making the claim true rather th
 - `invariant: supersession-conflict-advisory` - a token whose target was later fully
   superseded, and an anchor claimed by two or more live ADRs, each surface as `awf check`
   notes, never errors.
-- `invariant: slug-declarations-letter-leading` - `awf check` fails on an invariant slug
-  declaration that does not start with a lowercase letter.
-- `invariant: token-retirement-implemented-only` - a slug-anchor token drops its slug from
-  owed backing exactly when the token-carrying ADR's status is `Implemented`; carriers in any
-  other status, including `Superseded`, leave the slug owed.
-- `invariant: token-retirement-dangling-errors` - a slug-anchor token on an Implemented
-  carrier whose slug no ADR declares is an `awf check` error.
+- `invariant: token-retirement-implemented-only` - a `supersedes-invariant:` token drops its
+  slug from owed backing exactly when the token-carrying ADR's status is `Implemented`;
+  carriers in any other status, including `Superseded`, leave the slug owed.
+- `invariant: token-retirement-dangling-errors` - a `supersedes-invariant:` token on an
+  Implemented carrier whose slug no ADR declares is an `awf check` error.
 - `invariant: retires-invariants-key-refused` - `awf check` fails, with upgrade guidance, on
   any ADR whose raw frontmatter carries the `retires_invariants` key, empty or not.
 - `invariant: upgrade-migrates-retirements` - the generation-10 migration strips the
@@ -225,6 +227,7 @@ renders no such thing. That drift is repaired by making the claim true rather th
 | Structured frontmatter for partial supersession (`supersedes: [{adr, items, invariants}]`) | Re-introduces the list-drifts-from-prose failure ADR-0105 eliminated; the claim and its rationale separate. |
 | Frontmatter plus inline tokens, cross-checked | Double bookkeeping on every partial supersession forever, to save one body scan. |
 | `§` section-sign syntax (`ADR-0001 §3`) | Non-ASCII glyph, hostile to typing and grep; `#` carries the same meaning. |
+| One `supersedes:` key with shape-inferred anchors (digits = item, kebab = slug) | Muddies which kind is superseded at every citation; needs an all-digit-slug ban to stay unambiguous; the marker family already namespaces kinds by key suffix. |
 | Keep `retires_invariants:` alongside tokens | Two mechanisms for one semantic invites permanent which-one ambiguity; retirement *is* partial supersession of the declaring ADR. |
 | Deprecate `retires_invariants:` without retrofit (grandfather old ADRs) | Violates the retrofit directive; leaves awf permanently parsing a dead field and adopter corpora permanently dual-schema. |
 | Same-anchor conflict as an `awf audit` rule | Audit rules are pure over the commit range (ADR-0025); the conflict needs corpus state, which `awf check` already has. |
