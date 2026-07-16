@@ -48,6 +48,7 @@ ADR-0120's own twelve proof markers are dangling notes until the Phase 8 flip de
   `templates/adr-readme/README.md.tmpl`, `.awf/agents-doc.yaml`, `.awf/parts/adr-template/frontmatter.md`,
   `.awf/agents/adr-reviewer.yaml`, `.awf/domains/parts/{adr-system,invariants,config,rendering}/current-state.md`,
   `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`, `changelog/CHANGELOG.md`,
+  `docs/architecture.md`,
   `docs/decisions/0120-*.md` (status flip), this plan (status flip), and the rendered/generated
   fan-out: `docs/decisions/*.md` (88 key strips, 12 appended items, tokenization sweep,
   back-pointer edits), `docs/decisions/ACTIVE.md`, `docs/decisions/README.md`,
@@ -73,6 +74,9 @@ so the dead-code gate passes.
   	Supersedes        []int             // `supersedes:` frontmatter: full-supersession claims (ADR-0120)
   	Refs              []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
   ```
+
+  (gofmt-align both insertions with the surrounding field blocks; the snippets show content,
+  not final column alignment.)
 
   Add the token types and extraction:
 
@@ -133,7 +137,10 @@ so the dead-code gate passes.
   cases: both token kinds extracted with correct Target/Item/Slug; a token outside the Decision
   section ignored; a leading-zero item anchor (`#03`) and an uppercase slug not matched; an
   indented `  1. ` sub-item not enumerated; multi-digit items (`13. `) enumerated;
-  `supersedes: [31]` frontmatter round-trips.
+  `supersedes: [31]` frontmatter round-trips; a fenced code block inside the Decision section
+  containing a column-0 `1. ` line and a backticked token example, pinning the accepted
+  behavior: the body is read raw, fences included (the corpus is fence-clean at column 0
+  today; the pin makes any future surprise a test failure, not silent drift).
 
 - [ ] **Task 1.3: The Decision-format check.** New file `internal/project/supersession.go` opens
   with the format check (the supersession checks join it in Phase 2):
@@ -177,8 +184,13 @@ so the dead-code gate passes.
   ./x check
   ```
 
-  Expected: `awf check: clean` plus the three known dangling-marker notes (the grounding sweep
-  verified all 120 of this repo's ADRs and all 3 sundial ADRs already comply with the format).
+  Expected: `awf check: clean` with exactly four dangling-marker notes: the three legacy
+  `inv-retirement-*` plus `decision-items-enumerable`, whose proof landed this phase while
+  ADR-0120 is still Proposed. (The grounding sweep verified all 120 of this repo's ADRs and
+  all 3 sundial ADRs already comply with the format.) Each later phase adds one note per new
+  ADR-0120 proof slug: expect 9 after Phase 2, 12 after Phase 4, 10 after Phase 5 (the three
+  legacy notes go, `retires-invariants-key-refused` arrives), 12 after Phase 6, and 0 after
+  the Task 8.4 flip.
 
 - [ ] **Task 1.5: Commit.**
 
@@ -253,9 +265,13 @@ so the dead-code gate passes.
     anchor (target + item or slug) claimed by refs in two or more non-Superseded ADRs:
     `"anchor ADR-%s#%s claimed by ADR-%s and ADR-%s"`. Notes never enter the drift slice.
 
-  Wire the aggregator into `Check()` in `internal/project/check.go` after `checkADRRelatedLinks`
-  and route the notes through the same channel `cmd/awf/check.go:33` prints (extend
-  `AdvisoryNotes()` or thread them alongside it, following how its strings are sourced today).
+  Wiring, one shape, no either/or: split the compute from the plumbing. A
+  `computeSupersession(adrs, rel)` returns `(drift, notes)`; `checkSupersessionAll` (called
+  from `Check()` after `checkADRRelatedLinks`) consumes only the drift half; a new
+  `supersessionNotes()` source re-parses the corpus and returns the notes half, appended in
+  `AdvisoryNotes()` (internal/project/check.go:28) exactly as its existing note sources are -
+  mirroring how tag-health notes reach `cmd/awf/check.go:33`. The double ParseDir matches the
+  corpus checks' existing per-check parse pattern.
 
 - [ ] **Task 2.3: Tests.** In `internal/project/supersession_test.go`, fixture corpora via
   `internal/testsupport` ADR builders - extend them with `WithSupersedes([]int)` and a
@@ -263,11 +279,14 @@ so the dead-code gate passes.
   form fails; two full claimants fail; dangling item ref, out-of-range item, unknown slug, and
   Proposed target each fail; live target without back-pointer fails, with back-pointer passes;
   token plus frontmatter into one target fails; token into a Superseded target yields a note and
-  no drift; two live claimants of one anchor yield a note. Proof markers on these tests:
+  no drift; two live claimants of one anchor yield a note. Extend the builders with
+  `WithSupersedes([]int)`; use the existing `WithBody` (`internal/testsupport/testsupport.go:115`)
+  for Decision-section fixtures. Proof markers on these tests:
   `// invariant: supersession-full-symmetry`, `// invariant: supersession-token-ref-validity`,
   `// invariant: supersession-backpointer`, `// invariant: supersession-flavour-exclusive`,
   `// invariant: supersession-conflict-advisory`. Then confirm this repo's corpus is green:
-  `./x check` prints `awf check: clean` (plus the three pre-existing dangling-marker notes).
+  `./x check` prints `awf check: clean` (nine dangling-marker notes: three legacy plus six
+  ADR-0120 proofs landed so far).
 
 - [ ] **Task 2.4: Commit.**
 
@@ -340,7 +359,9 @@ so the dead-code gate passes.
      fails the migration naming the file, keeping meaning-preservation checkable).
   3. Strip the line. For a non-empty list, resolve each slug to its declaring ADR via
      `invariants.DeclaredSlugs` over the *pre-edit* parsed corpus; no declarer → error
-     `retirement-tokens: %s retires %q, declared by no ADR`; then append to the file's Decision
+     `retirement-tokens: %s retires %q, declared by no ADR`; two or more declarers → error
+     naming the slug and every declarer (the loud-failure posture; this corpus's 14 retired
+     slugs each resolve uniquely); then append to the file's Decision
      section (immediately before the next `## ` heading), with `N` = last item number + 1:
 
      ```
@@ -368,18 +389,26 @@ so the dead-code gate passes.
 - [ ] **Task 4.3: Migrate this repo and sundial.**
 
   ```bash
-  go run ./cmd/awf upgrade && (cd examples/sundial && go run ../../. upgrade)
+  go build -o /tmp/awf ./cmd/awf
+  go run ./cmd/awf upgrade && (cd examples/sundial && /tmp/awf upgrade)
   ./x sync && ./x check && ./x invariants
   ```
+
+  (The repo root is not a main package and sundial is its own Go module, so the sundial run
+  uses a prebuilt binary, following `./x`'s build pattern.)
 
   Expected: `retirement-tokens:` lines for 88 stripped keys, 12 appended items, and the
   back-pointer insertions the corpus lacks (grounding measured 13 of 14 edges absent; the run
   prints the exact list); sundial prints no `retirement-tokens:` lines (its ADRs never carried
-  the key) but its lock stamps to generation 10; then `awf check: clean` (three known notes) and
+  the key) but its lock stamps to generation 10; then `awf check: clean` (twelve
+  dangling-marker notes: three legacy plus nine ADR-0120 proofs landed so far) and
   `awf invariants: clean` - the 12 retiring ADRs' retirements now flow through Phase 3's token
   path.
 
-- [ ] **Task 4.4: Commit** (code, both corpora, both locks: one concern, the cutover).
+- [ ] **Task 4.4: Commit** (code, both corpora, both locks: one concern, the cutover). Include
+  the `docs/architecture.md` currency edit in this commit: extend its `internal/migrate` bullet
+  (lines ~71-72) with the corpus-writing generation-10 migration and the new
+  `internal/migrate` → `internal/adr` import, per ADR-0120 item 8's precedent framing.
 
   ```commit
   feat(config): migrate retires_invariants to supersession tokens
@@ -409,8 +438,9 @@ so the dead-code gate passes.
   `./x sync`; `docs/decisions/template.md` regenerates without it, so `awf new adr` from this
   commit on cannot scaffold the refused key.
 
-- [ ] **Task 5.4: Gate and commit.** `./x gate`; the three dangling-marker notes are gone as of
-  this commit.
+- [ ] **Task 5.4: Gate and commit.** `./x gate`; the three legacy dangling-marker notes are gone
+  as of this commit, leaving ten (nine prior ADR-0120 proofs plus
+  `retires-invariants-key-refused`).
 
   ```commit
   feat(invariants): remove retires_invariants from the ADR schema
@@ -460,11 +490,15 @@ so the dead-code gate passes.
   `internal/adr/adr_test.go` asserting a full chain, an item annotation, a slug annotation, and
   both subsections absent for a supersession-free corpus.
 
-- [ ] **Task 6.3: `awf context` annotations.** In `internal/project/context.go`, where a
-  surfaced ADR's line renders in the tier output, append, when `overrides[a.Number]` is
-  non-empty: `" [item 2, item 5 superseded by ADR-0120]"` (items then slugs; each anchor
-  qualified by its successor once; successors grouped where equal, as in the example). Compute
-  the index once per context run from the already-parsed corpus. Proof marker
+- [ ] **Task 6.3: `awf context` annotations.** In `internal/project/context.go`, at the
+  per-ADR entry rendering site (around line 263, where Tier 1 and Tier 2 ADR lines are built),
+  append, when `overrides[a.Number]` is non-empty:
+  `" [item 2, item 5 superseded by ADR-0120]"` (items then slugs; each anchor qualified by its
+  successor once; successors grouped where equal, as in the example). Tier 3 collapsed lines
+  are counts, not entries, and are NOT annotated; the tier-semantics tests backing
+  `context-tier1-marker-union`, `context-tier2-precise-tag`, and `context-tier3-collapsed`
+  must stay green unmodified. Compute the index once per context run from the already-parsed
+  corpus. Proof marker
   `// invariant: context-annotates-superseded-anchors` on an `internal/project/context_test.go`
   case: a fixture where a surfaced ADR has an overridden item shows the annotation; an ADR
   without overrides renders unchanged.
@@ -525,13 +559,16 @@ independently shippable.
   supersession now checked), mechanical variation per file. Affected sites:
   `.awf/domains/parts/{adr-system,invariants,config,rendering}/current-state.md` (rewrite the
   supersedence/retirement narrative), `.awf/docs/glossary.yaml` (update "back-pointer"; add
-  "supersession token"), `.awf/docs/pitfalls.yaml` (record the two-site AGENTS-bullet hazard if
-  absent). Representative: the `adr-system` current-state paragraph replacing "cited in prose"
-  with the token rule. Edge: `.awf/config.yaml`'s `invariant-retirement` tag meaning stays
-  ("Invariant retirement via successor ADR" remains true under tokens). Post-check:
+  "supersession token"), `.awf/docs/pitfalls.yaml` (rewrite its two staled entries: the
+  planning guidance around a `retires_invariants:` entry at ~line 450 and the prose-citation
+  partial-supersedence convention at ~lines 251-277, both now token-mechanism; record the
+  two-site AGENTS-bullet hazard if absent). Representative: the `adr-system` current-state
+  paragraph replacing "cited in prose" with the token rule. Edge: `.awf/config.yaml`'s
+  `invariant-retirement` tag meaning stays ("Invariant retirement via successor ADR" remains
+  true under tokens). Post-check:
 
   ```bash
-  ./x sync && ./x check && ! grep -rn "retires_invariants" templates/ internal/catalog/ .awf/parts/ .awf/agents-doc.yaml
+  ./x sync && ./x check && ! grep -rn "retires_invariants" templates/ internal/catalog/ .awf/parts/ .awf/agents-doc.yaml .awf/docs/
   ```
 
 - [ ] **Task 7.6: Sync fan-out, gate, commit.** `./x sync` regenerates AGENTS.md, the lifecycle
@@ -560,9 +597,13 @@ independently shippable.
 
   ```diff
   -   local, and cannot drift from a separate list. It **supersedes ADR-0008 Decision item 4** via
-  +   local, and cannot drift from a separate list. It supersedes ADR-0008 Decision item 4
+  +   local, and cannot drift from a separate list. It **supersedes ADR-0008 Decision item 4**
   +   (`supersedes: ADR-0008#4`) via
   ```
+
+  Tokenization inserts text and changes nothing else - no formatting, emphasis, or wording
+  edits; the item-9 carve-out authorizes insertion adjacent to an existing citation, nothing
+  broader.
 
   Edge: a citation of a *Superseded* target is still tokenized (it degrades to the expected
   advisory note, preserving history) unless the full-supersession exclusion applies. For every
@@ -608,8 +649,9 @@ independently shippable.
   dangling-marker notes.
 - `go run ./cmd/awf context internal/adr/adr.go` (any query surfacing ADR-0116) shows its
   `[item 2, item 5 superseded by ADR-0120]` annotation.
-- `grep -c "^retires_invariants:" docs/decisions/0*.md | grep -v ":0"` prints nothing (the key
-  survives only as prose *mentions* inside frozen bodies: 0031's own text, 0058, 0105, 0119).
+- `grep -c "^retires_invariants:" docs/decisions/0*.md | grep -v ":0"` prints nothing: only the
+  column-0 key is gone; prose mentions inside frozen bodies and the migration-appended
+  bookkeeping items survive, which is correct.
 
 ## Notes
 
