@@ -36,16 +36,20 @@ Phases 1 to 5 sweep, cleaning the tree from the outside in and leaving it at zer
 the four exemption entries. Each is a batch task over a measured site set, each closes with `./x
 gate` green, and each is independently revertible.
 
-Phase 6 adds `internal/prosegate` (the scanner), the `proseGate` config block, its `configspec`
-entries, and the `clispec` command, with the knob defaulting false and awf's own knob still unset:
-the command exists and no-ops, so the gate cannot fail on it.
+Phase 6 adds `internal/prosegate` (the scanner), an index-aware tracked-path enumeration in
+`internal/git`, the `proseGate` config block, its five `configspec` entries, and the `clispec`
+command, with the knob defaulting false and awf's own knob still unset: the command exists and
+no-ops, so the gate cannot fail on it.
 
-Phase 7 wires the rendered `pre-commit` payload through a new `proseGateCmd` var and widens the
-payload's bootstrap-shim guard to a disjunction.
+Phase 7 wires the rendered `pre-commit` payload through a new `proseGateCmd` var, widens the
+payload's bootstrap-shim guard to a disjunction, and sets awf's own `proseGateCmd` to a new `./x
+prose-gate` arm. That last part belongs to Phase 7 and not Phase 8 for a hard reason: this repo's
+`.githooks/pre-commit` execs the rendered payload, so a phase that renders a bare `awf prose-gate`
+without giving awf a var to point at it cannot commit itself.
 
-Phase 8 flips awf to its own dogfood: it sets the knob, declares the four exemptions, wires `./x
-gate`, corrects the agent guide and the shipped doc-standard, adds the changelog entry, and flips
-ADR-0119 and this plan to Implemented.
+Phase 8 flips awf to its own dogfood: it sets the knob, declares the four exemptions, folds the scan
+into the `./x gate` arm so CI enforces it, corrects the agent guide and the shipped doc-standard,
+adds the changelog entry, and flips ADR-0119 and this plan to Implemented.
 
 The sweep must complete before Phase 8, or the gate Phase 8 enables fails on its own tree. Phases 6
 and 7 could in principle precede the sweep, but are placed after it so that no commit in this plan
@@ -59,8 +63,10 @@ ships a check the tree would fail.
   `.awf/parts/adr-readme/invariants.md`, 11 production `.go` files, 22 `_test.go` files, `x`,
   `.githooks/pre-commit`, `codecov.yml`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`,
   `.goreleaser.yaml`, `.gremlins.yaml`, `README.md`, `internal/config/config.go`,
-  `internal/configspec/spec.go`, `internal/project/configreference.go`, `internal/clispec/clispec.go`,
-  `cmd/awf/main.go`, `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/doc-standard.md.tmpl`,
+  `internal/configspec/spec.go`, `internal/catalog/standard.go`,
+  `internal/project/configreference.go`, `internal/clispec/clispec.go`, `internal/git/git.go` and
+  `internal/git/git_test.go` (the index-aware enumeration of Task 6.3a),
+  `cmd/awf/dispatch.go`, `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/doc-standard.md.tmpl`,
   `.awf/agents-doc.yaml`, `.awf/config.yaml`, `changelog/CHANGELOG.md`, plus regenerated
   `docs/pitfalls.md`, `docs/glossary.md`, `docs/decisions/README.md`, `docs/config-reference.md`,
   `AGENTS.md`, `docs/doc-standard.md`, `.awf/hooks/pre-commit.sh`, `.awf/awf.lock`,
@@ -201,13 +207,15 @@ rendered file is forbidden.
   **Affected-site set:** `grep -nP '\x{2026}' .awf/docs/pitfalls.yaml` (19 matches across lines 64,
   74, 84, 110, 189, 438, 488, 515, 518, 528, 652, 657, 661, 662, 768, 789).
 
-  **Post-check** (must print `0 19`, meaning zero ellipses remain and the 19 became ASCII):
+  **Post-check** (must print `0 1`: zero U+2026 remain, and the single U+201C survives):
 
   ```bash
-  echo "$(grep -coP '\x{2026}' .awf/docs/pitfalls.yaml || echo 0) $(grep -cP '\x{201C}' .awf/docs/pitfalls.yaml)"
+  echo "$(grep -coP '\x{2026}' .awf/docs/pitfalls.yaml) $(grep -cP '\x{201C}' .awf/docs/pitfalls.yaml)"
   ```
 
-  Expected output: `0 1`. Zero U+2026 remain; the single U+201C survives.
+  Expected output: `0 1`. Run it before the sweep to see it print `19 1`, which confirms the command
+  reads what you think it reads. Note there is deliberately no `|| echo 0` fallback: `grep -c` exits
+  1 on no match, and an `|| echo 0` would fire alongside the printed `0` and emit two lines.
 
 - [ ] **Task 2.2: Sweep `.awf/docs/glossary.yaml` (1 site).**
 
@@ -364,6 +372,15 @@ and stop at the space before it).
   git grep -oP '[\x{2014}\x{2013}\x{2026}\x{2018}\x{2019}\x{201C}\x{201D}]' -- '*_test.go' | wc -l
   ```
 
+  **Third named site: `internal/project/residue_scan_test.go`.** ADR-0119's Consequences names three
+  sites needing care beyond the mechanical rule; this is the one the batch would otherwise swallow.
+  The file carries 3 U+2014 in `t.Errorf` prose (`:47`, `:63`, `:82`) which are ordinary sites and
+  are swept normally. Its `bannedRunes` map (`:92-99`) is **not** a site: it states the rule in
+  `'\u2014'` escape form, exactly as Task 6.2's new map does, and the two must stay in agreement.
+  Do not "helpfully" convert the escapes to characters, and do not touch the map at all. (The
+  escapes are `token.CHAR`, which that file's own `scanGoLiterals` skips by filtering
+  `lit.Kind != token.STRING`, so they are invisible to ADR-0115's gate and must stay that way.)
+
   **Note the deliberate loss.** `internal/project/spine_test.go`'s fixtures currently feed
   adopter-shaped sidecar data containing em-dashes through the renderer, incidentally demonstrating
   that awf passes adopter strings through unrewritten (ADR-0115 item 6). Sweeping them removes the
@@ -420,28 +437,38 @@ edited directly. Do **not** generalise that to `.awf/hooks/*.sh`: those **are** 
   replacement widens its cell and the diagram must be re-padded by hand. Line 72's left column
   carries two, widening it by four.
 
-  ```diff
-  --- a/README.md
-  +++ b/README.md
-  @@ -71,3 +71,3 @@
-  -├── <kind>/<name>.yaml  sidecars  ├── .claude/skills/<U+2026>     workflow skills
-  -├── <kind>/parts/<U+2026>/<U+2026>    overrides ├── .claude/agents/<U+2026>     review agents
-  -└── parts/<name>/<U+2026>    singletons  └── docs/<U+2026>               project docs
-  +├── <kind>/<name>.yaml  sidecars  ├── .claude/skills/...   workflow skills
-  +├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
-  +└── parts/<name>/...  singletons  └── docs/...             project docs
+  The widths are computable, so they are computed here rather than left to the eye. The left column
+  currently ends at display column 34, but `├── <kind>/parts/.../...` alone occupies 24 columns and
+  `overrides` needs 9 more plus at least one space on each side, which does not fit. **The left
+  column therefore widens from 34 to 36**, and every one of the six lines is re-padded to suit,
+  including rows 68 to 70 which contain no ellipsis. The right column's description offset stays at
+  25 columns within the right column.
+
+  Replace lines 68 to 73 in full with exactly this block:
+
+  ```
+  .awf/  (you commit this)            rendered output (awf writes & tracks this)
+  ├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
+  │                 + vars            ├── CLAUDE.md            imports AGENTS.md
+  ├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
+  ├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
+  └── parts/<name>/...  singletons    └── docs/...             project docs
   ```
 
-  The diff above shows the intended shape, but the exact padding must be verified by eye, not
-  trusted from this plan: after editing, print lines 68 to 73 and confirm that both the right
-  column's `├──`/`└──` and the description column (`workflow skills`, `review agents`,
-  `project docs`) line up across all rows, including rows 69 and 70 which this diff does not touch.
+  Verify with the command below: every line's right-hand `├──`/`└──` must start at column 37
+  (1-indexed), and every description must start at column 62.
 
   ```bash
-  sed -n '68,73p' README.md | cat -A | sed 's/\$$//'
+  python3 -c "
+  for i, l in enumerate(open('README.md', encoding='utf-8').read().split(chr(10))[67:73], 68):
+      r = max(l.find(chr(0x251C) + chr(0x2500) + chr(0x2500), 1), l.find(chr(0x2514) + chr(0x2500) + chr(0x2500), 1))
+      print(i, 'right-col starts at', r + 1)
+  "
   ```
 
-  No test or rendered artifact asserts on this block, so alignment is the only acceptance criterion.
+  Expected: every line reports `right-col starts at 37`, except line 68 (the header, which has no
+  second tree character and reports `0`). No test or rendered artifact asserts on this block, so
+  alignment is the only acceptance criterion.
 
 - [ ] **Task 5.3: Verify and commit.** Run `./x gate` (green) and `./x check` (`awf check: clean`).
   Confirm the whole-tree count now stands at exactly the 10 exempt occurrences:
@@ -624,12 +651,18 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   ```
 
 - [ ] **Task 6.3: Add `cmd/awf/prosegate.go`.** The handler: resolve the tree, honour the knob,
-  refuse without git, print findings, exit non-zero.
+  refuse without git, print findings, return an error.
+
+  The signature follows `cmd/awf/dispatch.go`'s contract exactly: `type handler func(*cmdCtx) error`,
+  and `cmdCtx` carries `root, sub, inv, stdout, stdin` and **no stderr**. So the handler returns an
+  `error` rather than an `int`, and prints findings to `stdout` as `runCheck` prints drift; `main.go`
+  turns the returned error into `awf: ...` on stderr and a non-zero exit.
 
   ```go
   package main
 
   import (
+  	"errors"
   	"fmt"
   	"io"
 
@@ -639,70 +672,96 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   )
 
   // runProseGate scans the project's tracked text files for banned typographic
-  // punctuation substitutes (ADR-0119). It exits zero without scanning when the
+  // punctuation substitutes (ADR-0119). It returns nil without scanning when the
   // knob is off, so a hook or a runner may invoke it unconditionally.
-  func runProseGate(root string, stdout, stderr io.Writer) int {
-  	cfg, err := config.Load(awfDirOf(root))
+  func runProseGate(root string, stdout io.Writer) error {
+  	cfg, err := config.Load(config.RootDir(root))
   	if err != nil {
-  		fmt.Fprintf(stderr, "prose-gate: %v\n", err)
-  		return 1
+  		return err
   	}
   	if cfg.ProseGate == nil || !cfg.ProseGate.Enabled {
-  		return 0
+  		return nil
   	}
-  	var exemptions []prosegate.Exemption
+  	exemptions := make([]prosegate.Exemption, 0, len(cfg.ProseGate.Exemptions))
   	for _, e := range cfg.ProseGate.Exemptions {
   		r, perr := prosegate.ParseCodepoint(e.Codepoint)
   		if perr != nil {
-  			fmt.Fprintf(stderr, "prose-gate: exemption for %s: %v\n", e.Path, perr)
-  			return 1
+  			return fmt.Errorf("prose-gate: exemption for %s: %w", e.Path, perr)
   		}
   		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
   	}
-  	paths, err := git.TrackedPaths(root)
+  	paths, err := git.TrackedPathsWithIndex(root)
   	if err != nil {
-  		fmt.Fprintf(stderr, "prose-gate: cannot enumerate tracked files: %v\n", err)
-  		return 1
+  		return fmt.Errorf("prose-gate: cannot enumerate tracked files: %w", err)
   	}
   	findings, err := prosegate.Scan(root, paths, exemptions)
   	if err != nil {
-  		fmt.Fprintf(stderr, "prose-gate: %v\n", err)
-  		return 1
+  		return fmt.Errorf("prose-gate: %w", err)
   	}
   	for _, f := range findings {
-  		fmt.Fprintln(stderr, prosegate.Format(f))
+  		fmt.Fprintln(stdout, prosegate.Format(f))
   	}
   	if len(findings) > 0 {
-  		fmt.Fprintf(stderr, "prose-gate: %d finding(s)\n", len(findings))
-  		return 1
+  		return errors.New("prose-gate: use plain punctuation, or exempt the path in proseGate.exemptions")
   	}
   	fmt.Fprintln(stdout, "prose-gate: clean")
-  	return 0
+  	return nil
   }
   ```
 
-  If `awfDirOf` does not exist under that name in `cmd/awf`, use whatever helper the sibling
-  handlers (`cmd/awf/check.go`, `cmd/awf/invariants.go`) already use to resolve `<root>/.awf`; do
-  not add a second resolver. Wire the handler to the command spec in `cmd/awf/main.go` exactly as
-  the sibling ungated commands are wired.
+  Wire it in `cmd/awf/dispatch.go`'s `handlers` map, in the same shape as its ungated siblings:
+
+  ```go
+  	"prose-gate": func(c *cmdCtx) error { return runProseGate(c.root, c.stdout) },
+  ```
+
+  `config.RootDir(root)` (`internal/config/config.go:171`) is the resolver: it returns `<root>/.awf`
+  and is what `internal/project/project.go:52` already passes to `config.Load`. Do not add a second
+  resolver, and do not invent one: no `cmd/awf` handler calls `config.Load` today, so there is no
+  sibling to copy.
+
+- [ ] **Task 6.3a: Add index-aware tracked-path enumeration to `internal/git`.** ADR-0119 item 1
+  defines the scope as `git ls-files` and promises a file is in scope "the moment it is tracked".
+  The existing `git.TrackedPaths` (`internal/git/git.go:87`) walks `repo.Head()`'s commit tree, so it
+  returns paths tracked **at HEAD**. In the pre-commit hook this command is wired into, a
+  newly-added staged file is not yet in HEAD, so a brand-new file full of banned codepoints would be
+  invisible to the scan on the very commit that adds it, which is the "no new additions" property
+  the gate exists to deliver.
+
+  Add `TrackedPathsWithIndex(repoRoot string) ([]string, error)` beside it: the union of the index
+  entries and the HEAD tree, sorted and de-duplicated, mirroring the staged path `ChangedPaths`
+  already takes (`git.go:37-51`) to read the index. Leave `TrackedPaths` alone; it has its own
+  callers and its own meaning.
+
+  Cover it with a git fixture (`internal/testsupport/gitfixture`) exercising four states: a file in
+  HEAD only, a file staged but not in HEAD (the case that motivates the function), a file in both,
+  and an untracked file (which must **not** appear). The 100% floor applies, so the error paths need
+  cases too.
 
 - [ ] **Task 6.4: Add the `clispec` entry.** In `internal/clispec/clispec.go`, add the command with
   `Gating: Ungated` (ADR-0119 item 10). Place it beside `commit-gate`, its species sibling.
 
   ```go
   	{
-  		Name:    "prose-gate",
-  		Summary: "Scan tracked text files for typographic punctuation substitutes",
-  		HelpBody: "Usage: awf prose-gate\n\n" +
-  			"Reports every banned typographic punctuation substitute in the project's\n" +
-  			"tracked text files and exits non-zero on any finding. Exits zero without\n" +
-  			"scanning unless proseGate.enabled is true, so a hook may invoke it\n" +
-  			"unconditionally. Configure exemptions with proseGate.exemptions.\n",
-  		MinPos: 0,
-  		MaxPos: 0,
+  		Name: "prose-gate", Summary: "Scan tracked text files for typographic punctuation, blocking",
   		Gating: Ungated,
+  		HelpBody: `Usage: awf prose-gate
+
+  Report every typographic punctuation substitute in the project's tracked text
+  files and exit non-zero on any finding: the presence-level analog of the audit
+  rule, which only warns when a commit adds one. Exits zero without scanning
+  unless proseGate.enabled is true, so a hook or a runner may invoke it
+  unconditionally. Permit a character that is genuinely being written about with
+  proseGate.exemptions. awf installs no hook; wire this into your own pre-commit
+  hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
+  artifact is enabled).
+  `,
   	},
   ```
+
+  The style matches the `commit-gate` entry at `internal/clispec/clispec.go:92-104`: `Name` and
+  `Summary` on one line, a raw backtick-quoted `HelpBody`, and no `MinPos` (zero value; no sibling
+  sets it). `MaxPos` is likewise omitted: the command takes no positional.
 
   **Do not** add `prose-gate` to the `want` slice in `internal/clispec/clispec_test.go`.
   `GatedCommandNames()` filters on `Gating != Ungated`, so an ungated command changes neither the
@@ -710,7 +769,7 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   command has been mis-classified: fix the `Gating` field, not the test.
 
 - [ ] **Task 6.5: Add the `configspec` entries (five).** In `internal/configspec/spec.go`, add one
-  entry for the block, one for `enabled`, and one per exemption field, following the
+  entry for `enabled`, one for the list, and one per exemption field, following the
   `invariants.sources` and `audit.allowedScopes` slice-of-struct precedent (`walkPaths` recurses a
   slice-of-struct into `path` plus `path[].<field>`). `TestConfigspecKeyParity` matches
   bidirectionally, so a missing entry and a stray entry both fail.
@@ -720,24 +779,76 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   `TestConfigspecDescriptionResidue` rejects `ADR-[0-9]{4}`, `hypnotox`, and `agentic-workflows`.
 
   ```go
-  	{Kind: "config", Key: "proseGate", Type: "mapping", Default: "absent (the scan is off)", Availability: "always", Description: "Configures the `awf prose-gate` scan: a presence-level check that reports every typographic punctuation substitute (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D) in the project's tracked text files. Absent, the command exits zero without scanning."},
-  	{Kind: "config", Key: "proseGate.enabled", Type: "bool", Default: "false", Availability: "always", Description: "Whether `awf prose-gate` scans. False, the command exits zero immediately, so a hook may invoke it unconditionally. Default off, because the scan blocks a commit and a tree that has never been swept would fail it."},
-  	{Kind: "config", Key: "proseGate.exemptions", Type: "list of {path, codepoint, count} mappings", Default: "empty (nothing is exempt)", Availability: "when `proseGate.enabled` is true", Description: "Places where a banned codepoint is permitted, typically prose that is genuinely about the character it contains. An entry exempts one codepoint in one path."},
-  	{Kind: "config", Key: "proseGate.exemptions[].path", Type: "string", Default: "required", Availability: "when `proseGate.enabled` is true", Description: "The repo-relative path the exemption covers. A rendered file and the source it renders from each need their own entry."},
-  	{Kind: "config", Key: "proseGate.exemptions[].codepoint", Type: "string", Default: "required", Availability: "when `proseGate.enabled` is true", Description: "The exempted codepoint, spelled `U+2014`, never the character itself: this file is scanned, so a typed character here would be a finding against the file that configures the exemption."},
-  	{Kind: "config", Key: "proseGate.exemptions[].count", Type: "int", Default: "unset (any number is permitted)", Availability: "when `proseGate.enabled` is true", Description: "The exact number of occurrences expected. Set, an added occurrence in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file."},
+  	{
+  		Path: "proseGate.enabled", Type: "bool", Default: "false (key absent)",
+  		Description:  "Whether `awf prose-gate` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
+  		Availability: "Always.",
+  	},
+  	{
+  		Path: "proseGate.exemptions", Type: "list of {path, codepoint, count} mappings", Default: "empty (nothing is exempt)",
+  		Description:  "Places where a typographic punctuation substitute is permitted, typically prose that is genuinely about the character it contains, where punctuating it would make a true statement false. An entry exempts one codepoint in one path.",
+  		Availability: "While `proseGate.enabled` is true.",
+  	},
+  	{
+  		Path: "proseGate.exemptions[].path", Type: "string", Default: "required",
+  		Description:  "The repo-relative path the exemption covers. A rendered file and the source it renders from each need their own entry, because each holds its own copy of the character.",
+  		Availability: "While `proseGate.enabled` is true.",
+  	},
+  	{
+  		Path: "proseGate.exemptions[].codepoint", Type: "string", Default: "required",
+  		Description:  "The exempted codepoint, spelled `U+2014`, never the character itself: this file is scanned, so a typed character here would be a finding against the file that configures the exemption. Only the seven banned substitutes are accepted; anything else is an error rather than a silently wider exemption.",
+  		Availability: "While `proseGate.enabled` is true.",
+  	},
+  	{
+  		Path: "proseGate.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
+  		Description:  "The exact number of occurrences expected. Set, an added occurrence in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another depiction.",
+  		Availability: "While `proseGate.enabled` is true.",
+  	},
   ```
 
-  That is six entries, not five: the block, `enabled`, the list, and three fields. Add the
-  live-state case for each key in `internal/project/configreference.go`, following the one-case-per-key
-  shape already there (`:109-179`).
+  **Five entries, and there is deliberately no `proseGate` block entry.** `walkPaths`
+  (`internal/configspec/spec_test.go:41-43`) recurses a struct **without** emitting the struct's own
+  path, which is why the live table has `bootstrap.enabled`, `hooks.enabled` and `audit.*` but no
+  block-level entry for any of them. A `proseGate` entry would fail `TestConfigspecKeyParity`'s
+  second direction with `configspec entry "proseGate" names no live config key`, breaking the backed
+  `configspec-key-parity` invariant. Five is also what ADR-0119's Consequences says.
+
+  Then add **two** live-state cases in `internal/project/configreference.go`, matching the
+  bootstrap/hooks precedent at `:175-177`:
+
+  ```go
+  	case "proseGate.enabled":
+  		return strconv.FormatBool(p.Cfg.ProseGate != nil && p.Cfg.ProseGate.Enabled)
+  	case "proseGate.exemptions":
+  		if p.Cfg.ProseGate == nil || len(p.Cfg.ProseGate.Exemptions) == 0 {
+  			return "(none)"
+  		}
+  		return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
+  ```
+
+  Two, not five: the switch carries no case for any per-entry leaf today (`invariants.sources[].globs`
+  and `audit.allowedScopes[].name` both fall to `default: return "n/a"` at `:178`), so the three
+  `[]` leaves render `n/a` from the default arm exactly as every existing leaf does. Adding cases for
+  them would fight the file's own pattern and each would need its own test to hold the 100% floor.
 
 - [ ] **Task 6.6: Add `internal/prosegate/prosegate_test.go` and `cmd/awf/prosegate_test.go`.**
   These carry the ADR-0008 proof markers for both of ADR-0119's invariants. The 100% coverage floor
-  applies, so every branch above needs a case: clean tree, finding, unexempted codepoint, exempt
-  with nil count, exempt with a matching pin, exempt with a mismatched pin, invalid codepoint
-  spelling, a codepoint outside the banned set, non-UTF-8 content skipped, unreadable path, knob
-  absent, knob false, and the refusal path.
+  (ADR-0012) applies to every branch of the Go above, and the two suites cover different code, so the
+  cases are listed per suite rather than pooled.
+
+  **`internal/prosegate/prosegate_test.go`** (the package): clean tree; an unexempted codepoint;
+  exempt with a nil `Count`; exempt with a matching pinned `Count`; exempt with a mismatched pinned
+  `Count`; an invalid codepoint spelling (no `U+` prefix, and unparseable hex); a well-formed
+  codepoint outside the banned set; non-UTF-8 content skipped; an unreadable path; and **a fixture
+  file carrying two different banned runes in one file**, which is the only case that exercises the
+  `sort.Slice` comparator's second return (`out[i].Rune < out[j].Rune`). Without that last case the
+  comparator's tie-break statement never runs and the gate stays red.
+
+  **`cmd/awf/prosegate_test.go`** (the command): knob absent; knob false; a root with a missing or
+  unparseable `.awf/config.yaml` (the `config.Load` error branch); an exemption whose `codepoint`
+  string is bad (the command-level `ParseCodepoint` branch, distinct from the package-level one); a
+  tracked path the scanner cannot read (the `Scan` error branch); a clean tree; a tree with findings;
+  and the refusal outside a git repository.
 
   The package test carries:
 
@@ -758,10 +869,17 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   that only checks the exit code would pass against a command that silently reported a clean tree,
   which is the failure mode ADR-0119 item 12 forbids.
 
-- [ ] **Task 6.7: Verify and commit.** Run `./x gate` (green: 100% coverage, no dead code) and `./x
-  check` (`awf check: clean`; `docs/config-reference.md` regenerates from the new configspec entries,
-  so run `./x sync` first and stage it, along with `examples/sundial`'s regenerated copy and both
-  lock files). Commit:
+- [ ] **Task 6.7: Verify and commit.** Run `./x gate` (green: 100% coverage, no dead code). Run
+  `./x sync` first so `docs/config-reference.md` regenerates from the new configspec entries, and
+  stage it along with `examples/sundial`'s regenerated copy and both lock files.
+
+  `./x check` reports `awf check: clean`, but **not silently**: expect it preceded by two lines
+  reading `note: invariant marker "prose-gate-tracked-file-scan" names a slug no Implemented ADR
+  declares` and the same for `prose-gate-refuses-without-git`. That is correct and expected. The
+  markers land here (Task 6.6) while ADR-0119 stays Proposed until Task 8.6, and
+  `internal/invariants/invariants.go:284` emits a Note for a marker whose slug no Implemented ADR
+  declares yet. Notes are advisory and do not fail, so the phase passes; the two clear at the status
+  flip. Do not chase them, and do not flip the ADR early to silence them. Commit:
 
   ```commit
   feat(tooling): add the prose-gate command and its config keys
@@ -784,36 +902,91 @@ ADR-0119 item 8. The payload gains a `prose-gate` line the way `commit-msg.sh.tm
    # Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
    awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
    {{ end }}
-  @@ -10,3 +10,5 @@
+  @@ -10,4 +10,5 @@
    {{- with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}
    {{- with .vars.gateCmd }}
    {{ . }}
    {{- end }}
-  +{{ with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}
+  +{{- with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}
   ```
+
+  The added line takes the `{{-` left-trim every sibling uses. Without it the render carries a
+  leading blank line, which `./x check` then pins into `.awf/hooks/pre-commit.sh`.
 
   **The guard is a disjunction and this is the point of the task.** The shim is needed when *any*
   call site lacks its var, not when all do. A conjunction would leave an adopter who sets `checkCmd`
   and not `proseGateCmd` rendering a bare unshimmed `awf prose-gate`, losing bootstrap pinning for
   that one line. awf is itself that adopter: it sets `checkCmd: ./x check`.
 
-- [ ] **Task 7.2: Register the var.** Add `proseGateCmd` to the var catalog beside `checkCmd` and
-  `gateCmd`, with a descriptor stating that it names the command the rendered pre-commit payload
-  calls to run the prose scan, and that unset renders `awf prose-gate`. Follow whatever shape
-  `gateCmd`'s descriptor already takes; the catalog is the single source of the var's
-  configspec-published description, so do not write a second one.
+- [ ] **Task 7.2: Register the var, in both places.** Two edits in two files, not one. The catalog
+  descriptor is the single source of the var's published description
+  (backed invariant `configspec-var-derivation`), but the availability clause is configspec-owned and
+  its key set is pinned to the descriptors by `internal/configspec/spec_test.go:197-199`
+  (`varAvailability carries stale key %q`). Registering only the descriptor ships `proseGateCmd` into
+  `docs/config-reference.md` with an empty Availability column.
 
-- [ ] **Task 7.3: Verify publication-safety and both rendered payloads.** Run `./x sync`, then
-  confirm the two renderings. With awf's own vars (`checkCmd` set, `proseGateCmd` not yet set, as of
-  this phase), `.awf/hooks/pre-commit.sh` must contain the shim **and** a bare `awf prose-gate` line:
+  In `internal/catalog/standard.go`, beside `commitGateCmd` (`:208-209`):
 
-  ```bash
-  grep -c 'pinned=' .awf/hooks/pre-commit.sh && grep -n 'prose-gate' .awf/hooks/pre-commit.sh
+  ```go
+  		{Key: "proseGateCmd", Kind: "string", Description: "Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to have the payload run the pinned awf via the bootstrap shim.", Default: "", Options: []string{"./x prose-gate"}},
   ```
 
-  Expected: `1`, and a line reading `awf prose-gate`. That combination is the disjunction working;
-  if the shim is absent the guard was written as a conjunction. Confirm `examples/sundial`'s payload
-  renders coherently too, and that no rendering contains a no-value token:
+  In `internal/configspec/spec.go`'s `varAvailability`, beside `"commitGateCmd"`:
+
+  ```go
+  	"proseGateCmd":      "Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.",
+  ```
+
+- [ ] **Task 7.3: Set awf's own `proseGateCmd` and add the `./x prose-gate` arm.** This lands here
+  rather than in Phase 8, and the reason is that **Phase 7's own commit cannot land otherwise.**
+  This repo's `core.hooksPath` is `.githooks`, whose `pre-commit` ends
+  `exec bash .awf/hooks/pre-commit.sh "$@"`. With `proseGateCmd` unset, Task 7.1's payload renders a
+  bare `awf prose-gate`; `bootstrap.enabled: false` means `.awf/bootstrap.sh` does not exist, so the
+  shim falls through to `command awf`, there is no PATH `awf`, and `set -euo pipefail` makes the hook
+  refuse the commit. The phase would be unlandable.
+
+  In `x`, add the arm beside `commit-gate`:
+
+  ```bash
+    prose-gate)
+      go run ./cmd/awf prose-gate "$@"
+      ;;
+  ```
+
+  and add `prose-gate` to the usage line's command list. In `.awf/config.yaml`'s `vars`, add:
+
+  ```yaml
+    proseGateCmd: ./x prose-gate
+  ```
+
+  This is safe here: awf's knob is still unset until Phase 8, so the command no-ops (Task 6.1) and
+  the hook stays green. Note the `gate` arm is **not** touched in this phase; that is Phase 8's job,
+  because it is what makes the scan enforce.
+
+- [ ] **Task 7.4: Verify publication-safety and both rendered payloads.** Run `./x sync`. With awf's
+  vars (both `checkCmd` and `proseGateCmd` now set), `.awf/hooks/pre-commit.sh` must carry
+  `./x prose-gate` and **no** shim, since neither call site needs one:
+
+  ```bash
+  grep -c 'pinned=' .awf/hooks/pre-commit.sh; grep -n 'prose-gate' .awf/hooks/pre-commit.sh
+  ```
+
+  Expected: `0`, then a line reading `./x prose-gate`.
+
+  The disjunction guard is proven on `examples/sundial`, which is the adopter that sets `checkCmd`
+  and leaves `proseGateCmd` unset, and so is the exact case a conjunction would break:
+
+  ```bash
+  grep -c 'pinned=' examples/sundial/.awf/hooks/pre-commit.sh; grep -n 'prose-gate' examples/sundial/.awf/hooks/pre-commit.sh
+  ```
+
+  Expected: `1` (the shim **is** emitted, because `proseGateCmd` is unset), then a line reading
+  `awf prose-gate`. If the shim count is `0` here, the guard was written as a conjunction and the
+  bare `awf prose-gate` has lost its bootstrap pinning: that is the defect Task 7.1 exists to
+  prevent. If sundial does not in fact set `checkCmd`, verify the guard instead by rendering a
+  scratch project that sets `checkCmd` alone, and say so in the plan's Notes.
+
+  Then confirm no rendering carries a no-value token (ADR-0001, ADR-0045):
 
   ```bash
   git grep -n 'no value\|<no value>' -- .awf/hooks examples/sundial | wc -l
@@ -821,9 +994,11 @@ ADR-0119 item 8. The payload gains a `prose-gate` line the way `commit-msg.sh.tm
 
   Expected: `0`.
 
-- [ ] **Task 7.4: Verify and commit.** Run `./x gate` (green) and `./x check` (`awf check: clean`).
-  Stage the template, the catalog, both regenerated payloads, the regenerated config reference, and
-  both lock files. Commit:
+- [ ] **Task 7.5: Verify and commit.** Run `./x gate` (green) and `./x check`. Expect
+  `awf check: clean` preceded by the same two `note: invariant marker ... names a slug no Implemented
+  ADR declares` lines as Task 6.7; they clear at Task 8.6. Stage the template, the catalog, the
+  configspec, `x`, `.awf/config.yaml`, both regenerated payloads, the regenerated config reference,
+  and both lock files. Commit:
 
   ```commit
   feat(rendering): wire prose-gate into the pre-commit payload
@@ -861,12 +1036,11 @@ carries both status flips.
   `templates/` or `changelog/`: an exemption there would ship a banned codepoint, and ADR-0115's gate
   is the only thing that would catch it (ADR-0119 item 7).
 
-- [ ] **Task 8.2: Add the `./x prose-gate` arm and wire the gate.** In `x`, add a `prose-gate` case
-  running `go run ./cmd/awf prose-gate`, and add the same call to the `gate` arm beside
-  `pincheck`, so CI (which runs `./x gate`) scans. Then set `proseGateCmd: ./x prose-gate` in
-  `.awf/config.yaml`'s `vars`, so the rendered payload calls the from-source binary rather than a
-  PATH `awf`: awf builds from source with `bootstrap.enabled: false`, so a bare PATH call is exactly
-  what it must not make.
+- [ ] **Task 8.2: Wire the scan into `./x gate`.** The `./x prose-gate` arm and the `proseGateCmd`
+  var already landed in Phase 7 (Task 7.3), because Phase 7's commit could not otherwise pass this
+  repo's own pre-commit hook. What remains is the arm that makes the scan enforce in CI: in `x`, add
+  `go run ./cmd/awf prose-gate` to the `gate` arm beside `pincheck`, so `./x gate` scans and
+  `.github/workflows/ci.yml`, which runs `./x gate`, scans with it.
 
   awf's pre-commit therefore scans twice, once through the payload's `./x gate` line and once
   through its own `./x prose-gate` line. ADR-0119 item 8 accepts and names this: a rendered payload
