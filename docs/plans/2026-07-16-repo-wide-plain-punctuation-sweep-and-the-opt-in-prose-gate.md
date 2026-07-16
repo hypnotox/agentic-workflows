@@ -712,8 +712,11 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   Wire it in `cmd/awf/dispatch.go`'s `handlers` map, in the same shape as its ungated siblings:
 
   ```go
-  	"prose-gate": func(c *cmdCtx) error { return runProseGate(c.root, c.stdout) },
+  	"prose-gate":  func(c *cmdCtx) error { return runProseGate(c.root, c.stdout) },
   ```
+
+  Match the surrounding map's key alignment; gofmt will do it for you, but `./x gate` runs
+  `golangci-lint`, so land it aligned rather than discovering it at the gate.
 
   `config.RootDir(root)` (`internal/config/config.go:171`) is the resolver: it returns `<root>/.awf`
   and is what `internal/project/project.go:52` already passes to `config.Load`. Do not add a second
@@ -850,6 +853,14 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   tracked path the scanner cannot read (the `Scan` error branch); a clean tree; a tree with findings;
   and the refusal outside a git repository.
 
+  **Both test files must write their banned-codepoint fixtures with Go escapes, never literal
+  characters.** These files are tracked, so Phase 8's gate scans them and no exemption covers them: a
+  fixture written as a literal em-dash makes the test files fail the gate their own subject
+  installs. Build fixture content with `"\u2014"` (or `string(rune(0x2014))`), exactly as
+  `internal/project/residue_scan_test.go:92-99` does and as Task 6.2's map does. This is the one
+  place in the plan where a test fixture cannot simply be swept later, because it is being written
+  after the sweep.
+
   The package test carries:
 
   ```go
@@ -857,17 +868,25 @@ until Phase 8, so this phase's gate cannot fail on the command it adds.
   func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
   ```
 
-  The command test carries the refusal proof. `t.TempDir()` is outside any git repository, which is
-  exactly the condition the invariant names:
+  The command test carries the refusal proof:
 
   ```go
   // invariant: prose-gate-refuses-without-git
   func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
   ```
 
-  That test must assert the command exits non-zero **and** that its stderr names the failure; a test
-  that only checks the exit code would pass against a command that silently reported a clean tree,
-  which is the failure mode ADR-0119 item 12 forbids.
+  **The fixture must be an adopted tree that is not a git repository, and getting this wrong backs
+  the invariant vacuously.** A bare `t.TempDir()` does not reach the refusal at all: `config.Load`
+  fails first with `not an awf project (run `awf init`)`, so the test would pass while never
+  exercising the path it claims to prove. Write `<tmp>/.awf/config.yaml` with `proseGate.enabled:
+  true` and no `.git` directory, so the knob check passes, the exemption loop runs, and
+  `TrackedPathsWithIndex` is the thing that fails.
+
+  Assert both that the returned error is non-nil **and** that its message names the enumeration
+  failure. An exit-code-only assertion would pass against a command that silently reported a clean
+  tree, which is exactly the failure mode ADR-0119 item 12 forbids. Note the handler returns an
+  `error` and writes no stderr itself (Task 6.3); `main.go` renders it. Assert on the error, not on a
+  stderr buffer.
 
 - [ ] **Task 6.7: Verify and commit.** Run `./x gate` (green: 100% coverage, no dead code). Run
   `./x sync` first so `docs/config-reference.md` regenerates from the new configspec entries, and
@@ -907,11 +926,17 @@ ADR-0119 item 8. The payload gains a `prose-gate` line the way `commit-msg.sh.tm
    {{- with .vars.gateCmd }}
    {{ . }}
    {{- end }}
-  +{{- with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}
+  +{{ with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}
   ```
 
-  The added line takes the `{{-` left-trim every sibling uses. Without it the render carries a
-  leading blank line, which `./x check` then pins into `.awf/hooks/pre-commit.sh`.
+  **The added line deliberately does NOT take the `{{-` left-trim its siblings use, and this was
+  verified by rendering rather than reasoned about.** The siblings can afford the trim because each
+  re-supplies its own newline from inside the action (`{{- with .vars.gateCmd }}` is followed by a
+  literal newline before `{{ . }}`). This line puts `{{ . }}` immediately after the `with`, so it has
+  nothing to re-supply: a `{{-` here eats the newline that separates it from the gate line and
+  renders `./x gate./x prose-gate` on one line, under both awf's and sundial's var sets. The no-trim
+  form renders correctly, with no leading blank line. If you are tempted to "fix" the inconsistency
+  with its siblings, render it first.
 
   **The guard is a disjunction and this is the point of the task.** The shim is needed when *any*
   call site lacks its var, not when all do. A conjunction would leave an adopter who sets `checkCmd`
@@ -983,8 +1008,17 @@ ADR-0119 item 8. The payload gains a `prose-gate` line the way `commit-msg.sh.tm
   Expected: `1` (the shim **is** emitted, because `proseGateCmd` is unset), then a line reading
   `awf prose-gate`. If the shim count is `0` here, the guard was written as a conjunction and the
   bare `awf prose-gate` has lost its bootstrap pinning: that is the defect Task 7.1 exists to
-  prevent. If sundial does not in fact set `checkCmd`, verify the guard instead by rendering a
-  scratch project that sets `checkCmd` alone, and say so in the plan's Notes.
+  prevent. Sundial is verified to set `checkCmd` and leave `proseGateCmd` unset, which is what makes
+  it the right witness for this guard.
+
+  Finally, confirm both payloads put each command on its own line:
+
+  ```bash
+  grep -n 'prose-gate' .awf/hooks/pre-commit.sh examples/sundial/.awf/hooks/pre-commit.sh
+  ```
+
+  Neither match may share a line with the gate command. A rendering that reads `./x gate./x
+  prose-gate` means the new template line took a `{{-` trim it must not have (Task 7.1).
 
   Then confirm no rendering carries a no-value token (ADR-0001, ADR-0045):
 
@@ -1132,6 +1166,11 @@ The effort is done when all of the following hold:
   the `prose-gate` line from the `gate` arm silently retires this gate, exactly as it would ADR-0012's
   coverage gate or ADR-0063's dead-code gate. That is pre-existing and general, and belongs to its own
   ADR rather than to this plan.
+- **Render the hook template before believing anything about its whitespace.** The `{{-` trim
+  question in Task 7.1 was got wrong twice during review, in both directions, by reasoning about it
+  rather than executing it. `text/template` trim semantics interact with what each action's body
+  re-supplies, and a one-line Go program settles in seconds what a careful reading gets backwards.
+  The same applies to any later edit to `templates/hooks/*.tmpl`.
 - **If a sweep phase finds a genuine depiction** (prose that is *about* a banned character, where
   punctuating it would make a true statement false), do not sweep it and do not invent an exemption
   silently: ADR-0118 item 3's precedent is that the sweep agent flags it and the ADR is amended to
