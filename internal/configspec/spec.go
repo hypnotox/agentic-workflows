@@ -14,7 +14,7 @@ type Entry struct {
 	Type         string // value shape as prose: "string", "bool", "string list", "key → value map"
 	Default      string // effective default as prose: "docs", "accept any scope", "none"
 	Description  string // full adopter-voiced description
-	Availability string // when the key has effect: "always", "domain sidecars only", …
+	Availability string // when the key has effect: "always", "domain sidecars only", ...
 }
 
 // VarEntry describes one config var. Description text is carried verbatim

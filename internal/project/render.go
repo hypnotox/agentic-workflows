@@ -89,7 +89,7 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 }
 
 // taskSkillsDisplay returns the enabled catalog task skills - standard,
-// non-Chain entries of the effective set - as "`<prefix>-<name>`, …", or ""
+// non-Chain entries of the effective set - as "`<prefix>-<name>`, ...", or ""
 // when none are enabled. Derived from the catalog so a new task skill cannot
 // be dropped from the guide's sentence by a forgotten template edit.
 func (p *Project) taskSkillsDisplay() string {

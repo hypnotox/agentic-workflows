@@ -87,7 +87,7 @@ func (style CommentStyle) open() string {
 // PointerLinePrefixes returns the awf:edit-family pointer line prefixes (the
 // awf:edit and awf:edit-in-place variants) for a section named `name` in the given
 // comment style, up to and including the `: ` separator. Every editPointer variant
-// emits `<open>awf:edit[-in-place] <name>: …`, so a trimmed output line is that
+// emits `<open>awf:edit[-in-place] <name>: ...`, so a trimmed output line is that
 // section's pointer iff it begins with one of these prefixes. Read-back matches a
 // region boundary by these exact per-section strings, never a generic
 // pointer shape, so adopter text resembling a pointer for a non-registered name

@@ -28,7 +28,7 @@ func (s *ScopeSpec) UnmarshalYAML(n *yaml.Node) error {
 	// Strictness is NOT inherited: yaml.v3 Node.Decode spins up a fresh
 	// non-strict decoder, so the parent's KnownFields(true) does not apply here.
 	// Enforce the closed key set explicitly (a mapping node's Content is a flat
-	// key,value,key,value… list).
+	// key,value,key,value... list).
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		if k := n.Content[i].Value; k != "name" && k != "meaning" {
 			return fmt.Errorf("scope mapping has unknown key %q (allowed: name, meaning)", k)

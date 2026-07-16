@@ -204,7 +204,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 	for _, ln := range strings.Split(diff, "\n") {
 		// Known limitation: an added content line that itself starts "++ "
 		// (a diff fixture embedded in a raw string in production Go) renders as
-		// "+++ …" and would be misparsed as a header - contrived for *.go
+		// "+++ ..." and would be misparsed as a header - contrived for *.go
 		// content and warning-only, so tolerated.
 		if rest, ok := strings.CutPrefix(ln, "+++ "); ok {
 			file = ""

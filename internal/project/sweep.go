@@ -106,7 +106,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 	}
 	// The runner is a section-bearing config-tree unit but not a SingletonKind, so
 	// its convention-part territory is claimed here when enabled - the two awf-owned
-	// sections whose `awf:edit … create <part> to override` pointer invites a part
+	// sections whose `awf:edit ... create <part> to override` pointer invites a part
 	// (the two in-place sections instead error via section-source-exclusive if a part
 	// appears), so render and the closed-tree sweep agree (ADR-0086/0101).
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {

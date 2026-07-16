@@ -11,7 +11,7 @@ import (
 )
 
 // awfPlaceholderRE matches a well-formed sandbox placeholder {{=awf:identifier}}
-// (ADR-0057). The awf: namespace avoids the Mustache {{=…=}} set-delimiter
+// (ADR-0057). The awf: namespace avoids the Mustache {{=...=}} set-delimiter
 // prefix overlap and is not valid Go/Jinja/Mustache.
 var awfPlaceholderRE = regexp.MustCompile(`\{\{=awf:([A-Za-z][A-Za-z0-9]*)\}\}`)
 
@@ -20,7 +20,7 @@ var awfPlaceholderRE = regexp.MustCompile(`\{\{=awf:([A-Za-z][A-Za-z0-9]*)\}\}`)
 // hard error rather than published noise.
 var awfResidualRE = regexp.MustCompile(`\{\{=\s*awf`)
 
-// awfEscapeRE matches a backslash-escaped opener `\{{=…awf` - the escape target
+// awfEscapeRE matches a backslash-escaped opener `\{{=...awf` - the escape target
 // mirrors the residual guard's `\s*awf` scope so it neutralises both passes
 // (ADR-0058). The capture group is vestigial (the func replace uses the whole match).
 var awfEscapeRE = regexp.MustCompile(`\\\{\{=\s*awf`)
@@ -129,7 +129,7 @@ func (p *Project) substitutePlaceholders(partName, body string, reg map[string]s
 	if !strings.Contains(body, "{{=") {
 		return body, nil
 	}
-	// Protect \{{=…awf escapes: consume the backslash, stand the {{= behind a
+	// Protect \{{=...awf escapes: consume the backslash, stand the {{= behind a
 	// sentinel so neither pass sees it; the \s*awf tail stays in-body. Restored
 	// to a bare {{= after both passes. invariant: escaped-placeholder-literal
 	body = awfEscapeRE.ReplaceAllStringFunc(body, func(m string) string {

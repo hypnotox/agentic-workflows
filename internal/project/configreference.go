@@ -178,7 +178,7 @@ func (p *Project) currentValue(path string) string {
 		return strconv.FormatBool(p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled)
 	case "hooks.enabled":
 		return strconv.FormatBool(p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled)
-	default: // per-entry leaves (invariants.sources[].…, audit.allowedScopes[].…)
+	default: // per-entry leaves (invariants.sources[]...., audit.allowedScopes[]....)
 		return "n/a"
 	}
 }

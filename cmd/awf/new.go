@@ -169,7 +169,7 @@ func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
 }
 
 // localPartStub is the starter body for a new local artifact's content part -
-// plain prose only (no live {{=awf:…}} placeholder, which would hard-error if its
+// plain prose only (no live {{=awf:...}} placeholder, which would hard-error if its
 // value were unset this render). The leading awf:stub marker line declares the
 // part unauthored (ADR-0070): awf check reports it until the author deletes the
 // line, and the part still renders verbatim, marker included.
