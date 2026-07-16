@@ -130,7 +130,7 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
-		Path: "invariants.sources", Type: "list of {globs, marker} mappings", Default: "none: enforcement unconfigured",
+		Path: "invariants.sources", Type: "list of {globs, marker, close} mappings", Default: "none: enforcement unconfigured",
 		Description:  "Where invariant-backing comments live. Each entry pairs path globs with the literal comment marker that prefixes a backing `invariant: <slug>` tag in those files. Non-empty enables enforcement: every tagged invariant in an implemented decision doc must have a matching backing comment.",
 		Availability: "Always.",
 	},
@@ -142,6 +142,11 @@ var keys = []Entry{
 	{
 		Path: "invariants.sources[].marker", Type: "string", Default: "none",
 		Description:  "The literal comment marker (`//`, `#`, `--`, ...) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty.",
+		Availability: "Within each `invariants.sources` entry.",
+	},
+	{
+		Path: "invariants.sources[].close", Type: "string", Default: "none: no close token stripped",
+		Description:  "Optional literal close token for block-comment markers (`-->`, `*/`). When set, one trailing close token (plus surrounding whitespace) is stripped from a matched marker line before the `invariant: <slug>` / `touches-invariant: <slug>` tag is parsed, so a touches note stays clean and a note-less touches marker still counts as bare. Empty or absent means no stripping.",
 		Availability: "Within each `invariants.sources` entry.",
 	},
 	{

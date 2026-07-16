@@ -347,6 +347,28 @@ type touchMark struct {
 	Note string
 }
 
+// markerSpec is one scan marker for a file: the literal line-prefix comment
+// marker and the optional literal close token stripped once from the line
+// end before tag parsing (ADR-0121).
+type markerSpec struct {
+	open  string
+	close string
+}
+
+// trimClose strips one trailing close token, plus surrounding whitespace,
+// from rest when the source declares one; an empty close leaves rest as-is,
+// and a line not carrying the token is parsed unchanged (best-effort).
+func trimClose(rest, closeTok string) string {
+	if closeTok == "" {
+		return rest
+	}
+	t := strings.TrimRight(rest, " \t")
+	if strings.HasSuffix(t, closeTok) {
+		return strings.TrimRight(strings.TrimSuffix(t, closeTok), " \t")
+	}
+	return rest
+}
+
 // scanResult is the aggregate of a source-tree scan: proof slugs seen in backing
 // scope (proofInScope), proof slugs seen anywhere a source glob matches
 // (proofAny, for dangling detection), and every touches marker (touches).
@@ -396,11 +418,11 @@ func scanTags(root string, cfg *config.InvariantConfig) (scanResult, error) {
 			return rerr
 		}
 		relSlash := filepath.ToSlash(rel)
-		var markers []string
+		var markers []markerSpec
 		for _, src := range cfg.Sources {
 			for _, g := range src.Globs {
 				if pathglob.Match(g, relSlash) {
-					markers = append(markers, src.Marker)
+					markers = append(markers, markerSpec{open: src.Marker, close: src.Close})
 					break
 				}
 			}
@@ -421,10 +443,10 @@ func scanTags(root string, cfg *config.InvariantConfig) (scanResult, error) {
 			// fixture's source-code string - and must not count.
 			trimmed := strings.TrimLeft(line, " \t")
 			for _, marker := range markers {
-				if !strings.HasPrefix(trimmed, marker) {
+				if !strings.HasPrefix(trimmed, marker.open) {
 					continue
 				}
-				rest := trimmed[len(marker):]
+				rest := trimClose(trimmed[len(marker.open):], marker.close)
 				if m := slugRe.FindStringSubmatch(rest); m != nil {
 					res.proofAny[m[1]] = true
 					if inScope {
@@ -512,10 +534,10 @@ func MarkersUnder(root string, cfg *config.InvariantConfig, paths []string) ([]M
 		for _, line := range strings.Split(string(data), "\n") {
 			trimmed := strings.TrimLeft(line, " \t")
 			for _, marker := range markers {
-				if !strings.HasPrefix(trimmed, marker) {
+				if !strings.HasPrefix(trimmed, marker.open) {
 					continue
 				}
-				rest := trimmed[len(marker):]
+				rest := trimClose(trimmed[len(marker.open):], marker.close)
 				if m := slugRe.FindStringSubmatch(rest); m != nil {
 					proof[m[1]] = true
 				} else if m := touchesRe.FindStringSubmatch(rest); m != nil {
@@ -558,23 +580,24 @@ func MarkersUnder(root string, cfg *config.InvariantConfig, paths []string) ([]M
 // relSlash: the marker of every source whose glob matches, plus - when the file
 // matches a `cfg.TestGlobs` glob (the union scan) - every source marker, so a
 // test file matched only by testGlobs is still scanned with the known markers.
-func markersFor(cfg *config.InvariantConfig, relSlash string) []string {
+func markersFor(cfg *config.InvariantConfig, relSlash string) []markerSpec {
 	seen := map[string]bool{}
-	var markers []string
-	add := func(m string) {
-		if !seen[m] {
-			seen[m] = true
+	var markers []markerSpec
+	add := func(m markerSpec) {
+		key := m.open + "\x00" + m.close
+		if !seen[key] {
+			seen[key] = true
 			markers = append(markers, m)
 		}
 	}
 	for _, src := range cfg.Sources {
 		if matchesAnyGlob(src.Globs, relSlash) {
-			add(src.Marker)
+			add(markerSpec{open: src.Marker, close: src.Close})
 		}
 	}
 	if matchesAnyGlob(cfg.TestGlobs, relSlash) {
 		for _, src := range cfg.Sources {
-			add(src.Marker)
+			add(markerSpec{open: src.Marker, close: src.Close})
 		}
 	}
 	return markers

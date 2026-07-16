@@ -916,3 +916,52 @@ func TestMarkersUnderReadError(t *testing.T) {
 		t.Error("expected read error for dangling symlink source file")
 	}
 }
+
+// TestCloseTokenStripping: a source's optional close token (ADR-0121) is
+// stripped once from a matched marker line's end before tag parsing, in both
+// the backing scan (Check) and the context query (MarkersUnder), so touches
+// notes stay clean and a note-less touches marker still counts as bare. A
+// marker line without the token and a close-less source parse unchanged.
+// invariant: invariant-marker-close-token
+func TestCloseTokenStripping(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented",
+		"- `invariant: close-a` - x.\n- `invariant: close-b` - y.\n- `invariant: close-c` - z.")
+	testsupport.WriteFile(t, filepath.Join(root, "x.md"),
+		"<!-- awf:comment invariant: close-a -->\n"+ // proof: close stripped before slugRe
+			"<!-- awf:comment touches-invariant: close-b - a note -->\n"+ // note stays clean
+			"<!-- awf:comment touches-invariant: close-c -->\n"+ // note-less: bare, not "-->"
+			"<!-- awf:comment invariant: close-a\n") // token absent: parsed unchanged (best-effort)
+	goSrc(t, root, "package x\n"+
+		"// invariant: close-b\n"+ // close-less source parses unchanged (mixed sources)
+		"// invariant: close-c\n")
+	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{
+		{Globs: []string{"*.md"}, Marker: "<!-- awf:comment", Close: "-->"},
+		{Globs: []string{"**/*.go"}, Marker: "//"},
+	}}
+	f, notes, err := invariants.Check(dir, root, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 0 {
+		t.Fatalf("all three slugs carry proof markers, want no findings, got %#v", f)
+	}
+	// close-c's bare-touches advisory fires only because the trailing "-->" was
+	// stripped: unstripped it would read as the phantom note "-->".
+	if len(notes) != 1 || notes[0].Slug != "close-c" || !strings.Contains(notes[0].Line(), "no note") {
+		t.Errorf("want exactly the close-c bare-touches note, got %#v", notes)
+	}
+	hits, err := invariants.MarkersUnder(root, cfg, []string{"x.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *invariants.MarkerHit
+	for i := range hits {
+		if hits[i].Slug == "close-b" {
+			got = &hits[i]
+		}
+	}
+	if got == nil || len(got.Notes) != 1 || got.Notes[0] != "- a note" {
+		t.Errorf("MarkersUnder must return the close-stripped note %q, got %#v", "- a note", hits)
+	}
+}

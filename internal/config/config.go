@@ -85,9 +85,14 @@ type InvariantConfig struct {
 // InvariantSource pairs anchored path globs (ADR-0077; matched against a file's
 // slash-separated repo-relative path) with
 // the literal comment marker that prefixes a backing `invariant: <slug>` tag.
+// Close is the optional literal close token for block-comment markers (`-->`,
+// `*/`): when non-empty, one trailing token (plus surrounding whitespace) is
+// stripped from a matched marker line before tag parsing (ADR-0121). Additive
+// and optional - empty means no stripping - so no schema-generation bump.
 type InvariantSource struct {
 	Globs  []string `yaml:"globs"`
 	Marker string   `yaml:"marker"`
+	Close  string   `yaml:"close"`
 }
 
 // BootstrapConfig configures the rendered .awf/bootstrap.sh singleton (ADR-0040,
