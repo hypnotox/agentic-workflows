@@ -179,6 +179,18 @@ renders no such thing. That drift is repaired by making the claim true rather th
     `docs/decisions/ACTIVE.md` - now carrying the item-10 supersedence section - alongside the
     rendered outputs and both lock files.
 
+12. **The Decision-section format becomes spec, and a check enforces it.** Anchors are only as
+    stable as the format they resolve against, so the authoring convention the proposing skill
+    has carried as prose is promoted to schema: every ADR's `## Decision` section consists of
+    column-0 numbered items (`N.`), numbered sequentially from 1 with no gaps, duplicates, or
+    restarts, each a discrete commitment; introductory prose before item 1 and indented
+    sub-lists inside an item remain legal, since enumeration reads only column-0 leads.
+    `awf check` fails on any ADR, regardless of status, whose Decision section has no
+    enumerable items or breaks the sequence - a Superseded ADR can still be an anchor target,
+    so its enumerability still matters. The corpus already complies (a sweep of all 120 ADRs
+    found clean sequential items), so the check lands green. The decisions README template
+    documents the format spec alongside the token grammar.
+
 ## Invariants
 
 - `invariant: supersession-token-ref-validity` - `awf check` fails on a Decision-section token
@@ -209,6 +221,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
   slug's declaring ADR; it inserts the carrier's number into each target's `related:` when
   absent, and fails naming the carrier and slug when a retired slug resolves to no declaring
   ADR.
+- `invariant: decision-items-enumerable` - `awf check` fails on an ADR of any status whose
+  `## Decision` section has no column-0 numbered items or whose item numbers are not
+  sequential from 1 (gap, duplicate, or restart).
 - `invariant: active-md-supersedence-rendering` - ACTIVE.md renders every full-supersession
   chain and an annotation on each live ADR that has a superseded anchor.
 - `invariant: context-annotates-superseded-anchors` - `awf context` output marks a surfaced
@@ -218,8 +233,8 @@ renders no such thing. That drift is repaired by making the claim true rather th
 
 - The lifecycle conventions ADR-0116 chose to keep procedural become deterministic checks, which
   is a strictness increase on every adopter: corpora with asymmetric full supersessions, missing
-  back-pointers on tokenized citations, or leftover `retires_invariants:` keys fail `awf check`
-  after upgrading. The migration handles the key mechanically and writes the back-pointers its
+  back-pointers on tokenized citations, leftover `retires_invariants:` keys, or Decision
+  sections that are not enumerable numbered items fail `awf check` after upgrading. The migration handles the key mechanically and writes the back-pointers its
   own tokens owe, so the migration's own output passes the checks it accompanies; a corpus with
   an asymmetric full-supersession record still fails item 3's check and is repaired by hand.
   Beyond that, back-pointers and tokens only fail where an adopter chooses to write tokens,
