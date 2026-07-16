@@ -4,7 +4,7 @@ date: 2026-06-29
 supersedes: []
 superseded_by: ""
 tags: [convention-parts, section-assembly]
-related: [1, 15, 57]
+related: [1, 15, 57, 121]
 domains: [rendering]
 ---
 # ADR-0034: Convention Parts Are Raw Input

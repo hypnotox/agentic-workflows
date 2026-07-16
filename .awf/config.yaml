@@ -67,6 +67,7 @@ tags:
   agents-guide: The AGENTS.md agent guide artifact
   anchored-globs: The anchored doublestar path-glob dialect
   atomic-writes: Temp-file-plus-rename trust-bearing writes
+  authoring-comments: The whole-line awf:comment authoring-comment directive
   audit-rules: The awf audit conformance rules
   binary-distribution: Prebuilt binary distribution
   bootstrap-porcelain: The bootstrap and upgrade installer porcelain

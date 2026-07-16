@@ -122,6 +122,10 @@
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
 - [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Implemented)
 
+## Proposed
+
+- [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
@@ -150,7 +154,7 @@
 - ADR-0029: item 1 superseded by ADR-0064
 - ADR-0030: slug `version-ldflags-precedence` superseded by ADR-0049
 - ADR-0032: item 1 superseded by ADR-0048
-- ADR-0034: item 1 superseded by ADR-0057
+- ADR-0034: item 1 superseded by ADR-0057; item 1 superseded by ADR-0121; slug `parts-raw` superseded by ADR-0121
 - ADR-0039: item 5 superseded by ADR-0076
 - ADR-0040: slug `bootstrap-pin` superseded by ADR-0085
 - ADR-0043: slug `mandatory-docs-not-in-docs-catalog` superseded by ADR-0061; slug `singleton-kind-single-source` superseded by ADR-0061
