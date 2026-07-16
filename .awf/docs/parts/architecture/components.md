@@ -32,8 +32,8 @@
   drift detection for `awf check`.
 - **`internal/migrate/`**: ordered schema-migration registry (ADR-0010); the `tree-layout`
   migration and the frozen legacy reader; powers `awf upgrade` and the sync/check version gate.
-  The generation-10 `retirement-tokens` migration writes the ADR corpus itself - porting
-  `retires_invariants:` frontmatter to `supersedes-invariant:` tokens via raw-byte surgery
+  The generation-10 `retirement-tokens` migration writes the ADR corpus itself - porting the
+  legacy ADR-0031 retirement frontmatter to `supersedes-invariant:` tokens via raw-byte surgery
   (ADR-0120), the precedent for corpus-writing migrations - importing `internal/adr` and
   `internal/invariants` (acyclic: nothing on the render path imports migrate).
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and

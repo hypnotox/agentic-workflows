@@ -38,7 +38,7 @@ and a `main`) so the workflow artifacts around it stay legible.
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated, never hand-edited.
+- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated, never hand-edited. Decision meaning is frozen once an ADR leaves Proposed; a meaning-preserving schema retrofit may migrate its encoding.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)

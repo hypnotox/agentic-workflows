@@ -35,7 +35,7 @@ Every ADR starts with YAML frontmatter:
 ---
 status: Proposed | Accepted | Implemented | Superseded
 date: YYYY-MM-DD
-supersedes: []        # list of ADR numbers this replaces, e.g. [1], bare ints; zero-padded 0001 reads as octal YAML
+supersedes: []        # ADR numbers this fully replaces, e.g. [1], bare ints (zero-padded 0001 reads as octal YAML); awf check enforces the three-way symmetry with the target's status flip and superseded_by
 superseded_by: ""     # ADR number that replaced this (empty if still active)
 tags: [tooling]
 related: []           # related ADR numbers
@@ -65,6 +65,28 @@ marker contradicts, or declares an unbacked slug with no `Verify:` note. Propose
 not yet enforced (tests land with implementation); Superseded ADRs are skipped. Bullets without a
 slug are textual contracts, not machine-checked.
 
+
+<!-- awf:edit supersession: default; create .awf/parts/adr-readme/supersession.md to override -->
+## Supersession and the Decision format
+
+Every ADR's Decision section consists of column-0 numbered items, sequential from 1 - the
+format `awf check` enforces on every ADR regardless of status, because item numbers are the
+stable anchors partial supersession points at (indented numbered sub-lists do not count).
+
+Supersession comes in two flavours. **Full**: the successor's frontmatter claims
+`supersedes: [N]`, the predecessor's status flips to `Superseded by ADR-NNNN` and its
+`superseded_by:` names the successor; `awf check` enforces all three sides. **Partial**: the
+predecessor stays live and the successor's Decision section carries an inline code token at
+the citation site, one per overridden anchor, in one of two grammars:
+
+- `` `supersedes: ADR-NNNN#<item>` `` overrides one Decision item of ADR-NNNN.
+- `` `supersedes-invariant: ADR-NNNN#<slug>` `` overrides (and, once the carrier is
+  Implemented, retires) one declared invariant of ADR-NNNN.
+
+`awf check` validates every token: the target must exist and not be `Proposed` (a Proposed
+body is still mutable), the cited item or slug must exist, and a token into a live
+(`Accepted`/`Implemented`) target requires the target's `related:` to back-point at the
+carrier. One successor may not both fully and partially supersede the same target.
 
 <!-- awf:edit active-md: from .awf/parts/adr-readme/active-md.md -->
 ## ACTIVE.md

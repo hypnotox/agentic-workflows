@@ -74,9 +74,9 @@ var Standard = &Catalog{
 			Data: map[string]any{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
-					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen"},
-					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed in the repository", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen"},
-					map[string]any{"name": "Superseded", "meaning": "Replaced by a later ADR; kept for historical record", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen"},
+					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120"},
+					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed in the repository", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120"},
+					map[string]any{"name": "Superseded", "meaning": "Replaced by a later ADR; kept for historical record", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120"},
 				},
 			},
 		},
@@ -124,6 +124,7 @@ var Standard = &Catalog{
 					map[string]any{"check": "every document that states the behaviour this ADR changes is updated in the same commit"},
 					map[string]any{"check": "the decision index is regenerated when the ADR's status changes"},
 					map[string]any{"check": "when this ADR overrides a live ADR's Decision item or Invariant without superseding it wholesale, the overridden ADR's `related:` names this ADR in the same commit"},
+					map[string]any{"check": "a partial override of a live ADR carries the matching `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>` token in the successor's Decision section, one per overridden anchor (ADR-0120)"},
 				},
 				"reviewSubject": "ADR",
 				"readStep":      "Read the ADR in full. Read every doc, ADR, or state doc it references by name.",
@@ -188,7 +189,7 @@ var Standard = &Catalog{
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
 			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
-		"adr-readme":     {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "active-md"}},
+		"adr-readme":     {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "supersession", "active-md"}},
 		"adr-template":   {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
 		"plans-readme":   {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
 		"plans-template": {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},

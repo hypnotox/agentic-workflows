@@ -27,9 +27,11 @@ var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 
 // doubleBacktickExempt lists templates whose double-backtick spans are
 // deliberate; entries fail when stale (ADR-0080 Decision 7). proposing-adr
-// quotes nested backticks in its inv-slug authoring guidance.
+// quotes nested backticks in its inv-slug authoring guidance; adr-lifecycle
+// quotes the backticked supersession-token grammar the same way (ADR-0120).
 var doubleBacktickExempt = map[string]bool{
 	"skills/proposing-adr/SKILL.md.tmpl": true,
+	"skills/adr-lifecycle/SKILL.md.tmpl": true,
 }
 
 // TestCatalogTemplatesDegradeLeakFree renders every catalog skill and agent

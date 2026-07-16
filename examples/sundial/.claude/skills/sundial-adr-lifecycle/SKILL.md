@@ -17,9 +17,9 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 | State | Meaning | Mutability |
 |---|---|---|
 | `Proposed` | ADR is written and under review; content is freely mutable | Freely mutable; body and status may both change |
-| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
-| `Implemented` | Design and implementation have both landed in the repository | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
-| `Superseded` | Replaced by a later ADR; kept for historical record | Status and cross-reference metadata (superseded_by, related) only; the body is frozen |
+| `Accepted` | Design is finalised; implementation authorised but not yet complete | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
+| `Implemented` | Design and implementation have both landed in the repository | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
+| `Superseded` | Replaced by a later ADR; kept for historical record | Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding, ADR-0120 |
 
 
 ## Transitions
@@ -40,6 +40,8 @@ The successor replaces the predecessor wholesale. Apply when most of the predece
 - Successor frontmatter: `supersedes: [predecessor-number]`.
 - Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; on a non-Proposed ADR only `status` and cross-reference metadata may be edited).
 - `docs/decisions/ACTIVE.md` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
+- An ADR has at most one full successor: `superseded_by:` is scalar, and `awf check` enforces the three-way symmetry (claim, status flip, and back-pointer must agree).
+- Full supersession excludes partial tokens from the same successor into the same target; `awf check` refuses the mixed pair.
 
 <!-- awf:edit supersedence-partial: default; create .awf/skills/parts/adr-lifecycle/supersedence-partial.md to override -->
 ### Partial-item supersedence
@@ -49,8 +51,10 @@ The successor overrides specific Decision items or Invariants of the predecessor
 - Successor frontmatter: `related: [predecessor-number]` (NOT `supersedes:`).
 - Predecessor frontmatter: add the successor's number to `related:`, in the **same commit**. Without this back-pointer the overridden Decision item reads as current guidance and a reader of the predecessor gets no signal it was overridden. This is a metadata-only edit, allowed on a live ADR; the body stays append-only.
 - Predecessor's `status` field is **NOT** flipped; it stays `Accepted`/`Implemented`.
-- Successor's prose **explicitly cites the overridden items** (e.g. "Supersedes predecessor Decision item M and Invariant N").
-- `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the override information lives in the successor's prose and in the `related:` linkage on **both** ADRs.
+- The successor's Decision section carries `` `supersedes: ADR-NNNN#<item>` `` (a Decision item) or `` `supersedes-invariant: ADR-NNNN#<slug>` `` (an invariant) as an inline code token at the citation site, **one token per overridden anchor**. `awf check` validates the ref, requires the predecessor back-pointer, and refuses a token into a `Proposed` target.
+- `docs/decisions/ACTIVE.md` continues to list both ADRs as live; the overridden anchors render in its "Superseded anchors on live ADRs" subsection, derived from the tokens and the `related:` linkage on **both** ADRs.
+- Authoring-time rule: a new token targets the ADR that **currently owns** the anchor. A token whose target was later fully superseded degrades to an `awf check` advisory note, preserving history.
+- Retirement: a `supersedes-invariant:` token carried by an **Implemented** ADR retires the slug from owed invariant backing. Fully superseding a token-carrier lapses its retirements; the new successor re-carries any it still intends.
 
 The back-pointer is owed when the successor overrides a **live** (`Accepted`/`Implemented`) predecessor's **Decision item or Invariant**. It is not owed for a citation that does not override, for an amendment of a `Proposed` ADR (edit that ADR in place instead), or for an edit that changes wording without changing meaning.
 
@@ -90,12 +94,12 @@ While `status: Proposed`, all sections may be amended freely as edge cases or sc
 - **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
 - **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
 
-Once `Accepted` or `Implemented`, the body is frozen; only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place.
+Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofit may migrate its machine-readable encoding. Only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place.
 
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 - **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
-- **Append-only rule:** once any live state is reached, only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place. The body is the historical record: append-only protects rationale, not bookkeeping.
+- **Append-only rule:** once any live state is reached, only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
 - **`docs/decisions/ACTIVE.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

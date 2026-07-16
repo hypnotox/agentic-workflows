@@ -268,11 +268,13 @@ _Domains: adr-system_
 
 _Related: ADR-0116_
 
-When ADR X overrides ADR Y's Decision item without superseding Y wholesale (partial-item
-supersedence: X cites the item in prose and carries `related: [Y]`, Y stays live), Y's
+When ADR X overrides ADR Y's Decision item or invariant without superseding Y wholesale
+(partial supersession: X carries a `supersedes: ADR-NNNN#<item>` or
+`supersedes-invariant: ADR-NNNN#<slug>` token in its Decision section, Y stays live), Y's
 `related:` must name X in the same commit. Without that back-pointer Y's overridden item
 reads as current guidance and a reader of Y gets no signal. It is a metadata-only edit; the
-body stays append-only.
+body stays append-only. Since ADR-0120 the rule is machine-checked: `awf check` fails a
+token into a live target whose `related:` lacks the carrier.
 
 **This entry has been wrong three times, and the corrections are the lesson.** It first
 recorded two instances (0079 → 0065, 0093 → 0024) and inferred a promotion trigger from
@@ -292,19 +294,18 @@ section, the procedure an agent actually loads while performing the act. That se
 taught the one-directional model outright. **If you are about to record a recurrence, sweep
 the corpus before you count.**
 
-The detector this entry used to propose (for each ADR body citing another ADR's "Decision
-item", require a back-pointer) fires on well over a hundred sites against ~19 real ones and
-is not viable; a verb-anchored trigger (`amends`, `revises`, `supersedes`, optionally
-prefixed `partially`) is a different and plausible proposition, because a bare parenthetical
-citation carries no verb. ADR-0116 states the rule in the skill procedure and the
-`adr-reviewer` doc-currency lens, and **deliberately defers** any check: the procedure had
-never been tried, so the next failure is the first informative one. Promote only on a
-recurrence **despite** the stated procedure and the lens, and see ADR-0116's Alternatives
-for the two shapes already analysed (an advisory range-scoped `repoaudit` rule; a declared
-`amends:` field with a derived back-edge). The corpus is knowingly left non-conformant
-(ADR-0116 Decision 6), so a fresh sweep finds residue: do not mistake it for recurrence,
-and do not read a count above ADR-0116's recorded 10 as recurrence either, since the
-recorded figure is a floor that later sweeps have already raised.
+The detector problem that stalled promotion was resolved by structure, not by a smarter
+detector. The shape this entry once proposed (for each ADR body citing another ADR's
+"Decision item", require a back-pointer) fires on well over a hundred sites against ~19
+real ones; ADR-0116 therefore stated the rule in the skill procedure and the
+`adr-reviewer` doc-currency lens and deliberately deferred any check. ADR-0120 (its token
+overriding ADR-0116 Decision 5) made the citation itself structured: a supersession token
+is unambiguous where prose verbs are not, so `awf check` anchors the back-pointer, ref
+validity, and flavour exclusivity on tokens with zero false positives. The corpus retrofit
+tokenized the freeform citations and backfilled the deferred edges, retiring ADR-0116
+Decision 6's known non-conformance. The sweep-before-you-count lesson stands for any
+*prose* claim about the corpus: the detectors that produced every figure above were
+verb-anchored, and two independent sweeps each missed edges the other found.
 
 ## A milestone-time check must not double as an every-commit test
 
@@ -478,8 +479,10 @@ cannot land while the successor is still Proposed, and the green-gate-per-commit
 forces the feature and the successor's `Implemented` flip into one commit. The ADR-0085
 implementation (2026-07-10) planned "feature commit, then flip commit" and hit this at the
 first `./x check`: retiring `bootstrap-pin` for `bootstrap-env-override` unbacked an
-Implemented ADR-0040 slug. When an effort carries a `retires_invariants:` entry, plan the
-final implementation commit to include the status flip from the start.
+Implemented ADR-0040 slug. When an effort carries a retirement (a
+`supersedes-invariant: ADR-NNNN#<slug>` token since ADR-0120; formerly the ADR-0031
+retirement frontmatter), plan the final implementation commit to include the status flip
+from the start.
 
 ## An unescaped consumable placeholder in a part is silently rewritten, check-clean
 

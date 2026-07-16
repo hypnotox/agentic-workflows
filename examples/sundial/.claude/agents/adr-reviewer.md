@@ -71,6 +71,7 @@ For each item below, flag a finding if the gating condition is met AND the ADR d
 - every document that states the behaviour this ADR changes is updated in the same commit
 - the decision index is regenerated when the ADR's status changes
 - when this ADR overrides a live ADR's Decision item or Invariant without superseding it wholesale, the overridden ADR's `related:` names this ADR in the same commit
+- a partial override of a live ADR carries the matching `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>` token in the successor's Decision section, one per overridden anchor (ADR-0120)
 
 When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/ACTIVE.md` must be present. Regen command: `./x sync`.
 
