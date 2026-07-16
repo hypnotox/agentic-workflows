@@ -33,7 +33,9 @@ Codex uses a typed TOML encoder. Pi receives generic review-dispatch prose.
 - [ ] **Task 1.1: Introduce the format-neutral catalog and renderer model.** In
   `internal/catalog/catalog.go`, replace agent use of `TargetSpec` with an
   `AgentSpec` that retains sections, requirements, base/local support and data,
-  while declaring canonical name/description metadata. In
+  while declaring a literal name and separately rendered description metadata.
+  Render the description with normal template data so prefix-aware standard prose
+  and sidecar-provided local descriptions remain supported. In
   `internal/catalog/standard.go`, move each standard agent's frontmatter metadata
   into its `AgentSpec`; update `internal/project/local.go` so synthesized local
   agents supply their name from the artifact key and description from sidecar data.

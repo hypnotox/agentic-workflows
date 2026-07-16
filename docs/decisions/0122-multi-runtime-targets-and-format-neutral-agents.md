@@ -43,9 +43,11 @@ agent seam must instead represent an agent independently of its output dialect.
    discovery.
 
 2. Replace Markdown-frontmatter agent rendering as the internal agent model with
-   a format-neutral artifact: structured `name` and `description` metadata plus
-   a section-rendered Markdown instruction body. Standard and project-local
-   agents share this model. A target encoder emits YAML-frontmatter Markdown for
+   a format-neutral artifact: a literal `name`, separately rendered
+   `description` metadata, and a section-rendered Markdown instruction body.
+   Description rendering uses the normal template data so existing prefix-aware
+   wording survives without making an output dialect canonical. Standard and
+   project-local agents share this model. A target encoder emits YAML-frontmatter Markdown for
    Claude, Cursor, Gemini, Copilot, and Pi, and a typed Codex TOML profile with
    `name`, `description`, and `developer_instructions` for Codex. The Codex
    encoder uses a maintained TOML library and typed schema, never handwritten
