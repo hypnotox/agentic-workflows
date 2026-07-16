@@ -83,7 +83,8 @@ renders no such thing. That drift is repaired by making the claim true rather th
    `supersedes: [N]` if and only if predecessor `status:` is `Superseded by ADR-<successor>` if
    and only if predecessor `superseded_by:` names the successor. An ADR has at most one full
    successor (`superseded_by:` is scalar); a second claimant is an error. The symmetry check
-   demands nothing of `related:` on full-supersession pairs (today's two pairs do not carry it).
+   demands nothing of `related:` on full-supersession pairs; the existing pairs are
+   inconsistent on that edge (0115 lists 113, the others carry none) and may stay so.
 
 4. **The partial back-pointer becomes a check.** When a token targets a live
    (`Accepted`/`Implemented`) ADR, `awf check` fails unless the target's `related:` contains the
@@ -101,7 +102,10 @@ renders no such thing. That drift is repaired by making the claim true rather th
    claimed by tokens in two or more live ADRs (clause-level splits of one item are legitimate, per ADR-0119's item 7
    treatment). These advisories live in `awf check`, not `awf audit`: audit rules are pure over
    the commit range (ADR-0025 records the single sanctioned exception), while check has native
-   corpus access.
+   corpus access. The check cannot tell a token whose target died *after* authoring from one
+   freshly written at a dead anchor, so the authoring-time rule is procedural: the lifecycle
+   skill instructs that a new token targets the ADR that currently owns the anchor, and the
+   advisory note is the mechanical net for both arrival orders.
 
 6. **Invariant retirement is subsumed by `supersedes-invariant:` tokens.** A token
    `` `supersedes-invariant: ADR-NNNN#<slug>` `` carried by an **Implemented** ADR drops that slug from
@@ -113,7 +117,12 @@ renders no such thing. That drift is repaired by making the claim true rather th
    Decision items define the replaced mechanism. Its three backed invariant slugs
    (`inv-retirement-drops-slug`, `inv-retirement-implemented-only`,
    `inv-retirement-dangling-errors`) stop being owed by the status flip itself, since declared
-   slugs are read from Implemented ADRs only; this ADR declares their successors below.
+   slugs are read from Implemented ADRs only; this ADR declares their successors below. Between
+   the flip and this ADR reaching Implemented, the mechanism is check-unenforced though still
+   code-implemented: the three slugs are unowed and their proof markers surface as
+   dangling-marker advisories, which the implementing effort clears by re-annotating the tests
+   with the successor slugs. The same window opens whenever a full supersession of an
+   invariant-declaring ADR lands under the same-commit flip convention.
 
 7. **`retires_invariants:` is removed from the schema.** The frontmatter key ceases to exist:
    the ADR struct drops the field, the scaffolding template part drops the line, and `awf check`
@@ -127,8 +136,15 @@ renders no such thing. That drift is repaired by making the claim true rather th
    `retires_invariants:`, the key is stripped; where the list was non-empty, a new numbered
    bookkeeping item is **appended** to that ADR's `## Decision` section carrying one equivalent
    `` `supersedes-invariant: ADR-NNNN#<slug>` `` token per retired slug, resolving each slug to its
-   declaring ADR from the pre-retirement corpus view. Appending never renumbers existing items.
-   The ADR-0039 binary-version gate forces unmigrated projects through `awf upgrade` as usual.
+   declaring ADR from the pre-retirement corpus view. For every token it writes, the migration
+   also inserts the carrier's number into the target ADR's `related:` when absent - the item-4
+   back-pointer is owed by migration-written tokens like any other, and a migration whose output
+   fails the checks it accompanies would be self-defeating. A retired slug that resolves to no
+   declaring ADR fails the migration loudly, naming the carrier ADR and the slug: skipping it
+   would silently drop a retirement that turns live if the carrier is later Implemented, the
+   exact failure item 7's raw-key scan exists to prevent. Appending never renumbers existing
+   items. The ADR-0039 binary-version gate forces unmigrated projects through `awf upgrade` as
+   usual.
    This is the first migration that writes outside the config tree; `internal/migrate` may
    import `internal/adr` (acyclic, off the render path) and resolves `docsDir` from loaded
    config as the close-enabled-set migration already does.
@@ -159,7 +175,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
     retirement or supersession (the embedded adr-lifecycle skill template, the AGENTS.md
     invariants bullet, the decisions README template, the catalog's ADR-state mutability
     strings, this repo's domain current-state parts, glossary and pitfalls sidecars) are updated
-    in the same effort.
+    in the same effort. The implementing commits run `./x sync` and stage the regenerated
+    `docs/decisions/ACTIVE.md` - now carrying the item-10 supersedence section - alongside the
+    rendered outputs and both lock files.
 
 ## Invariants
 
@@ -199,8 +217,10 @@ renders no such thing. That drift is repaired by making the claim true rather th
 - The lifecycle conventions ADR-0116 chose to keep procedural become deterministic checks, which
   is a strictness increase on every adopter: corpora with asymmetric full supersessions, missing
   back-pointers on tokenized citations, or leftover `retires_invariants:` keys fail `awf check`
-  after upgrading. The migration handles the key mechanically; back-pointers and tokens only
-  fail where an adopter chooses to write tokens, since freeform prose citations stay inert.
+  after upgrading. The migration handles the key mechanically and writes the back-pointers its
+  own tokens owe, so an upgraded corpus passes the new checks as-is; beyond that, back-pointers
+  and tokens only fail where an adopter chooses to write tokens, since freeform prose citations
+  stay inert.
 - The append-only rule is no longer absolute. The carve-out is deliberately narrow (three
   enumerated edit shapes, all meaning-preserving), but it is a real weakening: reviewers must
   now distinguish encoding edits from content edits when a diff touches a frozen body.
