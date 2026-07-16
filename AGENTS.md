@@ -26,7 +26,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of Claude Code skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree, supplying a default way to set things up and the deterministic checks that guard the probabilistic agent's output rather than its behaviour (drift, frontmatter, invariant backing). The workflow chain is project-owned skill files under `.claude/skills/awf-*/` and independent, fresh-context review agents under `.claude/agents/`; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of multi-runtime skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree, supplying a default way to set things up and the deterministic checks that guard the probabilistic agent's output rather than its behaviour (drift, frontmatter, invariant backing). The workflow chain is project-owned target-native skill files and reviewer definitions; Pi renders reviewer skills but has no native subagent orchestration; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -100,4 +100,5 @@ awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered
 - **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and term ownership
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md), recurring bugs and tricky areas
 - **Releasing:** [docs/releasing.md](docs/releasing.md), how to cut a release: versioning, artifacts, and the publish process
+- **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers

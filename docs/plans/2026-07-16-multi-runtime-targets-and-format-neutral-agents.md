@@ -1,7 +1,7 @@
 ---
 date: 2026-07-16
 adrs: [122]
-status: Proposed
+status: Implemented
 ---
 # Plan: Multi-Runtime Targets and Format-Neutral Agents
 

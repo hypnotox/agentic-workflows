@@ -26,6 +26,7 @@ docs:
   - glossary
   - pitfalls
   - releasing
+  - roadmap
   - testing
 domains:
   - adr-system
@@ -180,7 +181,11 @@ contextIgnore:
   - .gremlins.yaml
 targets:
   - claude
+  - codex
+  - copilot
   - cursor
+  - gemini
+  - pi
 vars:
   activeMdRegenCmd: ./x sync
   checkCmd: ./x check

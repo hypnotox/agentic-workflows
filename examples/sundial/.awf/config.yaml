@@ -36,6 +36,13 @@ docs:
   - pitfalls
   - roadmap
   - testing
+targets:
+  - claude
+  - codex
+  - copilot
+  - cursor
+  - gemini
+  - pi
 audit:
   allowedScopes:
     - almanac

@@ -122,10 +122,7 @@
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md) (Implemented)
 - [ADR-0120: Structured, machine-checked ADR supersession](0120-structured-machine-checked-adr-supersession.md) (Implemented)
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](0121-whole-line-authoring-comments-in-templates-and-parts.md) (Implemented)
-
-## Proposed
-
-- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Proposed)
+- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Implemented)
 
 ## Superseded
 

@@ -59,8 +59,10 @@ instead of rotting.
   self-ignoring `.gitignore`; agents keep per-effort session notes there without ever
   committing them.
 
-Claude Code is the default target. A `cursor` adapter renders the same skills and
-agents into `.cursor/` (`awf enable target cursor`); Cursor reads `AGENTS.md` natively.
+Claude Code is the default target. awf also supports Cursor, Pi, Codex, Gemini,
+and GitHub Copilot: skills and agents render into each runtime's native paths.
+Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge; Pi reviewer
+skills use generic delegation wording because Pi has no native subagents.
 
 ## How it works
 
