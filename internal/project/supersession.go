@@ -3,7 +3,9 @@ package project
 import (
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,8 +26,39 @@ func (p *Project) checkSupersessionAll() ([]manifest.Drift, error) {
 	}
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
 	drift := p.checkDecisionFormat(adrs, rel)
+	rk, err := checkRetiredKey(adrs, rel)
+	if err != nil { // coverage-ignore: ParseDir above just read every scanned path
+		return nil, err
+	}
+	drift = append(drift, rk...)
 	d2, _ := computeSupersession(adrs, rel)
 	return append(drift, d2...), nil
+}
+
+// retiredKeyRe matches the removed retires_invariants: frontmatter key at
+// column 0 - the raw form the parsed struct no longer surfaces.
+var retiredKeyRe = regexp.MustCompile(`(?m)^retires_invariants:`)
+
+// checkRetiredKey refuses the raw retires_invariants: key (ADR-0120 item 7):
+// the schema no longer carries the field and non-strict YAML would silently
+// ignore it, so only a raw frontmatter scan can catch a stale corpus.
+// touches-invariant: retires-invariants-key-refused - the raw-key scan; proof in supersession_test.go
+func checkRetiredKey(adrs []adr.ADR, rel string) ([]manifest.Drift, error) {
+	var drift []manifest.Drift
+	for _, a := range adrs {
+		b, err := os.ReadFile(a.Path)
+		if err != nil { // coverage-ignore: ParseDir just read this exact path
+			return nil, err
+		}
+		raw := string(b)
+		// frontmatter.Parse succeeded in ParseDir, so the closing fence exists;
+		// +4 keeps the newline before the fence in the window.
+		fmEnd := strings.Index(raw[3:], "\n---") + 3 + 1
+		if retiredKeyRe.MatchString(raw[:fmEnd]) {
+			drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-retired-key", Detail: fmt.Sprintf("ADR-%s: retires_invariants: is no longer read; run awf upgrade", a.Number)})
+		}
+	}
+	return drift, nil
 }
 
 // supersessionNotes re-parses the corpus and returns the advisory half of

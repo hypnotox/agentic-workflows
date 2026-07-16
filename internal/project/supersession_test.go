@@ -142,6 +142,49 @@ func hasKindDetail(drift []manifest.Drift, kind, want string) bool {
 	return false
 }
 
+// TestCheckRetiredKey covers the raw-key refusal (ADR-0120 item 7): the
+// removed retires_invariants: key drifts whether empty or non-empty; a clean
+// file does not.
+// invariant: retires-invariants-key-refused
+func TestCheckRetiredKey(t *testing.T) {
+	cases := []struct {
+		name  string
+		fm    string
+		wantN int
+	}{
+		{"empty key drifts", "retires_invariants: []\n", 1},
+		{"non-empty key drifts", "retires_invariants: [some-slug]\n", 1},
+		{"clean file does not", "", 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, supersessionCfg)
+			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+				"---\nstatus: Implemented\n"+tc.fm+"---\n# ADR-0001: A\n\n"+decision)
+			p, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			drift, err := p.checkSupersessionAll()
+			if err != nil {
+				t.Fatalf("checkSupersessionAll: %v", err)
+			}
+			var got []manifest.Drift
+			for _, d := range drift {
+				if d.Kind == "adr-retired-key" {
+					got = append(got, d)
+				}
+			}
+			if len(got) != tc.wantN {
+				t.Fatalf("want %d adr-retired-key drift(s), got %#v", tc.wantN, drift)
+			}
+			if tc.wantN == 1 && !strings.Contains(got[0].Detail, "run awf upgrade") {
+				t.Errorf("detail must route to awf upgrade, got %q", got[0].Detail)
+			}
+		})
+	}
+}
+
 // TestFullSupersessionSymmetry covers the three-way symmetry check: a
 // symmetric pair passes; each one-sided form fails; a second full claimant
 // fails on the higher-numbered claimant.

@@ -71,15 +71,14 @@ func WriteProfile(t *testing.T, dir, body string) string {
 type ADROption func(*adrOpts)
 
 type adrOpts struct {
-	title             string
-	date              string
-	tags              []string
-	related           []int
-	domains           []string
-	retiresInvariants []string
-	supersededBy      string
-	supersedes        []int
-	body              string
+	title        string
+	date         string
+	tags         []string
+	related      []int
+	domains      []string
+	supersededBy string
+	supersedes   []int
+	body         string
 }
 
 // WithTitle sets the ADR's number+title heading text - the part after
@@ -99,11 +98,6 @@ func WithRelated(nums ...int) ADROption { return func(o *adrOpts) { o.related = 
 // WithDomains sets the frontmatter domains array.
 func WithDomains(domains ...string) ADROption { return func(o *adrOpts) { o.domains = domains } }
 
-// WithRetiresInvariants sets the frontmatter retires_invariants array.
-func WithRetiresInvariants(slugs ...string) ADROption {
-	return func(o *adrOpts) { o.retiresInvariants = slugs }
-}
-
 // WithSupersededBy sets the frontmatter superseded_by field to an ADR number,
 // e.g. "0002" - emitted YAML-quoted by ADR. Omitted from the frontmatter
 // entirely when never called.
@@ -120,7 +114,7 @@ func WithSupersedes(nums ...int) ADROption { return func(o *adrOpts) { o.superse
 func WithBody(body string) ADROption { return func(o *adrOpts) { o.body = body } }
 
 // ADR builds a ---delimited ADR frontmatter fixture as a raw string: a status
-// field plus any of date/tags/domains/retires_invariants/superseded_by/supersedes
+// field plus any of date/tags/domains/superseded_by/supersedes
 // supplied via opts, a "# ADR-<title>" heading, and an optional trailing body. It intentionally
 // does not import internal/adr and marshal its real frontmatter struct -
 // doing so would break this package's zero-internal-deps invariant (see
@@ -147,9 +141,6 @@ func ADR(status string, opts ...ADROption) string {
 	}
 	if o.domains != nil {
 		b.WriteString("domains: [" + strings.Join(o.domains, ", ") + "]\n")
-	}
-	if o.retiresInvariants != nil {
-		b.WriteString("retires_invariants: [" + strings.Join(o.retiresInvariants, ", ") + "]\n")
 	}
 	if o.supersededBy != "" {
 		b.WriteString("superseded_by: \"" + o.supersededBy + "\"\n")

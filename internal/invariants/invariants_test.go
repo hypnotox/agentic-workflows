@@ -21,10 +21,10 @@ func TestDeclaringADRs(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: kept` - x.\n- `invariant: gone` - y.")
 	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: ignored` - z.")
-	// 0003 retires 0001's `gone` slug.
+	// 0003 retires 0001's `gone` slug via a supersedes-invariant token (ADR-0120).
 	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithRetiresInvariants("gone"), testsupport.WithTitle("X: T"),
-		testsupport.WithBody("## Invariants\n- `invariant: fresh` - w.\n## Consequences\nc\n"))
+		testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Decision\n\n1. Retires `supersedes-invariant: ADR-0001#gone`.\n## Invariants\n- `invariant: fresh` - w.\n## Consequences\nc\n"))
 	testsupport.WriteFile(t, filepath.Join(dir, "0003-c.md"), content)
 
 	adrs, err := adr.ParseDir(dir)
@@ -689,52 +689,6 @@ func TestCheckScanReadError(t *testing.T) {
 	}
 	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil {
 		t.Error("expected read error for dangling symlink source file")
-	}
-}
-
-func writeRetiringADR(t *testing.T, dir, name, status, retires, invBody string) {
-	t.Helper()
-	content := testsupport.ADR(status, testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithRetiresInvariants(retires), testsupport.WithTitle("X: T"),
-		testsupport.WithBody("## Invariants\n"+invBody+"\n## Consequences\nc\n"))
-	testsupport.WriteFile(t, filepath.Join(dir, name), content)
-}
-
-// invariant: inv-retirement-drops-slug
-func TestCheckRetirementDropsSlug(t *testing.T) {
-	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-retired` - x.")
-	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-retired", "- a textual invariant with no slug.")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(f) != 0 {
-		t.Errorf("a slug retired by an Implemented ADR must be dropped from enforcement (unbacked is fine), got %#v", f)
-	}
-}
-
-// invariant: inv-retirement-implemented-only
-func TestCheckRetirementImplementedOnly(t *testing.T) {
-	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-live` - x.")
-	writeRetiringADR(t, dir, "0002-b.md", "Proposed", "fixture-live", "- a textual invariant with no slug.")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(f) != 1 || f[0].Slug != "fixture-live" || f[0].Status != invariants.Unbacked {
-		t.Errorf("a Proposed ADR's retirement must not drop the slug, got %#v", f)
-	}
-}
-
-// invariant: inv-retirement-dangling-errors
-func TestCheckRetirementDangling(t *testing.T) {
-	dir, root := t.TempDir(), t.TempDir()
-	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-real` - x.")
-	writeRetiringADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost", "- a textual invariant with no slug.")
-	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil || !strings.Contains(err.Error(), "fixture-ghost") {
-		t.Errorf("a dangling retirement must error mentioning the slug, got %v", err)
 	}
 }
 

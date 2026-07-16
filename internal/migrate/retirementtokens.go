@@ -95,9 +95,18 @@ func applyRetirementTokens(root string, out io.Writer) error {
 		raw = raw[:loc[0]] + raw[loc[1]:]
 		fmt.Fprintf(out, "retirement-tokens: %s: stripped retires_invariants\n", a.Filename)
 
-		if len(a.RetiresInvariants) > 0 {
-			tokens := make([]string, len(a.RetiresInvariants))
-			for i, slug := range a.RetiresInvariants {
+		// The slug list comes from the raw line, not the parsed struct: the
+		// schema no longer carries the field (ADR-0120 item 7), and this
+		// migration is exactly the reader that outlives it.
+		var slugs []string
+		if inner := strings.TrimSpace(value[1 : len(value)-1]); inner != "" {
+			for _, s := range strings.Split(inner, ",") {
+				slugs = append(slugs, strings.TrimSpace(s))
+			}
+		}
+		if len(slugs) > 0 {
+			tokens := make([]string, len(slugs))
+			for i, slug := range slugs {
 				ds := declarers[slug]
 				if len(ds) == 0 {
 					return fmt.Errorf("retirement-tokens: %s retires %q, declared by no ADR", a.Filename, slug)
@@ -125,7 +134,7 @@ func applyRetirementTokens(root string, out io.Writer) error {
 			} else {
 				raw += "\n" + item
 			}
-			fmt.Fprintf(out, "retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(a.RetiresInvariants, ", "))
+			fmt.Fprintf(out, "retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(slugs, ", "))
 		}
 		edited[a.Path] = []byte(raw)
 	}

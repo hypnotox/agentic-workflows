@@ -125,10 +125,10 @@ var (
 // DeclaringADRs returns the slug → declaring-ADR map for adrs: every invariant
 // slug declared (in the Invariants section) by an Implemented ADR, carrying its
 // backing class (backed `invariant:` / unbacked `unbacked-invariant:`) and, for
-// unbacked declarations, the `Verify:` guidance text the bullet carries. ADR-0031
-// retirements are applied. It refuses two Implemented ADRs declaring the same
-// slug (duplicate) and a retirement of a slug no Implemented ADR declares
-// (dangling). Check and ContextFor (ADR-0104 Tier 1) share it.
+// unbacked declarations, the `Verify:` guidance text the bullet carries.
+// Token retirements (ADR-0120) are applied. It refuses two Implemented ADRs
+// declaring the same slug (duplicate) and a retirement of a slug no ADR
+// declares (dangling). Check and ContextFor (ADR-0104 Tier 1) share it.
 func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 	required := map[string]Decl{} // slug -> declaring ADR + class
 	for _, a := range adrs {
@@ -157,20 +157,6 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 				verify = strings.Trim(strings.Join(strings.Fields(bullet[loc[1]:]), " "), " *")
 			}
 			required[slug] = Decl{ADR: a.Filename, Class: class, Verify: verify}
-		}
-	}
-	// Retirements: an Implemented ADR may retire an invariant slug it removed the
-	// backing for (ADR-0031). A retired slug is dropped from required; a slug
-	// retired but declared by no Implemented ADR is a dangling retirement.
-	for _, a := range adrs {
-		if a.Status != "Implemented" {
-			continue
-		}
-		for _, slug := range a.RetiresInvariants {
-			if _, ok := required[slug]; !ok {
-				return nil, fmt.Errorf("dangling retirement: ADR %s retires %q, which no Implemented ADR declares as an inv slug", a.Filename, slug)
-			}
-			delete(required, slug)
 		}
 	}
 	// Token retirements (ADR-0120 item 6): a `supersedes-invariant:` token
