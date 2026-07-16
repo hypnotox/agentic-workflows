@@ -67,8 +67,14 @@ ships a check the tree would fail.
   `internal/project/configreference.go`, `internal/clispec/clispec.go`, `internal/git/git.go` and
   `internal/git/git_test.go` (the `IndexPaths` enumeration of Task 6.3a),
   `cmd/awf/dispatch.go`, `templates/hooks/pre-commit.sh.tmpl`, `templates/docs/doc-standard.md.tmpl`,
-  `.awf/agents-doc.yaml`, `.awf/config.yaml`, `changelog/CHANGELOG.md`, plus regenerated
-  `docs/pitfalls.md`, `docs/glossary.md`, `docs/decisions/README.md`, `docs/config-reference.md`,
+  `.awf/agents-doc.yaml`, `.awf/config.yaml`, `changelog/CHANGELOG.md`,
+  `templates/docs/working-with-awf.md.tmpl`, and the doc-currency sidecars
+  `.awf/docs/parts/development/command-runner.md`, `.awf/docs/parts/testing/gate.md`,
+  `.awf/parts/workflow/composing-the-gate.md`, `.awf/docs/parts/architecture/components.md`, and the
+  domain current-state parts `.awf/domains/parts/{config,rendering,tooling}/current-state.md`, plus
+  regenerated `docs/pitfalls.md`, `docs/glossary.md`, `docs/decisions/README.md`,
+  `docs/config-reference.md`, `docs/development.md`, `docs/testing.md`, `docs/workflow.md`,
+  `docs/architecture.md`, `docs/working-with-awf.md`, `docs/domains/{config,rendering,tooling}.md`,
   `AGENTS.md`, `docs/doc-standard.md`, `.awf/hooks/pre-commit.sh`, `.awf/awf.lock`,
   `examples/sundial/**`, `docs/decisions/0119-*.md`, and this plan.
 - **Deleted:** none.
@@ -1138,15 +1144,22 @@ carries both status flips.
   become false in this commit. Both are sidecar edits plus `./x sync`, never a hand-edit of the
   rendered file.
 
-  In `.awf/docs/parts/development/command-runner.md`: extend line 9's `./x gate` enumeration (which
-  currently ends "the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin check
-  (`cmd/pincheck`, ADR-0079)") with the prose scan, and add `./x prose-gate` to line 28's subcommand
-  row. In `.awf/docs/parts/testing/gate.md`: extend line 6's enumeration, which closes with a
-  terminal "and" that reads as exhaustive. Note the scan is default-off for adopters and on for this
-  repo, so say so rather than implying every adopter's gate runs it.
+  There are **three** such enumerations, all closed, all falsified by this commit:
 
-  Run `./x sync` and stage `docs/development.md` and `docs/testing.md`. `awf check` will not catch a
-  miss here: the render matches its source either way.
+  - `.awf/docs/parts/development/command-runner.md`: extend line 9's `./x gate` enumeration (which
+    currently ends "the whole-program dead-code check (`cmd/deadcodecheck`), and the workflow-pin
+    check (`cmd/pincheck`, ADR-0079)") with the prose scan, and add `./x prose-gate` to line 28's
+    subcommand row.
+  - `.awf/docs/parts/testing/gate.md`: extend line 6's enumeration, which closes with a terminal
+    "and" that reads as exhaustive.
+  - `.awf/parts/workflow/composing-the-gate.md`: extend the gate-step enumeration at lines 4 to 6,
+    the twin of the testing part, which ends "the workflow-pin check (`cmd/pincheck`, ADR-0079)".
+
+  In each, note the scan is default-off for adopters and on for this repo, so say so rather than
+  implying every adopter's gate runs it.
+
+  Run `./x sync` and stage `docs/development.md`, `docs/testing.md` and `docs/workflow.md`. `awf
+  check` will not catch a miss here: the render matches its source either way.
 
 - [ ] **Task 8.3: Correct the agent guide's invariant bullet.** `.awf/agents-doc.yaml:29-30` still
   tells the Go author that "Go comments and tests are out of scope", which items 1, 4 and 11 make
@@ -1174,11 +1187,43 @@ carries both status flips.
   describe the ban without typing any of the seven codepoints, and must cite no ADR number (the
   changelog is adopter-facing prose).
 
+- [ ] **Task 8.5a: Refresh the domain current-state narratives and the shipped command reference.**
+  ADR-0119 is tagged `[invariants, rendering, tooling, config]`. Task 8.6 regenerates the four
+  auto-generated domain **indexes**, but the hand-authored **current-state** narratives are separate
+  and are not touched by `./x sync`. Leaving them stale is not cosmetic here: `awf audit`'s
+  domain-doc-staleness rule (ADR-0019) warns for each configured domain whose narrative is not
+  refreshed when an ADR in it reaches Implemented, so the flip commit would land advisory warnings.
+  Refresh, in the same flip commit:
+
+  - `.awf/domains/parts/config/current-state.md`: the new `proseGate.enabled` and
+    `proseGate.exemptions[]` keys (currently zero mentions).
+  - `.awf/domains/parts/rendering/current-state.md`: the new `proseGateCmd` var, the widened
+    bootstrap-shim guard, and the payload's prose-gate line (currently zero mentions).
+  - `.awf/domains/parts/tooling/current-state.md`: add `prose-gate` to the `./x` runner list at line
+    3, and a sentence on the shipped `awf prose-gate` command beside the existing `commit-gate`
+    narrative, in the same presence-versus-net-increase framing (its advisory twin `plain-punctuation`
+    is already described there).
+  - The `invariants` domain: refresh only if its current-state narrative makes a claim this ADR
+    changes; if it does not, no edit is owed and the audit rule stays quiet because the narrative is
+    not stale. Check before editing.
+
+  Also update the **shipped** command reference, which is adopter-facing and exhaustive:
+  `templates/docs/working-with-awf.md.tmpl`'s `## Commands` section (which lists `commit-gate` at
+  line 27) gains an `awf prose-gate` bullet noting the default-off knob. This is a shipped template,
+  so ADR-0115's gate scans it: the bullet must type none of the seven codepoints.
+
+  Run `./x sync` and stage `docs/domains/config.md`, `docs/domains/rendering.md`,
+  `docs/domains/tooling.md`, `docs/working-with-awf.md`, and the `examples/sundial` copy of the
+  latter. (The README's `## Commands` table is deliberately **not** updated: it already omits `awf
+  config` and `awf context`, so it is curated rather than exhaustive, and adding `prose-gate` alone
+  would misrepresent it as complete.)
+
 - [ ] **Task 8.6: Flip both statuses.** Set `status: Implemented` in
   `docs/decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md`
   and in this plan's frontmatter. Run `./x sync` to regenerate `docs/decisions/ACTIVE.md` and the
-  four domain indexes. Once ADR-0119 is Implemented, `./x check` enforces its two backed invariant
-  slugs, so both proof markers from Task 6.6 must already be in place.
+  four domain indexes (distinct from the current-state narratives Task 8.5a refreshed by hand). Once
+  ADR-0119 is Implemented, `./x check` enforces its two backed invariant slugs, so both proof markers
+  from Task 6.6 must already be in place.
 
 - [ ] **Task 8.7: Verify and commit.** Run `./x gate` (green; it now includes the prose scan) and
   `./x check` (`awf check: clean`, `awf invariants: clean`). Confirm the gate actually enforces:
