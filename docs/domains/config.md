@@ -10,7 +10,7 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 
 `invariants.sources[].close` (ADR-0121) is the schema's newest optional key: a literal close
 token for block-comment markers, additive with no schema-generation bump (the `testGlobs`
-precedent) - empty or absent means no stripping.
+precedent) - empty or absent means no stripping. Migrations validate serialized adopter data before destructive cleanup.
 
 
 ## Decisions

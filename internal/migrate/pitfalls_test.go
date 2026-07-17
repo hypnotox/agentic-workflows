@@ -74,29 +74,20 @@ func TestPitfallsDataSplits(t *testing.T) {
 	}
 }
 
-// A part with no top-level `##` heading yields an empty-list sidecar (still
-// valid), removes the part, and warns that its content was not carried over so
-// the deletion is not silent.
+// A part with no top-level `##` heading is retained because it cannot be
+// migrated losslessly.
 func TestPitfallsDataEmptyList(t *testing.T) {
 	root := t.TempDir()
 	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
 	testsupport.WriteFile(t, part, "just prose, no headings\n")
-	var out bytes.Buffer
-	if err := applyPitfallsData(root, &out); err != nil {
-		t.Fatalf("applyPitfallsData: %v", err)
+	if err := applyPitfallsData(root, io.Discard); err == nil || err.Error() != "pitfalls-data: no top-level entries to migrate" {
+		t.Fatalf("applyPitfallsData error = %v, want no-entry error", err)
 	}
-	b, err := os.ReadFile(filepath.Join(root, ".awf", "docs", "pitfalls.yaml"))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls.yaml")); !os.IsNotExist(err) {
+		t.Errorf("empty part must not write a sidecar: %v", err)
 	}
-	if strings.TrimSpace(string(b)) != "data:\n  pitfalls: []" {
-		t.Errorf("empty part must yield an empty list, got:\n%s", b)
-	}
-	if !strings.Contains(out.String(), "no `## ` headings found") || !strings.Contains(out.String(), "recoverable from git history") {
-		t.Errorf("empty split must warn that content was not carried over, got:\n%s", out.String())
-	}
-	if _, err := os.Stat(part); !os.IsNotExist(err) {
-		t.Errorf("part should still be removed: %v", err)
+	if _, err := os.Stat(part); err != nil {
+		t.Errorf("part should be retained: %v", err)
 	}
 }
 
@@ -114,6 +105,99 @@ func TestPitfallsDataNoOp(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls.yaml")); !os.IsNotExist(err) {
 		t.Errorf("absent part must not write a sidecar: %v", err)
+	}
+}
+
+func TestPitfallsDataRejectsInvalidSerializationBeforeDeletion(t *testing.T) {
+	root := t.TempDir()
+	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
+	original := []byte("## Retained\n\nbody\n")
+	testsupport.WriteFile(t, part, string(original))
+	testsupport.SwapVar(t, &renderPitfalls, func([]pitfallSplit) ([]byte, error) {
+		return []byte("not: [valid"), nil
+	})
+
+	if err := applyPitfallsData(root, io.Discard); err == nil {
+		t.Fatal("applyPitfallsData succeeded after invalid serialization")
+	}
+	got, err := os.ReadFile(part)
+	if err != nil {
+		t.Fatalf("read retained part: %v", err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Errorf("part changed after invalid serialization: got %q, want %q", got, original)
+	}
+}
+
+func TestPitfallsDataRetainsSourceOnRenderError(t *testing.T) {
+	root := t.TempDir()
+	part := filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md")
+	original := []byte("## Retained\n\nbody\n")
+	testsupport.WriteFile(t, part, string(original))
+	testsupport.SwapVar(t, &renderPitfalls, func([]pitfallSplit) ([]byte, error) {
+		return nil, io.ErrUnexpectedEOF
+	})
+
+	if err := applyPitfallsData(root, io.Discard); err == nil {
+		t.Fatal("applyPitfallsData succeeded after render error")
+	}
+	got, err := os.ReadFile(part)
+	if err != nil {
+		t.Fatalf("read retained part: %v", err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Errorf("part changed after render error: got %q, want %q", got, original)
+	}
+}
+
+func TestValidatePitfallsSidecarRejectsChangedEntries(t *testing.T) {
+	entries := []pitfallSplit{{title: "Expected", body: []string{"body"}}}
+	for _, sidecar := range [][]byte{
+		[]byte("data:\n  pitfalls: []\n"),
+		[]byte("data:\n  pitfalls:\n    - title: Changed\n      body: changed\n"),
+	} {
+		if err := validatePitfallsSidecar(sidecar, entries); err == nil {
+			t.Errorf("validatePitfallsSidecar(%q) succeeded", sidecar)
+		}
+	}
+}
+
+func TestPitfallsDataPreservesIndentedBodies(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "parts", "pitfalls", "entries.md"), "## Mixed code and prose\n\n    code first\n    still code\n\ncolumn-zero prose\n\n## Only code\n\n    all code\n    remains indented\n")
+
+	if err := applyPitfallsData(root, io.Discard); err != nil {
+		t.Fatalf("applyPitfallsData: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, ".awf", "docs", "pitfalls.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sidecar struct {
+		Data struct {
+			Pitfalls []struct {
+				Title string `yaml:"title"`
+				Body  string `yaml:"body"`
+			} `yaml:"pitfalls"`
+		} `yaml:"data"`
+	}
+	if err := yaml.Unmarshal(b, &sidecar); err != nil {
+		t.Fatalf("sidecar is not valid YAML: %v\n%s", err, b)
+	}
+	want := []struct{ title, body string }{
+		{"Mixed code and prose", "    code first\n    still code\n\ncolumn-zero prose"},
+		{"Only code", "    all code\n    remains indented"},
+	}
+	if len(sidecar.Data.Pitfalls) != len(want) {
+		t.Fatalf("got %d entries, want %d: %s", len(sidecar.Data.Pitfalls), len(want), b)
+	}
+	for i, entry := range sidecar.Data.Pitfalls {
+		if entry.Title != want[i].title || entry.Body != want[i].body {
+			t.Errorf("entry %d = (%q, %q), want (%q, %q)", i, entry.Title, entry.Body, want[i].title, want[i].body)
+		}
+	}
+	if !bytes.Contains(b, []byte(`body: "    code first`)) || !bytes.Contains(b, []byte(`body: "    all code`)) {
+		t.Errorf("rendered YAML lost code indentation:\n%s", b)
 	}
 }
 

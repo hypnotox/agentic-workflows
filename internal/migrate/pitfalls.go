@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,13 +11,14 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"gopkg.in/yaml.v3"
 )
 
 // applyPitfallsData ports a pitfalls doc from the retired `entries` convention
 // part to the ADR-0099 data.pitfalls sidecar: it splits the part on top-level
-// `## ` headings outside fenced code into {title, body} entries, writes
-// docs/pitfalls.yaml atomically, deletes the part (and its now-empty dir), and
-// prints one provenance line per created entry plus a review instruction. An
+// `## ` headings outside fenced code into {title, body} entries, validates and
+// writes docs/pitfalls.yaml atomically, then deletes the part (and its now-empty
+// dir), and prints one provenance line per created entry plus a review instruction. An
 // absent part is a no-op - so a re-run after a prior split (the part gone, the
 // sidecar present) does nothing.
 func applyPitfallsData(root string, out io.Writer) error {
@@ -30,8 +32,18 @@ func applyPitfallsData(root string, out io.Writer) error {
 		return err
 	}
 	entries := splitPitfallEntries(string(data))
+	if len(entries) == 0 {
+		return errors.New("pitfalls-data: no top-level entries to migrate")
+	}
+	sidecar, err := renderPitfalls(entries)
+	if err != nil {
+		return err
+	}
+	if err := validatePitfallsSidecar(sidecar, entries); err != nil {
+		return err
+	}
 	sidecarPath := filepath.Join(awfDir, "docs", "pitfalls.yaml")
-	if err := manifest.WriteFileAtomic(sidecarPath, []byte(renderPitfallsSidecar(entries))); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error the test root bypasses
+	if err := manifest.WriteFileAtomic(sidecarPath, sidecar); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error the test root bypasses
 		return err
 	}
 	if err := os.Remove(partPath); err != nil { // coverage-ignore: removal of the part we just read; fails only on a permission fault root bypasses
@@ -39,12 +51,6 @@ func applyPitfallsData(root string, out io.Writer) error {
 	}
 	_ = os.Remove(filepath.Dir(partPath)) // drop the now-empty dir; a non-empty dir is left as-is
 	sidecarRel := path.Join(config.DirName, "docs", "pitfalls.yaml")
-	if len(entries) == 0 {
-		// No `## ` heading to split on: the part is removed but its prose is not
-		// carried into the sidecar. Flag it rather than let the deletion be silent.
-		fmt.Fprintf(out, "pitfalls-data: no `## ` headings found; wrote an empty %s and removed the part; its prior content is recoverable from git history\n", sidecarRel)
-		return nil
-	}
 	for _, e := range entries {
 		fmt.Fprintf(out, "pitfalls-data: split entry %q\n", e.title)
 	}
@@ -95,27 +101,59 @@ func trimBlankEdges(lines []string) []string {
 	return lines
 }
 
-// renderPitfallsSidecar emits the data.pitfalls YAML: each title as a
-// double-quoted scalar, each body as an 8-space-indented block scalar, domains
-// and related left for the adopter to add. An empty entry set renders an empty
-// list so the sidecar is still valid.
-func renderPitfallsSidecar(entries []pitfallSplit) string {
-	if len(entries) == 0 {
-		return "data:\n  pitfalls: []\n"
+type pitfallsSidecar struct {
+	Data struct {
+		Pitfalls []pitfallSidecarEntry `yaml:"pitfalls"`
+	} `yaml:"data"`
+}
+
+type pitfallSidecarEntry struct {
+	Title string      `yaml:"title"`
+	Body  pitfallBody `yaml:"body"`
+}
+
+type pitfallBody string
+
+// MarshalYAML uses a quoted scalar so leading Markdown indentation cannot
+// affect the YAML block indentation chosen by yaml.v3.
+func (b pitfallBody) MarshalYAML() (interface{}, error) {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: string(b), Style: yaml.DoubleQuotedStyle}, nil
+}
+
+var renderPitfalls = renderPitfallsSidecar
+
+// renderPitfallsSidecar serializes the data.pitfalls YAML and decodes it again
+// before destructive cleanup can proceed.
+func renderPitfallsSidecar(entries []pitfallSplit) ([]byte, error) {
+	var sidecar pitfallsSidecar
+	for _, entry := range entries {
+		sidecar.Data.Pitfalls = append(sidecar.Data.Pitfalls, pitfallSidecarEntry{
+			Title: entry.title,
+			Body:  pitfallBody(strings.Join(entry.body, "\n")),
+		})
 	}
-	var b strings.Builder
-	b.WriteString("data:\n  pitfalls:\n")
-	for _, e := range entries {
-		esc := strings.ReplaceAll(e.title, `\`, `\\`)
-		esc = strings.ReplaceAll(esc, `"`, `\"`)
-		fmt.Fprintf(&b, "    - title: \"%s\"\n      body: |\n", esc)
-		for _, ln := range e.body {
-			if strings.TrimSpace(ln) == "" {
-				b.WriteString("\n")
-			} else {
-				b.WriteString("        " + ln + "\n")
-			}
+	b, err := yaml.Marshal(sidecar)
+	if err != nil { // coverage-ignore: the typed sidecar contains only strings and yaml.Marshal cannot reject it
+		return nil, err
+	}
+	if err := validatePitfallsSidecar(b, entries); err != nil { // coverage-ignore: yaml.Marshal of the validated typed model cannot emit a different or invalid model
+		return nil, err
+	}
+	return b, nil
+}
+
+func validatePitfallsSidecar(b []byte, entries []pitfallSplit) error {
+	var decoded pitfallsSidecar
+	if err := yaml.Unmarshal(b, &decoded); err != nil {
+		return fmt.Errorf("parse rendered pitfalls sidecar: %w", err)
+	}
+	if len(decoded.Data.Pitfalls) != len(entries) {
+		return fmt.Errorf("validate rendered pitfalls sidecar: got %d entries, want %d", len(decoded.Data.Pitfalls), len(entries))
+	}
+	for i, entry := range entries {
+		if decoded.Data.Pitfalls[i].Title != entry.title || string(decoded.Data.Pitfalls[i].Body) != strings.Join(entry.body, "\n") {
+			return fmt.Errorf("validate rendered pitfalls sidecar: entry %d differs", i)
 		}
 	}
-	return b.String()
+	return nil
 }
