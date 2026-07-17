@@ -27,6 +27,12 @@ data:
               the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped
               to `Implemented` in the final commit that freezes it, with implementation findings
               recorded in the Notes section alongside the freeze
+        - name: invariant-retirement-phase-order
+          description: >-
+              when an ADR carries `supersedes-invariant:` tokens, every pre-flip phase keeps the
+              predecessor proof markers valid; marker removal or replacement lands in the same commit
+              that flips the successor to `Implemented`, because retirement is inactive while the
+              successor remains `Proposed`
     docCurrencyItems:
         - check: docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
         - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain

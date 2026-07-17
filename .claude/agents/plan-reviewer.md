@@ -74,6 +74,9 @@ Apply all five lenses to every plan:
 **lifecycle-freeze**: the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped to `Implemented` in the final commit that freezes it, with implementation findings recorded in the Notes section alongside the freeze
 
 
+**invariant-retirement-phase-order**: when an ADR carries `supersedes-invariant:` tokens, every pre-flip phase keeps the predecessor proof markers valid; marker removal or replacement lands in the same commit that flips the successor to `Implemented`, because retirement is inactive while the successor remains `Proposed`
+
+
 
 ## Doc-currency checklist
 

@@ -41,8 +41,8 @@
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
-      "configHash": "sha256:4e4b885351a5d0e4f69b69edfcbec126c65d9e0ab620881be36df132420a3deb",
-      "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
+      "configHash": "sha256:2dc3506bed3d4e430255306d647e8fddb5ad82d51551883b8a08577f832de7ac",
+      "outputHash": "sha256:e37311b6abcd01e18fe35f6c18047c2c7ab6f1e667dc7d38d4607ea409fb94cd"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -251,8 +251,8 @@
     ".pi/skills/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
-      "configHash": "sha256:2f11a55d9708ea66bec6fc980e04f30cd32cd6aa576ecc785756f4ffc6518677",
-      "outputHash": "sha256:0a3b24f0fcf85013add8a3481befe7e4b0a527123097ba3106fe206db3378487"
+      "configHash": "sha256:71cac17d92cf5ab619136528a1f34832df282847cfc842c39a02c31acfeb274c",
+      "outputHash": "sha256:e37311b6abcd01e18fe35f6c18047c2c7ab6f1e667dc7d38d4607ea409fb94cd"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
