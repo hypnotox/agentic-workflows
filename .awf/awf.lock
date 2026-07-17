@@ -390,8 +390,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:f9e4fd0b01ab248d45e0c51a281fb4181bed9c4af699edc97e00a428899bff03",
-      "configHash": "sha256:71bfd295f4809ad20c8f6d8d113bec7b6c1a8e4864caeb9c443227501b41efef",
-      "outputHash": "sha256:d9cea2f652ac10ec27960eafb510ed22e0922b5501722b44792e286cb605c632"
+      "configHash": "sha256:96ace0c729047922875b9282d7d0f4c4e742ce44b19b96c0ca8c896a5fd24081",
+      "outputHash": "sha256:b63a62770cc416f3d3db368f638507f01055786331b47beace21bbafe5674a3d"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

@@ -127,11 +127,15 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	if stripAt < 0 {
 		t.Fatal("container manager missing the @ts-nocheck strip stage")
 	}
+	cpAt := strings.Index(manager, "cp -a /source/. /workspace/repo/")
+	if cpAt < 0 {
+		t.Fatal("container manager missing the source copy stage")
+	}
 	tscAt := strings.Index(manager, "tsc -p tools/pi-extension-test/tsconfig.json")
 	if tscAt < 0 {
 		t.Fatal("container manager missing the tsc invocation")
 	}
-	if stripAt > tscAt {
-		t.Error("the @ts-nocheck strip must run before tsc")
+	if cpAt >= stripAt || stripAt >= tscAt {
+		t.Error("the @ts-nocheck strip must run after the source copy and before tsc")
 	}
 }
