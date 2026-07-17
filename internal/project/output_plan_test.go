@@ -20,8 +20,10 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	seen := map[string]bool{}
 	var reservation, cref bool
 	for _, n := range op.Nodes {
+		seen[n.Path] = true
 		if n.Reservation && n.Path == ".pi/skills/example-mine/SKILL.md" {
 			reservation = true
 		}
@@ -40,6 +42,13 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	if !reservation || !cref {
 		t.Fatalf("plan missing reservation=%v config-reference=%v: %#v", reservation, cref, op.Nodes)
 	}
+	// Catalog/local, target-owned, neutral singleton, generated index/domain,
+	// and generated reference producers all appear in the one plan.
+	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/ACTIVE.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+		if !seen[path] {
+			t.Errorf("plan missing producer class path %q", path)
+		}
+	}
 	files := op.writeFiles()
 	for _, f := range files {
 		if f.Path == ".pi/skills/example-mine/SKILL.md" {
@@ -57,6 +66,8 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
 	} {
 		if err := target.validate(); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
@@ -95,17 +106,29 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	var sharedHash string
 	for _, n := range op.Nodes {
 		if n.Path == ".pi/extensions/awf-subagents/index.ts" {
 			if got := strings.Join(n.Declarers, ","); got != "pi,second-pi" {
 				t.Fatalf("shared declarers = %q", got)
 			}
-			if n.file.ConfigHash == n.Recipe.ConfigHash {
-				t.Fatal("shared declarers were not folded into drift hash")
+			if n.file.ConfigHash == n.Recipe.ConfigHash || len(n.DeclarerProjections) != 2 {
+				t.Fatal("shared declarer descriptors were not folded into drift hash")
 			}
+			sharedHash = n.file.ConfigHash
 		}
 	}
-	p.Targets[1].Outputs[0].Provenance = render.HTMLComment
+	p.Targets[1].Name = "renamed-pi"
+	op, err = p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range op.Nodes {
+		if n.Path == ".pi/extensions/awf-subagents/index.ts" && n.file.ConfigHash == sharedHash {
+			t.Fatal("declarer descriptor identity did not change drift hash")
+		}
+	}
+	p.Targets[1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
 	if _, err := p.OutputPlan(); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}

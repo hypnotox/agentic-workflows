@@ -3,12 +3,16 @@ package project
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // OutputPolicy declares lifecycle behavior for a planned path. It is data on the
@@ -35,13 +39,14 @@ type OutputRecipe struct {
 // either a write or a reservation; reservations protect local artifacts but are
 // never written or entered in the lock manifest.
 type OutputNode struct {
-	Path        string
-	Recipe      OutputRecipe
-	Policy      OutputPolicy
-	Declarers   []string
-	DependsOn   []string
-	Reservation bool
-	file        *RenderedFile
+	Path                string
+	Recipe              OutputRecipe
+	Policy              OutputPolicy
+	Declarers           []string
+	DeclarerProjections []string
+	DependsOn           []string
+	Reservation         bool
+	file                *RenderedFile
 }
 
 // OutputPlan is the single desired-output authority consumed by rendering,
@@ -71,26 +76,75 @@ func declaredPolicy(kind string, regen bool) OutputPolicy {
 	return policy
 }
 
-// OutputPlan compiles all output producers. Generated nodes are constructed in
-// dependency order; config reference observes ordinary/domain metadata but is
-// deliberately excluded from its own input.
-func (p *Project) OutputPlan() (*OutputPlan, error) {
-	// Validate every descriptor and reject target-owned collisions before any
-	// template is rendered. This is the planner's precondition boundary.
-	seen := map[string]OutputRecipe{}
+// targetOutputDeclaration is a pre-render, normalized descriptor for an
+// extension output. It lets the planner settle compatibility before Execute.
+type targetOutputDeclaration struct {
+	recipe      OutputRecipe
+	declarers   []string
+	projections []string
+	canonical   string
+}
+
+// targetOutputDeclarations reads recipe inputs but never executes a template.
+// Thus a collision is reported before any producer renders its output.
+func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration, error) {
+	eff, err := p.effectiveSkills()
+	if err != nil {
+		return nil, err
+	}
+	p.effSkills = eff
+	out := map[string]targetOutputDeclaration{}
 	for _, t := range p.Targets {
 		if err := t.validate(); err != nil {
 			return nil, err
 		}
 		for _, o := range t.Outputs {
-			r := OutputRecipe{TemplateID: o.TemplateID, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
-			if prior, ok := seen[o.Path]; ok && prior != r {
+			src, err := fs.ReadFile(templates.FS, o.TemplateID)
+			if err != nil {
+				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
+			}
+			expanded, err := render.ExpandIncludes(string(src), templates.FS)
+			if err != nil { // coverage-ignore: embedded target-output templates are include-well-formed; render package tests own malformed includes
+				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
+			}
+			stripped, err := render.StripAuthoringComments(expanded)
+			if err != nil { // coverage-ignore: embedded target-output templates have well-formed authoring comments; render package tests malformed input
+				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
+			}
+			configHash, err := p.artifactConfigHash(stripped, config.Sidecar{}, nil, t)
+			if err != nil { // coverage-ignore: no target output has parts and its descriptor projection is marshalable
+				return nil, err
+			}
+			recipe := OutputRecipe{TemplateID: o.TemplateID, TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: configHash, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
+			decl := out[o.Path]
+			if decl.canonical != "" && decl.recipe != recipe {
 				return nil, fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", o.Path)
 			}
-			seen[o.Path] = r
+			if decl.canonical == "" {
+				decl.recipe, decl.canonical = recipe, t.Name
+			}
+			decl.declarers = append(decl.declarers, t.Name)
+			decl.projections = append(decl.projections, targetDescriptorProjection(t))
+			out[o.Path] = decl
 		}
 	}
-	base, err := p.renderAllBase()
+	for path, decl := range out {
+		slices.Sort(decl.declarers)
+		slices.Sort(decl.projections)
+		out[path] = decl
+	}
+	return out, nil
+}
+
+// OutputPlan compiles all output producers. Generated nodes are constructed in
+// dependency order; config reference observes ordinary/domain metadata but is
+// deliberately excluded from its own input.
+func (p *Project) OutputPlan() (*OutputPlan, error) {
+	declarations, err := p.targetOutputDeclarations()
+	if err != nil {
+		return nil, err
+	}
+	base, err := p.renderAllBase(declarations)
 	if err != nil {
 		return nil, err
 	}
@@ -107,14 +161,20 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			if plan.Nodes[i].Path != f.Path { // coverage-ignore: unique base paths make the duplicate-only branch unreachable
 				continue
 			}
-			if plan.Nodes[i].Recipe != recipe {
+			if plan.Nodes[i].Recipe != recipe { // coverage-ignore: target-output recipes are preflighted and all other base producer paths are unique
 				return fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", f.Path)
 			}
+			// coverage-ignore: target-output duplicates coalesce before rendering and all other base producer paths are unique.
 			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, f.Declarer)
+			plan.Nodes[i].DeclarerProjections = append(plan.Nodes[i].DeclarerProjections, f.DeclarerProjection)
 			return nil
 		}
 		copy := f
-		plan.Nodes = append(plan.Nodes, OutputNode{Path: f.Path, Recipe: recipe, Policy: f.Policy, Declarers: []string{f.Declarer}, DependsOn: deps, file: &copy})
+		node := OutputNode{Path: f.Path, Recipe: recipe, Policy: f.Policy, Declarers: []string{f.Declarer}, DeclarerProjections: []string{f.DeclarerProjection}, DependsOn: deps, file: &copy}
+		if decl, ok := declarations[f.Path]; ok {
+			node.Declarers, node.DeclarerProjections = decl.declarers, decl.projections
+		}
+		plan.Nodes = append(plan.Nodes, node)
 		return nil
 	}
 	for _, f := range base {
@@ -182,10 +242,12 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 	slices.SortFunc(plan.Nodes, func(a, b OutputNode) int { return strings.Compare(a.Path, b.Path) })
 	for i := range plan.Nodes {
 		slices.Sort(plan.Nodes[i].Declarers)
+		slices.Sort(plan.Nodes[i].DeclarerProjections)
 		slices.Sort(plan.Nodes[i].DependsOn)
 		if plan.Nodes[i].file != nil {
-			// Membership is observable even for byte-identical shared output.
-			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].Declarers, "\\x00")))
+			// Membership and each normalized declarer descriptor are observable
+			// even when a coalesced output's bytes are identical.
+			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].DeclarerProjections, "\\x00")))
 		}
 	}
 	return plan, nil

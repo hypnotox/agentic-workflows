@@ -17,7 +17,7 @@ func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []s
 		t.Fatal(err)
 	}
 	var details []string
-	for _, d := range p.checkDeadSkillRefs(rendered, RenderedFile{}, nil, p.effSkills) {
+	for _, d := range p.checkDeadSkillRefs(rendered, p.effSkills) {
 		if d.Kind != "dead-skill-reference" {
 			t.Fatalf("unexpected drift kind %q", d.Kind)
 		}

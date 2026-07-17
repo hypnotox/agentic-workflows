@@ -16,6 +16,57 @@ import (
 
 // configHashOf re-opens the project and returns the per-target ConfigHash of the
 // rendered file at rel.
+// invariant: output-policy-explicit
+func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The .ts suffix is irrelevant: the declared Markdown policy selects
+	// frontmatter validation, link scanning, and skill-reference scanning.
+	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
+	testsupport.WriteFile(t, filepath.Join(root, frontmatter.Path), frontmatter.Content)
+	lock := &manifest.Lock{Files: map[string]manifest.Entry{"misleading.ts": {OutputHash: manifest.Hash([]byte(frontmatter.Content))}}}
+	if drift := p.checkLockedFiles(lock, map[string]RenderedFile{frontmatter.Path: frontmatter}); len(drift) != 1 || drift[0].Kind != "invalid-frontmatter" {
+		t.Fatalf("frontmatter policy drift = %#v", drift)
+	}
+	link := RenderedFile{Path: "misleading.toml", Content: "[missing](no/such/file.md)", Policy: OutputPolicy{ScanReferences: true}}
+	if drift := p.checkDeadRefs([]RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
+		t.Fatalf("link policy drift = %#v", drift)
+	}
+	skill := RenderedFile{Path: "misleading.ts", Content: "example-tdd", Policy: OutputPolicy{ScanSkillReferences: true}}
+	if drift := p.checkDeadSkillRefs([]RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
+		t.Fatalf("skill-reference policy drift = %#v", drift)
+	}
+
+	// Conversely a Markdown-looking path remains unscanned when its declared
+	// policy says it is plain output.
+	plain := RenderedFile{Path: "misleading.md", Content: "[missing](no/such/file.md) example-tdd"}
+	if drift := p.checkDeadRefs([]RenderedFile{plain}); len(drift) != 0 {
+		t.Fatalf("unscanned link drift = %#v", drift)
+	}
+	if drift := p.checkDeadSkillRefs([]RenderedFile{plain}, map[string]bool{}); len(drift) != 0 {
+		t.Fatalf("unscanned skill drift = %#v", drift)
+	}
+
+	// Regeneration and local validation likewise follow policy, not a generated
+	// template ID or conventional skill location.
+	testsupport.WriteFile(t, filepath.Join(root, "misleading/SKILL.md"), "old\n")
+	regen := RenderedFile{Path: "misleading/SKILL.md", Content: "new\n", Policy: OutputPolicy{Regenerate: true}}
+	lock = &manifest.Lock{Files: map[string]manifest.Entry{regen.Path: {}}}
+	if drift := p.checkLockedFiles(lock, map[string]RenderedFile{regen.Path: regen}); len(drift) != 1 || drift[0].Kind != "stale" {
+		t.Fatalf("regeneration policy drift = %#v", drift)
+	}
+	reservation := &OutputPlan{Nodes: []OutputNode{{Path: "local.unknown", Reservation: true, Policy: OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}, Recipe: OutputRecipe{Encoder: MarkdownAgentDialect}}}}
+	var localErr error
+	p.localReservations(reservation, func(_ string, err error) { localErr = err })
+	if localErr == nil || !strings.Contains(localErr.Error(), "absent") {
+		t.Fatalf("local validation policy error = %v", localErr)
+	}
+}
+
 func configHashOf(t *testing.T, root, rel string) string {
 	t.Helper()
 	p, err := Open(root)

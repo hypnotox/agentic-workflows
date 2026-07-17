@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -16,6 +17,7 @@ type AgentDialect string
 const (
 	MarkdownAgentDialect AgentDialect = "markdown"
 	TOMLAgentDialect     AgentDialect = "toml"
+	PlainAgentDialect    AgentDialect = "plain"
 )
 
 // Capability is an awf-owned template capability. It is deliberately closed:
@@ -43,6 +45,23 @@ func (t Target) hasCapability(c Capability) bool {
 	return slices.Contains(t.Capabilities, c)
 }
 
+// targetDescriptorProjection is stable across declaration ordering and includes
+// identity plus every descriptor field. It is hash input for a coalesced node.
+func targetDescriptorProjection(t Target) string {
+	caps := slices.Clone(t.Capabilities)
+	slices.Sort(caps)
+	outputs := slices.Clone(t.Outputs)
+	slices.SortFunc(outputs, func(a, b TargetOutput) int {
+		return strings.Compare(fmt.Sprintf("%#v", a), fmt.Sprintf("%#v", b))
+	})
+	return fmt.Sprintf("%#v", struct {
+		Name, SkillDir, AgentDir, AgentSuffix, BridgeFile, BridgeTemplate string
+		AgentDialect                                                      AgentDialect
+		Capabilities                                                      []Capability
+		Outputs                                                           []TargetOutput
+	}{t.Name, t.SkillDir, t.AgentDir, t.AgentSuffix, t.BridgeFile, t.BridgeTemplate, t.AgentDialect, caps, outputs})
+}
+
 func (t Target) validate() error {
 	known := map[Capability]bool{CapabilitySubagentTools: true}
 	for _, c := range t.Capabilities {
@@ -60,15 +79,31 @@ func (t Target) validate() error {
 		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
 		}
-		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect {
+		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect && out.Encoder != PlainAgentDialect {
 			return fmt.Errorf("target %q output %q has unknown encoder %q", t.Name, out.Path, out.Encoder)
-		}
-		if out.Provenance != render.HTMLComment && out.Provenance != render.TOMLComment && out.Provenance != render.SlashComment {
-			return fmt.Errorf("target %q output %q has invalid provenance", t.Name, out.Path)
 		}
 		if !out.PolicyDeclared {
 			return fmt.Errorf("target %q output %q has no declared policy", t.Name, out.Path)
 		}
+		if err := validateOutputCompatibility(out); err != nil {
+			return fmt.Errorf("target %q output %q: %w", t.Name, out.Path, err)
+		}
+	}
+	return nil
+}
+
+// validateOutputCompatibility rejects descriptor combinations that cannot
+// describe one coherent encoded output. Policy is deliberately independent of
+// the path and template spelling, but not of an encoder that cannot support it.
+func validateOutputCompatibility(out TargetOutput) error {
+	validProvenance := (out.Encoder == MarkdownAgentDialect && out.Provenance == render.HTMLComment) ||
+		(out.Encoder == TOMLAgentDialect && out.Provenance == render.TOMLComment) ||
+		(out.Encoder == PlainAgentDialect && out.Provenance == render.SlashComment)
+	if !validProvenance {
+		return fmt.Errorf("encoder %q is incompatible with provenance", out.Encoder)
+	}
+	if out.Encoder == PlainAgentDialect && (out.Policy.ValidateFrontmatter || out.Policy.ScanReferences || out.Policy.ScanSkillReferences) {
+		return errors.New("plain encoder is incompatible with frontmatter or Markdown reference policy")
 	}
 	return nil
 }
@@ -149,8 +184,8 @@ var piTarget = Target{
 	AgentDialect: MarkdownAgentDialect,
 	Capabilities: []Capability{CapabilitySubagentTools},
 	Outputs: []TargetOutput{
-		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Encoder: MarkdownAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Encoder: MarkdownAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 	},
 }
 

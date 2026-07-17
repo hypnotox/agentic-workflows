@@ -432,8 +432,8 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 	drift = append(drift, ud...)
 
-	drift = append(drift, p.checkDeadRefs(files, RenderedFile{}, nil)...)
-	drift = append(drift, p.checkDeadSkillRefs(files, RenderedFile{}, nil, p.effSkills)...)
+	drift = append(drift, p.checkDeadRefs(files)...)
+	drift = append(drift, p.checkDeadSkillRefs(files, p.effSkills)...)
 
 	planDrift, err := p.checkPlans()
 	if err != nil {
@@ -540,15 +540,13 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 // the maximal word run after it.
 // invariant: skill-ref-dead-fails
 // invariant: skill-ref-unknown-ignored
-func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile, effective map[string]bool) []manifest.Drift {
-	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
+func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]bool) []manifest.Drift {
+	scan := make([]RenderedFile, 0, len(files))
 	for _, f := range files {
 		if f.Policy.ScanSkillReferences {
 			scan = append(scan, f)
 		}
 	}
-	scan = append(scan, amd)
-	scan = append(scan, dds...)
 	re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9_-])` + regexp.QuoteMeta(p.Cfg.Prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
 	var drift []manifest.Drift
 	for _, f := range scan {
@@ -567,17 +565,15 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds
 
 // checkDeadRefs runs the dead-reference scan (inv: dead-reference-gated): every
 // awf-managed rendered markdown file's inline links must resolve file-relative on
-// disk. The generated ACTIVE.md and domain docs are in scope; the CLAUDE.md bridge
-// is not.
-func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile) []manifest.Drift {
-	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
+// disk. Generated nodes use the same declared policy; bridges remain out of
+// scope through theirs.
+func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
+	scan := make([]RenderedFile, 0, len(files))
 	for _, f := range files {
 		if f.Policy.ScanReferences {
 			scan = append(scan, f)
 		}
 	}
-	scan = append(scan, amd)
-	scan = append(scan, dds...)
 	var drift []manifest.Drift
 	for _, f := range scan {
 		base := filepath.Dir(f.Path)

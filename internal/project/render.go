@@ -56,9 +56,10 @@ type RenderedFile struct {
 	// template-name and filename inference at plan consumers.
 	Policy OutputPolicy
 	// Declarer identifies the producer requesting this output.
-	Declarer   string
-	Encoder    AgentDialect
-	Provenance render.CommentStyle
+	Declarer           string
+	DeclarerProjection string
+	Encoder            AgentDialect
+	Provenance         render.CommentStyle
 	// assembled is the executed template source (post section-overlay, pre
 	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
@@ -435,6 +436,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		}
 		if spec.target.Name != "" {
 			rf.Declarer = spec.target.Name
+			rf.DeclarerProjection = targetDescriptorProjection(spec.target)
 			rf.Provenance = options.bannerStyle
 			if spec.encode != nil {
 				rf.Encoder = spec.target.AgentDialect
@@ -442,7 +444,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 				rf.Encoder = MarkdownAgentDialect
 			}
 		} else {
-			rf.Declarer, rf.Encoder, rf.Provenance = rf.TemplateID, MarkdownAgentDialect, render.HTMLComment
+			rf.Declarer, rf.DeclarerProjection, rf.Encoder, rf.Provenance = rf.TemplateID, rf.TemplateID, MarkdownAgentDialect, render.HTMLComment
 		}
 		out = append(out, rf)
 	}
@@ -451,10 +453,10 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func (p *Project) renderAllBase() ([]RenderedFile, error) {
+func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration) ([]RenderedFile, error) {
 	var out []RenderedFile
 	eff, err := p.effectiveSkills()
-	if err != nil {
+	if err != nil { // coverage-ignore: OutputPlan has already resolved the same enabled sidecars
 		return nil, err
 	}
 	p.effSkills = eff
@@ -500,6 +502,9 @@ func (p *Project) renderAllBase() ([]RenderedFile, error) {
 			out = append(out, rfs...)
 		}
 		for _, targetOutput := range t.Outputs {
+			if targetOutputs[targetOutput.Path].canonical != t.Name {
+				continue
+			}
 			target := t
 			data := p.data(config.Sidecar{})
 			for key, value := range t.targetTemplateData() {
@@ -510,11 +515,12 @@ func (p *Project) renderAllBase() ([]RenderedFile, error) {
 					bannerStyle: targetOutput.Provenance,
 					target:      &target,
 				})
-			if err != nil {
+			if err != nil { // coverage-ignore: targetOutputDeclarations read this same embedded template before render.
 				return nil, err
 			}
 			rf.Policy = targetOutput.Policy
 			rf.Declarer = t.Name
+			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
 			out = append(out, rf)
