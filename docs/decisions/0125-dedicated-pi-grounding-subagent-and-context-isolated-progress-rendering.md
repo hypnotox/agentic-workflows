@@ -58,15 +58,22 @@ in-place change to that Implemented record.
    `supersedes: ADR-0123#2`
    `supersedes-invariant: ADR-0123#pi-subagent-public-contract`
 
-2. Give `subagent_grounding` the exploration role's exact closed tool allowlist:
-   `read`, `grep`, `find`, `ls`, and `bash`. Its fixed system prompt makes it a
-   no-mutation grounding checker: verify the supplied design premises against
-   source, identify unstated assumptions and edge cases, assess ADR/plan/effort
-   altitude, check Accepted or Implemented ADR and invariant fit, and return
-   grounded confidence-classified findings. Pi brainstorming dispatches its
-   single grounding check through this tool. General investigations and large
-   coupling audits continue to use `subagent_explore`; all non-Pi targets keep
-   their target-native grounding wording.
+2. Give `subagent_grounding` the exploration role's exact closed built-in tool
+   allowlist: `read`, `grep`, `find`, `ls`, and `bash`. Every child allowlist
+   excludes all four public subagent tools, every other extension tool, and
+   recursive delegation. Its fixed system prompt makes it a no-mutation
+   grounding checker: verify the supplied design premises against source,
+   identify unstated assumptions and edge cases, assess ADR/plan/effort
+   altitude, and check Accepted or Implemented ADR and invariant fit. It returns
+   findings as
+   `{kind: open-question | possible-issue, topic, detail, grounding, confidence:
+   verified | interpreted | unverified}`, where verified means mechanically
+   confirmed against source, interpreted requires judgment, and unverified
+   could not be confirmed. Pi brainstorming dispatches its single grounding
+   check through this tool. General investigations and large coupling audits
+   continue to use `subagent_explore`; all non-Pi targets keep their
+   target-native grounding wording.
+   `supersedes: ADR-0123#4`
    `supersedes: ADR-0123#5`
    `supersedes-invariant: ADR-0123#pi-explicit-workflow-dispatch`
 
@@ -83,30 +90,47 @@ in-place change to that Implemented record.
    of the runner contract.
    `supersedes: ADR-0123#3`
 
-4. Retained display events cover completed child assistant turns and child tool
-   call starts and completions. They do not stream token-by-token assistant
-   prose and do not retain full tool results. This supplies useful stable
-   progress without excessive redraws or an unbounded data channel. The runner
-   emits the structured event window and omission count through partial tool
-   `details`. On completion, only the final child report becomes tool
-   `content`; retained activity, diagnostics, and usage stay in final
-   `details`. The extension never appends progress as custom session messages.
+4. Retained progress uses one closed discriminated `DisplayEvent` union:
+   - assistant completion: sequence, `kind: "assistant"`, and bounded text;
+   - tool start: sequence, `kind: "tool-start"`, child tool-call ID, tool name,
+     and a bounded serialized argument preview;
+   - tool completion: sequence, `kind: "tool-end"`, child tool-call ID, tool
+     name, and error status.
+
+   Sequence numbers increase monotonically in child JSON observation order.
+   Tool starts and completions correlate by child tool-call ID; an unmatched
+   event remains displayable and is not synthesized or reordered. Full tool
+   results are excluded. The 2 KiB event cap includes every retained field and
+   its explicit truncation marker. Events cover completed child assistant turns
+   and child tool call starts and completions, not token-by-token assistant
+   prose. This supplies useful stable progress without excessive redraws or an
+   unbounded data channel. The runner emits the structured event window and
+   omission count through partial tool `details`. On completion, only the final
+   child report becomes tool `content`; retained activity, diagnostics, and
+   usage stay in final `details`. The extension never appends progress as
+   custom session messages or standalone session entries.
 
 5. All four public tools use shared `renderCall` and `renderResult` behavior.
    The collapsed inline card shows role, running/completed/failed/aborted state,
-   recent retained activity, omission state, and available usage. The expanded
-   Ctrl+O view shows the task, all retained child tool calls and completed
-   assistant turns, the final report rendered as Markdown, bounded diagnostics,
-   and usage. Rendering is presentation-only: non-TUI modes still return the
-   ordinary final tool result, and a renderer defect cannot alter child
-   execution or model-visible content.
+   recent retained activity, omission state, and usage when available. The
+   expanded tool view shows the task, all retained child tool calls and
+   completed assistant turns, the final report rendered as Markdown, bounded
+   diagnostics when present, and usage when available. Its expansion hint uses
+   Pi's `keyHint("app.tools.expand", "to expand")` rather than a hardcoded key.
+   Rendering is presentation-only: non-TUI modes still return the ordinary
+   final tool result, and a renderer defect cannot alter child execution or
+   model-visible content.
 
 6. Once child execution starts, expected child exit, stop-reason, malformed
-   event, and cancellation failures return `isError: true` with bounded final
-   content and the retained progress details instead of escaping as thrown tool
-   errors. Validation and setup failures that occur before useful child state
-   exists may still throw. Implementation commit-policy violations remain hard
-   errors, retain their before/after git evidence, and are never auto-reverted.
+   event, and cancellation failures return bounded failure content and details
+   carrying a private failure marker instead of escaping as thrown tool errors.
+   A registered `tool_result` handler recognizes only marked results from these
+   four tools and patches `isError: true`, the Pi-supported result middleware
+   seam. The Pi 0.80.9 runtime test must prove that content, details, and error
+   state all survive this path. Validation and setup failures that occur before
+   useful child state exists may still throw. Implementation commit-policy
+   violations use the same marked-result path, retain their before/after git
+   evidence, and are never auto-reverted.
 
 7. Extend the mandatory Pi-extension lane and Go rendering tests to prove the
    exact four-tool contract, dedicated grounding prompt and allowlist, Pi-only
@@ -114,9 +138,17 @@ in-place change to that Implemented record.
    binding, minimum-Pi partial-details behavior, structured event ordering and
    bounds, omission counts, collapsed and expanded render states, context
    isolation, failure-detail retention, and all existing process and
-   implementation boundaries. Update authored working guidance, identity,
-   architecture, testing, changelog, domain current state, and generated adopter
-   copies in the implementation commits.
+   implementation boundaries. Every backed invariant below receives a matching
+   `// invariant: <slug>` proof annotation under `**/*_test.go`; proofs formerly
+   carrying the two retired ADR-0123 slugs move to the successor slugs where
+   their tests now prove the revised semantics. Affected templates preserve
+   `missingkey=zero` publication safety: empty variables render coherent generic
+   prose and no unresolved or no-value token. Update authored working guidance,
+   identity, architecture, testing, changelog, domain current state, and
+   generated adopter copies in the implementation commits. The final lifecycle
+   commit flips this ADR to Implemented, runs `./x sync`, and commits regenerated
+   `ACTIVE.md` and domain indexes. No `docs/decisions/README.md` index row is
+   owed because ADR-0005 defines it as a how-to while `ACTIVE.md` is the index.
 
 ## Invariants
 
@@ -130,9 +162,11 @@ in-place change to that Implemented record.
   activity is carried only in bounded tool details and never in parent
   model-visible content or custom session messages; final content contains only
   the child report or bounded failure summary.
-- `invariant: pi-subagent-progress-rendering`: every public subagent tool renders
-  bounded live and final inline activity, omission state, status, diagnostics,
-  and usage from the same structured details without changing execution.
+- `invariant: pi-subagent-progress-rendering`: every public subagent tool's
+  collapsed view renders status, recent bounded activity, omission state, and
+  available usage; its expanded view additionally renders task, retained
+  activity, final report, present diagnostics, and available usage from the
+  same structured details without changing execution.
 - `invariant: pi-subagent-failure-details`: expected failures after child start
   preserve bounded progress and diagnostics in an error result while retaining
   cancellation, cleanup, and implementation-policy behavior.
@@ -157,9 +191,13 @@ in-place change to that Implemented record.
   transcript. Explicit omission counts prevent it from implying completeness.
 - Returning structured error results after child start preserves diagnostics
   but requires the runner and tool wrappers to distinguish setup exceptions
-  from expected execution failures.
+  from expected execution failures and adds a narrowly scoped result-middleware
+  hook.
 - Existing Pi adopters receive a fourth model-callable tool and changed
-  target-specific brainstorming guidance on sync. Other targets are unchanged.
+  target-specific brainstorming guidance on sync. Its schema consumes more of
+  the parent prompt, and grounding overlaps semantically with exploration. Fixed
+  role guidance and exact dispatch tests mitigate routing confusion. Other
+  targets are unchanged.
 
 ## Alternatives Considered
 
@@ -169,5 +207,6 @@ in-place change to that Implemented record.
 | Add `grounding` to `subagent_review.kind` | Grounding validates a brainstorm's premises and altitude; it is exploratory, not governed artifact review. |
 | Show progress in a persistent widget | Keeps details out of context but detaches activity from the owning invocation and complicates multiple calls. |
 | Append progress messages and filter them in the `context` event | Looks native in the timeline but adds persisted session noise and a context-leakage risk. |
+| Use TUI-only `appendEntry` with `registerEntryRenderer` | Avoids model context, but creates persisted standalone entries, cannot naturally update the owning tool row, and complicates streaming replacement and cleanup. |
 | Stream child prose token by token | More immediate, but unstable partial prose and redraw churn add complexity without improving workflow decisions. |
 | Retain the full child transcript in details | Makes expansion complete but violates the fixed bounded-retention and no-secondary-transcript boundary. |
