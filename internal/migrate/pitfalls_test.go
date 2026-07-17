@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -117,8 +118,12 @@ func TestPitfallsDataRejectsInvalidSerializationBeforeDeletion(t *testing.T) {
 		return []byte("not: [valid"), nil
 	})
 
-	if err := applyPitfallsData(root, io.Discard); err == nil {
+	err := applyPitfallsData(root, io.Discard)
+	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after invalid serialization")
+	}
+	if !strings.Contains(err.Error(), "pitfalls-data: validate rendered pitfalls sidecar:") {
+		t.Errorf("validation error lacks context: %v", err)
 	}
 	got, err := os.ReadFile(part)
 	if err != nil {
@@ -138,8 +143,12 @@ func TestPitfallsDataRetainsSourceOnRenderError(t *testing.T) {
 		return nil, io.ErrUnexpectedEOF
 	})
 
-	if err := applyPitfallsData(root, io.Discard); err == nil {
+	err := applyPitfallsData(root, io.Discard)
+	if err == nil {
 		t.Fatal("applyPitfallsData succeeded after render error")
+	}
+	if !strings.Contains(err.Error(), "pitfalls-data: render pitfalls sidecar:") || !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Errorf("render error lacks context or wrapping: %v", err)
 	}
 	got, err := os.ReadFile(part)
 	if err != nil {

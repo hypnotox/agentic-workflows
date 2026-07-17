@@ -37,10 +37,10 @@ func applyPitfallsData(root string, out io.Writer) error {
 	}
 	sidecar, err := renderPitfalls(entries)
 	if err != nil {
-		return err
+		return fmt.Errorf("pitfalls-data: render pitfalls sidecar: %w", err)
 	}
 	if err := validatePitfallsSidecar(sidecar, entries); err != nil {
-		return err
+		return fmt.Errorf("pitfalls-data: validate rendered pitfalls sidecar: %w", err)
 	}
 	sidecarPath := filepath.Join(awfDir, "docs", "pitfalls.yaml")
 	if err := manifest.WriteFileAtomic(sidecarPath, sidecar); err != nil { // coverage-ignore: the atomic write faults only on a permission/IO error the test root bypasses
