@@ -125,10 +125,7 @@
 - [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Implemented)
 - [ADR-0123: Pi Workflow Subagent Extension](0123-pi-workflow-subagent-extension.md) (Implemented)
 - [ADR-0124: Deterministic Output Plans and Target Capabilities](0124-deterministic-output-plans-and-target-capabilities.md) (Implemented)
-
-## Proposed
-
-- [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Proposed)
+- [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Implemented)
 
 ## Superseded
 

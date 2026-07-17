@@ -1,7 +1,7 @@
 ---
 date: 2026-07-17
 adrs: [125]
-status: Proposed
+status: Implemented
 ---
 # Plan: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering
 
@@ -522,4 +522,10 @@ Acceptance criteria:
 
 ## Notes
 
-Implementation should run inline with `awf-executing-plans`: the phases are ordered and repeatedly touch the same two extension templates. Fresh subagent-per-task dispatch would add conflict and handoff risk rather than useful isolation.
+Implementation ran inline with `awf-executing-plans`: the phases were ordered and repeatedly touched the same two extension templates.
+
+Implementation deviations:
+- ADR-0123's two superseded invariant proof markers had to remain beside their ADR-0125 successors through Phase 2 because retirement applies only when ADR-0125 becomes Implemented. They were removed in the lifecycle commit.
+- `tools/pi-extension-test/package-lock.json` was already root-owned, so the digest-pinned package-lock update ran as the container's root user rather than the planned host UID. It created no host `node_modules` state.
+- The stale-prose check dropped the old three-tool name-sequence expression because that sequence is also present inside the new four-tool list; exact stale count phrases and positive grounding checks provide the non-ambiguous oracle.
+- Pi's `Text`, `Container`, and `Markdown` components supplied width-safe wrapping directly, so the renderer did not need separate `truncateToWidth` or `wrapTextWithAnsi` calls. Width 24 and 120 tests enforce the decided boundary.
