@@ -101,13 +101,13 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 
 ## Phase 4: Ignore fenced ADR syntax during migration and checks
 
-- [ ] **Task 4.1: Add failing fence regressions at the parser boundary.** In `internal/adr/adr_test.go`, replace the raw-fence expectations with cases proving that a level-two heading, numbered item, and supersession token inside either a backtick or tilde fenced block are inert; assert real syntax after the fence remains visible and ordered. Add a parser assertion that exposes the raw start/end offset of a Decision section ending at the next non-fenced level-two heading. In `internal/migrate/retirementtokens_test.go`, add a carrier whose Decision contains a fenced fake `##` heading and fake numbered item before real item 2; assert migration appends outside the fence, after item 2, as item 3, with the exact expected token and back-pointer. Run:
+- [ ] **Task 4.1: Add failing fence regressions at the parser boundary.** In `/home/hypno/Projects/agentic-workflows/internal/adr/adr_test.go`, replace the raw-fence expectations with cases proving that a level-two heading, numbered item, and supersession token inside either a backtick or tilde fenced block are inert; assert real syntax after the fence remains visible and ordered. Add a parser assertion that exposes the raw start/end offset of a Decision section ending at the next non-fenced level-two heading. In `/home/hypno/Projects/agentic-workflows/internal/migrate/retirementtokens_test.go`, add a carrier whose Decision contains a fenced fake `##` heading and fake numbered item before real item 2; assert migration appends outside the fence, after item 2, as item 3, with the exact expected token and back-pointer. Run:
   ```sh
   go test ./internal/adr ./internal/migrate -run 'Test(DecisionItems|SupersessionRefExtraction|RetirementTokens)'
   ```
   Expected: the new fenced-syntax and bookkeeping-placement assertions fail.
 
-- [ ] **Task 4.2: Centralize fence-aware ADR structure.** In `internal/adr/adr.go`, replace the fence-blind section splitter with a line walker that recognizes backtick and tilde fences, records raw byte offsets for non-fenced level-two sections, and derives section bodies, Decision item numbers, and `SupersessionRef`s exclusively from non-fenced lines. Keep column-zero item semantics and existing frontmatter behavior. In `internal/migrate/retirementtokens.go`, use the parsed raw Decision-section end offset and fence-aware `DecisionItems` to insert bookkeeping before the next real section or at the true document end, never inside a fence; retain frontmatter-only surgery and idempotency. Run:
+- [ ] **Task 4.2: Centralize fence-aware ADR structure.** In `/home/hypno/Projects/agentic-workflows/internal/adr/adr.go`, replace the fence-blind section splitter with a line walker that recognizes backtick and tilde fences, records raw byte offsets for non-fenced level-two sections, and derives section bodies, Decision item numbers, and `SupersessionRef`s exclusively from non-fenced lines. Keep column-zero item semantics and existing frontmatter behavior. In `/home/hypno/Projects/agentic-workflows/internal/migrate/retirementtokens.go`, use the parsed raw Decision-section end offset and fence-aware `DecisionItems` to insert bookkeeping before the next real section or at the true document end, never inside a fence; retain frontmatter-only surgery and idempotency. In `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/adr-system/current-state.md`, append one sentence stating that ADR Decision syntax ignores fenced examples for supersession checks and migrations; run `./x sync` to update `/home/hypno/Projects/agentic-workflows/docs/domains/adr-system.md`. Run:
   ```sh
   go test ./internal/adr ./internal/migrate ./internal/project
   ```
@@ -115,7 +115,7 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 
 - [ ] **Task 4.3: Verify, commit, and freeze the plan.** Change this plan's frontmatter from `status: Proposed` to `status: Implemented` and append `- Implementation findings: None.` under Notes, then stage before running the gate and make no edits after it passes. Run:
   ```sh
-  git add internal/adr/adr.go internal/adr/adr_test.go internal/migrate/retirementtokens.go internal/migrate/retirementtokens_test.go docs/plans/2026-07-17-tdd-fixes-for-prose-gate-and-migrations.md
+  git add internal/adr/adr.go internal/adr/adr_test.go internal/migrate/retirementtokens.go internal/migrate/retirementtokens_test.go .awf/domains/parts/adr-system/current-state.md docs/domains/adr-system.md docs/plans/2026-07-17-tdd-fixes-for-prose-gate-and-migrations.md
   git diff --cached --check
   ./x gate
   git commit -m "fix(adr-system): ignore fenced ADR syntax"
@@ -123,6 +123,7 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
   ```commit
   fix(adr-system): ignore fenced ADR syntax
   ```
+  Expected: `./x gate` exits 0 and the commit succeeds.
 
 ## Verification
 
