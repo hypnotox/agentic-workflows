@@ -11,9 +11,11 @@ import { Type } from "typebox";
 import {
   createRunner,
   productionRunnerDependencies,
+  type DisplayEvent,
   type RunRequest,
   type Runner,
   type ThinkingLevel,
+  type Usage,
 } from "./runner.ts";
 
 export const MIN_PI_VERSION = "0.80.9";
@@ -26,8 +28,23 @@ export const REVIEWER_PATHS = {
   code: ".pi/skills/code-reviewer.md",
 } as const;
 
+const SUBAGENT_TOOL_NAMES = new Set(["subagent_explore", "subagent_review", "subagent_implement"]);
 type ReviewKind = keyof typeof REVIEWER_PATHS;
 interface GitSnapshot { available: boolean; head?: string; status?: string; }
+export type SubagentState = "running" | "completed" | "failed" | "aborted";
+export interface SubagentDetails {
+  role: RunRequest["role"];
+  task: string;
+  state: SubagentState;
+  events: readonly DisplayEvent[];
+  omittedEvents: number;
+  stderr?: string;
+  usage?: Usage;
+  model?: string;
+  stopReason?: string;
+  awfFailure?: true;
+  [roleSpecific: string]: unknown;
+}
 
 export interface ExtensionDependencies {
   readFile(path: string, encoding: "utf8"): Promise<string>;
@@ -81,10 +98,31 @@ async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   return { available: status.code === 0, head: head.stdout.trim(), status: status.stdout };
 }
 
-function toolResult(result: Awaited<ReturnType<Runner["run"]>>, details: Record<string, unknown> = {}) {
+function stateFor(failed: boolean, stopReason?: string): SubagentState {
+  if (!failed) return "completed";
+  return stopReason === "aborted" ? "aborted" : "failed";
+}
+
+function failedToolResult(role: RunRequest["role"], task: string, message: string, details: Record<string, unknown> = {}) {
   return {
-    content: [{ type: "text" as const, text: result.output }],
-    details: { ...details, stderr: result.stderr, summaries: result.summaries, usage: result.usage, model: result.model },
+    content: [{ type: "text" as const, text: message }],
+    details: {
+      role, task, state: "failed" as const, events: [], omittedEvents: 0,
+      ...details, awfFailure: true as const,
+    },
+  };
+}
+
+function toolResult(role: RunRequest["role"], task: string, result: Awaited<ReturnType<Runner["run"]>>, details: Record<string, unknown> = {}) {
+  const failed = result.failed;
+  return {
+    content: [{ type: "text" as const, text: failed ? (result.failureMessage ?? "Subagent failed") : result.output }],
+    details: {
+      role, task, state: stateFor(failed, result.stopReason), events: result.events,
+      omittedEvents: result.omittedEvents, ...details, stderr: result.stderr,
+      usage: result.usage, model: result.model, stopReason: result.stopReason,
+      ...(failed ? { awfFailure: true as const } : {}),
+    },
   };
 }
 
@@ -109,9 +147,17 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       model: { provider: ctx.model.provider, id: ctx.model.id },
       thinkingLevel: pi.getThinkingLevel() as ThinkingLevel,
       tools, systemPrompt, signal,
-      onUpdate: (update) => onUpdate?.({ content: [{ type: "text", text: update.text }], details: { summaries: update.summaries } }),
+      onUpdate: (update) => onUpdate?.({
+        content: [{ type: "text", text: "(running...)" }],
+        details: { role, task, state: "running", events: update.events, omittedEvents: update.omittedEvents },
+      }),
     });
   };
+
+  pi.on("tool_result", (event) => {
+    const details = event.details as SubagentDetails | undefined;
+    if (SUBAGENT_TOOL_NAMES.has(event.toolName) && details?.awfFailure === true) return { isError: true };
+  });
 
   pi.registerTool({
     name: "subagent_explore",
@@ -121,7 +167,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task."],
     parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
-      return toolResult(await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
+      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
     },
   });
 
@@ -137,7 +183,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       const prompt = await loadReviewer(deps, root, params.kind);
-      return toolResult(await run("review", params.task, REVIEW_TOOLS, prompt, signal, onUpdate, ctx), { kind: params.kind });
+      return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, signal, onUpdate, ctx), { kind: params.kind });
     },
   });
 
@@ -162,8 +208,9 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", params.allowCommits), signal, onUpdate, ctx);
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
-        if (violation) throw new Error(`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`);
-        return toolResult(result, { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" });
+        const gitDetails = { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
+        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, gitDetails);
+        return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }
     },
   });

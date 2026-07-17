@@ -5,12 +5,17 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import {
   KILL_DELAY_MS,
+  MAX_DISPLAY_EVENT_BYTES,
+  MAX_DISPLAY_EVENTS,
+  MAX_FAILURE_BYTES,
   MAX_OUTPUT_BYTES,
   MAX_OUTPUT_LINES,
   MAX_STDERR_BYTES,
   createRunner,
+  fitDisplayEvent,
   productionRunnerDependencies,
   resolvePiInvocation,
+  truncateField,
   truncateOutput,
   truncateStderr,
   type RunnerDependencies,
@@ -30,9 +35,10 @@ function harness(process = new FakeProcess()) {
   const writes: Array<{ path: string; mode: number }> = [];
   const removals: string[] = [];
   const timers: Array<() => void> = [];
+  let madeDirectories = 0;
   const deps: RunnerDependencies = {
     spawn: () => process,
-    mkdtemp: async () => "/tmp/child",
+    mkdtemp: async () => { madeDirectories++; return "/tmp/child"; },
     writeFile: async (path, _content, options) => { writes.push({ path, mode: options.mode }); },
     rm: async (path) => { removals.push(path); },
     setTimer: (callback, delay) => { assert.equal(delay, KILL_DELAY_MS); timers.push(callback); return 1 as any; },
@@ -50,11 +56,17 @@ function harness(process = new FakeProcess()) {
     tools: ["read"],
     systemPrompt: "system",
   };
-  return { process, deps, request, writes, removals, timers };
+  return { process, deps, request, writes, removals, timers, madeDirectories: () => madeDirectories };
 }
 
 function message(text: string, stopReason = "end") {
   return JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text }], model: "child", stopReason, usage: { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: { total: 0.25 } } } });
+}
+function toolStart(id: string, name: string, args: unknown) {
+  return JSON.stringify({ type: "tool_execution_start", toolCallId: id, toolName: name, args });
+}
+function toolEnd(id: string, name: string, isError: boolean) {
+  return JSON.stringify({ type: "tool_execution_end", toolCallId: id, toolName: name, isError });
 }
 
 test("production runner executes the fake Pi fixture", async () => {
@@ -65,6 +77,7 @@ test("production runner executes the fake Pi fixture", async () => {
     model: { provider: "test", id: "model" }, thinkingLevel: "high", tools: ["read"], systemPrompt: "system",
   });
   assert.equal(result.output, "fixture output");
+  assert.deepEqual(result.events.map((event) => event.kind), ["tool-start", "tool-end", "assistant"]);
 });
 
 test("production runner escalates a TERM-resistant fixture", async () => {
@@ -90,7 +103,9 @@ test("production runner escalates a TERM-resistant fixture", async () => {
   });
   await new Promise((resolve) => setTimeout(resolve, 50));
   controller.abort();
-  await assert.rejects(pending);
+  const result = await pending;
+  assert.equal(result.failed, true);
+  assert.equal(result.stopReason, "aborted");
   assert.deepEqual(signals, ["SIGTERM", "SIGKILL"]);
 });
 
@@ -101,7 +116,7 @@ test("invocation resolution covers script, generic runtime fallback, and binary"
   assert.deepEqual(resolvePiInvocation(["pi"], "/usr/bin/pi"), { command: "/usr/bin/pi", args: [] });
 });
 
-test("output truncation handles short, byte, line, stderr, and UTF-8 input", () => {
+test("output and field truncation is UTF-8 safe and bounded", () => {
   assert.equal(truncateOutput("ok"), "ok");
   assert.match(truncateOutput("x".repeat(MAX_OUTPUT_BYTES + 10)), /10 bytes/);
   assert.match(truncateOutput(Array(MAX_OUTPUT_LINES + 3).fill("x").join("\n")), /3 lines/);
@@ -109,14 +124,32 @@ test("output truncation handles short, byte, line, stderr, and UTF-8 input", () 
   assert.equal(truncateStderr("ok"), "ok");
   assert.match(truncateStderr("x".repeat(MAX_STDERR_BYTES + 4)), /4 bytes omitted/);
   assert.match(truncateStderr("é".repeat(MAX_STDERR_BYTES)), /stderr truncated/);
+  assert.equal(truncateField("ok", 3, "!"), "ok");
+  assert.equal(Buffer.byteLength(truncateField("ééé", 5, "!"), "utf8"), 5);
+  assert.equal(truncateField("abcdef", 2, "marker"), "ma");
 });
 
-test("runner streams fragmented JSON, summaries, usage, and cleans up", async () => {
+test("fitDisplayEvent bounds assistant, start, and end fields", () => {
+  const assistant = fitDisplayEvent({ sequence: 1, kind: "assistant", text: "x".repeat(4000) });
+  const start = fitDisplayEvent({ sequence: 2, kind: "tool-start", toolCallId: "i".repeat(500), toolName: "n".repeat(500), argsPreview: "a".repeat(4000) });
+  const end = fitDisplayEvent({ sequence: 3, kind: "tool-end", toolCallId: "i".repeat(500), toolName: "n".repeat(500), isError: true });
+  assert.match(assistant.kind === "assistant" ? assistant.text : "", /event truncated/);
+  assert.match(start.kind === "tool-start" ? start.toolCallId : "", /toolCallId truncated/);
+  assert.match(start.kind === "tool-start" ? start.toolName : "", /toolName truncated/);
+  assert.match(start.kind === "tool-start" ? start.argsPreview : "", /event truncated/);
+  assert.match(end.kind === "tool-end" ? end.toolCallId : "", /toolCallId truncated/);
+  for (const event of [assistant, start, end]) assert.ok(Buffer.byteLength(JSON.stringify(event), "utf8") <= MAX_DISPLAY_EVENT_BYTES);
+  const short = { sequence: 4, kind: "assistant" as const, text: "ok" };
+  assert.deepEqual(fitDisplayEvent(short), short);
+});
+
+test("runner streams ordered display events, usage, and cleans up", async () => {
   const h = harness();
-  const updates: unknown[] = [];
+  const updates: any[] = [];
   const pending = createRunner(h.deps).run({ ...h.request, onUpdate: (value) => updates.push(value) });
   await new Promise((resolve) => setImmediate(resolve));
-  h.process.stdout.write('{"type":"tool_execution_start","toolName":"read","args":{}}\n');
+  h.process.stdout.write(toolStart("call-1", "read", {}) + "\n");
+  h.process.stdout.write(toolEnd("call-1", "read", false) + "\n");
   const line = message("done");
   h.process.stdout.write(line.slice(0, 10));
   h.process.stdout.write(line.slice(10) + "\n");
@@ -125,58 +158,112 @@ test("runner streams fragmented JSON, summaries, usage, and cleans up", async ()
   const result = await pending;
   assert.equal(result.output, "done");
   assert.equal(result.stderr, "warning");
+  assert.equal(result.failed, false);
   assert.deepEqual(result.usage, { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: 0.25, turns: 1 });
   assert.equal(result.model, "child");
-  assert.equal(result.summaries.length, 2);
-  assert.ok(updates.length >= 2);
+  assert.deepEqual(result.events, [
+    { sequence: 1, kind: "tool-start", toolCallId: "call-1", toolName: "read", argsPreview: "{}" },
+    { sequence: 2, kind: "tool-end", toolCallId: "call-1", toolName: "read", isError: false },
+    { sequence: 3, kind: "assistant", text: "done" },
+  ]);
+  assert.equal(result.omittedEvents, 0);
+  assert.equal(updates.length, 3);
   assert.deepEqual(h.writes, [{ path: "/tmp/child/explore.md", mode: 0o600 }]);
   assert.deepEqual(h.removals, ["/tmp/child"]);
 });
 
-test("runner bounds malformed and repeated summaries", async () => {
+test("runner preserves unmatched completions in observation order", async () => {
   const h = harness();
   const pending = createRunner(h.deps).run(h.request);
   await new Promise((resolve) => setImmediate(resolve));
-  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: "invalid" } }) + "\n");
-  h.process.stdout.write("\n");
-  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [null, { type: "toolCall" }, { type: "text" }] } }) + "\n");
-  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [], usage: {} } }) + "\n");
-  h.process.stdout.write(JSON.stringify({ type: "tool_execution_start" }) + "\n");
-  h.process.stdout.write(JSON.stringify({ type: "unknown" }) + "\n");
-  for (let i = 0; i < 25; i++) h.process.stdout.write(JSON.stringify({ type: "tool_execution_start", toolName: "x", args: { value: "y".repeat(3000) } }) + "\n");
-  h.process.stdout.write(message("tail"));
+  h.process.stdout.write(toolEnd("missing", "read", true) + "\n");
+  h.process.stdout.write(toolStart("missing", "read", {}) + "\n");
   h.process.close();
   const result = await pending;
-  assert.equal(result.summaries.length, 20);
-  assert.match(result.summaries[0].text, /summary truncated/);
+  assert.deepEqual(result.events.map((event) => event.kind), ["tool-end", "tool-start"]);
+  assert.deepEqual(result.events.map((event) => event.sequence), [1, 2]);
 });
 
-test("runner rejects malformed terminal streams with bounded diagnostics", async () => {
+test("runner bounds every event and counts omissions", async () => {
+  const h = harness();
+  const updates: any[] = [];
+  const pending = createRunner(h.deps).run({ ...h.request, onUpdate: (value) => updates.push(value) });
+  await new Promise((resolve) => setImmediate(resolve));
+  h.process.stdout.write(message("x".repeat(4000)) + "\n");
+  h.process.stdout.write(toolStart("i".repeat(500), "n".repeat(500), { value: "y".repeat(4000) }) + "\n");
+  for (let i = 0; i < 25; i++) h.process.stdout.write(toolStart(String(i), "x", {}) + "\n");
+  h.process.stdout.write(toolEnd("tail", "x", false) + "\n");
+  h.process.close();
+  const result = await pending;
+  assert.equal(result.events.length, MAX_DISPLAY_EVENTS);
+  assert.equal(result.omittedEvents, 8);
+  assert.match(updates[0].events[0].text, /event truncated/);
+  assert.match(updates[1].events[1].toolCallId, /toolCallId truncated/);
+  assert.match(updates[1].events[1].toolName, /toolName truncated/);
+  assert.match(updates[1].events[1].argsPreview, /event truncated/);
+  for (const update of updates) for (const event of update.events) assert.ok(Buffer.byteLength(JSON.stringify(event), "utf8") <= MAX_DISPLAY_EVENT_BYTES);
+});
+
+test("runner handles defensive event shapes and a final unterminated event", async () => {
   const h = harness();
   const pending = createRunner(h.deps).run(h.request);
   await new Promise((resolve) => setImmediate(resolve));
-  h.process.stdout.write("not-json\n");
+  h.process.stdout.write("\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "user", content: [] } }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: "invalid" } }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [null, { type: "text" }], usage: {} } }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "tool_execution_start" }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "tool_execution_end" }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "unknown" }) + "\n");
+  h.process.stdout.write(message("unterminated"));
   h.process.close();
-  await assert.rejects(pending, /Malformed child event: not-json/);
-  assert.deepEqual(h.process.signals, ["SIGTERM"]);
+  const result = await pending;
+  assert.equal(result.output, "unterminated");
+  assert.equal(result.events[0].kind, "tool-start");
+  assert.equal(result.events[1].kind, "tool-end");
 });
 
-test("runner rejects pre-abort, spawn errors, exits, and model failures", async () => {
-  const aborted = harness();
-  const controller = new AbortController(); controller.abort();
-  await assert.rejects(createRunner(aborted.deps).run({ ...aborted.request, signal: controller.signal }), /before start/);
-
-  for (const scenario of ["spawn", "exit", "stop", "model-error"] as const) {
+test("runner returns malformed, exit, and model failures with bounded diagnostics", async () => {
+  for (const scenario of ["malformed", "exit", "null-exit", "error", "aborted"] as const) {
     const h = harness();
     const pending = createRunner(h.deps).run(h.request);
     await new Promise((resolve) => setImmediate(resolve));
-    if (scenario === "spawn") { h.process.fail(new Error("spawn failed")); h.process.close(); }
+    if (scenario === "malformed") h.process.stdout.write("not-json\nleftover");
     if (scenario === "exit") { h.process.stderr.write("bad"); h.process.close(2); }
-    if (scenario === "stop") { h.process.stdout.write(message("bad", "aborted") + "\n"); h.process.close(); }
-    if (scenario === "model-error") { h.process.stdout.write(message("bad", "error") + "\n"); h.process.close(); }
-    await assert.rejects(pending);
+    if (scenario === "null-exit") h.process.emit("close", null);
+    if (scenario === "error") { h.process.stdout.write(message("bad", "error") + "\n"); h.process.close(); }
+    if (scenario === "aborted") { h.process.stdout.write(message("bad", "aborted") + "\n"); h.process.close(); }
+    if (scenario === "malformed") h.process.close();
+    const result = await pending;
+    assert.equal(result.failed, true);
+    assert.ok(Buffer.byteLength(result.failureMessage ?? "", "utf8") <= MAX_FAILURE_BYTES);
     assert.deepEqual(h.removals, ["/tmp/child"]);
   }
+});
+
+test("runner cleans setup failures and rejects pre-abort", async () => {
+  const aborted = harness();
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(createRunner(aborted.deps).run({ ...aborted.request, signal: controller.signal }), /before start/);
+  assert.equal(aborted.madeDirectories(), 0);
+
+  const write = harness();
+  write.deps.writeFile = async () => { throw new Error("write failed"); };
+  await assert.rejects(createRunner(write.deps).run(write.request), /write failed/);
+  assert.deepEqual(write.removals, ["/tmp/child"]);
+
+  const spawn = harness();
+  const pending = createRunner(spawn.deps).run(spawn.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  spawn.process.fail(new Error("spawn failed"));
+  spawn.process.close();
+  await assert.rejects(pending, /spawn failed/);
+  assert.deepEqual(spawn.removals, ["/tmp/child"]);
+
+  const synchronous = harness();
+  synchronous.deps.spawn = () => { throw new Error("sync spawn failed"); };
+  await assert.rejects(createRunner(synchronous.deps).run(synchronous.request), /sync spawn failed/);
+  assert.deepEqual(synchronous.removals, ["/tmp/child"]);
 });
 
 test("abort sends TERM, escalates only while open, and removes listener", async () => {
@@ -187,7 +274,8 @@ test("abort sends TERM, escalates only while open, and removes listener", async 
   const racedRun = createRunner(raced.deps).run({ ...raced.request, signal: raceSignal });
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(raced.process.signals, ["SIGTERM"]);
-  raced.process.stdout.write(message("stopped") + "\n"); raced.process.close(); await racedRun;
+  raced.process.close();
+  assert.equal((await racedRun).stopReason, "aborted");
 
   const h = harness();
   const controller = new AbortController();
@@ -197,9 +285,9 @@ test("abort sends TERM, escalates only while open, and removes listener", async 
   assert.deepEqual(h.process.signals, ["SIGTERM"]);
   h.timers[0]();
   assert.deepEqual(h.process.signals, ["SIGTERM", "SIGKILL"]);
-  h.process.stdout.write(message("stopped") + "\n");
   h.process.close();
-  await pending;
+  const aborted = await pending;
+  assert.equal(aborted.stopReason, "aborted");
   h.timers[0]();
   assert.deepEqual(h.process.signals, ["SIGTERM", "SIGKILL"]);
 
@@ -227,10 +315,4 @@ test("abort sends TERM, escalates only while open, and removes listener", async 
   await new Promise((resolve) => setImmediate(resolve));
   empty.process.close();
   assert.equal((await emptyRun).output, "(no output)");
-
-  const nullExit = harness();
-  const nullRun = createRunner(nullExit.deps).run(nullExit.request);
-  await new Promise((resolve) => setImmediate(resolve));
-  nullExit.process.emit("close", null);
-  await assert.rejects(nullRun, /exited null/);
 });

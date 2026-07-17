@@ -12,8 +12,9 @@ import defaultExtension, {
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
 
+const event = { sequence: 1, kind: "assistant" as const, text: "working" };
 const result: RunResult = {
-  output: "child output", stderr: "", summaries: [],
+  output: "child output", stderr: "", events: [event], omittedEvents: 0, failed: false,
   usage: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
 };
 
@@ -31,7 +32,7 @@ function harness(options: { version?: string; reviewer?: string; git?: Array<{ c
   };
   const deps: ExtensionDependencies = {
     readFile: async () => options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully.",
-    runner: { run: async (request) => { requests.push(request); request.onUpdate?.({ text: "working", summaries: [] }); return result; } },
+    runner: { run: async (request) => { requests.push(request); request.onUpdate?.({ events: [event], omittedEvents: 0 }); return result; } },
     packageVersion: options.version ?? MIN_PI_VERSION,
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
   };
@@ -41,7 +42,7 @@ function harness(options: { version?: string; reviewer?: string; git?: Array<{ c
 }
 
 async function execute(tool: any, params: any, ctx: any, signal?: AbortSignal) {
-  const updates: unknown[] = [];
+  const updates: any[] = [];
   const value = await tool.execute("id", params, signal, (update: unknown) => updates.push(update), ctx);
   return { value, updates };
 }
@@ -84,11 +85,14 @@ test("registers exactly three governed public tools", () => {
   assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/skills/adr-reviewer.md", plan: ".pi/skills/plan-reviewer.md", code: ".pi/skills/code-reviewer.md" });
 });
 
-test("explore inherits parent state, streams, and rejects invalid context", async () => {
+test("explore isolates partial activity from final content", async () => {
   const h = harness();
   const { value, updates } = await execute(h.tools.get("subagent_explore"), { task: "inspect" }, h.ctx);
   assert.equal(value.content[0].text, "child output");
-  assert.equal(updates.length, 1);
+  assert.deepEqual(value.details.events, [event]);
+  assert.equal(value.content[0].text.includes("working"), false);
+  assert.equal(updates[0].content[0].text, "(running...)");
+  assert.deepEqual(updates[0].details.events, [event]);
   assert.deepEqual(h.requests[0].model, { provider: "test", id: "parent" });
   assert.equal(h.requests[0].cwd, "/repo");
   assert.equal(h.requests[0].thinkingLevel, "high");
@@ -97,6 +101,31 @@ test("explore inherits parent state, streams, and rejects invalid context", asyn
   await assert.rejects(execute(h.tools.get("subagent_explore"), { task: " " }, h.ctx), /non-empty/);
   await assert.rejects(execute(h.tools.get("subagent_explore"), { task: "x" }, { ...h.ctx, model: undefined }), /active parent model/);
   await h.tools.get("subagent_explore").execute("id", { task: "without update" }, undefined, undefined, h.ctx);
+});
+
+test("result middleware marks only failed awf subagents", async () => {
+  const h = harness();
+  const handler = h.handlers.get("tool_result");
+  assert.deepEqual(await handler({ toolName: "subagent_explore", details: { awfFailure: true } }), { isError: true });
+  assert.equal(await handler({ toolName: "subagent_explore", details: {} }), undefined);
+  assert.equal(await handler({ toolName: "other", details: { awfFailure: true } }), undefined);
+  assert.equal(await handler({ toolName: "subagent_review", details: undefined }), undefined);
+});
+
+test("failed runner results preserve details", async () => {
+  const h = harness();
+  h.deps.runner = { run: async () => ({ ...result, failed: true, failureMessage: "bounded failure", stopReason: "aborted", stderr: "diagnostic" }) };
+  const { value } = await execute(h.tools.get("subagent_explore"), { task: "fail" }, h.ctx);
+  assert.equal(value.content[0].text, "bounded failure");
+  assert.equal(value.details.state, "aborted");
+  assert.equal(value.details.stderr, "diagnostic");
+  assert.equal(value.details.awfFailure, true);
+
+  const fallback = harness();
+  fallback.deps.runner = { run: async () => ({ ...result, failed: true, failureMessage: undefined, stopReason: "error" }) };
+  const failed = await execute(fallback.tools.get("subagent_explore"), { task: "fail" }, fallback.ctx);
+  assert.equal(failed.value.content[0].text, "Subagent failed");
+  assert.equal(failed.value.details.state, "failed");
 });
 
 test("review maps all kinds and reports missing or empty reviewer files", async () => {
@@ -137,7 +166,11 @@ test("implementation reports git state and commit policy", async () => {
     { code: 0, stdout: "aaa\n" }, { code: 0, stdout: "" },
     { code: 0, stdout: "bbb\n" }, { code: 0, stdout: "" },
   ] });
-  await assert.rejects(execute(violation.tools.get("subagent_implement"), { task: "change", allowCommits: false }, violation.ctx), /not reverted/);
+  const violated = await execute(violation.tools.get("subagent_implement"), { task: "change", allowCommits: false }, violation.ctx);
+  assert.match(violated.value.content[0].text, /not reverted/);
+  assert.equal(violated.value.details.awfFailure, true);
+  assert.equal(violated.value.details.before.head, "aaa");
+  assert.equal(violated.value.details.after.head, "bbb");
 
   const nongit = harness({ git: [{ code: 1, stdout: "" }, { code: 1, stdout: "" }] });
   const unavailable = await execute(nongit.tools.get("subagent_implement"), { task: "change", allowCommits: false }, nongit.ctx);

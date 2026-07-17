@@ -93,8 +93,11 @@ golden-completeness guard machine-enforcing the one-golden-per-artifact conventi
 
 Pi-extension tests live under `tools/pi-extension-test/`. A digest-pinned container keeps locked
 dependencies in a named volume, snapshots the read-only checkout inside the container for each run,
-and executes strict TypeScript and coverage checks without host npm state. `./x pi-test stop|reset`
-controls its lifecycle.
+and executes strict TypeScript and coverage checks without host npm state. Runner tests cover
+structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
+in-memory Pi 0.80.9 `AgentSession` proves that partial details and result-middleware error patches
+survive the real runtime seam without entering model-visible content. `./x pi-test stop|reset`
+controls the container lifecycle.
 
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through

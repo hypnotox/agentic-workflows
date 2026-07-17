@@ -9,7 +9,9 @@ ADR-0123 extends `Target` with descriptor-owned outputs and makes every adapter 
 full target descriptor into `ConfigHash`. Pi declares two TypeScript outputs under
 `.pi/extensions/awf-subagents/`; they use `//` provenance and join the same manifest drift,
 sync-repair, planned-output, and cleanup paths as other generated files. The templates preserve
-`missingkey=zero` publication safety and are rendered automatically whenever Pi is enabled.
+`missingkey=zero` publication safety and are rendered automatically whenever Pi is enabled. The
+runner retains the last 20 structured assistant and tool-lifecycle events, caps each complete event
+at 2 KiB, reports cumulative omissions, and sends progress through context-isolated tool details.
 
 ADR-0124 replaces the distributed render/lifecycle output discovery with a deterministic internal output plan. Each path is a writing node or local reservation with an explicit output policy. Render, sync, lock manifests, prune protection, planned-output reporting, and drift checks consume that node set; Markdown, TOML, TypeScript, generated, and local behavior is selected by policy rather than path suffix or template ID. The configuration reference depends on preceding ordinary/domain nodes without self-dependence. Target descriptors validate closed capabilities, bridge pairs, and safe output declarations before planning; equivalent recipes coalesce while differing recipes fail before a write.
 

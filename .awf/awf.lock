@@ -136,15 +136,15 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:38f661fb547456b02ab46012193122a776be9567e62c2008f988066e7bf494e0",
+      "templateHash": "sha256:cd5c21156989fda4a96691a0186fdcfec5d62f563dfd25af0f090849aca4bfd4",
       "configHash": "sha256:69da786e478b7196d6697965d5de5756c8c146e2100fc1fe0df46bcb541b7971",
-      "outputHash": "sha256:2a67fe8c3b3b69cf7b895f20ea4325f7ce3d6a5118f752edefc2e6a4f7eaef0d"
+      "outputHash": "sha256:079ebbee85ca5a3c700bb82f294afb90a610181a139b17218492a897e59dd905"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",
-      "templateHash": "sha256:e0391252159fae8ff5416d4e621f80286a7b2ff8214e0608c1a80a9532e08c9b",
+      "templateHash": "sha256:9006f528aa9068d9e17dfa3df2d0482cc595369264f7986aabcc3b0ffc4277f5",
       "configHash": "sha256:69da786e478b7196d6697965d5de5756c8c146e2100fc1fe0df46bcb541b7971",
-      "outputHash": "sha256:c52b1e43483a8d01105a79f0cd467e2774ccb75f589ffb293df8d3d2a85ce6fb"
+      "outputHash": "sha256:dac34610e7d8742597b786cd1e5f8789298c02455585906d273117df63befb6b"
     },
     ".pi/skills/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -341,14 +341,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:14dfb32891b74fb15f1d12b2973de9378b59d32a2d87d0d97317725671293316",
+      "outputHash": "sha256:fed355579cb6bca6b35ef38e99e3e8f8c762037fcd47c2a3959697d3ffbeb971",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:2fc09e99751b1d63ddf42465fe685031a0296a56718378b0e9973f3a36ab9fd8",
+      "outputHash": "sha256:8406eaa69e68d738bb8191d9c1615179e2a15567f02eda8c2c01ce77e4abb7be",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -390,8 +390,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:f9e4fd0b01ab248d45e0c51a281fb4181bed9c4af699edc97e00a428899bff03",
-      "configHash": "sha256:ff32c167d8dd4a42b45c2bd7f56bebcf3cdb40ba8017f08b8c41090f2d1102bf",
-      "outputHash": "sha256:b0d9ad05c350a1ca60de619d7ce7976cac5997cb0075d692d510b7ba7d959e1c"
+      "configHash": "sha256:f0dd27895c7f7ee559c66333c91293f1f002a8c8ce7c7df713515731705d22a6",
+      "outputHash": "sha256:9be82109da774854e508074fa163558b1b36aa52752ebd4c1f7dbbf957d6aa71"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

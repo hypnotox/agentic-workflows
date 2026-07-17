@@ -10,8 +10,9 @@ export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhi
 export const MAX_OUTPUT_BYTES = 50 * 1024;
 export const MAX_OUTPUT_LINES = 2000;
 export const MAX_STDERR_BYTES = 50 * 1024;
-export const MAX_SUMMARIES = 20;
-export const MAX_SUMMARY_BYTES = 2 * 1024;
+export const MAX_DISPLAY_EVENTS = 20;
+export const MAX_DISPLAY_EVENT_BYTES = 2 * 1024;
+export const MAX_FAILURE_BYTES = 2 * 1024;
 export const KILL_DELAY_MS = 5000;
 
 export interface SpawnedProcess {
@@ -52,10 +53,27 @@ export interface RunRequest {
   onUpdate?: (update: RunUpdate) => void;
 }
 
-export interface RunUpdate { text: string; summaries: readonly EventSummary[]; }
-export interface EventSummary { kind: "text" | "tool" | "error"; text: string; }
+export type DisplayEvent =
+  | { sequence: number; kind: "assistant"; text: string }
+  | { sequence: number; kind: "tool-start"; toolCallId: string; toolName: string; argsPreview: string }
+  | { sequence: number; kind: "tool-end"; toolCallId: string; toolName: string; isError: boolean };
+type DisplayEventInput =
+  | { kind: "assistant"; text: string }
+  | { kind: "tool-start"; toolCallId: string; toolName: string; argsPreview: string }
+  | { kind: "tool-end"; toolCallId: string; toolName: string; isError: boolean };
+export interface RunUpdate { events: readonly DisplayEvent[]; omittedEvents: number; }
 export interface Usage { input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; turns: number; }
-export interface RunResult { output: string; stderr: string; summaries: readonly EventSummary[]; usage: Usage; model?: string; stopReason?: string; }
+export interface RunResult {
+  output: string;
+  stderr: string;
+  events: readonly DisplayEvent[];
+  omittedEvents: number;
+  usage: Usage;
+  model?: string;
+  stopReason?: string;
+  failed: boolean;
+  failureMessage?: string;
+}
 export interface Runner { run(request: RunRequest): Promise<RunResult>; }
 
 const emptyUsage = (): Usage => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 });
@@ -65,6 +83,12 @@ function utf8Prefix(value: string, maximum: number): string {
   let end = Math.min(value.length, maximum);
   while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maximum) end--;
   return value.slice(0, end);
+}
+
+export function truncateField(value: string, maximum: number, marker: string): string {
+  if (Buffer.byteLength(value, "utf8") <= maximum) return value;
+  const markerBytes = Buffer.byteLength(marker, "utf8");
+  return utf8Prefix(value, Math.max(0, maximum - markerBytes)) + utf8Prefix(marker, maximum);
 }
 
 export function truncateOutput(value: string): string {
@@ -85,10 +109,34 @@ export function truncateStderr(value: string): string {
   return `[stderr truncated: ${total - Buffer.byteLength(value.slice(start), "utf8")} bytes omitted]\n${value.slice(start)}`;
 }
 
-function addSummary(summaries: EventSummary[], summary: EventSummary): void {
-  const text = utf8Prefix(summary.text, MAX_SUMMARY_BYTES);
-  summaries.push({ ...summary, text: text === summary.text ? text : `${text}\n[summary truncated]` });
-  if (summaries.length > MAX_SUMMARIES) summaries.splice(0, summaries.length - MAX_SUMMARIES);
+function truncateFailure(value: string): string {
+  return truncateField(value, MAX_FAILURE_BYTES, "\n[failure truncated]");
+}
+
+export function fitDisplayEvent(event: DisplayEvent): DisplayEvent {
+  let fitted: DisplayEvent;
+  if (event.kind === "assistant") {
+    fitted = { ...event };
+  } else {
+    fitted = {
+      ...event,
+      toolCallId: truncateField(event.toolCallId, 256, "[toolCallId truncated]"),
+      toolName: truncateField(event.toolName, 256, "[toolName truncated]"),
+    };
+  }
+  const serializedBytes = () => Buffer.byteLength(JSON.stringify(fitted), "utf8");
+  if (serializedBytes() <= MAX_DISPLAY_EVENT_BYTES) return fitted;
+  const marker = "\n[event truncated]";
+  if (fitted.kind === "assistant") {
+    const source = fitted.text;
+    let budget = Math.max(0, Buffer.byteLength(source, "utf8") - (serializedBytes() - MAX_DISPLAY_EVENT_BYTES));
+    do { fitted.text = truncateField(source, budget--, marker); } while (serializedBytes() > MAX_DISPLAY_EVENT_BYTES && budget >= 0);
+  } else if (fitted.kind === "tool-start") {
+    const source = fitted.argsPreview;
+    let budget = Math.max(0, Buffer.byteLength(source, "utf8") - (serializedBytes() - MAX_DISPLAY_EVENT_BYTES));
+    do { fitted.argsPreview = truncateField(source, budget--, marker); } while (serializedBytes() > MAX_DISPLAY_EVENT_BYTES && budget >= 0);
+  }
+  return fitted;
 }
 
 function finalText(message: any): string {
@@ -125,49 +173,75 @@ export function createRunner(deps: RunnerDependencies): Runner {
       if (request.signal?.aborted) throw new Error("Subagent was aborted before start");
       const directory = await deps.mkdtemp(join(deps.tempRoot, "awf-pi-subagent-"));
       const promptPath = join(directory, `${request.role}.md`);
-      await deps.writeFile(promptPath, request.systemPrompt, { encoding: "utf8", mode: 0o600 });
-      const invocation = resolvePiInvocation(deps.argv, deps.execPath);
-      const args = [...invocation.args, "--mode", "json", "-p", "--no-session",
-        "--model", `${request.model.provider}/${request.model.id}`,
-        "--thinking", request.thinkingLevel,
-        "--tools", request.tools.join(","),
-        "--append-system-prompt", promptPath,
-        `Task: ${request.task}`];
-      const summaries: EventSummary[] = [];
-      const usage = emptyUsage();
-      let output = "";
-      let stderr = "";
-      let model: string | undefined;
-      let stopReason: string | undefined;
-      let buffer = "";
-      let closed = false;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      let abortListener: (() => void) | undefined;
-
       try {
+        await deps.writeFile(promptPath, request.systemPrompt, { encoding: "utf8", mode: 0o600 });
+        const invocation = resolvePiInvocation(deps.argv, deps.execPath);
+        const args = [...invocation.args, "--mode", "json", "-p", "--no-session",
+          "--model", `${request.model.provider}/${request.model.id}`,
+          "--thinking", request.thinkingLevel,
+          "--tools", request.tools.join(","),
+          "--append-system-prompt", promptPath,
+          `Task: ${request.task}`];
+        const events: DisplayEvent[] = [];
+        let omittedEvents = 0;
+        let sequence = 0;
+        const usage = emptyUsage();
+        let output = "";
+        let stderr = "";
+        let model: string | undefined;
+        let stopReason: string | undefined;
+        let buffer = "";
+        let closed = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let abortListener: (() => void) | undefined;
+        let forcedFailure: { reason: "error" | "aborted"; message: string } | undefined;
+
         const result = await new Promise<RunResult>((resolve, reject) => {
-          const child = deps.spawn(invocation.command, args, { cwd: request.cwd, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+          let child: SpawnedProcess;
+          try { child = deps.spawn(invocation.command, args, { cwd: request.cwd, shell: false, stdio: ["ignore", "pipe", "pipe"] }); }
+          catch (error) { reject(error); return; }
           let settled = false;
-          const finish = (error?: Error): void => {
+          const buildResult = (failed: boolean, failureMessage?: string): RunResult => ({
+            output: truncateOutput(output || "(no output)"),
+            stderr: truncateStderr(stderr),
+            events: [...events],
+            omittedEvents,
+            usage,
+            model,
+            stopReason,
+            failed,
+            failureMessage: failureMessage ? truncateFailure(failureMessage) : undefined,
+          });
+          const finish = (error?: Error, failed = false, failureMessage?: string): void => {
             if (settled) return;
             settled = true;
             if (timer !== undefined) deps.clearTimer(timer);
             if (request.signal && abortListener) request.signal.removeEventListener("abort", abortListener);
             if (error) reject(error);
-            else resolve({ output: truncateOutput(output || "(no output)"), stderr: truncateStderr(stderr), summaries: [...summaries], usage, model, stopReason });
+            else resolve(buildResult(failed, failureMessage));
+          };
+          const appendDisplayEvent = (event: DisplayEventInput): void => {
+            const fitted = fitDisplayEvent({ ...event, sequence: ++sequence } as DisplayEvent);
+            events.push(fitted);
+            if (events.length > MAX_DISPLAY_EVENTS) {
+              omittedEvents += events.length - MAX_DISPLAY_EVENTS;
+              events.splice(0, events.length - MAX_DISPLAY_EVENTS);
+            }
+            request.onUpdate?.({ events: [...events], omittedEvents });
           };
           const processEvent = (line: string): void => {
             if (!line.trim()) return;
             let event: any;
             try { event = JSON.parse(line); }
             catch {
+              forcedFailure = { reason: "error", message: `Malformed child event: ${truncateOutput(line)}` };
               child.kill("SIGTERM");
-              finish(new Error(`Malformed child event: ${truncateOutput(line)}`));
+              timer = deps.setTimer(() => { if (!closed) child.kill("SIGKILL"); }, KILL_DELAY_MS);
               return;
             }
             if (event.type === "message_end" && event.message?.role === "assistant") {
               const text = finalText(event.message);
-              if (text) { output = text; addSummary(summaries, { kind: "text", text }); }
+              if (text) { output = text; appendDisplayEvent({ kind: "assistant", text }); }
               const current = event.message.usage;
               usage.input += current?.input ?? 0;
               usage.output += current?.output ?? 0;
@@ -180,11 +254,12 @@ export function createRunner(deps: RunnerDependencies): Runner {
               /* node:coverage ignore next -- defensive fallback; child assistant messages normally carry a stop reason */
               stopReason = event.message.stopReason ?? stopReason;
             }
-            /* node:coverage ignore next -- V8/tsx reports the tested false edge as a zero-width branch */
             if (event.type === "tool_execution_start") {
-              addSummary(summaries, { kind: "tool", text: `${event.toolName ?? "tool"} ${JSON.stringify(event.args ?? {})}` });
+              appendDisplayEvent({ kind: "tool-start", toolCallId: String(event.toolCallId ?? ""), toolName: String(event.toolName ?? "tool"), argsPreview: JSON.stringify(event.args ?? {}) });
             }
-            request.onUpdate?.({ text: truncateOutput(output || "(running...)"), summaries: [...summaries] });
+            if (event.type === "tool_execution_end") {
+              appendDisplayEvent({ kind: "tool-end", toolCallId: String(event.toolCallId ?? ""), toolName: String(event.toolName ?? "tool"), isError: Boolean(event.isError) });
+            }
           };
           child.stdout.on("data", (chunk: Buffer | string) => {
             buffer += chunk.toString();
@@ -196,13 +271,22 @@ export function createRunner(deps: RunnerDependencies): Runner {
           child.once("error", (error) => finish(error));
           child.once("close", (code) => {
             closed = true;
-            if (buffer.trim()) processEvent(buffer);
-            if (code !== 0) finish(new Error(`Subagent exited ${code}: ${truncateStderr(stderr) || "no diagnostics"}`));
-            else if (stopReason === "error" || stopReason === "aborted") finish(new Error(`Subagent ${stopReason}: ${truncateOutput(output)}`));
-            else finish();
+            if (buffer.trim() && !forcedFailure) processEvent(buffer);
+            if (forcedFailure) {
+              stopReason = forcedFailure.reason;
+              finish(undefined, true, forcedFailure.message);
+            } else if (code !== 0) {
+              stopReason = "error";
+              finish(undefined, true, `Subagent exited ${code}: ${truncateStderr(stderr) || "no diagnostics"}`);
+            } else if (stopReason === "error" || stopReason === "aborted") {
+              finish(undefined, true, `Subagent ${stopReason}: ${truncateOutput(output)}`);
+            } else {
+              finish();
+            }
           });
           abortListener = () => {
             if (closed) return;
+            forcedFailure = { reason: "aborted", message: "Subagent was aborted" };
             child.kill("SIGTERM");
             timer = deps.setTimer(() => { if (!closed) child.kill("SIGKILL"); }, KILL_DELAY_MS);
           };

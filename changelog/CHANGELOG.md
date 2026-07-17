@@ -208,6 +208,11 @@ query a single version or a range.
   plans README are reconciled to it. Adopters get it all on their next
   `awf sync`.
 
+### Bug fixes
+- Pi child failures now retain bounded progress and diagnostics in tool details while preserving
+  error status through Pi's result middleware; intermediate child activity remains outside the
+  parent model's visible content (ADR-0125).
+
 ### Others
 - The `adr-lifecycle` skill now states the partial-amendment back-pointer rule, and the
   `adr-reviewer` checks it (ADR-0116). When an ADR overrides a live ADR's Decision item
