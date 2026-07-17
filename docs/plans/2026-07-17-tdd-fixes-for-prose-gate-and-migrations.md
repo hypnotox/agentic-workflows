@@ -18,7 +18,7 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 ## File structure
 
 - **Created:** none.
-- **Modified:** `internal/git/git.go`, `internal/git/git_test.go`, `internal/config/config.go`, `internal/config/config_test.go`, `cmd/awf/prosegate.go`, `cmd/awf/prosegate_test.go`, `internal/prosegate/prosegate.go`, `internal/prosegate/prosegate_test.go`, `internal/migrate/pitfalls.go`, `internal/migrate/pitfalls_test.go`, `internal/adr/adr.go`, `internal/adr/adr_test.go`, `internal/migrate/retirementtokens.go`, `internal/migrate/retirementtokens_test.go`.
+- **Modified:** `/home/hypno/Projects/agentic-workflows/internal/git/git.go`, `/home/hypno/Projects/agentic-workflows/internal/git/git_test.go`, `/home/hypno/Projects/agentic-workflows/internal/config/config.go`, `/home/hypno/Projects/agentic-workflows/internal/config/config_test.go`, `/home/hypno/Projects/agentic-workflows/cmd/awf/prosegate.go`, `/home/hypno/Projects/agentic-workflows/cmd/awf/prosegate_test.go`, `/home/hypno/Projects/agentic-workflows/internal/prosegate/prosegate.go`, `/home/hypno/Projects/agentic-workflows/internal/prosegate/prosegate_test.go`, `/home/hypno/Projects/agentic-workflows/internal/migrate/pitfalls.go`, `/home/hypno/Projects/agentic-workflows/internal/migrate/pitfalls_test.go`, `/home/hypno/Projects/agentic-workflows/internal/adr/adr.go`, `/home/hypno/Projects/agentic-workflows/internal/adr/adr_test.go`, `/home/hypno/Projects/agentic-workflows/internal/migrate/retirementtokens.go`, `/home/hypno/Projects/agentic-workflows/internal/migrate/retirementtokens_test.go`, `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md`, `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md`, `/home/hypno/Projects/agentic-workflows/docs/domains/tooling.md`, and `/home/hypno/Projects/agentic-workflows/docs/domains/config.md`.
 - **Deleted:** none.
 
 ## Phase 1: Scan the staged policy and staged regular blobs
@@ -29,16 +29,17 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
   ```
   Expected: at least the new staged-content assertions fail against the worktree-reading implementation.
 
-- [ ] **Task 1.2: Implement a single staged input path.** In `internal/git/git.go`, replace or supplement `IndexPaths` with an API returning sorted `{Path, Bytes}` entries from stage-0, ordinary or executable index blobs. Exclude symlinks and gitlinks; return a named error for unmerged stages or an entry without a readable blob. In `internal/config/config.go`, extract the strict YAML decoding/defaulting currently in `Load` into a byte-taking helper that accepts the owning `.awf` directory, preserves the supplied bytes in `Config.Source()`, and lets `Load` remain its filesystem wrapper. In `cmd/awf/prosegate.go`, obtain the staged blobs once, locate `.awf/config.yaml`, parse it through the new config helper, preserve the existing disabled-knob no-op, and pass all staged blobs to prose-gate. Refuse clearly when the staged snapshot has no config rather than falling back to worktree policy. Change `internal/prosegate/prosegate.go` only as needed to accept `{Path, Bytes}` scan inputs without importing `internal/git`. Run:
+- [ ] **Task 1.2: Implement a single staged input path.** In `/home/hypno/Projects/agentic-workflows/internal/git/git.go`, add `type IndexBlob struct { Path string; Bytes []byte }` and `func IndexBlobs(repoRoot string) ([]IndexBlob, error)`: sort by `Path`, include only stage-0 ordinary (`100644`) and executable (`100755`) blob entries, skip symlinks/gitlinks, and return a named error for an unmerged stage or unreadable/content-less blob. In `/home/hypno/Projects/agentic-workflows/internal/config/config.go`, add `func Parse(awfDir string, b []byte) (*Config, error)` containing `Load`'s strict decode/default/root/raw assignment; reduce `Load` to read `config.yaml` then call `Parse`. In `/home/hypno/Projects/agentic-workflows/internal/prosegate/prosegate.go`, add `type File struct { Path string; Bytes []byte }` so it does not import `internal/git`. In `/home/hypno/Projects/agentic-workflows/cmd/awf/prosegate.go`, call `IndexBlobs` once, find `.awf/config.yaml`, call `config.Parse(config.RootDir(root), stagedConfig.Bytes)`, preserve the disabled-knob no-op, convert every staged blob to `prosegate.File`, and refuse if the staged snapshot has no config. Add the matching exact test fixtures in the paths named by Task 1.1. In `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md`, append one sentence stating that prose-gate evaluates staged configuration and regular staged blobs; run `./x sync` to update `/home/hypno/Projects/agentic-workflows/docs/domains/tooling.md`. Run:
   ```sh
   go test ./internal/git ./internal/config ./internal/prosegate ./cmd/awf
   ```
   Expected: `ok` for all four packages.
 
-- [ ] **Task 1.3: Verify and commit.** Run:
+- [ ] **Task 1.3: Verify and commit.** Stage the exact files before running the staged-policy gate; make no edits after it passes. Run:
   ```sh
+  git add internal/git/git.go internal/git/git_test.go internal/config/config.go internal/config/config_test.go cmd/awf/prosegate.go cmd/awf/prosegate_test.go internal/prosegate/prosegate.go internal/prosegate/prosegate_test.go .awf/domains/parts/tooling/current-state.md docs/domains/tooling.md
+  git diff --cached --check
   ./x gate
-  git add internal/git/git.go internal/git/git_test.go internal/config/config.go internal/config/config_test.go cmd/awf/prosegate.go cmd/awf/prosegate_test.go internal/prosegate/prosegate.go internal/prosegate/prosegate_test.go
   git commit -m "fix(tooling): scan staged prose gate inputs"
   ```
   Expected: gate exits 0 and the commit succeeds.
@@ -54,16 +55,17 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
   ```
   Expected: the new binary-reporting and zero-count-pin assertions fail.
 
-- [ ] **Task 2.2: Report binary exclusions and evaluate every pinned exemption.** In `internal/prosegate/prosegate.go`, classify invalid UTF-8 regular blobs as binary, return their sorted paths separately from sorted findings, and do not scan their contents. Build actual per-path/per-rune counts before evaluating exemptions, then iterate every pinned exemption so missing/clean paths compare as count zero; keep unpinned exemptions permissive. In `cmd/awf/prosegate.go`, print `skipped binary: <path>` for each returned path before findings and retain a zero exit when no findings exist. Update existing scan tests from worktree-file inputs to the staged-input form introduced in Phase 1. Run:
+- [ ] **Task 2.2: Report binary exclusions and evaluate every pinned exemption.** In `/home/hypno/Projects/agentic-workflows/internal/prosegate/prosegate.go`, change `Scan` to return `([]Finding, []string, error)`: classify invalid UTF-8 `File.Bytes` as binary, return their sorted paths separately from sorted findings, and do not scan their contents. Build actual per-path/per-rune counts before evaluating exemptions, then iterate every pinned exemption so missing/clean paths compare as count zero; keep unpinned exemptions permissive. In `/home/hypno/Projects/agentic-workflows/cmd/awf/prosegate.go`, print `skipped binary: <path>` for each returned path before findings and retain a zero exit when no findings exist. Update the exact fixtures in `/home/hypno/Projects/agentic-workflows/internal/prosegate/prosegate_test.go` and `/home/hypno/Projects/agentic-workflows/cmd/awf/prosegate_test.go` from worktree-file inputs to the staged-input form introduced in Phase 1. Run:
   ```sh
   go test ./internal/prosegate ./cmd/awf
   ```
   Expected: `ok` for both packages.
 
-- [ ] **Task 2.3: Verify and commit.** Run:
+- [ ] **Task 2.3: Verify and commit.** Stage the exact files before running the staged-policy gate; make no edits after it passes. Run:
   ```sh
-  ./x gate
   git add internal/prosegate/prosegate.go internal/prosegate/prosegate_test.go cmd/awf/prosegate.go cmd/awf/prosegate_test.go
+  git diff --cached --check
+  ./x gate
   git commit -m "fix(tooling): harden prose gate exclusions"
   ```
   Expected: gate exits 0 and the commit succeeds.
@@ -73,13 +75,13 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 
 ## Phase 3: Preserve pitfalls migration content before deletion
 
-- [ ] **Task 3.1: Add failing lossless-migration regressions.** In `internal/migrate/pitfalls_test.go`, add one legacy entry whose body starts with an indented Markdown code block and later has column-zero prose, and another whose full body is indented code. Assert the generated sidecar parses, its decoded title/body exactly equal the split input, and the rendered indentation remains intact. Add a failure-seam test for invalid generated output/validation failure and assert `entries.md` remains present with byte-identical content. Run:
+- [ ] **Task 3.1: Add failing lossless-migration regressions.** In `/home/hypno/Projects/agentic-workflows/internal/migrate/pitfalls_test.go`, add one legacy entry whose body starts with an indented Markdown code block and later has column-zero prose, and another whose full body is indented code. Assert the generated sidecar parses, its decoded title/body exactly equal the split input, and the rendered indentation remains intact. Define `var renderPitfalls = renderPitfallsSidecar` in `/home/hypno/Projects/agentic-workflows/internal/migrate/pitfalls.go`; use `testsupport.SwapVar` to replace it with `func([]pitfallSplit) ([]byte, error) { return []byte("not: [valid"), nil }`, then assert `applyPitfallsData` errors and leaves `entries.md` byte-identical. Run:
   ```sh
   go test ./internal/migrate -run TestPitfallsData
   ```
   Expected: the new indentation round-trip and source-preservation assertions fail.
 
-- [ ] **Task 3.2: Serialize and validate before removing the legacy part.** In `internal/migrate/pitfalls.go`, replace `renderPitfallsSidecar`'s manual literal-scalar construction with a typed `yaml.v3` sidecar model. Marshal the split entries, unmarshal the result into the same model, and compare title/body values before `manifest.WriteFileAtomic`. Only after that successful validation and atomic write may `applyPitfallsData` remove `entries.md` and its empty parent directory. Keep the absent-part no-op and provenance output, but remove wording that accepts content loss when no headings are found: return a named migration error and preserve the source instead. Run:
+- [ ] **Task 3.2: Serialize and validate before removing the legacy part.** In `/home/hypno/Projects/agentic-workflows/internal/migrate/pitfalls.go`, make `renderPitfallsSidecar(entries []pitfallSplit) ([]byte, error)` marshal a typed `yaml.v3` `{Data: {Pitfalls: []{Title, Body}}}` sidecar model, then unmarshal it into the same model and compare every title/body with `entries` before returning bytes. Make `applyPitfallsData` call `renderPitfalls`, write only returned validated bytes atomically, and only then remove `entries.md` and its empty parent directory. Preserve the absent-part no-op. For zero headings, return `pitfalls-data: no top-level entries to migrate` without writing or deleting. In `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md`, append one sentence stating that migrations validate serialized adopter data before destructive cleanup; run `./x sync` to update `/home/hypno/Projects/agentic-workflows/docs/domains/config.md`. Run:
   ```sh
   go test ./internal/migrate -run TestPitfallsData
   ```
@@ -87,8 +89,9 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 
 - [ ] **Task 3.3: Verify and commit.** Run:
   ```sh
+  git add internal/migrate/pitfalls.go internal/migrate/pitfalls_test.go .awf/domains/parts/config/current-state.md docs/domains/config.md
+  git diff --cached --check
   ./x gate
-  git add internal/migrate/pitfalls.go internal/migrate/pitfalls_test.go
   git commit -m "fix(config): preserve pitfalls migration content"
   ```
   Expected: gate exits 0 and the commit succeeds.
@@ -110,13 +113,13 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
   ```
   Expected: `ok` for all three packages.
 
-- [ ] **Task 4.3: Verify, commit, and freeze the plan.** Run:
+- [ ] **Task 4.3: Verify, commit, and freeze the plan.** Change this plan's frontmatter from `status: Proposed` to `status: Implemented` and append `- Implementation findings: None.` under Notes, then stage before running the gate and make no edits after it passes. Run:
   ```sh
-  ./x gate
   git add internal/adr/adr.go internal/adr/adr_test.go internal/migrate/retirementtokens.go internal/migrate/retirementtokens_test.go docs/plans/2026-07-17-tdd-fixes-for-prose-gate-and-migrations.md
+  git diff --cached --check
+  ./x gate
   git commit -m "fix(adr-system): ignore fenced ADR syntax"
   ```
-  Expected: gate exits 0 and the commit succeeds. Change this plan's frontmatter from `status: Proposed` to `status: Implemented` before staging it.
   ```commit
   fix(adr-system): ignore fenced ADR syntax
   ```
