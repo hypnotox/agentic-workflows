@@ -33,18 +33,20 @@ func bucketKey(status string) string {
 
 // ADR is a parsed ADR record.
 type ADR struct {
-	Number       string            // e.g. "0001"
-	Title        string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
-	Status       string            // e.g. "Accepted"
-	Filename     string            // e.g. "0001-template-overlay-rendering-engine.md"
-	Path         string            // path as globbed
-	Domains      []string          // `domains:` frontmatter (ADR-0014)
-	Tags         []string          // `tags:` frontmatter (keyword labels)
-	Related      []int             // `related:` frontmatter (ADR numbers)
-	SupersededBy string            // `superseded_by:` frontmatter (e.g. "0008", or "")
-	Supersedes   []int             // `supersedes:` frontmatter: full-supersession claims (ADR-0120)
-	Refs         []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
-	Sections     map[string]string // `## ` heading -> section body
+	Number        string            // e.g. "0001"
+	Title         string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
+	Status        string            // e.g. "Accepted"
+	Filename      string            // e.g. "0001-template-overlay-rendering-engine.md"
+	Path          string            // path as globbed
+	Domains       []string          // `domains:` frontmatter (ADR-0014)
+	Tags          []string          // `tags:` frontmatter (keyword labels)
+	Related       []int             // `related:` frontmatter (ADR numbers)
+	SupersededBy  string            // `superseded_by:` frontmatter (e.g. "0008", or "")
+	Supersedes    []int             // `supersedes:` frontmatter: full-supersession claims (ADR-0120)
+	Refs          []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
+	Sections      map[string]string // `## ` heading -> non-fenced section body
+	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
+	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
 }
 
 // SupersessionRef is one inline partial-supersession token (ADR-0120):
@@ -209,7 +211,11 @@ func parse(data []byte) (ADR, error) {
 	if err != nil {
 		return ADR{}, err
 	}
-	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, Supersedes: fm.Supersedes, Sections: sections(string(body))}
+	parsed := sections(string(body), len(data)-len(body))
+	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, Supersedes: fm.Supersedes, Sections: parsed.bodies}
+	if decision, ok := parsed.ranges["Decision"]; ok {
+		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
+	}
 	a.Refs = parseRefs(a.Sections["Decision"])
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
@@ -313,31 +319,85 @@ func groupByStatus(adrs []ADR, include func(ADR) bool) (map[string][]ADR, []stri
 	return groups, ordered
 }
 
-// sections splits a markdown body into a map of `## ` heading text -> section
-// body (the lines until the next `## ` heading).
-func sections(body string) map[string]string {
-	out := map[string]string{}
+type sectionRange struct{ start, end int }
+
+type parsedSections struct {
+	bodies map[string]string
+	ranges map[string]sectionRange
+}
+
+// sections walks Markdown lines, ignoring fenced examples when it derives ADR
+// structure. Ranges retain raw file offsets so migrations can edit around an
+// opaque fenced block without reserializing the document.
+func sections(body string, offset int) parsedSections {
+	out := parsedSections{bodies: map[string]string{}, ranges: map[string]sectionRange{}}
 	var name string
+	var start int
 	var b strings.Builder
-	flush := func() {
+	var fence byte
+	var fenceLen int
+	flush := func(end int) {
 		if name != "" {
-			out[name] = b.String()
+			out.bodies[name] = b.String()
+			out.ranges[name] = sectionRange{start: start, end: end}
 		}
 		b.Reset()
 	}
-	for _, line := range strings.Split(body, "\n") {
-		if h, ok := strings.CutPrefix(line, "## "); ok {
-			flush()
-			name = strings.TrimSpace(h)
+	pos := 0
+	for _, rawLine := range rangeLines(body) {
+		line := strings.TrimSuffix(rawLine, "\n")
+		if marker, n, ok := fenceMarker(line); ok {
+			if fence == 0 {
+				fence, fenceLen = marker, n
+				pos += len(rawLine)
+				continue
+			}
+			if marker == fence && n >= fenceLen {
+				fence, fenceLen = 0, 0
+			}
+			pos += len(rawLine)
 			continue
 		}
-		if name != "" {
-			b.WriteString(line)
-			b.WriteString("\n")
+		if fence != 0 {
+			pos += len(rawLine)
+			continue
 		}
+		if h, ok := strings.CutPrefix(line, "## "); ok {
+			flush(offset + pos)
+			name, start = strings.TrimSpace(h), offset+pos
+		} else if name != "" {
+			b.WriteString(rawLine)
+		}
+		pos += len(rawLine)
 	}
-	flush()
+	flush(offset + len(body))
 	return out
+}
+
+func rangeLines(s string) []string {
+	lines := strings.SplitAfter(s, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		return lines[:len(lines)-1]
+	}
+	return lines
+}
+
+// fenceMarker identifies a Markdown backtick or tilde fence with up to three
+// leading spaces. It returns the marker and its run length.
+func fenceMarker(line string) (byte, int, bool) {
+	indent := len(line) - len(strings.TrimLeft(line, " "))
+	if indent > 3 || indent == len(line) {
+		return 0, 0, false
+	}
+	marker := line[indent]
+	if marker != '`' && marker != '~' {
+		return 0, 0, false
+	}
+	n := 0
+	for indent+n < len(line) && line[indent+n] == marker {
+		n++
+	}
+	return marker, n, n >= 3
 }
 
 // now returns the current time; overridden in tests for deterministic

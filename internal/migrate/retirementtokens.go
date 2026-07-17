@@ -92,6 +92,7 @@ func applyRetirementTokens(root string, out io.Writer) error {
 		if !strings.HasPrefix(value, "[") || !strings.HasSuffix(value, "]") {
 			return fmt.Errorf("retirement-tokens: %s: retires_invariants: is not a single-line inline list", a.Filename)
 		}
+		removed := loc[1] - loc[0]
 		raw = raw[:loc[0]] + raw[loc[1]:]
 		fmt.Fprintf(out, "retirement-tokens: %s: stripped retires_invariants\n", a.Filename)
 
@@ -123,16 +124,14 @@ func applyRetirementTokens(root string, out io.Writer) error {
 				n = items[len(items)-1] + 1
 			}
 			item := fmt.Sprintf("%d. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,\n   ADR-0120).** This ADR retires %s.\n", n, strings.Join(tokens, ", "))
-			dIdx := strings.Index(raw, "\n## Decision\n")
-			if dIdx < 0 {
+			if a.DecisionEnd == 0 {
 				return fmt.Errorf("retirement-tokens: %s: no Decision section to append the bookkeeping item to", a.Filename)
 			}
-			bodyStart := dIdx + len("\n## Decision\n")
-			if next := strings.Index(raw[bodyStart:], "\n## "); next >= 0 {
-				at := bodyStart + next
-				raw = raw[:at] + "\n" + item + raw[at:]
-			} else {
+			at := a.DecisionEnd - removed
+			if at == len(raw) {
 				raw += "\n" + item
+			} else {
+				raw = raw[:at] + item + "\n" + raw[at:]
 			}
 			fmt.Fprintf(out, "retirement-tokens: %s: appended Decision item %d (%s)\n", a.Filename, n, strings.Join(slugs, ", "))
 		}

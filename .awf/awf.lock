@@ -320,7 +320,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:a55bef731ce7dc96d8602e085cff4cba464442286deed077005d16a59d3becfe",
+      "outputHash": "sha256:b03cb1b29ab9d453fde2084fe8596d460050dfdbe2513ca8b2ef33c47e12b822",
       "regenChecked": true
     },
     "docs/domains/config.md": {

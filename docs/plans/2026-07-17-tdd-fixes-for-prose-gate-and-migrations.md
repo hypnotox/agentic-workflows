@@ -1,7 +1,7 @@
 ---
 date: 2026-07-17
 adrs: [10, 119, 120]
-status: Proposed
+status: Implemented
 ---
 # Plan: TDD fixes for prose gate and migrations
 
@@ -137,3 +137,5 @@ Replace the pitfalls migration's hand-built YAML with validated typed YAML seria
 - The staged-input design deliberately refuses an enabled prose-gate invocation when `.awf/config.yaml` is absent from the staged snapshot; falling back to the worktree would reintroduce policy mismatch.
 - Direct byte scanning of non-UTF-8 files is out of scope by settled design: those blobs are binary, skipped, and reported without failing the gate.
 - The parser correction also fixes the related `awf check` fence-blindness found during grounding; it is necessary for migration and checker semantics to agree.
+- Implementation findings: Phase 1 omitted `.awf/awf.lock` from its planned staging list.
+- Implementation findings: Phase 3 omitted `.awf/awf.lock` from its planned staging list.

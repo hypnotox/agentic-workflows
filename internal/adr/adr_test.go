@@ -298,9 +298,9 @@ func TestSupersessionRefExtraction(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "backticked token inside a fenced block is read raw",
-			body: "## Decision\n\n1. Grammar example:\n\n```\n`supersedes: ADR-0999#7`\n```\n",
-			want: []adr.SupersessionRef{{Target: "0999", Item: 7}},
+			name: "fenced tokens are inert while real tokens remain visible",
+			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n## Fake\n1. Fake.\n```\n\n~~~\n`supersedes-invariant: ADR-0998#fake`\n~~~\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
 		},
 	}
 	for _, tc := range cases {
@@ -314,10 +314,7 @@ func TestSupersessionRefExtraction(t *testing.T) {
 }
 
 // TestDecisionItems covers column-0 item enumeration: indented sub-lists
-// skipped, multi-digit items matched, and a fenced column-0 numbered line
-// counted - pinning that the Decision body is read raw, fences included (the
-// corpus is fence-clean at column 0 today; the pin makes any future surprise
-// a test failure, not silent drift).
+// skipped, multi-digit items matched, and fenced syntax ignored.
 func TestDecisionItems(t *testing.T) {
 	cases := []struct {
 		name string
@@ -326,8 +323,10 @@ func TestDecisionItems(t *testing.T) {
 	}{
 		{"indented sub-item not enumerated", "## Decision\n\n1. First.\n   1. Sub-item.\n2. Second.\n", []int{1, 2}},
 		{"multi-digit item enumerated", "## Decision\n\n13. Thirteenth.\n", []int{13}},
-		{"fenced column-0 numbered line counts (raw-read pin)", "## Decision\n\n1. Example:\n\n```\n1. fenced line\n```\n", []int{1, 1}},
+		{"fenced column-0 numbered line is inert", "## Decision\n\n1. Example:\n\n```\n1. fenced line\n```\n\n2. Real.\n", []int{1, 2}},
+		{"tilde fenced column-0 numbered line is inert", "## Decision\n\n~~~\n1. fenced line\n~~~\n\n1. Real.\n", []int{1}},
 		{"no items", "## Decision\n\nProse only.\n", nil},
+		{"final item without trailing newline", "## Decision\n\n1. Final.", []int{1}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -342,6 +341,14 @@ func TestDecisionItems(t *testing.T) {
 // TestSupersessionIndex covers the render view's derivation: chains sorted by
 // predecessor, refs into missing or non-live targets dropped, and the override
 // order (items by number, then slugs by slug, ties by successor).
+func TestDecisionSectionOffsetsIgnoreFencedHeadings(t *testing.T) {
+	body := "## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n## Consequences\n\nx\n"
+	a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(body)))
+	if got, want := a.DecisionEnd-a.DecisionStart, len("## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n"); got != want {
+		t.Errorf("Decision section length = %d, want %d", got, want)
+	}
+}
+
 func TestSupersessionIndex(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{

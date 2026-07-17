@@ -103,6 +103,25 @@ func TestRetirementTokensMigratesCorpus(t *testing.T) {
 	}
 }
 
+func TestRetirementTokensAppendsAfterFencedSyntax(t *testing.T) {
+	carrier := strings.Replace(rtCarrier, "1. Something.", "```\n## Fake heading\n2. Fake item.\n```\n\n1. Something.\n2. Also real.", 1)
+	root := rtFixture(t, map[string]string{
+		"0001-target.md":  rtTarget,
+		"0002-carrier.md": carrier,
+	})
+	if err := applyRetirementTokens(root, io.Discard); err != nil {
+		t.Fatalf("applyRetirementTokens: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0002-carrier.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "2. Also real.\n\n3. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,\n   ADR-0120).** This ADR retires `supersedes-invariant: ADR-0001#fixture-gone`.\n\n## Consequences"
+	if !strings.Contains(string(got), want) {
+		t.Errorf("bookkeeping item missing or misplaced:\n%s", got)
+	}
+}
+
 // An empty key is stripped without appending an item; a target already
 // back-pointed gains no duplicate; existing related: order is preserved with
 // the carrier appended last.
