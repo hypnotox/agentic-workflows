@@ -104,7 +104,7 @@ func TestRetirementTokensMigratesCorpus(t *testing.T) {
 }
 
 func TestRetirementTokensAppendsAfterFencedSyntax(t *testing.T) {
-	carrier := strings.Replace(rtCarrier, "1. Something.", "```\n## Fake heading\n2. Fake item.\n```\n\n1. Something.\n2. Also real.", 1)
+	carrier := strings.Replace(rtCarrier, "1. Something.", "```\n## Fake heading\n2. Fake item.\n``` not-a-closer\n## Still fake\n3. Still fake item.\n```\n\n1. Something.\n2. Also real.", 1)
 	root := rtFixture(t, map[string]string{
 		"0001-target.md":  rtTarget,
 		"0002-carrier.md": carrier,

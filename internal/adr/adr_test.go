@@ -302,6 +302,11 @@ func TestSupersessionRefExtraction(t *testing.T) {
 			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n## Fake\n1. Fake.\n```\n\n~~~\n`supersedes-invariant: ADR-0998#fake`\n~~~\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
 			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
 		},
+		{
+			name: "faux fence closer leaves fenced ADR syntax inert",
+			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n``` not-a-closer\n## Fake\n`supersedes-invariant: ADR-0998#fake`\n```\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

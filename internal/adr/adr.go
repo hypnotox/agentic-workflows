@@ -352,7 +352,7 @@ func sections(body string, offset int) parsedSections {
 				pos += len(rawLine)
 				continue
 			}
-			if marker == fence && n >= fenceLen {
+			if marker == fence && n >= fenceLen && fenceCloser(line, n) {
 				fence, fenceLen = 0, 0
 			}
 			pos += len(rawLine)
@@ -398,6 +398,13 @@ func fenceMarker(line string) (byte, int, bool) {
 		n++
 	}
 	return marker, n, n >= 3
+}
+
+// fenceCloser reports whether the marker run is followed only by whitespace.
+// Unlike an opening fence, a Markdown closing fence cannot carry info text.
+func fenceCloser(line string, n int) bool {
+	indent := len(line) - len(strings.TrimLeft(line, " "))
+	return strings.TrimSpace(line[indent+n:]) == ""
 }
 
 // now returns the current time; overridden in tests for deterministic
