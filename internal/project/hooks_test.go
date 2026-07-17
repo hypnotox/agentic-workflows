@@ -117,12 +117,8 @@ hooks:
 	}
 }
 
-// Hook payload template ids are excluded from the managed-markdown scans and
-// label as their script name in advisories.
-func TestHookPayloadScanExclusionAndLabel(t *testing.T) {
-	if isManagedMarkdown("hooks/pre-commit.sh.tmpl") {
-		t.Error("hook payload tid must be excluded from the managed-markdown scans")
-	}
+// Hook payload template ids label as their script name in advisories.
+func TestHookPayloadLabel(t *testing.T) {
 	if got, want := artifactLabel("hooks/pre-commit.sh.tmpl"), "hooks pre-commit"; got != want {
 		t.Errorf("artifactLabel = %q, want %q", got, want)
 	}

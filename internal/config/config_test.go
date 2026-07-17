@@ -17,6 +17,17 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
+// invariant: duplicate-target-rejected
+func TestConfigRejectsDuplicateTargets(t *testing.T) {
+	cfg, err := Load(writeConfig(t, "prefix: awf\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "duplicate target") {
+		t.Fatalf("Validate = %v", err)
+	}
+}
+
 func TestLoadParsesSkeletonFields(t *testing.T) {
 	dir := writeConfig(t, `prefix: example
 vars:

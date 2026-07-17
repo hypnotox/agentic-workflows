@@ -312,10 +312,15 @@ func (c *Config) Validate() error {
 	if len(c.Targets) == 0 {
 		return errors.New("targets must not be empty")
 	}
+	seenTargets := map[string]bool{}
 	for _, t := range c.Targets {
 		if t == "" || hasPathSep(t) {
 			return fmt.Errorf("target %q must be a non-empty name without path separators", t)
 		}
+		if seenTargets[t] {
+			return fmt.Errorf("duplicate target %q", t)
+		}
+		seenTargets[t] = true
 	}
 	return nil
 }

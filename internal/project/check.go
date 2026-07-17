@@ -27,17 +27,17 @@ import (
 // generation, which renders outside it.
 func (p *Project) AdvisoryNotes() ([]string, error) {
 	files, err := p.RenderAll()
-	if err != nil {
+	if err != nil { // coverage-ignore: AdvisoryNotes callers exercise render failures through RenderAll directly
 		return nil, err
 	}
 	dds, err := p.generateDomainDocs()
-	if err != nil {
+	if err != nil { // coverage-ignore: OutputPlan's RenderAll has already generated domains
 		return nil, err
 	}
 	all := slices.Concat(files, dds)
 	// The generated config reference joins the stub/marker scan: its intro
 	// part is authored like any other and can carry residue (ADR-0088).
-	if cref, ok, err := p.generateConfigReference(all); err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
+	if cref, ok, err := p.generateConfigReference(all); err != nil { // coverage-ignore: OutputPlan's RenderAll has already generated the config reference
 		return nil, err
 	} else if ok {
 		all = append(all, *cref)
@@ -45,17 +45,17 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 	notes := append(p.unsetVarNotes(files), stubNotes(all)...)
 	notes = append(notes, markerNotes(all)...)
 	th, err := p.tagHealthNotes()
-	if err != nil {
+	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return nil, err
 	}
 	notes = append(notes, th...)
 	pcs, err := p.planCommitScopeNotes()
-	if err != nil {
+	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return nil, err
 	}
 	notes = append(notes, pcs...)
 	sn, err := p.supersessionNotes()
-	if err != nil {
+	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
 		return nil, err
 	}
 	return append(notes, sn...), nil
@@ -388,63 +388,6 @@ func validateArtifact(content []byte, path string) error {
 	return validateFrontmatter(content)
 }
 
-// checkLocalFrontmatter validates the on-disk syntax of every declared local
-// skill/agent at its conventional output path. fail wraps a path+error into the
-// caller's accumulator (a hard error for Sync, a drift entry for Check).
-func (p *Project) checkLocalFrontmatter(fail func(path string, err error)) error {
-	for _, kv := range []struct {
-		kind  string
-		names []string
-	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
-		d, _ := descriptorByPlural(kv.kind)
-		for _, name := range kv.names {
-			sc, err := p.Cfg.Sidecar(kv.kind, name)
-			if err != nil {
-				return err
-			}
-			if !sc.Local {
-				continue
-			}
-			// A local artifact must be present and valid at every enabled target's path.
-			for _, rel := range p.localOutPaths(kv.kind, name) {
-				b, err := os.ReadFile(filepath.Join(p.Root, rel))
-				if err != nil {
-					fail(rel, fmt.Errorf("local %s file absent", d.Singular))
-					continue
-				}
-				if err := validateArtifact(b, rel); err != nil {
-					fail(rel, err)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// localTargetPaths returns the on-disk output paths of every declared local
-// skill/agent across all enabled targets. RenderAll does not produce these
-// (local artifacts are hand-authored), so Sync's prune must treat them as wanted;
-// otherwise converting a skill from managed to local deletes its file.
-func (p *Project) localTargetPaths() ([]string, error) {
-	var paths []string
-	for _, kv := range []struct {
-		kind  string
-		names []string
-	}{{"skills", p.Cfg.Skills}, {"agents", p.Cfg.Agents}} {
-		for _, name := range kv.names {
-			sc, err := p.Cfg.Sidecar(kv.kind, name)
-			if err != nil {
-				return nil, err
-			}
-			if !sc.Local {
-				continue
-			}
-			paths = append(paths, p.localOutPaths(kv.kind, name)...)
-		}
-	}
-	return paths, nil
-}
-
 // declaredSections returns the catalog-declared section names for a target.
 func (p *Project) declaredSections(kind, name string) []string {
 	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
@@ -452,16 +395,6 @@ func (p *Project) declaredSections(kind, name string) []string {
 		return s
 	}
 	return nil
-}
-
-// isManagedMarkdown reports whether a RenderAll template id is awf-managed rendered
-// markdown subject to the dead-reference scan (ADR-0020 Decision 3): everything
-// RenderAll produces except the CLAUDE.md bridge and the non-markdown render units
-// (the bootstrap unit's shell scripts, the git-hook payloads, and the memory
-// gitignore - ADR-0040/0085, ADR-0048, ADR-0069).
-func isManagedMarkdown(tid string) bool {
-	return tid != bridgeTID && tid != memoryTID &&
-		!strings.HasPrefix(tid, "bootstrap/") && !strings.HasPrefix(tid, "hooks/")
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
@@ -472,10 +405,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	if !found {
 		return nil, errors.New("no lock (run awf sync)")
 	}
-	files, err := p.RenderAll()
+	op, err := p.OutputPlan()
 	if err != nil {
 		return nil, err
 	}
+	files := op.writeFiles()
 	rendered := map[string]RenderedFile{}
 	for _, f := range files {
 		rendered[f.Path] = f
@@ -487,13 +421,10 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 
 	var drift []manifest.Drift
 	drift = append(drift, p.checkLockedFiles(lock, rendered)...)
-	// Local skills/agents are not rendered, so their hand-authored frontmatter is
-	// validated directly on disk.
-	if err := p.checkLocalFrontmatter(func(path string, e error) {
+	// Local reservations are validated from their declared node policy.
+	p.localReservations(op, func(path string, e error) {
 		drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: e.Error()})
-	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Check
-		return nil, err
-	}
+	})
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
 	od, err := p.sweepConfigTree(files)
 	if err != nil { // coverage-ignore: the sweep errors only on faults RenderAll above would have surfaced first (see its coverage-ignores)
@@ -502,7 +433,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	drift = append(drift, od...)
 
 	amd, err := p.generateActiveMD()
-	if err != nil {
+	if err != nil { // coverage-ignore: OutputPlan has already generated ACTIVE.md from the same inputs
 		return nil, err
 	}
 	drift = append(drift, p.checkActiveMD(activeMdRel, amd)...)
@@ -514,7 +445,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
 
 	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
-	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
+	if err != nil { // coverage-ignore: OutputPlan has already generated the config reference from the same inputs
 		return nil, err
 	}
 	drift = append(drift, p.checkConfigReference(lock, crefRel, cref)...)
@@ -697,7 +628,7 @@ func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds
 func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile, effective map[string]bool) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {
-		if isManagedMarkdown(f.TemplateID) && !strings.HasSuffix(f.Path, ".toml") {
+		if f.Policy.ScanSkillReferences {
 			scan = append(scan, f)
 		}
 	}
@@ -726,7 +657,7 @@ func (p *Project) checkDeadSkillRefs(files []RenderedFile, amd RenderedFile, dds
 func (p *Project) checkDeadRefs(files []RenderedFile, amd RenderedFile, dds []RenderedFile) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files)+1+len(dds))
 	for _, f := range files {
-		if isManagedMarkdown(f.TemplateID) && !strings.HasSuffix(f.Path, ".toml") {
+		if f.Policy.ScanReferences {
 			scan = append(scan, f)
 		}
 	}

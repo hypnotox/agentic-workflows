@@ -12,6 +12,8 @@ full target descriptor into `ConfigHash`. Pi declares two TypeScript outputs und
 sync-repair, planned-output, and cleanup paths as other generated files. The templates preserve
 `missingkey=zero` publication safety and are rendered automatically whenever Pi is enabled.
 
+ADR-0124 replaces the distributed render/lifecycle output discovery with a deterministic internal output plan. Each path is a writing node or local reservation with an explicit output policy. Render, sync, lock manifests, prune protection, planned-output reporting, and drift checks consume that node set; Markdown, TOML, TypeScript, generated, and local behavior is selected by policy rather than path suffix or template ID. The configuration reference depends on preceding ordinary/domain nodes without self-dependence. Target descriptors validate closed capabilities, bridge pairs, and safe output declarations before planning; equivalent recipes coalesce while differing recipes fail before a write.
+
 The rendered-output quality bar has a deterministic review surface (ADR-0090): the committed full-surface example adopter `examples/sundial/` re-renders on every `./x sync`, so a template change lands as a reviewable rendered diff over a realistic adoption in the same commit, and a schema bump must run `awf upgrade` there before `./x check` goes green, an in-repo migration rehearsal ahead of any external adopter.
 
 ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCatalog` now clones the `Docs` map too (`invariant: local-doc-catalog-clone`), and an enabled `docs:` name outside the standard pool that carries a declaring sidecar is synthesized into a `DocEntry` with a single freeform `content` section, resolved through a new `p.docTID` (reading the effective catalog, not the package global) to an awf-owned base doc template `templates/docs/_base.md.tmpl`. Synthesis lifts the sidecar's `title`/`description` into the entry (with a name-derived title and generic description default) so a local doc always carries a non-empty document-map label (`invariant: local-doc-map-fields`) and inherits the ADR-0020 dead-link scan like any catalog doc; the docs render pass gains a `defaults` injection so the base template's title has a fallback. Doc names are path-aware (`guides/ci`), validated by `config.ValidateDocName` in the config domain. `RenderAll` now fails loudly (`assertNoDuplicateOutputPaths`) when two artifacts resolve to the same output path, so a path-aware doc name landing on awf's reserved `decisions/`/`plans/`/`domains/` territory is caught rather than silently overwriting. The `releasing` toggleable catalog doc rides the ordinary catalog path: a single stub-classified `content` section (ADR-0070), no imposed structure; and awf dogfoods it, its `docs/releasing.md` runbook now generated output listed in the document map via `resolvedDocs` rather than the retired `docMap` sidecar escape hatch.
@@ -94,9 +96,6 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 - [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md)
 - [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md)
-
-### Proposed
-
 - [ADR-0124: Deterministic Output Plans and Target Capabilities](../decisions/0124-deterministic-output-plans-and-target-capabilities.md)
 
 ### Superseded

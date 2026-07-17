@@ -1046,13 +1046,14 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if !ok || !cref.RegenChecked {
 		t.Errorf("config reference must be regeneration-checked (ok=%v)", ok)
 	}
-	// An ordinary rendered file (skill/agent/doc) is frozen-OutputHash-checked.
+	// Ordinary planned writes are frozen-OutputHash-checked; generated plan
+	// nodes are explicitly regeneration-checked.
 	if len(files) == 0 {
 		t.Fatal("RenderAll produced no files")
 	}
 	for _, f := range files {
-		if f.RegenChecked {
-			t.Errorf("ordinary rendered file %s must not be regeneration-checked", f.Path)
+		if f.Policy.Regenerate != f.RegenChecked {
+			t.Errorf("plan policy and RegenChecked disagree for %s", f.Path)
 		}
 	}
 }

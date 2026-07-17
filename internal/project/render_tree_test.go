@@ -167,18 +167,22 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 	// Only the claude copy present → the cursor path is flagged absent.
 	testsupport.WriteFile(t, filepath.Join(root, ".claude/skills/example-my-local/SKILL.md"), valid)
 	var fails []string
-	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
+	op, err := p.OutputPlan()
+	if err != nil {
 		t.Fatal(err)
 	}
+	p.localReservations(op, func(path string, _ error) { fails = append(fails, path) })
 	if len(fails) != 1 || fails[0] != ".cursor/skills/example-my-local/SKILL.md" {
 		t.Errorf("expected only the cursor path flagged absent, got %v", fails)
 	}
 	// Both copies present → clean.
 	testsupport.WriteFile(t, filepath.Join(root, ".cursor/skills/example-my-local/SKILL.md"), valid)
 	fails = nil
-	if err := p.checkLocalFrontmatter(func(path string, _ error) { fails = append(fails, path) }); err != nil {
+	op, err = p.OutputPlan()
+	if err != nil {
 		t.Fatal(err)
 	}
+	p.localReservations(op, func(path string, _ error) { fails = append(fails, path) })
 	if len(fails) != 0 {
 		t.Errorf("expected clean with both target copies present, got %v", fails)
 	}

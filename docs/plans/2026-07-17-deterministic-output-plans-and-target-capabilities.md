@@ -1,7 +1,7 @@
 ---
 date: 2026-07-17
 adrs: [124]
-status: Proposed
+status: Implemented
 ---
 # Plan: Deterministic Output Plans and Target Capabilities
 
@@ -172,5 +172,6 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 
 ## Notes
 
+- None beyond the recorded review findings.
 - A dedicated grounding-check agent is out of scope; the current workflow uses one
   `subagent_explore` grounding dispatch.

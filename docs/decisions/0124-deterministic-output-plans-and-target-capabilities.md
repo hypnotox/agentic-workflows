@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-17
 supersedes: []
 superseded_by: ""

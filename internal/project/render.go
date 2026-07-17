@@ -52,6 +52,9 @@ type RenderedFile struct {
 	// drift is checked by regeneration instead (ADR-0100). Set on the generated
 	// indexes and on any file carrying an in-place-editable section.
 	RegenChecked bool
+	// Policy declares all lifecycle checks for this path. It replaces
+	// template-name and filename inference at plan consumers.
+	Policy OutputPolicy
 	// assembled is the executed template source (post section-overlay, pre
 	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
@@ -412,7 +415,9 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		data := p.data(sc)
 		var options *renderOutputOptions
 		if spec.target.Name != "" {
-			data["targetSubagentTools"] = spec.target.SubagentTools
+			for key, value := range spec.target.targetTemplateData() {
+				data[key] = value
+			}
 			target := spec.target
 			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target}
 		}
@@ -429,7 +434,9 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 	return out, nil
 }
 
-func (p *Project) RenderAll() ([]RenderedFile, error) {
+// renderAllBase renders declarative catalog and singleton producers. OutputPlan
+// owns the public render/sync/check lifecycle and adds generated producers.
+func (p *Project) renderAllBase() ([]RenderedFile, error) {
 	var out []RenderedFile
 	eff, err := p.effectiveSkills()
 	if err != nil {
@@ -480,7 +487,9 @@ func (p *Project) RenderAll() ([]RenderedFile, error) {
 		for _, targetOutput := range t.Outputs {
 			target := t
 			data := p.data(config.Sidecar{})
-			data["targetSubagentTools"] = t.SubagentTools
+			for key, value := range t.targetTemplateData() {
+				data[key] = value
+			}
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
 					bannerStyle: targetOutput.CommentStyle,
@@ -621,40 +630,6 @@ func assertNoDuplicateOutputPaths(files []RenderedFile) error {
 	return nil
 }
 
-// PlannedOutputs returns the project-relative paths Sync would write: every
-// RenderAll output plus the generated ACTIVE.md, domain docs, and config
-// reference. Used by awf init to detect collisions before writing (ADR-0016).
-func (p *Project) PlannedOutputs() ([]string, error) {
-	files, err := p.RenderAll()
-	if err != nil {
-		return nil, err
-	}
-	var paths []string
-	for _, f := range files {
-		paths = append(paths, f.Path)
-	}
-	amd, err := p.generateActiveMD()
-	if err != nil {
-		return nil, err
-	}
-	paths = append(paths, amd.Path)
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable - generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
-		return nil, err
-	}
-	for _, dd := range dds {
-		paths = append(paths, dd.Path)
-	}
-	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
-	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
-		return nil, err
-	}
-	if ok {
-		paths = append(paths, cref.Path)
-	}
-	return paths, nil
-}
-
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
@@ -732,6 +707,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
 		RegenChecked: anyInPlace(plan),
+		Policy:       policyFor(kind, tid, anyInPlace(plan)),
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 	}, nil
@@ -764,7 +740,7 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 		return RenderedFile{}, err
 	}
 	content = injectBanner(content, "")
-	return RenderedFile{Path: p.layout().ActiveMd, Content: content, RegenChecked: true}, nil
+	return RenderedFile{Path: p.layout().ActiveMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -792,7 +768,7 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
-			partVarRefs: rf.partVarRefs, RegenChecked: true})
+			partVarRefs: rf.partVarRefs, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}})
 	}
 	return out, nil
 }

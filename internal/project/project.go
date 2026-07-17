@@ -108,45 +108,26 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	files, err := p.RenderAll()
+	op, err := p.OutputPlan()
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	files := op.writeFiles()
 	for _, f := range files {
-		if isSkillOrAgent(f.TemplateID) {
+		if f.Policy.ValidateFrontmatter {
 			if err := validateArtifact([]byte(f.Content), f.Path); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
 				return nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path, err)
 			}
 		}
 	}
 	var localErr error
-	if err := p.checkLocalFrontmatter(func(path string, e error) {
+	p.localReservations(op, func(path string, e error) {
 		if localErr == nil {
 			localErr = fmt.Errorf("local target %s: %w", path, e)
 		}
-	}); err != nil { // coverage-ignore: checkLocalFrontmatter only errors on a malformed local-target sidecar, which RenderAll above already surfaces earlier in Sync
-		return nil, nil, nil, err
-	}
+	})
 	if localErr != nil {
 		return nil, nil, nil, localErr
-	}
-	amd, err := p.generateActiveMD()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	rfs := files // the RenderAll set - the consumption input for the config reference
-	files = append(files, amd)
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable - generateActiveMD above parses the same decisions dir and fails first on a malformed ADR
-		return nil, nil, nil, err
-	}
-	files = append(files, dds...)
-	cref, ok, err := p.generateConfigReference(slices.Concat(rfs, dds))
-	if err != nil { // reachable: the intro part is read here for the first time (RenderAll never renders the reference)
-		return nil, nil, nil, err
-	}
-	if ok {
-		files = append(files, *cref)
 	}
 
 	// Prior lock, read before any write (top of this func): membership decides
@@ -199,15 +180,12 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		}
 		want[f.Path] = true
 	}
-	// Local artifacts are not rendered (skipped by RenderAll), so their hand-authored
-	// files never enter `want` above. Protect them from the prune below so converting
-	// a managed skill/agent to local does not delete its file.
-	localPaths, err := p.localTargetPaths()
-	if err != nil { // coverage-ignore: checkLocalFrontmatter above already surfaced any malformed local sidecar
-		return nil, nil, nil, err
-	}
-	for _, rel := range localPaths {
-		want[rel] = true
+	// Plan reservations are non-writing local artifacts. They remain wanted so a
+	// managed-to-local transition cannot be pruned.
+	for _, node := range op.Nodes {
+		if node.Reservation {
+			want[node.Path] = true
+		}
 	}
 	// Prune files from the previous lock that are no longer produced, then remove
 	// every directory left empty - walking all ancestors deepest-first, not just the

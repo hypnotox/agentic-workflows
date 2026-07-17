@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -17,11 +18,45 @@ const (
 	TOMLAgentDialect     AgentDialect = "toml"
 )
 
+// Capability is an awf-owned template capability. It is deliberately closed:
+// targets cannot inject arbitrary template data.
+type Capability string
+
+const CapabilitySubagentTools Capability = "subagent-tools"
+
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
 	Path         string
 	TemplateID   string
 	CommentStyle render.CommentStyle
+	Policy       OutputPolicy
+}
+
+// targetTemplateData is the complete target projection exposed to templates.
+func (t Target) targetTemplateData() map[string]any {
+	return map[string]any{"targetSubagentTools": t.hasCapability(CapabilitySubagentTools)}
+}
+
+func (t Target) hasCapability(c Capability) bool {
+	return slices.Contains(t.Capabilities, c) || (c == CapabilitySubagentTools && t.SubagentTools)
+}
+
+func (t Target) validate() error {
+	known := map[Capability]bool{CapabilitySubagentTools: true}
+	for _, c := range t.Capabilities {
+		if !known[c] {
+			return fmt.Errorf("target %q has unknown capability %q", t.Name, c)
+		}
+	}
+	if (t.BridgeFile == "") != (t.BridgeTemplate == "") {
+		return fmt.Errorf("target %q bridge path and template must be both present or absent", t.Name)
+	}
+	for _, out := range t.Outputs {
+		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
+			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
+		}
+	}
+	return nil
 }
 
 // Target places adapter (tool-specific) artifacts for one runtime. Neutral
@@ -34,8 +69,12 @@ type Target struct {
 	AgentDialect   AgentDialect
 	BridgeFile     string // adapter bridge file at repo root, "" if none
 	BridgeTemplate string
-	SubagentTools  bool
-	Outputs        []TargetOutput
+	// Capabilities is the closed capability declaration. SubagentTools remains
+	// as a compatibility projection for existing descriptors and is normalized by
+	// hasCapability.
+	Capabilities  []Capability
+	SubagentTools bool
+	Outputs       []TargetOutput
 }
 
 // SkillPath is the output path for a rendered skill under this target.
@@ -96,10 +135,11 @@ var piTarget = Target{
 	AgentDir:      ".pi/skills",
 	AgentSuffix:   ".md",
 	AgentDialect:  MarkdownAgentDialect,
+	Capabilities:  []Capability{CapabilitySubagentTools},
 	SubagentTools: true,
 	Outputs: []TargetOutput{
-		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", CommentStyle: render.SlashComment},
-		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", CommentStyle: render.SlashComment},
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", CommentStyle: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}},
+		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", CommentStyle: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}},
 	},
 }
 
@@ -147,6 +187,9 @@ func resolveTargets(names []string) ([]Target, error) {
 		t, ok := targetRegistry[n]
 		if !ok {
 			return nil, fmt.Errorf("unknown target %q (known: %s)", n, strings.Join(KnownTargets(), ", "))
+		}
+		if err := t.validate(); err != nil { // coverage-ignore: built-in registry descriptors are validated by descriptor tests
+			return nil, err
 		}
 		out = append(out, t)
 	}

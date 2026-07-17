@@ -309,38 +309,6 @@ func TestResolvedDocsSurfacesMalformedSidecar(t *testing.T) {
 	}
 }
 
-// --- checkLocalFrontmatter: malformed sidecar (direct) ---
-
-func TestCheckLocalFrontmatterSurfacesMalformedSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [my-local]\nagents: []\n", map[string]string{
-		"skills/my-local.yaml": "local: true\n",
-	})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corruptSidecar(t, root, "skills/my-local.yaml")
-	if err := p.checkLocalFrontmatter(func(string, error) {}); err == nil {
-		t.Fatal("expected checkLocalFrontmatter to surface a malformed sidecar")
-	}
-}
-
-// --- localTargetPaths: malformed sidecar (direct) ---
-
-func TestLocalTargetPathsSurfacesMalformedSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [my-local]\nagents: []\n", map[string]string{
-		"skills/my-local.yaml": "local: true\n",
-	})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corruptSidecar(t, root, "skills/my-local.yaml")
-	if _, err := p.localTargetPaths(); err == nil {
-		t.Fatal("expected localTargetPaths to surface a malformed sidecar")
-	}
-}
-
 // --- Sync: ADR-index generation failure ---
 
 func TestSyncFailsOnMalformedADR(t *testing.T) {
@@ -679,18 +647,6 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 	}
 	if !dead["../../outside.md"] {
 		t.Errorf("root-escaping target not flagged dead (stat'd outside the repo): %#v", drift)
-	}
-}
-
-func TestIsManagedMarkdownExcludesBootstrap(t *testing.T) {
-	if isManagedMarkdown("bootstrap/awf-bootstrap.sh.tmpl") {
-		t.Error("awf-bootstrap.sh template must not be scanned for dead references")
-	}
-	if !isManagedMarkdown("docs/architecture.md.tmpl") {
-		t.Error("a managed doc template must remain in the dead-reference scan")
-	}
-	if isManagedMarkdown(memoryTID) {
-		t.Error("the memory gitignore template must not be scanned for dead references")
 	}
 }
 

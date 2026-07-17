@@ -36,6 +36,8 @@ natively). A target may also declare non-catalog outputs: Pi automatically rende
 project-local `.pi/extensions/awf-subagents/` TypeScript delegation extension. awf's own config
 tree lives at `.awf/`, decoupled from any one runtime's directory.
 
+ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools capability), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
+
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 ## Components
