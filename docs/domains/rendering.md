@@ -16,7 +16,9 @@ at 2 KiB, reports cumulative omissions, and sends progress through context-isola
 ADR-0125 expands the closed Pi contract to four roles with dedicated `subagent_grounding`, binds Pi
 brainstorming to it while coupling audits retain exploration, and gives all four tools one shared
 collapsed/expanded inline renderer. Final report or failure-summary content alone reaches the parent
-model.
+model. ADR-0126 adds a `// @ts-nocheck` directive on the line after each extension file's provenance
+banner so adopter IDEs stay quiet without a resolvable `@types/node`; every rendered copy stays
+byte-identical and the gate lane strips the directive before type-checking.
 
 ADR-0124 replaces the distributed render/lifecycle output discovery with a deterministic internal output plan. Each path is a writing node or local reservation with an explicit output policy. Render, sync, lock manifests, prune protection, planned-output reporting, and drift checks consume that node set; Markdown, TOML, TypeScript, generated, and local behavior is selected by policy rather than path suffix or template ID. The configuration reference depends on preceding ordinary/domain nodes without self-dependence. Target descriptors validate closed capabilities, bridge pairs, and safe output declarations before planning; equivalent recipes coalesce while differing recipes fail before a write.
 
