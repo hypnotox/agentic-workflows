@@ -126,10 +126,7 @@
 - [ADR-0123: Pi Workflow Subagent Extension](0123-pi-workflow-subagent-extension.md) (Implemented)
 - [ADR-0124: Deterministic Output Plans and Target Capabilities](0124-deterministic-output-plans-and-target-capabilities.md) (Implemented)
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Implemented)
-
-## Proposed
-
-- [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Proposed)
+- [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Implemented)
 
 ## Superseded
 

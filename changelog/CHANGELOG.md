@@ -219,6 +219,12 @@ query a single version or a range.
   parent model's visible content (ADR-0125).
 
 ### Others
+- The generated Pi extension files now carry a `// @ts-nocheck` directive on the line after
+  their provenance banner (ADR-0126), so adopter IDEs no longer flag `.pi/extensions/awf-subagents/`
+  with errors like `Cannot find name 'Buffer'` when no `@types/node` is resolvable above `.pi/`.
+  Every rendered copy stays byte-identical, and the container test lane strips that one directive
+  before `tsc` so the static type-check still covers the real extension code. Adopters get the
+  reworded output on their next `awf sync`.
 - The `adr-lifecycle` skill now states the partial-amendment back-pointer rule, and the
   `adr-reviewer` checks it (ADR-0116). When an ADR overrides a live ADR's Decision item
   without superseding it wholesale, the overridden ADR's `related:` must name the

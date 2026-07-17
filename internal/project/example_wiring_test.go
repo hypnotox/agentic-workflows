@@ -100,3 +100,38 @@ func TestExampleAdoptsRunner(t *testing.T) {
 		}
 	}
 }
+
+// The generated Pi extension carries `// @ts-nocheck` on the line after its
+// provenance banner so adopter IDEs stay quiet without a resolvable
+// `@types/node`, and the container gate strips that exact directive before
+// `tsc` so the static type-check still covers the real extension code. Neither
+// half stands alone: a missing strip leaves the lane green while `tsc` silently
+// skips the file, so only this static assertion enforces the coupling.
+//
+// invariant: pi-extension-editor-quiet-strip
+func TestPiExtensionEditorQuietStrip(t *testing.T) {
+	for _, name := range []string{"index.ts", "runner.ts"} {
+		content := renderPiExtensionFile(t, name)
+		lines := strings.Split(content, "\n")
+		if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
+			t.Errorf("rendered %s must carry // @ts-nocheck on line 2, got:\n%s", name, content)
+		}
+	}
+	raw, err := os.ReadFile("../../tools/pi-extension-test/container.sh")
+	if err != nil {
+		t.Fatalf("read container manager: %v", err)
+	}
+	manager := string(raw)
+	strip := `sed -i "/^\/\/ @ts-nocheck$/d" .pi/extensions/awf-subagents/index.ts .pi/extensions/awf-subagents/runner.ts`
+	stripAt := strings.Index(manager, strip)
+	if stripAt < 0 {
+		t.Fatal("container manager missing the @ts-nocheck strip stage")
+	}
+	tscAt := strings.Index(manager, "tsc -p tools/pi-extension-test/tsconfig.json")
+	if tscAt < 0 {
+		t.Fatal("container manager missing the tsc invocation")
+	}
+	if stripAt > tscAt {
+		t.Error("the @ts-nocheck strip must run before tsc")
+	}
+}
