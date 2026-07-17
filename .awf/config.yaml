@@ -181,10 +181,6 @@ contextIgnore:
   - .gremlins.yaml
 targets:
   - claude
-  - codex
-  - copilot
-  - cursor
-  - gemini
   - pi
 vars:
   activeMdRegenCmd: ./x sync
