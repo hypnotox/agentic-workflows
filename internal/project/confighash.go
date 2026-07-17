@@ -34,7 +34,18 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{"prefix": p.Cfg.Prefix, "layout": p.layout().templateMap()}
 	if len(targets) != 0 {
-		proj["target"] = targets[0]
+		// Identity is a declarer property of an output-plan node, not part of
+		// its recipe. Hash only output-affecting target descriptor fields.
+		t := targets[0]
+		caps := slices.Clone(t.Capabilities)
+		slices.Sort(caps)
+		proj["target"] = struct {
+			SkillDir, AgentDir, AgentSuffix string
+			AgentDialect                    AgentDialect
+			BridgeFile, BridgeTemplate      string
+			Capabilities                    []Capability
+			Outputs                         []TargetOutput
+		}{t.SkillDir, t.AgentDir, t.AgentSuffix, t.AgentDialect, t.BridgeFile, t.BridgeTemplate, caps, t.Outputs}
 	}
 	vs := map[string]any{}
 	for _, r := range refs {

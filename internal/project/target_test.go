@@ -47,7 +47,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	if got == nil {
 		t.Fatal("Codex agent not rendered")
 	}
-	if err := validateArtifact([]byte(got.Content), got.Path); err != nil {
+	if err := validateArtifact([]byte(got.Content), TOMLAgentDialect); err != nil {
 		t.Fatalf("validate Codex profile: %v\n%s", err, got.Content)
 	}
 	if !strings.HasPrefix(got.Content, "# "+bannerText+"\n") {
@@ -208,7 +208,7 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 			before = file.ConfigHash
 		}
 	}
-	p.Targets[0].SubagentTools = false
+	p.Targets[0].Capabilities = nil
 	files, err = p.RenderAll()
 	if err != nil {
 		t.Fatal(err)

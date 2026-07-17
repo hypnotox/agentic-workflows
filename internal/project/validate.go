@@ -184,12 +184,6 @@ type skillFrontmatter struct {
 	Description string `yaml:"description"`
 }
 
-// isSkillOrAgent reports whether a template id renders a skill or agent (the
-// outputs that must carry name/description frontmatter).
-func isSkillOrAgent(templateID string) bool {
-	return strings.HasPrefix(templateID, "skills/") || strings.HasPrefix(templateID, "agents/")
-}
-
 // validateFrontmatter checks that content has parseable frontmatter with a
 // non-empty name and description.
 func validateFrontmatter(content []byte) error {

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 // OutputPolicy declares lifecycle behavior for a planned path. It is data on the
@@ -23,10 +25,10 @@ type OutputPolicy struct {
 // collision diagnostics and configuration hashes. Target identity is kept on
 // OutputNode declarers rather than here, so compatible shared outputs coalesce.
 type OutputRecipe struct {
-	TemplateID string
-	Policy     OutputPolicy
-	Encoder    AgentDialect
-	Provenance string
+	TemplateID, TemplateHash, ConfigHash string
+	Policy                               OutputPolicy
+	Encoder                              AgentDialect
+	Provenance                           string
 }
 
 // OutputNode is one path in the deterministic internal output plan. A node is
@@ -56,18 +58,15 @@ func (op *OutputPlan) writeFiles() []RenderedFile {
 	return files
 }
 
-func policyFor(kind, tid string, regen bool) OutputPolicy {
+// declaredPolicy is assigned by a producer family, never inferred by a
+// template identifier or output filename. Consumers inspect only node Policy.
+func declaredPolicy(kind string, regen bool) OutputPolicy {
 	policy := OutputPolicy{Regenerate: regen}
-	// These producer declarations are intentionally centralized here. Consumers
-	// inspect only Policy, never template spelling or output filename.
 	switch kind {
 	case "skills", "agents":
 		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
 	case "docs", "agents-doc", "adr-readme", "plans-readme", "doc-standard", "agents-md-standard", "working-with-awf", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains":
 		policy.ScanReferences, policy.ScanSkillReferences = true, true
-	}
-	if tid == bridgeTID || tid == memoryTID || strings.HasPrefix(tid, "bootstrap/") || strings.HasPrefix(tid, "hooks/") || tid == runnerTID {
-		policy.ScanReferences, policy.ScanSkillReferences = false, false
 	}
 	return policy
 }
@@ -76,42 +75,46 @@ func policyFor(kind, tid string, regen bool) OutputPolicy {
 // dependency order; config reference observes ordinary/domain metadata but is
 // deliberately excluded from its own input.
 func (p *Project) OutputPlan() (*OutputPlan, error) {
+	// Validate every descriptor and reject target-owned collisions before any
+	// template is rendered. This is the planner's precondition boundary.
+	seen := map[string]OutputRecipe{}
+	for _, t := range p.Targets {
+		if err := t.validate(); err != nil {
+			return nil, err
+		}
+		for _, o := range t.Outputs {
+			r := OutputRecipe{TemplateID: o.TemplateID, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
+			if prior, ok := seen[o.Path]; ok && prior != r {
+				return nil, fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", o.Path)
+			}
+			seen[o.Path] = r
+		}
+	}
 	base, err := p.renderAllBase()
 	if err != nil {
 		return nil, err
 	}
 	plan := &OutputPlan{}
 	add := func(f RenderedFile, declarer string, deps ...string) error {
-		if f.Policy == (OutputPolicy{}) {
-			f.Policy = policyFor(f.kind, f.TemplateID, f.RegenChecked)
+		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy, Encoder: f.Encoder, Provenance: fmt.Sprintf("%d", f.Provenance)}
+		if f.Declarer == "" {
+			f.Declarer = declarer
 		}
-		// Target-owned extensions carry their descriptor policy.
-		for _, t := range p.Targets {
-			for _, o := range t.Outputs {
-				if o.Path == f.Path {
-					f.Policy = o.Policy
-				}
-			}
-		}
-		recipe := OutputRecipe{TemplateID: f.TemplateID, Policy: f.Policy}
-		if strings.HasSuffix(f.Path, ".toml") {
-			recipe.Encoder = TOMLAgentDialect
-		} else {
-			recipe.Encoder = MarkdownAgentDialect
-		}
-		// coverage-ignore: renderAllBase rejects duplicate paths before planning, so this defensive coalescing loop has no production duplicate input yet.
+		// Compare all output-affecting normalized recipe inputs before a node is
+		// accepted. Declarer identity is intentionally excluded here.
+
 		for i := range plan.Nodes {
 			if plan.Nodes[i].Path != f.Path { // coverage-ignore: unique base paths make the duplicate-only branch unreachable
 				continue
 			}
-			if plan.Nodes[i].Recipe != recipe { // coverage-ignore: unique base paths make the duplicate-only branch unreachable
-				return fmt.Errorf("conflicting output recipes for %q", f.Path)
+			if plan.Nodes[i].Recipe != recipe {
+				return fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", f.Path)
 			}
-			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, declarer) // coverage-ignore: unique base paths make the duplicate-only branch unreachable
+			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, f.Declarer)
 			return nil
 		}
 		copy := f
-		plan.Nodes = append(plan.Nodes, OutputNode{Path: f.Path, Recipe: recipe, Policy: f.Policy, Declarers: []string{declarer}, DependsOn: deps, file: &copy})
+		plan.Nodes = append(plan.Nodes, OutputNode{Path: f.Path, Recipe: recipe, Policy: f.Policy, Declarers: []string{f.Declarer}, DependsOn: deps, file: &copy})
 		return nil
 	}
 	for _, f := range base {
@@ -164,7 +167,15 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 				continue
 			}
 			for _, path := range p.localOutPaths(kv.kind, name) {
-				plan.Nodes = append(plan.Nodes, OutputNode{Path: path, Policy: OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}, Recipe: OutputRecipe{Policy: OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}}, Declarers: []string{kv.kind + ":" + name}, Reservation: true})
+				encoder := MarkdownAgentDialect
+				for _, target := range p.Targets {
+					if d, ok := descriptorByPlural(kv.kind); ok && d.outPath(target, p.Cfg.Prefix, name) == path {
+						encoder = target.AgentDialect
+						break
+					}
+				}
+				policy := OutputPolicy{LocalValidation: true, ValidateFrontmatter: true}
+				plan.Nodes = append(plan.Nodes, OutputNode{Path: path, Policy: policy, Recipe: OutputRecipe{Policy: policy, Encoder: encoder}, Declarers: []string{kv.kind + ":" + name}, Reservation: true})
 			}
 		}
 	}
@@ -172,6 +183,10 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 	for i := range plan.Nodes {
 		slices.Sort(plan.Nodes[i].Declarers)
 		slices.Sort(plan.Nodes[i].DependsOn)
+		if plan.Nodes[i].file != nil {
+			// Membership is observable even for byte-identical shared output.
+			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].Declarers, "\\x00")))
+		}
 	}
 	return plan, nil
 }
@@ -212,7 +227,7 @@ func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
 			fail(n.Path, errors.New("local artifact file absent"))
 			continue
 		}
-		if err := validateArtifact(b, n.Path); err != nil {
+		if err := validateArtifact(b, n.Recipe.Encoder); err != nil {
 			fail(n.Path, err)
 		}
 	}

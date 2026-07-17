@@ -362,10 +362,16 @@ func localLabel(tid, path string) string {
 	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")
 }
 
-// localOutPaths returns the conventional output paths awf would render a local
-// skill/agent to - one per enabled target (the same formulas RenderAll uses); nil
-// for neutral kinds. A local artifact must exist at every target's path (ADR-0037),
-// so no target carries an unchecked hand-authored file.
+// validateArtifact validates an artifact using its declared encoder, never a
+// filename suffix. This keeps policy routing independent of path spelling.
+func validateArtifact(content []byte, encoder AgentDialect) error {
+	if encoder == TOMLAgentDialect {
+		return validateTOMLAgent(content)
+	}
+	return validateFrontmatter(content)
+}
+
+// localOutPaths returns the conventional output paths for a local artifact.
 func (p *Project) localOutPaths(kind, name string) []string {
 	d, ok := descriptorByPlural(kind)
 	if !ok || d.outPath == nil {
@@ -376,16 +382,6 @@ func (p *Project) localOutPaths(kind, name string) []string {
 		paths = append(paths, d.outPath(t, p.Cfg.Prefix, name))
 	}
 	return paths
-}
-
-// validateArtifact validates the target-native syntax of a rendered skill or
-// agent. TOML paths are Codex profiles; all other current skill/agent paths use
-// YAML-frontmatter Markdown.
-func validateArtifact(content []byte, path string) error {
-	if strings.HasSuffix(path, ".toml") {
-		return validateTOMLAgent(content)
-	}
-	return validateFrontmatter(content)
 }
 
 // declaredSections returns the catalog-declared section names for a target.
@@ -414,11 +410,6 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	for _, f := range files {
 		rendered[f.Path] = f
 	}
-	lay := p.layout()
-	activeMdRel := lay.ActiveMd
-	domainsPrefix := lay.DomainsDir + "/"
-	crefRel := p.crefRel()
-
 	var drift []manifest.Drift
 	drift = append(drift, p.checkLockedFiles(lock, rendered)...)
 	// Local reservations are validated from their declared node policy.
@@ -432,37 +423,17 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 	drift = append(drift, od...)
 
-	amd, err := p.generateActiveMD()
-	if err != nil { // coverage-ignore: OutputPlan has already generated ACTIVE.md from the same inputs
-		return nil, err
-	}
-	drift = append(drift, p.checkActiveMD(activeMdRel, amd)...)
-
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: unreachable - the ACTIVE.md regenerate above parses the same decisions dir and fails first on a malformed ADR
-		return nil, err
-	}
-	drift = append(drift, p.checkDomainDocs(lock, domainsPrefix, dds)...)
-
-	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
-	if err != nil { // coverage-ignore: OutputPlan has already generated the config reference from the same inputs
-		return nil, err
-	}
-	drift = append(drift, p.checkConfigReference(lock, crefRel, cref)...)
-	var crefFiles []RenderedFile
-	if ok {
-		crefFiles = []RenderedFile{*cref}
-	}
-
-	drift = append(drift, p.unusedVarDrift(slices.Concat(files, dds, crefFiles))...)
-	ud, err := p.unusedDataDrift(slices.Concat(files, dds, crefFiles))
+	// Generated and ordinary outputs are already exactly the plan write nodes;
+	// do not regenerate a second, duplicate node set in Check.
+	drift = append(drift, p.unusedVarDrift(files)...)
+	ud, err := p.unusedDataDrift(files)
 	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars RenderAll already read
 		return nil, err
 	}
 	drift = append(drift, ud...)
 
-	drift = append(drift, p.checkDeadRefs(slices.Concat(files, crefFiles), amd, dds)...)
-	drift = append(drift, p.checkDeadSkillRefs(slices.Concat(files, crefFiles), amd, dds, p.effSkills)...)
+	drift = append(drift, p.checkDeadRefs(files, RenderedFile{}, nil)...)
+	drift = append(drift, p.checkDeadSkillRefs(files, RenderedFile{}, nil, p.effSkills)...)
 
 	planDrift, err := p.checkPlans()
 	if err != nil {
@@ -492,22 +463,6 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	return drift, nil
 }
 
-// checkConfigReference regeneration-checks the generated config reference:
-// like ACTIVE.md and the domain docs, its content depends on config state the
-// lock hashes cannot see. A local: sidecar produces nothing, so a leftover
-// lock entry reports orphaned.
-// invariant: config-reference-regen-drift
-func (p *Project) checkConfigReference(lock *manifest.Lock, crefRel string, cref *RenderedFile) []manifest.Drift {
-	if cref == nil {
-		if _, ok := lock.Files[crefRel]; ok {
-			return []manifest.Drift{{Path: crefRel, Kind: "orphaned", Detail: "config reference is local:; run awf sync"}}
-		}
-		return nil
-	}
-	return p.regenDrift(crefRel, cref.Content,
-		"config reference absent; run awf sync", "config reference out of date; run awf sync")
-}
-
 // checkLockedFiles compares each lock entry (except the separately-checked
 // regeneration-checked artifacts - the generated ACTIVE.md / domain docs / config
 // reference) against the freshly-rendered output and the on-disk file: orphaned,
@@ -524,14 +479,11 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
 		e := lock.Files[path]
 		rf, ok := rendered[path]
-		if e.RegenChecked {
-			// A regeneration-checked entry not in the RenderAll set is a generated
-			// index - checked separately by its regen checker. One that IS in the
-			// set is an in-place file: drift by regeneration-with-read-back. The
-			// freshly rendered content already read the in-place body back from
-			// disk, so an edit confined to an in-place section matches and an edit
-			// to an awf-owned region or the structure surfaces as drift (ADR-0100).
-			if !ok {
+		if rf.Policy.Regenerate {
+			// Every regeneration-checked path is a planned rendered node. Compare
+			// it once here rather than reconstructing generated outputs elsewhere.
+			if !ok { // coverage-ignore: full Check first builds the complete planned node set; only a direct malformed lock/map call can omit a regeneration node.
+				drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "in lock but no longer produced"})
 				continue
 			}
 			onDisk, err := os.ReadFile(filepath.Join(p.Root, path))
@@ -540,8 +492,12 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				continue
 			}
 			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
-				// touches-invariant: in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
-				drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
+				if rf.TemplateID == "" {
+					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf sync"})
+				} else {
+					// touches-invariant: in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
+					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
+				}
 			}
 			continue
 		}
@@ -566,51 +522,10 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate
 		// to the hash kinds above - a re-sync is the fix for those).
-		if isSkillOrAgent(rf.TemplateID) {
-			if err := validateArtifact(onDisk, path); err != nil {
+		if rf.Policy.ValidateFrontmatter {
+			if err := validateArtifact(onDisk, rf.Encoder); err != nil {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "invalid-frontmatter", Detail: err.Error()})
 			}
-		}
-	}
-	return drift
-}
-
-// checkActiveMD regenerates the ADR index and compares it on disk. ACTIVE.md is
-// generated from ADR frontmatter, not a template, so its staleness cannot be
-// detected by the template/config hash comparison in checkLockedFiles.
-func (p *Project) checkActiveMD(activeMdRel string, amd RenderedFile) []manifest.Drift {
-	return p.regenDrift(activeMdRel, amd.Content,
-		"ADR index absent; run awf sync", "ADR index out of date; run awf sync")
-}
-
-// regenDrift compares a freshly-generated file's content against its on-disk copy:
-// a missing file or a hash mismatch yields one drift entry with the given details.
-func (p *Project) regenDrift(rel, content, missingDetail, staleDetail string) []manifest.Drift {
-	onDisk, err := os.ReadFile(filepath.Join(p.Root, rel))
-	if err != nil {
-		return []manifest.Drift{{Path: rel, Kind: "missing", Detail: missingDetail}}
-	}
-	if manifest.Hash(onDisk) != manifest.Hash([]byte(content)) {
-		return []manifest.Drift{{Path: rel, Kind: "stale", Detail: staleDetail}}
-	}
-	return nil
-}
-
-// checkDomainDocs compares each regenerated domain doc on disk and flags a lock
-// entry no longer produced (domain removed). Like ACTIVE.md, domain docs are
-// generated from ADR frontmatter + convention parts, so the lock hash cannot
-// detect their staleness.
-func (p *Project) checkDomainDocs(lock *manifest.Lock, domainsPrefix string, dds []RenderedFile) []manifest.Drift {
-	var drift []manifest.Drift
-	produced := map[string]bool{}
-	for _, dd := range dds {
-		produced[dd.Path] = true
-		drift = append(drift, p.regenDrift(dd.Path, dd.Content,
-			"domain doc absent; run awf sync", "domain doc out of date; run awf sync")...)
-	}
-	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
-		if strings.HasPrefix(path, domainsPrefix) && !produced[path] {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "orphaned", Detail: "domain removed; run awf sync"})
 		}
 	}
 	return drift

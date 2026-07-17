@@ -26,10 +26,12 @@ const CapabilitySubagentTools Capability = "subagent-tools"
 
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
-	Path         string
-	TemplateID   string
-	CommentStyle render.CommentStyle
-	Policy       OutputPolicy
+	Path           string
+	TemplateID     string
+	Encoder        AgentDialect
+	Provenance     render.CommentStyle
+	Policy         OutputPolicy
+	PolicyDeclared bool
 }
 
 // targetTemplateData is the complete target projection exposed to templates.
@@ -38,7 +40,7 @@ func (t Target) targetTemplateData() map[string]any {
 }
 
 func (t Target) hasCapability(c Capability) bool {
-	return slices.Contains(t.Capabilities, c) || (c == CapabilitySubagentTools && t.SubagentTools)
+	return slices.Contains(t.Capabilities, c)
 }
 
 func (t Target) validate() error {
@@ -51,9 +53,21 @@ func (t Target) validate() error {
 	if (t.BridgeFile == "") != (t.BridgeTemplate == "") {
 		return fmt.Errorf("target %q bridge path and template must be both present or absent", t.Name)
 	}
+	if t.AgentDialect != MarkdownAgentDialect && t.AgentDialect != TOMLAgentDialect {
+		return fmt.Errorf("target %q has unknown agent encoder %q", t.Name, t.AgentDialect)
+	}
 	for _, out := range t.Outputs {
 		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
+		}
+		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect {
+			return fmt.Errorf("target %q output %q has unknown encoder %q", t.Name, out.Path, out.Encoder)
+		}
+		if out.Provenance != render.HTMLComment && out.Provenance != render.TOMLComment && out.Provenance != render.SlashComment {
+			return fmt.Errorf("target %q output %q has invalid provenance", t.Name, out.Path)
+		}
+		if !out.PolicyDeclared {
+			return fmt.Errorf("target %q output %q has no declared policy", t.Name, out.Path)
 		}
 	}
 	return nil
@@ -69,12 +83,10 @@ type Target struct {
 	AgentDialect   AgentDialect
 	BridgeFile     string // adapter bridge file at repo root, "" if none
 	BridgeTemplate string
-	// Capabilities is the closed capability declaration. SubagentTools remains
-	// as a compatibility projection for existing descriptors and is normalized by
-	// hasCapability.
-	Capabilities  []Capability
-	SubagentTools bool
-	Outputs       []TargetOutput
+	// Capabilities is the closed capability declaration exposed through the
+	// fixed targetTemplateData projection.
+	Capabilities []Capability
+	Outputs      []TargetOutput
 }
 
 // SkillPath is the output path for a rendered skill under this target.
@@ -130,16 +142,15 @@ var codexTarget = Target{
 }
 
 var piTarget = Target{
-	Name:          "pi",
-	SkillDir:      ".pi/skills",
-	AgentDir:      ".pi/skills",
-	AgentSuffix:   ".md",
-	AgentDialect:  MarkdownAgentDialect,
-	Capabilities:  []Capability{CapabilitySubagentTools},
-	SubagentTools: true,
+	Name:         "pi",
+	SkillDir:     ".pi/skills",
+	AgentDir:     ".pi/skills",
+	AgentSuffix:  ".md",
+	AgentDialect: MarkdownAgentDialect,
+	Capabilities: []Capability{CapabilitySubagentTools},
 	Outputs: []TargetOutput{
-		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", CommentStyle: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}},
-		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", CommentStyle: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}},
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Encoder: MarkdownAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Encoder: MarkdownAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: false}, PolicyDeclared: true},
 	},
 }
 

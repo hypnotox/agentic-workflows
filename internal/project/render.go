@@ -55,6 +55,10 @@ type RenderedFile struct {
 	// Policy declares all lifecycle checks for this path. It replaces
 	// template-name and filename inference at plan consumers.
 	Policy OutputPolicy
+	// Declarer identifies the producer requesting this output.
+	Declarer   string
+	Encoder    AgentDialect
+	Provenance render.CommentStyle
 	// assembled is the executed template source (post section-overlay, pre
 	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
@@ -429,6 +433,17 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 		if err != nil {
 			return nil, err
 		}
+		if spec.target.Name != "" {
+			rf.Declarer = spec.target.Name
+			rf.Provenance = options.bannerStyle
+			if spec.encode != nil {
+				rf.Encoder = spec.target.AgentDialect
+			} else {
+				rf.Encoder = MarkdownAgentDialect
+			}
+		} else {
+			rf.Declarer, rf.Encoder, rf.Provenance = rf.TemplateID, MarkdownAgentDialect, render.HTMLComment
+		}
 		out = append(out, rf)
 	}
 	return out, nil
@@ -492,12 +507,16 @@ func (p *Project) renderAllBase() ([]RenderedFile, error) {
 			}
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
-					bannerStyle: targetOutput.CommentStyle,
+					bannerStyle: targetOutput.Provenance,
 					target:      &target,
 				})
 			if err != nil {
 				return nil, err
 			}
+			rf.Policy = targetOutput.Policy
+			rf.Declarer = t.Name
+			rf.Encoder = targetOutput.Encoder
+			rf.Provenance = targetOutput.Provenance
 			out = append(out, rf)
 		}
 	}
@@ -608,26 +627,9 @@ func (p *Project) renderAllBase() ([]RenderedFile, error) {
 		return nil, err
 	}
 	out = append(out, mrf)
-	if err := assertNoDuplicateOutputPaths(out); err != nil {
-		return nil, err
-	}
+	// Duplicate declarations are deliberately retained for OutputPlan to
+	// coalesce or reject from normalized recipes.
 	return out, nil
-}
-
-// assertNoDuplicateOutputPaths fails loudly when two rendered artifacts resolve
-// to the same output path - a silent last-write-wins overwrite otherwise. Path-
-// aware local doc names (ADR-0091) make this reachable: a name like
-// `domains/<x>` or `decisions/template` can collide with awf's reserved output
-// territory, which the name validator deliberately does not pre-reserve.
-func assertNoDuplicateOutputPaths(files []RenderedFile) error {
-	seen := make(map[string]bool, len(files))
-	for _, f := range files {
-		if seen[f.Path] {
-			return fmt.Errorf("two artifacts render to the same output path %q: rename one (a local doc name may collide with awf's reserved decisions/, plans/, or domains/ output)", f.Path)
-		}
-		seen[f.Path] = true
-	}
-	return nil
 }
 
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
@@ -707,7 +709,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
 		RegenChecked: anyInPlace(plan),
-		Policy:       policyFor(kind, tid, anyInPlace(plan)),
+		Policy:       declaredPolicy(kind, anyInPlace(plan)),
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 	}, nil

@@ -115,7 +115,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	files := op.writeFiles()
 	for _, f := range files {
 		if f.Policy.ValidateFrontmatter {
-			if err := validateArtifact([]byte(f.Content), f.Path); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
+			if err := validateArtifact([]byte(f.Content), f.Encoder); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
 				return nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path, err)
 			}
 		}
