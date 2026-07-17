@@ -125,6 +125,10 @@
 - [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](0122-multi-runtime-targets-and-format-neutral-agents.md) (Implemented)
 - [ADR-0123: Pi Workflow Subagent Extension](0123-pi-workflow-subagent-extension.md) (Implemented)
 
+## Proposed
+
+- [ADR-0124: Deterministic Output Plans and Target Capabilities](0124-deterministic-output-plans-and-target-capabilities.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)

@@ -95,6 +95,10 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md)
 - [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md)
 
+### Proposed
+
+- [ADR-0124: Deterministic Output Plans and Target Capabilities](../decisions/0124-deterministic-output-plans-and-target-capabilities.md)
+
 ### Superseded
 
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md) → superseded by ADR-0115
