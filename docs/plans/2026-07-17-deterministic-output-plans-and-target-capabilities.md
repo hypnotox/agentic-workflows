@@ -95,9 +95,8 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
   `./x gate`; expected final output includes `awf invariants: clean`, `coverage: 100.0%`,
   `deadcodecheck: no production dead code`, and `prose-gate: clean`. Stage exactly the absolute
   Phase 1 source/test/doc paths and generated outputs listed in File structure with `git add --`
-  (never `git add -A`) and commit. This is one coupled commit because a planner whose lifecycle
-  and policy consumers remain old is unused/dead code, while changing consumers without the
-  planner leaves outputs outside the authority:
+  (never `git add -A`). Do not commit yet: Phase 2 is the explicitly coupled continuation because
+  policy routing and lifecycle migration cannot be separately live while every producer is moving.
 
   ```commit
   refactor(rendering): compile deterministic output plans
@@ -133,8 +132,8 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 
   Expected: `ok github.com/hypnotox/agentic-workflows/internal/project`.
 
-- [ ] **Task 2.4: Verify and commit lifecycle migration.** Run `./x gate`, then stage only the
-  Phase 2 files and commit:
+- [ ] **Task 2.4: Verify and commit the coupled migration.** Run `./x gate`, then stage exactly
+  `/home/hypno/Projects/agentic-workflows/internal/project/{output_plan.go,output_plan_test.go,target.go,render.go,check.go,project.go,confighash.go,agent.go,target_test.go,drift_test.go,project_test.go,coverage_test.go}`, `/home/hypno/Projects/agentic-workflows/internal/config/{config.go,config_test.go}`, `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/overview.md`, `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/{rendering,tooling}/current-state.md`, and sync-generated `/home/hypno/Projects/agentic-workflows/{docs/architecture.md,docs/domains/rendering.md,docs/domains/tooling.md,.awf/awf.lock}` with `git add -- <each path>`; commit:
 
   ```commit
   refactor(rendering): drive drift checks from output plans
@@ -142,11 +141,11 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 
 ## Phase 3: Document, dogfood, and close the decision
 
-- [ ] **Task 3.1: Update authored documentation.** Update `docs/architecture.md` to describe
-  the planner as the output/lifecycle authority, strict target capabilities, recipe coalescing,
-  and policy-bearing nodes. Update `.awf/domains/parts/rendering/current-state.md` with the same
-  current behavior, including local reservations and config-reference dependency ordering. Do not
-  describe an adopter-configurable graph.
+- [ ] **Task 3.1: Confirm documentation is current.** Verify the authored sources changed in the
+  coupled migration, `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/overview.md`
+  and `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/{rendering,tooling}/current-state.md`,
+  describe planner authority, strict capabilities, coalescing, policies, reservations, and
+  config-reference ordering; do not describe an adopter-configurable graph.
 
 - [ ] **Task 3.2: Regenerate and verify shipped surfaces.** Run `./x sync` so rendered
   architecture/domain outputs, `docs/decisions/ACTIVE.md`, the lock, and the example adopter
@@ -157,8 +156,8 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 - [ ] **Task 3.3: Freeze plan and ADR.** Change `status: Proposed` to `status: Implemented` in
   `docs/plans/2026-07-17-deterministic-output-plans-and-target-capabilities.md` and
   `docs/decisions/0124-deterministic-output-plans-and-target-capabilities.md`. Run `./x sync`,
-  stage the two records, generated decision/domain indexes, generated docs, lock, and exact
-  source changes, then run `./x gate` and commit:
+  add `None beyond the recorded review findings.` (or actual findings) under Notes, then stage
+  exactly `/home/hypno/Projects/agentic-workflows/docs/plans/2026-07-17-deterministic-output-plans-and-target-capabilities.md`, `/home/hypno/Projects/agentic-workflows/docs/decisions/0124-deterministic-output-plans-and-target-capabilities.md`, `/home/hypno/Projects/agentic-workflows/docs/decisions/ACTIVE.md`, `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`, `/home/hypno/Projects/agentic-workflows/docs/domains/tooling.md`, and `/home/hypno/Projects/agentic-workflows/.awf/awf.lock` with `git add -- <each path>`, then run `./x gate` and commit:
 
   ```commit
   docs(rendering): implement deterministic output plans
