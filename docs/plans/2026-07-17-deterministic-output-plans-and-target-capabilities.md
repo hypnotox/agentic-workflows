@@ -23,18 +23,18 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 
 ## File structure
 
-- **Created:** `internal/project/output_plan.go`, `internal/project/output_plan_test.go`.
-- **Modified:** `internal/project/target.go`, `internal/project/render.go`,
-  `internal/project/check.go`, `internal/project/project.go`,
-  `internal/project/confighash.go`, `internal/project/agent.go`,
-  `internal/project/target_test.go`, `internal/project/drift_test.go`,
-  `internal/project/project_test.go`, `internal/project/coverage_test.go`,
-  `internal/config/config.go`, `internal/config/config_test.go`,
-  `docs/architecture.md`, `.awf/domains/parts/rendering/current-state.md`.
+- **Created:** `/home/hypno/Projects/agentic-workflows/internal/project/output_plan.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/output_plan_test.go`.
+- **Modified:** `/home/hypno/Projects/agentic-workflows/internal/project/{target,render,check,project,confighash,agent}.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/{target,drift,project,coverage}_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/config/{config,config_test}.go`,
+  `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/overview.md`,
+  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/{rendering,tooling}/current-state.md`,
+  and their sync-generated outputs `/home/hypno/Projects/agentic-workflows/{docs/architecture.md,docs/domains/rendering.md,docs/domains/tooling.md,.awf/awf.lock}`.
 - **Deleted:** obsolete target-output path, `isManagedMarkdown`, suffix-based policy, and
   local-path helper branches once their behavior is owned by output-plan nodes.
 
-## Phase 1: Compile and render the output plan
+## Phase 1: Compile, render, and consume the output plan
 
 - [ ] **Task 1.1: Define strict target and output-plan descriptors.** In
   `internal/project/target.go`, replace `SkillDir`, `AgentDir`, `AgentSuffix`,
@@ -55,8 +55,13 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
   render/write. Make configuration-reference depend on regular/domain nodes and exclude itself.
   Refactor `internal/project/render.go` so `RenderAll` renders plan write nodes through existing
   section assembly and agent encoding, while generated-node recipes invoke their current
-  generators through the same plan. Refactor `internal/project/confighash.go` to hash the
-  normalized recipe plus sorted declarers rather than a single raw `Target`.
+  generators through the same plan. In the same coupled change, refactor
+  `internal/project/project.go` so SyncReport, manifest ownership, prune protection, and
+  PlannedOutputs consume plan write/reservation nodes; refactor `internal/project/check.go` so
+  frontmatter, link, skill-reference, local, and regeneration checks consume OutputPolicy; then
+  delete `isManagedMarkdown`, the `.toml` exception, and separate local/output reconstruction.
+  Refactor `internal/project/confighash.go` to hash the normalized recipe plus sorted declarers
+  rather than a single raw `Target`.
 
 - [ ] **Task 1.3: Preserve strict target selection.** In `internal/config/config.go`, reject a
   duplicate entry in `Config.Targets` during `Validate`, before `resolveTargets`. Keep unknown
@@ -70,7 +75,12 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
   `output-plan-complete`, `shared-output-coalesced`, and `target-capabilities-closed`. Extend
   `target_test.go` to assert the exact closed capability projection, invalid descriptor failure,
   empty-variable publication safety, all built-in target paths/encodings, and descriptor-hash
-  selectivity. Extend `config_test.go` with duplicate-target rejection. Run:
+  selectivity. Extend `project_test.go` to prove PlannedOutputs contains write nodes, excludes
+  local reservations, and preserves init collision input. Extend `config_test.go` with
+  `// invariant: duplicate-target-rejected`. Put `// invariant: output-plan-complete`,
+  `// invariant: shared-output-coalesced`, and `// invariant: target-capabilities-closed` in
+  `output_plan_test.go`, and `// invariant: output-policy-explicit` in the named policy-routing
+  test in `drift_test.go`. Run:
 
   ```sh
   go test ./internal/config ./internal/project
@@ -78,10 +88,16 @@ recipe comparison excludes target identity while hashes retain sorted declarers.
 
   Expected: `ok` for both packages.
 
-- [ ] **Task 1.5: Verify and commit the coupled compiler migration.** This phase is one coupled
-  commit because the compiler, recipes, target descriptors, renderer, generated nodes, and their
-  tests must become live together; otherwise the strict output plan is unused production code or
-  a producer remains outside it. Run `./x gate`, then `git add` only the Phase 1 paths and commit:
+- [ ] **Task 1.5: Document, regenerate, verify, and commit the coupled migration.** In the
+  authored architecture and rendering/tooling current-state sources listed above, replace the
+  old Target-field/render-loop narrative with output-plan authority, policies, reservations,
+  capabilities, coalescing, and config-reference ordering. Run `./x sync`, `./x check`, and
+  `./x gate`; expected final output includes `awf invariants: clean`, `coverage: 100.0%`,
+  `deadcodecheck: no production dead code`, and `prose-gate: clean`. Stage exactly the absolute
+  Phase 1 source/test/doc paths and generated outputs listed in File structure with `git add --`
+  (never `git add -A`) and commit. This is one coupled commit because a planner whose lifecycle
+  and policy consumers remain old is unused/dead code, while changing consumers without the
+  planner leaves outputs outside the authority:
 
   ```commit
   refactor(rendering): compile deterministic output plans
