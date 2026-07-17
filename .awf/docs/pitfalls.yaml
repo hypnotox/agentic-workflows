@@ -612,7 +612,7 @@ data:
         A plan whose diff touches a shipped template (`templates/**`) or a catalog default
         (`internal/catalog/standard.go`) naturally lists the one `.claude/` output the author is looking
         at, and misses the rest of the fan-out. One source edit re-renders **every enabled target**
-        (`.claude/` *and* `.cursor/` here), **both** `.awf/awf.lock` files (root *and* `examples/sundial`),
+        (`.claude/` *and* `.pi/` here), **both** `.awf/awf.lock` files (root *and* `examples/sundial`),
         and the example adopter's own outputs; and because the change is adopter-facing, it also owes an
         `[Unreleased]` entry in `changelog/CHANGELOG.md`. In the ADR-0095 session all three slipped: the
         plan's `git add` named `awf-writing-plans` under sundial (which renders `sundial-writing-plans`,

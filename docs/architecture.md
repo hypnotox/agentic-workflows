@@ -29,12 +29,14 @@ runtime and render **once** to fixed or `docsDir`-derived paths: `AGENTS.md` (th
 instruction standard), docs, domain docs, and the ADR index. **Adapter** artifacts (skills, review
 agents, and an optional whole-file bridge whose body is the `@AGENTS.md` import) render **once per
 enabled adapter**, each placed at a runtime-specific path supplied by a `Target` value rather than a
-hardcoded literal. A project selects adapters through the `targets` array (default `[claude]`); the
-built-in registry holds `claudeTarget` (`.claude/skills/`, `.claude/agents/`, a `CLAUDE.md` bridge)
-and `cursorTarget` (`.cursor/skills/`, `.cursor/agents/`, no bridge; Cursor reads `AGENTS.md`
-natively). A target may also declare non-catalog outputs: Pi automatically renders the
-project-local `.pi/extensions/awf-subagents/` TypeScript delegation extension. awf's own config
-tree lives at `.awf/`, decoupled from any one runtime's directory.
+hardcoded literal. A project selects adapters through the `targets` array (default `[claude]`),
+resolved against a built-in registry of adapters (`claude`, `codex`, `copilot`, `cursor`, `gemini`,
+`pi`), each rendering skills and agents into its own runtime layout: `claude` and `gemini` add a
+bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cursor reads
+`AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog
+outputs: Pi automatically renders the project-local `.pi/extensions/awf-subagents/` TypeScript
+delegation extension. awf's own config tree lives at `.awf/`, decoupled from any one runtime's
+directory.
 
 ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools capability), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
 
