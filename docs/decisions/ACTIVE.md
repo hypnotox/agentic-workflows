@@ -127,6 +127,10 @@
 - [ADR-0124: Deterministic Output Plans and Target Capabilities](0124-deterministic-output-plans-and-target-capabilities.md) (Implemented)
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Implemented)
 
+## Proposed
+
+- [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
@@ -173,4 +177,4 @@
 - ADR-0117: item 5 superseded by ADR-0119
 - ADR-0118: item 1 superseded by ADR-0119; item 9 superseded by ADR-0119
 - ADR-0122: item 3 superseded by ADR-0123; item 4 superseded by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
-- ADR-0123: item 2 superseded by ADR-0125; item 3 superseded by ADR-0125; item 4 superseded by ADR-0125; item 5 superseded by ADR-0125; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125
+- ADR-0123: item 2 superseded by ADR-0125; item 3 superseded by ADR-0125; item 4 superseded by ADR-0125; item 5 superseded by ADR-0125; item 6 superseded by ADR-0126; item 7 superseded by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125

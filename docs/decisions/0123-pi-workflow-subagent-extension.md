@@ -4,7 +4,7 @@ date: 2026-07-16
 supersedes: []
 superseded_by: ""
 tags: [multi-target, target-seam, subagent-dispatch, review-agents, command-runner]
-related: [37, 38, 74, 122, 125]
+related: [37, 38, 74, 122, 125, 126]
 domains: [rendering, tooling]
 ---
 # ADR-0123: Pi Workflow Subagent Extension
