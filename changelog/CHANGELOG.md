@@ -12,7 +12,7 @@ query a single version or a range.
 - Pi target adopters now receive executable project extension files under
   `.pi/extensions/awf-subagents/` on sync (ADR-0123). Pi's project-trust boundary applies and Pi
   0.80.9 or newer is required; `awf check` reports extension drift and `awf sync` repairs it. Pi
-  workflow skills call the three governed extension tools explicitly, while other targets retain
+  workflow skills call the four governed extension tools explicitly, while other targets retain
   their existing dispatch language.
 - ADR supersession is structured and machine-checked (ADR-0120), and the `retires_invariants:`
   frontmatter key is removed from the ADR schema. **Run `awf upgrade`: the generation-10
@@ -91,9 +91,14 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
-- The Pi target ships `subagent_explore`, `subagent_review`, and `subagent_implement`: isolated
-  no-session child processes for read-oriented exploration, the three governed reviewer bodies,
-  and serialized same-checkout implementation with explicit commit permission (ADR-0123).
+- Pi now ships dedicated `subagent_grounding` and binds brainstorming to it while retaining
+  `subagent_explore` for general investigation and coupling audits. All four subagent roles show
+  bounded inline progress from context-isolated details; only final report or failure-summary
+  content reaches the parent model (ADR-0125).
+- The Pi target ships `subagent_grounding`, `subagent_explore`, `subagent_review`, and
+  `subagent_implement`: isolated no-session child processes for grounding, read-oriented
+  exploration, the three governed reviewer bodies, and serialized same-checkout implementation
+  with explicit commit permission (ADR-0123, ADR-0125).
 - Codex, Pi, Gemini, and Copilot are now selectable targets for agent artifacts.
   Codex renders skills under `.agents/skills/` and validated custom-agent profiles
   under `.codex/agents/` as TOML with `name`, `description`, and

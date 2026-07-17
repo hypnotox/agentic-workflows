@@ -62,10 +62,11 @@ instead of rotting.
 Claude Code is the default target. awf also supports Cursor, Pi, Codex, Gemini,
 and GitHub Copilot: skills and agents render into each runtime's native paths.
 Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge. Pi 0.80.9+
-automatically receives a trusted project extension with `subagent_explore`, `subagent_review`,
-and `subagent_implement`. Exploration and review are no-mutation prompt policy, not an OS sandbox;
-implementation shares the checkout, runs alone and sequentially, and commits only when its
-orchestrator sets `allowCommits`.
+automatically receives a trusted project extension with `subagent_grounding`, `subagent_explore`,
+`subagent_review`, and `subagent_implement`. Grounding, exploration, and review are no-mutation
+prompt policy, not an OS sandbox; implementation shares the checkout, runs alone and sequentially,
+and commits only when its orchestrator sets `allowCommits`. Every role shows bounded inline child
+progress while intermediate activity stays outside parent model content.
 
 ## How it works
 

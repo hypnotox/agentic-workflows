@@ -119,8 +119,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
-  skills name its `subagent_explore`, `subagent_review`, and `subagent_implement` tools explicitly;
-  other targets retain their native or generic dispatch language. The catalog itself is the
+  skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
+  `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
+  language. Bounded structured details drive one shared inline renderer for all four tools, while
+  only final report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
   the dogfooded generated extension. Its repo-keyed persistent container snapshots current source
@@ -196,8 +198,9 @@ bytes, so a comment-only edit reflags stale and self-settles.
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
-- **Pi 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi extension at runtime;
-  they are supplied by the adopter's Pi installation and are not dependencies of the awf binary.
+- **Pi coding-agent/TUI 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi
+  extension at runtime; they are supplied by the adopter's Pi installation and are not dependencies
+  of the awf binary. The test package pins coding-agent and Pi TUI directly at the minimum version.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import defaultExtension, {
   EXPLORE_TOOLS,
+  GROUNDING_TOOLS,
   IMPLEMENT_TOOLS,
   MIN_PI_VERSION,
   REVIEWER_PATHS,
@@ -11,6 +12,11 @@ import defaultExtension, {
   type ExtensionDependencies,
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
+import { initTheme } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { Value } from "typebox/value";
+
+initTheme("dark", false);
 
 const event = { sequence: 1, kind: "assistant" as const, text: "working" };
 const result: RunResult = {
@@ -52,7 +58,7 @@ test("default factory registers against the installed minimum Pi package", async
   const freshTools = new Map<string, any>();
   h.pi.registerTool = (tool: any) => freshTools.set(tool.name, tool);
   await defaultExtension(h.pi);
-  assert.deepEqual([...freshTools.keys()], ["subagent_explore", "subagent_review", "subagent_implement"]);
+  assert.deepEqual([...freshTools.keys()], ["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
 });
 
 test("version support is strict and ordered", () => {
@@ -76,13 +82,119 @@ test("unsupported version registers one startup notification and no tools", asyn
   }
 });
 
-test("registers exactly three governed public tools", () => {
+test("registers exactly four governed public tools with closed grounding schema", () => {
   const h = harness();
-  assert.deepEqual([...h.tools.keys()], ["subagent_explore", "subagent_review", "subagent_implement"]);
+  assert.deepEqual([...h.tools.keys()], ["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
   assert.deepEqual(EXPLORE_TOOLS, ["read", "grep", "find", "ls", "bash"]);
+  assert.deepEqual(GROUNDING_TOOLS, EXPLORE_TOOLS);
+  const schema = h.tools.get("subagent_grounding").parameters;
+  assert.equal(Value.Check(schema, { task: "ground" }), true);
+  assert.equal(Value.Check(schema, {}), false);
+  assert.equal(Value.Check(schema, { task: "" }), false);
+  assert.equal(Value.Check(schema, { task: "ground", extra: true }), false);
+  assert.equal(schema.properties.task.minLength, 1);
+  assert.equal(schema.additionalProperties, false);
   assert.deepEqual(REVIEW_TOOLS, EXPLORE_TOOLS);
   assert.deepEqual(IMPLEMENT_TOOLS, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
   assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/skills/adr-reviewer.md", plan: ".pi/skills/plan-reviewer.md", code: ".pi/skills/code-reviewer.md" });
+});
+
+test("grounding uses the fixed read-only confidence-classified role", async () => {
+  const h = harness();
+  const { value } = await execute(h.tools.get("subagent_grounding"), { task: "ground design" }, h.ctx);
+  assert.equal(value.details.role, "grounding");
+  assert.deepEqual(h.requests[0].tools, GROUNDING_TOOLS);
+  const prompt = h.requests[0].systemPrompt;
+  for (const phrase of [
+    "do not edit files or commit", "factual premises", "unstated assumptions and edge cases",
+    "ADR, a plan, or narrower scope", "ADR and invariant fit", "open-question | possible-issue",
+    "topic, detail, grounding", "verified | interpreted | unverified",
+    "verified means mechanically confirmed", "interpreted means the reading requires judgment",
+    "unverified means the claim could not be confirmed",
+  ]) assert.match(prompt, new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const request of h.requests) for (const tool of request.tools) assert.equal(tool.startsWith("subagent_"), false);
+});
+
+const theme: any = {
+  fg: (_color: string, text: string) => text,
+  bold: (text: string) => text,
+};
+
+function rendered(component: any, width: number): string[] {
+  const lines = component.render(width);
+  for (const line of lines) assert.ok(visibleWidth(line) <= width, `${visibleWidth(line)} > ${width}: ${line}`);
+  return lines;
+}
+
+test("all subagent renderers cover calls and bounded collapsed states", () => {
+  const h = harness();
+  const events = Array.from({ length: 12 }, (_, index) => index % 3 === 0
+    ? { sequence: index + 1, kind: "assistant", text: `assistant ${index}` }
+    : index % 3 === 1
+      ? { sequence: index + 1, kind: "tool-start", toolCallId: `id-${index}`, toolName: "read", argsPreview: "{}" }
+      : { sequence: index + 1, kind: "tool-end", toolCallId: `id-${index}`, toolName: "read", isError: index === 2 });
+  const usage = { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, cost: 0.25, turns: 2 };
+  for (const [name, role] of [["subagent_grounding", "grounding"], ["subagent_explore", "explore"], ["subagent_review", "review"], ["subagent_implement", "implement"]]) {
+    const tool = h.tools.get(name);
+    const call = rendered(tool.renderCall({ task: "x".repeat(1000) }, theme, {}), 24).join("\n");
+    assert.match(call, new RegExp(`${role} subagent`));
+    assert.match(call, /task\s+truncated/);
+    const collapsed = rendered(tool.renderResult({
+      content: [{ type: "text", text: "report" }],
+      details: { role, task: "task", state: "completed", events, omittedEvents: 7, usage, model: "child" },
+    }, { expanded: false, isPartial: false }, theme, {}), 24).join("\n");
+    assert.match(collapsed, /completed/);
+    assert.match(collapsed, /earlier retained\s+events/);
+    assert.match(collapsed, /7 older events omitted/);
+    assert.match(collapsed, /2 turns/);
+    assert.match(collapsed, /to expand/);
+  }
+  const emptyCall = rendered(h.tools.get("subagent_explore").renderCall({}, theme, {}), 120).join("\n");
+  assert.match(emptyCall, /no task/);
+  rendered(h.tools.get("subagent_explore").renderCall({ task: "é".repeat(1000) }, theme, {}), 24);
+});
+
+test("renderer covers expanded, partial, failure, abort, and fallback states", () => {
+  const h = harness();
+  const tool = h.tools.get("subagent_explore");
+  const events = [
+    { sequence: 1, kind: "tool-start", toolCallId: "id", toolName: "read", argsPreview: "{}" },
+    { sequence: 2, kind: "tool-end", toolCallId: "id", toolName: "read", isError: false },
+    { sequence: 3, kind: "assistant", text: "assistant output" },
+  ];
+  const usage = { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, cost: 0.25, turns: 1 };
+  const complete = rendered(tool.renderResult({
+    content: [{ type: "text", text: "# Final report" }],
+    details: { role: "explore", task: "inspect", state: "completed", events, omittedEvents: 0, stderr: "warning", usage, model: "child" },
+  }, { expanded: true, isPartial: false }, theme, {}), 24).join("\n");
+  for (const phrase of ["Task", "inspect", "Activity", "Report", "Final report", "Diagnostics", "warning", "1 turn", "child"]) assert.match(complete, new RegExp(phrase));
+
+  const partial = rendered(tool.renderResult({ content: [{ type: "text", text: "(running...)" }], details: { role: "explore", task: "", state: "running", events: [], omittedEvents: 0 } }, { expanded: true, isPartial: true }, theme, {}), 120).join("\n");
+  assert.match(partial, /running/);
+  assert.match(partial, /no task/);
+  assert.match(partial, /no activity/);
+  assert.doesNotMatch(partial, /Report/);
+
+  for (const state of ["failed", "aborted"]) {
+    const text = rendered(tool.renderResult({ content: [{ type: "text", text: `${state} reason` }], details: { role: "explore", task: "task", state, events: [], omittedEvents: 0 } }, { expanded: true, isPartial: false }, theme, {}), 120).join("\n");
+    assert.match(text, new RegExp(state));
+    assert.match(text, /Failure/);
+  }
+
+  const fallback = rendered(tool.renderResult({ content: [{ type: "text", text: "z".repeat(4000) }] }, { expanded: false, isPartial: false }, theme, {}), 24).join("\n");
+  assert.match(fallback, /display\s+truncated/);
+  const missing = rendered(tool.renderResult({ content: [] }, { expanded: true, isPartial: false }, theme, {}), 120).join("\n");
+  assert.match(missing, /no output/);
+  rendered(tool.renderResult({}, { expanded: false, isPartial: false }, theme, {}), 120);
+  rendered(tool.renderResult({ content: [{ type: "image" }], details: { events: "invalid" } }, { expanded: false, isPartial: false }, theme, {}), 120);
+
+  const runningCollapsed = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "task", state: "completed", events: [], omittedEvents: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 }, model: "child" } }, { expanded: false, isPartial: true }, theme, {}), 120).join("\n");
+  assert.match(runningCollapsed, /running/);
+  assert.match(runningCollapsed, /no omitted events/);
+  assert.match(runningCollapsed, /child/);
+  assert.doesNotMatch(runningCollapsed, /to expand/);
+  const noHint = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "", state: "completed", events: [], omittedEvents: 0 } }, { expanded: false, isPartial: false }, theme, {}), 120).join("\n");
+  assert.doesNotMatch(noHint, /to expand/);
 });
 
 test("explore isolates partial activity from final content", async () => {

@@ -96,8 +96,10 @@ dependencies in a named volume, snapshots the read-only checkout inside the cont
 and executes strict TypeScript and coverage checks without host npm state. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
 in-memory Pi 0.80.9 `AgentSession` proves that partial details and result-middleware error patches
-survive the real runtime seam without entering model-visible content. `./x pi-test stop|reset`
-controls the container lifecycle.
+survive the real runtime seam without entering model-visible content. Grounding schema/prompt tests
+and shared-renderer tests cover every role and state at narrow and normal widths, including
+omissions, diagnostics, usage, malformed details, and configurable expansion hints.
+`./x pi-test stop|reset` controls the container lifecycle.
 
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through

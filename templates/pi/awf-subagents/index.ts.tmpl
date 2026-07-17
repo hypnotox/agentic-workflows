@@ -2,11 +2,14 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  getMarkdownTheme,
   getPackageDir,
+  keyHint,
   parseFrontmatter,
   type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
+import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import {
   createRunner,
@@ -20,6 +23,7 @@ import {
 
 export const MIN_PI_VERSION = "0.80.9";
 export const EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
+export const GROUNDING_TOOLS = EXPLORE_TOOLS;
 export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
 export const IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;
 export const REVIEWER_PATHS = {
@@ -28,7 +32,12 @@ export const REVIEWER_PATHS = {
   code: ".pi/skills/code-reviewer.md",
 } as const;
 
-const SUBAGENT_TOOL_NAMES = new Set(["subagent_explore", "subagent_review", "subagent_implement"]);
+const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
+const COLLAPSED_EVENT_COUNT = 10;
+const MAX_TASK_PREVIEW_BYTES = 512;
+const MAX_FALLBACK_BYTES = 2 * 1024;
+const TASK_TRUNCATION = "[task truncated]";
+const DISPLAY_TRUNCATION = "[display truncated]";
 type ReviewKind = keyof typeof REVIEWER_PATHS;
 interface GitSnapshot { available: boolean; head?: string; status?: string; }
 export type SubagentState = "running" | "completed" | "failed" | "aborted";
@@ -53,6 +62,13 @@ export interface ExtensionDependencies {
   extensionFile: string;
 }
 
+function utf8Bound(value: string, maximum: number, marker: string): string {
+  if (Buffer.byteLength(value, "utf8") <= maximum) return value;
+  let end = Math.min(value.length, maximum - Buffer.byteLength(marker, "utf8"));
+  while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maximum - Buffer.byteLength(marker, "utf8")) end--;
+  return value.slice(0, Math.max(0, end)) + marker;
+}
+
 function parseVersion(value: string): [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
@@ -72,7 +88,15 @@ function projectRoot(extensionFile: string): string {
   return resolve(dirname(extensionFile), "../../..");
 }
 
-function rolePrompt(role: "explore" | "implement", allowCommits?: boolean): string {
+function rolePrompt(role: "grounding" | "explore" | "implement", allowCommits?: boolean): string {
+  if (role === "grounding") {
+    return [
+      "You are a fresh-context grounding-check subagent. Read and run evidence-producing commands, but do not edit files or commit.",
+      "Verify the supplied design's factual premises against source and architecture. Surface unstated assumptions and edge cases. Assess whether the effort needs an ADR, a plan, or narrower scope. Check Accepted or Implemented ADR and invariant fit.",
+      "Return findings only as {kind: open-question | possible-issue, topic, detail, grounding, confidence: verified | interpreted | unverified}.",
+      "verified means mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed.",
+    ].join("\n");
+  }
   if (role === "explore") {
     return "You are a fresh-context exploration subagent. Read and run evidence-producing commands, but do not edit files or commit. Return concise findings with file:line grounding.";
   }
@@ -126,6 +150,90 @@ function toolResult(role: RunRequest["role"], task: string, result: Awaited<Retu
   };
 }
 
+function contentText(result: any): string {
+  const part = result.content?.find((item: any) => item?.type === "text");
+  return utf8Bound(String(part?.text ?? "(no output)"), MAX_FALLBACK_BYTES, DISPLAY_TRUNCATION);
+}
+
+function usageText(usage: Usage | undefined, model: string | undefined): string {
+  if (!usage && !model) return "";
+  const parts: string[] = [];
+  if (usage?.turns) parts.push(`${usage.turns} turn${usage.turns === 1 ? "" : "s"}`);
+  if (usage?.input) parts.push(`in:${usage.input}`);
+  if (usage?.output) parts.push(`out:${usage.output}`);
+  if (usage?.cacheRead) parts.push(`cache-read:${usage.cacheRead}`);
+  if (usage?.cacheWrite) parts.push(`cache-write:${usage.cacheWrite}`);
+  if (usage?.cost) parts.push(`$${usage.cost.toFixed(4)}`);
+  if (model) parts.push(model);
+  return parts.join(" ");
+}
+
+function eventText(event: DisplayEvent): string {
+  if (event.kind === "assistant") return event.text;
+  if (event.kind === "tool-start") return `-> ${event.toolName} ${event.argsPreview}`;
+  return `<- ${event.toolName} ${event.isError ? "error" : "ok"}`;
+}
+
+function renderSubagentCall(role: RunRequest["role"], args: any, theme: any) {
+  const task = utf8Bound(String(args.task ?? ""), MAX_TASK_PREVIEW_BYTES, TASK_TRUNCATION);
+  return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("dim", task || "(no task)")}`, 0, 0);
+}
+
+function renderSubagentResult(role: RunRequest["role"], result: any, options: { expanded: boolean; isPartial: boolean }, theme: any) {
+  const details = result.details as SubagentDetails | undefined;
+  if (!details || !Array.isArray(details.events)) {
+    return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("toolOutput", contentText(result))}`, 0, 0);
+  }
+  const state = options.isPartial ? "running" : details.state;
+  const statusColor = state === "completed" ? "success" : state === "running" ? "warning" : "error";
+  const header = `${theme.fg(statusColor, state)} ${theme.fg("toolTitle", theme.bold(`${role} subagent`))}`;
+  const usage = usageText(details.usage, details.model);
+  const omission = details.omittedEvents > 0 ? `${details.omittedEvents} older events omitted` : "no omitted events";
+
+  if (!options.expanded) {
+    const retainedSkipped = Math.max(0, details.events.length - COLLAPSED_EVENT_COUNT);
+    const events = details.events.slice(-COLLAPSED_EVENT_COUNT).map(eventText);
+    const lines = [header];
+    if (retainedSkipped > 0) lines.push(`... ${retainedSkipped} earlier retained events`);
+    lines.push(...events, omission);
+    if (usage) lines.push(usage);
+    if (!options.isPartial && (details.events.length > 0 || details.task)) lines.push(keyHint("app.tools.expand", "to expand"));
+    return new Text(lines.join("\n"), 0, 0);
+  }
+
+  const container = new Container();
+  container.addChild(new Text(header, 0, 0));
+  container.addChild(new Spacer(1));
+  container.addChild(new Text(theme.fg("muted", "Task"), 0, 0));
+  container.addChild(new Text(details.task || "(no task)", 0, 0));
+  container.addChild(new Spacer(1));
+  container.addChild(new Text(theme.fg("muted", `Activity (${omission})`), 0, 0));
+  if (details.events.length === 0) container.addChild(new Text("(no activity)", 0, 0));
+  for (const event of details.events) container.addChild(new Text(eventText(event), 0, 0));
+  if (!options.isPartial) {
+    container.addChild(new Spacer(1));
+    container.addChild(new Text(theme.fg("muted", state === "completed" ? "Report" : "Failure"), 0, 0));
+    container.addChild(new Markdown(contentText(result), 0, 0, getMarkdownTheme()));
+  }
+  if (details.stderr) {
+    container.addChild(new Spacer(1));
+    container.addChild(new Text(theme.fg("muted", "Diagnostics"), 0, 0));
+    container.addChild(new Text(details.stderr, 0, 0));
+  }
+  if (usage) {
+    container.addChild(new Spacer(1));
+    container.addChild(new Text(theme.fg("dim", usage), 0, 0));
+  }
+  return container;
+}
+
+function renderers(role: RunRequest["role"]) {
+  return {
+    renderCall(args: any, theme: any) { return renderSubagentCall(role, args, theme); },
+    renderResult(result: any, options: { expanded: boolean; isPartial: boolean }, theme: any) { return renderSubagentResult(role, result, options, theme); },
+  };
+}
+
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
   if (!versionSupported(deps.packageVersion)) {
     pi.on("session_start", async (_event, ctx) => {
@@ -160,6 +268,19 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   });
 
   pi.registerTool({
+    name: "subagent_grounding",
+    label: "Grounding Subagent",
+    description: "Run one fresh-context, no-mutation grounding check.",
+    promptSnippet: "Ground an agreed design against source and project constraints",
+    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task."],
+    parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+    async execute(_id, params, signal, onUpdate, ctx) {
+      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), signal, onUpdate, ctx));
+    },
+    ...renderers("grounding"),
+  });
+
+  pi.registerTool({
     name: "subagent_explore",
     label: "Explore Subagent",
     description: "Run one fresh-context, no-mutation exploration child.",
@@ -169,6 +290,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     async execute(_id, params, signal, onUpdate, ctx) {
       return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
     },
+    ...renderers("explore"),
   });
 
   pi.registerTool({
@@ -185,6 +307,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       const prompt = await loadReviewer(deps, root, params.kind);
       return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, signal, onUpdate, ctx), { kind: params.kind });
     },
+    ...renderers("review"),
   });
 
   pi.registerTool({
@@ -213,6 +336,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }
     },
+    ...renderers("implement"),
   });
 }
 

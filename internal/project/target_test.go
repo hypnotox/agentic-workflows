@@ -121,12 +121,80 @@ func TestTargetOutputRenderError(t *testing.T) {
 }
 
 // invariant: pi-subagent-public-contract
-func TestPiSubagentPublicContract(t *testing.T) {
+// invariant: pi-subagent-four-tool-contract
+func TestPiSubagentFourToolContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
-	for _, name := range []string{"subagent_explore", "subagent_review", "subagent_implement"} {
+	for _, name := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
 		if strings.Count(content, `name: "`+name+`"`) != 1 {
 			t.Errorf("tool %s registration count differs from one", name)
 		}
+	}
+	if got := strings.Count(content, `name: "subagent_`); got != 4 {
+		t.Errorf("public subagent registration count = %d, want 4", got)
+	}
+	for _, want := range []string{
+		`name: "subagent_grounding"`, `rolePrompt("grounding")`,
+		`name: "subagent_explore"`, `rolePrompt("explore")`,
+		`name: "subagent_review"`, `StringEnum(["adr", "plan", "code"]`,
+		`name: "subagent_implement"`, `allowCommits: Type.Boolean()`,
+		`task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing four-tool schema/role contract %q", want)
+		}
+	}
+}
+
+// invariant: pi-subagent-progress-context-isolation
+func TestPiSubagentProgressContextIsolation(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{`text: "(running...)"`, `events: update.events`, `result.failureMessage`, `result.output`} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing context-isolation contract %q", want)
+		}
+	}
+	for _, absent := range []string{"appendEntry", "appendMessage", "sendMessage"} {
+		if strings.Contains(content, absent) {
+			t.Errorf("extension contains forbidden progress channel %q", absent)
+		}
+	}
+}
+
+// invariant: pi-subagent-progress-rendering
+func TestPiSubagentProgressRendering(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, role := range []string{"grounding", "explore", "review", "implement"} {
+		if strings.Count(content, `...renderers("`+role+`")`) != 1 {
+			t.Errorf("role %s does not delegate both render hooks", role)
+		}
+	}
+	for _, want := range []string{`renderCall(args:`, `renderResult(result:`, `keyHint("app.tools.expand"`, "COLLAPSED_EVENT_COUNT"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing rendering contract %q", want)
+		}
+	}
+}
+
+// invariant: pi-subagent-failure-details
+func TestPiSubagentFailureDetails(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{`awfFailure: true`, `pi.on("tool_result"`, `SUBAGENT_TOOL_NAMES.has(event.toolName)`, `return { isError: true }`} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing failure-details contract %q", want)
+		}
+	}
+}
+
+// invariant: pi-subagent-progress-bounds
+func TestPiSubagentProgressBounds(t *testing.T) {
+	content := renderPiExtensionFile(t, "runner.ts") + renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "omittedEvents", `Buffer.byteLength(JSON.stringify(fitted), "utf8")`, "MAX_TASK_PREVIEW_BYTES", "MAX_FALLBACK_BYTES"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing progress bound %q", want)
+		}
+	}
+	if strings.Contains(content, "rawTranscript") {
+		t.Fatal("extension retains a raw transcript")
 	}
 }
 
@@ -221,24 +289,15 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 }
 
 // invariant: pi-explicit-workflow-dispatch
-func TestPiSkillsNameGovernedSubagentTools(t *testing.T) {
+// invariant: pi-dedicated-grounding-dispatch
+func TestPiDedicatedGroundingDispatch(t *testing.T) {
 	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
-	for _, tc := range []struct {
-		target string
-		paths  map[string]string
-	}{
-		{"pi", map[string]string{
-			".pi/skills/example-brainstorming/SKILL.md":               "subagent_explore",
-			".pi/skills/example-reviewing-impl/SKILL.md":              "subagent_review",
-			".pi/skills/example-subagent-driven-development/SKILL.md": "subagent_implement",
-		}},
-		{"claude", map[string]string{
-			".claude/skills/example-brainstorming/SKILL.md":               "",
-			".claude/skills/example-reviewing-impl/SKILL.md":              "",
-			".claude/skills/example-subagent-driven-development/SKILL.md": "",
-		}},
-	} {
-		root := scaffold(t, fmt.Sprintf(config, tc.target))
+	dirs := map[string]string{
+		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
+		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
+	}
+	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini", "pi"} {
+		root := scaffold(t, fmt.Sprintf(config, target))
 		p, err := Open(root)
 		if err != nil {
 			t.Fatal(err)
@@ -251,13 +310,19 @@ func TestPiSkillsNameGovernedSubagentTools(t *testing.T) {
 		for _, file := range files {
 			got[file.Path] = file.Content
 		}
-		for path, tool := range tc.paths {
-			if tool != "" && !strings.Contains(got[path], "`"+tool+"`") {
-				t.Errorf("%s does not name %s", path, tool)
+		brainstorm := got[dirs[target]+"/example-brainstorming/SKILL.md"]
+		audit := got[dirs[target]+"/example-refactor-coupling-audit/SKILL.md"]
+		if target == "pi" {
+			if !strings.Contains(brainstorm, "`subagent_grounding`") {
+				t.Error("Pi brainstorming does not name subagent_grounding")
 			}
-			if tool == "" && strings.Contains(got[path], "subagent_") {
-				t.Errorf("non-Pi skill %s names Pi tool", path)
+			if !strings.Contains(audit, "`subagent_explore`") {
+				t.Error("Pi coupling audit does not name subagent_explore")
 			}
+			continue
+		}
+		if strings.Contains(brainstorm, "subagent_") || strings.Contains(audit, "subagent_") {
+			t.Errorf("non-Pi target %s names a Pi subagent tool", target)
 		}
 	}
 }

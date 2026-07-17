@@ -103,13 +103,19 @@ joins the document map and dead-link checks like any catalog doc.
 ### Pi workflow subagents
 
 The Pi target requires Pi 0.80.9 or newer and renders executable project-extension code that Pi
-loads only after project trust. It registers exactly three tools: `subagent_explore` takes a
-required `task`; `subagent_review` takes required `kind` (`adr`, `plan`, or `code`) and `task`;
-and `subagent_implement` takes required `task` and `allowCommits`. Exploration and review follow a
-no-mutation prompt policy and can use `bash`; they are not OS-sandboxed. Implementation shares the
-parent checkout, must run alone in its parent tool batch and sequentially, and may commit only when
-the orchestrator sets `allowCommits: true`. Missing or modified extension files are `awf check`
-drift; run `awf sync` to repair them.
+loads only after project trust. It registers exactly four tools: `subagent_grounding` takes a
+required `task` for the workflow's premise and altitude check; `subagent_explore` takes a required
+`task` for general investigation; `subagent_review` takes required `kind` (`adr`, `plan`, or
+`code`) and `task`; and `subagent_implement` takes required `task` and `allowCommits`. Grounding,
+exploration, and review follow a no-mutation prompt policy and can use `bash`; they are not
+OS-sandboxed. Implementation shares the parent checkout, must run alone in its parent tool batch
+and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
+
+All four tools render bounded recent activity inline. The expanded tool view shows the retained
+task, events, report, present diagnostics, and available usage. Intermediate activity remains in
+tool details; only the final report or bounded failure summary enters parent model content.
+Brainstorming uses grounding, while large coupling audits retain exploration. Missing or modified
+extension files are `awf check` drift; run `awf sync` to repair them.
 
 ### Path globs and domain territories
 

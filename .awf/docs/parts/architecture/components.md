@@ -77,8 +77,10 @@
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
-  skills name its `subagent_explore`, `subagent_review`, and `subagent_implement` tools explicitly;
-  other targets retain their native or generic dispatch language. The catalog itself is the
+  skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
+  `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
+  language. Bounded structured details drive one shared inline renderer for all four tools, while
+  only final report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
   the dogfooded generated extension. Its repo-keyed persistent container snapshots current source

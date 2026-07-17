@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
-export type Role = "explore" | "review" | "implement";
+export type Role = "grounding" | "explore" | "review" | "implement";
 export type ChildSignal = "SIGTERM" | "SIGKILL";
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
