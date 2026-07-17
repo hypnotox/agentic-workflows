@@ -98,6 +98,26 @@ func TestProseGateClean(t *testing.T) {
 	}
 }
 
+func TestProseGateReportsSkippedBinaries(t *testing.T) {
+	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{
+		"z.bin":    "\xff",
+		"a.bin":    "\xfe",
+		"clean.md": "plain ascii\n",
+	})
+	var out strings.Builder
+	if err := runProseGate(root, &out); err != nil {
+		t.Fatalf("binary exclusions must not fail an otherwise-clean command: %v", err)
+	}
+	text := out.String()
+	first, second := strings.Index(text, "skipped binary: a.bin"), strings.Index(text, "skipped binary: z.bin")
+	if first < 0 || second < 0 || first > second {
+		t.Errorf("skipped binary paths must be printed in sorted order: %q", text)
+	}
+	if !strings.Contains(text, "prose-gate: clean") {
+		t.Errorf("clean output missing after binary reports: %q", text)
+	}
+}
+
 func TestProseGateValidExemptionPermits(t *testing.T) {
 	// A file whose only banned rune is exempted scans clean, exercising the
 	// exemption-parse-and-append path.

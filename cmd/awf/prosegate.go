@@ -47,9 +47,12 @@ func runProseGate(root string, stdout io.Writer) error {
 	for i, blob := range blobs {
 		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}
 	}
-	findings, err := prosegate.Scan(files, exemptions)
+	findings, skipped, err := prosegate.Scan(files, exemptions)
 	if err != nil { // coverage-ignore: Scan receives in-memory staged bytes and has no fallible operation
 		return fmt.Errorf("prose-gate: %w", err)
+	}
+	for _, path := range skipped {
+		fmt.Fprintf(stdout, "skipped binary: %s\n", path)
 	}
 	for _, f := range findings {
 		fmt.Fprintln(stdout, prosegate.Format(f))

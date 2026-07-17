@@ -72,40 +72,52 @@ type File struct {
 // Scan reports every banned rune in the supplied staged files outside the
 // exemptions. Files whose contents are not valid UTF-8 are skipped: a
 // default-deny gate must not guess at binary input.
-func Scan(files []File, exemptions []Exemption) ([]Finding, error) {
-	exempt := map[string]*int{}
-	for _, e := range exemptions {
-		exempt[e.Path+"\x00"+string(e.Codepoint)] = e.Count
+func Scan(files []File, exemptions []Exemption) ([]Finding, []string, error) {
+	type key struct {
+		path string
+		rune rune
 	}
-	var out []Finding
+	exempt := map[key]*int{}
+	for _, e := range exemptions {
+		exempt[key{e.Path, e.Codepoint}] = e.Count
+	}
+	actual := map[key]int{}
+	var skipped []string
 	for _, file := range files {
-		p, b := file.Path, file.Bytes
-		if !utf8.Valid(b) {
+		if !utf8.Valid(file.Bytes) {
+			skipped = append(skipped, file.Path)
 			continue
 		}
-		counts := map[rune]int{}
-		for _, r := range string(b) {
+		for _, r := range string(file.Bytes) {
 			if _, bad := Banned[r]; bad {
-				counts[r]++
-			}
-		}
-		for r, n := range counts {
-			pin, ok := exempt[p+"\x00"+string(r)]
-			switch {
-			case !ok:
-				out = append(out, Finding{Path: p, Rune: r, Count: n})
-			case pin != nil && *pin != n:
-				out = append(out, Finding{Path: p, Rune: r, Count: n, Pinned: pin})
+				actual[key{file.Path, r}]++
 			}
 		}
 	}
+
+	var out []Finding
+	for k, n := range actual {
+		pin, ok := exempt[k]
+		switch {
+		case !ok:
+			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: n})
+		case pin != nil && *pin != n:
+			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: n, Pinned: pin})
+		}
+	}
+	for k, pin := range exempt {
+		if pin != nil && actual[k] == 0 && *pin != 0 {
+			out = append(out, Finding{Path: k.path, Rune: k.rune, Count: 0, Pinned: pin})
+		}
+	}
+	sort.Strings(skipped)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Path != out[j].Path {
 			return out[i].Path < out[j].Path
 		}
 		return out[i].Rune < out[j].Rune
 	})
-	return out, nil
+	return out, skipped, nil
 }
 
 // Format renders one finding as a diagnostic line.

@@ -1,6 +1,7 @@
 package prosegate
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -29,9 +30,12 @@ func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
 		{Path: "bin.dat", Bytes: []byte("\xff\xfe not utf8 \u2014\n")},
 		{Path: "exempt.md", Bytes: []byte("\u201c depicted \u201c\n")},
 	}
-	got, err := Scan(files, []Exemption{{Path: "exempt.md", Codepoint: '\u201c', Count: ptr(2)}})
+	got, skipped, err := Scan(files, []Exemption{{Path: "exempt.md", Codepoint: '\u201c', Count: ptr(2)}})
 	if err != nil {
 		t.Fatalf("scan: %v", err)
+	}
+	if want := []string{"bin.dat"}; !slices.Equal(skipped, want) {
+		t.Errorf("skipped binary paths: got %v, want %v", skipped, want)
 	}
 	want := []Finding{
 		{Path: "one.md", Rune: '\u2014', Count: 1},
@@ -50,22 +54,41 @@ func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
 
 func TestScanExemptionModes(t *testing.T) {
 	files := []File{{Path: "f.md", Bytes: []byte("a \u2014 b \u2014 c\n")}}
-	if got, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014'}}); len(got) != 0 {
+	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014'}}); len(got) != 0 {
 		t.Errorf("nil-count exemption: want 0 findings, got %+v", got)
 	}
-	if got, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(2)}}); len(got) != 0 {
+	if got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(2)}}); len(got) != 0 {
 		t.Errorf("matching pin: want 0 findings, got %+v", got)
 	}
-	got, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(1)}})
+	got, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(1)}})
 	if len(got) != 1 || got[0].Pinned == nil || *got[0].Pinned != 1 || got[0].Count != 2 {
 		t.Fatalf("mismatched pin: want one finding pinned 1 count 2, got %+v", got)
 	}
-	zero, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(0)}})
+	zero, _, _ := Scan(files, []Exemption{{Path: "f.md", Codepoint: '\u2014', Count: ptr(0)}})
 	if len(zero) != 1 || zero[0].Pinned == nil || *zero[0].Pinned != 0 {
 		t.Fatalf("zero pin: want one finding pinned 0, got %+v", zero)
 	}
 	if msg := Format(zero[0]); !strings.Contains(msg, "pins 0") {
 		t.Errorf("zero pin message: %q", msg)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		files []File
+		ex    Exemption
+	}{
+		{name: "clean pinned path", files: []File{{Path: "clean.md", Bytes: []byte("clean\n")}}, ex: Exemption{Path: "clean.md", Codepoint: '\u2014', Count: ptr(1)}},
+		{name: "missing pinned path", files: nil, ex: Exemption{Path: "missing.md", Codepoint: '\u2014', Count: ptr(1)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, _, err := Scan(tc.files, []Exemption{tc.ex})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != 1 || got[0].Path != tc.ex.Path || got[0].Rune != tc.ex.Codepoint || got[0].Count != 0 || got[0].Pinned == nil || *got[0].Pinned != 1 {
+				t.Fatalf("zero-count pin mismatch: got %+v", got)
+			}
+		})
 	}
 }
 
