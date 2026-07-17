@@ -60,15 +60,28 @@ route that satisfies both is in-file suppression rather than type resolution.
 
 2. The container test lane strips the `// @ts-nocheck` line from its ephemeral checkout copy
    before `tsc` runs. The harness already rewrites its throwaway `/workspace/repo` copy
-   (`tools/pi-extension-test/container.sh` copies the source, rewrites `package.json`, and
-   symlinks `node_modules`); a single line-delete of the exact directive is inserted after
-   that copy and before the `tsc` invocation. The type-check therefore runs against the real
-   adopter-shipped code with only the non-type-meaning directive removed, fully preserving
-   ADR-0123 Decision #7's static-type-check pillar and extending Decision #6's gate lane with
-   a pre-typecheck strip step. `supersedes: ADR-0123#6` `supersedes: ADR-0123#7`.
-   `container.sh` is not part of the Docker image fingerprint (`hash_files()` hashes only
-   `Dockerfile`, `docker-entrypoint.sh`, `package.json`, and `package-lock.json`), so the
+   inside a single `docker exec ... sh -lc '...'` chain (`tools/pi-extension-test/container.sh`
+   copies the source, rewrites `package.json`, and symlinks `node_modules`); a directive-strip
+   stage that deletes the `// @ts-nocheck` line by pattern from both rendered files is added to
+   that chain after the copy and before its `tsc` stage. This changes what ADR-0123 Decision #7's
+   static-type-check binds to: the type-check now runs against the stripped copy of the generated
+   extension rather than the verbatim dogfood file, though that copy differs from the shipped
+   file only by the one non-type-meaning directive line. `supersedes: ADR-0123#7`. Decision #6's
+   gate lane (Docker image, dependency fingerprint, persistent container) is untouched and still
+   binds as written; this is an addition to that lane, linked by the `related:` back-pointer, not
+   an override. `container.sh` is not part of the Docker image fingerprint (`hash_files()` hashes
+   only `Dockerfile`, `docker-entrypoint.sh`, `package.json`, and `package-lock.json`), so the
    change needs no image rebuild.
+
+3. Implementation lands the two template edits, the `container.sh` strip stage, and the backing
+   test together, and in the same commits re-renders both dogfood files
+   (`.pi/extensions/awf-subagents/*.ts`) and the Sundial example
+   (`examples/sundial/.pi/extensions/awf-subagents/*.ts`) via `./x sync`, updates any prose lane
+   doc that describes the type-check lane (`docs/testing.md`), and records the change in the
+   changelog. The proof marker for `pi-extension-editor-quiet-strip` lives in a `**/*_test.go`
+   test (this repository scopes `invariants.testGlobs` to `**/*_test.go`). The final
+   Proposed->Implemented status flip runs `./x sync` and stages the regenerated `ACTIVE.md` and
+   domain indexes.
 
 ## Invariants
 
@@ -77,7 +90,11 @@ route that satisfies both is in-file suppression rather than type resolution.
   gate strips that exact directive from its ephemeral copy before `tsc` runs. The two halves
   are coupled and neither stands alone: the directive without the strip would silently drop
   the extension's static type-check, and the strip without the directive would restore
-  adopter editor noise.
+  adopter editor noise. Because a missing strip leaves the gate green (see Consequences), the
+  coupling cannot be enforced by the lane outcome; the proof marker is a static `**/*_test.go`
+  test asserting both halves directly: (a) line 2 of each rendered file is exactly
+  `// @ts-nocheck`, and (b) `container.sh` contains the directive-strip stage ahead of its
+  `tsc` invocation.
 
 ## Consequences
 
@@ -91,9 +108,13 @@ route that satisfies both is in-file suppression rather than type resolution.
   unaffected.
 - The design introduces a deliberate coupling across two files: the templates and
   `container.sh` are each incorrect in isolation. A future reader who sees only one half
-  could "fix" it and either restore the noise or silently kill the type-check. The invariant
-  and this ADR freeze that coupling; the backing test asserts both halves so the coupling is
-  mechanically enforced.
+  could "fix" it and either restore the noise or silently kill the type-check. The failure
+  mode is asymmetric and dangerous: removing the strip does not turn the gate red, because
+  `@ts-nocheck` makes `tsc` silently skip the file, so the lane stays green while the
+  extension's type-check is disabled. The lane outcome therefore cannot enforce the coupling;
+  only the static backing test (asserting the directive on line 2 and the strip stage in
+  `container.sh`) can. The invariant and this ADR freeze that coupling, and the backing test
+  asserts both halves so it is mechanically enforced.
 - `@ts-nocheck` disables type-checking of these files for editors and for any ad-hoc `tsc`
   run outside the gate. Contributors who want real diagnostics must go through `./x gate`,
   which strips the directive. Accepted: the gate is the sanctioned type-check.
