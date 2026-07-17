@@ -63,7 +63,9 @@ projection into template data. A planner-precondition validator rejects unsuppor
 before planning: every emitted artifact declares a known encoder and policy, bridge path and
 template are either both present or both absent, target-output paths and template IDs are
 non-empty and path-safe, and each output's provenance style is valid for its declared content
-policy.
+policy. Capability projection preserves the existing `missingkey=zero` publication-safety
+contract; empty-variable fixtures must render coherent output without an unresolved-value
+token.
 
 5. Permit several target declarations to request the same path only when their normalized
 render recipes are equivalent. Recipe equivalence includes every output-affecting behavior but
