@@ -61,6 +61,20 @@ docs:
 	}
 }
 
+func TestParseRetainsSuppliedSourceAndDefaults(t *testing.T) {
+	body := []byte("prefix: example\nskills: []\n")
+	c, err := Parse("staged/.awf", body)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if string(c.Source()) != string(body) || c.DocsDir != "docs" || strings.Join(c.Targets, ",") != "claude" {
+		t.Errorf("Parse = %+v, source %q", c, c.Source())
+	}
+	if _, err := Parse("staged/.awf", []byte("unknown: true\n")); err == nil {
+		t.Error("Parse must retain strict decoding")
+	}
+}
+
 func TestLoadRetainsSource(t *testing.T) {
 	// Load keeps the exact bytes it read, so a byte-level editor can reuse them
 	// instead of re-reading config.yaml (and defending against a read that cannot

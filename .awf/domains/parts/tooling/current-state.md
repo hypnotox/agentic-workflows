@@ -1,5 +1,7 @@
 ## Current state
 
+Prose-gate evaluates staged configuration and regular staged blobs.
+
 ADR-0124 makes sync tooling consume the deterministic project output plan: manifests contain planned writes once, pruning protects planned local reservations, and init collision checks receive the same write paths. Target capability and duplicate-target validation fail before any render or filesystem write.
 
 ADR-0123 adds a mandatory Docker-backed Pi-extension lane to `./x gate`. A digest-pinned image and

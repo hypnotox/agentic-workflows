@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	indexformat "github.com/go-git/go-git/v5/plumbing/format/index"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -244,55 +247,97 @@ func TestOpenRepoMalformedGitfile(t *testing.T) {
 	}
 }
 
-func TestIndexPaths(t *testing.T) {
+func TestIndexBlobs(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
-	// keep.txt in both HEAD and index; gone.txt committed then staged-deleted.
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"keep.txt": "k", "gone.txt": "g"})
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"base.txt": "base"})
 	wt, err := repo.Worktree()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Stage a new file (in index, not in HEAD) and stage a deletion (in HEAD, not
-	// in index), and leave a third file untracked.
-	if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("n"), 0o644); err != nil {
+	for name, content := range map[string]string{"ordinary.txt": "ordinary bytes\n", "executable.sh": "executable bytes\n"} {
+		mode := os.FileMode(0o644)
+		if name == "executable.sh" {
+			mode = 0o755
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), mode); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := wt.Add(name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink("ordinary.txt", filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wt.Add("new.txt"); err != nil {
+	if _, err := wt.Add("link"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wt.Remove("gone.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("u"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := awfgit.IndexPaths(dir)
+	idx, err := repo.Storer.Index()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// git ls-files semantics: keep.txt and new.txt are in the index; gone.txt was
-	// removed from it; untracked.txt was never added.
-	if strings.Join(got, ",") != "keep.txt,new.txt" {
-		t.Errorf("IndexPaths: got %v, want [keep.txt new.txt]", got)
+	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "submodule", Mode: filemode.Submodule, Hash: plumbing.NewHash("0123456789012345678901234567890123456789")})
+	if err := repo.Storer.SetIndex(idx); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := awfgit.IndexBlobs(dir)
+	if err != nil {
+		t.Fatalf("IndexBlobs: %v", err)
+	}
+	if len(got) != 3 { // base.txt plus the two regular staged files
+		t.Fatalf("IndexBlobs returned %d blobs, want 3: %+v", len(got), got)
+	}
+	for _, want := range []struct{ path, bytes string }{{"base.txt", "base"}, {"executable.sh", "executable bytes\n"}, {"ordinary.txt", "ordinary bytes\n"}} {
+		found := false
+		for _, blob := range got {
+			if blob.Path == want.path && string(blob.Bytes) == want.bytes {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("missing exact staged blob %q (%q): %+v", want.path, want.bytes, got)
+		}
+	}
+
+	idx, err = repo.Storer.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "conflict.md", Mode: filemode.Regular, Stage: indexformat.OurMode})
+	if err := repo.Storer.SetIndex(idx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.IndexBlobs(dir); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+		t.Fatalf("unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
 }
 
-func TestIndexPathsOpenError(t *testing.T) {
-	if _, err := awfgit.IndexPaths(t.TempDir()); err == nil {
-		t.Error("want an error outside a git repository, got nil")
+func TestIndexBlobsErrors(t *testing.T) {
+	if _, err := awfgit.IndexBlobs(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
+		t.Fatalf("outside repository: got %v", err)
 	}
-}
 
-func TestIndexPathsCorruptIndex(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	// OpenRepo succeeds without touching the index; Storer.Index() decodes
-	// .git/index on demand, so a garbage index fails there, not at open.
 	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.IndexPaths(dir); err == nil || !strings.Contains(err.Error(), "read index") {
-		t.Fatalf("corrupt index: want a read-index error, got %v", err)
+	if _, err := awfgit.IndexBlobs(dir); err == nil || !strings.Contains(err.Error(), "read index") {
+		t.Fatalf("corrupt index: got %v", err)
+	}
+
+	repo, dir = gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	idx, err := repo.Storer.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "empty.md", Mode: filemode.Regular})
+	if err := repo.Storer.SetIndex(idx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.IndexBlobs(dir); !errors.Is(err, awfgit.ErrIndexBlob) {
+		t.Fatalf("content-less entry: got %v, want ErrIndexBlob", err)
 	}
 }

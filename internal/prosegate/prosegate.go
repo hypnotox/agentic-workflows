@@ -6,8 +6,6 @@ package prosegate
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,21 +63,23 @@ func ParseCodepoint(s string) (rune, error) {
 	return r, nil
 }
 
-// Scan reads each path relative to root and reports every banned rune outside
-// the exemptions. Paths whose contents are not valid UTF-8 are skipped: a
-// default-deny gate must not guess at binary input. An unreadable path is an
-// error, never a silent pass.
-func Scan(root string, paths []string, exemptions []Exemption) ([]Finding, error) {
+// File is one staged regular file supplied by the command's git snapshot.
+type File struct {
+	Path  string
+	Bytes []byte
+}
+
+// Scan reports every banned rune in the supplied staged files outside the
+// exemptions. Files whose contents are not valid UTF-8 are skipped: a
+// default-deny gate must not guess at binary input.
+func Scan(files []File, exemptions []Exemption) ([]Finding, error) {
 	exempt := map[string]*int{}
 	for _, e := range exemptions {
 		exempt[e.Path+"\x00"+string(e.Codepoint)] = e.Count
 	}
 	var out []Finding
-	for _, p := range paths {
-		b, err := os.ReadFile(filepath.Join(root, p))
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", p, err)
-		}
+	for _, file := range files {
+		p, b := file.Path, file.Bytes
 		if !utf8.Valid(b) {
 			continue
 		}

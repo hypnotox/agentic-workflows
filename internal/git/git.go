@@ -5,7 +5,9 @@
 package git
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +19,8 @@ import (
 	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/filesystem"
@@ -112,31 +116,60 @@ func TrackedPaths(repoRoot string) ([]string, error) {
 	return out, nil
 }
 
-// IndexPaths returns the sorted, unique repo-relative slash paths in the index,
-// which is exactly what `git ls-files` reports. It reads the repository only.
-//
-// This differs from TrackedPaths, which reads HEAD: the index carries a staged
-// new file that HEAD does not yet, and drops a staged deletion that HEAD still
-// holds. A presence-level scan wired into a pre-commit hook (ADR-0119) needs the
-// index set, so a file added in the very commit being made is in scope, and a
-// file being deleted is not (reading it would fail).
-func IndexPaths(repoRoot string) ([]string, error) {
+// ErrIndexUnmerged reports an index that has multiple merge stages and cannot
+// represent one deterministic pre-commit snapshot.
+var ErrIndexUnmerged = errors.New("index contains unmerged entries")
+
+// ErrIndexBlob reports a stage-0 regular-file entry whose content cannot be
+// read from the object store.
+var ErrIndexBlob = errors.New("read index blob")
+
+// IndexBlob is one regular file's exact bytes from the stage-0 index snapshot.
+type IndexBlob struct {
+	Path  string
+	Bytes []byte
+}
+
+// IndexBlobs returns sorted stage-0 ordinary and executable blobs from the
+// index. Symlinks and gitlinks have no regular-file content to scan and are
+// ignored. An unmerged or unreadable regular entry makes the snapshot unsafe.
+func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 	repo, err := OpenRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
 	idx, err := repo.Storer.Index()
 	if err != nil {
-		// OpenRepo does not decode the index; Storer.Index() reads .git/index on
-		// first call, so a corrupt index file fails here even though the open
-		// succeeded.
 		return nil, fmt.Errorf("read index: %w", err)
 	}
-	out := make([]string, 0, len(idx.Entries))
-	for _, e := range idx.Entries {
-		out = append(out, e.Name)
+	entries := append([]*index.Entry(nil), idx.Entries...)
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	out := make([]IndexBlob, 0, len(entries))
+	for _, e := range entries {
+		if e.Stage != 0 {
+			return nil, fmt.Errorf("%w: %s", ErrIndexUnmerged, e.Name)
+		}
+		if e.Mode != filemode.Regular && e.Mode != filemode.Executable {
+			continue
+		}
+		blob, err := repo.BlobObject(e.Hash)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, err)
+		}
+		r, err := blob.Reader()
+		if err != nil { // coverage-ignore: a blob object successfully loaded from go-git's object store always supplies a reader
+			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, err)
+		}
+		b, readErr := io.ReadAll(r)
+		closeErr := r.Close()
+		if readErr != nil { // coverage-ignore: reads from an in-memory git blob reader do not fail
+			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, readErr)
+		}
+		if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
+			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, closeErr)
+		}
+		out = append(out, IndexBlob{Path: e.Name, Bytes: b})
 	}
-	sort.Strings(out)
 	return out, nil
 }
 

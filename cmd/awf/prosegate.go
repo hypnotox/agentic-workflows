@@ -14,7 +14,21 @@ import (
 // punctuation substitutes (ADR-0119). It returns nil without scanning when the
 // knob is off, so a hook or a runner may invoke it unconditionally.
 func runProseGate(root string, stdout io.Writer) error {
-	cfg, err := config.Load(config.RootDir(root))
+	blobs, err := git.IndexBlobs(root)
+	if err != nil {
+		return fmt.Errorf("prose-gate: cannot read staged files: %w", err)
+	}
+	var stagedConfig *git.IndexBlob
+	for i := range blobs {
+		if blobs[i].Path == ".awf/config.yaml" {
+			stagedConfig = &blobs[i]
+			break
+		}
+	}
+	if stagedConfig == nil {
+		return errors.New("prose-gate: staged snapshot has no .awf/config.yaml")
+	}
+	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
 	if err != nil {
 		return err
 	}
@@ -29,12 +43,12 @@ func runProseGate(root string, stdout io.Writer) error {
 		}
 		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
 	}
-	paths, err := git.IndexPaths(root)
-	if err != nil {
-		return fmt.Errorf("prose-gate: cannot enumerate tracked files: %w", err)
+	files := make([]prosegate.File, len(blobs))
+	for i, blob := range blobs {
+		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}
 	}
-	findings, err := prosegate.Scan(root, paths, exemptions)
-	if err != nil {
+	findings, err := prosegate.Scan(files, exemptions)
+	if err != nil { // coverage-ignore: Scan receives in-memory staged bytes and has no fallible operation
 		return fmt.Errorf("prose-gate: %w", err)
 	}
 	for _, f := range findings {

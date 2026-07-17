@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	indexformat "github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -24,6 +27,9 @@ func proseGateRepo(t *testing.T, proseGateYAML string, stage map[string]string) 
 	}
 	wt, err := repo.Worktree()
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add(".awf/config.yaml"); err != nil {
 		t.Fatal(err)
 	}
 	for name, content := range stage {
@@ -48,11 +54,25 @@ func TestProseGateKnobOff(t *testing.T) {
 	}
 	// Knob absent, and knob explicitly false: both no-op and return nil.
 	for _, y := range []string{"", "proseGate:\n  enabled: false\n"} {
-		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n"+y)
+		root := proseGateRepo(t, y, nil)
 		if err := runProseGate(root, io.Discard); err != nil {
 			t.Errorf("knob off (%q): want nil, got %v", y, err)
 		}
+	}
+}
+
+func TestProseGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
+	root := t.TempDir()
+	if _, err := git.PlainInit(root, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := runProseGate(root, io.Discard); err == nil || !strings.Contains(err.Error(), "staged snapshot has no") {
+		t.Fatalf("missing staged config: %v", err)
+	}
+
+	root = proseGateRepo(t, "proseGate: [\n", nil)
+	if err := runProseGate(root, io.Discard); err == nil || !strings.Contains(err.Error(), "parse config") {
+		t.Fatalf("invalid staged config: %v", err)
 	}
 }
 
@@ -106,16 +126,61 @@ func TestProseGateFindings(t *testing.T) {
 	}
 }
 
-func TestProseGateScanReadError(t *testing.T) {
-	root := proseGateRepo(t, "proseGate:\n  enabled: true\n",
-		map[string]string{"vanish.md": "clean\n"})
-	// Staged in the index, then removed from disk without staging the deletion:
-	// IndexPaths still returns it, and Scan's ReadFile fails.
-	if err := os.Remove(filepath.Join(root, "vanish.md")); err != nil {
+func TestProseGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
+	t.Run("banned content cleaned without restaging remains a finding", func(t *testing.T) {
+		root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "staged \u2014\n"})
+		if err := os.WriteFile(filepath.Join(root, "a.md"), []byte("worktree clean\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := runProseGate(root, io.Discard); err == nil {
+			t.Fatal("staged banned content must fail even when the worktree copy is clean")
+		}
+	})
+	t.Run("staged file missing from worktree still scans", func(t *testing.T) {
+		root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"vanish.md": "clean\n"})
+		if err := os.Remove(filepath.Join(root, "vanish.md")); err != nil {
+			t.Fatal(err)
+		}
+		if err := runProseGate(root, io.Discard); err != nil {
+			t.Fatalf("staged clean file: %v", err)
+		}
+	})
+}
+
+func TestProseGateUsesStagedConfig(t *testing.T) {
+	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "staged \u2014\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: false\n")
+	if err := runProseGate(root, io.Discard); err == nil {
+		t.Fatal("worktree disabled knob must not override staged enabled config")
+	}
+}
+
+func TestProseGateUsesStagedExemption(t *testing.T) {
+	root := proseGateRepo(t,
+		"proseGate:\n  enabled: true\n  exemptions:\n    - path: depict.md\n      codepoint: U+2014\n",
+		map[string]string{"depict.md": "staged \u2014\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
+	if err := runProseGate(root, io.Discard); err != nil {
+		t.Fatalf("staged exemption must control despite worktree config: %v", err)
+	}
+}
+
+func TestProseGateSkipsStagedGitlink(t *testing.T) {
+	root := proseGateRepo(t, "proseGate:\n  enabled: true\n", map[string]string{"a.md": "clean\n"})
+	repo, err := git.PlainOpen(root)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runProseGate(root, io.Discard); err == nil || !strings.Contains(err.Error(), "prose-gate:") {
-		t.Fatalf("scan read error: want a prose-gate error, got %v", err)
+	idx, err := repo.Storer.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx.Entries = append(idx.Entries, &indexformat.Entry{Name: "submodule", Mode: filemode.Submodule, Hash: plumbing.NewHash("0123456789012345678901234567890123456789")})
+	if err := repo.Storer.SetIndex(idx); err != nil {
+		t.Fatal(err)
+	}
+	if err := runProseGate(root, io.Discard); err != nil {
+		t.Fatalf("gitlink must not block regular staged files: %v", err)
 	}
 }
 
@@ -136,13 +201,12 @@ func TestProseGateDispatch(t *testing.T) {
 
 // invariant: prose-gate-refuses-without-git
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
-	// An adopted tree (the knob is on) that is not a git repository: config.Load
-	// succeeds, the knob check passes, and IndexPaths is the thing that fails, so
-	// the command refuses rather than reporting a clean tree it could not see.
+	// An adopted tree outside a git repository has no staged snapshot, so the
+	// command refuses rather than reporting a clean tree it could not see.
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nproseGate:\n  enabled: true\n")
 	err := runProseGate(root, io.Discard)
-	if err == nil || !strings.Contains(err.Error(), "enumerate tracked files") {
+	if err == nil || !strings.Contains(err.Error(), "cannot read staged files") {
 		t.Fatalf("outside git: want a refusal naming the enumeration failure, got %v", err)
 	}
 }

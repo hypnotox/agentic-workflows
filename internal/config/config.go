@@ -176,6 +176,12 @@ func Load(awfDir string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("read config: %w", err)
 	}
+	return Parse(awfDir, b)
+}
+
+// Parse strictly decodes config.yaml bytes, records awfDir as the sidecar/part
+// resolution root, and applies defaults.
+func Parse(awfDir string, b []byte) (*Config, error) {
 	var c Config
 	dec := yaml.NewDecoder(bytes.NewReader(b))
 	dec.KnownFields(true)
