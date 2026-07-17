@@ -15,7 +15,7 @@ Non-goals: OS-level filesystem sandboxing, token-by-token child prose, full chil
 
 Phase 1 replaces text summaries with the closed `DisplayEvent` model, preserves bounded details across post-start failures, and proves Pi 0.80.9's partial-update/result-middleware behavior through a real in-memory `AgentSession`. Phase 2 adds the grounding role, one shared renderer, Pi-only workflow binding, all six successor invariant proofs, and the user-facing documentation in the same behavior commit. Phase 3 records deviations, freezes the ADR and plan, regenerates indexes, and runs final review checks.
 
-Phases are ordered and each closes with a separately green gate. All commands run from `/home/hypno/Projects/agentic-workflows`; every path below is absolute so an executor needs no session context.
+Phases are ordered and each closes with a separately green gate. All commands run from `/home/hypno/Projects/agentic-workflows`. File paths in prose are absolute; command-local paths may be repository-relative only after an explicit `cd /home/hypno/Projects/agentic-workflows`.
 
 ## File structure
 
@@ -94,7 +94,7 @@ Phases are ordered and each closes with a separately green gate. All commands ru
     ```
 
   - add `runner preserves unmatched completions in observation order`: emit an end before its start and assert sequence 1 remains the end and sequence 2 remains the start;
-  - add `runner bounds every event field and counts omissions`: emit oversized assistant text, tool-call ID, tool name, and start args plus 25 further starts and one end. Assert every complete serialized event is at most 2,048 UTF-8 bytes; ID truncation contains `[toolCallId truncated]`; name truncation contains `[toolName truncated]`; payload truncation contains `[event truncated]`; the retained count is 20; and `omittedEvents` equals total appended minus 20;
+  - add `runner bounds every event field and counts omissions`: emit oversized assistant text, tool-call ID, tool name, and start args. After each oversized event, assert its marker from the latest captured partial-update snapshot: ID truncation contains `[toolCallId truncated]`, name truncation contains `[toolName truncated]`, and payload truncation contains `[event truncated]`. Then emit 25 further starts and one end. Assert every complete event in every captured update is at most 2,048 UTF-8 bytes, the final retained count is 20, and `omittedEvents` equals total appended minus 20;
   - change malformed JSON, non-zero exit, model stop reason `error`, model stop reason `aborted`, and post-start signal abort tests to resolved results with the state matrix in Task 1.3;
   - add `runner cleans setup failures`: injected `writeFile` rejection and process `error` before any JSON both reject and each call `rm` exactly once. Retain pre-abort rejection and assert it creates no temporary directory.
 
@@ -211,9 +211,32 @@ Phases are ordered and each closes with a separately green gate. All commands ru
 
 - [ ] **Task 1.7: Sync, width-independent gate, stage from an allowlist, and commit.** Run `cd /home/hypno/Projects/agentic-workflows && ./x sync && ./x check && ./x gate`. Expect clean checks and 100% Go and Pi statement/branch/function/line coverage.
 
-  Stage only this exhaustive Phase 1 allowlist with absolute paths: both Pi templates; both existing TypeScript tests; new `runtime.test.ts`; fake fixture; the three authored doc parts and changelog; `.pi/extensions/awf-subagents/{index.ts,runner.ts}`; `examples/sundial/.pi/extensions/awf-subagents/{index.ts,runner.ts}`; `docs/testing.md`; `docs/domains/{rendering,tooling}.md`; `.awf/awf.lock`; and `examples/sundial/.awf/awf.lock`. Write those exact relative paths sorted to `/tmp/awf-0125-phase1.allow`, then run:
+  Create and apply this literal exhaustive Phase 1 allowlist:
 
   ```sh
+  cat > /tmp/awf-0125-phase1.allow <<'EOF'
+  .awf/awf.lock
+  .awf/docs/parts/testing/layout.md
+  .awf/domains/parts/rendering/current-state.md
+  .awf/domains/parts/tooling/current-state.md
+  .pi/extensions/awf-subagents/index.ts
+  .pi/extensions/awf-subagents/runner.ts
+  changelog/CHANGELOG.md
+  docs/domains/rendering.md
+  docs/domains/tooling.md
+  docs/testing.md
+  examples/sundial/.awf/awf.lock
+  examples/sundial/.pi/extensions/awf-subagents/index.ts
+  examples/sundial/.pi/extensions/awf-subagents/runner.ts
+  templates/pi/awf-subagents/index.ts.tmpl
+  templates/pi/awf-subagents/runner.ts.tmpl
+  tools/pi-extension-test/fixtures/fake-pi.mjs
+  tools/pi-extension-test/tests/index.test.ts
+  tools/pi-extension-test/tests/runner.test.ts
+  tools/pi-extension-test/tests/runtime.test.ts
+  EOF
+  sed -i 's/^  //' /tmp/awf-0125-phase1.allow
+  sort -o /tmp/awf-0125-phase1.allow /tmp/awf-0125-phase1.allow
   while IFS= read -r path; do git add -- "/home/hypno/Projects/agentic-workflows/$path"; done < /tmp/awf-0125-phase1.allow
   git diff --cached --name-only | sort > /tmp/awf-0125-phase1.actual
   cmp /tmp/awf-0125-phase1.allow /tmp/awf-0125-phase1.actual
@@ -245,7 +268,7 @@ Phases are ordered and each closes with a separately green gate. All commands ru
 - [ ] **Task 2.2: Write failing grounding, schema, renderer, and width tests.** In `/home/hypno/Projects/agentic-workflows/tools/pi-extension-test/tests/index.test.ts`:
   - change exact registration order to grounding, explore, review, implement;
   - validate grounding parameters with TypeBox's compiled/check seam: missing task, empty task, and additional property fail; `{task: "ground"}` passes; schema has `minLength: 1` and `additionalProperties: false`;
-  - execute grounding and assert role `grounding`, exact read-only tools, all grounding duties, exact finding keys/kinds/confidences, and no public subagent name in any child allowlist;
+  - execute grounding and assert role `grounding`, exact read-only tools, all grounding duties, exact finding keys/kinds/confidences, all three definitions (verified is mechanically confirmed against source, interpreted requires judgment, and unverified could not be confirmed), and no public subagent name in any child allowlist;
   - add shared renderer cases for each role and running/completed/failed/aborted/missing-details states.
 
   Renderer assertions use `visibleWidth` from `@earendil-works/pi-tui`. Render representative collapsed, expanded, malformed, and oversized states at widths 24 and 120; for every line assert `visibleWidth(line) <= width`. Also assert configured expansion hint text, omission count, recent-event collapse, task, final Markdown text, present-only stderr/usage, and fallback behavior.
@@ -274,11 +297,11 @@ Phases are ordered and each closes with a separately green gate. All commands ru
 
   | State | Collapsed | Expanded |
   |---|---|---|
-  | running | role, running, last 10 events, omissions | task, all retained events |
-  | completed | success, last 10, available usage, key hint | task, events, Markdown final report, available usage |
-  | failed | failed, last 10, omissions | task, events, bounded final failure, present stderr/usage |
-  | aborted | aborted, last 10, omissions | task, events, bounded abort message, present stderr/usage |
-  | malformed/missing details | bounded fallback content | same bounded fallback content |
+  | running | role, running state, last 10 events, omission state, available usage | task, all retained events, present diagnostics, available usage |
+  | completed | role, success state, last 10 events, omission state, available usage, key hint | task, all events, Markdown final report, present diagnostics, available usage |
+  | failed | role, failed state, last 10 events, omission state, available usage | task, all events, bounded final failure, present diagnostics, available usage |
+  | aborted | role, aborted state, last 10 events, omission state, available usage | task, all events, bounded abort message, present diagnostics, available usage |
+  | malformed/missing details | role plus bounded fallback content | role plus the same bounded fallback content |
 
   Task previews are valid UTF-8 capped at 512 bytes including `[task truncated]`; fallback text is capped at 2 KiB including `[display truncated]`; stderr is already runner-capped at 50 KiB with its existing marker; final output remains capped at 50 KiB/2,000 lines. All renderer lines use TUI wrapping/truncation so visible width never exceeds the supplied width. The expansion hint is `keyHint("app.tools.expand", "to expand")`, never literal Ctrl+O.
 
@@ -307,11 +330,29 @@ Phases are ordered and each closes with a separately green gate. All commands ru
   Representative `/home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl`:
 
   ```diff
-  -It registers exactly three tools: `subagent_explore` ...
-  +It registers exactly four tools: `subagent_grounding` takes a required `task` for the workflow's premise/altitude check; `subagent_explore` takes a required `task` for general investigation; `subagent_review` takes required `kind` (`adr`, `plan`, or `code`) and `task`; and `subagent_implement` takes required `task` and `allowCommits`.
+  -The Pi target requires Pi 0.80.9 or newer and renders executable project-extension code that Pi
+  -loads only after project trust. It registers exactly three tools: `subagent_explore` takes a
+  -required `task`; `subagent_review` takes required `kind` (`adr`, `plan`, or `code`) and `task`;
+  -and `subagent_implement` takes required `task` and `allowCommits`. Exploration and review follow a
+  -no-mutation prompt policy and can use `bash`; they are not OS-sandboxed. Implementation shares the
+  -parent checkout, must run alone in its parent tool batch and sequentially, and may commit only when
+  -the orchestrator sets `allowCommits: true`. Missing or modified extension files are `awf check`
+  -drift; run `awf sync` to repair them.
+  +The Pi target requires Pi 0.80.9 or newer and renders executable project-extension code that Pi
+  +loads only after project trust. It registers exactly four tools: `subagent_grounding` takes a
+  +required `task` for the workflow's premise and altitude check; `subagent_explore` takes a required
+  +`task` for general investigation; `subagent_review` takes required `kind` (`adr`, `plan`, or
+  +`code`) and `task`; and `subagent_implement` takes required `task` and `allowCommits`. Grounding,
+  +exploration, and review follow a no-mutation prompt policy and can use `bash`; they are not
+  +OS-sandboxed. Implementation shares the parent checkout, must run alone in its parent tool batch
+  +and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
+  +
+  +All four tools render bounded recent activity inline. The expanded tool view shows the retained
+  +task, events, report, present diagnostics, and available usage. Intermediate activity remains in
+  +tool details; only the final report or bounded failure summary enters parent model content.
+  +Brainstorming uses grounding, while large coupling audits retain exploration. Missing or modified
+  +extension files are `awf check` drift; run `awf sync` to repair them.
   ```
-
-  Add immediately after it: all four tools render bounded recent activity inline; the expanded tool view shows retained task/events/report/diagnostics/usage; intermediate activity remains details-only; only final report/failure summary enters parent model content; brainstorming uses grounding while coupling audits retain exploration.
 
   Edge `/home/hypno/Projects/agentic-workflows/.awf/parts/agents-doc/identity.md`:
 
@@ -334,7 +375,7 @@ Phases are ordered and each closes with a separately green gate. All commands ru
   ```sh
   cd /home/hypno/Projects/agentic-workflows
   ./x sync
-  ! rg -U -n 'exactly three|three generated project-extension tools|three governed extension tools|subagent_explore.{0,160}subagent_review.{0,160}subagent_implement' \
+  ! rg -U --multiline-dotall -n 'exactly three|three generated project-extension tools|three governed extension tools|subagent_explore.{0,160}subagent_review.{0,160}subagent_implement' \
     .awf/parts/agents-doc/identity.md \
     .awf/docs/parts/architecture/components.md \
     templates/docs/working-with-awf.md.tmpl \
@@ -366,9 +407,44 @@ Phases are ordered and each closes with a separately green gate. All commands ru
 
   Expect grounding only in brainstorming, exploration only in coupling audit, clean checks, no unresolved/no-value finding, and 100% coverage.
 
-  Stage only this exhaustive Phase 2 allowlist: both Pi templates; index test; package JSON/lock; brainstorming template; `internal/project/target_test.go`; all nine authored documentation sources from Task 2.5; `.pi/extensions/awf-subagents/{index.ts,runner.ts}`; `.pi/skills/awf-brainstorming/SKILL.md`; `examples/sundial/.pi/extensions/awf-subagents/{index.ts,runner.ts}`; `examples/sundial/.pi/skills/sundial-brainstorming/SKILL.md`; `AGENTS.md`; `docs/{architecture,testing,working-with-awf}.md`; `docs/domains/{rendering,tooling}.md`; `examples/sundial/docs/working-with-awf.md`; `.awf/awf.lock`; and `examples/sundial/.awf/awf.lock`. Write the corresponding sorted relative list to `/tmp/awf-0125-phase2.allow`, then run:
+  Create and apply this literal exhaustive Phase 2 allowlist:
 
   ```sh
+  cat > /tmp/awf-0125-phase2.allow <<'EOF'
+  .awf/awf.lock
+  .awf/docs/parts/architecture/components.md
+  .awf/docs/parts/architecture/dependencies.md
+  .awf/docs/parts/testing/layout.md
+  .awf/domains/parts/rendering/current-state.md
+  .awf/domains/parts/tooling/current-state.md
+  .awf/parts/agents-doc/identity.md
+  .pi/extensions/awf-subagents/index.ts
+  .pi/extensions/awf-subagents/runner.ts
+  .pi/skills/awf-brainstorming/SKILL.md
+  AGENTS.md
+  README.md
+  changelog/CHANGELOG.md
+  docs/architecture.md
+  docs/domains/rendering.md
+  docs/domains/tooling.md
+  docs/testing.md
+  docs/working-with-awf.md
+  examples/sundial/.awf/awf.lock
+  examples/sundial/.pi/extensions/awf-subagents/index.ts
+  examples/sundial/.pi/extensions/awf-subagents/runner.ts
+  examples/sundial/.pi/skills/sundial-brainstorming/SKILL.md
+  examples/sundial/docs/working-with-awf.md
+  internal/project/target_test.go
+  templates/docs/working-with-awf.md.tmpl
+  templates/pi/awf-subagents/index.ts.tmpl
+  templates/pi/awf-subagents/runner.ts.tmpl
+  templates/skills/brainstorming/SKILL.md.tmpl
+  tools/pi-extension-test/package-lock.json
+  tools/pi-extension-test/package.json
+  tools/pi-extension-test/tests/index.test.ts
+  EOF
+  sed -i 's/^  //' /tmp/awf-0125-phase2.allow
+  sort -o /tmp/awf-0125-phase2.allow /tmp/awf-0125-phase2.allow
   while IFS= read -r path; do git add -- "/home/hypno/Projects/agentic-workflows/$path"; done < /tmp/awf-0125-phase2.allow
   git diff --cached --name-only | sort > /tmp/awf-0125-phase2.actual
   cmp /tmp/awf-0125-phase2.allow /tmp/awf-0125-phase2.actual
@@ -397,7 +473,25 @@ Phases are ordered and each closes with a separately green gate. All commands ru
   git diff -- $(cat /tmp/awf-0125-unrelated.paths) | cmp - /tmp/awf-0125-unrelated.patch
   ```
 
-  Expect clean sync/check/invariants, 100% Go and Pi coverage, no audit Errors, and unchanged unrelated patch. Write the exact six relative paths for ADR-0125, this plan, `docs/decisions/ACTIVE.md`, `docs/domains/{rendering,tooling}.md`, and `.awf/awf.lock` sorted to `/tmp/awf-0125-phase3.allow`, then run the same absolute-path `while ... git add --` loop and require exact equality with sorted `git diff --cached --name-only`. Commit:
+  Expect clean sync/check/invariants, 100% Go and Pi coverage, no audit Errors, and unchanged unrelated patch. Create and apply the literal six-path allowlist:
+
+  ```sh
+  cat > /tmp/awf-0125-phase3.allow <<'EOF'
+  .awf/awf.lock
+  docs/decisions/0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md
+  docs/decisions/ACTIVE.md
+  docs/domains/rendering.md
+  docs/domains/tooling.md
+  docs/plans/2026-07-17-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md
+  EOF
+  sed -i 's/^  //' /tmp/awf-0125-phase3.allow
+  sort -o /tmp/awf-0125-phase3.allow /tmp/awf-0125-phase3.allow
+  while IFS= read -r path; do git add -- "/home/hypno/Projects/agentic-workflows/$path"; done < /tmp/awf-0125-phase3.allow
+  git diff --cached --name-only | sort > /tmp/awf-0125-phase3.actual
+  cmp /tmp/awf-0125-phase3.allow /tmp/awf-0125-phase3.actual
+  ```
+
+  Commit:
 
   ```commit
   docs(adr): implement 0125 Pi grounding progress
