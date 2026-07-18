@@ -4,7 +4,7 @@ date: 2026-07-16
 supersedes: [31]
 superseded_by: ""
 tags: [adr-lifecycle, adr-parsing, invariant-retirement, schema-migration, active-md]
-related: [8, 10, 25, 39, 42, 105, 116, 128]
+related: [8, 10, 25, 39, 42, 105, 116, 128, 129]
 domains: [adr-system, invariants, config, tooling, rendering]
 ---
 # ADR-0120: Structured, machine-checked ADR supersession

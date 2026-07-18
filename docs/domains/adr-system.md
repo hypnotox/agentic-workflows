@@ -31,6 +31,7 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 ### Proposed
 
 - [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
+- [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](../decisions/0129-single-anchor-coverage-model-for-every-supersession-consumer.md)
 
 ### Superseded
 
