@@ -4,7 +4,7 @@ date: 2026-07-18
 supersedes: []
 superseded_by: ""
 tags: [adr-lifecycle, adr-parsing, frontmatter-validation, invariant-retirement, schema-migration]
-related: [8, 10, 14, 35, 42, 105, 116, 120]
+related: [8, 10, 14, 35, 42, 105, 116, 120, 129]
 domains: [adr-system, invariants, config]
 ---
 # ADR-0128: Coverage-Derived ADR Supersession
@@ -66,7 +66,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    computed, so `supersedes-invariant: ADR-0120#active-md-supersedence-rendering` retires
    here rather than lapsing quietly: its chain clause becomes uncomputable the moment this
    item lands. Its anchor-annotation clause survives, re-declared narrowed below, and the
-   replacement chain rendering over the coverage model is ADR-B's to specify.
+   replacement chain rendering over the coverage model is ADR-0129's to specify.
 
 2. **Two relations, not one: `supersedes:` retires an anchor, `refines:` adapts it.** The
    existing token conflates them. `supersedes: ADR-NNNN#<item>` means the anchor is dead and
@@ -74,7 +74,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    narrowed, widened, or otherwise adapted while still standing; it counts toward nothing.
    Both owe the back-pointer of item 5, both are surfaced by the anchor annotation of
    `active-md-annotates-superseded-anchors` and its `awf context` counterpart (how a
-   fully-superseded ADR renders is ADR-B's), and both are recognised only inside
+   fully-superseded ADR renders is ADR-0129's), and both are recognised only inside
    `## Decision`.
 
    The conflation is not an edge case: of the 37 pre-existing item tokens in the corpus on
@@ -232,7 +232,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
 - `invariant: active-md-annotates-superseded-anchors` - ACTIVE.md renders an annotation on
   each live ADR that has a superseded anchor. This is the surviving half of ADR-0120's
   `active-md-supersedence-rendering`, retired at item 1; how ACTIVE.md renders claimants for a
-  fully-superseded ADR, now that no scalar successor name exists, is ADR-B's to declare.
+  fully-superseded ADR, now that no scalar successor name exists, is ADR-0129's to declare.
 
 The five slugs this ADR retires are claimed by `supersedes-invariant:` tokens at the Decision
 items that override them: `supersession-full-symmetry` and `active-md-supersedence-rendering`
@@ -266,7 +266,7 @@ at item 1, `supersession-backpointer` at item 5, `supersession-flavour-exclusive
 - Rendered output loses the successor name in two places. The domain-doc index
   (`internal/adr/domain.go:38-41`) can no longer print `-> superseded by ADR-NNNN` from a
   scalar field, and ACTIVE.md's `Superseded` bucket becomes an undifferentiated list. Both
-  recover the claimants from the coverage model instead; how they render is ADR-B's concern.
+  recover the claimants from the coverage model instead; how they render is ADR-0129's concern.
 - Splitting the token into two relations doubles the authoring decision: every citation that
   overrides something now forces an explicit call about whether the target survives. That
   judgment was always being made, but the old grammar let it go unrecorded, and 22 of the 37
@@ -274,7 +274,7 @@ at item 1, `supersession-backpointer` at item 5, `supersession-flavour-exclusive
 - Nothing constrains the shape of the claim graph in the window this ADR opens. ADR-0120
   item 3's single-claimant check incidentally prevented full-supersession cycles, and item 1
   removes it; a token targeting its own carrier, or a mutual full-coverage pair that derives
-  two dead ADRs and no live one, is unrefused until ADR-B specifies the coverage model and
+  two dead ADRs and no live one, is unrefused until ADR-0129 specifies the coverage model and
   the acyclicity check over it. No corpus case exists today.
 - Nothing here gives an ADR withdrawn without a successor a terminal state. `Superseded` now
   requires coverage where before it required a named successor, so the gap is unchanged, not
