@@ -61,9 +61,17 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 		t.Errorf("0001 should sort before 0002:\n%s", got)
 	}
 
-	// Superseded entry carries its successor; links are relative to docs/domains/.
+	// Superseded entry names its claimant; links are relative to docs/domains/.
 	if !strings.Contains(got, "→ superseded by ADR-0002") {
 		t.Errorf("expected superseded annotation:\n%s", got)
+	}
+	// The negative half of ADR-0129 item 5, which is the whole point of the
+	// rule: claimant NUMBERS only, never individual anchors. A per-anchor list
+	// would turn a domain index into a supersession report.
+	for _, forbidden := range []string{"item 1", "slug `"} {
+		if strings.Contains(got, forbidden) {
+			t.Errorf("the domain index must not name individual anchors, found %q:\n%s", forbidden, got)
+		}
 	}
 	if !strings.Contains(got, "](../decisions/0004-fourth.md)") {
 		t.Errorf("expected ../decisions/ link:\n%s", got)

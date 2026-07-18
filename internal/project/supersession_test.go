@@ -447,6 +447,22 @@ func TestSupersessionGraphFaults(t *testing.T) {
 		}
 	})
 
+	t.Run("a refinement cycle is legal", func(t *testing.T) {
+		// Only the RETIREMENT relation forms the graph the acyclicity rule
+		// walks. Two ADRs refining each other is a normal co-evolution, and
+		// neither is covered, so nothing is asserted dead by circularity.
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-a.md": testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"),
+				testsupport.WithRelated(2),
+				testsupport.WithBody("## Decision\n\n1. Adapts `refines: ADR-0002#1`.\n")),
+			"0002-b.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"),
+				testsupport.WithRelated(1),
+				testsupport.WithBody("## Decision\n\n1. Adapts `refines: ADR-0001#1`.\n")),
+		})
+		if hasKindDetail(drift, "adr-supersession-graph", "retirement cycle") {
+			t.Fatalf("refinement edges must not form a retirement cycle, got %#v", drift)
+		}
+	})
 	t.Run("mutual claims between live ADRs are legal", func(t *testing.T) {
 		// Each retires one of the other's two items, so neither is covered and
 		// the loop is a legitimate pair of partial supersessions.
@@ -471,7 +487,7 @@ func TestSupersessionGraphFaults(t *testing.T) {
 // guidance, exactly as the retires_invariants: refusal does.
 // invariant: supersession-keys-refused
 func TestSupersessionKeysRefused(t *testing.T) {
-	for _, key := range []string{"supersedes: [1]", `superseded_by: "0002"`} {
+	for _, key := range []string{"supersedes: [1]", "supersedes: []", `superseded_by: "0002"`, `superseded_by: ""`} {
 		t.Run(key, func(t *testing.T) {
 			root := scaffold(t, supersessionCfg)
 			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),

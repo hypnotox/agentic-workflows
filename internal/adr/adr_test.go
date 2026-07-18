@@ -842,7 +842,12 @@ func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 	statusCmp := regexp.MustCompile(
 		`\.Status\s*[!=]=\s*"` +
 			`|HasPrefix\([^)]*\.Status\s*,\s*"` +
-			`|[!=]=\s*"(Accepted|Implemented|Proposed|Superseded)"`)
+			`|[!=]=\s*"(Accepted|Implemented|Proposed|Superseded)"` +
+			// A switch arm and a prefix test on a local both compare a status
+			// without an ADR field in the line; internal/audit held the latter
+			// shape before it had parsed records.
+			`|case\s+"(Accepted|Implemented|Proposed|Superseded)"` +
+			`|HasPrefix\([^,]*,\s*"Superseded"`)
 
 	seen := 0
 	root := filepath.Join("..", "..", "internal")

@@ -45,9 +45,9 @@ func TestSupersessionKeysMigration(t *testing.T) {
 		"0001-old.md": "---\nstatus: Superseded by ADR-0002\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"0002\"\n---\n" +
 			"# ADR-0001: Old\n\n## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: old-slug` - x.\n",
 		"0002-new.md": "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: [1]\nsuperseded_by: \"\"\n---\n" +
-			"# ADR-0002: New\n\n## Decision\n\n1. Adapts `supersedes: ADR-0003#1` in passing.\n",
+			"# ADR-0002: New\n\n## Decision\n\n1. Adapts `supersedes: ADR-0003#1` in passing, and retires `supersedes-invariant: ADR-0003#c-slug`.\n",
 		"0003-other.md": "---\nstatus: Implemented\ndate: 2026-01-03\ntags: [x]\nrelated: [2]\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n" +
-			"# ADR-0003: Other\n\n## Decision\n\n1. c.\n",
+			"# ADR-0003: Other\n\n## Decision\n\n1. c.\n\n## Invariants\n\n- `invariant: c-slug` - x.\n",
 	})
 
 	var out bytes.Buffer
@@ -79,6 +79,12 @@ func TestSupersessionKeysMigration(t *testing.T) {
 	// kills an ADR.
 	if !strings.Contains(newer, "`refines: ADR-0003#1`") {
 		t.Errorf("pre-existing item token was not downgraded to refines:\n%s", newer)
+	}
+	// Slug tokens are left alone: a slug is atomic, so supersedes-invariant:
+	// has no refinement form to downgrade to. Widening the rewrite regex to
+	// catch them would silently defang every existing invariant retirement.
+	if !strings.Contains(newer, "`supersedes-invariant: ADR-0003#c-slug`") {
+		t.Errorf("a pre-existing slug token must survive the downgrade untouched:\n%s", newer)
 	}
 
 	// The bookkeeping item retires every anchor of the predecessor, using the
