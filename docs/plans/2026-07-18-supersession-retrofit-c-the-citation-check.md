@@ -440,6 +440,39 @@ Task 3.6 flips the ADR.
 - `cmd/deadcodecheck` reports no production dead code, confirming the extraction method and the
   check are both reachable from `main`.
 
+## Execution status (2026-07-19): Phases 1 and 2 landed; Phase 3 paused mid-task
+
+Phases 1 (`b1be6de4`) and 2 (`5aa664f3`) are on `main`. Phase 3 is **not** landed. Tasks 3.1 and
+3.2 are written and validated but live on the `wip/citation-check` branch, committed with
+`--no-verify` purely to preserve them: the gate reds there, correctly, because the check works and
+the corpus is not yet clean. Tasks 3.3 to 3.6 are untouched.
+
+**Why it paused: the check reports 44 unencoded claims across 18 ADRs** (33 item-anchored, 11
+slug-anchored), where Task 3.6 expected a clean run. The check was validated before drawing that
+conclusion, and it is not over-triggering:
+
+- The code-span exemption holds. ADR-0131's own Decision section discusses the token grammar at
+  length inside backticks and self-triggers on none of it.
+- Findings dedup per (carrier item, anchor), so an item naming one anchor twice reports once.
+- ADR-0131's eight self-findings name anchors *different* from its own eight `cites:` tokens. Item
+  5 cites `ADR-0120#9` while the only token for that anchor sits at item 7, which is ADR-0129
+  Decision 2's per-item rationale-site rule behaving exactly as specified.
+- The single case ADR-0131 reasoned about explicitly resolves as the ADR predicted: ADR-0016 item
+  7's `provenance-banner` mention "owes nothing", which under Decision 4 means it owes the inert
+  `cites-invariant:` token, and that is what the check asks for.
+
+So the gap is real: the manual prose sweep behind Plans A and B found 4 corrections and 17
+backfills, and the mechanical check finds 44 more (item, anchor) pairs. That is ADR-0131 doing the
+job it was written to do, but it makes the remaining work 44 individual clause-set judgments rather
+than the handful of stragglers this plan budgeted for.
+
+**Decision taken (user, 2026-07-19): pause and plan the triage separately.** It is not deferrable
+*within* Phase 3 - the check cannot land red, and ADR-0131 Decision 3 forbids shipping it behind a
+config key - so the triage is a prerequisite for Phase 3's commit and warrants its own planned
+effort with a fresh-context review. Rushing 44 verdicts at the tail of a long session is the
+failure mode this effort already hit five times, four of them where the carrier's own verb misled
+the reading.
+
 ## Notes
 
 - **ADR-0131 Decision 9 requires this ADR to pass its own check.** The verification step above is
