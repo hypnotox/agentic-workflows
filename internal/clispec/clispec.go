@@ -223,12 +223,12 @@ part, the enable, and a re-render.
 		},
 	},
 	{
-		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks}",
+		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
 		BoolFlags: []string{"--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf enable <kind> <name> [--dry-run]
 
 Enable an artifact in this project. <kind> is skill, agent, doc, domain, target,
-bootstrap, or hooks. For skill/agent/doc, the full requirement closure is enabled
+bootstrap, hooks, or runner. For skill/agent/doc, the full requirement closure is enabled
 in one edit, printed as a plan (ADR-0081).
 
 Flags:
@@ -236,11 +236,11 @@ Flags:
 `,
 	},
 	{
-		Name: "disable", Summary: "Disable an artifact (a catalog skill/agent/doc, a freeform domain, or a target)",
+		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
 		BoolFlags: []string{"--with-dependents", "--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf disable <kind> <name> [--with-dependents] [--dry-run]
 
-Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, or the hooks.
+Disable an artifact: a catalog skill/agent/doc, a freeform domain, an adapter target, the bootstrap, the hooks, or the runner.
 For skill/agent/doc, disabling refuses while enabled artifacts still require
 <name>, printing the dependent plan (ADR-0081).
 
