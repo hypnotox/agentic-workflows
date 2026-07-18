@@ -1,7 +1,7 @@
 ---
 date: 2026-07-18
 adrs: [127]
-status: Proposed
+status: Implemented
 ---
 # Plan: Explicit Audit Ranges and a Shared Git Range Parser
 

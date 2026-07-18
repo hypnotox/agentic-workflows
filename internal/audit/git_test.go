@@ -112,7 +112,6 @@ func TestCollectNormalRange(t *testing.T) {
 	}
 }
 
-// invariant: audit-empty-range-clean
 // A merge commit's first-parent diff is the *other* side's work (typically
 // main merged into the branch); attributing it to the branch makes every
 // file-based rule fire on foreign changes. Merges must carry no Changes.
@@ -162,6 +161,10 @@ func TestCollectMergeCommitCarriesNoChanges(t *testing.T) {
 	}
 }
 
+// A range with no commits beyond the base yields zero findings and exits clean.
+// ADR-0127 keeps this contract intact: an empty range is still reachable (a..a),
+// and the new notice reports it without turning it into a finding.
+// invariant: audit-empty-range-clean
 func TestCollectEmptyRangeIsClean(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
@@ -175,7 +178,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 		t.Fatalf("empty range should be nil, got %d commits", len(commits))
 	}
 	// Drive Run for the empty range: clean, no error.
-	findings, err := Run(dir, head.String(), "HEAD", Inputs{})
+	findings, _, err := Run(dir, head.String(), "HEAD", Inputs{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -187,7 +190,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 func TestRunPropagatesCollectError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	if _, err := Run(dir, "no-such-ref", "HEAD", Inputs{}); err == nil {
+	if _, _, err := Run(dir, "no-such-ref", "HEAD", Inputs{}); err == nil {
 		t.Fatal("expected Run to propagate an unresolvable-base error")
 	}
 }
@@ -301,7 +304,7 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty range (base == HEAD) so only the live-state rule can fire.
-	findings, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

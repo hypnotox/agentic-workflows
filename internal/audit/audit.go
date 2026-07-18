@@ -95,16 +95,18 @@ type Inputs struct {
 // Run collects the caller-supplied commit range and evaluates the rules. The
 // range arrives as parameters rather than Inputs fields because no config key
 // supplies it (ADR-0127 Decision 3).
-func Run(repoRoot, base, head string, in Inputs) ([]Finding, error) {
+// It also returns the number of commits the range resolved to, so the caller can
+// report the scope it evaluated rather than a bare verdict (ADR-0127 Decision 9).
+func Run(repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
 	commits, err := Collect(repoRoot, base, head)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	findings := evaluate(commits, in)
 	// The clean-working-tree rule reads live state, so it runs here (with the repo
 	// root) rather than in the commit-only evaluate.
 	findings = append(findings, ruleUncommittedChanges(repoRoot, in)...)
-	return findings, nil
+	return findings, len(commits), nil
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)

@@ -9,6 +9,15 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- `awf audit` now requires an explicit commit range and has no default (ADR-0127). Pass a bare
+  `<base>` (meaning `<base>..HEAD`) or a two-sided `<a>..<b>`; a no-argument invocation is refused.
+  The `--base` flag is removed, superseded by the positional argument. `./x audit-local` (this
+  repo's own tooling) loses its `origin/main..HEAD` default on the same grounds.
+- The `audit.baseBranch` config key is removed, along with its `main` default. A schema-11
+  migration strips it from `.awf/config.yaml` and reports the removal, so run `awf upgrade` after
+  upgrading the binary. awf no longer holds an opinion about which branch you integrate into: a
+  configured base that already contained HEAD silently emptied the range and made every history
+  rule inert while the command still reported clean.
 - Pi target adopters now receive executable project extension files under
   `.pi/extensions/awf-subagents/` on sync (ADR-0123). Pi's project-trust boundary applies and Pi
   0.80.9 or newer is required; `awf check` reports extension drift and `awf sync` repairs it. Pi
@@ -91,6 +100,10 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf audit` reports the range and commit count it evaluated on every run, so a verdict is never
+  readable without its scope. A range resolving to zero commits says so explicitly instead of
+  printing `clean`, which previously made "examined forty commits" and "examined none"
+  indistinguishable.
 - Pi now ships dedicated `subagent_grounding` and binds brainstorming to it while retaining
   `subagent_explore` for general investigation and coupling audits. All four subagent roles show
   bounded inline progress from context-isolated details; only final report or failure-summary

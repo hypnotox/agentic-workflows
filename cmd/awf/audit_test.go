@@ -131,6 +131,44 @@ func TestRunAuditRequiresARange(t *testing.T) {
 	}
 }
 
+// Every verdict names the scope that produced it, so a wrongly-scoped range is
+// visible even when it is non-empty (ADR-0127 Decision 9).
+// invariant: audit-reports-evaluated-scope
+func TestRunAuditReportsEvaluatedScope(t *testing.T) {
+	root, base := auditProject(t)
+	repo, err := git.PlainOpen(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Commit(t, repo, root, "feat(awf): small clean change", map[string]string{"main.go": "package x\nvar z int\n"})
+	var buf bytes.Buffer
+	if err := runAudit(root, base.String(), &buf); err != nil {
+		t.Fatalf("clean range should exit zero, got: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "clean over 1 commit(s) in "+base.String()+"..HEAD") {
+		t.Errorf("the verdict must name its scope, got: %q", got)
+	}
+}
+
+// An empty range says so instead of reading as clean, and still exits zero, so
+// ADR-0017's audit-empty-range-clean survives (ADR-0127 Decision 10).
+// invariant: audit-empty-range-announced
+func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
+	root, _ := auditProject(t)
+	var buf bytes.Buffer
+	if err := runAudit(root, "HEAD", &buf); err != nil {
+		t.Fatalf("an empty range still exits zero, got: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "HEAD..HEAD resolved to 0 commit(s); no history rule evaluated") {
+		t.Errorf("an empty range must announce itself, got: %q", got)
+	}
+	if strings.Contains(got, "awf audit: clean") {
+		t.Errorf("an empty range must not read as a clean audit, got: %q", got)
+	}
+}
+
 // A malformed range is refused by the shared parser before the project opens.
 func TestRunAuditRejectsMalformedRange(t *testing.T) {
 	err := runAudit(t.TempDir(), "a...b", out(t))
