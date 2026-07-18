@@ -80,7 +80,6 @@ parser would entrench the drift.
    a defect, purely to retire their duplicate implementations. Bare-base acceptance is
    opt-in per caller rather than universal: `cmd/repoaudit` rejects a *supplied* bare base
    today and keeps that contract, so convergence does not silently widen what it accepts.
-   Its own no-argument default range is a separate question, out of scope here.
 
 6. **The terminal review passes its session range.** `awf-reviewing-impl` already derives
    `headSha` and `baseSha` (the commit before the session's first implementation commit) in
@@ -104,9 +103,32 @@ parser would entrench the drift.
    `.awf/docs/parts/releasing/content.md` (whose `./x gate && ./x check && ./x audit` becomes
    an erroring invocation), `.awf/agents-doc.yaml` (which describes the audit as reporting
    "over the branch's commits"), and `templates/skills/reviewing-impl/SKILL.md.tmpl` (whose
-   `run-audit` step Decision 6 changes) are edited at their sources and re-rendered via
+   `run-audit` step Decision 6 changes), and `.awf/docs/parts/development/command-runner.md`
+   (whose `./x audit-local [range]` row documents the `origin/main..HEAD` default Decision 11
+   removes) are edited at their sources and re-rendered via
    `awf sync`, per the docs-travel-with-the-change invariant. The re-render reaches every
    enabled target tree and `examples/sundial`, so those outputs land in the same commit.
+
+9. **Every run states what it evaluated, not just its verdict.** The audit reports the
+   resolved range and the number of commits in it on every invocation, clean or not, so a
+   verdict is never readable without its scope. A bare `awf audit: clean` cannot distinguish
+   "evaluated forty commits and found nothing" from "evaluated nothing", and that ambiguity
+   is the defect this ADR exists to remove; requiring an explicit range does not by itself
+   fix it, because a mistyped or wrongly-scoped range resolves cleanly and still reports
+   clean.
+
+10. **An empty resolved range announces itself.** When the range resolves to zero commits,
+    the audit says so distinctly instead of printing the clean line, naming the range and
+    stating that no history rule was evaluated. It still exits zero and still yields zero
+    findings, so ADR-0017's `audit-empty-range-clean` invariant survives intact and is not
+    retired. The range-independent rules (Decision 4) still run and can still report.
+
+11. **`cmd/repoaudit` loses its default base too.** It currently falls back to
+    `origin/main..HEAD` when given no argument, which is the same guess-the-base defect in
+    repo-local clothing: a no-argument call reports over a range nobody named. It requires an
+    explicit range on the same terms, so the safety property holds uniformly rather than
+    stopping at the shipped/local boundary. Its caller already passes one: the
+    `reviewing-impl` convention part invokes `./x audit-local ${baseSha}..${headSha}`.
 
 ## Invariants
 
@@ -125,6 +147,14 @@ no-base-config assertion, which is about the absent key, struct field, and spec 
   non-test sources and asserts the absence, so a fourth parser cannot reappear unnoticed.
 - `` `invariant: git-range-rejects-malformed` ``: the parser rejects an empty side, a
   three-dot range, a multi-`..` input, and a `-`-prefixed side on either side.
+- `` `invariant: audit-reports-evaluated-scope` ``: every `awf audit` run prints the resolved
+  range and its commit count, so no verdict is emitted without the scope that produced it.
+- `` `invariant: audit-empty-range-announced` ``: a range resolving to zero commits prints a
+  distinct notice naming the range and stating that no history rule ran, and never the bare
+  clean line. ADR-0017's `audit-empty-range-clean` still holds alongside it: the run yields
+  zero findings and exits zero.
+- `` `invariant: repoaudit-requires-explicit-range` ``: `cmd/repoaudit` invoked with no range
+  argument exits non-zero without evaluating any rule.
 - `` `unbacked-invariant: audit-migration-announces-removal` ``: the schema-11 migration
   prints the removed key when it strips one. **Verify:** run `awf upgrade` on a schema-10
   tree whose `.awf/config.yaml` sets `audit.baseBranch` and read the output.
@@ -141,9 +171,13 @@ of a branch-shaped approximation, which is both narrower and more accurate.
 
 Ergonomics cost: every invocation must now name a range, including interactive ones. The
 release runbook's bare `./x audit` becomes `awf audit <previous-tag>..HEAD`, which is
-arguably what a release audit always meant. A worktree-only check remains available as
-`awf audit HEAD` (an empty range still runs `uncommitted-changes`), though that is a
-consequence of Decision 4 rather than a designed mode.
+arguably what a release audit always meant.
+
+An earlier draft of this ADR advertised `awf audit HEAD` as a worktree-only check, since an
+empty range still runs `uncommitted-changes`. That advice is withdrawn: it is precisely the
+misplaced call Decisions 9 and 10 exist to make visible, and promoting it would teach the
+false-success pattern the rest of this ADR removes. Such a call still works, but it now
+announces that it evaluated no history.
 
 This is a breaking CLI and config change. awf is pre-1.0 with no external API stability
 promise, and the schema-11 migration makes the config side mechanical. An adopter scripting
@@ -152,6 +186,13 @@ promise, and the schema-11 migration makes the config side mechanical. An adopte
 The migration is undogfooded: neither this repo's config nor `examples/sundial` sets
 `audit.baseBranch`, so no sync or check run exercises it. It requires a dedicated fixture
 test rather than relying on the adopter tree for coverage.
+
+The empty-range notice is deliberately not an Error. Making it one would give automation a
+non-zero exit to trip over, but it would contradict ADR-0017's `audit-empty-range-clean`
+invariant and force its retirement under ADR-0120 for a reporting improvement. The accepted
+residual risk is therefore explicit: a caller reading only the exit code still sees success
+on an empty range. Decision 9's always-on scope line is what closes that gap for a human or
+an agent reading output, and the terminal review reads the digest rather than the exit code.
 
 The tightening reaches beyond `awf audit`. `internal/git`'s bare `strings.Cut` backs
 `awf context --range <a>..<b>` (ADR-0092), so a three-dot range or a `-`-prefixed side that
@@ -173,6 +214,9 @@ guard while preserving each caller's existing arity (bare-base acceptance is opt
 | Keep `--base` as an alias for the positional | A redundant second spelling that keeps implying a default base exists, which is the mental model being removed. |
 | Two explicit flags (`--base` / `--range`), no positional | Diverges from `cmd/repoaudit`'s established positional convention for the same concept. |
 | Bare invocation runs only range-independent rules | Reintroduces a quiet mode whose safety depends on the operator reading output; the silence is the defect. |
+| Empty range as a blocking Error | Strongest signal, but contradicts ADR-0017's `audit-empty-range-clean` invariant and would force its retirement for what is a reporting fix. |
+| Report scope only when the range is empty | A wrongly-scoped but non-empty range (one commit where twelve were meant) would still read as a confident clean. |
+| Leave `cmd/repoaudit`'s default base in place | Keeps the guess-the-base defect alive in repo-local tooling, so the safety property would stop at the shipped/local boundary for no principled reason. |
 | Move `uncommitted-changes` to `awf check` | `check` renders from the working tree, so it passes precisely when an uncommitted source is the problem; it is also gate-wired and runs against dirty trees during normal work. |
 | Adopt a feature-branch workflow so the existing default fires | Imposes a branching strategy on the project to satisfy a tool, and does not help any other adopter on trunk. |
 | Leave the three range parsers in place | Entrenches known drift and adds a fourth, with the weakest parser sitting in the package that owns the git seam. |
