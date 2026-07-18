@@ -269,18 +269,28 @@ func TestEvaluateAggregates(t *testing.T) {
 	}
 }
 
-func TestStatusOf(t *testing.T) {
-	if st, ok := statusOf(""); st != "" || !ok {
-		t.Error("empty text should yield empty status, ok")
+// TestADRRecordOf pins the tri-state the shared bytes seam must preserve
+// (ADR-0130 item 5): absent frontmatter is a legitimate statusless record,
+// present-but-unparseable is not ok, and a real status parses through.
+func TestADRRecordOf(t *testing.T) {
+	const path = "docs/decisions/0001-x.md"
+	if rec, ok := adrRecordOf(path, ""); rec.HasStatus() || !ok {
+		t.Error("empty text should yield a statusless record, ok")
 	}
-	if st, ok := statusOf("# no frontmatter"); st != "" || !ok {
-		t.Error("no frontmatter should yield empty status, ok")
+	if rec, ok := adrRecordOf(path, "# no frontmatter"); rec.HasStatus() || !ok {
+		t.Error("no frontmatter should yield a statusless record, ok")
 	}
-	if _, ok := statusOf("---\nstatus: [bad yaml\n---\nx"); ok {
+	if _, ok := adrRecordOf(path, "---\nstatus: [bad yaml\n---\nx"); ok {
 		t.Error("malformed frontmatter should yield ok=false")
 	}
-	if st, ok := statusOf(acceptedADR); st != "Accepted" || !ok {
-		t.Errorf("statusOf(acceptedADR) = %q, %v", st, ok)
+	rec, ok := adrRecordOf(path, acceptedADR)
+	if rec.Status != "Accepted" || !ok {
+		t.Errorf("adrRecordOf(acceptedADR) = %q, %v", rec.Status, ok)
+	}
+	// The seam carries the whole record, not just a status: the domain
+	// co-change rules read Domains off the same parse.
+	if rec.Number != "0001" {
+		t.Errorf("Number = %q, want 0001 (derived from the filename)", rec.Number)
 	}
 }
 

@@ -712,7 +712,14 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 // item 4 keeps its Tier-2 exclusion on a direct prefix test.
 // invariant: corpus-owns-status-literals
 func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
-	statusCmp := regexp.MustCompile(`\.Status\s*[!=]=\s*"|HasPrefix\([^)]*\.Status\s*,\s*"`)
+	// Two shapes: a comparison against an ADR's .Status field, and a comparison
+	// of any local against a status literal. internal/audit used to hold the
+	// second shape on a local `st`; Phase 3 of the coverage-derived-supersession
+	// plan gave it parsed records, so the scan covers both from here on.
+	statusCmp := regexp.MustCompile(
+		`\.Status\s*[!=]=\s*"` +
+			`|HasPrefix\([^)]*\.Status\s*,\s*"` +
+			`|[!=]=\s*"(Accepted|Implemented|Proposed|Superseded)"`)
 
 	seen, transitional := 0, 0
 	root := filepath.Join("..", "..", "internal")

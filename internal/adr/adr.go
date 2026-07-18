@@ -175,11 +175,11 @@ func ParseDir(dir string) ([]ADR, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", base, err)
 		}
-		a, err := parse(data)
+		a, _, err := ParseBytes(base, data)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", base, err)
 		}
-		a.Number, a.Filename, a.Path = m[1], base, path
+		a.Path = path
 		adrs = append(adrs, a)
 	}
 	return adrs, nil
@@ -195,12 +195,22 @@ type adrFrontmatter struct {
 	Supersedes   []int    `yaml:"supersedes"`
 }
 
-// parse extracts status (frontmatter) and title (first `# ` heading) from one ADR.
-func parse(data []byte) (ADR, error) {
+// ParseBytes parses one ADR from bytes: status and the other frontmatter
+// fields, plus the title from the first `# ` heading. It is the seam the git-blob consumers
+// take (ADR-0130 item 5): internal/audit reads history rather than the working
+// tree, so it cannot take a Corpus, but it can share the parser and the
+// frontmatter schema, which is where the duplication actually was.
+//
+// found reports whether frontmatter was present at all, which is the tri-state
+// the audit needs: absent frontmatter is a legitimate empty status, while
+// present-but-unparseable is an error. name is the ADR's base filename, from
+// which Filename and Number are derived; Path is left empty, since a
+// blob-sourced record has no working-tree path.
+func ParseBytes(name string, data []byte) (ADR, bool, error) {
 	var fm adrFrontmatter
-	body, _, err := frontmatter.Parse(data, &fm)
+	body, found, err := frontmatter.Parse(data, &fm)
 	if err != nil {
-		return ADR{}, err
+		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
 	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, Supersedes: fm.Supersedes, Sections: parsed.bodies}
@@ -214,7 +224,11 @@ func parse(data []byte) (ADR, error) {
 			break
 		}
 	}
-	return a, nil
+	a.Filename = name
+	if m := FilenameRe.FindStringSubmatch(name); m != nil {
+		a.Number = m[1]
+	}
+	return a, found, nil
 }
 
 // RenderActiveMD renders the ACTIVE.md index for corpus, grouped by status. It

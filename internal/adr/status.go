@@ -29,6 +29,11 @@ func (a ADR) IsImplemented() bool { return a.Status == statusImplemented }
 // IsProposed reports whether the ADR's body is still mutable.
 func (a ADR) IsProposed() bool { return a.Status == statusProposed }
 
+// HasStatus reports whether the record carries a frontmatter status at all.
+// The audit distinguishes an ADR with no status from one with a real status,
+// and that tri-state is what the bytes seam carries (ADR-0130 item 3).
+func (a ADR) HasStatus() bool { return a.Status != "" }
+
 // Bucket is the ACTIVE.md section an ADR belongs to. Every superseded ADR folds
 // into one group regardless of the successor its status names.
 func (a ADR) Bucket() string {

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -233,5 +234,50 @@ func TestCorpusAbsentADR(t *testing.T) {
 	}
 	if _, err := c.Raw("0001"); err != nil {
 		t.Errorf("Raw(0001): %v", err)
+	}
+}
+
+// TestAuditSharesADRParser enforces ADR-0130 item 5: internal/audit reads git
+// blobs rather than the working tree, so it cannot take a Corpus - but it takes
+// the bytes seam, and declares no frontmatter struct of its own. The duplication
+// the ADR removed was the parser and the schema, not the loading strategy.
+// invariant: audit-shares-adr-parser
+func TestAuditSharesADRParser(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "audit", "audit.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	for _, banned := range []string{`yaml:"status"`, `yaml:"domains"`, `yaml:"supersedes"`, `yaml:"related"`} {
+		if strings.Contains(body, banned) {
+			t.Errorf("internal/audit declares its own ADR frontmatter field %s; parse through adr.ParseBytes instead (ADR-0130 item 5)", banned)
+		}
+	}
+	if !strings.Contains(body, "adr.ParseBytes(") {
+		t.Error("internal/audit no longer calls adr.ParseBytes - has the shared seam moved?")
+	}
+}
+
+// TestCorpusSingleIdentityKey enforces ADR-0130 item 4: the ADR number is the
+// sole identity. internal/invariants used to return filenames, which forced a
+// filename-to-number translation map on the context path.
+// invariant: corpus-single-identity-key
+func TestCorpusSingleIdentityKey(t *testing.T) {
+	corpus, err := adr.LoadCorpus(filepath.Join("..", "..", "docs", "decisions"))
+	if err != nil {
+		t.Fatalf("LoadCorpus: %v", err)
+	}
+	declaring, err := invariants.DeclaringADRs(corpus)
+	if err != nil {
+		t.Fatalf("DeclaringADRs: %v", err)
+	}
+	if len(declaring) == 0 {
+		t.Fatal("the real corpus declares no invariants; the scan would pass vacuously")
+	}
+	num := regexp.MustCompile(`^[0-9]{4}$`)
+	for slug, decl := range declaring {
+		if !num.MatchString(decl.ADR) {
+			t.Errorf("invariant %q is keyed by %q; Decl.ADR must be a four-digit ADR number (ADR-0130 item 4)", slug, decl.ADR)
+		}
 	}
 }

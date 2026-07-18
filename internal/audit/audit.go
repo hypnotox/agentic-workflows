@@ -16,7 +16,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
@@ -189,7 +188,7 @@ func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			if _, ok := statusOf(ch.NewText); !ok {
+			if _, ok := adrRecordOf(ch.Path, ch.NewText); !ok {
 				out = append(out, finding(Warning, "adr-frontmatter", c,
 					filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
 			}
@@ -214,14 +213,14 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			st, ok := statusOf(ch.NewText)
-			if !ok || st == "" {
+			rec, ok := adrRecordOf(ch.Path, ch.NewText)
+			if !ok || !rec.HasStatus() {
 				continue // unparseable new frontmatter is ruleADRFrontmatter's finding
 			}
 			// An unparseable old side cannot witness a transition - skip rather
 			// than read garbage as a status change.
-			oldSt, oldOK := statusOf(ch.OldText)
-			if ch.Action == Added || (oldOK && oldSt != st) {
+			oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText)
+			if ch.Action == Added || (oldOK && oldRec.Status != rec.Status) {
 				if !activeTouched {
 					out = append(out, finding(Error, "adr-status-cochange", c,
 						filepath.Base(ch.Path)+" status set/changed without ACTIVE.md in the same commit"))
@@ -231,7 +230,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 				// repeated domain so a missing index yields exactly one finding.
 				if in.DomainsIndexDir != "" {
 					seen := map[string]bool{}
-					for _, d := range domainsOf(ch.NewText) {
+					for _, d := range rec.Domains {
 						if !slices.Contains(in.ConfiguredDomains, d) {
 							continue
 						}
@@ -315,13 +314,14 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			if st, ok := statusOf(ch.NewText); !ok || st != "Implemented" {
+			rec, ok := adrRecordOf(ch.Path, ch.NewText)
+			if !ok || !rec.IsImplemented() {
 				continue
 			}
-			if oldSt, oldOK := statusOf(ch.OldText); ch.Action != Added && (!oldOK || oldSt == "Implemented") {
+			if oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText); ch.Action != Added && (!oldOK || oldRec.IsImplemented()) {
 				continue // already Implemented (or unknowable old side); not a witnessed transition
 			}
-			for _, d := range domainsOf(ch.NewText) {
+			for _, d := range rec.Domains {
 				if slices.Contains(in.ConfiguredDomains, d) {
 					flagged[d] = true
 				}
@@ -349,7 +349,11 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
-			for _, d := range domainsOf(ch.NewText) {
+			// An unparseable record yields no domains, which is what the
+			// previous bespoke parser returned too; ruleADRFrontmatter is the
+			// rule that reports the parse failure itself.
+			rec, _ := adrRecordOf(ch.Path, ch.NewText)
+			for _, d := range rec.Domains {
 				if !slices.Contains(in.ConfiguredDomains, d) {
 					flagged[d] = true
 				}
@@ -394,16 +398,6 @@ func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
 		}
 	}
 	return out
-}
-
-func domainsOf(text string) []string {
-	var meta struct {
-		Domains []string `yaml:"domains"`
-	}
-	if _, found, err := frontmatter.Parse([]byte(text), &meta); err != nil || !found {
-		return nil
-	}
-	return meta.Domains
 }
 
 func domainOfPart(path, partsDir string) (string, bool) {
@@ -482,23 +476,16 @@ func isADRFile(path, adrDir string) bool {
 	return filepath.Dir(path) == adrDir && adr.FilenameRe.MatchString(filepath.Base(path))
 }
 
-// statusOf extracts the frontmatter status; ok is false only when frontmatter
-// is present but does not parse - absent frontmatter is a legitimate ("", true).
-func statusOf(text string) (string, bool) {
-	if text == "" {
-		return "", true
-	}
-	var meta struct {
-		Status string `yaml:"status"`
-	}
-	_, found, err := frontmatter.Parse([]byte(text), &meta)
+// adrRecordOf parses an ADR from blob text through internal/adr's bytes seam
+// (ADR-0130 item 5). ok is false only when frontmatter is present but does not
+// parse; absent frontmatter is a legitimate empty record, which is the
+// distinction ruleADRFrontmatter reports on.
+func adrRecordOf(path, text string) (adr.ADR, bool) {
+	rec, _, err := adr.ParseBytes(filepath.Base(path), []byte(text))
 	if err != nil {
-		return "", false
+		return adr.ADR{}, false
 	}
-	if !found {
-		return "", true
-	}
-	return meta.Status, true
+	return rec, true
 }
 
 func underDir(path, dir string) bool {
