@@ -79,14 +79,13 @@ Report each Implemented-ADR ` + "`inv:`" + ` slug lacking a backing ` + "`<marke
 `,
 	},
 	{
-		Name: "audit", Summary: "Report workflow-conformance findings over the branch (advisory)",
-		ValueFlags: []string{"--base"}, MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf audit [--base <ref>]
+		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
+		MaxPos: 1, Gating: Gated,
+		HelpBody: `Usage: awf audit <base>|<a>..<b>
 
-Report advisory workflow-conformance findings over the branch's commits; never gates.
-
-Flags:
-  --base <ref>   compare against <ref> instead of the configured base branch
+Report advisory workflow-conformance findings over an explicit commit range; never gates.
+The range is required: a bare <base> means <base>..HEAD, or give a two-sided <a>..<b>.
+There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{

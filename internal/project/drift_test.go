@@ -510,7 +510,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Audit(""); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := p.Audit("HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("Audit: %v", err)
 	}
 	if _, err := CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {

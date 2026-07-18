@@ -9,7 +9,7 @@ data:
         - cmd: awf upgrade
           desc: migrate the config tree to the current schema after upgrading awf
         - cmd: awf audit
-          desc: report workflow-conformance findings over the branch's commits (advisory)
+          desc: report workflow-conformance findings over an explicit commit range (advisory)
         - cmd: awf new plan "<Title>"
           desc: scaffold a dated plan under docs/plans from the rendered plans template
     # Core-only invariants (ADR-0112): the guide lists only cross-cutting rules

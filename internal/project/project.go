@@ -274,13 +274,11 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, []invariants.Note, er
 	return invariants.Check(p.decisionsDir(), p.Root, p.Cfg.Invariants)
 }
 
-// Audit runs the process-conformance audit (ADR-0017) over the branch range.
-// baseOverride wins over the configured base branch when non-empty.
-func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
+// Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
+// commit range. No config key supplies a base: the range is always explicit
+// (ADR-0127 Decision 3).
+func (p *Project) Audit(base, head string) ([]audit.Finding, error) {
 	s := audit.Resolve(p.Cfg.Audit)
-	if baseOverride != "" {
-		s.BaseBranch = baseOverride
-	}
 	lay := p.layout()
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(p.lockPath())
@@ -307,7 +305,7 @@ func (p *Project) Audit(baseOverride string) ([]audit.Finding, error) {
 			domainPaths[d] = sc.Paths
 		}
 	}
-	return audit.Run(p.Root, audit.Inputs{
+	return audit.Run(p.Root, base, head, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,

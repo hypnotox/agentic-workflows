@@ -143,8 +143,6 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return strconv.Itoa(len(p.Cfg.Invariants.TestGlobs)) + " globs"
-	case "audit.baseBranch":
-		return withDefault("`"+res.BaseBranch+"`", a == nil || a.BaseBranch == "")
 	case "audit.allowedTypes":
 		if len(res.AllowedTypes) == 0 {
 			return "accept any"

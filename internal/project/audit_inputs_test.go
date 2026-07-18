@@ -42,7 +42,7 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := p.Audit(base.String())
+	findings, err := p.Audit(base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Audit(""); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
+	if _, err := p.Audit("HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
 		t.Fatalf("want malformed-pattern error naming the domain, got %v", err)
 	}
 }
@@ -81,7 +81,7 @@ func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Audit(""); err == nil || !strings.Contains(err.Error(), "sidecar") {
+	if _, err := p.Audit("HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("want sidecar read error, got %v", err)
 	}
 }

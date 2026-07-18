@@ -155,11 +155,6 @@ var keys = []Entry{
 		Availability: "Within `invariants`; opt-in teeth for the proof marker.",
 	},
 	{
-		Path: "audit.baseBranch", Type: "string", Default: "main",
-		Description:  "The branch `awf audit` compares against when computing the branch's commit range; `--base <ref>` overrides per run.",
-		Availability: "Read by `awf audit`.",
-	},
-	{
 		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
 		Description:  "Commit types `awf commit-gate` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
 		Availability: "Read by `awf commit-gate` and `awf audit`.",

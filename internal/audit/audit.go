@@ -73,7 +73,7 @@ type Finding struct {
 }
 
 // Inputs are the resolved audit settings plus the project-derived layout the rules
-// need. The embedded Settings carries the resolved knobs (BaseBranch, AllowedTypes,
+// need. The embedded Settings carries the resolved knobs (AllowedTypes,
 // AllowedScopes, SubjectMaxLength, DependencyManifests, DiffThreshold,
 // DomainDocStaleness, DomainCodeStaleness, UndocumentedDomain, UncommittedChanges,
 // PlainPunctuation), promoted so the rules read in.AllowedTypes etc. directly.
@@ -92,9 +92,11 @@ type Inputs struct {
 	DomainPaths map[string][]string
 }
 
-// Run collects the branch range and evaluates the rules.
-func Run(repoRoot string, in Inputs) ([]Finding, error) {
-	commits, err := Collect(repoRoot, in.BaseBranch)
+// Run collects the caller-supplied commit range and evaluates the rules. The
+// range arrives as parameters rather than Inputs fields because no config key
+// supplies it (ADR-0127 Decision 3).
+func Run(repoRoot, base, head string, in Inputs) ([]Finding, error) {
+	commits, err := Collect(repoRoot, base, head)
 	if err != nil {
 		return nil, err
 	}

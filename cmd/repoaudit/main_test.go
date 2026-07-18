@@ -61,6 +61,7 @@ func TestGitErrorSurfacesStderr(t *testing.T) {
 	}
 }
 
+// invariant: repoaudit-requires-explicit-range
 func TestUsageError(t *testing.T) {
 	// No argument at all: there is no default range (ADR-0127 Decision 11), so
 	// this is a refusal with the usage line rather than a report over

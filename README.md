@@ -175,7 +175,7 @@ disk.
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
 | `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
-| `awf audit [--base <ref>]` | Report workflow-conformance findings over the branch's commits. Not part of any gate, but exits non-zero on error-severity findings. |
+| `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report the owning domains, backed invariants, related ADRs, and current-state docs for the given paths. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits machine-readable output. `--uncovered` inverts it, listing tracked paths owned by no domain. |

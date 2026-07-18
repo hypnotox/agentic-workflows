@@ -48,7 +48,8 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
 <!-- awf:edit run-audit: from .awf/skills/parts/reviewing-impl/run-audit.md -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
-   `awf audit` (or this project's runner alias for it) over the branch. `Error` findings block
+   `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the session
+   range. `Error` findings block
    this review from concluding: resolve them or escalate them as user-decision items before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.

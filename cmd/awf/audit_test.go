@@ -116,9 +116,36 @@ func TestRunAuditCleanRange(t *testing.T) {
 	}
 }
 
+// A missing range is refused before the project is even opened: an audit that
+// silently reports over nothing is worse than one that refuses (ADR-0127
+// Decision 2).
+// invariant: audit-requires-explicit-range
+func TestRunAuditRequiresARange(t *testing.T) {
+	err := runAudit(t.TempDir(), "", out(t))
+	if err == nil {
+		t.Fatal("a missing range must be refused")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "<base>") || !strings.Contains(msg, "<a>..<b>") {
+		t.Errorf("the refusal must name both accepted forms, got %q", msg)
+	}
+}
+
+// A malformed range is refused by the shared parser before the project opens.
+func TestRunAuditRejectsMalformedRange(t *testing.T) {
+	err := runAudit(t.TempDir(), "a...b", out(t))
+	if err == nil {
+		t.Fatal("a three-dot range must be refused")
+	}
+	if !strings.Contains(err.Error(), "exactly two dots") {
+		t.Errorf("expected the parser's diagnosis, got %q", err)
+	}
+}
+
 func TestRunAuditOpenError(t *testing.T) {
-	// A dir with no .awf/config.yaml -> project.Open fails.
-	if err := runAudit(t.TempDir(), "", out(t)); err == nil {
+	// A dir with no .awf/config.yaml -> project.Open fails. The range is valid,
+	// so this reaches Open rather than stopping at the refusal above.
+	if err := runAudit(t.TempDir(), "HEAD", out(t)); err == nil {
 		t.Fatal("expected a project.Open error")
 	}
 }
@@ -138,7 +165,7 @@ func out(t *testing.T) *bytes.Buffer {
 }
 
 // TestRunAuditDispatch drives the `audit` switch arm through run(), covering the
-// dispatch statement and the --base flag plumbing.
+// dispatch statement and the positional range argument (ADR-0127 Decision 1).
 func TestRunAuditDispatch(t *testing.T) {
 	root, base := auditProject(t)
 	repo, err := git.PlainOpen(root)
@@ -148,7 +175,7 @@ func TestRunAuditDispatch(t *testing.T) {
 	gitfixture.Commit(t, repo, root, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var outb, errb bytes.Buffer
-	if code := run([]string{"awf", "audit", "--base", base.String()}, &outb, &errb); code != 0 {
+	if code := run([]string{"awf", "audit", base.String()}, &outb, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
 	}
 }

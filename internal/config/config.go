@@ -153,7 +153,6 @@ type ProseExemption struct {
 // slice means "accept any / disabled" per field. Resolution and defaults live in
 // internal/audit (audit.Resolve), which owns the audit domain semantics.
 type AuditConfig struct {
-	BaseBranch          string      `yaml:"baseBranch"`
 	AllowedTypes        []string    `yaml:"allowedTypes"`
 	AllowedScopes       []ScopeSpec `yaml:"allowedScopes"`
 	SubjectMaxLength    *int        `yaml:"subjectMaxLength"`

@@ -35,7 +35,7 @@ below `project.Version`, or the gate fails.
 1. **Confirm `main` is green and clean.** On `main`, working tree clean:
 
    ```
-   ./x gate && ./x check && ./x audit
+   ./x gate && ./x check && ./x audit <previous-tag>..HEAD
    ```
 
    All three must pass (`audit` is advisory but should be clean for a release).

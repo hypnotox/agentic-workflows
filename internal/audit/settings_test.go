@@ -15,9 +15,6 @@ func TestResolveDefaultsWhenNil(t *testing.T) {
 	if !s.DomainDocStaleness || !s.DomainCodeStaleness || !s.UndocumentedDomain || !s.UncommittedChanges || !s.PlainPunctuation {
 		t.Errorf("toggles default to on: domStale=%v codeStale=%v undoc=%v uncommitted=%v plain=%v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain, s.UncommittedChanges, s.PlainPunctuation)
 	}
-	if s.BaseBranch != "main" {
-		t.Errorf("baseBranch = %q, want main", s.BaseBranch)
-	}
 	if !slices.Contains(s.AllowedTypes, "feat") {
 		t.Errorf("allowedTypes default missing feat: %v", s.AllowedTypes)
 	}
@@ -37,16 +34,15 @@ func TestResolveZeroAuditFallsBackToDefaults(t *testing.T) {
 	if !s.DomainDocStaleness || !s.DomainCodeStaleness || !s.UndocumentedDomain || !s.PlainPunctuation {
 		t.Errorf("empty AuditConfig should keep toggles on: %v %v %v %v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain, s.PlainPunctuation)
 	}
-	if s.BaseBranch != "main" || !slices.Contains(s.AllowedTypes, "feat") || s.AllowedScopes != nil ||
+	if !slices.Contains(s.AllowedTypes, "feat") || s.AllowedScopes != nil ||
 		!slices.Contains(s.DependencyManifests, "**/go.mod") || s.SubjectMaxLength != 72 || s.DiffThreshold != 400 {
-		t.Errorf("empty AuditConfig did not fall back to defaults: base=%q types=%v scopes=%v max=%d thr=%d",
-			s.BaseBranch, s.AllowedTypes, s.AllowedScopes, s.SubjectMaxLength, s.DiffThreshold)
+		t.Errorf("empty AuditConfig did not fall back to defaults: types=%v scopes=%v max=%d thr=%d",
+			s.AllowedTypes, s.AllowedScopes, s.SubjectMaxLength, s.DiffThreshold)
 	}
 }
 
 func TestResolveExplicitOverrides(t *testing.T) {
 	s := Resolve(&config.AuditConfig{
-		BaseBranch:          "develop",
 		AllowedTypes:        []string{}, // explicit empty = accept any
 		AllowedScopes:       []config.ScopeSpec{{Name: "awf"}},
 		SubjectMaxLength:    intPtr(0),
@@ -60,9 +56,6 @@ func TestResolveExplicitOverrides(t *testing.T) {
 	})
 	if s.DomainDocStaleness || s.DomainCodeStaleness || s.UndocumentedDomain || s.UncommittedChanges || s.PlainPunctuation {
 		t.Errorf("explicit false toggles not honored: domStale=%v codeStale=%v undoc=%v uncommitted=%v plain=%v", s.DomainDocStaleness, s.DomainCodeStaleness, s.UndocumentedDomain, s.UncommittedChanges, s.PlainPunctuation)
-	}
-	if s.BaseBranch != "develop" {
-		t.Errorf("baseBranch = %q, want develop", s.BaseBranch)
 	}
 	if len(s.AllowedTypes) != 0 {
 		t.Errorf("allowedTypes = %v, want empty (accept any)", s.AllowedTypes)

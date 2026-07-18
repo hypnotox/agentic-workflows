@@ -4,7 +4,6 @@ import "github.com/hypnotox/agentic-workflows/internal/config"
 
 // Settings is the resolved, default-applied audit configuration the rules consume.
 type Settings struct {
-	BaseBranch          string
 	AllowedTypes        []string
 	AllowedScopes       []config.ScopeSpec
 	DependencyManifests []string
@@ -30,7 +29,6 @@ func (s Settings) ScopeNames() []string {
 // defaults. A nil AuditConfig yields the full default set.
 func Resolve(a *config.AuditConfig) Settings {
 	s := Settings{
-		BaseBranch:          "main",
 		AllowedTypes:        defaultAllowedTypes(),
 		DependencyManifests: defaultDependencyManifests(),
 		SubjectMaxLength:    72,
@@ -43,9 +41,6 @@ func Resolve(a *config.AuditConfig) Settings {
 	}
 	if a == nil {
 		return s
-	}
-	if a.BaseBranch != "" {
-		s.BaseBranch = a.BaseBranch
 	}
 	if a.AllowedTypes != nil { // explicit (incl. empty = accept any)
 		s.AllowedTypes = a.AllowedTypes

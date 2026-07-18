@@ -73,7 +73,7 @@ func TestCollectNormalRange(t *testing.T) {
 	})
 	gitfixture.Commit(t, repo, dir, "fix(awf): two", map[string]string{"c.md": "new\n"}, "b.txt")
 
-	commits, err := Collect(dir, base.String())
+	commits, err := Collect(dir, base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestCollectMergeCommitCarriesNoChanges(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	commits, err := Collect(dir, "master")
+	commits, err := Collect(dir, "master", "HEAD")
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
 	head := gitfixture.Commit(t, repo, dir, "feat(awf): head", map[string]string{"a.txt": "x\n"})
 
-	commits, err := Collect(dir, head.String())
+	commits, err := Collect(dir, head.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 		t.Fatalf("empty range should be nil, got %d commits", len(commits))
 	}
 	// Drive Run for the empty range: clean, no error.
-	findings, err := Run(dir, Inputs{Settings: Settings{BaseBranch: head.String()}})
+	findings, err := Run(dir, head.String(), "HEAD", Inputs{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 func TestRunPropagatesCollectError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	if _, err := Run(dir, Inputs{Settings: Settings{BaseBranch: "no-such-ref"}}); err == nil {
+	if _, err := Run(dir, "no-such-ref", "HEAD", Inputs{}); err == nil {
 		t.Fatal("expected Run to propagate an unresolvable-base error")
 	}
 }
@@ -196,21 +196,21 @@ func TestCollectUnrelatedHistories(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): head", map[string]string{"go.mod": "module x\n"})
 	base := orphan(t, repo)
-	_, err := Collect(dir, base.String())
+	_, err := Collect(dir, base.String(), "HEAD")
 	if err == nil {
 		t.Fatal("expected an unrelated-histories error")
 	}
 }
 
 func TestCollectNotARepo(t *testing.T) {
-	if _, err := Collect(t.TempDir(), "main"); err == nil {
+	if _, err := Collect(t.TempDir(), "main", "HEAD"); err == nil {
 		t.Fatal("expected a not-a-repo error")
 	}
 }
 
 func TestCollectEmptyRepoHeadError(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)
-	if _, err := Collect(dir, "main"); err == nil {
+	if _, err := Collect(dir, "main", "HEAD"); err == nil {
 		t.Fatal("expected a HEAD-resolution error on a commit-less repo")
 	}
 }
@@ -218,7 +218,7 @@ func TestCollectEmptyRepoHeadError(t *testing.T) {
 func TestCollectBadBase(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	if _, err := Collect(dir, "no-such-ref"); err == nil {
+	if _, err := Collect(dir, "no-such-ref", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-base error")
 	}
 }
@@ -301,7 +301,7 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty range (base == HEAD) so only the live-state rule can fire.
-	findings, err := Run(dir, Inputs{Settings: Settings{BaseBranch: "HEAD", UncommittedChanges: true}})
+	findings, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestCollectWorktreeConfigExtension(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "feat(awf): one", map[string]string{"a.txt": "x\n"})
 	enableWorktreeConfigExtension(t, repo)
 
-	commits, err := Collect(dir, base.String())
+	commits, err := Collect(dir, base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}

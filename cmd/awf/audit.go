@@ -5,15 +5,25 @@ import (
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func runAudit(root, base string, stdout io.Writer) error {
+func runAudit(root, rangeArg string, stdout io.Writer) error {
+	// The range is required and has no default (ADR-0127 Decision 2): an audit
+	// that silently reports over nothing is worse than one that refuses.
+	if rangeArg == "" {
+		return &usageErr{"awf audit: a range is required: <base> (meaning <base>..HEAD) or <a>..<b>"}
+	}
+	base, head, err := awfgit.ParseRange(rangeArg, true)
+	if err != nil {
+		return &usageErr{"awf audit: " + err.Error()}
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err
 	}
-	findings, err := p.Audit(base)
+	findings, err := p.Audit(base, head)
 	if err != nil {
 		return err
 	}

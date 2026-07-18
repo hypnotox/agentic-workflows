@@ -80,7 +80,7 @@ go test ./...: run the test suite
 ./x gate: run the gate before committing
 ./x check: check rendered files for drift (also enforces the schema-version gate)
 awf upgrade: migrate the config tree to the current schema after upgrading awf
-awf audit: report workflow-conformance findings over the branch's commits (advisory)
+awf audit: report workflow-conformance findings over an explicit commit range (advisory)
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
 

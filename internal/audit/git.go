@@ -61,25 +61,26 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	}}
 }
 
-// Collect returns the commits reachable from HEAD but not from baseBranch,
-// as neutral Commit values. Empty range -> nil. Not-a-repo, an unresolvable
-// base, and unrelated histories are errors.
-func Collect(repoRoot, baseBranch string) ([]Commit, error) {
+// Collect returns the commits reachable from head but not from base, as neutral
+// Commit values. The range is always caller-supplied (ADR-0127): there is no
+// default and no configured base. Empty range -> nil. Not-a-repo, an
+// unresolvable base or head, and unrelated histories are errors.
+func Collect(repoRoot, base, head string) ([]Commit, error) {
 	repo, err := awfgit.OpenRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
-	headRef, err := repo.Head()
+	headHash, err := repo.ResolveRevision(plumbing.Revision(head))
 	if err != nil {
-		return nil, fmt.Errorf("resolve HEAD: %w", err)
+		return nil, fmt.Errorf("resolve head %q: %w", head, err)
 	}
-	headCommit, err := repo.CommitObject(headRef.Hash())
-	if err != nil { // coverage-ignore: HEAD's hash was just resolved; errors only on a corrupt object store
+	headCommit, err := repo.CommitObject(*headHash)
+	if err != nil { // coverage-ignore: headHash was just resolved; errors only on a corrupt object store
 		return nil, err
 	}
-	baseHash, err := repo.ResolveRevision(plumbing.Revision(baseBranch))
+	baseHash, err := repo.ResolveRevision(plumbing.Revision(base))
 	if err != nil {
-		return nil, fmt.Errorf("resolve base %q: %w", baseBranch, err)
+		return nil, fmt.Errorf("resolve base %q: %w", base, err)
 	}
 	baseCommit, err := repo.CommitObject(*baseHash)
 	if err != nil { // coverage-ignore: baseHash was just resolved; errors only on a corrupt object store
@@ -90,7 +91,7 @@ func Collect(repoRoot, baseBranch string) ([]Commit, error) {
 		return nil, err
 	}
 	if len(bases) == 0 {
-		return nil, fmt.Errorf("HEAD and base %q have unrelated histories", baseBranch)
+		return nil, fmt.Errorf("head %q and base %q have unrelated histories", head, base)
 	}
 	// Prune the HEAD walk by everything reachable from base.
 	seen := map[plumbing.Hash]bool{}

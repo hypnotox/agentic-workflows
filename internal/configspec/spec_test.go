@@ -63,6 +63,34 @@ func walkPaths(t reflect.Type, prefix string, out map[string]bool) {
 	}
 }
 
+// No config surface supplies an audit base: the range reaches the audit only
+// from the command line (ADR-0127 Decision 3). Asserted across all three
+// surfaces at once, since key parity means a struct field would force a spec
+// entry and vice versa.
+// invariant: audit-no-base-branch-config
+func TestNoAuditBaseConfigSurface(t *testing.T) {
+	for _, e := range Keys() {
+		if strings.Contains(strings.ToLower(e.Path), "basebranch") {
+			t.Errorf("spec entry %q supplies an audit base; the range must be caller-supplied", e.Path)
+		}
+	}
+	fields := map[string]bool{}
+	walkPaths(reflect.TypeOf(config.Config{}), "", fields)
+	for path := range fields {
+		if strings.Contains(strings.ToLower(path), "basebranch") {
+			t.Errorf("config field %q supplies an audit base; the range must be caller-supplied", path)
+		}
+	}
+	if reflect.TypeOf(audit.Settings{}).NumField() == 0 { // coverage-ignore: Settings always has fields; the loop below is the assertion
+		return
+	}
+	for i := range reflect.TypeOf(audit.Settings{}).NumField() {
+		if name := reflect.TypeOf(audit.Settings{}).Field(i).Name; strings.Contains(strings.ToLower(name), "basebranch") {
+			t.Errorf("audit.Settings.%s supplies a base; the range must be caller-supplied", name)
+		}
+	}
+}
+
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
 // invariant: configspec-key-parity
