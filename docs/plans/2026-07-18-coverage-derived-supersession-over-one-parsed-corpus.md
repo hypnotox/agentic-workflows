@@ -225,20 +225,25 @@ that commit, however dead the code it marks becomes.
   grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go
   ```
 
-  That command returns twelve lines today: the ten above plus `check.go:454` and `:459`, which are
-  `coverage-ignore` comments whose text contains the literal `adr.ParseDir`. Leave both comments
-  alone; they are prose, and the post-check accounts for them.
+  That command returns exactly those ten lines today. An earlier draft of this plan claimed twelve,
+  counting `check.go:454` and `:459`; those `coverage-ignore` comments read `adr.ParseDir here`
+  with no opening paren, so the pattern never matched them. Leave both comments alone regardless.
 
   Do not re-point `internal/adr/adr.go:427` (`NextNumber`): it runs on the `awf new adr` path,
   which holds no corpus, and Task 2.4's test enumerates it as the one in-package exception.
 
-  *Post-check*, one real call site plus the two comment lines:
+  `internal/migrate` cannot take a threaded view: migrations resolve their own decisions directory
+  and run before a `Project` can be opened. Both it and `*Project.Corpus` construct through
+  `adr.LoadCorpus`, leaving `adr.ParseDir` with no caller outside `internal/adr`. ADR-0130's
+  `corpus-parsed-once` was amended in place (it was still `Proposed`) to state that stronger rule.
+
+  *Post-check*, no production call site outside `internal/adr`:
 
   ```
   grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l
   ```
 
-  Expected output: `3`
+  Expected output: `0`
 
 - [ ] **Task 2.3: Move `ADR.Refs` and `ADR.Sections` reads behind the view, including
   `internal/migrate`.** `invariants.go:138` and `:197` read `Sections["Invariants"]`;
@@ -558,7 +563,7 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
 
 - `./x gate full` passes and `awf check` reports `clean` with no drift and no invariant issues.
 - `grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l` returns
-  `3`: one real call site plus the two `coverage-ignore` comment lines at `check.go:454` and `:459`.
+  `0`: every consumer constructs through `adr.LoadCorpus`.
 - `grep -rn 'SupersessionIndex\|adr\.Override' --include='*.go' internal/ cmd/ | wc -l` returns `0`.
 - No file under `docs/decisions/` carries `supersedes:` or `superseded_by:` in frontmatter.
 - Exactly three ADRs carry the bare `status: Superseded`, and none carries the suffixed form.
@@ -568,6 +573,27 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
 
 ## Notes
 
+- **Landed early, in Phase 2 rather than Phase 3: Task 3.3 (the identity key).** `invariants.Decl`
+  is populated in the same block the corpus rewrite already replaced, and `context.go`'s `byFile`
+  translation map had no remaining purpose once `Decl.ADR` held a number. Splitting it out would
+  have meant writing the filename form and immediately rewriting it. Task 3.3 is therefore a
+  no-op by the time Phase 3 runs; its scan test still lands there.
+- **The declared-invariant-slug grammar moved into `internal/adr` in Phase 2.**
+  `corpus-owns-field-reads` forbids reading `ADR.Sections` outside the package, and
+  `Corpus.DeclaredSlugs` needs the declaration grammar, so leaving `declRe` in
+  `internal/invariants` would have meant two sources of truth for it. `internal/invariants` keeps
+  the backing-class and `Verify:`-note logic and reads declarations through the new accessor.
+- **`RenderActiveMD` and `RenderDomainIndex` lost their error returns.** With parsing hoisted out
+  neither has a failure mode, and a permanently-nil error is an uncoverable branch under the 100%
+  gate. Their parse-error tests moved onto `adr.LoadCorpus`.
+- **The corpus cache is per-invocation, not per-`Project`.** Caching for the receiver's lifetime
+  broke `TestDomainDocStaleOnAdrRetag` and `TestCheckFailsOnMalformedADRIndex`, both of which write
+  an ADR after `Sync` and expect the following `Check` to observe it. Every public operation that
+  reads ADRs opens with `beginInvocation`.
+- **`Corpus.Claims(target)` was deferred to Phase 5 and replaced in Phase 2 by
+  `Corpus.RefsOf(carrier)`.** The consumers that had to stop reading `ADR.Refs` ask the
+  by-carrier question; nothing asks the by-target question until the coverage model does, and the
+  dead-code gate refuses a method with no production caller.
 - Phase 6 is the only shared-commit group, and it absorbed what were originally two separate
   rendering tasks: deleting `SupersededBy` breaks `domain.go` and the ACTIVE.md chain path in the
   same compile, so they cannot follow in a later phase. It also carries the two domain
