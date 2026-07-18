@@ -21,8 +21,9 @@ query a single version or a range.
   Supersession now has one encoding and two relations: `` `supersedes:` `` and
   `` `supersedes-invariant:` `` **retire** an anchor (a Decision item or a declared invariant
   slug), while the new `` `refines:` `` **adapts** one and counts toward nothing. An ADR is
-  `Superseded` exactly when every one of its anchors carries a retirement from an `Implemented`
-  ADR; the status stays hand-authored and `awf check` refuses drift in both directions, naming
+  `Superseded` exactly when every one of its anchors carries a retirement from a carrier that
+  has shipped (`Implemented` or `Superseded` - superseding an ADR does not un-supersede what
+  that ADR superseded, so chains deeper than two generations resolve); the status stays hand-authored and `awf check` refuses drift in both directions, naming
   the required edit. The status is bare because coverage may split across several successors.
   The mechanical migration downgrades every existing item token to `refines:` deliberately - it
   asserts less, and promoting a genuine retirement back is a reviewable edit, whereas a wrong

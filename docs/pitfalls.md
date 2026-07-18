@@ -997,5 +997,28 @@ way the same migration already tracked `removed` for stripped key lines. The tel
 drift about *declarations going missing*, which points at a mangled section heading
 rather than at the tokens the error names.
 
+## A rule gated on current status can make a chain unrepresentable
+
+_Domains: adr-system_
+
+_Related: ADR-0128, ADR-0129_
+
+ADR-0128 first said an anchor counts as covered only when its claiming carrier is
+`Implemented`, naming `Superseded` alongside `Proposed` as non-counting. That reads
+reasonably and is wrong: in a chain where A retires B and B retires C, flipping B to
+`Superseded` stops B's retirement counting, so C revives, and C's status can then never
+be made consistent by any edit to C - the drift is unfixable at the file it is reported
+on. The rule survived a brainstorm, three ADR reviews, and three plan reviews, and was
+found only by probing a four-deep fixture. The same ADR had already fixed this exact
+class for invariant slugs (item 4 exists because flipping to `Superseded` silently
+retired every slug an ADR declared) and missed it for Decision items.
+
+When a rule keys off an artifact's *current* status, ask what happens to the relations
+that artifact asserts once its own status changes. Retirement is repository state
+derivable from the present corpus, not history: a superseded ADR is not void in
+meaning, and what it superseded stays superseded. The corrected rule counts any carrier
+that has shipped, `Implemented` or `Superseded`, which keeps the original point - a
+successor that has not shipped must not kill its predecessor - without the hole.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

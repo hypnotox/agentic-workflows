@@ -59,6 +59,12 @@ Apply all five lenses to every plan:
 **step-exactness**: every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)
 
 
+**quoted-command-output-is-rerun**: a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it
+
+
+**phase-boundary-is-gateable**: each phase must be able to pass the gate ALONE, which is stronger than dependency order. Two shapes break it silently: a phase that deletes a checked behaviour while the ADR retiring its invariant stays Proposed (retirements take effect only from an Implemented carrier, so the slug is owed-but-unbacked for exactly one commit), and a phase that introduces a function before the phase that first calls it (the dead-code gate refuses it). The ADR-0128 plan hit both - Phases 6 and 7 had to merge, and three model methods were written, deleted, and re-added a phase later. Place a status flip in the same phase as the deletion it authorises, and a model method in the phase that consumes it
+
+
 **dependency-order**: tasks are ordered so each builds only on already-completed work
 
 
