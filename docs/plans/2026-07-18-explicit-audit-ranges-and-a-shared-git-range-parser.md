@@ -43,9 +43,13 @@ Modified:
 - `internal/clispec/clispec.go`, `cmd/awf/audit.go`, `cmd/awf/dispatch.go`
 - `cmd/awf/run_test.go`, `cmd/awf/audit_test.go`, `internal/audit/git_test.go`
 - `cmd/repoaudit/main_test.go`, `internal/configspec/spec_test.go`
+- `internal/audit/settings_test.go`
 - `.awf/docs/parts/development/command-runner.md`, `.awf/docs/parts/releasing/content.md`
 - `.awf/agents-doc.yaml`, `templates/skills/reviewing-impl/SKILL.md.tmpl`
+- `templates/docs/working-with-awf.md.tmpl`
 - `.awf/domains/parts/{tooling,config,rendering}/current-state.md`
+- `changelog/CHANGELOG.md`
+- Hand-maintained, unreachable by `awf sync`: `x` (the runner comment), `README.md`
 - `docs/decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md` (status flip)
 - Rendered outputs under `docs/`, every enabled target tree, and `examples/sundial/`
 
@@ -60,6 +64,7 @@ Deleted: none.
   package git
 
   import (
+  	"errors"
   	"fmt"
   	"strings"
   )
@@ -74,7 +79,9 @@ Deleted: none.
   // legal, since git forbids "."-leading, ".."-containing, and "-"-leading refs.
   func ParseRange(arg string, allowBareBase bool) (base, head string, err error) {
   	if arg == "" {
-  		return "", "", fmt.Errorf("range must not be empty")
+  		// errors.New, not fmt.Errorf: perfsprint (.golangci.yml) rejects a
+  		// constant-string fmt.Errorf and the gate would fail.
+  		return "", "", errors.New("range must not be empty")
   	}
   	if !strings.Contains(arg, "..") {
   		if !allowBareBase {
@@ -106,11 +113,14 @@ Deleted: none.
   the exact base/head pair or a non-nil error per case. Carry the proof marker
   `// invariant: git-range-rejects-malformed` on the malformed-input test.
 
-- [ ] **Task 1.3: Add the single-definition source scan.** In the same file, add a test that
-  walks the module's non-test `.go` files (skipping `internal/git/`) and fails if any line
-  contains both `strings.Cut(` and `".."`. Carry
-  `// invariant: git-range-parser-single-definition`. It would fail today, so it lands with
-  the conversions in Task 1.4, not before them.
+- [ ] **Task 1.3: Add the single-definition source scan.** In the same file, add a test
+  carrying `// invariant: git-range-parser-single-definition` that fails if any line contains
+  both `strings.Cut(` and `".."`. Resolve the module root by walking parent directories from
+  the test's working directory until a `go.mod` is found (the test runs with cwd
+  `internal/git`, so the repo root is two levels up and must not be hardcoded). Skip
+  `internal/git/` (the parser's own package, which legitimately calls `strings.Cut`),
+  `examples/` (a separate module with its own sources), and any `_test.go` file. It would
+  fail today, so it lands with the conversions in Task 1.4, not before them.
 
 - [ ] **Task 1.4 (batch): Converge the three existing parsers.** Representative site,
   `/home/hypno/Projects/agentic-workflows/cmd/awf/changelog.go`:
@@ -162,17 +172,28 @@ Deleted: none.
   the output of:
 
   ```
-  grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test
+  grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v '^./internal/git/'
   ```
 
   Post-check: that command must print nothing, and `go test ./internal/git/... ./cmd/...`
-  must pass.
+  must pass. The `internal/git/` exclusion is load-bearing, not cosmetic: `ParseRange` itself
+  calls `strings.Cut(arg, "..")`, so an unfiltered grep can never reach zero.
 
 - [ ] **Task 1.5: Update the runner doc for repoaudit's lost default.** In
   `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/development/command-runner.md`,
   change the `./x audit-local [range]` cell to `./x audit-local <range>` and replace
   ``over `<base>..<head>` (default `origin/main..HEAD`)`` with
-  ``over a required `<base>..<head>``. Then run `./x sync`.
+  ``over a required `<base>..<head>``.
+
+  Two hand-maintained sources go stale in the same commit and are not reachable by `awf sync`.
+  In `/home/hypno/Projects/agentic-workflows/x`, the `audit-local)` case comment (lines
+  121-123) reads "Default range origin/main..HEAD; pass `<base>..<head>` to scope it"; rewrite
+  it to "Requires an explicit `<base>..<head>` range". awf disables the runner singleton for
+  itself, so this file is authored, not rendered. In
+  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md:18`,
+  drop the "(default `origin/main..HEAD`)" parenthetical, which this phase falsifies.
+
+  Then run `./x sync`.
 
 - [ ] **Task 1.6: Verify and commit.** Run:
 
@@ -265,9 +286,20 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   `Collect(repoRoot, base, head string) ([]Commit, error)` and resolve `head` via
   `repo.ResolveRevision(plumbing.Revision(head))` instead of `repo.Head()`, keeping the
   merge-base pruning, the unrelated-histories error, and the empty-range `nil, nil` return
-  unchanged. Update its doc comment to describe an explicit range. In
-  `/home/hypno/Projects/agentic-workflows/internal/audit/audit.go:97`, pass the threaded base
-  and head instead of `in.BaseBranch`.
+  unchanged. Update its doc comment to describe an explicit range.
+
+  The base and head reach `Collect` as new `Run` parameters, not as `Inputs` fields, because
+  `Inputs` embeds the `Settings` whose `BaseBranch` Task 3.2 deletes: in
+  `/home/hypno/Projects/agentic-workflows/internal/audit/audit.go`, `Run(repoRoot string, in
+  Inputs)` becomes `Run(repoRoot, base, head string, in Inputs)`, its line-97 call becomes
+  `Collect(repoRoot, base, head)`, and its doc comment at line 76 (which lists `BaseBranch`
+  among the resolved knobs the embedded `Settings` carries) drops that mention.
+
+  Three `Run(dir, Inputs{Settings: Settings{BaseBranch: ...}})` call sites in
+  `/home/hypno/Projects/agentic-workflows/internal/audit/git_test.go` (lines 178, 190, and
+  304) move to the new signature in this task, or Phase 3 will not compile. The line-190 case
+  keeps asserting that an unresolvable base errors, now via the explicit base argument rather
+  than the configured one.
 
 - [ ] **Task 3.2: Remove the config surface.** Delete `BaseBranch` from the `Settings`
   struct, its `"main"` default, and the `if a.BaseBranch != ""` override in
@@ -277,6 +309,11 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   `audit.baseBranch` entry at `/home/hypno/Projects/agentic-workflows/internal/configspec/spec.go:158`.
   Delete the `case "audit.baseBranch":` arm at
   `/home/hypno/Projects/agentic-workflows/internal/project/configreference.go:146-147`.
+
+  `/home/hypno/Projects/agentic-workflows/internal/audit/settings_test.go` asserts the deleted
+  field in four places and will not compile otherwise: drop the `BaseBranch` assertions at
+  lines 18-19 (`want main`) and 64-65 (`want develop`), and drop the `BaseBranch` entries from
+  the composite literals at lines 40-43 and 49.
 
 - [ ] **Task 3.3: Change the CLI contract.** In
   `/home/hypno/Projects/agentic-workflows/internal/clispec/clispec.go`, the audit entry
@@ -333,7 +370,20 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   range". In `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/releasing/content.md:34`,
   change `./x gate && ./x check && ./x audit` to
   `./x gate && ./x check && ./x audit <previous-tag>..HEAD`, and state in the surrounding
-  prose that the previous release tag is the base. Then run `./x sync`.
+  prose that the previous release tag is the base. In
+  `/home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl:25`, replace
+  "report Conventional-Commits / workflow-conformance findings over the branch (advisory)"
+  with wording naming the required range, and check line 138's staleness-rule prose in the
+  same pass. In
+  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md:22`,
+  replace "over a branch's git history" with "over an explicit commit range".
+
+  `/home/hypno/Projects/agentic-workflows/README.md` is hand-maintained (absent from
+  `.awf/awf.lock`, so neither sync nor check reaches it): rewrite its `awf audit` row at line
+  178 from `` `awf audit [--base <ref>]` `` to `` `awf audit <base>|<a>..<b>` `` and replace
+  "over the branch's commits" with the explicit-range description.
+
+  Then run `./x sync`.
 
 - [ ] **Task 3.6: Verify and commit.** Run:
 
@@ -350,9 +400,14 @@ signature threaded through callers plus a struct-field removal, not a convenienc
 
 ## Phase 4: Fail-safe reporting, and freeze
 
-- [ ] **Task 4.1: Report the evaluated scope.** Thread the collected commit count out of
-  `Project.Audit` alongside the findings. In
-  `/home/hypno/Projects/agentic-workflows/cmd/awf/audit.go`, every terminal line names the
+- [ ] **Task 4.1: Report the evaluated scope.** The count originates where `Collect` is
+  called, inside `audit.Run`, not inside `Project.Audit`, so it is threaded out along the
+  whole chain: `/home/hypno/Projects/agentic-workflows/internal/audit/audit.go`'s
+  `Run(repoRoot, base, head string, in Inputs)` returns `([]Finding, int, error)`;
+  `/home/hypno/Projects/agentic-workflows/internal/project/project.go`'s
+  `Audit(base, head string)` returns `([]audit.Finding, int, error)`; and
+  `/home/hypno/Projects/agentic-workflows/cmd/awf/audit.go` consumes both. Every terminal line
+  names the
   resolved range and count: `awf audit: clean over 12 commit(s) in <base>..<head>`, and the
   warning and error lines gain the same ` over N commit(s) in <base>..<head>` suffix.
   ADR-0127 Decision 9.
@@ -371,7 +426,17 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   (line 115) onto `TestCollectEmptyRangeIsClean` (line 165), which is the test that actually
   proves it. Pre-existing defect in a file this effort edits.
 
-- [ ] **Task 4.4: Freeze and commit.** Flip
+- [ ] **Task 4.4: Record the breaking change in the changelog.** This effort touches
+  `cmd/awf/`, `internal/config/`, and `templates/`, all adopter-facing prefixes under
+  `cmd/repoaudit`'s changelog rule, so an absent entry makes `./x audit-local` warn and leaves
+  `releasecheck` nothing to promote at release time. Under the standing `## [Unreleased]`
+  heading in `/home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md`, add to
+  **Breaking changes**: the removed `--base` flag, the removed `audit.baseBranch` config key
+  (migrated at schema 11), `awf audit`'s now-required range argument, and `./x audit-local`'s
+  now-required range. Add to **Features**: the audit's evaluated-scope reporting and the
+  empty-range notice. Group by adopter-facing effect per ADR-0041.
+
+- [ ] **Task 4.5: Freeze and commit.** Flip
   `docs/decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md` frontmatter to
   `status: Implemented`, and this plan's frontmatter to `status: Implemented`. Record
   ADR-0127 in the `tooling`, `config`, and `rendering` current-state narratives under
@@ -379,18 +444,30 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   domain indexes regenerate. Run:
 
   ```
-  ./x gate && ./x check && go run ./cmd/awf audit <first-commit-of-this-effort>~1..HEAD
+  ./x gate && ./x check
   ```
 
-  All three must pass, the last one auditing this effort's own commits. Commit:
+  Both must pass. Commit:
 
   ```commit
   feat(tooling): report the audit's evaluated scope
   ```
 
+  Then, and only then, dogfood the new contract against the now-clean tree:
+
+  ```
+  go run ./cmd/awf audit <first-commit-of-this-effort>~1..HEAD
+  ```
+
+  It must report over this effort's own commits with a scope line. This runs *after* the
+  commit deliberately: `uncommitted-changes` (ADR-0025) is range-independent and always on
+  (ADR-0127 Decision 4), so running it against the staged freeze would emit a branch-level
+  Error and exit non-zero no matter how healthy the range is.
+
 ## Verification
 
-- `grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test` prints nothing.
+- `grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v '^./internal/git/'`
+  prints nothing (the parser's own package is excluded; it legitimately calls `strings.Cut`).
 - `go run ./cmd/awf audit` exits non-zero and names both accepted forms.
 - `go run ./cmd/awf audit HEAD` exits zero and prints the 0-commit notice, not `clean`.
 - `go run ./cmd/awf audit HEAD~5` prints a scope line naming the range and the count.
