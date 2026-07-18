@@ -594,6 +594,39 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   `Corpus.RefsOf(carrier)`.** The consumers that had to stop reading `ADR.Refs` ask the
   by-carrier question; nothing asks the by-target question until the coverage model does, and the
   dead-code gate refuses a method with no production caller.
+- **Phases 6 and 7 landed as ONE commit, not two.** Two independent couplings forced it, and
+  neither was visible when the plan was written. First, `supersession-full-symmetry` and
+  `supersession-flavour-exclusive` lose their proof markers in Phase 6 because the checks they
+  covered are deleted and their tests cannot compile - but those retirements only take effect
+  from an `Implemented` carrier, so Task 7.3's deferral would have left both slugs
+  owed-but-unbacked for exactly one commit, i.e. a red gate. Task 6.1's instruction to "leave
+  the existing markers in place" assumed the tests could survive Phase 6; they cannot. Second,
+  `proposing-adr/SKILL.md.tmpl` lists both keys as *required* frontmatter, so the moment Phase 6
+  lands the chain's own authoring skill instructs every author to write an ADR `awf check`
+  refuses - "docs travel with the change" puts Task 7.1 in the same commit regardless.
+- **Two migration bugs reached a real corpus run and were caught by `awf check`, not by review.**
+  Slug anchors need the `supersedes-invariant:` key rather than `supersedes:`, or the emitted
+  tokens are inert and the legacy pairs land in a coverage failure. And `DecisionEnd` offsets go
+  stale the moment pass 1 rewrites the body: the `supersedes:`-to-`refines:` downgrade shortens
+  it three bytes per token, so on a token-dense ADR the append landed inside the following
+  heading, corrupting `## Invariants` into `## Inv13. **Supersedence bookkeeping...` and
+  silently deleting every slug that ADR declared. That surfaced as unrelated `adr-token-ref`
+  drift about missing declarations, which is a long way from the cause. Both are now pinned by
+  regression tests and recorded in `.awf/docs/pitfalls.yaml`.
+- **The superseded-target advisory had to be deleted, which the plan did not list.** ADR-0128
+  item 5 drops it, and the Phase 6 fixtures made the reason concrete: once supersession is
+  coverage-derived, a token into a `Superseded` target is the normal shape of every completed
+  supersedence, so the note fires on every retirement and means nothing.
+- **The dead-code gate shaped Phase 5 more than expected.** `Corpus.Live`, `UncoveredAnchors`
+  and `Anchors` all had to be written in Phase 5, removed, and re-added in Phase 6 with their
+  first callers. Building a model bottom-up fights a gate that demands top-down reachability;
+  a future plan of this shape should place model methods in the phase that consumes them, not
+  the phase that conceives them.
+- **Several fixtures had to change premise rather than expectation.** A superseded target now
+  owes a back-pointer; a `Proposed` target short-circuits before the back-pointer check ever
+  runs; a retirement cycle needs `Implemented` carriers to be `Covered` at all; and a
+  single-item target is fully covered by one token, so tests about something else needed a
+  second anchor to survive.
 - Phase 6 is the only shared-commit group, and it absorbed what were originally two separate
   rendering tasks: deleting `SupersededBy` breaks `domain.go` and the ACTIVE.md chain path in the
   same compile, so they cannot follow in a later phase. It also carries the two domain
