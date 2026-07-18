@@ -143,7 +143,13 @@ func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []str
 			if r.Slug == "" {
 				anchor = "item:" + r.Target + "#" + strconv.Itoa(r.Item)
 			}
-			if live && !seenAnchor[anchor] {
+			// Only RETIREMENTS contest (ADR-0128 item 6). Two ADRs both
+			// declaring an anchor dead is a genuine conflict; multiple
+			// refinements of one anchor are the normal shape of an evolving
+			// decision, and a mixed pair - refined by one ADR, later retired by
+			// another - is the ADR-0034 item 1 history the ADR cites as
+			// healthy. Neither notes.
+			if live && r.Relation == adr.Retires && !seenAnchor[anchor] {
 				seenAnchor[anchor] = true
 				anchorClaim[anchor] = append(anchorClaim[anchor], a.Number)
 			}
@@ -173,7 +179,7 @@ func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []str
 				add(a, "adr-token-backpointer", fmt.Sprintf("ADR-%s: token into ADR-%s lacks the related: back-pointer on the target", a.Number, r.Target))
 			}
 			// The superseded-target advisory is deliberately absent (ADR-0128
-			// item 5). It existed to explain a token pointing at a dead ADR,
+			// item 6). It existed to explain a token pointing at a dead ADR,
 			// which used to be anomalous. Under coverage-derived supersession it
 			// is the normal shape of every completed supersedence - the tokens
 			// are what killed the target - so the note would fire on every

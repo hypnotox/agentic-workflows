@@ -281,8 +281,9 @@ func TestTokenBackpointer(t *testing.T) {
 }
 
 // TestSupersessionAdvisories covers the surviving note channel: one anchor
-// claimed by two live ADRs. The superseded-target note is gone with ADR-0128
-// item 5 - it is now the normal shape of every completed supersedence.
+// claimed by two live ADRs' RETIREMENTS. The superseded-target note is gone
+// with ADR-0128 item 6 - it is now the normal shape of every completed
+// supersedence.
 // invariant: supersession-contested-anchor-advisory
 func TestSupersessionAdvisories(t *testing.T) {
 	t.Run("same anchor claimed by two live ADRs is a note", func(t *testing.T) {
@@ -313,6 +314,38 @@ func TestSupersessionAdvisories(t *testing.T) {
 		})
 		if len(notes) != 0 {
 			t.Fatalf("want no conflict note across anchor kinds, got %#v", notes)
+		}
+	})
+	t.Run("two refinements of one anchor do not contest", func(t *testing.T) {
+		// Refinements do not contest (ADR-0128 item 6): several ADRs adapting
+		// one decision is the normal shape of an evolving decision, not two
+		// ADRs declaring it dead.
+		token := "## Decision\n\n1. Adapts `refines: ADR-0001#1`.\n"
+		_, notes := runSupersession(t, map[string]string{
+			"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+				testsupport.WithRelated(2, 3), testsupport.WithBody(decision)),
+			"0002-first.md":  testsupport.ADR("Implemented", testsupport.WithTitle("0002: First"), testsupport.WithBody(token)),
+			"0003-second.md": testsupport.ADR("Accepted", testsupport.WithTitle("0003: Second"), testsupport.WithBody(token)),
+		})
+		if len(notes) != 0 {
+			t.Fatalf("refinements must not contest, got %#v", notes)
+		}
+	})
+	t.Run("a refinement and a later retirement do not contest", func(t *testing.T) {
+		// The mixed pair ADR-0128 item 6 names as healthy, and the shape this
+		// repo's own corpus carries on ADR-0034 item 1 (refined by ADR-0057,
+		// retired by ADR-0121). It emitted a spurious note until the advisory
+		// was scoped to retirements.
+		_, notes := runSupersession(t, map[string]string{
+			"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+				testsupport.WithRelated(2, 3), testsupport.WithBody(decision)),
+			"0002-refiner.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: Refiner"),
+				testsupport.WithBody("## Decision\n\n1. Adapts `refines: ADR-0001#1`.\n")),
+			"0003-retirer.md": testsupport.ADR("Accepted", testsupport.WithTitle("0003: Retirer"),
+				testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n")),
+		})
+		if len(notes) != 0 {
+			t.Fatalf("a refine-then-retire pair must not contest, got %#v", notes)
 		}
 	})
 	t.Run("a Proposed claimant is not in force", func(t *testing.T) {
