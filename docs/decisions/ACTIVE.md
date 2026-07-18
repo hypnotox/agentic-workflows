@@ -128,6 +128,10 @@
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Implemented)
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Implemented)
 
+## Proposed
+
+- [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](0127-explicit-audit-ranges-and-a-single-git-range-parser.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
