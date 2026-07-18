@@ -45,6 +45,7 @@ Modified:
 - `cmd/repoaudit/main_test.go`, `internal/configspec/spec_test.go`
 - `internal/audit/settings_test.go`
 - `.awf/docs/parts/development/command-runner.md`, `.awf/docs/parts/releasing/content.md`
+- `.awf/docs/parts/architecture/components.md`
 - `.awf/agents-doc.yaml`, `templates/skills/reviewing-impl/SKILL.md.tmpl`
 - `templates/docs/working-with-awf.md.tmpl`
 - `.awf/domains/parts/{tooling,config,rendering}/current-state.md`
@@ -192,6 +193,13 @@ Deleted: none.
   itself, so this file is authored, not rendered. In
   `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md:18`,
   drop the "(default `origin/main..HEAD`)" parenthetical, which this phase falsifies.
+
+  This phase also makes `internal/git` the single definition site for range parsing, which the
+  component inventory does not yet record: in
+  `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/components.md`, extend
+  the `internal/git/` entry (which today lists only tolerant repo-open plus the tracked-path
+  and staged-blob readers) with the shared `ParseRange` as the sole range-parsing definition
+  site (ADR-0127 Decision 5).
 
   Then run `./x sync`.
 
@@ -391,7 +399,9 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   `/home/hypno/Projects/agentic-workflows/cmd/repoaudit/main_test.go`, add
   `// invariant: repoaudit-requires-explicit-range` to the no-argument case.
 
-- [ ] **Task 3.6: Update the rendered sources.** Per ADR-0127 Decision 8. In
+- [ ] **Task 3.6: Update the rendered sources.** Per ADR-0127 Decision 8. Its fourth listed
+  source, `command-runner.md`, is not dropped: it landed in Task 1.5 alongside the repoaudit
+  default removal that falsified it. In
   `/home/hypno/Projects/agentic-workflows/templates/skills/reviewing-impl/SKILL.md.tmpl:57`,
   replace ``run `awf audit` (or this project's runner alias for it) over the branch`` with
   ``run `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the
@@ -502,8 +512,10 @@ signature threaded through callers plus a struct-field removal, not a convenienc
 - `go run ./cmd/awf audit HEAD` exits zero and prints the 0-commit notice, not `clean`.
 - `go run ./cmd/awf audit HEAD~5` prints a scope line naming the range and the count.
 - `grep -rn baseBranch --include='*.go' .` returns only migration and test-fixture hits.
+- `go run ./cmd/repoaudit` exits 2 and prints `usage: repoaudit <base>..<head>`, with no
+  default range (ADR-0127 Decision 11, the other half of the uniform-safety property).
 - `./x check` reports no drift and no invariant issues with ADR-0127 `Implemented`, proving
-  all six backed slugs resolve.
+  all seven backed slugs resolve.
 
 ## Notes
 
