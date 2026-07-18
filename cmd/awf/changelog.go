@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"strings"
 
 	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
 	"github.com/hypnotox/agentic-workflows/internal/changelog"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // runChangelog prints the embedded CHANGELOG.md, or a version/since/range-filtered
@@ -53,9 +53,9 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 			fmt.Fprintln(stdout, e.Raw)
 		}
 	case rng != "":
-		from, to, ok := strings.Cut(rng, "..")
-		if !ok {
-			return &usageErr{fmt.Sprintf("awf changelog: --range must be <from>..<to>, got %q", rng)}
+		from, to, perr := awfgit.ParseRange(rng, false)
+		if perr != nil {
+			return &usageErr{fmt.Sprintf("awf changelog: --range %v", perr)}
 		}
 		entries, err := changelog.Load(changelogfs.FS)
 		if err != nil { // coverage-ignore: changelog.Load over the embedded FS cannot fail at runtime

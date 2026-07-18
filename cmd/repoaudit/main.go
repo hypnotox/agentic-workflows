@@ -15,6 +15,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // severity mirrors internal/audit's contract (Warning=0, Error=1) without importing
@@ -83,19 +85,16 @@ var rules = []func(git gitFunc, base, head string, log io.Writer) []finding{
 }
 
 func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
-	rng := "origin/main..HEAD"
-	if len(args) >= 2 {
-		rng = args[1]
+	// No default range (ADR-0127 Decision 11): a no-argument call would report
+	// over commits nobody named, which is the guess-the-base defect in
+	// repo-local clothing.
+	if len(args) < 2 {
+		fmt.Fprintln(stderr, "usage: repoaudit <base>..<head>")
+		return 2
 	}
-	base, head, ok := strings.Cut(rng, "..")
-	// Cut mangles a three-dot range (head "."-prefixed) or a multi-".." input
-	// (head contains ".."); both would reach git as a bogus rev. A "-"-prefixed
-	// side would reach git as an option-like argument. Dots inside a rev
-	// (v0.10.0) are fine - git forbids "."-leading, ".."-containing, and
-	// "-"-leading refs, so no valid rev is rejected.
-	if !ok || base == "" || head == "" || strings.HasPrefix(head, ".") || strings.Contains(head, "..") ||
-		strings.HasPrefix(base, "-") || strings.HasPrefix(head, "-") {
-		fmt.Fprintln(stderr, "usage: repoaudit [<base>..<head>]  (default origin/main..HEAD)")
+	base, head, perr := awfgit.ParseRange(args[1], false)
+	if perr != nil {
+		fmt.Fprintf(stderr, "repoaudit: %v\n", perr)
 		return 2
 	}
 	errs, warns := 0, 0

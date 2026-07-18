@@ -173,7 +173,7 @@ Deleted: none.
   the output of:
 
   ```
-  grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v '^./internal/git/'
+  grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v 'internal/git/'
   ```
 
   Post-check: that command must print nothing, and `go test ./internal/git/... ./cmd/...`
@@ -506,7 +506,7 @@ signature threaded through callers plus a struct-field removal, not a convenienc
 
 ## Verification
 
-- `grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v '^./internal/git/'`
+- `grep -rln 'strings.Cut(.*"\.\."' --include='*.go' . | grep -v _test | grep -v 'internal/git/'`
   prints nothing (the parser's own package is excluded; it legitimately calls `strings.Cut`).
 - `go run ./cmd/awf audit` exits non-zero and names both accepted forms.
 - `go run ./cmd/awf audit HEAD` exits zero and prints the 0-commit notice, not `clean`.

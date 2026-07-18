@@ -119,8 +119,9 @@ case "$cmd" in
     ;;
   audit-local)
     # Repo-local conformance audit (ADR-0073) - repo-specific, NOT part of the shipped
-    # awf audit. Default range origin/main..HEAD; pass <base>..<head> to scope it (the
-    # reviewing-impl override passes the review's session range). Never wired into ./x gate.
+    # awf audit. Requires an explicit <base>..<head> range (ADR-0127: no default range,
+    # so a call never reports over commits nobody named; the reviewing-impl override
+    # passes the review's session range). Never wired into ./x gate.
     go run ./cmd/repoaudit "$@"
     ;;
   *)

@@ -53,9 +53,9 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 			}
 		}
 	} else {
-		from, to, ok := strings.Cut(rangeSpec, "..")
-		if !ok {
-			return nil, fmt.Errorf("range %q must be <a>..<b>", rangeSpec)
+		from, to, perr := ParseRange(rangeSpec, false)
+		if perr != nil {
+			return nil, perr
 		}
 		fromTree, err := treeAt(repo, from)
 		if err != nil {

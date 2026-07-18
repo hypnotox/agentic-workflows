@@ -62,20 +62,31 @@ func TestGitErrorSurfacesStderr(t *testing.T) {
 }
 
 func TestUsageError(t *testing.T) {
-	code, out := runFake([]string{"repoaudit", "no-range-here"}, fakeGit{})
-	if code != 2 || !strings.Contains(out, "usage:") {
-		t.Fatalf("code=%d out=%q", code, out)
+	// No argument at all: there is no default range (ADR-0127 Decision 11), so
+	// this is a refusal with the usage line rather than a report over
+	// origin/main..HEAD.
+	code, out := runFake([]string{"repoaudit"}, fakeGit{})
+	if code != 2 || !strings.Contains(out, "usage: repoaudit <base>..<head>") {
+		t.Fatalf("no-arg: code=%d out=%q", code, out)
+	}
+	// A supplied bare base is rejected too: repoaudit does not opt into
+	// ParseRange's bare-base form.
+	code, out = runFake([]string{"repoaudit", "no-range-here"}, fakeGit{})
+	if code != 2 || !strings.Contains(out, "must be <a>..<b>") {
+		t.Fatalf("bare base: code=%d out=%q", code, out)
 	}
 }
 
 func TestRejectsMalformedRanges(t *testing.T) {
 	// strings.Cut on ".." would silently mangle these (b...h → head ".h";
 	// a..b..c → head "b..c") and hand git a bogus rev, and a "-"-prefixed
-	// side would reach git as an option-like argument; all must hit the
-	// usage path instead. Dots inside a rev (v0.10.0..HEAD) stay legal.
+	// side would reach git as an option-like argument; all must be refused.
+	// The guards now live in internal/git.ParseRange (ADR-0127 Decision 5), so
+	// the refusal reads "repoaudit: range ..." rather than the usage line.
+	// Dots inside a rev (v0.10.0..HEAD) stay legal.
 	for _, rng := range []string{"b...h", "a..b..c", "-foo..HEAD", "b..--all"} {
 		code, out := runFake([]string{"repoaudit", rng}, fakeGit{})
-		if code != 2 || !strings.Contains(out, "usage:") {
+		if code != 2 || !strings.Contains(out, "repoaudit: range") {
 			t.Fatalf("%s: code=%d out=%q", rng, code, out)
 		}
 	}
@@ -91,7 +102,7 @@ func TestRejectsMalformedRanges(t *testing.T) {
 }
 
 func TestCleanNonAdopterFacing(t *testing.T) {
-	// Default range (no arg) + changes outside the allowlist → clean, exit 0. The
+	// Explicit range + changes outside the allowlist → clean, exit 0. The
 	// blank line between the two paths also exercises changelogRule's empty-token
 	// `continue` - the sole branch no other test reaches (100%-coverage gate).
 	g := fakeGit{
@@ -99,7 +110,7 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 origin/main HEAD -- *.go": {out: ""},
 		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"},
 	}
-	code, out := runFake([]string{"repoaudit"}, g)
+	code, out := runFake([]string{"repoaudit", "origin/main..HEAD"}, g)
 	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}

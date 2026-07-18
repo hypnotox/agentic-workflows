@@ -122,7 +122,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
 - **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
   `worktreeConfig`-extension workaround) plus tracked-path and staged-blob readers; read-only,
-  shared by `awf audit`, `awf context`, and `awf prose-gate` (ADR-0092).
+  shared by `awf audit`, `awf context`, and `awf prose-gate` (ADR-0092). It is also the sole
+  definition site for `<a>..<b>` range parsing (`ParseRange`, ADR-0127): every command taking
+  a range parses through it, and a test fails the build if a second parser reappears.
 - **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
