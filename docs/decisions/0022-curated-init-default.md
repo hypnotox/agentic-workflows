@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-27
 tags: [init-scaffolding]
-related: [4, 11, 86]
+related: [4, 11, 43, 86]
 domains: [config, tooling]
 ---
 # ADR-0022: Curated Init Default: Workflow-Core Targets

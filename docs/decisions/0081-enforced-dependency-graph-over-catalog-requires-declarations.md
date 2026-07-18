@@ -74,7 +74,7 @@ invariant, so folding docs into the graph reaches that ADR too.
    requirements are enabled (transitive closure follows by induction), failing
    every gated command with a repair hint that names the exact config edit and
    `awf upgrade` as the pre-migration recovery path. This generalizes ADR-0050
-   Decision item 2 (its `RequiresAgent` check becomes the skill→agent edge of
+   Decision item 2 (`refines: ADR-0050#2`; its `RequiresAgent` check becomes the skill→agent edge of
    the same loop) and supersedes ADR-0046 Decision item 4
    (`refines: ADR-0046#4`) in two respects: the
    check-time failure strengthens to open time, and its documented
@@ -91,7 +91,7 @@ invariant, so folding docs into the graph reaches that ADR too.
 
 4. **`awf add` applies the closure plan.** Adding any artifact enables its
    full missing forward closure (skills, agents, **and docs**) in one
-   rewrite, printing the plan. This generalizes ADR-0050 Decision item 5 and
+   rewrite, printing the plan. This generalizes ADR-0050 Decision item 5 (`refines: ADR-0050#5`) and
    subsumes the ADR-0013 add-time "will not render" advisory note, which is
    deleted: the doc is now simply enabled.
 
@@ -100,7 +100,7 @@ invariant, so folding docs into the graph reaches that ADR too.
    artifact, printing the full dependent plan (so the cycle's true size is
    visible before any change); `awf remove <kind> <name> --with-dependents`
    applies the whole plan in one rewrite. This generalizes ADR-0050 Decision
-   item 4 (the agent guard becomes the reverse walk's length-1 case) and
+   item 4 (`refines: ADR-0050#4`; the agent guard becomes the reverse walk's length-1 case) and
    covers docs (`awf remove doc roadmap` refuses while `roadmap-graduation` is
    enabled). Consequence stated plainly: cascade size is **seed-dependent**:
    up to 10 of the 11 closure skills plus `plan-reviewer`, depending on where
@@ -117,7 +117,7 @@ invariant, so folding docs into the graph reaches that ADR too.
 7. **`RequiresDoc` joins the hard graph; render suppression is removed.**
    A doc-gated skill without its doc becomes a *refused config state*
    (Decision 3), so the ADR-0013 Decision item 4 suppression semantics are
-   superseded: the render-time gate (`skillDocGateOpen` and the suppression
+   superseded (`refines: ADR-0013#4`): the render-time gate (`skillDocGateOpen` and the suppression
    branch in `effectiveSkills`) is deleted and `inv:
    doc-gated-skill-suppressed` retired (`retires_invariants`, ADR-0031). The
    render context's effective skills set becomes exactly the enabled set

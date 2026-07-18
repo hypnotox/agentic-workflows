@@ -155,7 +155,7 @@ Alternatives. The chosen direction is a hand-rolled declarative command table.
    `ResolveRemove`→`ResolveDisable`, `PlanOp.Add`→`PlanOp.Enable` (`internal/project/
    resolve.go`), and `addRemoveTarget` / `addRemoveSingleton` →
    `enableDisableTarget` / `enableDisableSingleton` (`cmd/awf/list_add.go`), with their
-   tests. This is a **partial-item supersedence of ADR-0093 Decision item 4**: the
+   tests. This is a **partial-item supersedence of ADR-0093 Decision item 4** (`refines: ADR-0093#4`): the
    sub-decision that the resolver vocabulary "stays" and the broader review is deferred.
    ADR-0093 anticipated this as the follow-through "when we do the refactor"; the refactor
    is now, and consistent Enable/Disable vocabulary across surface and internals is the

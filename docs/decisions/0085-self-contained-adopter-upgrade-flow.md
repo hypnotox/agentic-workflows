@@ -98,7 +98,7 @@ Forces and observations shaping the design:
    `exec "$binary" upgrade` sufficient, and it is independently a bugfix: today a
    template-only release leaves adopters rendered-stale until the next unrelated sync.
 
-5. **ADR-0082's identity-exemption list gains a third entry.** Per ADR-0082 Decision 2's own
+5. **ADR-0082's identity-exemption list gains a third entry** (`refines: ADR-0082#2`). Per ADR-0082 Decision 2's own
    extension rule, this ADR amends that item: the exemption list is pinned at exactly three
    entries (bootstrap template, agents-doc template, and the upgrade-script template),
    each still failing when stale. `inv: residue-exemptions-pinned` (`supersedes-invariant: ADR-0082#residue-exemptions-pinned`) is reworded accordingly

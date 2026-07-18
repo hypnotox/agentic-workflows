@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-01
 tags: [render-completeness, placeholder-degradation]
-related: [1, 6, 11, 12, 22, 29, 39]
+related: [1, 6, 11, 12, 22, 29, 39, 87]
 domains: [rendering, config]
 ---
 # ADR-0045: Out-of-box render completeness

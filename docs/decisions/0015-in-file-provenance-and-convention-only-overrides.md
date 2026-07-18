@@ -76,8 +76,8 @@ convention-only overrides is its enabling simplification.
    via its `replaceWith` branch at `render.go:27`), the project layer instead resolves the
    convention part and passes it to `Assemble` through a dedicated, non-`replaceWith` channel, so
    `Assemble`'s overlay switch collapses to `drop > convention part > default`. This overrides
-   **ADR-0001 Decision item 2** (the `replaceWith` overlay step) and the precedence documented by
-   **ADR-0009** (its Decision item 4 and `inv: parts-convention`).
+   **ADR-0001 Decision item 2** (`supersedes: ADR-0001#2`; the `replaceWith` overlay step) and the precedence documented by
+   **ADR-0009** (its Decision item 4, `refines: ADR-0009#4`, and `inv: parts-convention`, `supersedes-invariant: ADR-0009#parts-convention`).
 
 5. **Migration.** `awf upgrade` (ADR-0010) bumps the config-tree schema version. A sidecar still
    carrying a `replaceWith:` is migrated by relocating the referenced part to the section's

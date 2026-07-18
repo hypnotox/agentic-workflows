@@ -62,7 +62,7 @@ So the trigger can be refined by prose alone, with no backed invariant to retire
    catalog change is required. `awf sync` re-renders `AGENTS.md`/`CLAUDE.md`.
 
 4. **Supersedence scope.** This ADR refines, and does not replace, **ADR-0069 Decision
-   item 5**: it overrides only that item's "at session start check" clause, leaving the
+   item 5** (`refines: ADR-0069#5`): it overrides only that item's "at session start check" clause, leaving the
    rest of the working-memory convention (file location, skeleton, ground rules,
    just-in-time retrieval, ephemerality) fully in force. This is partial-item
    supersedence recorded via `related`, not a `supersedes` flip; ADR-0069 keeps its

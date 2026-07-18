@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-27
 tags: [cli-dispatch, kind-descriptor]
-related: [9, 14, 22, 93]
+related: [9, 14, 22, 26, 93]
 domains: [tooling, config]
 ---
 # ADR-0024: CLI Config Management Across Kinds

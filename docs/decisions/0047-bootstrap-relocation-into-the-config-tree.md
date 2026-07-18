@@ -46,7 +46,7 @@ Grounding discoveries that shape the design:
 ## Decision
 
 1. **Render the bootstrap at `.awf/bootstrap.sh`** (supersedes
-   [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1; recorded via
+   [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1, `refines: ADR-0040#1`; recorded via
    `related`, ADR-0040 stays `Implemented`: its self-pinning and checksum items are
    placement-independent and remain in force). The `awf-` filename prefix is dropped as
    redundant inside awf's own directory. The template file and `bootstrapTID` keep their

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-30
 tags: [bootstrap-porcelain, checksum-verify]
-related: [24, 27, 30, 39, 85]
+related: [24, 27, 30, 39, 47, 85]
 domains: [tooling, rendering, config]
 ---
 # ADR-0040: Self-Pinning Rendered Bootstrap

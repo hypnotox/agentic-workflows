@@ -78,7 +78,7 @@ flip: `awf-reviewing-plan-resync` (its "the ADR status is flipped" precondition)
    complex-only (plan only, no ADR), and neither.
 
 2. **The plan↔ADR resync is a visible, first-class chain step**, overriding the hide-it choice in
-   ADR-0004 Decision item 1 ("presents reviews as lightweight"). The guide prose describes the real
+   ADR-0004 Decision item 1 (`refines: ADR-0004#1`; "presents reviews as lightweight"). The guide prose describes the real
    review topology: each written artifact gets a fresh-context review (`reviewing-adr`,
    `reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them
    before implementation, looping until they converge; `reviewing-impl` is the terminal review. The

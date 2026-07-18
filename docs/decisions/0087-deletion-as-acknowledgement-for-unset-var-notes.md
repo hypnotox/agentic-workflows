@@ -72,7 +72,7 @@ Grounding discoveries that shape the design:
    *present* in `vars:` with an empty-string or null value, distinguished via the map
    presence flag. An absent key produces no note: deletion is the acknowledgement,
    committed, auditable in git history, reversible by re-adding the key. This narrows the
-   note trigger of ADR-0045 Decision 4 (partial-item supersedence recorded via `related`;
+   note trigger of ADR-0045 Decision 4 (`refines: ADR-0045#4`; partial-item supersedence recorded via `related`;
    ADR-0045 stays Implemented). The graceful-degradation contract (ADR-0045 Decision 3)
    is untouched: for *rendering*, absent, null, and empty remain equivalent unset states.
 

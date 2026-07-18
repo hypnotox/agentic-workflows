@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-07
 tags: [working-memory]
-related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67]
+related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67, 75]
 domains: [rendering, tooling]
 ---
 # ADR-0069: Working-memory convention for chain session continuity

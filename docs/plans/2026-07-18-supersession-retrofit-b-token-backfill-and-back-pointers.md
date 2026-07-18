@@ -1,7 +1,7 @@
 ---
 date: 2026-07-18
 adrs: [131]
-status: Proposed
+status: Implemented
 ---
 # Plan: Supersession Retrofit B: Token Backfill and Back-Pointers
 
@@ -434,6 +434,13 @@ in those three files. Locate each site by its quoted text, not by number.
 
 ## Notes
 
+- **Implementation findings (recorded at freeze).** The plan executed as written in a single
+  commit. The token count moved 96 to 113, exactly the 17 predicted, and no back-pointer or
+  coverage-status finding appeared, confirming the Task 1.14 analysis that none of the 17 can move
+  an anchor's coverage. One path correction: Task 1.12 cites `0047-*.md`, whose real filename is
+  `0047-bootstrap-relocation-into-the-config-tree.md`; every other site was located by its quoted
+  text as instructed. This plan carried no instruction to flip its own `status:` frontmatter, an
+  omission shared with Plans A and C, so the freeze was folded into its one commit.
 - **Informational citations are deliberately left bare** at ADR-0049 line 55, ADR-0081 line 111 and
   ADR-0087 line 76. They cite an anchor without claiming it, so a relation token would record a
   supersession that did not happen. ADR-0131 Decision 4's `cites:` token is the right encoding, and

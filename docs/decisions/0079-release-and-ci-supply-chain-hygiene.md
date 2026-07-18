@@ -84,7 +84,7 @@ path and asserts step ordering.
    `main` first. The wiring test in `cmd/releasecheck/main_test.go` extends to assert
    the ancestry, gate, and check steps appear before the GoReleaser step.
 
-4. **Codecov uploads are token-optional.** *(Partially amends ADR-0065 Decision 3,
+4. **Codecov uploads are token-optional.** *(Partially amends ADR-0065 Decision 3, `refines: ADR-0065#3`,
    which reads "`fail_ci_if_error: true` is retained on both (an upload failure fails
    the gate job); each step needs the `CODECOV_TOKEN`.")* The gate job maps the secret
    into a job-level env var (`CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}`) and both

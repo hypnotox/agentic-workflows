@@ -144,7 +144,7 @@ merely guarded by a parity test.
     only when it is enabled, citing ADR-0020's dead-reference gate as the mechanical enforcement for
     markdown links.
 
-13. **This ADR partially reverses ADR-0022's Decision item 4** for exactly these three docs.
+13. **This ADR partially reverses ADR-0022's Decision item 4** (`refines: ADR-0022#4`) for exactly these three docs.
     ADR-0022 is not superseded or status-flipped; it continues to govern core-but-toggleable skills
     and any future core doc, should one be added without warranting mandatory status.
 

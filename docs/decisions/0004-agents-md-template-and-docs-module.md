@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-24
 tags: [agents-guide, doc-model]
-related: [1]
+related: [1, 28]
 domains: [adr-system]
 ---
 # ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module

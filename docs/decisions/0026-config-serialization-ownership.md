@@ -40,7 +40,7 @@ and the mutation path is fragile to any indentation it did not emit. The fix is 
    moves to `config.SetArrayMember(src []byte, key, name string, add bool) ([]byte, error)` (replacing
    `cmd/awf`'s `editArray`). Both funnel through one private `encode` helper using a `yaml.v3` encoder
    with `SetIndent(2)`, so the on-disk format has exactly one definition. This **reverses ADR-0024
-   Decision item 3** (the generic string-surgery array editor) and overturns ADR-0024's rejected
+   Decision item 3** (`refines: ADR-0024#3`; the generic string-surgery array editor) and overturns ADR-0024's rejected
    "round-trip the YAML through a parser" alternative; ADR-0024 otherwise stands (its kind grammar,
    validation, warnings, and `list` surface are unchanged).
 
