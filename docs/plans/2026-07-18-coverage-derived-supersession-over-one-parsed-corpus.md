@@ -11,8 +11,10 @@ Implement ADR-0128 (supersession encoding), ADR-0129 (anchor-coverage model), an
 parsed corpus view) as a single ordered effort: delete the `supersedes:`/`superseded_by:`
 frontmatter keys, split the inline token into a retirement and a refinement relation, derive full
 supersession from anchor coverage, and route every ADR consumer through one corpus view built from
-one parse. Non-goals: no change to what the workflow chain asks an author to do beyond the new
-refinement relation, and no re-argument of the design, which lives in the three ADRs.
+one parse. The authoring surface does change: two frontmatter keys an author previously filled on
+every new ADR disappear, the `Superseded` status becomes hand-authored in a bare form that
+`awf check` enforces against derived coverage, and the `refines:` relation is new. Non-goal: no
+re-argument of the design, which lives in the three ADRs.
 
 ## Architecture summary
 
@@ -46,8 +48,16 @@ that commit, however dead the code it marks becomes.
   `internal/testsupport/testsupport_test.go`, `.awf/parts/adr-template/frontmatter.md`,
   `templates/adr-template/template.md.tmpl`, `templates/adr-readme/README.md.tmpl`,
   `templates/skills/adr-lifecycle/SKILL.md.tmpl`,
-  `.awf/domains/parts/adr-system/current-state.md`, `docs/glossary.md`, `docs/pitfalls.md`,
-  every file under `docs/decisions/`, `examples/sundial/docs/decisions/template.md`
+  `templates/skills/proposing-adr/SKILL.md.tmpl`, `.awf/agents/adr-reviewer.yaml`,
+  `.awf/domains/parts/adr-system/current-state.md`,
+  `.awf/domains/parts/invariants/current-state.md`,
+  `.awf/docs/parts/architecture/components.md`, `.awf/docs/glossary.yaml`,
+  `.awf/docs/pitfalls.yaml`, every file under `docs/decisions/`,
+  `examples/sundial/docs/decisions/template.md`
+- **Regenerated output committed alongside its source:** `docs/glossary.md`, `docs/pitfalls.md`,
+  `docs/architecture.md`, `docs/domains/adr-system.md`, `docs/domains/invariants.md`,
+  `docs/decisions/ACTIVE.md`, and the rendered skill and agent files. None of these is hand-edited;
+  each carries the generated banner and is produced by `./x sync` from the sources above.
 - **Deleted:** `SupersessionIndex`, `Override`, and `Override.Label` from `internal/adr/adr.go`;
   `statusOf` and `domainsOf` from `internal/audit/audit.go`; `WithSupersededBy` and
   `WithSupersedes` from `internal/testsupport/testsupport.go`
@@ -290,9 +300,15 @@ that commit, however dead the code it marks becomes.
 
 - [ ] **Task 4.2: Render refinements.** ACTIVE.md's anchor annotations and `awf context`'s
   counterpart distinguish "superseded by" from "refined by", which is what makes `Relation`
-  reachable in this phase. `active-md-annotates-superseded-anchors` and
-  `context-annotates-superseded-anchors` keep their proof markers; extend both tests with a
-  refinement case.
+  reachable in this phase. Extend both annotation tests with a refinement case.
+
+  `context-annotates-superseded-anchors` is ADR-0120's, is not retired, and keeps its existing
+  marker. `active-md-annotates-superseded-anchors` is **new** in ADR-0128, re-declared as the
+  surviving half of the retired `active-md-supersedence-rendering`, and has no marker anywhere in
+  the tree: add `// invariant: active-md-annotates-superseded-anchors` to the RenderActiveMD
+  annotation test in `internal/adr/adr_test.go`, alongside the `active-md-supersedence-rendering`
+  marker that stays until Task 7.3. Without this the Phase 7 flip leaves ADR-0128 declaring a
+  backed slug with no proof and `awf check` fails on the plan's own final commit.
 
 - [ ] **Task 4.3: Widen the back-pointer check to targets of any status.** Per ADR-0128 item 5,
   remove `supersession.go:206`'s live-target guard; both relations owe the back-pointer. Add a
@@ -381,7 +397,10 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   `computeSupersession`'s `claimants` map build (`supersession.go:122-129`, which reads
   `a.Supersedes` and feeds only the reverse-symmetry half), both symmetry halves (`:138-166`), and
   `adr-token-exclusive` (`:174-177`). `adr-retired-key` (`:39-61`) stays and gains a sibling
-  raw-frontmatter scan for the two removed keys.
+  raw-frontmatter scan for the two removed keys. ADR-0128 item 1 and
+  `supersession-keys-refused` both require the failure to carry upgrade guidance, so the new
+  finding's message names `awf upgrade` as the remedy exactly as `adr-retired-key`'s does, and the
+  proof test asserts that guidance text is present.
 
 - [ ] **Task 6.3: Remove the keys from the parser, the model, the templates, and testsupport.**
   Drop `SupersededBy` and `Supersedes` from `ADR` and `adrFrontmatter`, and delete Task 5.1's
@@ -398,6 +417,14 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   Per ADR-0129 item 6, render a `Covered` ADR against every ADR that retired one of its anchors;
   the `Superseded` bucket entry line stays a bare roster by design. Mark
   `// invariant: domain-index-surfaces-partial` and `// invariant: active-md-chains-one-to-many`.
+
+  In the same task, rewrite the hand-authored `.awf/domains/parts/adr-system/current-state.md`,
+  which still describes the scalar back-pointer, the three-way symmetry, and chains-as-pairs.
+  ADR-0129 item 5 makes this a *same-commit* obligation with the domain-index rewrite, not a
+  later documentation pass, so it belongs here rather than in Phase 7. Rewrite
+  `.awf/domains/parts/invariants/current-state.md` too: ADR-0128 declares the `invariants` domain,
+  and that part still says "fully superseding a token-carrier lapses its retirements", which the
+  coverage model replaces, and ends its migration history at generation 10.
 
 - [ ] **Task 6.5: Add `internal/migrate/supersessionkeys.go` as generation 12.** Register
   `{To: 12, Name: "supersession-keys", Apply: applySupersessionKeys}` in
@@ -447,17 +474,34 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
 
 ## Phase 7: Documentation and the status flips
 
-- [ ] **Task 7.1: Update the authored prose.** The supersession section of
-  `templates/adr-readme/README.md.tmpl` (two flavours become one relation plus refinement), the
-  `supersedence-full` and `supersedence-partial` sections of
-  `templates/skills/adr-lifecycle/SKILL.md.tmpl`, the back-pointer and supersession-token entries
-  in `docs/glossary.md`, and `.awf/domains/parts/adr-system/current-state.md`, which still
-  describes the scalar back-pointer, the three-way symmetry, and chains-as-pairs.
+- [ ] **Task 7.1: Update the authored prose, at its sources.** Every target below is a config-tree
+  source, never a rendered file: `docs/glossary.md`, `docs/pitfalls.md`, and `docs/architecture.md`
+  all carry the `GENERATED by awf: do not edit` banner, and hand-editing one is drift that
+  `./x check` reverts and reports.
 
-- [ ] **Task 7.2: Record the token-example pitfall.** Add to `docs/pitfalls.md` that a token quoted
-  as an example inside an ADR's Decision section parses as a real claim and demands a back-pointer
-  from the cited target; the grammar has no escape for examples. This surfaced while writing
-  ADR-0128 and cost one `awf check` failure.
+  - `templates/adr-readme/README.md.tmpl`: the supersession section, where two flavours become one
+    relation plus refinement.
+  - `templates/skills/adr-lifecycle/SKILL.md.tmpl`: the `supersedence-full` and
+    `supersedence-partial` sections.
+  - `templates/skills/proposing-adr/SKILL.md.tmpl`: line 31 lists `supersedes` and `superseded_by`
+    as **required** frontmatter and line 49 tells the author to fill `supersedes`. After Phase 6
+    those are keys `awf check` refuses, so the chain's own authoring skill would be instructing
+    every author to write a failing ADR. Also update its partial-supersedence description, which
+    predates the retirement/refinement split.
+  - `.awf/agents/adr-reviewer.yaml`: its lens checks only for a `supersedes:`/`supersedes-invariant:`
+    token on a partial override "of a live ADR". Teach it both relations, drop the live-target
+    restriction per ADR-0128 item 5, and add the rationale-site check ADR-0128 item 9 delegates to
+    this reviewer as the whole compensating control for what `awf check` cannot prove.
+  - `.awf/docs/glossary.yaml`: the back-pointer and supersession-token entries.
+  - `.awf/docs/parts/architecture/components.md`: the migrate package's generation history stops at
+    generation 10; add generation 12, and describe `internal/adr`'s new exported surface (the
+    `Corpus` view, its anchor-coverage facet, and the bytes-level parse seam), which ADR-0130's
+    Consequences call out as net public API growth.
+
+- [ ] **Task 7.2: Record the token-example pitfall at its source.** Add to `.awf/docs/pitfalls.yaml`
+  (not the generated `docs/pitfalls.md`) that a token quoted as an example inside an ADR's Decision
+  section parses as a real claim and demands a back-pointer from the cited target; the grammar has
+  no escape for examples. This surfaced while writing ADR-0128 and cost one `awf check` failure.
 
 - [ ] **Task 7.3: Flip the statuses and remove every retired proof marker, in one commit.** Set
   ADR-0128, ADR-0129, and ADR-0130 to `Implemented` and this plan to `Implemented`. In the same
@@ -474,7 +518,9 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   Removing any of these earlier fails the gate; leaving any of them now makes it a dangling marker
   naming a slug no Implemented ADR declares.
 
-- [ ] **Task 7.4: Verify and commit.** `./x sync && ./x check && ./x gate full`.
+- [ ] **Task 7.4: Verify and commit.** `./x sync && ./x check && ./x gate full`. The sync
+  regenerates `docs/glossary.md`, `docs/pitfalls.md`, `docs/architecture.md`, and the rendered
+  skill and agent files from the sources Task 7.1 edited; stage all of them with their sources.
 
   ```commit
   docs(adr): implement 0128, 0129, and 0130
@@ -496,7 +542,12 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
 
 - Phase 6 is the only shared-commit group, and it absorbed what were originally two separate
   rendering tasks: deleting `SupersededBy` breaks `domain.go` and the ACTIVE.md chain path in the
-  same compile, so they cannot follow in a later phase.
+  same compile, so they cannot follow in a later phase. It also carries the two domain
+  current-state parts, because ADR-0129 item 5 makes the adr-system one a same-commit obligation
+  with the domain-index rewrite.
+- Every prose target in Phase 7 is a config-tree source. `docs/glossary.md`, `docs/pitfalls.md`,
+  and `docs/architecture.md` are generated; the first draft of this plan named them directly,
+  which would have been reverted by the next `./x sync` and reported as drift.
 - The invariant-retirement rule caught this plan out once already: retirements apply only from an
   `Implemented` carrier, so every marker for a retired slug survives until Task 7.3 even though its
   code dies in Phase 4 or 6. Re-read `internal/invariants/invariants.go:174-176` before touching a
