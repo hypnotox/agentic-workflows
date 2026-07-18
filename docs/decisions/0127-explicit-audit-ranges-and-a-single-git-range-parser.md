@@ -4,8 +4,8 @@ date: 2026-07-18
 supersedes: []
 superseded_by: ""
 tags: [audit-rules, commit-conformance, schema-migration, cli-dispatch]
-related: [17, 25, 73, 92, 111]
-domains: [tooling, config]
+related: [17, 25, 73, 92, 111, 120, 122]
+domains: [tooling, config, rendering]
 ---
 # ADR-0127: Explicit Audit Ranges and a Single Git Range Parser
 
@@ -36,9 +36,9 @@ Decision 2) errors on a no-argument invocation with a hint, on the stated ground
 "never guesses 'current changes'" because the intended moment differs between brainstorm and
 review. The same reasoning applies to a conformance range.
 
-A second, smaller problem surfaced while scoping this. Four sites parse a `<a>..<b>` range
-string independently: `cmd/repoaudit` (ADR-0073), `internal/git`, `cmd/awf/changelog`, and
-the parsing this change would add. Their rigour differs. `cmd/repoaudit` rejects three-dot
+A second, smaller problem surfaced while scoping this. Three sites parse a `<a>..<b>` range
+string independently today: `cmd/repoaudit` (ADR-0073), `internal/git`, and
+`cmd/awf/changelog`; the parsing this change needs would be a fourth. Their rigour differs. `cmd/repoaudit` rejects three-dot
 ranges, multi-`..` inputs, empty sides, and `-`-prefixed sides, documenting that
 `strings.Cut` mangles the first two into bogus revisions and that a `-`-prefixed side would
 reach git as an option-like argument; it also records that dots *inside* a revision
@@ -61,7 +61,9 @@ parser would entrench the drift.
 
 3. **The `audit.baseBranch` config key is removed**, along with its `main` default and the
    `--base` flag that overrode it. awf holds no opinion about which branch an adopter
-   integrates into. This supersedes ADR-0017 Decision 5's `baseBranch` field.
+   integrates into. This **partial-supersedes ADR-0017 Decision item 5**
+   (`supersedes: ADR-0017#5`) for its `baseBranch` field only; ADR-0017 stays live, and its
+   `related:` gains 127 in the same commit as this ADR.
 
 4. **`uncommitted-changes` (ADR-0025) continues to run on every invocation**, regardless of
    the range argument. It inspects live working-tree state and is orthogonal to the range. It
@@ -73,32 +75,50 @@ parser would entrench the drift.
    access "so every awf command that reads git shares one open path"; range parsing joins it.
    The exported parser returns a base and a head, defaulting head to `HEAD` for a bare base,
    and adopts `cmd/repoaudit`'s guards as the shared contract: reject an empty side, a
-   three-dot range, a multi-`..` input, and a `-`-prefixed side. All four existing call sites
-   converge on it, so `cmd/repoaudit` and `cmd/awf/changelog` change without carrying a
-   defect, purely to retire their duplicate implementations.
+   three-dot range, a multi-`..` input, and a `-`-prefixed side. All three existing call
+   sites converge on it, so `cmd/repoaudit` and `cmd/awf/changelog` change without carrying
+   a defect, purely to retire their duplicate implementations. Bare-base acceptance is
+   opt-in per caller rather than universal: `cmd/repoaudit` today requires a two-sided range
+   and keeps that contract, so convergence does not silently widen what it accepts.
 
 6. **The terminal review passes its session range.** `awf-reviewing-impl` already derives
    `headSha` and `baseSha` (the commit before the session's first implementation commit) in
    its `sha-range-detection` step, then discards them and audits "over the branch". It now
    passes `<baseSha>..<headSha>`. This is a session range, not a branch range, so it holds
-   under any branching strategy. This supersedes ADR-0017 Decision 7's description of the
-   invocation.
+   under any branching strategy. This **partial-supersedes ADR-0017 Decision item 7**
+   (`supersedes: ADR-0017#7`) for its description of the invocation only.
 
 7. **A schema-11 migration removes the key from an adopter's config.** `.awf/config.yaml` is
    strict-parsed, so a stale `audit.baseBranch` would hard-fail on the new binary rather than
    warn. The migration prints the removal, departing from the silent `applyDropHooks`
    precedent, because deleting a value an adopter deliberately set must be readable from
-   command output rather than recovered by git archaeology.
+   command output rather than recovered by git archaeology. The mechanism is a new nested
+   remover in `internal/config`, a sibling to `SetMappingScalar`: the existing `RemoveKey`
+   walks only top-level mapping entries and so cannot reach a key under `audit:`. Config
+   serialization stays owned by `internal/config` (ADR-0026). An `audit:` mapping left empty
+   by the removal is dropped rather than kept as an empty mapping, so the migration leaves no
+   vestigial key behind.
+
+8. **The rendered sources that invoke or describe the audit are updated in the same commit.**
+   `.awf/docs/parts/releasing/content.md` (whose `./x gate && ./x check && ./x audit` becomes
+   an erroring invocation) and `.awf/agents-doc.yaml` (which describes the audit as reporting
+   "over the branch's commits") are edited at their `.awf/` sources and re-rendered via
+   `awf sync`, per the docs-travel-with-the-change invariant.
 
 ## Invariants
+
+Backed slugs carry their `// invariant: <slug>` proof markers on `*_test.go` files (this
+repo sets `invariants.testGlobs` to `**/*_test.go`) in `internal/git` (the parser slugs),
+`cmd/awf` (the CLI refusal), and `internal/project` (the no-base-config assertion).
 
 - `` `invariant: audit-requires-explicit-range` ``: `awf audit` with no positional argument
   exits non-zero without evaluating any rule, and its message names both the `<base>` and
   `<a>..<b>` forms.
 - `` `invariant: audit-no-base-branch-config` ``: no config key, spec entry, or resolved
   setting supplies an audit base; the range reaches `Collect` only from the command line.
-- `` `invariant: git-range-parser-single-definition` ``: exactly one exported range parser
-  exists in `internal/git`, and no other package parses a `..` range string.
+- `` `invariant: git-range-parser-single-definition` ``: no non-test `.go` file outside
+  `internal/git/` splits a range string on a `".."` separator; a test walks the module's
+  non-test sources and asserts the absence, so a fourth parser cannot reappear unnoticed.
 - `` `invariant: git-range-rejects-malformed` ``: the parser rejects an empty side, a
   three-dot range, a multi-`..` input, and a `-`-prefixed side on either side.
 - `` `unbacked-invariant: audit-migration-announces-removal` ``: the schema-11 migration
@@ -129,10 +149,17 @@ The migration is undogfooded: neither this repo's config nor `examples/sundial` 
 `audit.baseBranch`, so no sync or check run exercises it. It requires a dedicated fixture
 test rather than relying on the adopter tree for coverage.
 
+The tightening reaches beyond `awf audit`. `internal/git`'s bare `strings.Cut` backs
+`awf context --range <a>..<b>` (ADR-0092), so a three-dot range or a `-`-prefixed side that
+parses today begins to error there. That is a behaviour change on a second command, and a
+deliberate one: those inputs reach git as bogus revisions or option-like arguments either
+way, so the failure moves earlier and reports better.
+
 Converging `cmd/repoaudit` and `cmd/awf/changelog` on the shared parser touches two commands
-that have no reported defect. The risk is accepted because the alternative is a fifth
-divergent parser, and because the shared contract is strictly the strongest of the existing
-four.
+that have no reported defect. The risk is accepted because the alternative is a fourth
+divergent parser, and because the shared contract is the strictest of the three on every
+guard while preserving each caller's existing arity (bare-base acceptance is opt-in, so
+`cmd/repoaudit` keeps requiring a two-sided range).
 
 ## Alternatives Considered
 
@@ -144,4 +171,4 @@ four.
 | Bare invocation runs only range-independent rules | Reintroduces a quiet mode whose safety depends on the operator reading output; the silence is the defect. |
 | Move `uncommitted-changes` to `awf check` | `check` renders from the working tree, so it passes precisely when an uncommitted source is the problem; it is also gate-wired and runs against dirty trees during normal work. |
 | Adopt a feature-branch workflow so the existing default fires | Imposes a branching strategy on the project to satisfy a tool, and does not help any other adopter on trunk. |
-| Leave the four range parsers in place | Entrenches known drift, with the weakest parser sitting in the package that owns the git seam. |
+| Leave the three range parsers in place | Entrenches known drift and adds a fourth, with the weakest parser sitting in the package that owns the git seam. |

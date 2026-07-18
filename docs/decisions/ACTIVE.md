@@ -155,6 +155,7 @@
 - ADR-0009: item 1 superseded by ADR-0016; item 4 superseded by ADR-0015
 - ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
 - ADR-0016: item 6 superseded by ADR-0076; slug `target-output-paths` superseded by ADR-0037
+- ADR-0017: item 5 superseded by ADR-0127; item 7 superseded by ADR-0127
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
 - ADR-0024: item 1 superseded by ADR-0093; item 6 superseded by ADR-0093
 - ADR-0029: item 1 superseded by ADR-0064
