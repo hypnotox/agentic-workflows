@@ -54,8 +54,16 @@ instead of rotting.
   plus a generated index of that domain's ADRs. A domain's sidecar can declare
   `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
+- **ADR and plan scaffolding** (`docs/decisions/`, `docs/plans/`): a README and a
+  template for each, always rendered, so `awf new adr` and `awf new plan` produce the
+  shape the review skills and the generated ADR index expect.
 - **Git-hook payloads** (`.awf/hooks/`): inert pre-commit / commit-msg / pre-push
   scripts. You wire them up; awf never touches your git config.
+- **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
+  script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
+  is marked edit-in-place, so the verbs you add there survive every `awf sync` while awf
+  keeps the rest current. awf itself keeps a from-source runner instead; the
+  [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
 - **A working-memory directory** (`.awf/memory/`): always rendered with a
@@ -170,7 +178,7 @@ disk.
 | `awf audit [--base <ref>]` | Report workflow-conformance findings over the branch's commits. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
-| `awf context <paths>` | Report the owning domains, backed invariants, and related ADRs for the given paths. |
+| `awf context <paths>` | Report the owning domains, backed invariants, related ADRs, and current-state docs for the given paths. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits machine-readable output. `--uncovered` inverts it, listing tracked paths owned by no domain. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. |
