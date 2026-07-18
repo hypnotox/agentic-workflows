@@ -152,7 +152,7 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 		}
 		// Full symmetry, reverse direction: a superseded record must carry the
 		// matching suffixed/scalar pair and have exactly one claimant.
-		if strings.HasPrefix(a.Status, "Superseded") || a.SupersededBy != "" {
+		if a.IsSuperseded() || a.SupersededBy != "" {
 			if a.SupersededBy == "" || a.Status != "Superseded by ADR-"+a.SupersededBy {
 				add(a, "adr-supersession", fmt.Sprintf("ADR-%s: status %q and superseded_by %q are not the matching suffixed/scalar pair", a.Number, a.Status, a.SupersededBy))
 			}
@@ -166,7 +166,7 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 		}
 
 		num, _ := strconv.Atoi(a.Number) // a.Number is a 4-digit numeral matched by FilenameRe
-		live := a.Status == "Accepted" || a.Status == "Implemented"
+		live := a.IsLive()
 		seenAnchor := map[string]bool{}
 		for _, r := range a.Refs {
 			// Flavour exclusivity: a token into a target the same ADR also fully
@@ -191,7 +191,7 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 				add(a, "adr-token-ref", fmt.Sprintf("ADR-%s: token targets ADR-%s, which does not exist", a.Number, r.Target))
 				continue
 			}
-			if target.Status == "Proposed" {
+			if target.IsProposed() {
 				add(a, "adr-token-ref", fmt.Sprintf("ADR-%s: token targets Proposed ADR-%s, whose body is still mutable", a.Number, r.Target))
 				continue
 			}
@@ -204,12 +204,12 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 			}
 			// Back-pointer: a token into a live target requires the predecessor's
 			// related: to name the carrier.
-			if (target.Status == "Accepted" || target.Status == "Implemented") && !slices.Contains(target.Related, num) {
+			if target.IsLive() && !slices.Contains(target.Related, num) {
 				add(a, "adr-token-backpointer", fmt.Sprintf("ADR-%s: token into ADR-%s lacks the related: back-pointer on the target", a.Number, r.Target))
 			}
 			// Advisory, not drift: a token whose target was later fully superseded
 			// is immutable prose that would otherwise go permanently red.
-			if strings.HasPrefix(target.Status, "Superseded") {
+			if target.IsSuperseded() {
 				notes = append(notes, fmt.Sprintf("ADR-%s token targets ADR-%s, which was fully superseded", a.Number, r.Target))
 			}
 		}

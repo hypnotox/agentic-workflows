@@ -1,9 +1,11 @@
 package adr_test
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -709,5 +711,77 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 	}
 	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
 		t.Fatal("expected error for missing title placeholder")
+	}
+}
+
+// TestStatusLiteralsOwnedByADRPackage enforces ADR-0130 item 3 mechanically:
+// the ADR status vocabulary is compared in internal/adr and nowhere else, so
+// every other consumer asks a predicate. This is what stops the three-way "is
+// live" and five-way "is superseded" divergences the ADR was written to end.
+//
+// The scan is scoped to comparisons against an ADR-typed .Status field. Local
+// status variables (internal/audit's `st`) are out of scope until Phase 3 of
+// the coverage-derived-supersession plan gives audit parsed records; that task
+// widens this scan to cover them.
+//
+// internal/project/context.go carries the single enumerated exception: ADR-0129
+// item 4 keeps its Tier-2 exclusion on a direct prefix test.
+// invariant: corpus-owns-status-literals
+func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
+	statusCmp := regexp.MustCompile(`\.Status\s*[!=]=\s*"|HasPrefix\([^)]*\.Status\s*,\s*"`)
+
+	seen, transitional := 0, 0
+	root := filepath.Join("..", "..", "internal")
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		// internal/adr owns the literals; the predicates themselves live there.
+		if strings.HasPrefix(path, filepath.Join(root, "adr")+string(filepath.Separator)) {
+			return nil
+		}
+		data, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return rerr
+		}
+		seen++
+		isContext := path == filepath.Join(root, "project", "context.go")
+		for i, line := range strings.Split(string(data), "\n") {
+			if !statusCmp.MatchString(line) {
+				continue
+			}
+			// ADR-0129 item 4: awf context's Tier-2 exclusion is the one
+			// consumer that keeps a direct status test.
+			if isContext && strings.Contains(line, "tier1[a.Number]") {
+				continue
+			}
+			// Transitional: the suffixed/scalar symmetry half asserts the very
+			// encoding ADR-0128 removes, so it cannot be phrased as a predicate.
+			// Task 6.2 of the coverage-derived-supersession plan deletes it; the
+			// count guard below then fails and this branch comes out with it.
+			if strings.Contains(line, `"Superseded by ADR-"+a.SupersededBy`) {
+				transitional++
+				continue
+			}
+			t.Errorf("%s:%d compares an ADR status literal directly - use an adr.ADR predicate (ADR-0130 item 3):\n\t%s",
+				path, i+1, strings.TrimSpace(line))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Guard against a vacuous pass if internal/ is ever relocated.
+	if seen < 10 {
+		t.Fatalf("inspected only %d non-test source file(s) under internal/; the scan is not reaching the tree", seen)
+	}
+	// The transitional exemption is expected to be needed exactly once until the
+	// schema removal deletes the symmetry check. When that lands, this fails and
+	// the exemption branch above must be deleted rather than re-tuned.
+	if transitional != 1 {
+		t.Fatalf("transitional suffixed-status exemption matched %d line(s), want 1 - if the symmetry check is gone, delete the exemption branch", transitional)
 	}
 }

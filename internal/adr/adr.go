@@ -19,17 +19,8 @@ import (
 // statusOrder defines the section order in ACTIVE.md.
 var statusOrder = []string{"Accepted", "Implemented", "Proposed", "Superseded"}
 
-// bucketKey maps a status to its index group. The lifecycle convention mandates
-// the suffixed form "Superseded by ADR-NNNN", so every superseded ADR must fold
-// into the one Superseded group - the bare statusOrder entry would otherwise
-// never match and each successor would mint its own alphabetical section. The
-// per-entry line keeps the full status, so the successor stays visible.
-func bucketKey(status string) string {
-	if strings.HasPrefix(status, "Superseded") {
-		return "Superseded"
-	}
-	return status
-}
+// bucketKey is retained as the grouping seam; the rule itself is ADR.Bucket.
+func bucketKey(a ADR) string { return a.Bucket() }
 
 // ADR is a parsed ADR record.
 type ADR struct {
@@ -125,12 +116,12 @@ func SupersessionIndex(adrs []ADR) ([][2]string, map[string][]Override) {
 		for _, n := range a.Supersedes {
 			chains = append(chains, [2]string{fmt.Sprintf("%04d", n), a.Number})
 		}
-		if strings.HasPrefix(a.Status, "Superseded") {
+		if a.IsSuperseded() {
 			continue
 		}
 		for _, r := range a.Refs {
 			t, ok := byNum[r.Target]
-			if !ok || (t.Status != "Accepted" && t.Status != "Implemented") {
+			if !ok || !t.IsLive() {
 				continue
 			}
 			overrides[r.Target] = append(overrides[r.Target], Override{Item: r.Item, Slug: r.Slug, Successor: a.Number})
@@ -294,7 +285,7 @@ func groupByStatus(adrs []ADR, include func(ADR) bool) (map[string][]ADR, []stri
 	groups := make(map[string][]ADR)
 	for _, a := range adrs {
 		if include(a) {
-			groups[bucketKey(a.Status)] = append(groups[bucketKey(a.Status)], a)
+			groups[bucketKey(a)] = append(groups[bucketKey(a)], a)
 		}
 	}
 	for k := range groups {

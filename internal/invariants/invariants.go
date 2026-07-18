@@ -132,7 +132,7 @@ var (
 func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 	required := map[string]Decl{} // slug -> declaring ADR + class
 	for _, a := range adrs {
-		if a.Status != "Implemented" {
+		if !a.IsImplemented() {
 			continue
 		}
 		for _, bullet := range invariantBullets(a.Sections["Invariants"]) {
@@ -172,7 +172,7 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 		}
 	}
 	for _, a := range adrs {
-		if a.Status != "Implemented" {
+		if !a.IsImplemented() {
 			continue
 		}
 		for _, r := range a.Refs {
