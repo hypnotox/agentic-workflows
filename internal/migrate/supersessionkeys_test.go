@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 )
 
 // writeSupersessionFixture lays out a minimal adopted tree with a decisions
@@ -349,5 +351,47 @@ func TestSupersessionKeysChainedSupersession(t *testing.T) {
 	want := "`supersedes: ADR-0002#1`, `supersedes: ADR-0002#2`, `supersedes-invariant: ADR-0002#b-slug`"
 	if !strings.Contains(string(b), want) {
 		t.Errorf("want anchors in order %s, got:\n%s", want, b)
+	}
+
+	// Assert the OUTCOME, not just the emitted tokens: every ADR the migration
+	// left as Superseded must actually derive Covered, or the corpus it just
+	// produced fails the very next awf check. Asserting token substrings alone
+	// is what let the chained defect through review once already.
+	corpus, err := adr.LoadCorpus(filepath.Join(root, "docs", "decisions"))
+	if err != nil {
+		t.Fatalf("LoadCorpus after migration: %v", err)
+	}
+	for _, a := range corpus.All() {
+		if a.IsSuperseded() && corpus.State(a.Number) != adr.StateCovered {
+			t.Errorf("ADR-%s is Superseded but derives %q, uncovered: %v - the migrated corpus is not check-clean",
+				a.Number, corpus.State(a.Number), corpus.UncoveredAnchors(a.Number))
+		}
+	}
+}
+
+// TestSupersessionKeysRefusesBlockList pins that an unreadable supersedes:
+// form is a hard stop, not a silent corruption. The key-strip regex matches any
+// `supersedes:` line while the value regex reads only the inline list, so a
+// block-style list would previously have its key line removed and its entries
+// orphaned inside the frontmatter: invalid YAML, a dropped supersession claim,
+// and a corpus that no longer parses at all.
+// invariant: upgrade-migrates-supersession-keys
+func TestSupersessionKeysRefusesBlockList(t *testing.T) {
+	root := writeSupersessionFixture(t, map[string]string{
+		"0001-a.md": "---\nstatus: Implemented\ndate: 2026-01-01\ntags: [x]\nrelated: []\ndomains: []\nsupersedes:\n  - 2\nsuperseded_by: \"\"\n---\n" +
+			"# ADR-0001: A\n\n## Decision\n\n1. a.\n",
+		"0002-b.md": "---\nstatus: Implemented\ndate: 2026-01-02\ntags: [x]\nrelated: []\ndomains: []\nsupersedes: []\nsuperseded_by: \"\"\n---\n" +
+			"# ADR-0002: B\n\n## Decision\n\n1. b.\n",
+	})
+	err := applySupersessionKeys(root, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected a refusal for a block-style supersedes: list, not a silent corruption")
+	}
+	if !strings.Contains(err.Error(), "0001-a.md") {
+		t.Errorf("the refusal must name the offending file, got %v", err)
+	}
+	// The corpus must still parse: nothing was written.
+	if _, lerr := adr.LoadCorpus(filepath.Join(root, "docs", "decisions")); lerr != nil {
+		t.Errorf("the corpus was corrupted despite the refusal: %v", lerr)
 	}
 }

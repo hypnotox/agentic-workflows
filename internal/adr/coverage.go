@@ -15,9 +15,15 @@ type Anchor struct {
 	Slug string // invariant slug; "" for an item anchor
 }
 
-// Label renders the anchor's local part for a human line: "item N" or
+// Describe renders the anchor's local part for a human line: "item N" or
 // "slug `<slug>`".
-func (a Anchor) Label() string {
+//
+// Named Describe rather than Label because ADR-0129's
+// supersession-model-single-source requires the identifiers SupersessionIndex,
+// Override, and Label to appear nowhere in the tree - a greppable check that
+// the retired render index is really gone. A new method reusing that name
+// would defeat the grep while looking innocent.
+func (a Anchor) Describe() string {
 	if a.Slug != "" {
 		return "slug `" + a.Slug + "`"
 	}
@@ -152,15 +158,34 @@ func deriveState(c coverage, byNum map[string]ADR, a ADR) State {
 	}
 }
 
+// hasShipped reports whether a carrier's claims are in force. Implemented is
+// the obvious case; Superseded counts because superseding an ADR does not
+// un-supersede what that ADR superseded - the retirement it asserts remains
+// part of the corpus. Proposed and Accepted do not: a successor that has not
+// shipped must not kill its predecessor.
+func hasShipped(a ADR) bool { return a.IsImplemented() || a.IsSuperseded() }
+
 // isRetired reports whether an anchor carries a counting retirement: a
-// `supersedes:` claim from an Implemented carrier. A refinement never counts,
-// however many there are.
+// `supersedes:` claim from a carrier that has shipped. A refinement never
+// counts, however many there are.
+//
+// A carrier counts when it is Implemented OR Superseded. Superseding an ADR
+// does not un-supersede what that ADR superseded: a Superseded record is not
+// void in meaning, and the retirement it asserts remains part of the corpus and
+// remains in force. Excluding it would break every chain of more than two
+// generations - in A retires B retires C, flipping B to Superseded would revive
+// C, whose own status could then never be made consistent by any edit to C.
+//
+// This is a predicate over present corpus state, not over history: no carrier
+// is asked what status it once held, only what it holds now. Proposed and
+// Accepted carriers still do not count, which is the rule's original point -
+// a successor that has not shipped must not kill its predecessor.
 func isRetired(c coverage, byNum map[string]ADR, anchor Anchor) bool {
 	for _, claim := range c.claims[anchor] {
 		if claim.Relation != Retires {
 			continue
 		}
-		if carrier, ok := byNum[claim.Carrier]; ok && carrier.IsImplemented() {
+		if carrier, ok := byNum[claim.Carrier]; ok && hasShipped(carrier) {
 			return true
 		}
 	}
@@ -192,7 +217,7 @@ func (c Corpus) Retirers(num string) []string {
 		if claim.Relation != Retires || seen[claim.Carrier] {
 			continue
 		}
-		if carrier, ok := c.byNum[claim.Carrier]; !ok || !carrier.IsImplemented() {
+		if carrier, ok := c.byNum[claim.Carrier]; !ok || !hasShipped(carrier) {
 			continue
 		}
 		seen[claim.Carrier] = true

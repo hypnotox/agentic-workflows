@@ -168,7 +168,17 @@ func applySupersessionKeys(root string, out io.Writer) error {
 		raw := string(b)
 		fmEnd := strings.Index(raw[3:], "\n---") + 3 + 1
 
+		// Refuse rather than corrupt. supersedesLineRe strips the key line
+		// unconditionally, but supersedesValueRe only recognises the inline
+		// list form, so a block-style list would have its key stripped and its
+		// orphaned `  - 2` entries left inside the frontmatter - invalid YAML,
+		// a silently dropped supersession claim, and a corpus that no longer
+		// parses. Any supersedes: line the value regex cannot read is a hard
+		// stop naming the file.
 		var predecessors []string
+		if supersedesLineRe.MatchString(raw[:fmEnd]) && !supersedesValueRe.MatchString(raw[:fmEnd]) {
+			return fmt.Errorf("supersession-keys: %s: supersedes: is not a single-line inline list; rewrite it as `supersedes: [N]` (or `[]`) and re-run", a.Filename)
+		}
 		if m := supersedesValueRe.FindStringSubmatch(raw[:fmEnd]); m != nil {
 			if inner := strings.TrimSpace(m[1]); inner != "" {
 				for _, s := range strings.Split(inner, ",") {

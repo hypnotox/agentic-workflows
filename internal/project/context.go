@@ -298,7 +298,7 @@ func overrideAnnotation(list []adr.Claim) string {
 		if _, ok := grouped[k]; !ok {
 			order = append(order, k)
 		}
-		grouped[k] = append(grouped[k], o.Anchor.Label())
+		grouped[k] = append(grouped[k], o.Anchor.Describe())
 	}
 	parts := make([]string, len(order))
 	for i, k := range order {

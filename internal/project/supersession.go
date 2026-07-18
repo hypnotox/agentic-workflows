@@ -203,11 +203,15 @@ func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []str
 			uncovered := corpus.UncoveredAnchors(a.Number)
 			labels := make([]string, len(uncovered))
 			for i, anchor := range uncovered {
-				labels[i] = anchor.Label()
+				labels[i] = anchor.Describe()
+			}
+			carry := "carries"
+			if len(labels) > 1 {
+				carry = "carry"
 			}
 			add(a, "adr-coverage-status", fmt.Sprintf(
-				"ADR-%s: status is Superseded but %s carry no retirement from an Implemented ADR",
-				a.Number, strings.Join(labels, ", ")))
+				"ADR-%s: status is Superseded but %s %s no retirement from a shipped ADR",
+				a.Number, strings.Join(labels, ", "), carry))
 		}
 	}
 

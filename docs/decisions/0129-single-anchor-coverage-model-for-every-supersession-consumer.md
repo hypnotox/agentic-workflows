@@ -159,10 +159,17 @@ deleted on purpose.
   claim carries its relation, the claiming ADR, and the claiming ADR's Decision item number.
 - `invariant: supersession-model-derives-state` - the three states are exhaustive and disjoint
   over every ADR: `Covered` exactly when the ADR has at least one anchor and every one of its
-  Decision items and declared invariant slugs is claimed by a retirement token on an
-  `Implemented` carrier; `Live` when no anchor carries any claim; `Partial` otherwise, which
-  includes an ADR every anchor of which is claimed only by refinements or only by retirements
-  on non-`Implemented` carriers.
+  Decision items and declared invariant slugs carries a counting retirement; `Live` when no
+  anchor carries a counting retirement; `Partial` otherwise. A counting retirement is a
+  `supersedes:`/`supersedes-invariant:` token on a carrier that has shipped, per ADR-0128's
+  `supersession-coverage-implemented-only`.
+
+  **Corrected during implementation (2026-07-18).** As first written this clause defined `Live`
+  as "no anchor carries any claim" and put refinement-only ADRs in `Partial`. That names the
+  states wrongly: `Partial` is short for partially *superseded*, and an ADR whose items have
+  only been refined has had nothing superseded - it is current guidance, and reporting it as
+  partially superseded would mislead every consumer that renders the state. Refinements are
+  still surfaced, as annotations on the ADR rather than as a change of its state.
 - `invariant: domain-index-surfaces-partial` - a per-domain ADR index entry for an ADR with
   claimed anchors names the claiming ADR numbers, and names no individual anchor.
 - `invariant: active-md-chains-one-to-many` - ACTIVE.md renders a `Covered` ADR against every

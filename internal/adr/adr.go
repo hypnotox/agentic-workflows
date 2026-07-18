@@ -277,7 +277,7 @@ func RenderActiveMD(corpus Corpus) string {
 					targets = append(targets, num)
 				}
 				byTarget[num] = append(byTarget[num],
-					claim.Anchor.Label()+" "+claim.Verb()+" ADR-"+claim.Carrier)
+					claim.Anchor.Describe()+" "+claim.Verb()+" ADR-"+claim.Carrier)
 			}
 			sort.Strings(targets)
 			for _, num := range targets {

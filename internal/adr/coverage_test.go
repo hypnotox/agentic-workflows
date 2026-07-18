@@ -14,11 +14,11 @@ import (
 func TestAnchorRendering(t *testing.T) {
 	item := adr.Anchor{ADR: "0120", Item: 3}
 	slug := adr.Anchor{ADR: "0120", Slug: "some-slug"}
-	if got, want := item.Label(), "item 3"; got != want {
-		t.Errorf("item Label = %q, want %q", got, want)
+	if got, want := item.Describe(), "item 3"; got != want {
+		t.Errorf("item Describe = %q, want %q", got, want)
 	}
-	if got, want := slug.Label(), "slug `some-slug`"; got != want {
-		t.Errorf("slug Label = %q, want %q", got, want)
+	if got, want := slug.Describe(), "slug `some-slug`"; got != want {
+		t.Errorf("slug Describe = %q, want %q", got, want)
 	}
 	if got, want := item.String(), "ADR-0120#3"; got != want {
 		t.Errorf("item String = %q, want %q", got, want)
@@ -107,5 +107,43 @@ func TestClaimOrderingTiebreaks(t *testing.T) {
 	}
 	if self[0].ADR != "0002" || self[1].ADR != "0003" {
 		t.Errorf("self-claims must sort by ADR number, got %s then %s", self[0].ADR, self[1].ADR)
+	}
+}
+
+// TestMultiGenerationChain pins the property that a two-generation-only model
+// cannot express: A retires B, B retires C, and B is itself Superseded. B's
+// retirement of C stays in force, so C remains Covered and its `Superseded`
+// status stays consistent. Under the original Implemented-only rule C revived
+// the moment B was flipped, and no edit to C could have made it consistent
+// again - the drift was unfixable at its own file.
+// invariant: supersession-model-derives-state
+func TestMultiGenerationChain(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0003-c.md"),
+		testsupport.ADR("Superseded", testsupport.WithTitle("0003: C"),
+			testsupport.WithRelated(2), testsupport.WithBody("## Decision\n\n1. c.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-b.md"),
+		testsupport.ADR("Superseded", testsupport.WithTitle("0002: B"),
+			testsupport.WithRelated(1),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0003#1`.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-a.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0002#1`.\n")))
+	c := mustCorpus(t, dir)
+
+	for _, tc := range []struct {
+		num   string
+		state adr.State
+	}{
+		{"0001", adr.StateLive},    // nothing claims A
+		{"0002", adr.StateCovered}, // retired by A
+		{"0003", adr.StateCovered}, // retired by B, which is itself Superseded
+	} {
+		if got := c.State(tc.num); got != tc.state {
+			t.Errorf("ADR-%s state = %q, want %q", tc.num, got, tc.state)
+		}
+	}
+	if got := c.Retirers("0003"); len(got) != 1 || got[0] != "0002" {
+		t.Errorf("ADR-0003 retirers = %v, want [0002] - a Superseded carrier still retires", got)
 	}
 }

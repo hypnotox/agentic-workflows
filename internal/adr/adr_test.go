@@ -473,10 +473,26 @@ func TestSupersessionStates(t *testing.T) {
 			want:    adr.StateLive,
 		},
 		{
-			// Residual two: a Proposed successor must not kill its predecessor.
-			name:    "retirements from a non-Implemented carrier do not count",
+			// Residual two: a successor that has not shipped must not kill its
+			// predecessor.
+			name:    "retirements from a Proposed carrier do not count",
 			carrier: testsupport.ADR("Proposed", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n")),
 			want:    adr.StateLive,
+		},
+		{
+			// An Accepted carrier has a finalised design but has not shipped.
+			name:    "retirements from an Accepted carrier do not count",
+			carrier: testsupport.ADR("Accepted", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n")),
+			want:    adr.StateLive,
+		},
+		{
+			// A Superseded carrier DOES count: superseding an ADR does not
+			// un-supersede what that ADR superseded. Without this, no chain
+			// deeper than two generations can be represented - the predecessor
+			// revives and its status can never be made consistent.
+			name:    "retirements from a Superseded carrier still count",
+			carrier: testsupport.ADR("Superseded", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n")),
+			want:    adr.StateCovered,
 		},
 	}
 	for _, tc := range cases {

@@ -314,6 +314,25 @@ func TestSupersessionModelSingleSource(t *testing.T) {
 			len(builders), strings.Join(builders, "\n\t"))
 	}
 
+	// The retired render index is really gone: ADR-0129 requires the
+	// identifiers SupersessionIndex, Override, and Label to appear nowhere as
+	// code. A new method reusing one of those names would defeat this grep
+	// while looking innocent, which is why Anchor.Describe is not Anchor.Label.
+	var revived []string
+	goSources(t, func(path, body string) {
+		for i, line := range codeLines(body) {
+			for _, ident := range []string{"SupersessionIndex", "Override", "Label"} {
+				if regexp.MustCompile(`\b` + ident + `\b`).MatchString(line) {
+					revived = append(revived, fromLine(path, i, line))
+				}
+			}
+		}
+	})
+	if len(revived) != 0 {
+		t.Errorf("a retired supersession-index identifier is back in the tree (ADR-0129):\n\t%s",
+			strings.Join(revived, "\n\t"))
+	}
+
 	// No package outside internal/adr reconstructs the relation. The model's
 	// derivation identifiers are greppable on purpose.
 	var outside []string

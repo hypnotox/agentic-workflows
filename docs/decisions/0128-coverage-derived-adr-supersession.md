@@ -210,8 +210,18 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
   carriers, does not have status `Superseded`, and when an ADR with status
   `Superseded` has an anchor no such token claims.
 - `invariant: supersession-coverage-implemented-only` - an anchor counts as covered exactly
-  when its claiming token's carrier is `Implemented`; carriers in any other status, including
-  `Proposed` and `Superseded`, leave the anchor uncovered.
+  when its claiming token's carrier has shipped, meaning the carrier is `Implemented` or
+  `Superseded`; a `Proposed` or `Accepted` carrier leaves the anchor uncovered.
+
+  **Corrected during implementation (2026-07-18).** As first written this clause named
+  `Superseded` alongside `Proposed` as a status that leaves an anchor uncovered. That is wrong,
+  and it makes any chain deeper than two generations unrepresentable: in A retires B retires C,
+  flipping B to `Superseded` revives C, whose status can then never be made consistent by any
+  edit to C. Superseding an ADR does not un-supersede what that ADR superseded - a `Superseded`
+  record is not void in meaning, and the retirement it asserts remains part of the corpus and
+  remains in force. The rule's actual point, which the corrected form keeps, is that a
+  successor which has not shipped must not kill its predecessor. This stays a predicate over
+  present corpus state: no carrier is asked what status it once held, only what it holds now.
 - `invariant: supersession-backpointer-any-status` - `awf check` fails when a token of either
   relation targets an ADR whose `related:` lacks the token-carrier's number, for a target of
   any status.

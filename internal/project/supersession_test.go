@@ -386,6 +386,20 @@ func TestTokenBackpointerAnyStatus(t *testing.T) {
 			}
 		})
 	}
+	t.Run("a refinement owes the back-pointer too", func(t *testing.T) {
+		// supersession-backpointer-any-status covers EITHER relation. Scoping
+		// the check to retirements would leave the retirement cases green, so
+		// the refinement case is what actually pins the clause.
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+				testsupport.WithBody(twoItems)),
+			"0002-refiner.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: Refiner"),
+				testsupport.WithBody("## Decision\n\n1. Adapts `refines: ADR-0001#1`.\n")),
+		})
+		if !hasKindDetail(drift, "adr-token-backpointer", "ADR-0001") {
+			t.Fatalf("a refinement owes the back-pointer, got %#v", drift)
+		}
+	})
 	t.Run("superseded target with back-pointer is clean", func(t *testing.T) {
 		drift, _ := runSupersession(t, map[string]string{
 			"0001-target.md": testsupport.ADR("Superseded", testsupport.WithTitle("0001: Target"),
@@ -514,21 +528,21 @@ func TestCoverageDerivesStatus(t *testing.T) {
 		{
 			name: "flipped without full coverage is drift", targetSt: "Superseded",
 			carrierSt: "Implemented", carrierAt: "## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n",
-			wantDetail: "carry no retirement from an Implemented ADR",
+			wantDetail: "no retirement from a shipped ADR",
 		},
 		{
 			// A Proposed successor must not kill its predecessor: it has not
 			// shipped, so the predecessor is still the current guidance.
 			name: "retirements from a Proposed carrier do not cover", targetSt: "Superseded",
 			carrierSt: "Proposed", carrierAt: retiresBoth,
-			wantDetail: "carry no retirement from an Implemented ADR",
+			wantDetail: "no retirement from a shipped ADR",
 		},
 		{
 			// Refinements adapt rather than replace, so an ADR whose every item
 			// is refined is still live guidance.
 			name: "refinements never cover", targetSt: "Superseded",
 			carrierSt: "Implemented", carrierAt: refinesBoth,
-			wantDetail: "carry no retirement from an Implemented ADR",
+			wantDetail: "no retirement from a shipped ADR",
 		},
 	}
 	for _, tc := range cases {
@@ -543,6 +557,31 @@ func TestCoverageDerivesStatus(t *testing.T) {
 		})
 	}
 
+	t.Run("a declared slug is part of the anchor set", func(t *testing.T) {
+		// Every fixture above uses items only, so dropping slug anchors from
+		// the model would not fail them. Coverage is items AND slugs
+		// (ADR-0128 item 2): the flip is owed only once the slug is retired too.
+		withSlug := testsupport.ADR("Superseded", testsupport.WithTitle("0001: Target"),
+			testsupport.WithRelated(2),
+			testsupport.WithBody("## Decision\n\n1. a.\n\n## Invariants\n\n- `invariant: a-slug` - x.\n"))
+		itemsOnly := "## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n"
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-target.md":  withSlug,
+			"0002-carrier.md": carrier("Implemented", itemsOnly),
+		})
+		if !hasKindDetail(drift, "adr-coverage-status", "a-slug") {
+			t.Fatalf("an unretired declared slug must leave the ADR uncovered, got %#v", drift)
+		}
+
+		bothRetired := "## Decision\n\n1. Retires `supersedes: ADR-0001#1`, `supersedes-invariant: ADR-0001#a-slug`.\n"
+		drift, _ = runSupersession(t, map[string]string{
+			"0001-target.md":  withSlug,
+			"0002-carrier.md": carrier("Implemented", bothRetired),
+		})
+		if hasKindDetail(drift, "adr-coverage-status", "") {
+			t.Fatalf("retiring the item and the slug covers the ADR, got %#v", drift)
+		}
+	})
 	t.Run("covered and flipped is clean", func(t *testing.T) {
 		drift, _ := runSupersession(t, map[string]string{
 			"0001-target.md":  target("Superseded"),
