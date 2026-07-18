@@ -74,7 +74,8 @@ deleted on purpose.
    status against.
 
 4. **Every consumer is re-pointed at the model, with one enumerated exception.** `bucketKey`
-   and `statusOrder` bucket from derived state instead of a status prefix; the domain index
+   buckets from derived state instead of testing a status prefix, and `statusOrder` orders on
+   the derived bucket; the domain index
    renders from the model; and `SupersessionIndex`, the `Override` type, and its `Label()`
    method are deleted, their uses becoming queries on the model. That includes `awf context`'s
    annotation path, which calls `SupersessionIndex` at `context.go:133` and threads `Override`
@@ -106,7 +107,13 @@ deleted on purpose.
    the full set of ADRs that retired its anchors. This is the replacement rendering ADR-0128
    item 1 deferred when it retired `active-md-supersedence-rendering`; that slug's surviving
    annotation clause, re-declared by ADR-0128 as `active-md-annotates-superseded-anchors`, is
-   unaffected and stays where it is. This `supersedes: ADR-0120#10` for its description of
+   unaffected and stays where it is.
+
+   The `### Chains` subsection is where claimants surface. ADR-0128 records that the
+   `Superseded` status bucket becomes an undifferentiated list once no scalar successor name
+   exists, and that stays true by design: the bucket is a status roster, and answering "who
+   retired this" there would duplicate the subsection that exists for the purpose. This is the
+   answer to that deferral. This `supersedes: ADR-0120#10` for its description of
    chains as predecessor-to-successor pairs; under ADR-0128 item 2 the claim classifies as a
    refinement, since item 10's annotation half and its requirement that the section exist both
    stand, and the generation-11 migration will rewrite it accordingly. That rewrite must land
@@ -125,17 +132,29 @@ deleted on purpose.
 
    The check therefore runs after state derivation rather than over the raw edge set, which
    costs a second pass. That is the price of not over-refusing a legal shape, and at corpus
-   scale it is not a cost worth trading accuracy for. This is the item ADR-0128 dropped during
+   scale it is not a cost worth trading accuracy for. The definition is not circular:
+   `Covered` is a local predicate over one ADR's own anchors and its carriers' authored
+   status, with no recursion through another ADR's coverage, so the induced subgraph is fully
+   determined before any cycle search begins.
+
+   The window this fires in is narrow, deliberately. Both members of a mutual pair must still
+   be `Implemented` for both to be `Covered`, because ADR-0128's
+   `supersession-coverage-implemented-only` makes a `Superseded` carrier cover nothing.
+   Flipping either status therefore collapses the pair to `Partial` and this check passes,
+   at which point ADR-0128 item 4's coverage-versus-status check refuses the same pathology
+   from the other side. Two checks cover the two windows; neither alone covers both.
+
+   This is the item ADR-0128 dropped during
    review, landing where its subject is defined; ADR-0120 item 3's single-claimant check
    incidentally prevented full-supersession cycles, and ADR-0128 item 1 removes it.
 
 ## Invariants
 
-- `invariant: supersession-model-single-source` - every supersession fact the tooling reports
-  (ACTIVE.md buckets, ACTIVE.md chains and annotations, `awf context`'s anchor annotations,
-  domain-index entries, and the coverage-versus-status check) is answered by the
-  anchor-coverage model. The only consumer permitted to test a status prefix for itself is
-  `awf context`'s Tier-2 exclusion, enumerated in item 4.
+- `invariant: supersession-model-single-source` - no file under `internal/` tests a status
+  value against a `Superseded` prefix except `awf context`'s Tier-2 exclusion, and the
+  identifiers `SupersessionIndex`, `Override`, and `Label` appear nowhere in the tree. Both
+  halves are greppable, which is what makes the model's sole-source role checkable rather
+  than merely asserted.
 - `invariant: supersession-model-anchor-nodes` - the model keys claims by anchor, and each
   claim carries its relation, the claiming ADR, and the claiming ADR's Decision item number.
 - `invariant: supersession-model-derives-state` - the three states are exhaustive and disjoint
@@ -145,7 +164,7 @@ deleted on purpose.
   includes an ADR every anchor of which is claimed only by refinements or only by retirements
   on non-`Implemented` carriers.
 - `invariant: domain-index-surfaces-partial` - a per-domain ADR index entry for an ADR with
-  claimed anchors names those anchors and their claimants.
+  claimed anchors names the claiming ADR numbers, and names no individual anchor.
 - `invariant: active-md-chains-one-to-many` - ACTIVE.md renders a `Covered` ADR against every
   ADR that retired one of its anchors, not a single successor.
 - `invariant: supersession-graph-acyclic` - `awf check` fails on a token whose target ADR is
