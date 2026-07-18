@@ -73,7 +73,7 @@ a bug. The exemption belongs to the citation scanner alone.
   	// for the reason itemRefRe and invRefRe are separate - the kind is named by
   	// the pattern, never inferred from the anchor (ADR-0120 item 1).
   	citesItemRe = regexp.MustCompile("`cites: ADR-([0-9]{4})#([1-9][0-9]*)`")
-  	citesInvRe  = regexp.MustCompile("`cites: ADR-([0-9]{4})#([a-z0-9-]+)`")
+  	citesInvRe  = regexp.MustCompile("`cites-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
   ```
 
   **Do not collapse these into one pattern with an alternation.** `[a-z0-9-]+` already matches
@@ -82,6 +82,16 @@ a bug. The exemption belongs to the citation scanner alone.
   text in general either: the slug grammar admits an all-digit slug, which is exactly why
   `internal/project/supersession.go:132` keys anchors by kind prefix and notes that an item ref `#2`
   and a slug ref `#2` into one target are distinct anchors.
+
+  **Amended during execution: the slug key is `cites-invariant:`, not `cites:`.** This plan's first
+  draft gave both patterns the same `cites:` key, differing only in anchor shape. That double-
+  matches: `[a-z0-9-]+` matches digits, so a real item-anchored token such as
+  `` `cites: ADR-0050#3` `` matches *both* patterns and `parseRefs` emits two refs, the second a
+  phantom slug anchor `3`. `supersession.go:168` then checks that slug against the target's declared
+  slugs, finds nothing, and raises `adr-token-ref` drift. All 21 citation tokens in the corpus are
+  item-anchored, so Phase 1 would have failed its own gate 8 times on landing and 21 times after
+  Phase 2. Two keys make the kind explicit, exactly as `supersedes:`/`supersedes-invariant:` already
+  do (ADR-0120 item 1). ADR-0131 Decision 4 was amended to match while still `Proposed`.
 
   Add a third `Relation` constant beside `Retires` and `Refines` (lines 70-75):
 
@@ -119,7 +129,7 @@ a bug. The exemption belongs to the citation scanner alone.
   `cites-token-unrendered`: rendering ACTIVE.md over a corpus containing a `cites:` token produces
   no supersedence annotation for that anchor, and `awf context` likewise.
 
-  One of the two tests must drive a **slug-anchored** token (`cites: ADR-NNNN#<slug>`) through
+  One of the two tests must drive a **slug-anchored** token (`cites-invariant: ADR-NNNN#<slug>`) through
   `citesInvRe`. No slug-anchored `cites:` exists anywhere in the corpus or in Phase 2's insertions,
   all of which are item-anchored, so without a synthetic one that pattern is executed but never
   behaviourally exercised: it would match nothing real, and a mistake in it would not fail.

@@ -234,14 +234,25 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    because it scans every tracked file, including prose awf does not own; this check reads only
    `docsDir/decisions`, whose grammar awf defines.
 
-4. **`cites: ADR-NNNN#<anchor>` declares a citation informational.** It joins the inline token
-   family as an inert relation: recognized only inside `## Decision`, counting toward nothing,
+4. **`cites: ADR-NNNN#<item>` and `cites-invariant: ADR-NNNN#<slug>` declare a citation
+   informational.** They join the inline token family as an inert relation: recognized only inside
+   `## Decision`, counting toward nothing,
    surfaced in no ACTIVE.md or `awf context` rendering. It exists because a Decision item can
    legitimately mention another ADR's anchor without claiming it. ADR-0116 Decision 3 names the
    case, an ADR that cites one Decision item informationally while amending a different one
    (`cites: ADR-0065#4`, `cites: ADR-0065#3`), and third-party narration is another: ADR-0058
    recounts a refinement one earlier ADR made to another's first Decision item without itself
    claiming that anchor (`cites: ADR-0034#1`).
+
+   **Two keys, not one, because the key names the anchor kind (ADR-0120 item 1).** A single `cites:`
+   key carrying both anchor shapes is not decidable: the slug grammar admits an all-digit slug, so
+   `#3` could be Decision item 3 or the slug `3`, and this is exactly why
+   `internal/project/supersession.go` keys anchors by kind prefix and treats an item ref and a slug
+   ref into one target as distinct anchors. Two patterns over one key do not resolve it either, they
+   double-match: every item-anchored citation would also register a phantom slug anchor and fail the
+   token-ref check against the target's declared slugs. The retirement tokens already avoid this the
+   same way, with `supersedes:` and `supersedes-invariant:` as separate keys, so the citation tokens
+   mirror that split rather than inventing a shape-inference rule the rest of the grammar rejects.
 
    A comment-shaped marker was rejected for this. ADR-0121's `<!-- awf:comment -->` is a
    whole-line directive stripped at ingestion, so it cannot mark a mid-sentence citation, and
@@ -354,12 +365,13 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
   and offers no ordinal form.
 - `` `invariant: citation-check-exempts-code-spans` ``: an anchor citation or override verb inside
   an inline code span produces no finding.
-- `` `invariant: cites-token-suppresses-citation-check` ``: a `cites:` token suppresses the
-  citation check for the anchor it names, and for that anchor only.
-- `` `invariant: cites-token-uncounted` ``: a `cites:` token contributes nothing to anchor
-  coverage.
-- `` `invariant: cites-token-unrendered` ``: a `cites:` token appears in no ACTIVE.md or
-  `awf context` supersedence rendering.
+- `` `invariant: cites-token-suppresses-citation-check` ``: a citation token (`cites:` or
+  `cites-invariant:`) suppresses the citation check for the anchor it names, and for that anchor
+  only.
+- `` `invariant: cites-token-uncounted` ``: a citation token of either key contributes nothing to
+  anchor coverage.
+- `` `invariant: cites-token-unrendered` ``: a citation token of either key appears in no ACTIVE.md
+  or `awf context` supersedence rendering.
 - `` `invariant: residue-exemptions-pinned-three` ``: the identity-exemption list contains exactly
   three entries, the bootstrap template, the upgrade-script template, and the agents-doc template;
   extending the list requires a successor ADR. This redeclares ADR-0082's
