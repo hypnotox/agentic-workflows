@@ -230,6 +230,19 @@ func TestTokenRefValidity(t *testing.T) {
 			wantDetail: "token cites ADR-0001#ghost-slug, which its Invariants section does not declare",
 		},
 		{
+			// An inert citation is validated here too: `invariants.Check` filters
+			// to Retires refs, so this check is the sole validator of a
+			// `cites-invariant:` slug.
+			name: "unknown slug cited",
+			files: map[string]string{
+				"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+					testsupport.WithRelated(2), testsupport.WithBody(decision+"## Invariants\n- `invariant: real-slug` - x.\n")),
+				"0002-carrier.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+					testsupport.WithBody("## Decision\n\n1. Mentions `cites-invariant: ADR-0001#ghost-slug`.\n")),
+			},
+			wantDetail: "token cites ADR-0001#ghost-slug, which its Invariants section does not declare",
+		},
+		{
 			name: "Proposed target",
 			files: map[string]string{
 				"0001-target.md": testsupport.ADR("Proposed", testsupport.WithTitle("0001: Target"),
