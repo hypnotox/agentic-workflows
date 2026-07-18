@@ -32,22 +32,26 @@ not: what ADR-0093 replaces is the command names, while item 1's requirement tha
 and its `skill`-to-`skills` mapping both survive the rename untouched. A surviving clause makes the
 weaker relation correct, so that token stays `refines:` despite the heading.
 
-**Fifteen supersession claims are stated in prose and never encoded**, every one of them citing a
-Decision item. They share one signature: the carrier ADR states the override in its Decision
+**Sixteen supersession claims are stated in prose and never encoded**, fifteen citing a Decision
+item and one an invariant slug. They share one signature: the carrier ADR states the override in its Decision
 section, often naming the exact item number, and writes no token. A first pass put this figure near
 forty; re-enumerating against the corpus found the surplus was informational citations, which item
 4 addresses with `cites:` rather than a relation token, plus sites whose claim the carrier had
 already tokenized elsewhere in the same Decision section.
 
-No untokenized slug citation survives into that count, which is a consequence of item 1 rather
-than an absence in the corpus. The prose citations of `parts-convention` in ADR-0015 and of
-`config-root` in ADR-0016 are exactly the sites item 1 tokenizes, and the third,
-`residue-exemptions-pinned` in ADR-0085, is the site it retires and redeclares. Backfilling any of
-them a second time would put two live claims on one anchor and trip the contested-anchor advisory.
+Exactly one untokenized slug citation joins them, and its shape explains why the count is otherwise
+all item anchors. Item 1 tokenizes the `parts-convention` citation in ADR-0015 Decision item 6, the
+`config-root` citation in ADR-0016, and retires and redeclares `residue-exemptions-pinned` in
+ADR-0085. But ADR-0015 Decision item **4** cites `parts-convention` again, with its own override
+verb, and item 2 scopes this check per Decision item because ADR-0129 Decision 2 requires each claim
+to sit at its own rationale site. A token in item 6 therefore does not satisfy item 4, which owes
+one of its own. The same reasoning gives item 4 duplicate item-anchor tokens for `ADR-0001#2` and
+`ADR-0009#4`, both already counted above.
+
 One further slug citation was examined and rejected: ADR-0016 states that it narrows ADR-0015's
 `provenance-banner`, but that slug declares only that "every rendered file carries the awf
 generated-by banner as its first line" and names no path, so relocating the config root leaves it
-true and owing nothing. ADR-0047 Decision 1 records a supersession of ADR-0040's first
+true and owing nothing. Its rejection is why ADR-0015 needs no `related:` edge to ADR-0016. ADR-0047 Decision 1 records a supersession of ADR-0040's first
 Decision item in prose alone. ADR-0075 Decision 4 and ADR-0087 Decision 1 each claim the override
 is "recorded via `related`" when the `related:` back-pointer is also absent. ADR-0120 Decision 11
 committed to hand-tokenizing "the freeform partial-supersession citations across the corpus (0105,
@@ -261,7 +265,7 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    the 254-line `supersession.go`.
 
 9. **This repo completes its own retrofit, this ADR included, before the check ships.** The 6
-   relation corrections, the 15 backfilled tokens, item 1's three retirements and one
+   relation corrections, the 16 backfilled tokens, item 1's three retirements and one
    redeclaration, the missing `related:` back-pointers, and this ADR's own `cites:` tokens all land
    before item 2's check is enabled, so it ships green. Including this ADR is not a formality: its
    Decision section carries 10 item citations and 3 slug citations, and a check whose own defining
@@ -274,9 +278,9 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    refinement to a retirement can complete an anchor's coverage and force a status flip, which is a
    different concern from inserting a token beside prose that already states the claim.
 
-   The audit verified the back-pointer edge for every token site and found seven missing edges
-   across six target ADRs, all on the target side: ADR-0004 lacks 28, ADR-0015 lacks 16, ADR-0022
-   lacks 43, ADR-0024 lacks 26, ADR-0045 lacks 87, ADR-0069 lacks 75, and ADR-0082 lacks 85. This
+   The audit verified the back-pointer edge for every token site and found six missing edges, all on
+   the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0045 lacks 87,
+   ADR-0069 lacks 75, and ADR-0082 lacks 85. This
    matters because ADR-0128 Decision 5 requires a back-pointer on a target of any status
    (`cites: ADR-0128#5`), so a missed edge fails the retrofit commit. The edges this ADR's own
    tokens require are already in place, added in the commit that amended it.
