@@ -8,10 +8,11 @@
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#)
 
 `awf` renders an opinionated agentic-development workflow into your repo: a chain of
-[Claude Code](https://www.anthropic.com/claude-code) skills that walk an agent from
-brainstorm through ADR, plan, implementation, review, and retrospective; independent
-review agents that read each artifact with fresh context; and the project docs both rely
-on. All of it is generated from a small `.awf/` config tree you commit, and `awf check`
+skills that walk an agent from brainstorm through ADR, plan, implementation, review, and
+retrospective; independent review agents that read each artifact with fresh context; and
+the project docs both rely on. It renders for six coding-agent runtimes
+([Claude Code](https://www.anthropic.com/claude-code), Codex, Copilot, Cursor, Gemini,
+and Pi), each into its own native layout, from one config tree. All of it is generated from a small `.awf/` config tree you commit, and `awf check`
 fails the moment a rendered file drifts from the config that produced it.
 
 The tool is a single Go binary. The standard it renders is language-agnostic. Both are
@@ -34,15 +35,16 @@ instead of rotting.
 
 ## What gets rendered
 
-- **Workflow skills** (`.claude/skills/<prefix>-*/`). The core chain: brainstorming,
+- **Workflow skills** (per target, e.g. `.claude/skills/<prefix>-*/`). The core chain: brainstorming,
   ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
   styles (inline or subagent-per-task), implementation review, and a closing
   retrospective that promotes recurring findings toward deterministic checks. Task
   skills (TDD, bugfix, debugging, a refactor coupling audit, a roadmap-graduation
   pass) are opt-in.
-- **Review agents** (`.claude/agents/`): `adr-reviewer`, `plan-reviewer`,
+- **Review agents** (per target, e.g. `.claude/agents/`): `adr-reviewer`, `plan-reviewer`,
   `code-reviewer`. Each is dispatched with fresh context, so the author never grades
-  its own work.
+  its own work. Agents are format-neutral: each target gets them in its own dialect
+  (frontmatter Markdown for most, a TOML profile for Codex).
 - **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge), workflow and
   documentation standards, plus opt-in project docs: architecture, testing,
   development, debugging, glossary, pitfalls, roadmap.
@@ -74,8 +76,8 @@ progress while intermediate activity stays outside parent model content.
 .awf/  (you commit this)            rendered output (awf writes & tracks this)
 ├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
 │                 + vars            ├── CLAUDE.md            imports AGENTS.md
-├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
-├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
+├── <kind>/<name>.yaml  sidecars    ├── <target>/skills/...  workflow skills
+├── <kind>/parts/.../...  overrides ├── <target>/agents/...  review agents
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
