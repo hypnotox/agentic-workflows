@@ -339,9 +339,16 @@ func TestTokenRefValidity(t *testing.T) {
 }
 
 // TestTokenBackpointer covers the adr-token-backpointer check: a token into a
-// live target without the related: back-pointer fails; with it, the corpus is
-// clean.
+// target without the related: back-pointer fails; with it, the corpus is clean.
+// Since ADR-0128 item 5 the target's status is irrelevant - see the superseded
+// subtest, which is the case the live-only guard used to let through.
+//
+// supersession-backpointer's marker stays until ADR-0128 reaches Implemented:
+// a retirement takes effect only from an Implemented carrier
+// (internal/invariants/invariants.go:174-176), so removing it now would leave
+// the slug owed by the still-Implemented ADR-0120 and report it Unbacked.
 // invariant: supersession-backpointer
+// invariant: supersession-backpointer-any-status
 func TestTokenBackpointer(t *testing.T) {
 	carrier := testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
 		testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"))
@@ -390,8 +397,11 @@ func TestTokenFlavourExclusive(t *testing.T) {
 func TestSupersessionAdvisories(t *testing.T) {
 	t.Run("token into a superseded target is a note, not drift", func(t *testing.T) {
 		drift, notes := runSupersession(t, map[string]string{
+			// 0001 back-points at its claimant: since ADR-0128 item 5 a token
+			// into a target of ANY status owes the back-pointer, superseded
+			// targets included.
 			"0001-old.md": testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: Old"),
-				testsupport.WithSupersededBy("0002"), testsupport.WithBody(decision)),
+				testsupport.WithSupersededBy("0002"), testsupport.WithRelated(3), testsupport.WithBody(decision)),
 			"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
 				testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
 			"0003-citer.md": testsupport.ADR("Implemented", testsupport.WithTitle("0003: Citer"),
@@ -444,6 +454,42 @@ func TestSupersessionAdvisories(t *testing.T) {
 		})
 		if len(notes) != 0 {
 			t.Fatalf("want no conflict note with a Proposed claimant, got %#v", notes)
+		}
+	})
+}
+
+// TestTokenBackpointerAnyStatus pins ADR-0128 item 5 directly: a token into a
+// Superseded target owes the back-pointer just as a live one does. Without
+// this, a claimant landing after the target's flip owed nothing and became
+// invisible - and bare `Superseded` names no successor, so the back-pointer is
+// the only thing left that can recover the claimant.
+// invariant: supersession-backpointer-any-status
+func TestTokenBackpointerAnyStatus(t *testing.T) {
+	carrier := testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+		testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"))
+	// Proposed is deliberately absent: a token into a Proposed target is
+	// refused earlier as adr-token-ref (its body is still mutable) and never
+	// reaches the back-pointer check.
+	for _, status := range []string{"Superseded", "Superseded by ADR-0009"} {
+		t.Run("target "+status+" without back-pointer fails", func(t *testing.T) {
+			drift, _ := runSupersession(t, map[string]string{
+				"0001-target.md": testsupport.ADR(status, testsupport.WithTitle("0001: Target"),
+					testsupport.WithBody(decision)),
+				"0002-carrier.md": carrier,
+			})
+			if !hasKindDetail(drift, "adr-token-backpointer", "ADR-0001") {
+				t.Fatalf("want a back-pointer drift for a %s target, got %#v", status, drift)
+			}
+		})
+	}
+	t.Run("superseded target with back-pointer is clean", func(t *testing.T) {
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-target.md": testsupport.ADR("Superseded", testsupport.WithTitle("0001: Target"),
+				testsupport.WithRelated(2), testsupport.WithBody(decision)),
+			"0002-carrier.md": carrier,
+		})
+		if hasKindDetail(drift, "adr-token-backpointer", "ADR-0001") {
+			t.Fatalf("want no back-pointer drift, got %#v", drift)
 		}
 	})
 }

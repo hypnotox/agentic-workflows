@@ -138,6 +138,7 @@ func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 // full chain, an item annotation, and a slug annotation each render under
 // ## Supersedence, and a supersession-free corpus renders neither subsection.
 // invariant: active-md-supersedence-rendering
+// invariant: active-md-annotates-superseded-anchors
 func TestRenderActiveMDSupersedence(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -145,11 +146,13 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 			testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0001: Old")),
 		"0002-new.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1),
 			testsupport.WithTitle("0002: New")),
-		"0003-target.md": testsupport.ADR("Accepted", testsupport.WithRelated(4),
+		"0003-target.md": testsupport.ADR("Accepted", testsupport.WithRelated(4, 5),
 			testsupport.WithTitle("0003: Target"),
 			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: some-slug` - x.\n")),
 		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithTitle("0004: Citer"),
 			testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0003#2` and `supersedes-invariant: ADR-0003#some-slug`.\n")),
+		"0005-refiner.md": testsupport.ADR("Implemented", testsupport.WithTitle("0005: Refiner"),
+			testsupport.WithBody("## Decision\n\n1. Adapts `refines: ADR-0003#1`.\n")),
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -160,7 +163,10 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 	for _, want := range []string{
 		"## Supersedence",
 		"### Chains\n\n- ADR-0001 superseded by ADR-0002\n",
-		"### Superseded anchors on live ADRs\n\n- ADR-0003: item 2 superseded by ADR-0004; slug `some-slug` superseded by ADR-0004\n",
+		// A refinement reads "refined by" and a retirement "superseded by": the
+		// reader must be able to tell an adapted decision from a replaced one
+		// (ADR-0128 item 2).
+		"### Superseded anchors on live ADRs\n\n- ADR-0003: item 1 refined by ADR-0005; item 2 superseded by ADR-0004; slug `some-slug` superseded by ADR-0004\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
@@ -272,7 +278,7 @@ func TestSupersessionRefExtraction(t *testing.T) {
 		{
 			name: "both kinds extracted",
 			body: "## Decision\n\n1. Overrides `supersedes: ADR-0116#2`.\n2. Retires `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
 		},
 		{
 			name: "token outside the Decision section is inert",
@@ -287,12 +293,12 @@ func TestSupersessionRefExtraction(t *testing.T) {
 		{
 			name: "fenced tokens are inert while real tokens remain visible",
 			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n## Fake\n1. Fake.\n```\n\n~~~\n`supersedes-invariant: ADR-0998#fake`\n~~~\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
 		},
 		{
 			name: "faux fence closer leaves fenced ADR syntax inert",
 			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n``` not-a-closer\n## Fake\n`supersedes-invariant: ADR-0998#fake`\n```\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2}, {Target: "0031", Slug: "retired-slug"}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
 		},
 	}
 	for _, tc := range cases {
@@ -357,8 +363,11 @@ func TestSupersessionIndex(t *testing.T) {
 				"`supersedes-invariant: ADR-0002#s-two`, `supersedes-invariant: ADR-0002#s-one`, "+
 				"`supersedes: ADR-0003#1`, `supersedes: ADR-0042#1`.\n")),
 		// 0005 claims chain 0003 and re-claims 0002 item 1 (successor tiebreak).
+		// It also both retires and refines 0002 item 2 - a self-contradictory
+		// pair, but one the grammar admits, so the ordering must stay
+		// deterministic rather than depend on sort.Slice's instability.
 		"0005-later.md": testsupport.ADR("Accepted", testsupport.WithSupersedes(3), testsupport.WithTitle("0005: Later"),
-			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`.\n")),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`, `supersedes: ADR-0002#2`, `refines: ADR-0002#2`.\n")),
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -374,11 +383,13 @@ func TestSupersessionIndex(t *testing.T) {
 		t.Errorf("chains: got %#v", chains)
 	}
 	want := map[string][]adr.Override{"0002": {
-		{Item: 1, Successor: "0004"},
-		{Item: 1, Successor: "0005"},
-		{Item: 2, Successor: "0004"},
-		{Slug: "s-one", Successor: "0004"},
-		{Slug: "s-two", Successor: "0004"},
+		{Item: 1, Successor: "0004", Relation: adr.Retires},
+		{Item: 1, Successor: "0005", Relation: adr.Retires},
+		{Item: 2, Successor: "0004", Relation: adr.Retires},
+		{Item: 2, Successor: "0005", Relation: adr.Refines},
+		{Item: 2, Successor: "0005", Relation: adr.Retires},
+		{Slug: "s-one", Successor: "0004", Relation: adr.Retires},
+		{Slug: "s-two", Successor: "0004", Relation: adr.Retires},
 	}}
 	if !reflect.DeepEqual(overrides, want) {
 		t.Errorf("overrides:\ngot  %#v\nwant %#v", overrides, want)

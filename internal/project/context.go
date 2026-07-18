@@ -273,25 +273,33 @@ func adrRefOf(a adr.ADR, lay Layout, overrides map[string][]adr.Override) ADRRef
 	}
 }
 
-// overrideAnnotation renders a live ADR's superseded anchors as a bracketed
-// suffix - items then slugs, each anchor qualified by its successor once,
-// successors grouped where equal: " [item 2, item 5 superseded by ADR-0120]".
+// overrideAnnotation renders a live ADR's claimed anchors as a bracketed
+// suffix - items then slugs, each anchor qualified by its claimant once,
+// claimants grouped where both the claimant and the relation match:
+// " [item 2, item 5 superseded by ADR-0120, item 7 refined by ADR-0121]".
 // Empty overrides render nothing, so an ADR without overrides is unchanged.
 func overrideAnnotation(list []adr.Override) string {
 	if len(list) == 0 {
 		return ""
 	}
-	var order []string
-	grouped := map[string][]string{}
+	// Grouped by claimant AND relation: an ADR that both retires one anchor and
+	// refines another of the same target must not have the two folded together.
+	type key struct {
+		successor string
+		verb      string
+	}
+	var order []key
+	grouped := map[key][]string{}
 	for _, o := range list {
-		if _, ok := grouped[o.Successor]; !ok {
-			order = append(order, o.Successor)
+		k := key{successor: o.Successor, verb: o.Verb()}
+		if _, ok := grouped[k]; !ok {
+			order = append(order, k)
 		}
-		grouped[o.Successor] = append(grouped[o.Successor], o.Label())
+		grouped[k] = append(grouped[k], o.Label())
 	}
 	parts := make([]string, len(order))
-	for i, s := range order {
-		parts[i] = strings.Join(grouped[s], ", ") + " superseded by ADR-" + s
+	for i, k := range order {
+		parts[i] = strings.Join(grouped[k], ", ") + " " + k.verb + " ADR-" + k.successor
 	}
 	return " [" + strings.Join(parts, ", ") + "]"
 }

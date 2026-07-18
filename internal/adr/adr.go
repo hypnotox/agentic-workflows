@@ -45,10 +45,30 @@ type ADR struct {
 // as an inline code token inside a Decision section. Exactly one of
 // Item/Slug is set; the key names the kind, never the anchor's shape.
 type SupersessionRef struct {
-	Target string // 4-digit target ADR number, e.g. "0116"
-	Item   int    // Decision item number; 0 for an invariant ref
-	Slug   string // invariant slug; "" for an item ref
+	Target   string   // 4-digit target ADR number, e.g. "0116"
+	Item     int      // Decision item number; 0 for an invariant ref
+	Slug     string   // invariant slug; "" for an item ref
+	Relation Relation // whether the claim retires the anchor or adapts it
 }
+
+// Relation distinguishes ADR-0128 item 2's two claims on an anchor. A
+// retirement replaces the anchor and counts toward the target's coverage; a
+// refinement adapts it and counts toward nothing, so an ADR whose items have
+// only ever been refined is still live.
+//
+// The split is corpus-driven: of the 37 pre-existing item tokens, 22 were
+// refinements and only 13 genuine retirements. ADR-0034 item 1 is the live
+// precedent - refined by ADR-0057, and only actually retired by ADR-0121 years
+// later. Slug anchors have no refinement form: a slug is atomic, so
+// `supersedes-invariant:` is always a retirement.
+type Relation string
+
+const (
+	// Retires is `supersedes:` (items) and `supersedes-invariant:` (slugs).
+	Retires Relation = "retires"
+	// Refines is `refines:`, items only.
+	Refines Relation = "refines"
+)
 
 var (
 	// itemRefRe / invRefRe match the two token keys inside inline code. The
@@ -56,6 +76,9 @@ var (
 	// (ADR-0120 item 1): items are [1-9][0-9]*, slugs the declRe grammar.
 	itemRefRe = regexp.MustCompile("`supersedes: ADR-([0-9]{4})#([1-9][0-9]*)`")
 	invRefRe  = regexp.MustCompile("`supersedes-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
+	// refinesItemRe mirrors itemRefRe for the refinement relation (ADR-0128
+	// item 2). Items only: a slug anchor is atomic and cannot be adapted.
+	refinesItemRe = regexp.MustCompile("`refines: ADR-([0-9]{4})#([1-9][0-9]*)`")
 	// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
 	// anchoring is load-bearing: 0067 and 0115 carry indented numbered
 	// sub-lists that must not enumerate (ADR-0120 item 2).
@@ -69,10 +92,14 @@ func parseRefs(decision string) []SupersessionRef {
 	var refs []SupersessionRef
 	for _, m := range itemRefRe.FindAllStringSubmatch(decision, -1) {
 		n, _ := strconv.Atoi(m[2]) // the regex admits only digits
-		refs = append(refs, SupersessionRef{Target: m[1], Item: n})
+		refs = append(refs, SupersessionRef{Target: m[1], Item: n, Relation: Retires})
+	}
+	for _, m := range refinesItemRe.FindAllStringSubmatch(decision, -1) {
+		n, _ := strconv.Atoi(m[2]) // the regex admits only digits
+		refs = append(refs, SupersessionRef{Target: m[1], Item: n, Relation: Refines})
 	}
 	for _, m := range invRefRe.FindAllStringSubmatch(decision, -1) {
-		refs = append(refs, SupersessionRef{Target: m[1], Slug: m[2]})
+		refs = append(refs, SupersessionRef{Target: m[1], Slug: m[2], Relation: Retires})
 	}
 	return refs
 }
@@ -91,9 +118,21 @@ func (a ADR) DecisionItems() []int {
 // Override is one superseded anchor on a live ADR: the anchor (item number or
 // slug) and the successor that superseded it (ADR-0120 item 10).
 type Override struct {
-	Item      int    // 0 for a slug override
-	Slug      string // "" for an item override
-	Successor string // 4-digit successor number
+	Item      int      // 0 for a slug override
+	Slug      string   // "" for an item override
+	Successor string   // 4-digit successor number
+	Relation  Relation // whether the successor retired the anchor or refined it
+}
+
+// Verb renders the override's relation for a human line: an anchor that was
+// retired reads "superseded by", one that was adapted reads "refined by". The
+// distinction is the whole point of ADR-0128 item 2 - a reader must be able to
+// tell a replaced decision from an adapted one at a glance.
+func (o Override) Verb() string {
+	if o.Relation == Refines {
+		return "refined by"
+	}
+	return "superseded by"
 }
 
 // SupersessionIndex derives the render view: full chains (predecessor,
@@ -124,7 +163,7 @@ func SupersessionIndex(adrs []ADR) ([][2]string, map[string][]Override) {
 			if !ok || !t.IsLive() {
 				continue
 			}
-			overrides[r.Target] = append(overrides[r.Target], Override{Item: r.Item, Slug: r.Slug, Successor: a.Number})
+			overrides[r.Target] = append(overrides[r.Target], Override{Item: r.Item, Slug: r.Slug, Successor: a.Number, Relation: r.Relation})
 		}
 	}
 	sort.Slice(chains, func(i, j int) bool { return chains[i][0] < chains[j][0] })
@@ -140,7 +179,10 @@ func SupersessionIndex(adrs []ADR) ([][2]string, map[string][]Override) {
 			if a.Slug != b.Slug {
 				return a.Slug < b.Slug
 			}
-			return a.Successor < b.Successor
+			if a.Successor != b.Successor {
+				return a.Successor < b.Successor
+			}
+			return a.Relation < b.Relation
 		})
 	}
 	return chains, overrides
@@ -279,7 +321,7 @@ func RenderActiveMD(corpus Corpus) string {
 			for _, num := range targets {
 				parts := make([]string, len(overrides[num]))
 				for i, o := range overrides[num] {
-					parts[i] = o.Label() + " superseded by ADR-" + o.Successor
+					parts[i] = o.Label() + " " + o.Verb() + " ADR-" + o.Successor
 				}
 				fmt.Fprintf(&sb, "- ADR-%s: %s\n", num, strings.Join(parts, "; "))
 			}

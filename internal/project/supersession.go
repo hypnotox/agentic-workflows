@@ -203,9 +203,13 @@ func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []str
 			} else if !slices.Contains(corpus.DeclaredSlugs(target.Number), r.Slug) {
 				add(a, "adr-token-ref", fmt.Sprintf("ADR-%s: token cites ADR-%s#%s, which its Invariants section does not declare", a.Number, r.Target, r.Slug))
 			}
-			// Back-pointer: a token into a live target requires the predecessor's
-			// related: to name the carrier.
-			if target.IsLive() && !slices.Contains(target.Related, num) {
+			// Back-pointer: a token into a target of ANY status requires the
+			// target's related: to name the carrier (ADR-0128 item 5). The live-
+			// only guard this replaces would have lost the successor entirely
+			// once the status flip stopped naming one: a claimant landing after
+			// the flip owed no back-pointer and so became invisible, and bare
+			// `Superseded` has nothing else to recover it from.
+			if !slices.Contains(target.Related, num) {
 				add(a, "adr-token-backpointer", fmt.Sprintf("ADR-%s: token into ADR-%s lacks the related: back-pointer on the target", a.Number, r.Target))
 			}
 			// Advisory, not drift: a token whose target was later fully superseded
