@@ -334,7 +334,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3f01d9c03c0ece19f4e31753153f1f7dd0edf32dc4f7845495fd79615db6d507",
+      "outputHash": "sha256:ec3187435b316efe24f34277947080377dd058699dbc2a7f767314b8debaeffe",
       "regenChecked": true
     },
     "docs/domains/rendering.md": {
