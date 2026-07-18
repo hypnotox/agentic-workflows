@@ -152,11 +152,11 @@ deleted on purpose.
 
 ## Invariants
 
-- `invariant: supersession-model-single-source` - no file under `internal/` tests a status
-  value against a `Superseded` prefix except `awf context`'s Tier-2 exclusion, and the
-  identifiers `SupersessionIndex`, `Override`, and `Label` appear nowhere in the tree. Both
-  halves are greppable, which is what makes the model's sole-source role checkable rather
-  than merely asserted.
+- `invariant: supersession-model-single-source` - the identifiers `SupersessionIndex`,
+  `Override`, and `Label` appear nowhere in the tree. The companion half, that no consumer
+  tests a status prefix for itself, is ADR-0130's `corpus-owns-status-literals`, which scopes
+  it correctly: `internal/adr` must compare literals to implement the predicates at all, so a
+  rule spanning every file under `internal/` would forbid its own implementation.
 - `invariant: supersession-model-anchor-nodes` - the model keys claims by anchor, and each
   claim carries its relation, the claiming ADR, and the claiming ADR's Decision item number.
 - `invariant: supersession-model-derives-state` - the three states are exhaustive and disjoint
