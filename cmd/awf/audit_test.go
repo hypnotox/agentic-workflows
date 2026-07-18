@@ -168,7 +168,10 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	if err := runAudit(root, base.String(), &warnBuf); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	if !strings.Contains(warnBuf.String(), scope) {
+	// Match the full verdict, not the bare scope: the scope substring alone also
+	// appears in the clean line, so a mutation routing a findings-bearing run
+	// through the clean branch would keep a looser assertion green.
+	if !strings.Contains(warnBuf.String(), "1 warning(s), 0 errors "+scope) {
 		t.Errorf("the warning verdict must name its scope, got: %q", warnBuf.String())
 	}
 	// Error path: a malformed subject is an Error finding, so runAudit returns
