@@ -16,7 +16,8 @@ sites call it independently. A single `awf check` run parses the whole decisions
 least eight times: five in `internal/project/check.go` (`:81`, `:615`, `:702`, `:754`, `:799`),
 twice in `internal/project/supersession.go` (`:23`, `:69`, whose own comment acknowledges the
 double parse), and once more per configured domain through `internal/project/render.go:764`.
-Four of those parses exist only to rebuild the same `known[a.Number]` existence set.
+Three of those parses rebuild the same `known[a.Number]` existence set, two of them
+(`check.go:615`, `:702`) for no other purpose.
 
 Repetition is the cheap half of the problem. The expensive half is that the repeated
 computations have drifted apart.
@@ -26,18 +27,19 @@ computations have drifted apart.
   `supersession.go:207` inlines the disjunction a second time.
 - **"Is it superseded?" is a `HasPrefix` test at five sites** (`adr.go:28`, `adr.go:128`,
   `context.go:189`, `supersession.go:155`, `supersession.go:212`), and the exact status string
-  `"Superseded by ADR-" + N` is reconstructed from parts three separate times
-  (`supersession.go:146`, `:156`, and the render path).
+  `"Superseded by ADR-" + N` is reconstructed from parts twice (`supersession.go:146`,
+  `:156`).
 - **The supersession relation is derived twice, differently.** `SupersessionIndex`
   (`adr.go:117-156`) builds chains and overrides one way; `computeSupersession`
   (`supersession.go:110-228`) rebuilds its own `byNum` map and a `claimants` inverse
   independently; and `domain.go:38` ignores both, rendering from the raw `SupersededBy` scalar.
   That third path is why the domain indexes are blind to partial supersession, the defect
   ADR-0129 exists to close.
-- **`internal/audit` does not use `internal/adr` at all.** It re-declares anonymous
-  frontmatter structs to pull status and domains out of git blob text (`audit.go:399`,
-  `audit.go:487`), duplicating `adrFrontmatter` (`adr.go:198-205`) and the `"Implemented"`
-  literal that `invariants.go:135` also carries.
+- **`internal/audit` uses `internal/adr` only for `FilenameRe`** (`audit.go:18`, `:482`). It
+  never calls its parser, re-declaring anonymous frontmatter structs to pull status and
+  domains out of git blob text (`audit.go:399`, `audit.go:487`) and duplicating
+  `adrFrontmatter` (`adr.go:198-205`) along with the `"Implemented"` literal that
+  `invariants.go:135` also carries.
 - **Consumers disagree on ADR identity.** `invariants.DeclaringADRs` keys by filename
   (`invariants.go:159`) while every other consumer keys by number, so `context.go:145-148`
   maintains a translation map for no reason but that mismatch.
@@ -61,11 +63,19 @@ and expensive apart.
    declared invariant slugs, metadata lookups, and existence tests. A consumer asks the view a
    question; it does not read fields and reimplement the question.
 
-3. **Shared predicates are defined once.** Liveness, superseded-ness, and bucket membership
-   each exist as one named predicate on the view. No consumer compares a status against a
-   string literal; the literals live in `internal/adr` and nowhere else. This is what makes
-   the three-way `live` divergence and the five-way `HasPrefix` divergence unrepeatable rather
-   than merely repaired.
+3. **Status predicates are defined once, on the parsed ADR rather than on the view.** The
+   whole status vocabulary gets a named predicate: live, superseded, implemented, proposed,
+   plus bucket membership. They hang off the ADR value, not the `Corpus`, which is what lets a
+   consumer holding a single parsed record use them without a corpus in hand. No consumer
+   compares a status against a string literal; the literals live in `internal/adr` and nowhere
+   else.
+
+   Covering the full vocabulary rather than just liveness is deliberate. Beyond the three-way
+   `live` divergence and the five-way `HasPrefix` divergence, `invariants.go:135` and `:175`
+   test `"Implemented"` and `supersession.go:194` tests `"Proposed"`, so a rule scoped to
+   supersession alone would leave the same drift possible for the rest. Putting the predicates
+   on the value also means `internal/audit` needs no exemption: it gets them on records from
+   the item 5 seam despite reading git blobs rather than the working tree.
 
 4. **The ADR number is the single identity key.** `internal/invariants` stops returning
    filenames to identify declaring ADRs, and `context.go`'s filename-to-number translation map
@@ -88,16 +98,17 @@ and expensive apart.
 
 ## Invariants
 
-- `invariant: corpus-parsed-once` - a single `awf check`, `awf sync`, or `awf context`
-  invocation parses the decisions directory exactly once.
-- `invariant: corpus-answers-every-category` - the corpus view exposes state, decision-item,
-  supersession, declared-invariant, metadata, and existence queries, and ADR-0129's
-  anchor-coverage model is reachable through it rather than constructed independently.
-- `invariant: corpus-owns-status-literals` - no file outside `internal/adr` compares an ADR
-  status against a string literal or tests it with a status prefix, save `awf context`'s
-  Tier-2 exclusion as ADR-0129 item 4 enumerates.
-- `invariant: corpus-single-identity-key` - every cross-package function that identifies an ADR
-  does so by number; no exported signature returns or accepts a filename as an ADR identity.
+- `invariant: corpus-parsed-once` - `adr.ParseDir` has exactly one production call site outside
+  `internal/adr`. The static form is what a test can inspect; the runtime property it stands
+  for is that one invocation parses the decisions directory once.
+- `invariant: corpus-model-not-rebuilt` - ADR-0129's anchor-coverage model is constructed in
+  exactly one place, inside `internal/adr`; no other package builds it or reimplements its
+  derivation.
+- `invariant: corpus-owns-status-literals` - no non-test production file outside `internal/adr`
+  compares an ADR status against a string literal or tests it with a status prefix, save
+  `awf context`'s Tier-2 exclusion as ADR-0129 item 4 enumerates.
+- `invariant: corpus-single-identity-key` - `invariants.Decl.ADR` holds an ADR number, and no
+  exported function in `internal/invariants` returns a filename.
 - `invariant: audit-shares-adr-parser` - `internal/audit` parses ADR frontmatter through
   `internal/adr`'s exported bytes-level seam, and declares no frontmatter struct of its own.
 - `invariant: corpus-raw-access-enumerated` - raw-byte access to an ADR file happens in exactly
@@ -120,13 +131,21 @@ and expensive apart.
   `supersession.go` carries about 58 of them and is simultaneously being rewritten by ADR-0128
   and ADR-0129, so that file is the plan's coupling point and its riskiest single step.
 - Deleting `statusOf` and `domainsOf` puts `internal/audit` on the same frontmatter schema as
-  everything else, so a future frontmatter change stops needing to be made twice. It also
-  means a malformed historical ADR now fails audit through the shared parser rather than
-  audit's more forgiving ad-hoc reader; audit rules must keep tolerating a parse failure on an
-  old commit rather than aborting the run.
+  everything else, so a future frontmatter change stops needing to be made twice. The shared
+  parser fails on exactly the same condition `statusOf` does, so no historical ADR newly
+  fails; the porting obligation is subtler. `statusOf` has a tri-state contract in which empty
+  text and absent frontmatter both yield a clean empty status while present-but-unparseable
+  frontmatter is a finding, and the rule at `audit.go:192` depends on that distinction. The
+  seam must preserve it, which `adr.parse` does not today because it discards
+  `frontmatter.Parse`'s `found` bool.
 - Enumerating raw access makes the two legitimate cases visible and any third one obviously
   wrong. It does not prevent a consumer from reaching for `Path` and calling `os.ReadFile`;
   the invariant is the deterrent, and it is greppable.
+- Items 4 and 5 are separable. Neither the identity-key unification nor the audit parse seam
+  is required by ADR-0128 or ADR-0129, and both could be deferred without blocking the
+  supersession work. They are bundled because the files they touch are already being rewritten
+  here and the marginal cost is small, not because the supersession work needs them. A future
+  reader deciding what to revert should treat them as independent of items 1 to 3.
 - Nothing here changes an authored artifact. This ADR is invisible in `docs/`, which is why it
   is worth recording: an architectural commitment with no surface in the rendered output is
   exactly the kind that erodes without a decision behind it.
@@ -136,7 +155,7 @@ and expensive apart.
 | Alternative | Why not chosen |
 |---|---|
 | Leave the parsing as is and only unify supersession | ADR-0129's model would become a fifth structure over the same records, threaded by hand to ten load sites. The threading cost is paid either way; paying it once buys the rest. |
-| Fold this into ADR-0129 | ADR-0129 is review-converged and specifically about anchors and coverage. Parse-once-and-share is a separate commitment that outlives any particular supersession encoding, and stays citable when that encoding changes. |
+| Fold this into ADR-0129 | Parse-once-and-share outlives any particular supersession encoding and stays citable when that encoding changes, whereas ADR-0129 is about what an anchor is and when it is covered. The two ship together, but they are revised for different reasons, which is the boundary worth keeping. |
 | Cache `ParseDir` results behind the existing API | Invisible coupling: callers would silently share mutable slices, and a cache keyed on directory path invites staleness across a sync that rewrites ADRs. Threading a value makes the sharing explicit. |
 | Keep `internal/audit` on its own parsers | Its inputs are git blobs rather than the working tree, which is a real difference, but the duplication is in the frontmatter schema, not the source of bytes. A bytes-level seam shares exactly the part that was duplicated. |
 | Route `internal/migrate` through the view too | It performs byte-offset surgery to append Decision items; a semantic view cannot express that without exposing offsets, which would defeat the abstraction for its one consumer. |

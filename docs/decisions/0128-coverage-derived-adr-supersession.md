@@ -4,7 +4,7 @@ date: 2026-07-18
 supersedes: []
 superseded_by: ""
 tags: [adr-lifecycle, adr-parsing, frontmatter-validation, invariant-retirement, schema-migration]
-related: [8, 10, 14, 35, 42, 105, 116, 120, 129]
+related: [8, 10, 14, 35, 42, 105, 116, 120, 129, 130]
 domains: [adr-system, invariants, config]
 ---
 # ADR-0128: Coverage-Derived ADR Supersession
