@@ -134,8 +134,10 @@ parser would entrench the drift.
 
 Backed slugs carry their `// invariant: <slug>` proof markers on `*_test.go` files (this
 repo sets `invariants.testGlobs` to `**/*_test.go`) in `internal/git` (the parser slugs),
-`cmd/awf` (the CLI refusal), and `internal/config` with `internal/configspec` (the
-no-base-config assertion, which is about the absent key, struct field, and spec entry).
+`cmd/awf` (the CLI refusal, the evaluated-scope line, and the empty-range notice),
+`cmd/repoaudit` (its own refusal, Decision 11), and `internal/configspec` (the
+no-base-config assertion, which carries its single marker there while asserting across the
+config field, the spec entry, and the resolved settings).
 
 - `` `invariant: audit-requires-explicit-range` ``: `awf audit` with no positional argument
   exits non-zero without evaluating any rule, and its message names both the `<base>` and
