@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-10
 tags: [upgrade-flow, bootstrap-porcelain]
-related: [39, 40, 49, 76, 79, 82]
+related: [39, 40, 49, 76, 79, 82, 131]
 domains: [rendering, config]
 ---
 # ADR-0085: Self-contained adopter upgrade flow

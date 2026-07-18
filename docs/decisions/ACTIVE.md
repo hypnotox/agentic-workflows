@@ -174,6 +174,8 @@
 - ADR-0050: item 6 refined by ADR-0081
 - ADR-0066: item 3 refined by ADR-0071
 - ADR-0073: item 2 refined by ADR-0107; item 4 refined by ADR-0107
+- ADR-0082: slug `residue-exemptions-pinned` superseded by ADR-0131
+- ADR-0085: item 5 refined by ADR-0131
 - ADR-0097: item 1 refined by ADR-0108
 - ADR-0098: item 2 refined by ADR-0108; slug `context-surfaces-linked-plans` superseded by ADR-0104
 - ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104

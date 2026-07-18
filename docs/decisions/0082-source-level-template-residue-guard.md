@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-09
 tags: [publication-safety, template-residue]
-related: [1, 45, 80]
+related: [1, 45, 80, 131]
 domains: [rendering, tooling]
 ---
 # ADR-0082: Source-level template residue guard
