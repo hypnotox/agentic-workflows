@@ -1,7 +1,7 @@
 ---
 date: 2026-07-18
 adrs: [131]
-status: Proposed
+status: Implemented
 ---
 # Plan: Supersession Retrofit A: Relation Corrections and Slug Retirements
 
@@ -370,6 +370,13 @@ After both phases:
   `TestTemplateSourceResidue` under `template-source-residue`'s marker. File-glob backing passes
   either way. Moving it onto the assertion is a small improvement for Plan C, if it can be done
   without disturbing the sibling slug's backing.
+- **Implementation findings (recorded at freeze).** The plan executed as written in two commits
+  (`ae7736a5`, `907c7817`); every site was located by its quoted text and every line number still
+  held despite the `fecbaf01` baseline. Two things worth recording: Task 2.1's conditional branch
+  was taken, not its default, because `TestConventionPartPrecedence` is squarely about precedence,
+  so the stranded marker became `touches-invariant: no-replacewith` rather than being deleted
+  outright; and this plan carried no instruction to flip its own `status:` frontmatter, an omission
+  it shares with Plans B and C, so the freeze landed as a follow-up commit.
 - **Deferred, out of scope by decision:** `refines: ADR-0034#1` at `docs/decisions/0057-*.md:86`
   sits in a trailing paragraph after Decision item 6, so it parses with `CarrierItem: 0` and has no
   rationale site, contra ADR-0129 Decision 2. Fixing it means either moving the token (a content
