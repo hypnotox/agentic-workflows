@@ -72,20 +72,23 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    existing token conflates them. `supersedes: ADR-NNNN#<item>` means the anchor is dead and
    replaced; it counts toward coverage. A new `refines: ADR-NNNN#<item>` means the anchor is
    narrowed, widened, or otherwise adapted while still standing; it counts toward nothing.
-   Both owe the back-pointer of item 5, both render in ACTIVE.md and `awf context`, and both
-   are recognised only inside `## Decision`.
+   Both owe the back-pointer of item 5, both are surfaced by the anchor annotation of
+   `active-md-annotates-superseded-anchors` and its `awf context` counterpart (how a
+   fully-superseded ADR renders is ADR-B's), and both are recognised only inside
+   `## Decision`.
 
-   The conflation is not an edge case: of the 40 item tokens in the corpus on 2026-07-18,
-   24 are refinements and 14 are retirements (2 are genuinely ambiguous). ADR-0127 claims
+   The conflation is not an edge case: of the 37 pre-existing item tokens in the corpus on
+   2026-07-18,
+   22 are refinements and 13 are retirements (2 are genuinely ambiguous). ADR-0127 claims
    item 5 of ADR-0017 "for its baseBranch field only; ADR-0017 stays live", which is
    a refinement wearing a retirement's name. Without the distinction, coverage would count
-   those 24 toward killing ADRs that are demonstrably alive, and there is already a corpus
+   those 22 toward killing ADRs that are demonstrably alive, and there is already a corpus
    case where that misfires: ADR-0034 item 1 was refined by ADR-0057 and only genuinely
    retired by ADR-0121 years later, so a coverage rule blind to the difference would have
    pre-claimed a live anchor for that whole interval.
 
    `supersedes-invariant:` gains no sibling. A slug is atomic, so narrowing one means
-   retiring it and re-declaring a successor; all 23 slug tokens in the corpus are already
+   retiring it and re-declaring a successor; all 18 pre-existing slug tokens are already
    retirements, and item 6 below is an instance of exactly that pattern.
 
    This ADR's own item tokens are written in the single-token grammar, because that is the
@@ -147,7 +150,11 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    contested-anchor advisory is retained.** With one flavour there is nothing to be exclusive
    about, and a token targeting a `Superseded` ADR becomes the normal shape of every
    completed supersession rather than a degradation worth noting. An anchor claimed by two or
-   more live ADRs remains an `awf check` note. This `supersedes: ADR-0120#5` and
+   more live ADRs' `supersedes:` tokens remains an `awf check` note: two ADRs both declaring
+   an anchor dead is a genuine conflict. Refinements do not contest. Multiple `refines:`
+   claims on one anchor are the normal shape of an evolving decision, and a mixed pair
+   (refined by one ADR, later retired by another) is the ADR-0034 item 1 history item 2 cites
+   as healthy; neither notes. This `supersedes: ADR-0120#5` and
    `supersedes-invariant: ADR-0120#supersession-flavour-exclusive`. It also
    `supersedes-invariant: ADR-0120#supersession-conflict-advisory`, which bundles both
    advisories in one slug: slugs are atomic, so dropping one of the pair means retiring the
@@ -164,10 +171,9 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    `supersedes:` token per anchor of each named predecessor, inserting the carrier's number
    into each target's
    `related:` when absent and rewriting each predecessor's suffixed status to bare
-   `Superseded`. Appending is triggered only by a non-empty `supersedes:` key, which the same
-   migration strips, so a re-run finds no trigger and is a no-op; no separate marker is
-   needed. Anchor enumeration runs against the post-generation-10 body, so the bookkeeping
-   items ADR-0120 item 8 already appended are themselves anchors this migration must claim.
+   `Superseded`. Anchor enumeration runs against the post-generation-10 body, so the
+   bookkeeping items ADR-0120 item 8 already appended are themselves anchors this migration
+   must claim.
    The appended item is permitted by ADR-0120 item 9's carve-out shape 2, a numbered
    bookkeeping item encoding an obligation the ADR already carried: `supersedes: [3]` already
    asserted replacement of all of ADR-0003.
@@ -175,10 +181,17 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    **Every pre-existing inline item token is rewritten to `refines:`.** Classification cannot
    be mechanised, so the migration maps the ambiguous old token to the reading that asserts
    less: nothing counts toward coverage until an author deliberately writes `supersedes:`.
-   This understates the 14 genuine retirements, whose deadness their carriers' prose states
+   This understates the 13 genuine retirements, whose deadness their carriers' prose states
    regardless, and nothing but coverage depends on the distinction. Slug tokens are left
    alone, being retirements already. Correcting a downgraded retirement afterwards is an
    ordinary authoring edit, not a migration concern.
+
+   The rewrite runs against the pre-append body and the append runs after it, in that order.
+   Reversed, the migration would downgrade the `supersedes:` tokens it had just written and
+   deliver the three legacy pairs straight into an item 4 coverage failure. Idempotency rests
+   on the generation gate, not on either step being self-guarding: the rewrite has no
+   surviving trigger to consult once it has run, so a second application of the same
+   generation would downgrade hand-authored retirements.
 
 9. **The check enforces coverage and placement, never rationale quality.** `awf check` can
    prove that every anchor is claimed and that each claim sits inside a column-0 Decision
@@ -205,16 +218,17 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
   relation targets an ADR whose `related:` lacks the token-carrier's number, for a target of
   any status.
 - `invariant: supersession-contested-anchor-advisory` - an anchor claimed by two or more live
-  ADRs surfaces as an `awf check` note, never an error; a token whose target is `Superseded`
-  surfaces nothing.
+  ADRs' `supersedes:` tokens surfaces as an `awf check` note, never an error; two or more
+  `refines:` claims on one anchor, a mixed refine-and-retire pair, and a token whose target is
+  `Superseded` each surface nothing.
 - `invariant: upgrade-migrates-supersession-keys` - the generation-11 migration strips
   `supersedes` and `superseded_by` from every ADR under the configured docs dir, appends to
   each former full-supersession carrier one bookkeeping Decision item whose `supersedes:`
   tokens claim every
   anchor of each named predecessor, inserts the carrier's number into each target's `related:`
-  when absent, rewrites each predecessor's status to bare `Superseded`, rewrites every
-  pre-existing inline item token to `refines:` while leaving slug tokens untouched, and is a
-  no-op on a corpus it has already migrated.
+  when absent, and rewrites each predecessor's status to bare `Superseded`; the rewrite of
+  every pre-existing inline item token to `refines:` runs against the pre-append body and
+  leaves slug tokens untouched.
 - `invariant: active-md-annotates-superseded-anchors` - ACTIVE.md renders an annotation on
   each live ADR that has a superseded anchor. This is the surviving half of ADR-0120's
   `active-md-supersedence-rendering`, retired at item 1; how ACTIVE.md renders claimants for a
@@ -255,8 +269,8 @@ at item 1, `supersession-backpointer` at item 5, `supersession-flavour-exclusive
   recover the claimants from the coverage model instead; how they render is ADR-B's concern.
 - Splitting the token into two relations doubles the authoring decision: every citation that
   overrides something now forces an explicit call about whether the target survives. That
-  judgment was always being made, but the old grammar let it go unrecorded, and 24 of the 40
-  existing item tokens recorded it wrongly by default.
+  judgment was always being made, but the old grammar let it go unrecorded, and 22 of the 37
+  pre-existing item tokens recorded it wrongly by default.
 - Nothing constrains the shape of the claim graph in the window this ADR opens. ADR-0120
   item 3's single-claimant check incidentally prevented full-supersession cycles, and item 1
   removes it; a token targeting its own carrier, or a mutual full-coverage pair that derives
@@ -275,10 +289,10 @@ at item 1, `supersession-backpointer` at item 5, `supersession-flavour-exclusive
 |---|---|
 | Drop only `superseded_by:`, keep `supersedes: [N]` | Removes the self-validating field but leaves two encodings and the whole rationale hole for full supersession. |
 | Keep both keys, add a required rationale field | A schema slot for prose is checkable only for presence, so it buys ceremony without the property that makes tokens work: placement at the overriding decision. |
-| Let `awf sync` write the status flip | Sync would take permanent ownership of an authored ADR (ADR-0035 item 2). Enforcement by `awf check` gets the same zero-discretion outcome without awf authoring source documents. |
+| Let `awf sync` write the status flip | Sync would take permanent ownership of an authored ADR (ADR-0035 item 1's lock-membership test). Enforcement by `awf check` gets the same zero-discretion outcome without awf authoring source documents. |
 | Drop `Superseded` as a status value, derive liveness only in indexes | Costs the ACTIVE.md status bucket and leaves a fully-dead ADR reading `Implemented` when opened directly, which is the signal the status field exists to give. |
 | Keep the suffixed `Superseded by ADR-NNNN` form | Coverage may split across successors, so the scalar is not reliably true; `related:`, widened by item 5, carries the full claimant set. |
 | Coverage over Decision items only | Leaves the status flip silently retiring the predecessor's invariants, reproducing for slugs the exact rationale hole this ADR closes for items. |
-| One token, with an advisory when a target reaches one anchor short of coverage | Warns about the symptom. 24 of 40 item tokens are refinements, so the warning would fire routinely on ADRs nobody intends to retire. |
+| One token, with an advisory when a target reaches one anchor short of coverage | Warns about the symptom. 22 of the 37 pre-existing item tokens are refinements, so the warning would fire routinely on ADRs nobody intends to retire. |
 | Name the second relation `amends:` | "Amendment" already names editing a `Proposed` ADR in place (`awf-adr-lifecycle`, and the glossary's back-pointer entry). `refines:` is unclaimed. |
-| Hand-classify the 40 existing tokens during migration | Classification needs prose judgment a migration cannot make, and adopters would get a different migration from this repo. Downgrading everything to `refines:` is mechanical and never asserts more than the original did. |
+| Hand-classify the 37 pre-existing item tokens during migration | Classification needs prose judgment a migration cannot make, and adopters would get a different migration from this repo. Downgrading everything to `refines:` is mechanical and never asserts more than the original did. |
