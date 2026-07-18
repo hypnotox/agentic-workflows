@@ -94,7 +94,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    This ADR's own item tokens are written in the single-token grammar, because that is the
    grammar in force while it is `Proposed`. Under item 2 they classify as one retirement
    (ADR-0120#3, whose frontmatter encoding item 1 deletes) and two refinements (ADR-0120#4
-   and #5, both of which survive with changed scope). The generation-11 migration will
+   and #5, both of which survive with changed scope). The generation-12 migration will
    rewrite all three to `refines:`, and the effort implementing this ADR corrects the first
    back to `supersedes:` by hand, exactly as any adopter would.
 
@@ -165,7 +165,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    Decision item that retires it. The friction is the mechanism: an ADR cannot be retired
    wholesale without someone stating, anchor by anchor, what replaces it.
 
-8. **`awf upgrade` gains a corpus migration at schema generation 10 to 11.** The migration
+8. **`awf upgrade` gains a corpus migration at schema generation 11 to 12.** The migration
    strips both keys from every ADR under the configured docs dir, and for each ADR that
    carried a non-empty `supersedes:` appends one bookkeeping Decision item carrying a
    `supersedes:` token per anchor of each named predecessor, inserting the carrier's number
@@ -221,7 +221,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
   ADRs' `supersedes:` tokens surfaces as an `awf check` note, never an error; two or more
   `refines:` claims on one anchor, a mixed refine-and-retire pair, and a token whose target is
   `Superseded` each surface nothing.
-- `invariant: upgrade-migrates-supersession-keys` - the generation-11 migration strips
+- `invariant: upgrade-migrates-supersession-keys` - the generation-12 migration strips
   `supersedes` and `superseded_by` from every ADR under the configured docs dir, appends to
   each former full-supersession carrier one bookkeeping Decision item whose `supersedes:`
   tokens claim every

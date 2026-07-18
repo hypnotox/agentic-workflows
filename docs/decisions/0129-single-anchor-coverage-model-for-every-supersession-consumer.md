@@ -118,7 +118,7 @@ deleted on purpose.
    answer to that deferral. This `supersedes: ADR-0120#10` for its description of
    chains as predecessor-to-successor pairs; under ADR-0128 item 2 the claim classifies as a
    refinement, since item 10's annotation half and its requirement that the section exist both
-   stand, and the generation-11 migration will rewrite it accordingly. That rewrite must land
+   stand, and the generation-12 migration will rewrite it accordingly. That rewrite must land
    before this ADR reaches `Implemented`: a `supersedes:` token on an `Implemented` carrier
    counts toward coverage, so left unmigrated it would become a genuine retirement claim
    against ADR-0120 item 10.
