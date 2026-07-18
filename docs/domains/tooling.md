@@ -124,6 +124,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](../decisions/0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
 
+### Proposed
+
+- [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

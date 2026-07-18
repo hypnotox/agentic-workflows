@@ -133,6 +133,7 @@
 
 - [ADR-0128: Coverage-Derived ADR Supersession](0128-coverage-derived-adr-supersession.md) (Proposed)
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Proposed)
+- [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Proposed)
 
 ## Superseded
 

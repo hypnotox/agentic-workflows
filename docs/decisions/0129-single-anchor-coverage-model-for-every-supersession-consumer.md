@@ -2,7 +2,7 @@
 status: Proposed
 date: 2026-07-18
 tags: [adr-parsing, adr-lifecycle, active-md, domain-index, context-tiering]
-related: [14, 92, 104, 116, 120, 128]
+related: [14, 92, 104, 116, 120, 128, 130]
 domains: [adr-system, rendering]
 supersedes: []
 superseded_by: ""
@@ -53,7 +53,9 @@ deleted on purpose.
    package-level constructor takes the parsed `[]ADR` and returns a value that answers every
    supersession question the tooling asks. No consumer re-derives supersession by reading a
    status string, a frontmatter field, or an ADR's refs directly, save the single exception
-   item 4 enumerates.
+   item 4 enumerates. ADR-0130 makes this model a facet of the one parsed corpus view rather
+   than a fifth structure threaded to each load site independently; the two are written to be
+   implemented together, and this item describes the supersession half of that view.
 
 2. **Nodes are anchors, edges are claims.** A node is a specific anchor of a specific ADR: an
    item number or a declared invariant slug. An edge is one token's claim on that node,
