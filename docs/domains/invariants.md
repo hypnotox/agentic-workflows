@@ -16,7 +16,7 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 ### Implemented
 
 - [ADR-0007: Invariant-Backing Tooling: `inv:` Tags and the `awf invariants` Checker](../decisions/0007-invariant-backing-tooling.md)
-- [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](../decisions/0008-language-agnostic-invariant-backing.md) → superseded by ADR-0077
+- [ADR-0008: Language-Agnostic Invariant Backing and a Polyglot Standard](../decisions/0008-language-agnostic-invariant-backing.md) → superseded by ADR-0077, ADR-0105
 - [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md)
 - [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
 - [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
@@ -26,7 +26,7 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 - [ADR-0114: Invariant backing is a ledger, not a proof](../decisions/0114-invariant-backing-is-a-ledger-not-a-proof.md)
-- [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md)
+- [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md) → superseded by ADR-0119
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)

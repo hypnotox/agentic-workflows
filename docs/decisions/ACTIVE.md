@@ -152,17 +152,17 @@
 
 ### Superseded anchors on live ADRs
 
-- ADR-0001: item 2 refined by ADR-0015
+- ADR-0001: item 2 superseded by ADR-0015
 - ADR-0002: item 5 refined by ADR-0101
 - ADR-0007: item 3 refined by ADR-0008
-- ADR-0008: item 4 refined by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
+- ADR-0008: item 4 superseded by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
 - ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015
 - ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
 - ADR-0015: item 6 refined by ADR-0131
 - ADR-0016: item 6 refined by ADR-0076; item 7 refined by ADR-0131; slug `target-output-paths` superseded by ADR-0037
 - ADR-0017: item 5 refined by ADR-0127; item 7 refined by ADR-0127
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
-- ADR-0024: item 1 refined by ADR-0093; item 6 refined by ADR-0093
+- ADR-0024: item 1 refined by ADR-0093; item 6 superseded by ADR-0093
 - ADR-0029: item 1 refined by ADR-0064
 - ADR-0030: slug `version-ldflags-precedence` superseded by ADR-0049
 - ADR-0032: item 1 refined by ADR-0048
@@ -180,7 +180,7 @@
 - ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104
 - ADR-0102: slug `uncovered-lists-unowned-only` superseded by ADR-0110
 - ADR-0104: slug `context-tier1-governs` superseded by ADR-0106; slug `context-tier2-topical` superseded by ADR-0109
-- ADR-0115: item 4 refined by ADR-0119; item 7 refined by ADR-0119
+- ADR-0115: item 4 superseded by ADR-0119; item 7 refined by ADR-0119
 - ADR-0116: item 2 refined by ADR-0120; item 5 refined by ADR-0120
 - ADR-0117: item 5 refined by ADR-0119
 - ADR-0118: item 1 refined by ADR-0119; item 9 refined by ADR-0119

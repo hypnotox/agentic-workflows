@@ -167,7 +167,7 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    are awf's own headings and callouts.
 
 4. **Go comments and `_test.go` files are in scope.** This partially supersedes **ADR-0115 Decision
-   item 4** (`refines: ADR-0115#4`), whose two reasons are both answered: the gofmt reason is refuted above, and "test
+   item 4** (`supersedes: ADR-0115#4`), whose two reasons are both answered: the gofmt reason is refuted above, and "test
    failure strings are not emitted prose" is true but irrelevant to a rule whose subject is now the
    repository rather than the shipped artifact. All seven codepoints are scanned in comments,
    including the curly quotes, because the single-backtick fix makes that loop winnable.

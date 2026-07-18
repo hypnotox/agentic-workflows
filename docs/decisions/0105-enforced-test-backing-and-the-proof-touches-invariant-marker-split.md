@@ -106,7 +106,7 @@ migration once rather than twice.
 
    This **replaces** the `unbacked_invariants:` frontmatter approach: the classification is inline,
    local, and cannot drift from a separate list. It **supersedes ADR-0008 Decision item 4**
-   (`refines: ADR-0008#4`) via
+   (`supersedes: ADR-0008#4`) via
    partial-item supersedence: ADR-0008 stays `Implemented`/live and this ADR carries `related: [8]`;
    an untestable invariant now keeps its slug as an explicit `unbacked-invariant:` rather than being
    demoted to prose. The structuring mirrors the plan-artifact precedent (ADR-0098).
