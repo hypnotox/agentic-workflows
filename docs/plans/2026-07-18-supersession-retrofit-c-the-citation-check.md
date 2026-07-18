@@ -49,6 +49,7 @@ a bug. The exemption belongs to the citation scanner alone.
   `internal/adr/adr_test.go`, `internal/adr/corpus.go` (the extraction method),
   `internal/adr/corpus_test.go`, `internal/adr/coverage.go` (guard, if needed),
   `internal/project/check.go` (wiring), `internal/project/residue_scan_test.go` (marker placement),
+  `internal/adr/coverage.go` and `internal/project/context.go` (annotation dedup, Task 3.5),
   `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `.awf/docs/glossary.yaml`,
   `.awf/domains/parts/adr-system/current-state.md`,
   `.awf/domains/parts/invariants/current-state.md`, `.awf/agents/adr-reviewer.yaml`,
@@ -64,11 +65,21 @@ a bug. The exemption belongs to the citation scanner alone.
   pattern beside the existing three (lines 81-85):
 
   ```go
-  	// citesRe marks a citation informational (ADR-0131 item 4). It is inert:
-  	// parsed so the citation check can see it, counted toward no anchor's
-  	// coverage, and rendered nowhere.
-  	citesRe = regexp.MustCompile("`cites: ADR-([0-9]{4})#([a-z0-9-]+|[1-9][0-9]*)`")
+  	// citesItemRe / citesInvRe mark a citation informational (ADR-0131 item 4).
+  	// Inert: parsed so the citation check can see them, counted toward no
+  	// anchor's coverage, rendered nowhere. Two patterns, not one alternation,
+  	// for the reason itemRefRe and invRefRe are separate - the kind is named by
+  	// the pattern, never inferred from the anchor (ADR-0120 item 1).
+  	citesItemRe = regexp.MustCompile("`cites: ADR-([0-9]{4})#([1-9][0-9]*)`")
+  	citesInvRe  = regexp.MustCompile("`cites: ADR-([0-9]{4})#([a-z0-9-]+)`")
   ```
+
+  **Do not collapse these into one pattern with an alternation.** `[a-z0-9-]+` already matches
+  digits and Go's alternation is leftmost-first, so in `([a-z0-9-]+|[1-9][0-9]*)` the second branch
+  is unreachable and every anchor captures as a slug. The shape is not recoverable from the captured
+  text in general either: the slug grammar admits an all-digit slug, which is exactly why
+  `internal/project/supersession.go:132` keys anchors by kind prefix and notes that an item ref `#2`
+  and a slug ref `#2` into one target are distinct anchors.
 
   Add a third `Relation` constant beside `Retires` and `Refines` (lines 70-75):
 
@@ -79,10 +90,9 @@ a bug. The exemption belongs to the citation scanner alone.
   	Cites Relation = "cites"
   ```
 
-  In `parseRefs`, collect it for both anchor shapes. The existing `collect` closure takes a
-  `slug bool`; the alternation above admits both shapes, so detect the shape from the captured text
-  rather than adding a fourth `collect` argument. Update the `Relation` doc comment (lines 58-67) to
-  name all three relations.
+  In `parseRefs`, call the existing `collect` closure twice, unchanged:
+  `collect(citesItemRe, Cites, false)` and `collect(citesInvRe, Cites, true)`. No new argument and
+  no shape detection. Update the `Relation` doc comment (lines 58-67) to name all three relations.
 
 - [ ] **Task 1.2: Keep `cites:` out of every derived count.** Read `buildCoverage` in
   `internal/adr/coverage.go` and confirm it contributes only on `adr.Retires`. If it filters
@@ -110,9 +120,23 @@ a bug. The exemption belongs to the citation scanner alone.
   `cites-token-suppresses-citation-check` cannot be proved until the check exists; it lands in
   Phase 3 with the other check invariants.
 
-- [ ] **Task 1.4: Verify and commit.** Run `./x gate` (expect 100% coverage and `deadcodecheck: no
-  production dead code`) and `./x check` (expect clean: no corpus ADR carries a `cites:` token yet,
-  so parsing is unchanged in practice). Commit:
+- [ ] **Task 1.4: Verify and commit.** Parsing is **not** unchanged in practice: ADR-0131 already
+  carries 8 `cites:` tokens in its own Decision section, written when it was authored, and they go
+  live the moment this task lands. `internal/project/supersession.go:178` then requires a `related:`
+  back-pointer on each target, for a token of any relation from a carrier of any status, so an inert
+  token on a `Proposed` carrier is no exception.
+
+  The five targets are ADR-0015, ADR-0034, ADR-0065, ADR-0120 and ADR-0128. Confirm each names 131:
+
+  ```
+  grep -h '^related:' docs/decisions/0015-*.md docs/decisions/0034-*.md docs/decisions/0065-*.md docs/decisions/0120-*.md docs/decisions/0128-*.md
+  ```
+
+  Every line must contain `131`. Add any that is missing **in this commit**, or `./x check` reports
+  `adr-token-backpointer` and the phase fails its own gate.
+
+  Then run `./x gate` (expect 100% coverage and `deadcodecheck: no production dead code`) and
+  `./x check` (expect `awf check: clean`). Commit:
 
   ```commit
   feat(adr): parse the inert cites: relation token
@@ -121,7 +145,7 @@ a bug. The exemption belongs to the citation scanner alone.
 ## Phase 2: Tokenize the corpus's informational citations
 
 - [ ] **Task 2.1: Insert `cites:` at every informational citation site.** Batch task: one identical
-  shape across twelve sites. An informational citation names another ADR's anchor inside a Decision
+  shape across thirteen sites. An informational citation names another ADR's anchor inside a Decision
   item that also carries an override verb, without claiming that anchor. Each gets
   `cites: ADR-NNNN#<anchor>` inserted adjacent to the citation, changing no prose.
 
@@ -152,9 +176,13 @@ a bug. The exemption belongs to the citation scanner alone.
   byte-for-byte promise a second time: after ADR-0057 narrowed ADR-0034 item 1's (`cites: ADR-0034#1`) "appears verbatim"
   ```
 
-  It is an edge because a token outside a numbered item parses with `CarrierItem: 0`. That is legal
-  and inert for `cites:`, which claims nothing; confirm `./x check` reports no
-  `adr-supersession-graph` or `adr-decision-format` finding for it.
+  It is an edge because the citation is trailing narration in an unnumbered paragraph: `itemAt`
+  (`internal/adr/adr.go:133-142`) returns the last numbered item at or before the offset, so this
+  token attributes to ADR-0058 Decision item 4 rather than to the paragraph it sits in. That is
+  legal and inert for `cites:`, which claims nothing, but it means the rationale site is nominal.
+  Confirm `./x check` reports no `adr-supersession-graph` or `adr-decision-format` finding for it.
+  (`CarrierItem: 0` happens only when a token *precedes* the first numbered item, which is not the
+  case here.)
 
   The affected-site set, from ADR-0131's audit:
 
@@ -169,11 +197,17 @@ a bug. The exemption belongs to the citation scanner alone.
   | `0088-*.md` | 138 | `ADR-0086#5` |
   | `0108-*.md` | 45 | `ADR-0097#1` |
   | `0116-*.md` | 96 | `ADR-0065#4` |
+  | `0116-*.md` | 96 | `ADR-0065#3` |
   | `0120-*.md` | 100 | `ADR-0119#7` |
   | `0128-*.md` | 84 | `ADR-0034#1` |
   | `0128-*.md` | 154 | `ADR-0034#1` |
 
-  ADR-0131's own seven `cites:` tokens are already written and need no edit. Line numbers predate
+  ADR-0116 Decision item 3 appears twice deliberately: it cites both ADR-0065 Decision 4 and
+  Decision 3 in one sentence ("ADR-0079 cites ADR-0065 Decision 4 informationally while amending
+  Decision 3"), and ADR-0131 Decision 4 names that exact pair as the motivating case for `cites:`,
+  quoting both tokens. Tokenizing only one leaves the other to trip the check in Phase 3.
+
+  ADR-0131's own eight `cites:` tokens are already written and need no edit. Line numbers predate
   Plans A and B, which touch ADR-0015, ADR-0049, ADR-0081 and ADR-0087; locate by quoted text.
 
   Each insertion may owe a `related:` back-pointer on the target, because
@@ -181,8 +215,16 @@ a bug. The exemption belongs to the citation scanner alone.
   reports: the audit confirmed the carrier side complete but did not enumerate back-pointers for
   informational citations.
 
-  Post-check: `./x check` reports `awf check: clean`, and
-  `grep -ho 'cites: ADR-' docs/decisions/*.md | wc -l` returns `19` (12 here plus ADR-0131's 7).
+  Post-check: `./x check` reports `awf check: clean`. For the count, match only parseable tokens:
+
+  ```
+  grep -ho '`cites: ADR-[0-9]\{4\}#[a-z0-9-]*`' docs/decisions/*.md | wc -l
+  ```
+
+  This returns `8` before the task and must return `21` after (13 insertions plus ADR-0131's 8). Do
+  **not** use the looser `grep -ho 'cites: ADR-'`, which returns 9 today: it also matches the
+  grammar template `cites: ADR-NNNN#<anchor>` in ADR-0131's Decision 4, which is prose, not a token.
+  Re-run the baseline immediately before starting rather than trusting these numbers.
 
 - [ ] **Task 2.2: Verify and commit.** Run `./x sync`, `./x check`, `./x gate`. Commit:
 
@@ -192,10 +234,12 @@ a bug. The exemption belongs to the citation scanner alone.
 
 ## Phase 3: The check, its proofs, the doc sweep, and the flip
 
-One commit, for two reasons: the dead-code gate forbids landing the extraction method or the check
-without its caller, and ADR-0131's status flip is what makes its twelve invariants owed, so the
-proofs must land with it (`internal/invariants/invariants.go:119-125` counts declarations from
-`Implemented` ADRs only).
+One commit, principally because the dead-code gate forbids landing the extraction method or the
+check without its caller. Landing the proofs alongside the flip is a coherence preference rather
+than a second hard constraint: a proof marker naming a slug no `Implemented` ADR declares is an
+advisory note, not drift (`internal/invariants/invariants.go:180-182`), which is exactly why Phase 1
+can land two markers early without reding its own gate. Those two sit orphaned-but-advisory until
+Task 3.5 flips the ADR.
 
 - [ ] **Task 3.1: Extract citations as a `Corpus` method.** In `internal/adr`, add a method
   returning every anchor citation in an ADR's `## Decision` section, carrying: carrier number,
@@ -247,7 +291,8 @@ proofs must land with it (`internal/invariants/invariants.go:119-125` counts dec
   `cites-token-suppresses-citation-check` must assert the suppression is anchor-scoped: a `cites:`
   token for one anchor does not suppress a finding for a different anchor in the same Decision item.
 
-  `cites-token-uncounted` and `cites-token-unrendered` landed in Phase 1 Task 1.3.
+  `cites-token-uncounted` and `cites-token-unrendered` landed in Phase 1 Task 1.3, and become owed
+  rather than merely present once Task 3.6 flips the ADR.
   `residue-exemptions-pinned-three` is backed already by Plan A Task 2.3; here, move its marker in
   `internal/project/residue_scan_test.go` from the `identityExempt` var onto the
   `len(identityExempt) != 3` assertion block inside `TestTemplateSourceResidue`, so the proof site
@@ -270,12 +315,33 @@ proofs must land with it (`internal/invariants/invariants.go:119-125` counts dec
     would never reach this repo; the file already restates all seven defaults deliberately.
   - `.awf/agents-doc.yaml` and the rendered `AGENTS.md` invariant line.
   - `docs/decisions/README.md`: the supersedence section.
-  - `docs/roadmap.md`: record the deferred `0057:86` rationale-site defect (see Notes).
+  - `docs/roadmap.md`: record the deferred `0057:86` rationale-site defect (see Notes). This entry
+    is plan-originated deferral bookkeeping, not an ADR-0131 doc-currency obligation; the ADR's
+    Consequences does not list it.
   - `internal/adr/adr.go`: the `Relation` doc comment (done in Phase 1 Task 1.1; confirm).
 
   Run `./x sync` and commit the rendered files with their sources.
 
-- [ ] **Task 3.5: Flip ADR-0131 to `Implemented`, verify, and commit.** Set `status: Implemented` in
+- [ ] **Task 3.5: Dedup rendered supersedence annotations.** `Corpus.AnnotatedAnchors`
+  (`internal/adr/coverage.go:293`) returns raw `ClaimsOn` with no dedup, and neither the ACTIVE.md
+  renderer (`internal/adr/adr.go:258-283`) nor `awf context` (`internal/project/context.go:136`)
+  dedups either. ADR-0015 claims three anchors from both its Decision item 4 and its item 6, which
+  is correct under ADR-0131 Decision 2's per-item scoping, so ACTIVE.md renders each twice:
+  `- ADR-0009: item 4 refined by ADR-0015; item 4 refined by ADR-0015`.
+
+  Dedup on the triple (anchor, carrier, relation) at the annotation seam, so two claim sites in one
+  carrier render one row. Do not dedup in the coverage model itself: the per-item tokens are the
+  rationale sites ADR-0129 Decision 2 requires, and collapsing them there would lose that.
+
+  Verify against the real corpus: `./x sync`, then confirm no line in `docs/decisions/ACTIVE.md`
+  repeats an identical `item N <relation> by ADR-NNNN` clause. Add a test carrying no new invariant
+  marker (the behaviour is a rendering property, not a declared invariant of ADR-0131).
+
+  This task is plan-originated, decided during plan review after the duplication was observed by
+  running `./x sync`. ADR-0131 does not mention it, because the duplication is a rendering defect
+  the per-item scoping merely exposed.
+
+- [ ] **Task 3.6: Flip ADR-0131 to `Implemented`, verify, and commit.** Set `status: Implemented` in
   `docs/decisions/0131-*.md` and run `./x sync` to regenerate `docs/decisions/ACTIVE.md`.
 
   Then run `./x check`. This is where the whole effort is verified: the check is live over the real

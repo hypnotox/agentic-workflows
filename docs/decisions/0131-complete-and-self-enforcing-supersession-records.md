@@ -22,17 +22,24 @@ be mechanised, so the migration maps the ambiguous old token to the reading that
 concern." That correction ran for exactly one token, ADR-0128's own `supersedes: ADR-0120#3`.
 Today all 13 `supersedes:` item tokens in the corpus are migration bookkeeping (ADR-0003 x3,
 ADR-0031 x5, ADR-0113 x4, plus that one), and **zero** of the 37 pre-existing tokens assert a
-retirement. Re-reading both sides of each token found 6 confident retirements against ADR-0128's
-estimate of 13. The 7-token difference is residue the re-reading judged ambiguous: each has a
+retirement. Re-reading both sides of each token found 4 confident retirements against ADR-0128's
+estimate of 13. The 9-token difference is residue the re-reading judged ambiguous: each has a
 target item with at least one surviving clause, so each stays `refines:` under the rule that the
-relation asserting less is correct when the reading is contested. The nearest miss is instructive.
-ADR-0093 Decision 2 is headed "Supersede ADR-0024 Decision items 1 and 6", which reads as a
-retirement of both, and its token into item 6 is indeed corrected to `supersedes:` here. Item 1 is
-not: what ADR-0093 replaces is the command names, while item 1's requirement that a kind be given
-and its `skill`-to-`skills` mapping both survive the rename untouched. A surviving clause makes the
-weaker relation correct, so that token stays `refines:` despite the heading.
+relation asserting less is correct when the reading is contested.
 
-**Sixteen supersession claims are stated in prose and never encoded**, fifteen citing a Decision
+That rule did most of the work, and it reduced the count twice. ADR-0093 Decision 2 is headed
+"Supersede ADR-0024 Decision items 1 and 6", which reads as a retirement of both, and its token
+into item 6 is indeed corrected to `supersedes:` here; item 1 is not, because what ADR-0093
+replaces is the command names, while item 1's requirement that a kind be given and its
+`skill`-to-`skills` mapping survive the rename untouched. Two further candidates fell to review of
+this ADR. ADR-0120's token into ADR-0116 Decision 5 stays `refines:` because this ADR's own Context
+relies on that item as live: it quotes item 5's "expected next step" clause as the warrant for
+building the check now, which a full retirement would have removed. ADR-0123's token into ADR-0122
+Decision 4 stays `refines:` because item 4's closing permission carries a proviso, that a future
+extension consume the rendered reviewer skills "without changing their paths or names", and a
+proviso still binding on the successor is a surviving clause.
+
+**Seventeen supersession claims are stated in prose and never encoded**, sixteen citing a Decision
 item and one an invariant slug. They share one signature: the carrier ADR states the override in its Decision
 section, often naming the exact item number, and writes no token. A first pass put this figure near
 forty; re-enumerating against the corpus found the surplus was informational citations, which item
@@ -119,11 +126,19 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 ## Decision
 
 1. **Retire all three stale slugs retroactively, with each retirement token carried by the ADR that
-   displaced the slug.** ADR-0015 gains `supersedes-invariant: ADR-0009#parts-convention`, ADR-0016
-   gains `supersedes-invariant: ADR-0009#config-root`, and ADR-0085 gains
-   `supersedes-invariant: ADR-0082#residue-exemptions-pinned`. Each is inserted beside prose that
-   already states the claim, which is ADR-0120 Decision 9's third carve-out shape and needs no new
-   permission (`cites: ADR-0120#9`). This ADR carries no retirement token of its own.
+   displaced the slug.** ADR-0015 gains a `supersedes-invariant:` token naming ADR-0009's
+   `parts-convention`, ADR-0016 one naming ADR-0009's `config-root`, and ADR-0085 one naming
+   ADR-0082's `residue-exemptions-pinned`. Each is inserted beside prose that already states the
+   claim, which is ADR-0120 Decision 9's third carve-out shape and needs no new permission
+   (`cites: ADR-0120#9`).
+
+   This item deliberately names each token by key and anchor rather than writing it out. A complete
+   token string inside a `## Decision` section **is** a token: the parser recognises it wherever it
+   appears there (ADR-0120 Decision 1), and an earlier draft of this item wrote all three in full,
+   which made this ADR their carrier and contradicted the sentence that follows. This ADR carries no
+   retirement token of its own, and the way to keep that true is to not write one. The citation
+   check's code-span exemption (item 5) does not help here, because it governs citations and verbs,
+   not token recognition; extending it to tokens would unparse the entire corpus.
 
    Carrier choice is not bookkeeping preference; it decides when the retirement takes effect. A
    `supersedes-invariant:` token retires a slug only while its carrier is `Implemented`, and a
@@ -264,8 +279,8 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    covers it. The check itself lands in a new `internal/project/citations.go` rather than growing
    the 254-line `supersession.go`.
 
-9. **This repo completes its own retrofit, this ADR included, before the check ships.** The 6
-   relation corrections, the 16 backfilled tokens, item 1's three retirements and one
+9. **This repo completes its own retrofit, this ADR included, before the check ships.** The 4
+   relation corrections, the 17 backfilled tokens, item 1's three retirements and one
    redeclaration, the missing `related:` back-pointers, and this ADR's own `cites:` tokens all land
    before item 2's check is enabled, so it ships green. Including this ADR is not a formality: its
    Decision section carries 10 item citations and 3 slug citations, and a check whose own defining
@@ -278,9 +293,9 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    refinement to a retirement can complete an anchor's coverage and force a status flip, which is a
    different concern from inserting a token beside prose that already states the claim.
 
-   The audit verified the back-pointer edge for every token site and found six missing edges, all on
-   the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0045 lacks 87,
-   ADR-0069 lacks 75, and ADR-0082 lacks 85. This
+   The audit verified the back-pointer edge for every token site and found seven missing edges, all
+   on the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0040 lacks 47,
+   ADR-0045 lacks 87, ADR-0069 lacks 75, and ADR-0082 lacks 85. This
    matters because ADR-0128 Decision 5 requires a back-pointer on a target of any status
    (`cites: ADR-0128#5`), so a missed edge fails the retrofit commit. The edges this ADR's own
    tokens require are already in place, added in the commit that amended it.
@@ -354,10 +369,13 @@ it on a genuinely informational citation gets a finding and may encode a claim t
 meant, recording a supersession that did not happen. The check's message names `cites:` as one of
 the satisfying shapes to make the choice explicit at the point of failure.
 
-Correcting the 6 relations changes derived state. Each correction moves an anchor from
+Correcting the 4 relations changes derived state. Each correction moves an anchor from
 uncontested to retired, and coverage completion forces a predecessor's status to `Superseded`
-(ADR-0128 Decision 4). The audit confirmed no ADR is within reach of full coverage from these 6
-alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. Item 1's
+(ADR-0128 Decision 4). The audit confirmed no ADR is within reach of full coverage from these 4
+alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. Exactly one
+backfilled token asserts a retirement rather than a refinement, ADR-0047's into ADR-0040 Decision
+item 1, and it takes ADR-0040 to 2 covered anchors of 9 (seven Decision items, two declared slugs,
+one of which `bootstrap-pin` already carries a retirement). Nothing here completes a coverage set. Item 1's
 retirements move ADR-0009 from zero to two covered anchors of fifteen (eight Decision items,
 seven declared slugs), and the two Decision items this ADR touches on it carry only refinements,
 which count toward nothing, so ADR-0009 also stays far from coverage-derived supersession.

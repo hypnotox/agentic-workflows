@@ -7,9 +7,9 @@ status: Proposed
 
 ## Goal
 
-Land the mechanical half of ADR-0131 item 9's retrofit: insert the 16 relation tokens whose claims
-are stated in prose and never encoded (15 citing a Decision item, 1 citing an invariant slug), and
-add the 5 missing `related:` back-pointers those tokens require.
+Land the mechanical half of ADR-0131 item 9's retrofit: insert the 17 relation tokens whose claims
+are stated in prose and never encoded (16 citing a Decision item, 1 citing an invariant slug), and
+add the 6 missing `related:` back-pointers those tokens require.
 
 Non-goals: the relation corrections and slug retirements (Plan A, which must land first), and
 building or enabling the citation check (Plan C).
@@ -26,22 +26,29 @@ Three tokens land on ADR-0015 Decision item **4**, whose citations of `ADR-0001#
 not redundant: ADR-0131 Decision 2 scopes the check per Decision item, because ADR-0129 Decision 2
 requires each claim to sit at its own rationale site. A token in item 6 does not satisfy item 4.
 
-Back-pointers are a genuine batch: one identical edit shape across five frontmatter arrays. They
-share Phase 2 and one commit.
+Back-pointers are a genuine batch: one identical edit shape across six frontmatter arrays. They
+land in the **same phase and commit** as the tokens, not a later one. Plan review established this
+empirically: a token whose target's `related:` does not name the carrier produces an
+`adr-token-backpointer` drift and `./x check` exits 1, and `./x sync` does not repair it. Six of
+this plan's tokens are in that position, so deferring the edges to a second phase would leave the
+first phase unable to pass its own gate. One phase, one commit.
 
-**Sequencing:** Plan A must be fully landed before this plan starts. Task 2.1 assumes ADR-0082's
-`related:` already names 85 (Plan A Task 2.3 adds it).
+**Sequencing:** Plan A must be fully landed before this plan starts. This plan assumes ADR-0082's
+`related:` already names 85 (Plan A Task 2.3 adds it), which is why ADR-0082 is absent from the
+back-pointer set below.
 
 ## File structure
 
 - **Created:** none.
-- **Modified:** `docs/decisions/0004-*.md`, `0013-*.md`, `0015-*.md`, `0022-*.md`, `0024-*.md`,
-  `0026-*.md`, `0028-*.md`, `0043-*.md`, `0045-*.md`, `0049-*.md`, `0069-*.md`, `0075-*.md`,
-  `0079-*.md`, `0081-*.md`, `0085-*.md`, `0087-*.md`, `0094-*.md` under `docs/decisions/`,
-  plus `docs/decisions/ACTIVE.md` (regenerated) and `.awf/awf.lock` (regenerated).
+- **Modified:** `docs/decisions/0004-*.md`, `0015-*.md`, `0022-*.md`, `0024-*.md`, `0026-*.md`,
+  `0028-*.md`, `0040-*.md`, `0043-*.md`, `0045-*.md`, `0047-*.md`, `0049-*.md`, `0069-*.md`,
+  `0075-*.md`, `0079-*.md`, `0081-*.md`, `0085-*.md`, `0087-*.md`, `0094-*.md` under
+  `docs/decisions/`, plus `docs/decisions/ACTIVE.md` (regenerated) and `.awf/awf.lock`
+  (regenerated). ADR-0013 is a token *target* only; its `related:` already names 81, so no file
+  edit is owed there.
 - **Deleted:** none.
 
-## Phase 1: Token backfill
+## Phase 1: Token backfill and back-pointers
 
 Line numbers are as of commit `fecbaf01`, **before** Plan A's edits. Plan A touches ADR-0015 (line
 93-94), ADR-0085 (line 104) and ADR-0082 (line 5) only, so the sites below shift by at most a line
@@ -68,7 +75,7 @@ in those three files. Locate each site by its quoted text, not by number.
 
   ADR-0001's and ADR-0009's `related:` already name 15, so no back-pointer is owed.
 
-- [ ] **Task 1.2: Tokenize ADR-0026's retirement of ADR-0024 item 3.** In
+- [ ] **Task 1.2: Tokenize ADR-0026's refinement of ADR-0024 item 3.** In
   `docs/decisions/0026-config-serialization-ownership.md`, replace lines 42-43:
 
   ```
@@ -80,11 +87,14 @@ in those three files. Locate each site by its quoted text, not by number.
 
   ```
      with `SetIndent(2)`, so the on-disk format has exactly one definition. This **reverses ADR-0024
-     Decision item 3** (`supersedes: ADR-0024#3`; the generic string-surgery array editor) and overturns ADR-0024's rejected
+     Decision item 3** (`refines: ADR-0024#3`; the generic string-surgery array editor) and overturns ADR-0024's rejected
   ```
 
-  `supersedes:` because the string-surgery array editor is the whole of ADR-0024 item 3 and is
-  entirely replaced by the `yaml.v3` encoder.
+  `refines:`, despite the carrier's "reverses". Plan review found a surviving clause: item 3 closes
+  with "Both commands re-render via the normal sync, so `remove` drops the now-unproduced rendered
+  file through the existing Sync prune", which concerns the sync flow rather than the serialization
+  mechanism and which ADR-0026 leaves untouched. ADR-0026's "ADR-0024 otherwise stands" enumerates
+  other items and does not settle item 3's internal clause set.
 
 - [ ] **Task 1.3: Tokenize ADR-0028's override of ADR-0004 item 1.** In
   `docs/decisions/0028-workflow-chain-adr-first-visible-resync.md`, replace line 81:
@@ -118,7 +128,7 @@ in those three files. Locate each site by its quoted text, not by number.
   `refines:` because the carrier says "partially" and "for exactly these three docs"; ADR-0022 keeps
   governing every other doc.
 
-- [ ] **Task 1.5: Tokenize ADR-0049's retirement of ADR-0030 item 4.** In
+- [ ] **Task 1.5: Tokenize ADR-0049's refinement of ADR-0030 item 4.** In
   `docs/decisions/0049-single-version-authority.md`, replace lines 56-57:
 
   ```
@@ -129,12 +139,16 @@ in those three files. Locate each site by its quoted text, not by number.
   with:
 
   ```
-     parenthetical true as written. Amends ADR-0030 Decision 4 (`supersedes: ADR-0030#4`; the precedence chain is retired
+     parenthetical true as written. Amends ADR-0030 Decision 4 (`refines: ADR-0030#4`; the precedence chain is retired
      with its invariant, and ADR-0030's textual contract that `.goreleaser.yaml` injects
   ```
 
-  `supersedes:` because the carrier states the precedence chain "is retired with its invariant" and
-  the remaining textual contract "lapses with it": nothing survives.
+  `refines:`, despite the carrier's "is retired with its invariant". Plan review found item 4's
+  third clause survives intact: "`project.Version` remains the source of truth for the lock's
+  `AWFVersion` and the dev/test fallback, and is bumped per release." ADR-0049 does not retire that
+  clause, it promotes it to single-version authority. ADR-0030's `version-ldflags-precedence` slug
+  is separately retired by an existing token, so the invariant half of the claim is already
+  encoded.
 
   The adjacent citation of ADR-0039 Decision 3 on line 55 is informational ("making ADR-0039
   Decision 3's parenthetical true as written") and takes no relation token. Under ADR-0131 Decision
@@ -174,21 +188,25 @@ in those three files. Locate each site by its quoted text, not by number.
 
   `refines:` because the `fail_ci_if_error: true` clause survives when the token is present.
 
-- [ ] **Task 1.8: Tokenize ADR-0081's three generalizations of ADR-0050 and its retirement of
+- [ ] **Task 1.8: Tokenize ADR-0081's three generalizations of ADR-0050 and its refinement of
   ADR-0013 item 4.** In `docs/decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md`,
   four edits.
 
-  Line 76:
+  Line 77 (the citation wraps from line 76, so the token goes on the line carrying the anchor
+  phrase, exactly as the line 102-103 edit below does):
 
   ```
-     `awf upgrade` as the pre-migration recovery path. This generalizes ADR-0050
+     Decision item 2 (its `RequiresAgent` check becomes the skill→agent edge of
   ```
 
   becomes:
 
   ```
-     `awf upgrade` as the pre-migration recovery path. This generalizes ADR-0050 (`refines: ADR-0050#2`)
+     Decision item 2 (`refines: ADR-0050#2`; its `RequiresAgent` check becomes the skill→agent edge of
   ```
+
+  Leave line 76 untouched. Appending the token there would produce "This generalizes ADR-0050
+  (`refines: ADR-0050#2`) Decision item 2 (...)", splitting the anchor phrase from its token.
 
   Line 94:
 
@@ -227,12 +245,16 @@ in those three files. Locate each site by its quoted text, not by number.
 
   ```
      (Decision 3), so the ADR-0013 Decision item 4 suppression semantics are
-     superseded (`supersedes: ADR-0013#4`): the render-time gate (`skillDocGateOpen` and the suppression
+     superseded (`refines: ADR-0013#4`): the render-time gate (`skillDocGateOpen` and the suppression
   ```
 
-  The three ADR-0050 claims are `refines:` (each generalizes an item that survives in its
-  specialised form); the ADR-0013 claim is `supersedes:` because the render-time gate is deleted
-  outright.
+  All four claims are `refines:`. The three ADR-0050 items each survive in specialised form. The
+  ADR-0013 claim looked like a retirement, but the carrier scopes it itself: "the ADR-0013 Decision
+  item 4 *suppression semantics* are superseded". Two other clauses of item 4 survive ADR-0081 item
+  7: the `requiresDoc` catalog-field declaration, promoted to `RequiresDoc` in the hard graph rather
+  than deleted, and the rule that a doc-gated skill may reference `.layout.docs.<doc>` unguarded yet
+  safely, still true because a refused config state still guarantees the doc is enabled. Same shape
+  as Task 1.11, same relation.
 
   The citation of ADR-0050 Decision 3 at line 111 is informational ("unchanged") and takes no
   relation token here; Plan C gives it `cites:`.
@@ -247,7 +269,7 @@ in those three files. Locate each site by its quoted text, not by number.
   with:
 
   ```
-  5. **ADR-0082's identity-exemption list gains a third entry** (`refines: ADR-0082#2`)**.** Per ADR-0082 Decision 2's own
+  5. **ADR-0082's identity-exemption list gains a third entry** (`refines: ADR-0082#2`). Per ADR-0082 Decision 2's own
   ```
 
   `refines:` because ADR-0082 item 2 survives with a pinned three-entry list rather than being
@@ -294,30 +316,44 @@ in those three files. Locate each site by its quoted text, not by number.
   This site is why ADR-0131 Decision 2 enumerates verb surface forms rather than generating them:
   the only override word here is "supersedence", which a stem-plus-suffix rule does not produce.
 
-- [ ] **Task 1.12: Verify no status flip was forced, then commit.** Run `./x sync`, then `./x
-  check`. Expect `awf check: clean` and `awf invariants: clean`.
+- [ ] **Task 1.12: Tokenize ADR-0047's retirement of ADR-0040 item 1.** In
+  `docs/decisions/0047-*.md`, replace lines 48-49:
 
-  Two findings are possible and both mean stop, not adjust:
-  - `adr-token-backpointer` means a token's target does not name its carrier. Phase 2 adds the five
-    known edges; a sixth means the audit missed one. Add it to Phase 2 and note it.
-  - `adr-coverage-status` means a `supersedes:` token completed some target's coverage. ADR-0131
-    measured that none of these does. Do not flip a status: stop and reopen the measurement.
-
-  Then run `./x gate`, `git add` the eleven ADR files plus `docs/decisions/ACTIVE.md` and
-  `.awf/awf.lock`, and commit:
-
-  ```commit
-  docs(adr): backfill sixteen unencoded relation tokens
+  ```
+  1. **Render the bootstrap at `.awf/bootstrap.sh`** (supersedes
+     [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1; recorded via
   ```
 
-## Phase 2: Missing `related:` back-pointers
+  with:
 
-- [ ] **Task 2.1: Add the five missing back-pointer edges.** Batch task: one identical edit shape
-  across five frontmatter arrays. Each target ADR's `related:` gains the number of the carrier whose
+  ```
+  1. **Render the bootstrap at `.awf/bootstrap.sh`** (supersedes
+     [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1, `supersedes: ADR-0040#1`; recorded via
+  ```
+
+  `supersedes:` because ADR-0040 item 1 is the bootstrap's rendered path and filename, both of which
+  ADR-0047 replaces; the carrier itself says "supersedes", and names its surviving siblings
+  explicitly ("its self-pinning and checksum items are placement-independent and remain in force"),
+  which are other items, not surviving clauses of item 1.
+
+  This site was missed by the original audit sweep and by all three plan reviews, and found while
+  reading ADR-0040's frontmatter for an unrelated reason. ADR-0131's own Context names it
+  ("ADR-0047 Decision 1 records a supersession of ADR-0040's first Decision item in prose alone"),
+  so the ADR knew about it and the enumeration did not. It is also the only backfilled token that
+  asserts a retirement.
+
+  The carrier claims the override is "recorded via `related`". It is not: ADR-0040's `related:` is
+  `[24, 27, 30, 39, 85]`. Task 1.13 adds the edge.
+
+- [ ] **Task 1.13: Add the six missing back-pointer edges.** Batch task: one identical edit shape
+  across six frontmatter arrays. Each target ADR's `related:` gains the number of the carrier whose
   token points at it (ADR-0128 Decision 5 requires the edge on a target of any status).
 
-  Representative site, `docs/decisions/0004-lightweight-review-presentation.md:5` (confirm the exact
-  filename by glob; only the frontmatter line matters):
+  These land in **this** commit, not a later one. Six of this phase's tokens target an ADR whose
+  `related:` does not yet name the carrier, and each such token is an `adr-token-backpointer` drift
+  until its edge exists, so splitting them out would leave this phase unable to pass its own gate.
+
+  Representative site, an append: `docs/decisions/0004-*.md:5`
 
   ```
   related: [1]
@@ -329,53 +365,63 @@ in those three files. Locate each site by its quoted text, not by number.
   related: [1, 28]
   ```
 
-  Edge site, `docs/decisions/0069-*.md:5`, which has the longest existing array and must stay
-  ascending:
+  Edge site, a **mid-array insert**: `docs/decisions/0024-*.md:5`. The arrays are ascending, so an
+  append is wrong here.
 
   ```
-  related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67]
+  related: [9, 14, 22, 93]
   ```
 
   becomes:
 
   ```
-  related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67, 75]
+  related: [9, 14, 22, 26, 93]
   ```
 
-  The affected-site set is exactly these five, target then number to add:
+  The affected-site set is exactly these six:
 
-  | Target ADR | add | required by carrier |
-  |---|---|---|
-  | `0004-*.md` | 28 | Task 1.3 |
-  | `0022-*.md` | 43 | Task 1.4 |
-  | `0024-*.md` | 26 | Task 1.2 |
-  | `0045-*.md` | 87 | Task 1.10 |
-  | `0069-*.md` | 75 | Task 1.6 |
+  | Target ADR | add | position | required by carrier |
+  |---|---|---|---|
+  | `0004-*.md` | 28 | append | Task 1.3 |
+  | `0022-*.md` | 43 | **mid-insert** (`[4, 11, 43, 86]`) | Task 1.4 |
+  | `0024-*.md` | 26 | **mid-insert** (`[9, 14, 22, 26, 93]`) | Task 1.2 |
+  | `0040-*.md` | 47 | **mid-insert** (`[24, 27, 30, 39, 47, 85]`) | Task 1.12 |
+  | `0045-*.md` | 87 | append | Task 1.10 |
+  | `0069-*.md` | 75 | append | Task 1.6 |
 
-  ADR-0082 is deliberately absent: Plan A Task 2.3 already added 85 to it. If that edit is missing,
-  Plan A did not fully land and this plan started too early.
+  Three of the six are mid-inserts. ADR-0082 is deliberately absent: Plan A Task 2.3 already added
+  85 to it. If that edit is missing, Plan A did not fully land and this plan started too early.
 
-  Post-check: `./x check` reports no drift of kind `adr-token-backpointer`. Confirm with
-  `./x check 2>&1 | grep -c adr-token-backpointer` returning `0`.
+  Post-check: `./x check 2>&1 | grep -c adr-token-backpointer` returns `0`. Note `grep -c` exits 1
+  when the count is zero, so do not chain it with `&&`.
 
-- [ ] **Task 2.2: Verify and commit.** Run `./x sync`, `./x check` (expect `awf check: clean`), then
-  `./x gate`. `git add` the five ADR files plus `docs/decisions/ACTIVE.md` and `.awf/awf.lock`, and
-  commit:
+- [ ] **Task 1.14: Verify no status flip was forced, then commit.** Run `./x sync`, then `./x check`.
+  Expect `awf check: clean` and `awf invariants: clean`.
+
+  An `adr-token-backpointer` finding means a seventh edge exists that the audit missed. Add it here
+  and note it; do not defer it, since this phase must gate clean.
+
+  An `adr-coverage-status` finding means a `supersedes:` token completed some target's coverage.
+  Only one backfilled token is a retirement (Task 1.12), and ADR-0040 reaches 2 covered anchors of 9
+  (seven Decision items, two declared slugs, one of which `bootstrap-pin` already carries a
+  retirement), so no flip is expected. Do not flip a status to silence it: stop and re-count.
+
+  Then run `./x gate`, `git add` the twelve carrier ADR files, the six target ADR files,
+  `docs/decisions/ACTIVE.md` and `.awf/awf.lock`, and commit:
 
   ```commit
-  docs(adr): add five missing supersession back-pointers
+  docs(adr): backfill unencoded relation tokens and back-pointers
   ```
 
 ## Verification
 
-After both phases:
-
 - `./x gate` passes and `./x check` reports `awf check: clean` and `awf invariants: clean`.
-- All 16 tokens are present:
-  `grep -c 'refines: ADR-\|supersedes: ADR-\|supersedes-invariant: ADR-' docs/decisions/*.md` rises
-  by exactly 16 against the pre-Phase-1 count (capture it before starting).
+- All 17 tokens are present. Capture the baseline **before** starting:
+  `grep -oh 'refines: ADR-\|supersedes: ADR-\|supersedes-invariant: ADR-' docs/decisions/*.md | wc -l`
+  and confirm it rises by exactly 17. Use `-oh ... | wc -l`, not `grep -c`: `grep -c` reports
+  matching *lines* per file, and Task 1.1 puts two tokens on one line.
 - No back-pointer drift: `./x check 2>&1 | grep -c adr-token-backpointer` returns `0`.
-- No status flipped: `git diff HEAD~2 --unified=0 -- docs/decisions/ | grep -c '^[-+]status:'`
+- No status flipped: `git diff HEAD~1 --unified=0 -- docs/decisions/ | grep -c '^[-+]status:'`
   returns `0`.
 
 ## Notes
@@ -388,5 +434,12 @@ After both phases:
   and rejected it: that slug names no path, so relocating the config root leaves it true. This is
   also why ADR-0015 owes no `related: [16]` edge.
 - **The three tokens on ADR-0015 item 4 duplicate anchors Plan A claims from item 6.** Intended, per
-  the Architecture summary. If a future reader finds the duplication noisy, the fix is a change to
-  ADR-0131 Decision 2's per-item scoping, not a silent deletion of one token.
+  the Architecture summary. Plan review confirmed the duplication is harmless in the supersession
+  checks (`seenAnchor` is per-ADR, `isRetired` is boolean) but that it **does** double the rendered
+  rows in `docs/decisions/ACTIVE.md` and `awf context`, because neither renderer dedups. Plan C
+  Task 3.6 adds (anchor, carrier, relation) dedup to both. Until that lands, the doubled rows in
+  ACTIVE.md are expected output of this plan, not drift.
+- **Three verdicts were overturned in plan review**, all from `supersedes:` to `refines:`
+  (ADR-0024#3, ADR-0030#4, ADR-0013#4). Each had a surviving clause the first reading missed, and in
+  two of the three the carrier's own prose says "reverses" or "is retired", which is what misled it.
+  Carrier verbs describe intent; the relation follows from the target's clause set.
