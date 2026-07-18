@@ -129,6 +129,10 @@
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Implemented)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](0127-explicit-audit-ranges-and-a-single-git-range-parser.md) (Implemented)
 
+## Proposed
+
+- [ADR-0128: Coverage-Derived ADR Supersession](0128-coverage-derived-adr-supersession.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
@@ -175,5 +179,6 @@
 - ADR-0116: item 2 superseded by ADR-0120; item 5 superseded by ADR-0120
 - ADR-0117: item 5 superseded by ADR-0119
 - ADR-0118: item 1 superseded by ADR-0119; item 9 superseded by ADR-0119
+- ADR-0120: item 3 superseded by ADR-0128; item 4 superseded by ADR-0128; item 5 superseded by ADR-0128
 - ADR-0122: item 3 superseded by ADR-0123; item 4 superseded by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
 - ADR-0123: item 2 superseded by ADR-0125; item 3 superseded by ADR-0125; item 4 superseded by ADR-0125; item 5 superseded by ADR-0125; item 7 superseded by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125

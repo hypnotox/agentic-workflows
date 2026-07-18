@@ -28,6 +28,10 @@ Decisions live as append-only ADRs under `docs/decisions/`, parsed by `internal/
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
 
+### Proposed
+
+- [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
+
 ### Superseded
 
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120

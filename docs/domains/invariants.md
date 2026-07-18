@@ -31,6 +31,10 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 - [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 
+### Proposed
+
+- [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
+
 ### Superseded
 
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120
