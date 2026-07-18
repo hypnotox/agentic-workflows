@@ -109,6 +109,15 @@ data:
         concurrent session; when a shared tree is unavoidable, stage HEAD-plus-only-your-hunks
         versions of mixed files (write the merged file back to the worktree after `git add`) and
         verify the staged slice deliberately.
+
+        A read-only subagent is not automatically safe in the shared tree: a plan reviewer in
+        the ADR-0131 retrofit used the live repo as scratch and ran `git checkout` when it
+        finished, discarding the main thread's uncommitted work along with its own. Index
+        discipline does not help here, because nothing was staged. State the constraint in the
+        dispatch prompt itself: the subagent works in its own `git worktree` and never runs
+        `checkout`, `restore`, `stash`, or `reset` in the main repo. Ten dispatches across the
+        2026-07-19 triage carried that mandate explicitly and all ten behaved, but repeating it
+        per prompt is the weak link, since one forgotten dispatch is one destroyed working tree.
     - title: "A new var reference in a previously var-free template is adopter-visible"
       domains: [rendering]
       tags: [placeholder-degradation, publication-safety]
