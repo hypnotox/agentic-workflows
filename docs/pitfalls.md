@@ -4,6 +4,19 @@
 <!-- awf:edit prepend: default; create .awf/docs/parts/pitfalls/prepend.md to override -->
 
 
+## A schema-generation bump needs `awf upgrade`, not `awf sync`
+
+_Domains: config, tooling_
+
+Registering a migration raises `migrate.Current()`, which immediately puts the repo's own
+`.awf/` tree one generation behind its freshly-built binary. `awf sync` and `awf check` then
+*refuse* with "config schema is behind (generation N-1 < N); run awf upgrade" rather than
+re-rendering, so a plan step that says "run `./x sync` and stage the result" cannot work at
+that point. Run `go run ./cmd/awf upgrade`, which applies the new migration to this repo and
+re-syncs. The same applies to `examples/sundial`: it carries its own schema generation and is
+gated by `./x check` (ADR-0090), so upgrade it too, with a source-built binary from the repo
+root. Bit the ADR-0127 plan, whose Task 2.5 named the wrong command for both trees.
+
 ## `awf audit` and `extensions.worktreeConfig`
 
 _Domains: tooling_

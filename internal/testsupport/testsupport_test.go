@@ -105,3 +105,40 @@ func TestADREveryOption(t *testing.T) {
 		t.Errorf("ADR(full) =\n%q\nwant\n%q", got, want)
 	}
 }
+
+// WalkRepoSources owns awf's repo-walk boundary, so its pruning is pinned here
+// rather than rediscovered by each scanner that uses it.
+func TestWalkRepoSourcesBoundary(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "keep.go"), "package x\n")
+	testsupport.WriteFile(t, filepath.Join(root, "skip_test.go"), "package x\n")
+	testsupport.WriteFile(t, filepath.Join(root, "notes.md"), "not go\n")
+	testsupport.WriteFile(t, filepath.Join(root, "pkg", "nested.go"), "package y\n")
+	// A hidden tree: .claude/worktrees/ holds session checkouts of this repo.
+	testsupport.WriteFile(t, filepath.Join(root, ".claude", "worktrees", "s", "foreign.go"), "package z\n")
+	// A non-hidden nested checkout, marked by its own .git entry.
+	testsupport.WriteFile(t, filepath.Join(root, "vendored", "other.go"), "package w\n")
+	testsupport.WriteFile(t, filepath.Join(root, "vendored", ".git"), "gitdir: elsewhere\n")
+
+	seen := map[string]bool{}
+	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
+		seen[rel] = true
+		if len(body) == 0 {
+			t.Errorf("%s: body must be read", rel)
+		}
+	})
+	want := map[string]bool{"keep.go": true, "pkg/nested.go": true}
+	for w := range want {
+		if !seen[w] {
+			t.Errorf("production source %q was not walked", w)
+		}
+	}
+	for _, skipped := range []string{
+		"skip_test.go", "notes.md",
+		".claude/worktrees/s/foreign.go", "vendored/other.go",
+	} {
+		if seen[skipped] {
+			t.Errorf("%q must be outside the repo-walk boundary", skipped)
+		}
+	}
+}

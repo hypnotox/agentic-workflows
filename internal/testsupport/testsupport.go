@@ -175,3 +175,68 @@ func RunIsolated(m *testing.M, prefix string) int {
 	_ = os.RemoveAll(home)
 	return code
 }
+
+// RepoRoot ascends from the test's working directory to the directory holding
+// go.mod, so a repo-wide scan is never anchored to a package's depth.
+func RepoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil { // coverage-ignore: the test process always has a working directory
+		t.Fatal(err)
+	}
+	for {
+		if _, serr := os.Stat(filepath.Join(dir, "go.mod")); serr == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir { // coverage-ignore: the test tree always sits under a go.mod
+			t.Fatal("go.mod not found above the test working directory")
+		}
+		dir = parent
+	}
+}
+
+// WalkRepoSources calls fn(relPath, contents) for every production Go file in
+// the repository, and is the single definition of awf's repo-walk boundary.
+// A hand-rolled walker must state that boundary or it silently reads foreign
+// source as its own: hidden trees (notably .claude/worktrees/, which holds
+// session checkouts of this very repo) and any nested checkout (a directory
+// carrying its own .git entry, whether a directory or a gitdir-pointer file)
+// are pruned, as are _test.go files. Two independent scanners drifted on this
+// before it was stated once here.
+func WalkRepoSources(t *testing.T, root string, fn func(rel string, body []byte)) {
+	t.Helper()
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, werr error) error {
+		if werr != nil { // coverage-ignore: walking a readable checkout does not fault
+			return werr
+		}
+		rel, rerr := filepath.Rel(root, path)
+		if rerr != nil { // coverage-ignore: path always sits under root
+			return rerr
+		}
+		if d.IsDir() {
+			if path == root {
+				return nil
+			}
+			if strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
+			if _, serr := os.Stat(filepath.Join(path, ".git")); serr == nil {
+				return filepath.SkipDir // a nested checkout owns its own sources
+			}
+			return nil
+		}
+		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") {
+			return nil
+		}
+		body, rerr := os.ReadFile(path)
+		if rerr != nil { // coverage-ignore: the walk just listed this regular file
+			return rerr
+		}
+		fn(filepath.ToSlash(rel), body)
+		return nil
+	})
+	if err != nil { // coverage-ignore: the callback never errors and the walk cannot fault
+		t.Fatal(err)
+	}
+}

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // writeConfig writes config.yaml into a fresh awf dir and returns that dir.
@@ -145,69 +147,27 @@ func TestLoadReadsTreeRoot(t *testing.T) {
 		t.Errorf("Load read the wrong file: prefix = %q, want tree-root", c.Prefix)
 	}
 
-	repo := repoRoot(t)
+	repo := testsupport.RepoRoot(t)
 	legacyRefs := scanLegacyRefs(t, repo)
 	if len(legacyRefs) != 0 {
 		t.Errorf("only internal/migrate may reference the legacy .claude/awf.yaml; found refs in: %v", legacyRefs)
 	}
 }
 
-// repoRoot ascends from the test's working directory to the directory holding go.mod.
-func repoRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("go.mod not found above the test working directory")
-		}
-		dir = parent
-	}
-}
-
 // scanLegacyRefs returns non-test, non-migrate Go files that mention the legacy
-// awf.yaml filename.
+// awf.yaml filename. The repo-walk boundary (hidden trees, nested checkouts,
+// test files) is owned by testsupport.WalkRepoSources.
 func scanLegacyRefs(t *testing.T, repo string) []string {
 	t.Helper()
 	var hits []string
-	migrateDir := filepath.Join("internal", "migrate")
-	err := filepath.WalkDir(repo, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
+	testsupport.WalkRepoSources(t, repo, func(rel string, body []byte) {
+		if strings.HasPrefix(rel, "internal/migrate/") {
+			return
 		}
-		if d.IsDir() {
-			// Hidden trees hold no production source; .claude/worktrees/
-			// carries session checkouts with their own internal/migrate.
-			if path != repo && strings.HasPrefix(d.Name(), ".") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		rel, _ := filepath.Rel(repo, path)
-		if strings.HasPrefix(rel, migrateDir) {
-			return nil
-		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		if strings.Contains(string(b), "awf.yaml") {
+		if strings.Contains(string(body), "awf.yaml") {
 			hits = append(hits, rel)
 		}
-		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	return hits
 }
 
