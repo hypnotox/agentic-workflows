@@ -9,6 +9,30 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- The `supersedes:` and `superseded_by:` ADR frontmatter keys are removed, and full ADR
+  supersession is now derived from anchor coverage rather than declared (ADR-0128, ADR-0129,
+  ADR-0130). **Run `awf upgrade`: the generation-12 migration rewrites `docs/decisions/`**,
+  stripping both keys, downgrading every pre-existing `` `supersedes: ADR-NNNN#<item>` `` token
+  to the new `` `refines:` `` relation, appending a supersedence-bookkeeping Decision item that
+  retires each superseded predecessor's anchors, backfilling the predecessors' `related:`
+  back-pointers, and rewriting `status: Superseded by ADR-NNNN` to bare `status: Superseded`.
+  `awf check` refuses either key with upgrade guidance.
+
+  Supersession now has one encoding and two relations: `` `supersedes:` `` and
+  `` `supersedes-invariant:` `` **retire** an anchor (a Decision item or a declared invariant
+  slug), while the new `` `refines:` `` **adapts** one and counts toward nothing. An ADR is
+  `Superseded` exactly when every one of its anchors carries a retirement from an `Implemented`
+  ADR; the status stays hand-authored and `awf check` refuses drift in both directions, naming
+  the required edit. The status is bare because coverage may split across several successors.
+  The mechanical migration downgrades every existing item token to `refines:` deliberately - it
+  asserts less, and promoting a genuine retirement back is a reviewable edit, whereas a wrong
+  retirement silently kills an ADR.
+
+  Two further checks arrive with it: the `related:` back-pointer is now owed for token targets
+  of **any** status (previously live targets only), and a token claiming its own carrier's
+  anchor, or a retirement cycle among fully covered ADRs, is refused. The advisory for a token
+  into an already-superseded target is dropped, since that is now the normal shape of every
+  completed supersedence.
 - `awf audit` now requires an explicit commit range and has no default (ADR-0127). Pass a bare
   `<base>` (meaning `<base>..HEAD`) or a two-sided `<a>..<b>`; a no-argument invocation is refused.
   The `--base` flag is removed, superseded by the positional argument. `./x audit-local` (this
