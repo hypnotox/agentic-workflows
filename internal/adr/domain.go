@@ -30,8 +30,13 @@ func RenderDomainIndex(corpus Corpus, domain string) string {
 		fmt.Fprintf(&sb, "### %s\n\n", status)
 		for _, a := range groups[status] {
 			fmt.Fprintf(&sb, "- [%s](../decisions/%s)", a.Title, a.Filename)
-			if a.SupersededBy != "" {
-				fmt.Fprintf(&sb, " → superseded by ADR-%s", a.SupersededBy)
+			// Claimant numbers only, never individual anchors (ADR-0129 item 5).
+			// The scalar successor this replaces could name one ADR; coverage
+			// may split across several, and a per-anchor list would turn a
+			// domain index into a supersession report.
+			// touches-invariant: domain-index-surfaces-partial - the claimant render; proof in domain_test.go
+			if claimants := corpus.Retirers(a.Number); len(claimants) > 0 {
+				fmt.Fprintf(&sb, " \u2192 superseded by %s", joinADRs(claimants))
 			}
 			sb.WriteString("\n")
 		}

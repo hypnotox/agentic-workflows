@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-27
-supersedes: []
-superseded_by: ""
 tags: [init-scaffolding]
 related: [4, 11, 86]
 domains: [config, tooling]

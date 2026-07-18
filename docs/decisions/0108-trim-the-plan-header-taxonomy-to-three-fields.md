@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-13
-supersedes: []
-superseded_by: ""
 tags: [plan-taxonomy, placeholder-degradation]
 related: [97, 98]
 domains: [rendering]
@@ -41,7 +39,7 @@ is load-bearing and recorded here as a partial-item supersession rather than an 
 ## Decision
 
 1. **The plan narrative header is three fields, not four.** Partially superseding **ADR-0097
-   Decision 1** (`supersedes: ADR-0097#1`) and **ADR-0098 Decision 2** (`supersedes: ADR-0098#2`), the canonical header is, in order: **Goal**;
+   Decision 1** (`refines: ADR-0097#1`) and **ADR-0098 Decision 2** (`refines: ADR-0098#2`), the canonical header is, in order: **Goal**;
    **Architecture summary** (execution shape, not rationale); **File structure**
    (`created` / `modified` / `deleted`). The **Tech stack** field is removed. Everything else in
    ADR-0097 Decision 1 (the frontmatter block, the `# Plan:` title, the phases, the optional

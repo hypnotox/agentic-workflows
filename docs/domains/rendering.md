@@ -41,20 +41,20 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 
 - [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md)
 - [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](../decisions/0011-docs-default-content-and-section-taxonomy.md)
-- [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](../decisions/0013-doc-cross-references-via-layout.md)
+- [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](../decisions/0013-doc-cross-references-via-layout.md) → superseded by ADR-0043, ADR-0081
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
-- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
+- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md) → superseded by ADR-0037
 - [ADR-0018: Documentation Authoring Standard: `doc-standard.md` and `agents-md-standard.md`](../decisions/0018-documentation-authoring-standard.md)
 - [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
 - [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 - [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
-- [ADR-0034: Convention Parts Are Raw Input](../decisions/0034-convention-parts-are-raw-input.md)
+- [ADR-0034: Convention Parts Are Raw Input](../decisions/0034-convention-parts-are-raw-input.md) → superseded by ADR-0121
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
 - [ADR-0038: Tool-Agnostic Skill and Agent Prose](../decisions/0038-tool-agnostic-skill-agent-prose.md)
-- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
-- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md)
+- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md) → superseded by ADR-0085
+- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) → superseded by ADR-0061
 - [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
 - [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
 - [ADR-0047: Bootstrap relocation into the config tree](../decisions/0047-bootstrap-relocation-into-the-config-tree.md)
@@ -90,8 +90,8 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 - [ADR-0095: Batch tasks in the plan convention](../decisions/0095-batch-tasks-in-the-plan-convention.md)
 - [ADR-0097: Plan Convention: Sections, Granularity, and Lifecycle](../decisions/0097-plan-convention-sections-granularity-and-lifecycle.md)
-- [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
-- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)
+- [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md) → superseded by ADR-0104
+- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) → superseded by ADR-0104
 - [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
 - [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
 - [ADR-0108: Trim the plan header taxonomy to three fields](../decisions/0108-trim-the-plan-header-taxonomy-to-three-fields.md)
@@ -102,17 +102,14 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
-- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
+- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
-- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md)
-- [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md)
+- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md) → superseded by ADR-0123
+- [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md) → superseded by ADR-0125
 - [ADR-0124: Deterministic Output Plans and Target Capabilities](../decisions/0124-deterministic-output-plans-and-target-capabilities.md)
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](../decisions/0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md)
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](../decisions/0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
-
-### Proposed
-
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](../decisions/0129-single-anchor-coverage-model-for-every-supersession-consumer.md)
 
 ### Superseded

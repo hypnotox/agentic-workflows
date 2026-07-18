@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-12
-supersedes: []
-superseded_by: ""
 tags: [plan-artifact, frontmatter-validation]
 related: [6, 60, 92, 95, 97, 108, 104]
 domains: [rendering, tooling]

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-28
-supersedes: []
-superseded_by: ""
 tags: [init-scaffolding, catalog-vars]
 related: [22, 64]
 domains: [tooling, config]

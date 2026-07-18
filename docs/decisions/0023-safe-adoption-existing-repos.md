@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-27
-supersedes: []
-superseded_by: ""
 tags: [brownfield-adoption, git-hooks]
 related: [3, 16, 32]
 domains: [tooling]

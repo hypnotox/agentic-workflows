@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-29
-supersedes: []
-superseded_by: ""
 tags: [commit-gate, git-hooks]
 related: [17, 32]
 domains: [tooling]

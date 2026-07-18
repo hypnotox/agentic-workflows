@@ -31,9 +31,9 @@ Load-bearing triggers include:
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `docs/decisions/template.md`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `docs/domains/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
+- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `docs/domains/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
 - **Required sections:** Context, Decision, Invariants, Consequences, Alternatives Considered, in that order. Delete the authoring checklist before committing.
-- **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+- **Predecessor flip:** never write it by hand up front. Full supersedence is *derived*: an ADR becomes `Superseded` when every one of its Decision items and declared invariant slugs carries a retirement token from an `Implemented` ADR. `awf check` reports the flip when coverage completes, and names the exact edit.
 
 ## Procedure
 
@@ -47,13 +47,13 @@ Load-bearing triggers include:
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
+   - Also fill in every remaining frontmatter array (`tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
 
 <!-- awf:edit state-doc-update: default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
 3. **Update or create the relevant domain doc** under `docs/domains` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
 
 <!-- awf:edit procedure-predecessor-flip: default; create .awf/skills/parts/proposing-adr/procedure-predecessor-flip.md to override -->
-4. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+4. **Claim what you supersede, anchor by anchor.** Write one inline token per anchor you retire, inside the Decision item whose prose justifies it: `` `supersedes: ADR-NNNN#<item>` `` or `` `supersedes-invariant: ADR-NNNN#<slug>` ``. Use `` `refines: ADR-NNNN#<item>` `` when you adapt an item rather than replace it - a refinement counts toward nothing, which is what keeps an adapted ADR alive. Add your number to each target's `related:`. Do not touch the predecessor's `status`: it flips only when coverage completes, and only in the commit that brings the final covering ADR to `Implemented`.
 
 <!-- awf:edit invariants-rule: default; create .awf/skills/parts/proposing-adr/invariants-rule.md to override -->
 5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>`, ...`` for a property a test is declared to back, or an ``- `unbacked-invariant: <slug>`, ... **Verify:** ...`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment, your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby), on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug>, <note>` marker records a related production site and never backs. `./x check` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run `./x gate` and `./x check` to confirm.

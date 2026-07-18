@@ -32,8 +32,6 @@ type ADR struct {
 	Domains       []string          // `domains:` frontmatter (ADR-0014)
 	Tags          []string          // `tags:` frontmatter (keyword labels)
 	Related       []int             // `related:` frontmatter (ADR numbers)
-	SupersededBy  string            // `superseded_by:` frontmatter (e.g. "0008", or "")
-	Supersedes    []int             // `supersedes:` frontmatter: full-supersession claims (ADR-0120)
 	Refs          []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
 	Sections      map[string]string // `## ` heading -> non-fenced section body
 	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
@@ -186,12 +184,10 @@ func ParseDir(dir string) ([]ADR, error) {
 
 // adrFrontmatter holds the YAML fields we care about.
 type adrFrontmatter struct {
-	Status       string   `yaml:"status"`
-	Domains      []string `yaml:"domains"`
-	Tags         []string `yaml:"tags"`
-	Related      []int    `yaml:"related"`
-	SupersededBy string   `yaml:"superseded_by"`
-	Supersedes   []int    `yaml:"supersedes"`
+	Status  string   `yaml:"status"`
+	Domains []string `yaml:"domains"`
+	Tags    []string `yaml:"tags"`
+	Related []int    `yaml:"related"`
 }
 
 // ParseBytes parses one ADR from bytes: status and the other frontmatter
@@ -212,7 +208,7 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, SupersededBy: fm.SupersededBy, Supersedes: fm.Supersedes, Sections: parsed.bodies}
+	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
 	}
@@ -258,7 +254,6 @@ func RenderActiveMD(corpus Corpus) string {
 	// Supersedence rendering (ADR-0120 item 10). Either subsection is omitted
 	// when empty: publication-safe degradation, and a supersession-free corpus
 	// renders byte-identically to the pre-ADR-0120 index.
-	// touches-invariant: active-md-supersedence-rendering - the section render below; proof in adr_test.go
 	chains := corpus.Chains()
 	annotated := corpus.AnnotatedAnchors()
 	if len(chains) > 0 || len(annotated) > 0 {
@@ -266,7 +261,7 @@ func RenderActiveMD(corpus Corpus) string {
 		if len(chains) > 0 {
 			// One-to-many by construction (ADR-0129 item 6): coverage may split
 			// across successors, so a chain names every retirer, not one.
-			// invariant: active-md-chains-one-to-many
+			// touches-invariant: active-md-chains-one-to-many - the chain render; proof in adr_test.go
 			sb.WriteString("\n### Chains\n\n")
 			for _, c := range chains {
 				fmt.Fprintf(&sb, "- ADR-%s superseded by %s\n", c.Predecessor, joinADRs(c.Successors))

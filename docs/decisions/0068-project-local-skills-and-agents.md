@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-06
-supersedes: []
-superseded_by: ""
 tags: [local-artifacts]
 related: [22, 37, 45, 50, 53, 54, 57, 58, 60, 61]
 domains: []

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-12
-supersedes: []
-superseded_by: ""
 tags: [plan-taxonomy]
 related: [95, 108]
 domains: [rendering]

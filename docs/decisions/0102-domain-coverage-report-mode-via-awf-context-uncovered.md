@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-12
-supersedes: []
-superseded_by: ""
 tags: [uncovered-coverage, context-query]
 related: [14, 77, 86, 92, 94, 110]
 domains: [tooling]

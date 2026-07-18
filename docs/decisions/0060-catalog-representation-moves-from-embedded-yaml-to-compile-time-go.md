@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-05
-supersedes: []
-superseded_by: ""
 tags: [compile-time-catalog]
 related: [22, 27, 43, 45]
 domains: [rendering, config]

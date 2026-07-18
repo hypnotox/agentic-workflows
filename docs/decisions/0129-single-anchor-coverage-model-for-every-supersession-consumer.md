@@ -1,11 +1,9 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-18
 tags: [adr-parsing, adr-lifecycle, active-md, domain-index, context-tiering]
 related: [14, 92, 104, 116, 120, 128, 130]
 domains: [adr-system, rendering]
-supersedes: []
-superseded_by: ""
 ---
 # ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer
 
@@ -115,7 +113,7 @@ deleted on purpose.
    `Superseded` status bucket becomes an undifferentiated list once no scalar successor name
    exists, and that stays true by design: the bucket is a status roster, and answering "who
    retired this" there would duplicate the subsection that exists for the purpose. This is the
-   answer to that deferral. This `supersedes: ADR-0120#10` for its description of
+   answer to that deferral. This `refines: ADR-0120#10` for its description of
    chains as predecessor-to-successor pairs; under ADR-0128 item 2 the claim classifies as a
    refinement, since item 10's annotation half and its requirement that the section exist both
    stand, and the generation-12 migration will rewrite it accordingly. That rewrite must land

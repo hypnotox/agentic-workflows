@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-08
-supersedes: []
-superseded_by: ""
 tags: [sha-pinning, release-pipeline]
 related: [30, 40, 49, 65, 78]
 domains: [tooling]

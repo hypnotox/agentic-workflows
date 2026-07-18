@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-13
-supersedes: []
-superseded_by: ""
 tags: [context-tiering]
 related: [8, 31, 92, 98, 99, 102, 103, 106, 109]
 domains: [tooling, invariants]

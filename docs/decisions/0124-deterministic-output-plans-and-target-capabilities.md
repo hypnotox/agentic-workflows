@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-17
-supersedes: []
-superseded_by: ""
 tags: [multi-target, target-seam, lock-manifest, render-completeness]
 related: [20, 37, 86, 100, 122, 123]
 domains: [rendering]

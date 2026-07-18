@@ -1,8 +1,6 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-18
-supersedes: []
-superseded_by: ""
 tags: [adr-lifecycle, adr-parsing, frontmatter-validation, invariant-retirement, schema-migration]
 related: [8, 10, 14, 35, 42, 105, 116, 120, 129, 130]
 domains: [adr-system, invariants, config]
@@ -136,7 +134,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
 
 5. **The back-pointer requirement widens to targets of any status.** `awf check` fails when a
    token of either relation targets an ADR whose `related:` lacks the carrier's number,
-   regardless of whether that target is live or `Superseded`. This `supersedes: ADR-0120#4`,
+   regardless of whether that target is live or `Superseded`. This `refines: ADR-0120#4`,
    which scoped the check
    to live targets only. The widening is load-bearing for item 4: with bare `Superseded`
    naming no successor, `related:` is the only surface on the predecessor that names its
@@ -154,7 +152,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    an anchor dead is a genuine conflict. Refinements do not contest. Multiple `refines:`
    claims on one anchor are the normal shape of an evolving decision, and a mixed pair
    (refined by one ADR, later retired by another) is the ADR-0034 item 1 history item 2 cites
-   as healthy; neither notes. This `supersedes: ADR-0120#5` and
+   as healthy; neither notes. This `refines: ADR-0120#5` and
    `supersedes-invariant: ADR-0120#supersession-flavour-exclusive`. It also
    `supersedes-invariant: ADR-0120#supersession-conflict-advisory`, which bundles both
    advisories in one slug: slugs are atomic, so dropping one of the pair means retiring the

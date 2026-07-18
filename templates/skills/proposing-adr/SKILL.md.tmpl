@@ -28,9 +28,9 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `supersedes` (array of ADR numbers or `[]`), `superseded_by` (number or `null`), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
+- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
 - **Required sections:** {{ with .data.adrSections }}{{ range . }}{{ . }}, {{ end }}in that order. {{ else }}follow the ADR template's section order. {{ end }}Delete the authoring checklist before committing.
-- **Predecessor flip:** if fully superseding an earlier ADR, update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+- **Predecessor flip:** never write it by hand up front. Full supersedence is *derived*: an ADR becomes `Superseded` when every one of its Decision items and declared invariant slugs carries a retirement token from an `Implemented` ADR. `awf check` reports the flip when coverage completes, and names the exact edit.
 <!-- awf:end -->
 
 ## Procedure
@@ -46,7 +46,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
    - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`supersedes`, `tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
+   - Also fill in every remaining frontmatter array (`tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
@@ -54,7 +54,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 <!-- awf:end -->
 
 <!-- awf:section procedure-predecessor-flip -->
-4. **Flip predecessor status** if fully superseding an earlier ADR: update its `status:` frontmatter field to `Superseded by ADR-NNNN` in the same commit.
+4. **Claim what you supersede, anchor by anchor.** Write one inline token per anchor you retire, inside the Decision item whose prose justifies it: `` `supersedes: ADR-NNNN#<item>` `` or `` `supersedes-invariant: ADR-NNNN#<slug>` ``. Use `` `refines: ADR-NNNN#<item>` `` when you adapt an item rather than replace it - a refinement counts toward nothing, which is what keeps an adapted ADR alive. Add your number to each target's `related:`. Do not touch the predecessor's `status`: it flips only when coverage completes, and only in the commit that brings the final covering ADR to `Implemented`.
 <!-- awf:end -->
 
 <!-- awf:section invariants-rule -->

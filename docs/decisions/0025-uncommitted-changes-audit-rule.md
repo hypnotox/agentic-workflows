@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-27
-supersedes: []
-superseded_by: ""
 tags: [audit-rules, commit-conformance]
 related: [17, 19]
 domains: [tooling]

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-10
-supersedes: []
-superseded_by: ""
 tags: [adopter-reference, config-reference]
 related: [1, 29, 39, 45, 60, 61, 80, 82, 84, 86, 87]
 domains: [config, rendering, tooling]

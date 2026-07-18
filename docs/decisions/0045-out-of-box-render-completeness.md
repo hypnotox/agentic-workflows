@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-01
-supersedes: []
-superseded_by: ""
 tags: [render-completeness, placeholder-degradation]
 related: [1, 6, 11, 12, 22, 29, 39]
 domains: [rendering, config]

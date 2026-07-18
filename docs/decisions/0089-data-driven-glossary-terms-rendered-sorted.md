@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-10
-supersedes: []
-superseded_by: ""
 tags: [glossary, sidecar-derived-doc]
 related: [11, 45, 61, 80, 82, 86, 88]
 domains: [rendering, config]

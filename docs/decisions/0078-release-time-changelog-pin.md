@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-08
-supersedes: []
-superseded_by: ""
 tags: [changelog, release-pipeline]
 related: [41, 49, 73]
 domains: [tooling]

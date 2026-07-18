@@ -11,15 +11,20 @@ import (
 
 // TestRenderDomainIndexFiltersGroupsAndAnnotates covers membership filtering by
 // domain, status grouping (incl. within-status number sort and an extra status
-// appended after statusOrder), superseded-successor annotation, and relative
-// links.
+// appended after statusOrder), claimant annotation, and relative links.
+//
+// The annotation names claiming ADR NUMBERS and no individual anchor (ADR-0129
+// item 5): coverage may split across several claimants, and a per-anchor list
+// would turn a domain index into a supersession report.
+// invariant: domain-index-surfaces-partial
 func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"0001-first.md":  testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First")),
-		"0002-second.md": testsupport.ADR("Implemented", testsupport.WithDomains("rendering", "config"), testsupport.WithTitle("0002: Second")),
+		"0001-first.md": testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First")),
+		"0002-second.md": testsupport.ADR("Implemented", testsupport.WithDomains("rendering", "config"), testsupport.WithTitle("0002: Second"),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0004#1`.\n")),
 		"0003-third.md":  testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0003: Third")),
-		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0004: Fourth")),
+		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithRelated(2), testsupport.WithTitle("0004: Fourth"), testsupport.WithBody("## Decision\n\n1. old.\n")),
 		"0005-fifth.md":  testsupport.ADR("Draft", testsupport.WithDomains("rendering"), testsupport.WithTitle("0005: Fifth")),
 	}
 	for name, content := range files {
@@ -72,8 +77,9 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 func TestRenderDomainIndexExactLayout(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"0001-first.md":  testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First")),
-		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0004: Fourth")),
+		"0001-first.md": testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: First"),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0004#1`.\n")),
+		"0004-fourth.md": testsupport.ADR("Superseded", testsupport.WithDomains("rendering"), testsupport.WithRelated(1), testsupport.WithTitle("0004: Fourth"), testsupport.WithBody("## Decision\n\n1. old.\n")),
 	}
 	for name, content := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, name), content)
@@ -85,7 +91,7 @@ func TestRenderDomainIndexExactLayout(t *testing.T) {
 		"- [ADR-0001: First](../decisions/0001-first.md)\n" +
 		"\n" +
 		"### Superseded\n\n" +
-		"- [ADR-0004: Fourth](../decisions/0004-fourth.md) → superseded by ADR-0002\n"
+		"- [ADR-0004: Fourth](../decisions/0004-fourth.md) → superseded by ADR-0001\n"
 	if got != want {
 		t.Errorf("layout mismatch:\n got %q\nwant %q", got, want)
 	}
@@ -103,11 +109,12 @@ func TestRenderDomainIndexPlaceholder(t *testing.T) {
 	}
 }
 
-// TestParseDomainsAndSupersededBy confirms the new frontmatter fields land on the
-// parsed ADR.
-func TestParseDomainsAndSupersededBy(t *testing.T) {
+// TestParseDomains confirms the domains frontmatter lands on the parsed ADR.
+// The superseded_by half of this test went with the field: supersession is no
+// longer a frontmatter fact to round-trip (ADR-0128 item 1).
+func TestParseDomains(t *testing.T) {
 	dir := t.TempDir()
-	content := testsupport.ADR("Superseded", testsupport.WithDomains("rendering", "config"), testsupport.WithSupersededBy("0009"), testsupport.WithTitle("0007: Example"))
+	content := testsupport.ADR("Superseded", testsupport.WithDomains("rendering", "config"), testsupport.WithRelated(9), testsupport.WithTitle("0007: Example"), testsupport.WithBody("## Decision\n\n1. old.\n"))
 	testsupport.WriteFile(t, filepath.Join(dir, "0007-example.md"), content)
 	adrs, err := adr.ParseDir(dir)
 	if err != nil {
@@ -118,8 +125,5 @@ func TestParseDomainsAndSupersededBy(t *testing.T) {
 	}
 	if got := strings.Join(adrs[0].Domains, ","); got != "rendering,config" {
 		t.Errorf("Domains = %q, want rendering,config", got)
-	}
-	if adrs[0].SupersededBy != "0009" {
-		t.Errorf("SupersededBy = %q, want 0009", adrs[0].SupersededBy)
 	}
 }

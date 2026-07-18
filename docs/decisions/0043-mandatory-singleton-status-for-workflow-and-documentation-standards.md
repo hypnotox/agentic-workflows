@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-01
-supersedes: []
-superseded_by: ""
 tags: [doc-singletons, schema-migration]
 related: [4, 13, 18, 20, 21, 22, 29, 31, 37, 61]
 domains: [rendering, config]

@@ -50,24 +50,24 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 
 - [ADR-0002: Static Linting via golangci-lint and the ./x Command Runner](../decisions/0002-static-linting-and-x-command-runner.md)
 - [ADR-0012: Full Coverage Gate and the `// coverage-ignore` Convention](../decisions/0012-full-coverage-gate-and-conventions.md)
-- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
+- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md) → superseded by ADR-0037
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0019: Domain-Doc Currency Audit Rules](../decisions/0019-domain-doc-staleness-audit-rule.md)
 - [ADR-0022: Curated Init Default: Workflow-Core Targets](../decisions/0022-curated-init-default.md)
-- [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md)
+- [ADR-0023: Safe Adoption Into Existing Repositories](../decisions/0023-safe-adoption-existing-repos.md) → superseded by ADR-0032
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0025: Uncommitted-Changes Audit Rule](../decisions/0025-uncommitted-changes-audit-rule.md)
 - [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
 - [ADR-0027: Unified Kind Descriptor for Per-Kind Dispatch](../decisions/0027-unified-kind-descriptor.md)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)
-- [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](../decisions/0030-prebuilt-binary-distribution-and-release.md)
+- [ADR-0030: Prebuilt Binary Distribution and Release Pipeline](../decisions/0030-prebuilt-binary-distribution-and-release.md) → superseded by ADR-0049
 - [ADR-0032: Remove Automatic Git-Hook Handling](../decisions/0032-remove-automatic-hook-handling.md)
 - [ADR-0033: Audit ADR→Domain-Index Co-change](../decisions/0033-audit-adr-domain-index-cochange.md)
 - [ADR-0035: Brownfield-Safe Sync Writes](../decisions/0035-brownfield-safe-sync-writes.md)
 - [ADR-0036: Deterministic Commit-Message Gate](../decisions/0036-deterministic-commit-message-gate.md)
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
 - [ADR-0039: Binary-Version Compatibility Gate](../decisions/0039-binary-version-compatibility-gate.md)
-- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
+- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md) → superseded by ADR-0085
 - [ADR-0041: Embedded Changelog and the `awf changelog` Command](../decisions/0041-embedded-changelog-command.md)
 - [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
 - [ADR-0044: Shared Test-Support Package](../decisions/0044-shared-test-support-package.md)
@@ -102,11 +102,11 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
 - [ADR-0094: Command-table CLI dispatch, importable command spec, and generated gated-command list](../decisions/0094-command-table-cli-dispatch-importable-command-spec-and-generated-gated-command-list.md)
 - [ADR-0096: GitHub Release Notes Sourced from the Curated Changelog](../decisions/0096-github-release-notes-sourced-from-the-curated-changelog.md)
-- [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md)
-- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)
-- [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](../decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md)
+- [ADR-0098: Structured Plan Artifact: Frontmatter, Template, and Linking](../decisions/0098-structured-plan-artifact-frontmatter-template-and-linking.md) → superseded by ADR-0104
+- [ADR-0099: Structured Domain-Tagged Pitfalls Surfaced by awf context](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md) → superseded by ADR-0104
+- [ADR-0102: Domain-Coverage Report Mode via awf context --uncovered](../decisions/0102-domain-coverage-report-mode-via-awf-context-uncovered.md) → superseded by ADR-0110
 - [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
-- [ADR-0104: Tag-Tiered Relevance in awf context](../decisions/0104-tag-tiered-relevance-in-awf-context.md)
+- [ADR-0104: Tag-Tiered Relevance in awf context](../decisions/0104-tag-tiered-relevance-in-awf-context.md) → superseded by ADR-0106, ADR-0109
 - [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md)
 - [ADR-0106: Backed-Aware Two-Marker Context Surfacing](../decisions/0106-backed-aware-two-marker-context-surfacing.md)
 - [ADR-0107: Downgrade the changelog-conformance audit rule to an advisory Warning](../decisions/0107-downgrade-the-changelog-conformance-audit-rule-to-an-advisory-warning.md)
@@ -117,15 +117,12 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
 - [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
-- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
-- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md)
-- [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md)
+- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128
+- [ADR-0122: Multi-Runtime Targets and Format-Neutral Agents](../decisions/0122-multi-runtime-targets-and-format-neutral-agents.md) → superseded by ADR-0123
+- [ADR-0123: Pi Workflow Subagent Extension](../decisions/0123-pi-workflow-subagent-extension.md) → superseded by ADR-0125
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](../decisions/0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md)
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](../decisions/0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
-
-### Proposed
-
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
 
 ### Superseded

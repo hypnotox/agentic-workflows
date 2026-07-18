@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-15
-supersedes: [113]
-superseded_by: ""
 tags: [template-residue, doc-standard, active-md, adr-lifecycle]
 related: [28, 31, 73, 82, 112, 113, 117, 118, 119]
 domains: [rendering, adr-system, invariants, tooling]
@@ -167,6 +165,9 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
     The bullet is one terse line naming the seven codepoints and the three surfaces, added to the
     `invariants:` list in the guide's sidecar data. It does not restate the mechanism: that lives
     here, per the criterion's own rule.
+
+11. **Supersedence bookkeeping (migrated from supersedes: by awf upgrade,
+   ADR-0128).** This ADR retires every anchor of ADR-0113: `supersedes: ADR-0113#1`, `supersedes: ADR-0113#2`, `supersedes: ADR-0113#3`, `supersedes: ADR-0113#4`, `supersedes-invariant: ADR-0113#template-em-dash-free`
 
 ## Invariants
 

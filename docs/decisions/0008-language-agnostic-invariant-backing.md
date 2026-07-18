@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-25
-supersedes: []
-superseded_by: ""
 tags: [invariant-backing, anchored-globs]
 related: [7, 77, 105]
 domains: [invariants]
@@ -101,7 +99,7 @@ a default way of setting up things and the tooling to enforce parts of it."
    command-side printers (`runCheck`, `runInvariants`) are updated to emit a status-appropriate,
    non-Go-specific message: `unbacked` advises adding a backing marker comment; `unchecked` advises
    configuring `invariants.sources` or `invariants.disabled: true`. **This revises ADR-0007 Decision
-   item 3** (`supersedes: ADR-0007#3`) (whose scan is `.go`/`//`-only; the duplicate-slug-is-an-error and `Implemented`-only
+   item 3** (`refines: ADR-0007#3`) (whose scan is `.go`/`//`-only; the duplicate-slug-is-an-error and `Implemented`-only
    rules of that item are preserved unchanged) via partial-item supersedence: ADR-0007 stays
    `Implemented`/live and this ADR carries `related: [0007]`; ADR-0007 is **not** flipped to
    `Superseded`. This ADR's prose explicitly cites the overridden item per the partial-supersedence

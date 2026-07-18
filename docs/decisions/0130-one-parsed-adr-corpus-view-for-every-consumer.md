@@ -1,11 +1,9 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-18
 tags: [adr-parsing, audit-rules, domain-index, context-query, invariant-backing]
 related: [14, 17, 92, 104, 120, 128, 129]
 domains: [adr-system, tooling, invariants]
-supersedes: []
-superseded_by: ""
 ---
 # ADR-0130: One Parsed ADR Corpus View for Every Consumer
 

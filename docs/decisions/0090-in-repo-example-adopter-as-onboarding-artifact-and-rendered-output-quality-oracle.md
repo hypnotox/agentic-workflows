@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-10
-supersedes: []
-superseded_by: ""
 tags: [example-adopter]
 related: [8, 20, 39, 48, 49, 53, 70, 77, 80, 81, 82, 83, 86, 87, 89]
 domains: [tooling, rendering]

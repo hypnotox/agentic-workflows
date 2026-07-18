@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-05
-supersedes: []
-superseded_by: ""
 tags: [invariant-backing, placeholder-registry]
 related: [8, 29, 45, 51, 55, 57]
 domains: [rendering, config, invariants]
@@ -94,7 +92,7 @@ marker mapping from it.
    "must be set together" error-path case). Every remaining `ScaffoldConfig` call site
    (`internal/project/scaffold_test.go`, `cmd/awf/list_add_test.go`) and the `initspec.Resolve`
    caller at `cmd/awf/init.go` drop to the new arity. Adopters configure `invariants.sources` by hand. This
-   partially supersedes **ADR-0029 Decision item 1** (`supersedes: ADR-0029#1`; its invariants
+   partially supersedes **ADR-0029 Decision item 1** (`refines: ADR-0029#1`; its invariants
    marker/globs descriptor clause only); ADR-0029 stays `Implemented`.
 
 ## Invariants

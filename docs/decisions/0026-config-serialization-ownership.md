@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-28
-supersedes: []
-superseded_by: ""
 tags: [config-serialization]
 related: [1, 9, 10, 22, 24]
 domains: [config, tooling]

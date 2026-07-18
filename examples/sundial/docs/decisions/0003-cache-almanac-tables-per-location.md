@@ -1,8 +1,6 @@
 ---
 status: Proposed
 date: 2026-07-09
-supersedes: []
-superseded_by: ""
 tags: [performance]
 related: [1]
 domains: [almanac, cli]

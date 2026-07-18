@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-06
-supersedes: []
-superseded_by: ""
 tags: [model]
 related: []
 domains: [almanac]

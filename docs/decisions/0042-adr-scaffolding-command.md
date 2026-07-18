@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-01
-supersedes: []
-superseded_by: ""
 tags: [adr-scaffolding]
 related: [39]
 domains: [adr-system, tooling]

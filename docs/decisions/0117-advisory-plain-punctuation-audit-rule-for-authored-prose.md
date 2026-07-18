@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-15
-supersedes: []
-superseded_by: ""
 tags: [audit-rules, doc-standard, commit-conformance]
 related: [17, 107, 113, 115, 119]
 domains: [tooling, adr-system]

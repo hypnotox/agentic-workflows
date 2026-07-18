@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-26
-supersedes: []
-superseded_by: ""
 tags: [cross-references, layout-namespace]
 related: [5, 11, 81, 43]
 domains: [rendering]

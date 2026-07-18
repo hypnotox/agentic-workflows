@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-11
-supersedes: []
-superseded_by: ""
 tags: [context-query]
 related: [8, 19, 24, 39, 49, 77, 86, 88]
 domains: [tooling, config, invariants, adr-system]

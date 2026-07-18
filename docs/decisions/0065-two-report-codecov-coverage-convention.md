@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-05
-supersedes: []
-superseded_by: ""
 tags: [coverage-gate]
 related: [12, 63, 79]
 domains: [tooling]

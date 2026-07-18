@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-04
-supersedes: []
-superseded_by: ""
 tags: [convention-parts, placeholder-registry]
 related: [1, 12, 15, 34, 45, 51, 55, 56]
 domains: [rendering, config]
@@ -85,7 +83,7 @@ in a part.
    Raw part bodies are already read at hash time, so a scopes edit reflags a placeholder-using part
    stale in `awf check` instead of leaving it silently out of date.
 
-**Relationship to ADR-0034.** This is a partial-item change to ADR-0034 Decision item 1 (`supersedes: ADR-0034#1`), recorded
+**Relationship to ADR-0034.** This is a partial-item change to ADR-0034 Decision item 1 (`refines: ADR-0034#1`), recorded
 via `related` with ADR-0034 left `Implemented`: the partial-item supersedence convention
 (`related` linkage, no predecessor status flip, explicit citation of the overridden item), not a
 wholesale supersedence. It narrows item 1's *universal* byte-for-byte promise: a part is still never

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-05
-supersedes: []
-superseded_by: ""
 tags: [doc-model]
 related: [43, 59, 61]
 domains: [rendering]

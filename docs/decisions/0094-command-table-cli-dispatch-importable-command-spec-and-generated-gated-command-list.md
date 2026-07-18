@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-11
-supersedes: []
-superseded_by: ""
 tags: [cli-dispatch]
 related: [24, 27, 39, 55, 57, 81, 88, 92, 93]
 domains: [tooling, rendering]

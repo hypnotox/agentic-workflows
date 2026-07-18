@@ -36,14 +36,15 @@ func TestCheckDecisionFormat(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, supersessionCfg)
-			// The checked ADR is Superseded (a symmetric pair, so only the format
-			// rule can drift): the format check applies regardless of status.
+			// The checked ADR is a plain live record: the format rule applies
+			// regardless of status, and keeping the fixture unsuperseded means
+			// only the format rule can drift.
 			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
-				testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: A"),
-					testsupport.WithSupersededBy("0002"), testsupport.WithBody(tc.body)))
+				testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"),
+					testsupport.WithBody(tc.body)))
 			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-b.md"),
 				testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"),
-					testsupport.WithSupersedes(1), testsupport.WithBody("## Decision\n\n1. x.\n")))
+					testsupport.WithBody("## Decision\n\n1. x.\n")))
 			p, err := Open(root)
 			if err != nil {
 				t.Fatal(err)
@@ -107,6 +108,12 @@ func TestAdvisoryNotesSurfacesSupersessionError(t *testing.T) {
 // decision is a minimal conforming Decision section for fixtures whose token
 // content does not matter; body appends after its single item.
 const decision = "## Decision\n\n1. x.\n"
+
+// twoItems is for fixtures whose target must survive a retirement: with a
+// single anchor, one `supersedes:` token covers the whole ADR and the coverage
+// check then rightly demands the status flip, which is not what those tests
+// are about.
+const twoItems = "## Decision\n\n1. x.\n2. y.\n"
 
 // runSupersession scaffolds a corpus from files, runs both computeSupersession
 // consumers, and returns (drift, notes).
@@ -185,101 +192,6 @@ func TestCheckRetiredKey(t *testing.T) {
 	}
 }
 
-// TestFullSupersessionSymmetry covers the three-way symmetry check: a
-// symmetric pair passes; each one-sided form fails; a second full claimant
-// fails on the higher-numbered claimant.
-// invariant: supersession-full-symmetry
-func TestFullSupersessionSymmetry(t *testing.T) {
-	symmetricOld := testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: Old"),
-		testsupport.WithSupersededBy("0002"), testsupport.WithBody(decision))
-	cases := []struct {
-		name       string
-		files      map[string]string
-		wantDetail string // "" = no drift expected
-	}{
-		{
-			name: "symmetric pair passes",
-			files: map[string]string{
-				"0001-old.md": symmetricOld,
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-		},
-		{
-			name: "claim without status flip",
-			files: map[string]string{
-				"0001-old.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Old"), testsupport.WithBody(decision)),
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-			wantDetail: `whose status is "Accepted"`,
-		},
-		{
-			name: "claim of a missing target",
-			files: map[string]string{
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-			wantDetail: "which does not exist",
-		},
-		{
-			name: "status flip without claimant",
-			files: map[string]string{
-				"0001-old.md": symmetricOld,
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"), testsupport.WithBody(decision)),
-			},
-			wantDetail: "whose supersedes does not claim it",
-		},
-		{
-			name: "suffixed status without superseded_by",
-			files: map[string]string{
-				"0001-old.md": testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: Old"), testsupport.WithBody(decision)),
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-			wantDetail: "not the matching suffixed/scalar pair",
-		},
-		{
-			name: "superseded_by without suffixed status",
-			files: map[string]string{
-				"0001-old.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Old"),
-					testsupport.WithSupersededBy("0002"), testsupport.WithBody(decision)),
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-			wantDetail: "not the matching suffixed/scalar pair",
-		},
-		{
-			name: "second claimant drifts on the higher-numbered one",
-			files: map[string]string{
-				"0001-old.md": symmetricOld,
-				"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-				"0003-again.md": testsupport.ADR("Implemented", testsupport.WithTitle("0003: Again"),
-					testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			},
-			wantDetail: "ADR-0003: second full-supersession claim on ADR-0001 (already claimed by ADR-0002)",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			drift, notes := runSupersession(t, tc.files)
-			if len(notes) != 0 {
-				t.Errorf("want no notes, got %#v", notes)
-			}
-			if tc.wantDetail == "" {
-				if drift != nil {
-					t.Fatalf("want no drift, got %#v", drift)
-				}
-				return
-			}
-			if !hasKindDetail(drift, "adr-supersession", tc.wantDetail) {
-				t.Fatalf("want adr-supersession drift containing %q, got %#v", tc.wantDetail, drift)
-			}
-		})
-	}
-}
-
 // TestTokenRefValidity covers the adr-token-ref check: a dangling target, an
 // out-of-range item, an unknown slug, and a Proposed target each fail.
 // invariant: supersession-token-ref-validity
@@ -342,12 +254,6 @@ func TestTokenRefValidity(t *testing.T) {
 // target without the related: back-pointer fails; with it, the corpus is clean.
 // Since ADR-0128 item 5 the target's status is irrelevant - see the superseded
 // subtest, which is the case the live-only guard used to let through.
-//
-// supersession-backpointer's marker stays until ADR-0128 reaches Implemented:
-// a retirement takes effect only from an Implemented carrier
-// (internal/invariants/invariants.go:174-176), so removing it now would leave
-// the slug owed by the still-Implemented ADR-0120 and report it Unbacked.
-// invariant: supersession-backpointer
 // invariant: supersession-backpointer-any-status
 func TestTokenBackpointer(t *testing.T) {
 	carrier := testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
@@ -365,7 +271,7 @@ func TestTokenBackpointer(t *testing.T) {
 	t.Run("with back-pointer passes", func(t *testing.T) {
 		drift, notes := runSupersession(t, map[string]string{
 			"0001-target.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
-				testsupport.WithRelated(2), testsupport.WithBody(decision)),
+				testsupport.WithRelated(2), testsupport.WithBody(twoItems)),
 			"0002-carrier.md": carrier,
 		})
 		if drift != nil || len(notes) != 0 {
@@ -374,46 +280,11 @@ func TestTokenBackpointer(t *testing.T) {
 	})
 }
 
-// TestTokenFlavourExclusive covers adr-token-exclusive: one successor may not
-// both fully and partially supersede the same target.
-// invariant: supersession-flavour-exclusive
-func TestTokenFlavourExclusive(t *testing.T) {
-	drift, _ := runSupersession(t, map[string]string{
-		"0001-old.md": testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: Old"),
-			testsupport.WithSupersededBy("0002"), testsupport.WithBody(decision)),
-		"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-			testsupport.WithSupersedes(1),
-			testsupport.WithBody("## Decision\n\n1. Also overrides `supersedes: ADR-0001#1`.\n")),
-	})
-	if !hasKindDetail(drift, "adr-token-exclusive", "ADR-0002: token into ADR-0001, which it also fully supersedes") {
-		t.Fatalf("want adr-token-exclusive drift, got %#v", drift)
-	}
-}
-
-// TestSupersessionAdvisories covers the two note channels: a token into a
-// fully superseded target yields a note and no drift; one anchor claimed by
-// two live ADRs yields a note.
-// invariant: supersession-conflict-advisory
+// TestSupersessionAdvisories covers the surviving note channel: one anchor
+// claimed by two live ADRs. The superseded-target note is gone with ADR-0128
+// item 5 - it is now the normal shape of every completed supersedence.
+// invariant: supersession-contested-anchor-advisory
 func TestSupersessionAdvisories(t *testing.T) {
-	t.Run("token into a superseded target is a note, not drift", func(t *testing.T) {
-		drift, notes := runSupersession(t, map[string]string{
-			// 0001 back-points at its claimant: since ADR-0128 item 5 a token
-			// into a target of ANY status owes the back-pointer, superseded
-			// targets included.
-			"0001-old.md": testsupport.ADR("Superseded by ADR-0002", testsupport.WithTitle("0001: Old"),
-				testsupport.WithSupersededBy("0002"), testsupport.WithRelated(3), testsupport.WithBody(decision)),
-			"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
-				testsupport.WithSupersedes(1), testsupport.WithBody(decision)),
-			"0003-citer.md": testsupport.ADR("Implemented", testsupport.WithTitle("0003: Citer"),
-				testsupport.WithBody("## Decision\n\n1. Cites `supersedes: ADR-0001#1`.\n")),
-		})
-		if drift != nil {
-			t.Fatalf("want no drift, got %#v", drift)
-		}
-		if len(notes) != 1 || notes[0] != "ADR-0003 token targets ADR-0001, which was fully superseded" {
-			t.Fatalf("want the superseded-target note, got %#v", notes)
-		}
-	})
 	t.Run("same anchor claimed by two live ADRs is a note", func(t *testing.T) {
 		token := "## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"
 		_, notes := runSupersession(t, map[string]string{
@@ -542,6 +413,110 @@ func TestSupersessionGraphFaults(t *testing.T) {
 		})
 		if hasKindDetail(drift, "adr-supersession-graph", "retirement cycle") {
 			t.Fatalf("mutual partial claims between live ADRs must be legal, got %#v", drift)
+		}
+	})
+}
+
+// TestSupersessionKeysRefused pins ADR-0128 item 1: neither removed frontmatter
+// key is silently ignored. Non-strict YAML would drop them, so an author who
+// still believed `supersedes:` was load-bearing would believe an ADR was
+// superseded when nothing had superseded it. The finding must carry upgrade
+// guidance, exactly as the retires_invariants: refusal does.
+// invariant: supersession-keys-refused
+func TestSupersessionKeysRefused(t *testing.T) {
+	for _, key := range []string{"supersedes: [1]", `superseded_by: "0002"`} {
+		t.Run(key, func(t *testing.T) {
+			root := scaffold(t, supersessionCfg)
+			testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+				"---\nstatus: Implemented\ndate: 2026-01-01\ntags: [tooling]\nrelated: []\ndomains: []\n"+key+
+					"\n---\n# ADR-0001: A\n\n## Decision\n\n1. x.\n")
+			p, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			drift, err := p.checkSupersessionAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !hasKindDetail(drift, "adr-retired-key", "is no longer read") {
+				t.Fatalf("want a refusal for %q, got %#v", key, drift)
+			}
+			if !hasKindDetail(drift, "adr-retired-key", "awf upgrade") {
+				t.Fatalf("the refusal must name awf upgrade as the remedy, got %#v", drift)
+			}
+		})
+	}
+}
+
+// TestCoverageDerivesStatus pins ADR-0128 items 3, 4 and 6: the hand-written
+// status is checked against derived coverage in both directions, only
+// retirements from Implemented carriers count, and refinements count toward
+// nothing.
+// invariant: supersession-coverage-derives-status
+// invariant: supersession-coverage-implemented-only
+// invariant: refines-token-never-covers
+func TestCoverageDerivesStatus(t *testing.T) {
+	target := func(status string) string {
+		return testsupport.ADR(status, testsupport.WithTitle("0001: Target"),
+			testsupport.WithRelated(2), testsupport.WithBody(twoItems))
+	}
+	carrier := func(status, body string) string {
+		return testsupport.ADR(status, testsupport.WithTitle("0002: Carrier"), testsupport.WithBody(body))
+	}
+	const retiresBoth = "## Decision\n\n1. Retires `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n"
+	const refinesBoth = "## Decision\n\n1. Adapts `refines: ADR-0001#1`, `refines: ADR-0001#2`.\n"
+
+	cases := []struct {
+		name       string
+		targetSt   string
+		carrierSt  string
+		carrierAt  string
+		wantDetail string
+	}{
+		{
+			name: "fully covered but not flipped is drift", targetSt: "Implemented",
+			carrierSt: "Implemented", carrierAt: retiresBoth,
+			wantDetail: "so status must be Superseded",
+		},
+		{
+			name: "flipped without full coverage is drift", targetSt: "Superseded",
+			carrierSt: "Implemented", carrierAt: "## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n",
+			wantDetail: "carry no retirement from an Implemented ADR",
+		},
+		{
+			// A Proposed successor must not kill its predecessor: it has not
+			// shipped, so the predecessor is still the current guidance.
+			name: "retirements from a Proposed carrier do not cover", targetSt: "Superseded",
+			carrierSt: "Proposed", carrierAt: retiresBoth,
+			wantDetail: "carry no retirement from an Implemented ADR",
+		},
+		{
+			// Refinements adapt rather than replace, so an ADR whose every item
+			// is refined is still live guidance.
+			name: "refinements never cover", targetSt: "Superseded",
+			carrierSt: "Implemented", carrierAt: refinesBoth,
+			wantDetail: "carry no retirement from an Implemented ADR",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			drift, _ := runSupersession(t, map[string]string{
+				"0001-target.md":  target(tc.targetSt),
+				"0002-carrier.md": carrier(tc.carrierSt, tc.carrierAt),
+			})
+			if !hasKindDetail(drift, "adr-coverage-status", tc.wantDetail) {
+				t.Fatalf("want %q, got %#v", tc.wantDetail, drift)
+			}
+		})
+	}
+
+	t.Run("covered and flipped is clean", func(t *testing.T) {
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-target.md":  target("Superseded"),
+			"0002-carrier.md": carrier("Implemented", retiresBoth),
+		})
+		if hasKindDetail(drift, "adr-coverage-status", "") {
+			t.Fatalf("want no coverage drift, got %#v", drift)
 		}
 	})
 }

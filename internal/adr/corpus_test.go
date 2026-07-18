@@ -166,8 +166,12 @@ func TestCorpusRawAccessEnumerated(t *testing.T) {
 			}
 		}
 	})
+	// internal/migrate appears twice because each schema migration that
+	// performs offset surgery is its own file; ADR-0130 item 6 enumerates the
+	// migration package and the retired-key scan, not a file count.
 	want := map[string]bool{
 		"../../internal/migrate/retirementtokens.go": true,
+		"../../internal/migrate/supersessionkeys.go": true,
 		"../../internal/project/supersession.go":     true,
 	}
 	for path := range raw {
@@ -287,7 +291,7 @@ func TestCorpusSingleIdentityKey(t *testing.T) {
 // anchor-coverage model is constructed in exactly one place, inside
 // internal/adr, and no other package derives the supersession relation for
 // itself. Before this, the relation was derived twice differently - once in
-// SupersessionIndex and once in the symmetry check - and read a third way off
+// the render index and once in the symmetry check - and read a third way off
 // the frontmatter scalar.
 // invariant: supersession-model-single-source
 // invariant: corpus-model-not-rebuilt

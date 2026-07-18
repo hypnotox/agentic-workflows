@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-09
-supersedes: []
-superseded_by: ""
 tags: [publication-safety, template-residue]
 related: [1, 45, 80]
 domains: [rendering, tooling]

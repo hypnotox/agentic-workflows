@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-16
-supersedes: [31]
-superseded_by: ""
 tags: [adr-lifecycle, adr-parsing, invariant-retirement, schema-migration, active-md]
 related: [8, 10, 25, 39, 42, 105, 116, 128, 129]
 domains: [adr-system, invariants, config, tooling, rendering]
@@ -88,7 +86,7 @@ renders no such thing. That drift is repaired by making the claim true rather th
 
 4. **The partial back-pointer becomes a check.** When a token targets a live
    (`Accepted`/`Implemented`) ADR, `awf check` fails unless the target's `related:` contains the
-   successor's number. This `supersedes: ADR-0116#5` reverses ADR-0116's choice to keep
+   successor's number. This `refines: ADR-0116#5` reverses ADR-0116's choice to keep
    back-pointers procedure-only: the objection recorded there (a check would red the gate on
    pre-existing violations) is answered by this ADR's retrofit, which backfills the missing
    edges in the same effort that lands the check. ADR-0116 Decision 3's scoping of *when* a
@@ -155,7 +153,7 @@ renders no such thing. That drift is repaired by making the claim true rather th
    renaming a schema-owned frontmatter key; appending a numbered bookkeeping item that encodes
    an obligation the ADR already carried; inserting an inline token immediately adjacent to an
    existing prose citation that already states the claim the token encodes. Any edit that
-   changes what was decided or why remains forbidden. This `supersedes: ADR-0116#2` narrowly:
+   changes what was decided or why remains forbidden. This `refines: ADR-0116#2` narrowly:
    that item's "the body is frozen" becomes "the body's meaning is frozen"; its broadening of
    in-place edits to status plus cross-reference metadata is otherwise unchanged.
 
@@ -190,6 +188,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
     so its enumerability still matters. The corpus already complies (a sweep of all 120 ADRs
     found clean sequential items), so the check lands green. The decisions README template
     documents the format spec alongside the token grammar.
+
+13. **Supersedence bookkeeping (migrated from supersedes: by awf upgrade,
+   ADR-0128).** This ADR retires every anchor of ADR-0031: `supersedes: ADR-0031#1`, `supersedes: ADR-0031#2`, `supersedes: ADR-0031#3`, `supersedes: ADR-0031#4`, `supersedes: ADR-0031#5`, `supersedes-invariant: ADR-0031#inv-retirement-drops-slug`, `supersedes-invariant: ADR-0031#inv-retirement-implemented-only`, `supersedes-invariant: ADR-0031#inv-retirement-dangling-errors`
 
 ## Invariants
 

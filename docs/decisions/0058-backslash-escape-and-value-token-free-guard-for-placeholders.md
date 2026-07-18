@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-04
-supersedes: []
-superseded_by: ""
 tags: [convention-parts, placeholder-registry]
 related: [12, 34, 45, 57]
 domains: [rendering]

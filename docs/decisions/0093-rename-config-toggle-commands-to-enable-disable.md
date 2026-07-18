@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-11
-supersedes: []
-superseded_by: ""
 tags: [cli-dispatch, enable-closure]
 related: [24, 37, 39, 92, 94]
 domains: [tooling, config]
@@ -46,7 +44,7 @@ change is acceptable ("The bare `awf add <name>` form is removed").
    the rendered instructions: the migration propagates without hand-editing.
 
 2. **Supersede ADR-0024 Decision items 1 and 6 (partial-item supersedence:
-   `supersedes: ADR-0024#1`, `supersedes: ADR-0024#6`):** the
+   `refines: ADR-0024#1`, `refines: ADR-0024#6`):** the
    command names and the help/README/guide grammar. Every other ADR-0024 commitment
    (kind dispatch, per-kind validation, the block-scoped array editor, the doc-gate
    warning and orphan note, `awf list`) stands unchanged, as do its invariants

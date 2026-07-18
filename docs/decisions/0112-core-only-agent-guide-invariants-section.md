@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-15
-supersedes: []
-superseded_by: ""
 tags: [agents-guide, doc-standard]
 related: []
 domains: [rendering]

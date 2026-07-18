@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-29
-supersedes: [3]
-superseded_by: ""
 tags: [git-hooks, schema-migration]
 related: [23, 30, 31, 48]
 domains: [tooling, rendering]
@@ -113,6 +111,9 @@ Grounding discoveries that shape the design:
 
 8. **Retirement bookkeeping (migrated from retires_invariants by awf upgrade,
    ADR-0120).** This ADR retires `supersedes-invariant: ADR-0023#setup-guards-hookspath`.
+
+9. **Supersedence bookkeeping (migrated from supersedes: by awf upgrade,
+   ADR-0128).** This ADR retires every anchor of ADR-0003: `supersedes: ADR-0003#1`, `supersedes: ADR-0003#2`, `supersedes: ADR-0003#3`
 
 ## Invariants
 

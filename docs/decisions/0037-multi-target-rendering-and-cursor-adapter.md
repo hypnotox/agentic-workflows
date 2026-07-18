@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-29
-supersedes: []
-superseded_by: ""
 tags: [multi-target, target-seam]
 related: [14, 16, 24]
 domains: [rendering, config, tooling]

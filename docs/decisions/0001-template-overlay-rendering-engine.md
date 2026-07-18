@@ -1,8 +1,6 @@
 ---
 status: Accepted
 date: 2026-06-24
-supersedes: []
-superseded_by: ""
 tags: [template-overlay, section-assembly]
 related: [15, 45]
 domains: [rendering]

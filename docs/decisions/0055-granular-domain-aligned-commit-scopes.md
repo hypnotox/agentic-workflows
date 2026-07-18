@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-04
-supersedes: []
-superseded_by: ""
 tags: [commit-scopes, agents-guide]
 related: [8, 17, 36, 45, 51]
 domains: [config, rendering, tooling]

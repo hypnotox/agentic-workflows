@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-16
-supersedes: []
-superseded_by: ""
 tags: [authoring-comments, convention-parts, invariant-backing, marker-scoping]
 related: [8, 34, 52, 57, 70, 72, 82, 83, 100, 105, 120]
 domains: [rendering, invariants, config]
@@ -112,7 +110,7 @@ carve-out minimal.
    this deliberate opt-in grammar.
 
 4. **`parts-raw` is retired and succeeded.** This item carries
-   `supersedes: ADR-0034#1` and `supersedes-invariant: ADR-0034#parts-raw`: ADR-0034
+   `refines: ADR-0034#1` and `supersedes-invariant: ADR-0034#parts-raw`: ADR-0034
    Decision 1's "verbatim content" contract now reads "verbatim except whole-line
    `awf:comment` lines". Unlike ADR-0057/0072's substitutions - which splice in content
    the part author requested at the marked spot - the strip *removes* author-written

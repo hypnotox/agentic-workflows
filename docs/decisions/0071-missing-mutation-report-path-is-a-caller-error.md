@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-07
-supersedes: []
-superseded_by: ""
 tags: [mutation-testing]
 related: [66]
 domains: [tooling]
@@ -27,7 +25,7 @@ ADR-0066 is Implemented and append-only.
 
 1. **A nonexistent report path is an error.** `cmd/mutants` exits non-zero with the read
    error on stderr when its argument does not exist (or cannot be read). This narrows
-   ADR-0066 Decision item 3's tolerance clause (`supersedes: ADR-0066#3`): only a **present-but-empty** (zero-byte or
+   ADR-0066 Decision item 3's tolerance clause (`refines: ADR-0066#3`): only a **present-but-empty** (zero-byte or
    whitespace-only) report remains an empty run ("no survived mutants", exit 0); that is the
    state gremlins leaves the pre-created `mktemp` file in when there is nothing to report.
    Partial-item supersedence: ADR-0066 stays Implemented; every other clause of its Decision

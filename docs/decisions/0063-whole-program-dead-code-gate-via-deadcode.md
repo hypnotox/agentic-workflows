@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-05
-supersedes: []
-superseded_by: ""
 tags: [dead-code-gate]
 related: [2, 12, 44, 53]
 domains: [tooling]

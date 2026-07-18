@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-07
-supersedes: []
-superseded_by: ""
 tags: [cli]
 related: [1]
 domains: [cli]

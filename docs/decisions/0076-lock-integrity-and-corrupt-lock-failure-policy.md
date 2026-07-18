@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-08
-supersedes: []
-superseded_by: ""
 tags: [atomic-writes, corrupt-lock]
 related: [10, 16, 23, 39]
 domains: [config, tooling]
@@ -78,12 +76,12 @@ should exist and fail first before the fix comes in."
    Decision 6.
 
 3. **Partial supersedence.** This ADR supersedes ADR-0039 Decision item 5's *unparseable*
-   clause only (`supersedes: ADR-0039#5`). The full surviving skip set: an absent lock, an absent or empty `awfVersion`
+   clause only (`refines: ADR-0039#5`). The full surviving skip set: an absent lock, an absent or empty `awfVersion`
    field, and an `awfVersion` that fails semver normalization all still skip the version
    sub-check; only a present-but-unparseable lock flips to the Decision-2 hard error.
    ADR-0039's textual-contract invariant ("the version sub-check never errors") is
    unmodified: the new failure fires upstream at the lock load, before the sub-check runs.
-   ADR-0039 stays Implemented. It likewise narrows ADR-0016 Decision item 6 (`supersedes: ADR-0016#6`): `Generation` remains keyed on
+   ADR-0039 stays Implemented. It likewise narrows ADR-0016 Decision item 6 (`refines: ADR-0016#6`): `Generation` remains keyed on
    directory presence for *which era* a tree belongs to, but a present-and-unreadable lock in
    the detected era is an error rather than a sentinel generation. The
    `docs/pitfalls.md` section documenting `Generation`'s sentinel semantics updates in the

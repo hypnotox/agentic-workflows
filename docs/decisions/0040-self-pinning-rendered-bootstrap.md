@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-30
-supersedes: []
-superseded_by: ""
 tags: [bootstrap-porcelain, checksum-verify]
 related: [24, 27, 30, 39, 85]
 domains: [tooling, rendering, config]

@@ -23,15 +23,15 @@ precedent) - empty or absent means no stripping. Migrations validate serialized 
 - [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](../decisions/0009-tree-based-config-layout.md)
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](../decisions/0010-versioned-lock-and-awf-upgrade.md)
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
-- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md)
+- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md) → superseded by ADR-0037
 - [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
 - [ADR-0022: Curated Init Default: Workflow-Core Targets](../decisions/0022-curated-init-default.md)
 - [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md)
 - [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
 - [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)
 - [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
-- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md)
-- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md)
+- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md) → superseded by ADR-0085
+- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) → superseded by ADR-0061
 - [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
 - [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
 - [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
@@ -63,11 +63,8 @@ precedent) - empty or absent means no stripping. Migrations validate serialized 
 - [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md)
 - [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
 - [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
-- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md)
+- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128
 - [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
-
-### Proposed
-
 - [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
 

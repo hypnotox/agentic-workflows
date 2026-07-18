@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-10
-supersedes: []
-superseded_by: ""
 tags: [closed-config-tree, sidecar-fields]
 related: [11, 22, 45, 68, 69, 70, 76, 77, 81, 83]
 domains: [config, rendering]

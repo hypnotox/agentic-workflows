@@ -1,10 +1,8 @@
 ---
-status: Superseded by ADR-0115
+status: Superseded
 date: 2026-07-15
-supersedes: []
-superseded_by: "0115"
 tags: [template-residue, doc-standard]
-related: [82, 112]
+related: [82, 112, 115]
 domains: [rendering]
 ---
 # ADR-0113: Em-dash-free shipped templates

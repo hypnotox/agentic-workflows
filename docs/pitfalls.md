@@ -962,5 +962,40 @@ implementation review caught it. When touching frontmatter by regex, compute the
 once and bound every scan to it - both edges carry regression tests in
 `internal/migrate/retirementtokens_test.go`.
 
+## A supersession token quoted as an example is parsed as a real claim
+
+_Domains: adr-system_
+
+_Related: ADR-0120, ADR-0128_
+
+The token grammar has no escaping mechanism. Any `` `supersedes: ADR-NNNN#N` ``,
+`` `supersedes-invariant: ADR-NNNN#<slug>` ``, or `` `refines: ADR-NNNN#N` `` inside a
+`## Decision` section is a claim, including one written to *illustrate* the syntax.
+Quoting ADR-0127's token as an example while drafting ADR-0128 made ADR-0128 genuinely
+claim that anchor and demand a back-pointer from ADR-0017, and cost an `awf check`
+failure to diagnose. Only the enclosing section saves you: tokens outside `## Decision`
+are inert, so cite examples from Context, Consequences, or Alternatives, or describe the
+shape without writing a well-formed token (`supersedes: ADR-NNNN#<item>` with the
+placeholder left literal is safe, since the regex demands digits).
+
+## Raw-byte offsets go stale the moment an earlier pass edits the file
+
+_Domains: config_
+
+_Related: ADR-0128_
+
+`ADR.DecisionStart`/`DecisionEnd` are byte offsets into the bytes that were *parsed*. A
+migration that rewrites the body in one pass and appends at `DecisionEnd` in a later pass
+is appending at an offset that no longer means what it did. The generation-12
+supersession-keys migration downgrades `supersedes:` to `refines:` (three bytes shorter
+per token) before appending its bookkeeping item, and on a token-dense ADR the append
+landed far enough early to open inside the following heading, corrupting
+`## Invariants` into `## Inv13. **Supersedence bookkeeping...` - which then silently
+deleted every slug that ADR declared, surfacing as unrelated `adr-token-ref` drift.
+Track a per-file delta from every editing pass and add it to any later offset use, the
+way the same migration already tracked `removed` for stripped key lines. The tell is
+drift about *declarations going missing*, which points at a mangled section heading
+rather than at the tokens the error names.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

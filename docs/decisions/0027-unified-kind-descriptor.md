@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-28
-supersedes: []
-superseded_by: ""
 tags: [kind-descriptor, cli-dispatch]
 related: [9, 16, 24]
 domains: [rendering, tooling]

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-13
-supersedes: []
-superseded_by: ""
 tags: [invariant-backing, marker-scoping]
 related: [7, 8, 31, 64, 77, 98, 104]
 domains: [invariants, config, tooling]
@@ -108,7 +106,7 @@ migration once rather than twice.
 
    This **replaces** the `unbacked_invariants:` frontmatter approach: the classification is inline,
    local, and cannot drift from a separate list. It **supersedes ADR-0008 Decision item 4**
-   (`supersedes: ADR-0008#4`) via
+   (`refines: ADR-0008#4`) via
    partial-item supersedence: ADR-0008 stays `Implemented`/live and this ADR carries `related: [8]`;
    an untestable invariant now keeps its slug as an explicit `unbacked-invariant:` rather than being
    demoted to prose. The structuring mirrors the plan-artifact precedent (ADR-0098).

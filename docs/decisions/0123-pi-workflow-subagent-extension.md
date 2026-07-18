@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-16
-supersedes: []
-superseded_by: ""
 tags: [multi-target, target-seam, subagent-dispatch, review-agents, command-runner]
 related: [37, 38, 74, 122, 125, 126]
 domains: [rendering, tooling]
@@ -53,7 +51,7 @@ lane with a low steady-state cost.
    template preserves awf's `missingkey=zero` publication-safety contract: empty
    variables render coherent generic output and no unresolved-value token.
    This replaces the orchestration deferral in
-   ADR-0122. `supersedes: ADR-0122#4`
+   ADR-0122. `refines: ADR-0122#4`
 
 2. Register exactly three workflow-focused public tools backed by one private
    runner. Every `task` is a required, non-empty string:
@@ -108,7 +106,7 @@ lane with a low steady-state cost.
    `subagent_review`, per-task implementation to `subagent_implement`, and
    subagent-driven per-task code review to `subagent_review`. Other targets keep
    their existing native-subagent wording. This replaces ADR-0122's temporary
-   generic Pi review dispatch. `supersedes: ADR-0122#3`
+   generic Pi review dispatch. `refines: ADR-0122#3`
    `supersedes-invariant: ADR-0122#pi-generic-review-dispatch`
 
 6. Add a mandatory Pi-extension lane to `./x gate`. Exact npm dependencies and

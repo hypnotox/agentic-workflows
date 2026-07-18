@@ -202,6 +202,25 @@ func (c Corpus) Retirers(num string) []string {
 	return out
 }
 
+// Anchors returns the named ADR's anchors: its Decision items then its declared
+// invariant slugs.
+func (c Corpus) Anchors(num string) []Anchor { return c.cov.anchors[num] }
+
+// UncoveredAnchors returns the named ADR's anchors that carry no counting
+// retirement, in anchor order. The coverage-versus-status check names these
+// when a `Superseded` ADR is not in fact fully covered, so the author is told
+// exactly which decision still needs a successor rather than merely that the
+// status is wrong.
+func (c Corpus) UncoveredAnchors(num string) []Anchor {
+	var out []Anchor
+	for _, anchor := range c.cov.anchors[num] {
+		if !isRetired(c.cov, c.byNum, anchor) {
+			out = append(out, anchor)
+		}
+	}
+	return out
+}
+
 // Chain is one supersedence relationship for the ACTIVE.md index: a covered
 // predecessor and every ADR that retired one of its anchors. The shape is
 // one-to-many (ADR-0129 item 6) because coverage may split across successors,
@@ -213,12 +232,7 @@ type Chain struct {
 
 // Chains returns every fully-covered ADR paired with its retirers, sorted by
 // predecessor.
-//
-// Transitional: it also derives chains from the legacy `Supersedes`
-// frontmatter list, so the three pre-migration pairs keep rendering while the
-// field still exists and `awf check` stays drift-free. Task 6.3 of the
-// coverage-derived-supersession plan deletes this branch together with the
-// field.
+
 func (c Corpus) Chains() []Chain {
 	merged := map[string]map[string]bool{}
 	add := func(pred, succ string) {
@@ -232,9 +246,6 @@ func (c Corpus) Chains() []Chain {
 			for _, r := range c.Retirers(a.Number) {
 				add(a.Number, r)
 			}
-		}
-		for _, n := range a.Supersedes { // transitional; removed with the field
-			add(fmt.Sprintf("%04d", n), a.Number)
 		}
 	}
 	out := make([]Chain, 0, len(merged))

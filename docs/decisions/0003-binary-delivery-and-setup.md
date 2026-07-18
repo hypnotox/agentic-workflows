@@ -1,10 +1,8 @@
 ---
-status: Superseded by ADR-0032
+status: Superseded
 date: 2026-06-24
-supersedes: []
-superseded_by: "0032"
 tags: [git-hooks, cli-dispatch]
-related: [2, 30]
+related: [2, 30, 32]
 domains: [tooling]
 ---
 # ADR-0003: awf Binary Delivery and Hook-Activation Setup

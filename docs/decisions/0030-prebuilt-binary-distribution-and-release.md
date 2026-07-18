@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-28
-supersedes: []
-superseded_by: ""
 tags: [binary-distribution, release-pipeline]
 related: [3, 49]
 domains: [tooling]

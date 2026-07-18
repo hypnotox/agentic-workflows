@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-04
-supersedes: []
-superseded_by: ""
 tags: [commit-scopes, config-serialization]
 related: [8, 17, 36, 39, 49, 51, 55]
 domains: [config, rendering, tooling]

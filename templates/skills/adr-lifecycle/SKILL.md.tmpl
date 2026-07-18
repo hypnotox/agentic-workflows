@@ -26,7 +26,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 - `Proposed → Accepted` lands in the commit that finalises the design.
 - `Accepted → Implemented` lands in the final commit of the implementation sequence.
 - `Proposed → Implemented` directly (skipping `Accepted`) is allowed when design and implementation land together in a single commit.
-- Any live state → `Superseded by ADR-NNNN` is an in-place status edit at the moment the successor ADR is committed. The predecessor's status flip and the successor's creation happen in the **same commit**.
+- Any live state → `Superseded` is an in-place status edit made when *coverage completes*: every Decision item and every declared invariant slug carries a retirement token from an `Implemented` ADR. The flip lands in the commit that brings the final covering ADR to `Implemented`, which is usually not the commit that created it. `awf check` derives coverage and refuses drift in both directions.
 <!-- awf:end -->
 
 ## Supersedence flavours
@@ -36,10 +36,9 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, super
 
 The successor replaces the predecessor wholesale. Apply when most of the predecessor is mechanically obsolete.
 
-- Successor frontmatter: `supersedes: [predecessor-number]`.
-- Predecessor frontmatter: `status: Superseded by ADR-NNNN` (in-place edit; on a non-Proposed ADR only `status` and cross-reference metadata may be edited).
+- Predecessor frontmatter: `status: Superseded`, bare and naming no successor (in-place edit; on a non-Proposed ADR only `status` and cross-reference metadata may be edited). It names none because coverage may split across several successors, so a scalar would lie; the claimants are recoverable from the predecessor's `related:` back-pointers.
 - `{{ .layout.activeMd }}` records the chain in its "Supersedence chains" section (auto-generated; never hand-edit).
-- An ADR has at most one full successor: `superseded_by:` is scalar, and `awf check` enforces the three-way symmetry (claim, status flip, and back-pointer must agree).
+- An ADR may have several successors: full supersedence is the emergent case of every anchor being retired, and different successors may retire different anchors. `awf check` enforces that the derived coverage and the hand-written status agree.
 - Full supersession excludes partial tokens from the same successor into the same target; `awf check` refuses the mixed pair.
 <!-- awf:end -->
 
@@ -51,10 +50,10 @@ The successor overrides specific Decision items or Invariants of the predecessor
 - Successor frontmatter: `related: [predecessor-number]` (NOT `supersedes:`).
 - Predecessor frontmatter: add the successor's number to `related:`, in the **same commit**. Without this back-pointer the overridden Decision item reads as current guidance and a reader of the predecessor gets no signal it was overridden. This is a metadata-only edit, allowed on a live ADR; the body stays append-only.
 - Predecessor's `status` field is **NOT** flipped; it stays `Accepted`/`Implemented`.
-- The successor's Decision section carries `` `supersedes: ADR-NNNN#<item>` `` (a Decision item) or `` `supersedes-invariant: ADR-NNNN#<slug>` `` (an invariant) as an inline code token at the citation site, **one token per overridden anchor**. `awf check` validates the ref, requires the predecessor back-pointer, and refuses a token into a `Proposed` target.
+- The successor's Decision section carries `` `supersedes: ADR-NNNN#<item>` `` (a Decision item) or `` `supersedes-invariant: ADR-NNNN#<slug>` `` (an invariant) as an inline code token at the citation site, **one token per overridden anchor**. Use `` `refines: ADR-NNNN#<item>` `` instead when the successor *adapts* an item rather than replacing it: a refinement counts toward nothing, so an ADR whose items have only been refined stays live. Slug anchors have no refinement form - a slug is atomic. `awf check` validates the ref, requires the back-pointer on a target of any status, and refuses a token into a `Proposed` target.
 - `{{ .layout.activeMd }}` continues to list both ADRs as live; the overridden anchors render in its "Superseded anchors on live ADRs" subsection, derived from the tokens and the `related:` linkage on **both** ADRs.
 - Authoring-time rule: a new token targets the ADR that **currently owns** the anchor. A token whose target was later fully superseded degrades to an `awf check` advisory note, preserving history.
-- Retirement: a `supersedes-invariant:` token carried by an **Implemented** ADR retires the slug from owed invariant backing. Fully superseding a token-carrier lapses its retirements; the new successor re-carries any it still intends.
+- Retirement: a `supersedes-invariant:` token carried by an **Implemented** ADR retires the slug from owed invariant backing. Because full supersedence now requires every declared slug to be retired explicitly, flipping a token-carrier to `Superseded` no longer silently lapses its retirements.
 
 The back-pointer is owed when the successor overrides a **live** (`Accepted`/`Implemented`) predecessor's **Decision item or Invariant**. It is not owed for a citation that does not override, for an amendment of a `Proposed` ADR (edit that ADR in place instead), or for an edit that changes wording without changing meaning.
 <!-- awf:end -->
@@ -64,11 +63,11 @@ The back-pointer is owed when the successor overrides a **live** (`Accepted`/`Im
 Pick the status transition, then:
 
 <!-- awf:section procedure-status-edit -->
-1. **Edit the ADR's frontmatter `status` field** in place. On a live ADR only `status` and cross-reference metadata (`superseded_by:`, `related:`) may be edited in place; the body remains append-only once the ADR leaves `Proposed`.
+1. **Edit the ADR's frontmatter `status` field** in place. On a live ADR only `status` and cross-reference metadata (`related:`) may be edited in place; the body remains append-only once the ADR leaves `Proposed`.
 <!-- awf:end -->
 
 <!-- awf:section procedure-predecessor-flip -->
-2. **If full supersedence:** update the predecessor's `status` field to `Superseded by ADR-NNNN` in the **same commit**. Partial-item supersedence preserves the predecessor's status.
+2. **If this flip completes a predecessor's coverage:** update that predecessor's `status` field to bare `Superseded` in the **same commit**. Run `awf check` to find out - it names any ADR whose anchors are all retired but whose status has not caught up, and equally any `Superseded` ADR with an anchor still uncovered. Partial supersedence preserves the predecessor's status.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
@@ -101,14 +100,14 @@ While `status: Proposed`, all sections may be amended freely as edge cases or sc
 - **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
 - **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
 
-Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofit may migrate its machine-readable encoding. Only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place.
+Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofit may migrate its machine-readable encoding. Only the `status` field and cross-reference metadata (`related:`) are editable in place.
 <!-- awf:end -->
 
 ## Notes
 
 <!-- awf:section notes -->
 - **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
-- **Append-only rule:** once any live state is reached, only the `status` field and cross-reference metadata (`superseded_by:`, `related:`) are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
+- **Append-only rule:** once any live state is reached, only the `status` field and cross-reference metadata (`related:`) are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
 - **`{{ .layout.activeMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

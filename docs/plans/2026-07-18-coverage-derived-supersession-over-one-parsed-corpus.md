@@ -1,7 +1,7 @@
 ---
 date: 2026-07-18
 adrs: [128, 129, 130]
-status: Proposed
+status: Implemented
 ---
 # Plan: Coverage-Derived Supersession Over One Parsed Corpus
 

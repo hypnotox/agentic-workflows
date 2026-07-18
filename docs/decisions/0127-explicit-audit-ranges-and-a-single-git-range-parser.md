@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-18
-supersedes: []
-superseded_by: ""
 tags: [audit-rules, commit-conformance, schema-migration, cli-dispatch]
 related: [17, 25, 73, 92, 111, 120, 122]
 domains: [tooling, config, rendering]
@@ -62,7 +60,7 @@ parser would entrench the drift.
 3. **The `audit.baseBranch` config key is removed**, along with its `main` default and the
    `--base` flag that overrode it. awf holds no opinion about which branch an adopter
    integrates into. This **partial-supersedes ADR-0017 Decision item 5**
-   (`supersedes: ADR-0017#5`) for its `baseBranch` field only; ADR-0017 stays live, and its
+   (`refines: ADR-0017#5`) for its `baseBranch` field only; ADR-0017 stays live, and its
    `related:` gains 127 in the same commit as this ADR.
 
 4. **`uncommitted-changes` (ADR-0025) continues to run on every invocation**, regardless of
@@ -86,7 +84,7 @@ parser would entrench the drift.
    its `sha-range-detection` step, then discards them and audits "over the branch". It now
    passes `<baseSha>..<headSha>`. This is a session range, not a branch range, so it holds
    under any branching strategy. This **partial-supersedes ADR-0017 Decision item 7**
-   (`supersedes: ADR-0017#7`) for its description of the invocation only.
+   (`refines: ADR-0017#7`) for its description of the invocation only.
 
 7. **A schema-11 migration removes the key from an adopter's config.** `.awf/config.yaml` is
    strict-parsed, so a stale `audit.baseBranch` would hard-fail on the new binary rather than

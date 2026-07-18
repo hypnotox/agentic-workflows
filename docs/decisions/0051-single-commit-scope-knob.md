@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-02
-supersedes: []
-superseded_by: ""
 tags: [commit-scopes]
 related: [17, 29, 36, 45, 46]
 domains: [config, rendering]

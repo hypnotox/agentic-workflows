@@ -128,18 +128,15 @@
 - [ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering](0125-dedicated-pi-grounding-subagent-and-context-isolated-progress-rendering.md) (Implemented)
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md) (Implemented)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](0127-explicit-audit-ranges-and-a-single-git-range-parser.md) (Implemented)
-
-## Proposed
-
-- [ADR-0128: Coverage-Derived ADR Supersession](0128-coverage-derived-adr-supersession.md) (Proposed)
-- [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Proposed)
-- [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Proposed)
+- [ADR-0128: Coverage-Derived ADR Supersession](0128-coverage-derived-adr-supersession.md) (Implemented)
+- [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Implemented)
+- [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Implemented)
 
 ## Superseded
 
-- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded by ADR-0032)
-- [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) (Superseded by ADR-0120)
-- [ADR-0113: Em-dash-free shipped templates](0113-em-dash-free-shipped-templates.md) (Superseded by ADR-0115)
+- [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded)
+- [ADR-0031: Invariant Retirement via Successor ADR](0031-invariant-retirement-via-successor-adr.md) (Superseded)
+- [ADR-0113: Em-dash-free shipped templates](0113-em-dash-free-shipped-templates.md) (Superseded)
 
 ## Supersedence
 
@@ -151,36 +148,36 @@
 
 ### Superseded anchors on live ADRs
 
-- ADR-0001: item 2 superseded by ADR-0015
-- ADR-0002: item 5 superseded by ADR-0101
-- ADR-0007: item 3 superseded by ADR-0008
-- ADR-0008: item 4 superseded by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
-- ADR-0009: item 1 superseded by ADR-0016; item 4 superseded by ADR-0015
+- ADR-0001: item 2 refined by ADR-0015
+- ADR-0002: item 5 refined by ADR-0101
+- ADR-0007: item 3 refined by ADR-0008
+- ADR-0008: item 4 refined by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
+- ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015
 - ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
-- ADR-0016: item 6 superseded by ADR-0076; slug `target-output-paths` superseded by ADR-0037
-- ADR-0017: item 5 superseded by ADR-0127; item 7 superseded by ADR-0127
+- ADR-0016: item 6 refined by ADR-0076; slug `target-output-paths` superseded by ADR-0037
+- ADR-0017: item 5 refined by ADR-0127; item 7 refined by ADR-0127
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
-- ADR-0024: item 1 superseded by ADR-0093; item 6 superseded by ADR-0093
-- ADR-0029: item 1 superseded by ADR-0064
+- ADR-0024: item 1 refined by ADR-0093; item 6 refined by ADR-0093
+- ADR-0029: item 1 refined by ADR-0064
 - ADR-0030: slug `version-ldflags-precedence` superseded by ADR-0049
-- ADR-0032: item 1 superseded by ADR-0048
-- ADR-0034: item 1 superseded by ADR-0057; item 1 superseded by ADR-0121; slug `parts-raw` superseded by ADR-0121
-- ADR-0039: item 5 superseded by ADR-0076
+- ADR-0032: item 1 refined by ADR-0048
+- ADR-0034: item 1 refined by ADR-0057; item 1 refined by ADR-0121; slug `parts-raw` superseded by ADR-0121
+- ADR-0039: item 5 refined by ADR-0076
 - ADR-0040: slug `bootstrap-pin` superseded by ADR-0085
 - ADR-0043: slug `mandatory-docs-not-in-docs-catalog` superseded by ADR-0061; slug `singleton-kind-single-source` superseded by ADR-0061
-- ADR-0046: item 4 superseded by ADR-0081
-- ADR-0050: item 6 superseded by ADR-0081
-- ADR-0066: item 3 superseded by ADR-0071
-- ADR-0073: item 2 superseded by ADR-0107; item 4 superseded by ADR-0107
-- ADR-0097: item 1 superseded by ADR-0108
-- ADR-0098: item 2 superseded by ADR-0108; slug `context-surfaces-linked-plans` superseded by ADR-0104
+- ADR-0046: item 4 refined by ADR-0081
+- ADR-0050: item 6 refined by ADR-0081
+- ADR-0066: item 3 refined by ADR-0071
+- ADR-0073: item 2 refined by ADR-0107; item 4 refined by ADR-0107
+- ADR-0097: item 1 refined by ADR-0108
+- ADR-0098: item 2 refined by ADR-0108; slug `context-surfaces-linked-plans` superseded by ADR-0104
 - ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104
 - ADR-0102: slug `uncovered-lists-unowned-only` superseded by ADR-0110
 - ADR-0104: slug `context-tier1-governs` superseded by ADR-0106; slug `context-tier2-topical` superseded by ADR-0109
-- ADR-0115: item 4 superseded by ADR-0119; item 7 superseded by ADR-0119
-- ADR-0116: item 2 superseded by ADR-0120; item 5 superseded by ADR-0120
-- ADR-0117: item 5 superseded by ADR-0119
-- ADR-0118: item 1 superseded by ADR-0119; item 9 superseded by ADR-0119
-- ADR-0120: item 3 superseded by ADR-0128; item 4 superseded by ADR-0128; item 5 superseded by ADR-0128; item 10 superseded by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128
-- ADR-0122: item 3 superseded by ADR-0123; item 4 superseded by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
-- ADR-0123: item 2 superseded by ADR-0125; item 3 superseded by ADR-0125; item 4 superseded by ADR-0125; item 5 superseded by ADR-0125; item 7 superseded by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125
+- ADR-0115: item 4 refined by ADR-0119; item 7 refined by ADR-0119
+- ADR-0116: item 2 refined by ADR-0120; item 5 refined by ADR-0120
+- ADR-0117: item 5 refined by ADR-0119
+- ADR-0118: item 1 refined by ADR-0119; item 9 refined by ADR-0119
+- ADR-0120: item 3 superseded by ADR-0128; item 4 refined by ADR-0128; item 5 refined by ADR-0128; item 10 refined by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128
+- ADR-0122: item 3 refined by ADR-0123; item 4 refined by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
+- ADR-0123: item 2 refined by ADR-0125; item 3 refined by ADR-0125; item 4 refined by ADR-0125; item 5 refined by ADR-0125; item 7 refined by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125

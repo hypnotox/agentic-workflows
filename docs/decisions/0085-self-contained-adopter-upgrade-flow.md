@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-10
-supersedes: []
-superseded_by: ""
 tags: [upgrade-flow, bootstrap-porcelain]
 related: [39, 40, 49, 76, 79, 82]
 domains: [rendering, config]

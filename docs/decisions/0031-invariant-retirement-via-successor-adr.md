@@ -1,10 +1,8 @@
 ---
-status: Superseded by ADR-0120
+status: Superseded
 date: 2026-06-29
-supersedes: []
-superseded_by: "0120"
 tags: [invariant-retirement]
-related: [8]
+related: [8, 120]
 domains: [invariants, adr-system]
 ---
 # ADR-0031: Invariant Retirement via Successor ADR

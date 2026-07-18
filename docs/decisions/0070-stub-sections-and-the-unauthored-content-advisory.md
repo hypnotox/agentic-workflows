@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-07
-supersedes: []
-superseded_by: ""
 tags: [section-assembly, marker-scoping]
 related: [1, 11, 34, 45, 46, 54, 57, 58, 68]
 domains: [rendering, tooling]

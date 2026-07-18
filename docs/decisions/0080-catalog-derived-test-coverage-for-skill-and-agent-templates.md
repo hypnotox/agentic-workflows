@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-09
-supersedes: []
-superseded_by: ""
 tags: [publication-safety, catalog-derived-tests]
 related: [44, 45, 46, 50, 53, 54, 67]
 domains: [rendering, tooling]

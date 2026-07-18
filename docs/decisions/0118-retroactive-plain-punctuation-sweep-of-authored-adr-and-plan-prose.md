@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-15
-supersedes: []
-superseded_by: ""
 tags: [doc-standard, adr-lifecycle, plan-taxonomy, active-md, verification-discipline]
 related: [28, 113, 115, 116, 117, 119]
 domains: [adr-system, rendering, tooling]

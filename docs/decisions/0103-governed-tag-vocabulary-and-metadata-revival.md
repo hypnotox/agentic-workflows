@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-13
-supersedes: []
-superseded_by: ""
 tags: [tag-vocabulary, adr-parsing]
 related: [86, 88, 92, 98, 99, 102]
 domains: [config, adr-system, invariants, tooling]

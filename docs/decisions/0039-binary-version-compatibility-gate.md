@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-30
-supersedes: []
-superseded_by: ""
 tags: [version-authority, schema-migration]
 related: [30, 40, 76]
 domains: [tooling]

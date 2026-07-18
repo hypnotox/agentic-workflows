@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-27
-supersedes: []
-superseded_by: ""
 tags: [link-resolution]
 related: [5, 6, 11, 13, 19, 21]
 domains: [rendering, adr-system]

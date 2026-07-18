@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-07
-supersedes: []
-superseded_by: ""
 tags: [working-memory]
 related: [15, 20, 34, 45, 46, 47, 48, 52, 54, 60, 61, 67]
 domains: [rendering, tooling]

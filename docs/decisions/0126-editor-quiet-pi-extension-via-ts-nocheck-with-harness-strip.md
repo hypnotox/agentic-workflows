@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-17
-supersedes: []
-superseded_by: ""
 tags: [multi-target, target-seam, command-runner, provenance-markers]
 related: [123]
 domains: [rendering, tooling]
@@ -66,7 +64,7 @@ route that satisfies both is in-file suppression rather than type resolution.
    that chain after the copy and before its `tsc` stage. This changes what ADR-0123 Decision #7's
    static-type-check binds to: the type-check now runs against the stripped copy of the generated
    extension rather than the verbatim dogfood file, though that copy differs from the shipped
-   file only by the one non-type-meaning directive line. `supersedes: ADR-0123#7`. Decision #6's
+   file only by the one non-type-meaning directive line. `refines: ADR-0123#7`. Decision #6's
    gate lane (Docker image, dependency fingerprint, persistent container) is untouched and still
    binds as written; this is an addition to that lane, linked by the `related:` back-pointer, not
    an override. `container.sh` is not part of the Docker image fingerprint (`hash_files()` hashes

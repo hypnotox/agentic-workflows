@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-27
-supersedes: []
-superseded_by: ""
 tags: [domain-staleness, audit-rules]
 related: [14, 17]
 domains: [tooling]

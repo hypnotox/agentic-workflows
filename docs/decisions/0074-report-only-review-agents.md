@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-07
-supersedes: []
-superseded_by: ""
 tags: [review-agents]
 related: [17, 50, 52, 54, 67]
 domains: [tooling]

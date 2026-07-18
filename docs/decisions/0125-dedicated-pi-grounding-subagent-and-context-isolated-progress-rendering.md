@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-17
-supersedes: []
-superseded_by: ""
 tags: [multi-target, subagent-dispatch, workflow-chain]
 related: [123]
 domains: [rendering, tooling]
@@ -55,7 +53,7 @@ in-place change to that Implemented record.
    non-empty. Grounding is a fixed extension role, like exploration, not a
    catalog-toggleable Markdown reviewer and not a new `subagent_review` kind.
    Existing tool names and parameter schemas remain unchanged.
-   `supersedes: ADR-0123#2`
+   `refines: ADR-0123#2`
    `supersedes-invariant: ADR-0123#pi-subagent-public-contract`
 
 2. Give `subagent_grounding` the exploration role's exact closed built-in tool
@@ -73,8 +71,8 @@ in-place change to that Implemented record.
    check through this tool. General investigations and large coupling audits
    continue to use `subagent_explore`; all non-Pi targets keep their
    target-native grounding wording.
-   `supersedes: ADR-0123#4`
-   `supersedes: ADR-0123#5`
+   `refines: ADR-0123#4`
+   `refines: ADR-0123#5`
    `supersedes-invariant: ADR-0123#pi-explicit-workflow-dispatch`
 
 3. Preserve ADR-0123's child-process architecture: each invocation starts the
@@ -88,7 +86,7 @@ in-place change to that Implemented record.
    child transcript is retained elsewhere. Diagnostics, usage, model, stop
    reason, temporary-state cleanup, and TERM-to-KILL cancellation remain part
    of the runner contract.
-   `supersedes: ADR-0123#3`
+   `refines: ADR-0123#3`
 
 4. Retained progress uses one closed discriminated `DisplayEvent` union:
    - assistant completion: sequence, `kind: "assistant"`, and bounded text;

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-03
-supersedes: []
-superseded_by: ""
 tags: [include-directive, section-assembly]
 related: [1, 15, 27, 34, 45, 46]
 domains: [rendering]

@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-13
-supersedes: []
-superseded_by: ""
 tags: [uncovered-coverage, domain-index]
 related: [77, 86, 88, 102, 104, 109]
 domains: [tooling, config]

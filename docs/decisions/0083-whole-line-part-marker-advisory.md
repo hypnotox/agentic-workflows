@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-09
-supersedes: []
-superseded_by: ""
 tags: [convention-parts, marker-scoping]
 related: [34, 70, 77, 82]
 domains: [rendering]

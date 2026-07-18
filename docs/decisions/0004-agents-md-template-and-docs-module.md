@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-06-24
-supersedes: []
-superseded_by: ""
 tags: [agents-guide, doc-model]
 related: [1]
 domains: [adr-system]

@@ -25,6 +25,16 @@
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Docs and always-on
   singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
   `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
+- **`internal/adr/`**: parses the decisions directory and exposes it as one `Corpus` view,
+  constructed once per invocation and threaded to every consumer (ADR-0130). The view answers
+  ADR questions rather than exposing fields to re-derive them from: status predicates on the
+  parsed record, declared invariant slugs, existence and metadata lookups, an enumerated
+  raw-bytes accessor for the two consumers that legitimately work below the semantic layer, and
+  a bytes-level `ParseBytes` seam for `internal/audit`, which reads git blobs rather than the
+  working tree. ADR-0129's anchor-coverage model is built as a facet of the view: anchors are
+  nodes, claims are edges carrying relation and rationale site, and `Live`/`PartiallySuperseded`
+  /`Covered` are derived from it rather than stored. It also renders ACTIVE.md and the
+  per-domain indexes, both of which take a `Corpus` rather than parsing.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -32,10 +42,15 @@
   drift detection for `awf check`.
 - **`internal/migrate/`**: ordered schema-migration registry (ADR-0010); the `tree-layout`
   migration and the frozen legacy reader; powers `awf upgrade` and the sync/check version gate.
-  The generation-10 `retirement-tokens` migration writes the ADR corpus itself - porting the
-  legacy ADR-0031 retirement frontmatter to `supersedes-invariant:` tokens via raw-byte surgery
-  (ADR-0120), the precedent for corpus-writing migrations - importing `internal/adr` and
-  `internal/invariants` (acyclic: nothing on the render path imports migrate).
+  Two migrations write the ADR corpus itself via raw-byte surgery, importing `internal/adr`
+  (acyclic: nothing on the render path imports migrate). The generation-10 `retirement-tokens`
+  migration ported the legacy ADR-0031 retirement frontmatter to `supersedes-invariant:` tokens
+  (ADR-0120), the precedent for corpus-writing migrations; the generation-12
+  `supersession-keys` migration strips the `supersedes:`/`superseded_by:` keys, downgrades every
+  pre-existing item token to `refines:`, and appends a bookkeeping Decision item retiring each
+  predecessor's anchors (ADR-0128). Both resolve their own decisions directory and run before a
+  `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
+  taking a threaded view.
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
   `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source; enable array, catalog pool, declared sections, output path, and labels

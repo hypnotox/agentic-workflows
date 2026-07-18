@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-08
-supersedes: []
-superseded_by: ""
 tags: [anchored-globs, domain-staleness]
 related: [17, 19, 26, 33, 39, 49, 76, 86]
 domains: [tooling, config, invariants]

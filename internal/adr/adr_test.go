@@ -137,15 +137,20 @@ func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 // TestRenderActiveMDSupersedence covers the ADR-0120 item 10 rendering: a
 // full chain, an item annotation, and a slug annotation each render under
 // ## Supersedence, and a supersession-free corpus renders neither subsection.
-// invariant: active-md-supersedence-rendering
 // invariant: active-md-annotates-superseded-anchors
+// invariant: active-md-chains-one-to-many
 func TestRenderActiveMDSupersedence(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"0001-old.md": testsupport.ADR("Superseded by ADR-0002",
-			testsupport.WithSupersededBy("0002"), testsupport.WithTitle("0001: Old")),
-		"0002-new.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1),
-			testsupport.WithTitle("0002: New")),
+		// 0001's coverage is SPLIT across two successors: 0002 retires its first
+		// item, 0006 its second. This is the shape the scalar superseded_by
+		// could not express, and why chains render one-to-many.
+		"0001-old.md": testsupport.ADR("Superseded", testsupport.WithTitle("0001: Old"),
+			testsupport.WithRelated(2, 6), testsupport.WithBody("## Decision\n\n1. old.\n2. older.\n")),
+		"0002-new.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: New"),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n")),
+		"0006-other.md": testsupport.ADR("Implemented", testsupport.WithTitle("0006: Other"),
+			testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0001#2`.\n")),
 		"0003-target.md": testsupport.ADR("Accepted", testsupport.WithRelated(4, 5),
 			testsupport.WithTitle("0003: Target"),
 			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: some-slug` - x.\n")),
@@ -162,7 +167,7 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 	got := adr.RenderActiveMD(mustCorpus(t, dir))
 	for _, want := range []string{
 		"## Supersedence",
-		"### Chains\n\n- ADR-0001 superseded by ADR-0002\n",
+		"### Chains\n\n- ADR-0001 superseded by ADR-0002, ADR-0006\n",
 		// A refinement reads "refined by" and a retirement "superseded by": the
 		// reader must be able to tell an adapted decision from a replaced one
 		// (ADR-0128 item 2).
@@ -336,9 +341,10 @@ func TestDecisionItems(t *testing.T) {
 	}
 }
 
-// TestSupersessionIndex covers the render view's derivation: chains sorted by
-// predecessor, refs into missing or non-live targets dropped, and the override
-// order (items by number, then slugs by slug, ties by successor).
+// TestDecisionSectionOffsetsIgnoreFencedHeadings pins that a fenced `## `
+// heading inside the Decision section does not end it. The offsets are what the
+// schema migrations perform byte surgery against, so a short read here truncates
+// the section a migration then appends into.
 func TestDecisionSectionOffsetsIgnoreFencedHeadings(t *testing.T) {
 	body := "## Decision\n\n1. Real.\n\n```\n## Fake\n```\n\n2. Still real.\n\n## Consequences\n\nx\n"
 	a := parseOne(t, testsupport.ADR("Implemented", testsupport.WithTitle("0001: Fixture"), testsupport.WithBody(body)))
@@ -355,20 +361,22 @@ func TestSupersessionModel(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
 		// Two chains, written successor-first to exercise the chain sort.
-		"0001-old.md": testsupport.ADR("Superseded by ADR-0004", testsupport.WithSupersededBy("0004"), testsupport.WithTitle("0001: Old")),
+		"0001-old.md": testsupport.ADR("Superseded", testsupport.WithTitle("0001: Old"),
+			testsupport.WithRelated(4), testsupport.WithBody("## Decision\n\n1. old.\n")),
 		"0002-target.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: Target"),
 			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: s-one` - x.\n- `invariant: s-two` - y.\n")),
-		"0003-elder.md": testsupport.ADR("Superseded by ADR-0005", testsupport.WithSupersededBy("0005"), testsupport.WithTitle("0003: Elder")),
+		"0003-elder.md": testsupport.ADR("Superseded", testsupport.WithTitle("0003: Elder"),
+			testsupport.WithRelated(4, 5), testsupport.WithBody("## Decision\n\n1. elder.\n")),
 		// 0004 carries every ref shape: items out of order, two slugs out of
 		// order, a ref into a Superseded target, a dangling ref, and it claims
 		// chain 0001.
-		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1), testsupport.WithTitle("0004: Citer"),
-			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#2`, `supersedes: ADR-0002#1`, "+
+		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithTitle("0004: Citer"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0002#2`, `supersedes: ADR-0002#1`, "+
 				"`supersedes-invariant: ADR-0002#s-two`, `supersedes-invariant: ADR-0002#s-one`, "+
 				"`supersedes: ADR-0003#1`, `supersedes: ADR-0042#1`.\n")),
 		// 0005 claims chain 0003 and re-claims 0002 item 1.
-		"0005-later.md": testsupport.ADR("Accepted", testsupport.WithSupersedes(3), testsupport.WithTitle("0005: Later"),
-			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`.\n2. `refines: ADR-0002#2`.\n")),
+		"0005-later.md": testsupport.ADR("Implemented", testsupport.WithTitle("0005: Later"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`, `supersedes: ADR-0003#1`.\n2. `refines: ADR-0002#2`.\n")),
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -411,12 +419,13 @@ func TestSupersessionModel(t *testing.T) {
 		t.Errorf("0004 state = %q, want Live", got)
 	}
 
-	// Chains merge the derived coverage with the transitional frontmatter
-	// pairs, one-to-many.
+	// Chains are one-to-many: 0002 and 0003 are each fully covered by claims
+	// split across two carriers, which is precisely what the scalar
+	// superseded_by could not express (ADR-0129 item 6).
 	want := []adr.Chain{
 		{Predecessor: "0001", Successors: []string{"0004"}},
-		{Predecessor: "0002", Successors: []string{"0004"}},
-		{Predecessor: "0003", Successors: []string{"0005"}},
+		{Predecessor: "0002", Successors: []string{"0004", "0005"}},
+		{Predecessor: "0003", Successors: []string{"0004", "0005"}},
 	}
 	if got := c.Chains(); !reflect.DeepEqual(got, want) {
 		t.Errorf("chains:\ngot  %#v\nwant %#v", got, want)
@@ -491,16 +500,6 @@ func TestSupersessionStates(t *testing.T) {
 		"---\nstatus: Accepted\n---\n# ADR-0001: Empty\n\n## Context\n\nNo decision section.\n")
 	if got := mustCorpus(t, dir).State("0001"); got != adr.StateLive {
 		t.Errorf("zero-anchor state = %q, want Live", got)
-	}
-}
-
-// TestParseDirExtractsSupersedes confirms `supersedes:` frontmatter round-trips
-// into adr.ADR (full-supersession claims, ADR-0120).
-func TestParseDirExtractsSupersedes(t *testing.T) {
-	content := "---\nstatus: Implemented\nsupersedes: [31]\n---\n# ADR-0120: T\n\n## Decision\n\n1. x.\n"
-	a := parseOne(t, content)
-	if !reflect.DeepEqual(a.Supersedes, []int{31}) {
-		t.Errorf("Supersedes: got %#v, want [31]", a.Supersedes)
 	}
 }
 
@@ -812,10 +811,9 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 // every other consumer asks a predicate. This is what stops the three-way "is
 // live" and five-way "is superseded" divergences the ADR was written to end.
 //
-// The scan is scoped to comparisons against an ADR-typed .Status field. Local
-// status variables (internal/audit's `st`) are out of scope until Phase 3 of
-// the coverage-derived-supersession plan gives audit parsed records; that task
-// widens this scan to cover them.
+// The scan covers comparisons against an ADR's .Status field and against any
+// status literal, so neither an ADR-typed field read nor a local can
+// reintroduce the drift.
 //
 // internal/project/context.go carries the single enumerated exception: ADR-0129
 // item 4 keeps its Tier-2 exclusion on a direct prefix test.
@@ -830,7 +828,7 @@ func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 			`|HasPrefix\([^)]*\.Status\s*,\s*"` +
 			`|[!=]=\s*"(Accepted|Implemented|Proposed|Superseded)"`)
 
-	seen, transitional := 0, 0
+	seen := 0
 	root := filepath.Join("..", "..", "internal")
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -858,14 +856,6 @@ func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 			if isContext && strings.Contains(line, "tier1[a.Number]") {
 				continue
 			}
-			// Transitional: the suffixed/scalar symmetry half asserts the very
-			// encoding ADR-0128 removes, so it cannot be phrased as a predicate.
-			// Task 6.2 of the coverage-derived-supersession plan deletes it; the
-			// count guard below then fails and this branch comes out with it.
-			if strings.Contains(line, `"Superseded by ADR-"+a.SupersededBy`) {
-				transitional++
-				continue
-			}
 			t.Errorf("%s:%d compares an ADR status literal directly - use an adr.ADR predicate (ADR-0130 item 3):\n\t%s",
 				path, i+1, strings.TrimSpace(line))
 		}
@@ -877,12 +867,6 @@ func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 	// Guard against a vacuous pass if internal/ is ever relocated.
 	if seen < 10 {
 		t.Fatalf("inspected only %d non-test source file(s) under internal/; the scan is not reaching the tree", seen)
-	}
-	// The transitional exemption is expected to be needed exactly once until the
-	// schema removal deletes the symmetry check. When that lands, this fails and
-	// the exemption branch above must be deleted rather than re-tuned.
-	if transitional != 1 {
-		t.Fatalf("transitional suffixed-status exemption matched %d line(s), want 1 - if the symmetry check is gone, delete the exemption branch", transitional)
 	}
 }
 

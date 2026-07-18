@@ -1,8 +1,6 @@
 ---
 status: Implemented
 date: 2026-07-02
-supersedes: []
-superseded_by: ""
 tags: [skill-agent-pairing]
 related: [13, 22, 46, 81]
 domains: [config, rendering]

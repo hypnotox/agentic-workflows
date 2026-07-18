@@ -35,8 +35,6 @@ Every ADR starts with YAML frontmatter:
 ---
 status: Proposed | Accepted | Implemented | Superseded
 date: YYYY-MM-DD
-supersedes: []        # ADR numbers this fully replaces, e.g. [1], bare ints (zero-padded 0001 reads as octal YAML); awf check enforces the three-way symmetry with the target's status flip and superseded_by
-superseded_by: ""     # ADR number that replaced this (empty if still active)
 tags: [tooling]
 related: []           # related ADR numbers
 domains: [area]       # coarse domain keys driving the per-domain decision indexes
@@ -73,20 +71,40 @@ Every ADR's Decision section consists of column-0 numbered items, sequential fro
 format `awf check` enforces on every ADR regardless of status, because item numbers are the
 stable anchors partial supersession points at (indented numbered sub-lists do not count).
 
-Supersession comes in two flavours. **Full**: the successor's frontmatter claims
-`supersedes: [N]`, the predecessor's status flips to `Superseded by ADR-NNNN` and its
-`superseded_by:` names the successor; `awf check` enforces all three sides. **Partial**: the
-predecessor stays live and the successor's Decision section carries an inline code token at
-the citation site, one per overridden anchor, in one of two grammars:
+Supersession has one encoding: an inline code token in the successor's Decision section, at
+the citation site, one per claimed anchor. An **anchor** is a Decision item or a declared
+invariant slug - the addressable units a later ADR can claim. There are three token
+grammars:
 
-- `` `supersedes: ADR-NNNN#<item>` `` overrides one Decision item of ADR-NNNN.
-- `` `supersedes-invariant: ADR-NNNN#<slug>` `` overrides (and, once the carrier is
-  Implemented, retires) one declared invariant of ADR-NNNN.
+- `` `supersedes: ADR-NNNN#<item>` `` **retires** one Decision item of ADR-NNNN.
+- `` `supersedes-invariant: ADR-NNNN#<slug>` `` retires (and, once the carrier is
+  Implemented, drops the backing obligation for) one declared invariant of ADR-NNNN.
+- `` `refines: ADR-NNNN#<item>` `` **adapts** one Decision item without retiring it.
+
+The retirement/refinement split is what keeps supersession honest. A refinement counts
+toward nothing: an ADR whose items have only ever been refined is still live guidance, and
+adapting a decision is far more common than replacing it. Slug anchors have no refinement
+form, because a slug is atomic.
+
+**Full supersession is derived, never declared.** An ADR is `Superseded` exactly when every
+one of its Decision items and every one of its declared invariant slugs carries a retirement
+token from an `Implemented` ADR. There is no frontmatter key asserting it and no shorthand
+token for "supersedes everything": each decision must be retired explicitly, with the
+rationale sitting in the Decision item that carries the token. The status is hand-written and
+`awf check` refuses drift in both directions, naming the exact edit.
+
+The status is bare `Superseded`, naming no successor: coverage may split across several
+successors, so a scalar would lie. The claimants are recoverable from the predecessor's
+`related:` back-pointers, which every token owes regardless of the target's status.
 
 `awf check` validates every token: the target must exist and not be `Proposed` (a Proposed
-body is still mutable), the cited item or slug must exist, and a token into a live
-(`Accepted`/`Implemented`) target requires the target's `related:` to back-point at the
-carrier. One successor may not both fully and partially supersede the same target.
+body is still mutable), the cited item or slug must exist, and the target's `related:` must
+back-point at the carrier. It also refuses a token claiming an anchor of its own carrier, and
+a retirement cycle among fully covered ADRs.
+
+What `awf check` deliberately does **not** judge is rationale *quality*. It guarantees that a
+rationale *site* exists for every claim - the Decision item the token sits in - and no more.
+Whether that prose actually justifies the claim is the ADR reviewer's job.
 
 <!-- awf:edit active-md: from .awf/parts/adr-readme/active-md.md -->
 ## ACTIVE.md
