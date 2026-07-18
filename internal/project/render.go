@@ -743,10 +743,11 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 // It always produces a file: a populated index when ADRs exist, else a placeholder
 // (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
 func (p *Project) generateActiveMD() (RenderedFile, error) {
-	content, err := adr.RenderActiveMD(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil {
 		return RenderedFile{}, err
 	}
+	content := adr.RenderActiveMD(corpus)
 	content = injectBanner(content, "")
 	return RenderedFile{Path: p.layout().ActiveMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, nil
 }
@@ -757,14 +758,16 @@ func (p *Project) generateActiveMD() (RenderedFile, error) {
 // carries no TemplateID/Hash - drift is checked by regeneration, since the index
 // depends on external ADR frontmatter state.
 func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
-	decisionsDir := p.decisionsDir()
+	// The corpus is hoisted above the loop: it used to be re-parsed once per
+	// configured domain (ADR-0130 item 1).
+	corpus, err := p.Corpus()
+	if err != nil {
+		return nil, err
+	}
 	lay := p.layout()
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
-		index, err := adr.RenderDomainIndex(decisionsDir, name)
-		if err != nil {
-			return nil, err
-		}
+		index := adr.RenderDomainIndex(corpus, name)
 		data := p.data(config.Sidecar{})
 		data["data"] = map[string]any{"domain": name, "decisions": index}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),

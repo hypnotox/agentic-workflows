@@ -26,10 +26,7 @@ func TestRenderDomainIndexFiltersGroupsAndAnnotates(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(dir, name), content)
 	}
 
-	got, err := adr.RenderDomainIndex(dir, "rendering")
-	if err != nil {
-		t.Fatalf("RenderDomainIndex: %v", err)
-	}
+	got := adr.RenderDomainIndex(mustCorpus(t, dir), "rendering")
 
 	// invariant: domain-index-matches-domains - exactly the ADRs tagged with the
 	// queried domain appear; one tagged only "config" must not.
@@ -82,10 +79,7 @@ func TestRenderDomainIndexExactLayout(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(dir, name), content)
 	}
 
-	got, err := adr.RenderDomainIndex(dir, "rendering")
-	if err != nil {
-		t.Fatalf("RenderDomainIndex: %v", err)
-	}
+	got := adr.RenderDomainIndex(mustCorpus(t, dir), "rendering")
 
 	want := "### Implemented\n\n" +
 		"- [ADR-0001: First](../decisions/0001-first.md)\n" +
@@ -103,29 +97,9 @@ func TestRenderDomainIndexPlaceholder(t *testing.T) {
 	dir := t.TempDir()
 	content := testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0001: Only Config"))
 	testsupport.WriteFile(t, filepath.Join(dir, "0001-only-config.md"), content)
-	got, err := adr.RenderDomainIndex(dir, "rendering")
-	if err != nil {
-		t.Fatalf("RenderDomainIndex: %v", err)
-	}
+	got := adr.RenderDomainIndex(mustCorpus(t, dir), "rendering")
 	if !strings.Contains(got, "No decisions recorded for this domain yet") {
 		t.Errorf("expected placeholder, got: %q", got)
-	}
-}
-
-// TestRenderDomainIndexParseError propagates a ParseDir error rather than
-// producing output.
-func TestRenderDomainIndexParseError(t *testing.T) {
-	dir := t.TempDir()
-	// Deliberately malformed frontmatter - ADR() only emits valid YAML, so this
-	// negative-test input stays a raw literal.
-	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
-	testsupport.WriteFile(t, filepath.Join(dir, "0001-broken.md"), content)
-	got, err := adr.RenderDomainIndex(dir, "rendering")
-	if err == nil {
-		t.Fatal("expected error from malformed frontmatter, got nil")
-	}
-	if got != "" {
-		t.Errorf("expected empty output on error, got: %q", got)
 	}
 }
 

@@ -5,17 +5,12 @@ import (
 	"strings"
 )
 
-// RenderDomainIndex renders the per-domain ADR index for the decisions directory
-// dir: every ADR whose domains frontmatter includes domain, grouped by status in
+// RenderDomainIndex renders the per-domain ADR index for corpus: every ADR whose domains frontmatter includes domain, grouped by status in
 // the same order as ACTIVE.md, with links relative to docs/domains/ (one dir over)
 // and each superseded entry annotated with its successor. Returns a placeholder
 // line when no ADR matches, so the rendered section is never empty.
-func RenderDomainIndex(dir, domain string) (string, error) {
-	adrs, err := ParseDir(dir)
-	if err != nil {
-		return "", err
-	}
-	groups, ordered := groupByStatus(adrs, func(a ADR) bool {
+func RenderDomainIndex(corpus Corpus, domain string) string {
+	groups, ordered := groupByStatus(corpus.All(), func(a ADR) bool {
 		for _, d := range a.Domains {
 			if d == domain {
 				return true
@@ -24,7 +19,7 @@ func RenderDomainIndex(dir, domain string) (string, error) {
 		return false
 	})
 	if len(groups) == 0 {
-		return "_No decisions recorded for this domain yet._\n", nil
+		return "_No decisions recorded for this domain yet._\n"
 	}
 
 	var sb strings.Builder
@@ -41,5 +36,5 @@ func RenderDomainIndex(dir, domain string) (string, error) {
 			sb.WriteString("\n")
 		}
 	}
-	return sb.String(), nil
+	return sb.String()
 }

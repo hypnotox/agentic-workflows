@@ -3,7 +3,6 @@ package project
 import (
 	"fmt"
 	"maps"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -11,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -20,18 +18,19 @@ import (
 // partial back-pointers, and flavour exclusivity. The advisory-note half is
 // supersessionNotes' (AdvisoryNotes' source); both consume computeSupersession.
 func (p *Project) checkSupersessionAll() ([]manifest.Drift, error) {
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil { // reachable via a direct call over a malformed ADR; pre-empted inside full Check()
 		return nil, err
 	}
+	adrs := corpus.All()
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
 	drift := p.checkDecisionFormat(adrs, rel)
-	rk, err := checkRetiredKey(adrs, rel)
+	rk, err := checkRetiredKey(corpus, rel)
 	if err != nil { // coverage-ignore: ParseDir above just read every scanned path
 		return nil, err
 	}
 	drift = append(drift, rk...)
-	d2, _ := computeSupersession(adrs, rel)
+	d2, _ := computeSupersession(corpus, rel)
 	return append(drift, d2...), nil
 }
 
@@ -43,10 +42,11 @@ var retiredKeyRe = regexp.MustCompile(`(?m)^retires_invariants:`)
 // the schema no longer carries the field and non-strict YAML would silently
 // ignore it, so only a raw frontmatter scan can catch a stale corpus.
 // touches-invariant: retires-invariants-key-refused - the raw-key scan; proof in supersession_test.go
-func checkRetiredKey(adrs []adr.ADR, rel string) ([]manifest.Drift, error) {
+func checkRetiredKey(corpus adr.Corpus, rel string) ([]manifest.Drift, error) {
+	adrs := corpus.All()
 	var drift []manifest.Drift
 	for _, a := range adrs {
-		b, err := os.ReadFile(a.Path)
+		b, err := corpus.Raw(a.Number)
 		if err != nil { // coverage-ignore: ParseDir just read this exact path
 			return nil, err
 		}
@@ -66,12 +66,12 @@ func checkRetiredKey(adrs []adr.ADR, rel string) ([]manifest.Drift, error) {
 // tag-health notes reach cmd/awf's runCheck. The double ParseDir matches the
 // corpus checks' existing per-check parse pattern.
 func (p *Project) supersessionNotes() ([]string, error) {
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil { // reachable via a direct call over a malformed ADR; pre-empted inside AdvisoryNotes by tagHealthNotes only when a vocabulary is configured
 		return nil, err
 	}
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
-	_, notes := computeSupersession(adrs, rel)
+	_, notes := computeSupersession(corpus, rel)
 	return notes, nil
 }
 
@@ -107,7 +107,8 @@ func (p *Project) checkDecisionFormat(adrs []adr.ADR, rel string) []manifest.Dri
 // touches-invariant: supersession-backpointer - the adr-token-backpointer check; proof in supersession_test.go
 // touches-invariant: supersession-flavour-exclusive - the adr-token-exclusive check; proof in supersession_test.go
 // touches-invariant: supersession-conflict-advisory - the live same-anchor note; proof in supersession_test.go
-func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string) {
+func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []string) {
+	adrs := corpus.All()
 	byNum := map[string]adr.ADR{}
 	for _, a := range adrs {
 		byNum[a.Number] = a
@@ -168,7 +169,7 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 		num, _ := strconv.Atoi(a.Number) // a.Number is a 4-digit numeral matched by FilenameRe
 		live := a.IsLive()
 		seenAnchor := map[string]bool{}
-		for _, r := range a.Refs {
+		for _, r := range corpus.RefsOf(a.Number) {
 			// Flavour exclusivity: a token into a target the same ADR also fully
 			// supersedes (independent of the target's existence or status).
 			tn, _ := strconv.Atoi(r.Target) // the token regex admits only digits
@@ -196,10 +197,10 @@ func computeSupersession(adrs []adr.ADR, rel string) ([]manifest.Drift, []string
 				continue
 			}
 			if r.Slug == "" {
-				if items := len(target.DecisionItems()); r.Item > items { // the format check guarantees 1..N
+				if items := len(corpus.DecisionItems(r.Target)); r.Item > items { // the format check guarantees 1..N
 					add(a, "adr-token-ref", fmt.Sprintf("ADR-%s: token cites ADR-%s#%d, but its Decision has %d items", a.Number, r.Target, r.Item, items))
 				}
-			} else if !slices.Contains(invariants.DeclaredSlugs(target), r.Slug) {
+			} else if !slices.Contains(corpus.DeclaredSlugs(target.Number), r.Slug) {
 				add(a, "adr-token-ref", fmt.Sprintf("ADR-%s: token cites ADR-%s#%s, which its Invariants section does not declare", a.Number, r.Target, r.Slug))
 			}
 			// Back-pointer: a token into a live target requires the predecessor's

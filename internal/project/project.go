@@ -48,6 +48,9 @@ type Project struct {
 	// .skills and artifactConfigHash folds it in for .skills-referencing
 	// templates (ADR-0046).
 	effSkills map[string]bool
+	// corpus is the lazily-loaded parsed ADR view (ADR-0130 item 1), threaded
+	// to every consumer that needs an ADR fact instead of each one loading.
+	corpus *adr.Corpus
 }
 
 func Open(root string) (*Project, error) {
@@ -102,6 +105,7 @@ type Change struct {
 // byte-identical, and a first sync with no prior lock, report no change - a
 // routine re-sync stays silent).
 func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
+	p.beginInvocation()
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	// invariant: corrupt-lock-refuses
@@ -271,7 +275,40 @@ func (p *Project) lockPath() string {
 // ADR-0105 two-marker model and the project's configured invariant sources)
 // under the project root, alongside the non-failing advisory notes.
 func (p *Project) CheckInvariants() ([]invariants.Finding, []invariants.Note, error) {
-	return invariants.Check(p.decisionsDir(), p.Root, p.Cfg.Invariants)
+	p.beginInvocation()
+	c, err := p.Corpus()
+	if err != nil {
+		return nil, nil, err
+	}
+	return invariants.Check(c, p.Root, p.Cfg.Invariants)
+}
+
+// beginInvocation drops any per-invocation cached state, so the operation that
+// follows observes the decisions directory as it is on disk now. Every public
+// operation that reads ADRs calls it before its first Corpus use.
+func (p *Project) beginInvocation() { p.corpus = nil }
+
+// Corpus returns the project's parsed ADR corpus, loading it on first use
+// within the current invocation and reusing it for the rest of that invocation
+// (ADR-0130 item 1). Threading one view is what collapses the eight-or-so
+// per-check parses a single awf check used to perform.
+//
+// The cache is per-INVOCATION, not per-Project: every public operation that
+// reads ADRs calls beginInvocation first. A Project outlives a single call, and
+// Check's whole contract is to compare rendered output against the decisions
+// directory as it is on disk right now - so a corpus held across calls would
+// make a Check following a Sync miss an ADR written in between, silently
+// blinding the drift oracle rather than merely serving a stale read.
+func (p *Project) Corpus() (adr.Corpus, error) {
+	if p.corpus != nil {
+		return *p.corpus, nil
+	}
+	c, err := adr.LoadCorpus(p.decisionsDir())
+	if err != nil {
+		return adr.Corpus{}, err
+	}
+	p.corpus = &c
+	return c, nil
 }
 
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied

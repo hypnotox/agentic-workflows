@@ -12,7 +12,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/invariants"
 )
 
 var (
@@ -48,27 +47,31 @@ func applyRetirementTokens(root string, out io.Writer) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return nil // no decisions dir: an adopter without the docs module
 	}
-	adrs, err := adr.ParseDir(dir)
+	corpus, err := adr.LoadCorpus(dir)
 	if err != nil {
 		return err
 	}
+	adrs := corpus.All()
 	// Pre-edit resolution state: every ADR's declared slugs (any status) and
 	// the parsed related: lists, before any byte surgery.
 	declarers := map[string][]string{}
 	byNum := map[string]adr.ADR{}
 	for _, a := range adrs {
 		byNum[a.Number] = a
-		for _, slug := range invariants.DeclaredSlugs(a) {
+		for _, slug := range a.DeclaredSlugs() {
 			declarers[slug] = append(declarers[slug], a.Number)
 		}
 	}
 
 	edited := map[string][]byte{} // path -> pending content
+	// Raw access goes through the view's enumerated accessor (ADR-0130 item 6):
+	// this migration performs offset surgery and so legitimately works below the
+	// semantic layer.
 	load := func(a adr.ADR) ([]byte, error) {
 		if b, ok := edited[a.Path]; ok {
 			return b, nil
 		}
-		return os.ReadFile(a.Path)
+		return corpus.Raw(a.Number)
 	}
 
 	type edge struct{ target, carrier string }

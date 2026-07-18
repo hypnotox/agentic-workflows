@@ -31,11 +31,11 @@ func TestDeclaringADRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := invariants.DeclaringADRs(adrs)
+	got, err := invariants.DeclaringADRs(adr.NewCorpus(adrs))
 	if err != nil {
 		t.Fatalf("DeclaringADRs: %v", err)
 	}
-	if got["kept"].ADR != "0001-a.md" || got["fresh"].ADR != "0003-c.md" {
+	if got["kept"].ADR != "0001" || got["fresh"].ADR != "0003" {
 		t.Errorf("expected kept→0001, fresh→0003, got %#v", got)
 	}
 	if got["kept"].Class != invariants.ClassBacked {
@@ -63,7 +63,7 @@ func TestDeclaringADRsUnbackedClass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := invariants.DeclaringADRs(adrs)
+	got, err := invariants.DeclaringADRs(adr.NewCorpus(adrs))
 	if err != nil {
 		t.Fatalf("DeclaringADRs: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestDeclaringADRsVerifyWrapped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := invariants.DeclaringADRs(adrs)
+	got, err := invariants.DeclaringADRs(adr.NewCorpus(adrs))
 	if err != nil {
 		t.Fatalf("DeclaringADRs: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestCheckImplementedOnly(t *testing.T) {
 	writeADR(t, dir, "0002-b.md", "Proposed", "- `invariant: fixture-prop` - x.")
 	writeADR(t, dir, "0003-c.md", "Accepted", "- `invariant: fixture-acc` - x.")
 	writeADR(t, dir, "0004-d.md", "Superseded by ADR-0001", "- `invariant: fixture-sup` - x.")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestCheckUnbackedAndBacked(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-backed` - x.\n- `invariant: fixture-missing` - y.")
 	goSrc(t, root, "package x\n// invariant: fixture-backed\nfunc T() {}\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestCheckBackedProofInTestFile(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "x_test.go"), "package x\n// invariant: t-backed\n")
 	cfg := goSrcConfig()
 	cfg.TestGlobs = []string{"**/*_test.go"}
-	f, notes, err := invariants.Check(dir, root, cfg)
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestCheckBackedNoProof(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: b-missing` - x.")
 	goSrc(t, root, "package x\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 
 	scoped := goSrcConfig()
 	scoped.TestGlobs = []string{"**/*_test.go"}
-	f, notes, err := invariants.Check(dir, root, scoped)
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, scoped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestCheckProofInNonTestFileScoped(t *testing.T) {
 	}
 
 	// Same source, no testGlobs → source-only fallback backs it.
-	f, _, err = invariants.Check(dir, root, goSrcConfig())
+	f, _, err = invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +228,7 @@ func TestCheckUnbackedWithVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-ok` - a contract. **Verify:** inspect by hand.")
 	goSrc(t, root, "package x\n// touches-invariant: u-ok - the reasoned site.\n")
-	f, notes, err := invariants.Check(dir, root, goSrcConfig())
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestCheckUnbackedWithoutVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-noverify` - a contract with no guidance.")
 	goSrc(t, root, "package x\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestCheckUnbackedWithProof(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-proof` - a contract. **Verify:** by hand.")
 	goSrc(t, root, "package x\n// invariant: u-proof\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestCheckUnbackedProofAndMissingVerify(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `unbacked-invariant: u-both` - a contract with no guidance.")
 	goSrc(t, root, "package x\n// invariant: u-both\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestCheckDanglingMarkerNote(t *testing.T) {
 		"// invariant: ghost\n"+ // undeclared proof marker → dangling
 		"// touches-invariant: ghost\n"+ // same ghost via touches → deduped
 		"// touches-invariant: phantom - a note\n") // undeclared touches → dangling
-	f, notes, err := invariants.Check(dir, root, goSrcConfig())
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestCheckBareTouchesNote(t *testing.T) {
 		"// invariant: real\n"+
 		"// touches-invariant: real\n"+ // bare touches on a declared slug
 		"// touches-invariant: real\n") // second bare touches → deduped
-	f, notes, err := invariants.Check(dir, root, goSrcConfig())
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestCheckPlainCommentIgnored(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: plain` - x.")
 	goSrc(t, root, "package x\n// invariant: plain\n// just an ordinary comment\n")
-	f, notes, err := invariants.Check(dir, root, goSrcConfig())
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +365,7 @@ func TestCheckAnchoredGlobScope(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "sub", "x.go"), "package x\n// invariant: fixture-scoped\n")
 	goSrc(t, root, "package y\n// invariant: fixture-outside\n") // top-level y.go: outside sub/**
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"sub/**"}, Marker: "//"}}}
-	f, _, err := invariants.Check(dir, root, cfg)
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,7 +383,7 @@ func TestCheckMarkerMustOpenLine(t *testing.T) {
 	goSrc(t, root, "package x\n"+
 		"var s = \"src\\n// invariant: fixture-literal\\n\"\n"+ // mid-line, inside a literal
 		"func T() {\n\t// invariant: fixture-indented\n}\n") // indented comment - still backs
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ func TestCheckDuplicateSlug(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-dup` - x.")
 	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: fixture-dup` - y.")
-	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil {
+	if _, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig()); err == nil {
 		t.Error("expected error for duplicate slug")
 	}
 }
@@ -409,7 +409,7 @@ func TestCheckThreeState(t *testing.T) {
 	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
 	// nil config -> unchecked
-	f, _, err := invariants.Check(dir, root, nil)
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,23 +417,23 @@ func TestCheckThreeState(t *testing.T) {
 		t.Fatalf("nil cfg: want 1 unchecked, got %#v", f)
 	}
 	// source-less config -> unchecked
-	f, _, _ = invariants.Check(dir, root, &config.InvariantConfig{})
+	f, _, _ = invariants.Check(mustCorpus(t, dir), root, &config.InvariantConfig{})
 	if len(f) != 1 || f[0].Status != invariants.Unchecked {
 		t.Fatalf("source-less cfg: want 1 unchecked, got %#v", f)
 	}
 	// disabled -> clean
-	f, _, _ = invariants.Check(dir, root, &config.InvariantConfig{Disabled: true, Sources: src})
+	f, _, _ = invariants.Check(mustCorpus(t, dir), root, &config.InvariantConfig{Disabled: true, Sources: src})
 	if len(f) != 0 {
 		t.Errorf("disabled: want clean, got %#v", f)
 	}
 	// sources, unbacked -> unbacked
-	f, _, _ = invariants.Check(dir, root, &config.InvariantConfig{Sources: src})
+	f, _, _ = invariants.Check(mustCorpus(t, dir), root, &config.InvariantConfig{Sources: src})
 	if len(f) != 1 || f[0].Status != invariants.Unbacked {
 		t.Fatalf("sources unbacked: want 1 unbacked, got %#v", f)
 	}
 	// sources, backed -> clean
 	goSrc(t, root, "package x\n// invariant: fixture-one\n")
-	f, _, _ = invariants.Check(dir, root, &config.InvariantConfig{Sources: src})
+	f, _, _ = invariants.Check(mustCorpus(t, dir), root, &config.InvariantConfig{Sources: src})
 	if len(f) != 0 {
 		t.Errorf("sources backed: want clean, got %#v", f)
 	}
@@ -447,7 +447,7 @@ func TestCheckMultiLangScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.py"}, Marker: "#"}}}
-	f, _, err := invariants.Check(dir, root, cfg)
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +465,7 @@ func TestCheckMarkerLiteral(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.InvariantConfig{Sources: []config.InvariantSource{{Globs: []string{"**/*.txt"}, Marker: "[x]"}}}
-	f, _, _ := invariants.Check(dir, root, cfg)
+	f, _, _ := invariants.Check(mustCorpus(t, dir), root, cfg)
 	if len(f) != 0 {
 		t.Errorf("literal marker should match, got %#v", f)
 	}
@@ -477,7 +477,7 @@ func TestCheckMarkerWhitespace(t *testing.T) {
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-a` - x.\n- `invariant: fixture-b` - y.")
 	// one with a space after the marker, one without.
 	goSrc(t, root, "package x\n// invariant: fixture-a\n//invariant: fixture-b\n")
-	f, _, _ := invariants.Check(dir, root, goSrcConfig())
+	f, _, _ := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if len(f) != 0 {
 		t.Errorf("whitespace-tolerant marker should match both, got %#v", f)
 	}
@@ -496,7 +496,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 	// ADR-2 legitimately declares shared-slug.
 	writeADR(t, dir, "0002-b.md", "Implemented", "- `invariant: shared-slug` - the real declaration.")
 	goSrc(t, root, "package x\n// invariant: real-slug\n// invariant: shared-slug\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatalf("a prose cross-reference must not register as a declaration (no duplicate): %v", err)
 	}
@@ -512,7 +512,7 @@ func TestCheckIgnoresProseCrossReference(t *testing.T) {
 func TestCheckRecognisesDoubleBacktickDeclaration(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `` `invariant: dbl-slug` `` - declared with double backticks.")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,20 +548,6 @@ func TestFindingDetail(t *testing.T) {
 	}
 }
 
-// TestCheckParseDirError pins that a decisions dir holding a malformed ADR (here,
-// unparseable YAML frontmatter) surfaces the parse error rather than being
-// silently skipped.
-func TestCheckParseDirError(t *testing.T) {
-	dir, root := t.TempDir(), t.TempDir()
-	bad := "---\nstatus: \"unterminated\n---\n# ADR-X: T\n"
-	if err := os.WriteFile(filepath.Join(dir, "0001-fixture-bad.md"), []byte(bad), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := invariants.Check(dir, root, nil); err == nil {
-		t.Error("expected error for malformed ADR frontmatter")
-	}
-}
-
 // TestCheckSortsMultipleFindings pins deterministic slug-sorted output for both
 // the Unchecked (nil cfg) and Unbacked (sources configured, nothing backing)
 // paths when more than one slug is required.
@@ -570,7 +556,7 @@ func TestCheckSortsMultipleFindings(t *testing.T) {
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-zeta` - z.\n- `invariant: fixture-alpha` - a.")
 	src := []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}
 
-	f, _, err := invariants.Check(dir, root, nil)
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,7 +564,7 @@ func TestCheckSortsMultipleFindings(t *testing.T) {
 		t.Fatalf("nil cfg: want alpha,zeta unchecked in order, got %#v", f)
 	}
 
-	f, _, err = invariants.Check(dir, root, &config.InvariantConfig{Sources: src})
+	f, _, err = invariants.Check(mustCorpus(t, dir), root, &config.InvariantConfig{Sources: src})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,7 +593,7 @@ func TestCheckSkipsVCSDirsAndNonMatchingFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("// invariant: fixture-skip\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +620,7 @@ func TestCheckSkipsNestedCheckouts(t *testing.T) {
 	// A linked worktree or submodule: .git is a gitdir-pointer file.
 	testsupport.WriteFile(t, filepath.Join(root, "wt", ".git"), "gitdir: /elsewhere/.git/worktrees/wt\n")
 	testsupport.WriteFile(t, filepath.Join(root, "wt", "x.go"), "// invariant: fixture-nested\n")
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -655,7 +641,7 @@ func TestCheckSkipsNestedAwfProject(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "example", ".awf", "config.yaml"), "prefix: ex\n")
 	testsupport.WriteFile(t, filepath.Join(root, "example", "x.go"),
 		"// invariant: fixture-own\n// invariant: example-only\n") // neither must be honoured
-	f, notes, err := invariants.Check(dir, root, goSrcConfig())
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,7 +658,7 @@ func TestCheckSkipsNestedAwfProject(t *testing.T) {
 func TestCheckScanWalkError(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-walk` - x.")
-	if _, _, err := invariants.Check(dir, filepath.Join(root, "does-not-exist"), goSrcConfig()); err == nil {
+	if _, _, err := invariants.Check(mustCorpus(t, dir), filepath.Join(root, "does-not-exist"), goSrcConfig()); err == nil {
 		t.Error("expected WalkDir error for non-existent root")
 	}
 }
@@ -687,7 +673,7 @@ func TestCheckScanReadError(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "missing-target"), filepath.Join(root, "bad.go")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := invariants.Check(dir, root, goSrcConfig()); err == nil {
+	if _, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig()); err == nil {
 		t.Error("expected read error for dangling symlink source file")
 	}
 }
@@ -722,7 +708,7 @@ func TestCheckTokenRetirementImplementedOnly(t *testing.T) {
 			dir, root := t.TempDir(), t.TempDir()
 			writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-tok` - x.")
 			writeTokenADR(t, dir, "0002-b.md", tc.status, "fixture-tok")
-			f, _, err := invariants.Check(dir, root, goSrcConfig())
+			f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -747,7 +733,7 @@ func TestCheckTokenRetirementIgnoresItemTokens(t *testing.T) {
 		testsupport.WithTitle("X: T"),
 		testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1`.\n"))
 	testsupport.WriteFile(t, filepath.Join(dir, "0002-b.md"), content)
-	f, _, err := invariants.Check(dir, root, goSrcConfig())
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -764,7 +750,7 @@ func TestCheckTokenRetirementDangling(t *testing.T) {
 		dir, root := t.TempDir(), t.TempDir()
 		writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-real` - x.")
 		writeTokenADR(t, dir, "0002-b.md", "Implemented", "fixture-ghost")
-		_, _, err := invariants.Check(dir, root, goSrcConfig())
+		_, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 		if err == nil || !strings.Contains(err.Error(), "dangling retirement") || !strings.Contains(err.Error(), "fixture-ghost") {
 			t.Errorf("a dangling token retirement must error mentioning the slug, got %v", err)
 		}
@@ -773,7 +759,7 @@ func TestCheckTokenRetirementDangling(t *testing.T) {
 		dir, root := t.TempDir(), t.TempDir()
 		writeADR(t, dir, "0001-a.md", "Superseded by ADR-0002", "- `invariant: fixture-lapsed` - x.")
 		writeTokenADR(t, dir, "0002-b.md", "Implemented", "fixture-lapsed")
-		f, _, err := invariants.Check(dir, root, goSrcConfig())
+		f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
 		if err != nil || len(f) != 0 {
 			t.Errorf("retiring a slug only a non-Implemented ADR declares must be a clean no-op, got %#v err=%v", f, err)
 		}
@@ -785,7 +771,7 @@ func TestCheckZeroSlugsClean(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- a textual invariant with no slug.")
 	for _, cfg := range []*config.InvariantConfig{nil, {}, {Sources: []config.InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}}}} {
-		f, _, err := invariants.Check(dir, root, cfg)
+		f, _, err := invariants.Check(mustCorpus(t, dir), root, cfg)
 		if err != nil || len(f) != 0 {
 			t.Errorf("zero slugs must be clean (cfg=%#v): got %#v err=%v", cfg, f, err)
 		}
@@ -939,7 +925,7 @@ func TestCloseTokenStripping(t *testing.T) {
 		{Globs: []string{"*.md"}, Marker: "<!-- awf:comment", Close: "-->"},
 		{Globs: []string{"**/*.go"}, Marker: "//"},
 	}}
-	f, notes, err := invariants.Check(dir, root, cfg)
+	f, notes, err := invariants.Check(mustCorpus(t, dir), root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -964,4 +950,16 @@ func TestCloseTokenStripping(t *testing.T) {
 	if got == nil || len(got.Notes) != 1 || got.Notes[0] != "- a note" {
 		t.Errorf("MarkersUnder must return the close-stripped note %q, got %#v", "- a note", hits)
 	}
+}
+
+// mustCorpus loads a decisions directory into the view. Check takes the parsed
+// corpus rather than a directory (ADR-0130 item 1): the parse belongs to the
+// caller, which performs it once per invocation.
+func mustCorpus(t *testing.T, dir string) adr.Corpus {
+	t.Helper()
+	c, err := adr.LoadCorpus(dir)
+	if err != nil {
+		t.Fatalf("LoadCorpus(%s): %v", dir, err)
+	}
+	return c
 }

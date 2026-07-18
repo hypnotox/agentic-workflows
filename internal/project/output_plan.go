@@ -140,6 +140,7 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 // dependency order; config reference observes ordinary/domain metadata but is
 // deliberately excluded from its own input.
 func (p *Project) OutputPlan() (*OutputPlan, error) {
+	p.beginInvocation()
 	declarations, err := p.targetOutputDeclarations()
 	if err != nil {
 		return nil, err

@@ -217,18 +217,15 @@ func parse(data []byte) (ADR, error) {
 	return a, nil
 }
 
-// RenderActiveMD renders the ACTIVE.md index for dir, grouped by status. It
-// returns a placeholder index when dir holds no ADRs (ADR-0020). The content
+// RenderActiveMD renders the ACTIVE.md index for corpus, grouped by status. It
+// returns a placeholder index when the corpus holds no ADRs (ADR-0020). The content
 // carries no generated-by banner - like RenderDomainIndex, that is the
 // caller's job (internal/project's generateActiveMD, via injectBanner) so
 // every rendered artifact's banner comes from the one canonical source.
-func RenderActiveMD(dir string) (string, error) {
-	adrs, err := ParseDir(dir)
-	if err != nil {
-		return "", err
-	}
+func RenderActiveMD(corpus Corpus) string {
+	adrs := corpus.All()
 	if len(adrs) == 0 {
-		return "## Decisions\n\n_No decisions recorded yet._\n", nil
+		return "## Decisions\n\n_No decisions recorded yet._\n"
 	}
 
 	groups, ordered := groupByStatus(adrs, func(ADR) bool { return true })
@@ -274,7 +271,7 @@ func RenderActiveMD(dir string) (string, error) {
 			}
 		}
 	}
-	return sb.String(), nil
+	return sb.String()
 }
 
 // groupByStatus buckets the ADRs that pass include by bucketKey(Status), sorts each bucket

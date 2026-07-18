@@ -102,11 +102,16 @@ and expensive apart.
 
 ## Invariants
 
-- `invariant: corpus-parsed-once` - `adr.ParseDir` has exactly one production call site outside
-  `internal/adr`, and inside `internal/adr` it is called only by `Corpus` construction;
-  `RenderDomainIndex` and `RenderActiveMD` take a `Corpus` rather than parsing. The static form
-  is what a test can inspect; the runtime property it stands for is that one invocation parses
-  the decisions directory once.
+- `invariant: corpus-parsed-once` - `adr.ParseDir` has no production call site outside
+  `internal/adr`; `Corpus` construction is the single seam every consumer enters through, and
+  inside `internal/adr` it is called only by that seam. `RenderDomainIndex` and `RenderActiveMD`
+  take a `Corpus` rather than parsing. The static form is what a test can inspect; the runtime
+  property it stands for is that one invocation parses the decisions directory once.
+
+  The seam is a named constructor rather than a threaded field alone because the schema
+  migrations resolve their own decisions directory and run before a `Project` can be opened, so
+  they cannot be handed a threaded view. Routing them through the same constructor keeps them
+  inside the rule rather than exempt from it.
 - `invariant: corpus-model-not-rebuilt` - ADR-0129's anchor-coverage model is constructed in
   exactly one place, inside `internal/adr`; no other package builds it or reimplements its
   derivation.

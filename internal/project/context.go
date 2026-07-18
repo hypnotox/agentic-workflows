@@ -81,6 +81,7 @@ type ADRRef struct {
 // ContextFor assembles the read-only context for paths. It reads only committed
 // state (domain sidecars, ADR files, source markers) and writes nothing.
 func (p *Project) ContextFor(paths []string) (ContextResult, error) {
+	p.beginInvocation()
 	clean := NormalizeContextPaths(paths)
 	lay := p.layout()
 	res := ContextResult{Paths: clean}
@@ -123,10 +124,11 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 		hits = h
 	}
 
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil {
 		return ContextResult{}, err
 	}
+	adrs := corpus.All()
 
 	// Superseded-anchor annotations, computed once per context run from the
 	// already-parsed corpus (ADR-0120 item 10).
@@ -138,13 +140,9 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	// ADR-0105 class, with an unbacked invariant's `Verify:` guidance and any
 	// touches-marker site note carried on the InvariantRef (ADR-0106).
 	// touches-invariant: context-tier1-marker-union - Tier-1 union-scan join site; proof in invariants_test.go
-	declaring, err := invariants.DeclaringADRs(adrs)
+	declaring, err := invariants.DeclaringADRs(corpus)
 	if err != nil {
 		return ContextResult{}, err
-	}
-	byFile := map[string]adr.ADR{}
-	for _, a := range adrs {
-		byFile[a.Filename] = a
 	}
 	tier1 := map[string]bool{}
 	var t1 []adr.ADR
@@ -155,8 +153,8 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 			if decl.Class == invariants.ClassUnbacked {
 				ref.Verify = decl.Verify
 			}
-			a := byFile[decl.ADR]
-			if !tier1[a.Number] {
+			a, ok := corpus.ByNumber(decl.ADR)
+			if ok && !tier1[a.Number] {
 				tier1[a.Number] = true
 				t1 = append(t1, a)
 				res.Governing = append(res.Governing, adrRefOf(a, lay, overrides))

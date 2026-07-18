@@ -37,10 +37,7 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 		}
 	}
 
-	got, err := adr.RenderActiveMD(dir)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got := adr.RenderActiveMD(mustCorpus(t, dir))
 
 	// RenderActiveMD is banner-free (the banner is injected downstream by
 	// internal/project, like every other rendered artifact) - content starts
@@ -120,10 +117,7 @@ func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 			t.Fatalf("write fixture %s: %v", name, err)
 		}
 	}
-	got, err := adr.RenderActiveMD(dir)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got := adr.RenderActiveMD(mustCorpus(t, dir))
 	if strings.Contains(got, "## Superseded by") {
 		t.Errorf("per-successor section header rendered instead of one Superseded group:\n%s", got)
 	}
@@ -162,10 +156,7 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := adr.RenderActiveMD(dir)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got := adr.RenderActiveMD(mustCorpus(t, dir))
 	for _, want := range []string{
 		"## Supersedence",
 		"### Chains\n\n- ADR-0001 superseded by ADR-0002\n",
@@ -182,10 +173,7 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 		[]byte(testsupport.ADR("Accepted", testsupport.WithTitle("0001: A"))), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err = adr.RenderActiveMD(plain)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got = adr.RenderActiveMD(mustCorpus(t, plain))
 	if strings.Contains(got, "Supersedence") || strings.Contains(got, "###") {
 		t.Errorf("supersession-free corpus must not render the section:\n%s", got)
 	}
@@ -198,10 +186,7 @@ func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := adr.RenderActiveMD(dir)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got := adr.RenderActiveMD(mustCorpus(t, dir))
 	if !strings.Contains(got, "No decisions recorded yet") {
 		t.Errorf("expected placeholder index for an ADR-less dir, got:\n%s", got)
 	}
@@ -448,20 +433,22 @@ func TestParseDirParseError(t *testing.T) {
 	}
 }
 
-// TestRenderActiveMDParseError ensures RenderActiveMD propagates a ParseDir
-// error instead of producing output.
-func TestRenderActiveMDParseError(t *testing.T) {
+// TestLoadCorpusParseError ensures the construction seam propagates a parse
+// error rather than yielding a partial corpus. The render entry points take a
+// Corpus (ADR-0130 item 1), so this is the one place a malformed ADR can
+// surface: they no longer parse and so no longer fail.
+func TestLoadCorpusParseError(t *testing.T) {
 	dir := t.TempDir()
 	content := "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n"
 	if err := os.WriteFile(filepath.Join(dir, "0001-broken.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := adr.RenderActiveMD(dir)
+	got, err := adr.LoadCorpus(dir)
 	if err == nil {
 		t.Fatal("expected error from malformed frontmatter, got nil")
 	}
-	if got != "" {
-		t.Errorf("expected empty output on error, got: %q", got)
+	if len(got.All()) != 0 {
+		t.Errorf("expected an empty corpus on error, got %d ADR(s)", len(got.All()))
 	}
 }
 
@@ -481,10 +468,7 @@ func TestRenderActiveMDSortsWithinStatusAndOrdersExtra(t *testing.T) {
 		}
 	}
 
-	got, err := adr.RenderActiveMD(dir)
-	if err != nil {
-		t.Fatalf("RenderActiveMD: %v", err)
-	}
+	got := adr.RenderActiveMD(mustCorpus(t, dir))
 
 	// Within the Accepted group, 0001 must be listed before 0002.
 	first := strings.Index(got, "ADR-0001: First Accepted")
@@ -784,4 +768,16 @@ func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 	if transitional != 1 {
 		t.Fatalf("transitional suffixed-status exemption matched %d line(s), want 1 - if the symmetry check is gone, delete the exemption branch", transitional)
 	}
+}
+
+// mustCorpus loads a decisions directory into the view for a render test.
+// RenderActiveMD and RenderDomainIndex take a Corpus rather than a directory
+// (ADR-0130 item 1), so the parse is the caller's, made once.
+func mustCorpus(t *testing.T, dir string) adr.Corpus {
+	t.Helper()
+	c, err := adr.LoadCorpus(dir)
+	if err != nil {
+		t.Fatalf("LoadCorpus(%s): %v", dir, err)
+	}
+	return c
 }

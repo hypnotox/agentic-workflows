@@ -98,23 +98,10 @@ func (f Finding) Line() string {
 }
 
 var (
-	// declRe matches an invariant DECLARATION leading a markdown list item
-	// (optionally indented): a backed `invariant: <slug>` or an unbacked
-	// `unbacked-invariant: <slug>` token. Group 1 is the optional `unbacked-`
-	// prefix, group 2 the slug. Only backticks and spaces may sit between the bullet
-	// and the token, so both the single-backtick form (`- `+"`invariant: x`") and
-	// the double-backtick form ADR-0007 uses to render literal backticks
-	// (`- `+"``  `invariant: x`  ``") are recognised, while a mid-prose
-	// cross-reference to another ADR's slug is not (it does not lead a list item)
-	// - which would otherwise phantom-duplicate that slug.
-	declRe = regexp.MustCompile("(?m)^[ \\t]*[-*][ \\t]+[`\\t ]*(unbacked-)?invariant:\\s*([a-z0-9-]+)")
 	// verifyRe locates the `Verify:` marker an unbacked declaration must carry; the
 	// guidance text is the (whitespace-normalised) bullet remainder after it, so a
 	// note wrapped across continuation lines is captured whole (surfaced by ContextFor).
 	verifyRe = regexp.MustCompile(`(?i)\bVerify:`)
-	// itemStartRe matches a markdown list-item lead - the boundary a wrapped bullet
-	// runs until (used to group a declaration bullet with its continuation lines).
-	itemStartRe = regexp.MustCompile(`^[ \t]*[-*][ \t]+`)
 	// slugRe matches a proof `invariant: <slug>` marker after a source marker.
 	slugRe = regexp.MustCompile(`^\s*invariant:\s*([a-z0-9-]+)`)
 	// touchesRe matches an advisory `touches-invariant: <slug>[ note]` marker;
@@ -129,23 +116,21 @@ var (
 // Token retirements (ADR-0120) are applied. It refuses two Implemented ADRs
 // declaring the same slug (duplicate) and a retirement of a slug no ADR
 // declares (dangling). Check and ContextFor (ADR-0104 Tier 1) share it.
-func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
+func DeclaringADRs(corpus adr.Corpus) (map[string]Decl, error) {
 	required := map[string]Decl{} // slug -> declaring ADR + class
+	adrs := corpus.All()
 	for _, a := range adrs {
 		if !a.IsImplemented() {
 			continue
 		}
-		for _, bullet := range invariantBullets(a.Sections["Invariants"]) {
-			m := declRe.FindStringSubmatch(bullet)
-			if m == nil {
-				continue
-			}
-			slug := m[2]
+		for _, decl := range a.InvariantDecls() {
+			bullet := decl.Bullet
+			slug := decl.Slug
 			if prev, ok := required[slug]; ok {
-				return nil, fmt.Errorf("duplicate inv slug %q (in %s and %s)", slug, prev.ADR, a.Filename)
+				return nil, fmt.Errorf("duplicate inv slug %q (in %s and %s)", slug, prev.ADR, a.Number)
 			}
 			class := ClassBacked
-			if m[1] == "unbacked-" {
+			if decl.Unbacked {
 				class = ClassUnbacked
 			}
 			// The `Verify:` note is scanned over the whole bullet - declaration line
@@ -156,7 +141,7 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 			if loc := verifyRe.FindStringIndex(bullet); loc != nil {
 				verify = strings.Trim(strings.Join(strings.Fields(bullet[loc[1]:]), " "), " *")
 			}
-			required[slug] = Decl{ADR: a.Filename, Class: class, Verify: verify}
+			required[slug] = Decl{ADR: a.Number, Class: class, Verify: verify}
 		}
 	}
 	// Token retirements (ADR-0120 item 6): a `supersedes-invariant:` token
@@ -167,7 +152,7 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 	// touches-invariant: token-retirement-dangling-errors - the declaredAnywhere refusal; proof in invariants_test.go
 	declaredAnywhere := map[string]bool{}
 	for _, a := range adrs {
-		for _, slug := range DeclaredSlugs(a) {
+		for _, slug := range a.DeclaredSlugs() {
 			declaredAnywhere[slug] = true
 		}
 	}
@@ -175,7 +160,7 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 		if !a.IsImplemented() {
 			continue
 		}
-		for _, r := range a.Refs {
+		for _, r := range corpus.RefsOf(a.Number) {
 			if r.Slug == "" {
 				continue
 			}
@@ -188,49 +173,6 @@ func DeclaringADRs(adrs []adr.ADR) (map[string]Decl, error) {
 	return required, nil
 }
 
-// DeclaredSlugs returns the invariant slugs a's Invariants section declares
-// (backed and unbacked alike), in declaration order. Status-independent: the
-// ref-validity check and the retirement migration resolve slug anchors against
-// any ADR's declarations, not just Implemented ones (ADR-0120 item 2).
-func DeclaredSlugs(a adr.ADR) []string {
-	var slugs []string
-	for _, bullet := range invariantBullets(a.Sections["Invariants"]) {
-		if m := declRe.FindStringSubmatch(bullet); m != nil {
-			slugs = append(slugs, m[2])
-		}
-	}
-	return slugs
-}
-
-// invariantBullets splits an Invariants section into markdown list items, each
-// joined with its wrapped continuation lines. A bullet starts at a list-item lead
-// and runs until the next list-item lead, a blank line, or the section end - so a
-// declaration's `Verify:` note is scanned over the whole bullet, not just its
-// first physical line.
-func invariantBullets(section string) []string {
-	var bullets []string
-	var cur []string
-	flush := func() {
-		if len(cur) > 0 {
-			bullets = append(bullets, strings.Join(cur, "\n"))
-			cur = nil
-		}
-	}
-	for _, line := range strings.Split(section, "\n") {
-		switch {
-		case strings.TrimSpace(line) == "":
-			flush()
-		case itemStartRe.MatchString(line):
-			flush()
-			cur = []string{line}
-		case len(cur) > 0:
-			cur = append(cur, line)
-		}
-	}
-	flush()
-	return bullets
-}
-
 // Check returns the hard Findings and advisory Notes for a project's invariants.
 // No required slugs → nil. cfg disabled → nil. cfg nil or source-less → every
 // required slug is Unchecked. Otherwise, per the ADR-0105 model: a backed slug
@@ -238,12 +180,8 @@ func invariantBullets(section string) []string {
 // proof marker in scope is UnbackedHasProof; an unbacked slug whose declaration
 // lacks a `Verify:` note is MissingVerify. Advisory notes cover a marker naming
 // an undeclared slug (dangling) and a bare `touches-invariant:` marker.
-func Check(decisionsDir, root string, cfg *config.InvariantConfig) ([]Finding, []Note, error) {
-	adrs, err := adr.ParseDir(decisionsDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	required, err := DeclaringADRs(adrs)
+func Check(corpus adr.Corpus, root string, cfg *config.InvariantConfig) ([]Finding, []Note, error) {
+	required, err := DeclaringADRs(corpus)
 	if err != nil {
 		return nil, nil, err
 	}

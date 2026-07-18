@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -26,6 +25,7 @@ import (
 // marker notes - computed from one RenderAll pass plus the domain-doc
 // generation, which renders outside it.
 func (p *Project) AdvisoryNotes() ([]string, error) {
+	p.beginInvocation()
 	files, err := p.RenderAll()
 	if err != nil { // coverage-ignore: AdvisoryNotes callers exercise render failures through RenderAll directly
 		return nil, err
@@ -78,10 +78,11 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
 	}
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil {
 		return nil, err
 	}
+	adrs := corpus.All()
 	pf, err := p.pitfallTagEntries()
 	if err != nil {
 		return nil, err
@@ -394,6 +395,7 @@ func (p *Project) declaredSections(kind, name string) []string {
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
+	p.beginInvocation()
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, err
@@ -612,13 +614,9 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 	if err != nil {
 		return nil, err
 	}
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil {
 		return nil, err
-	}
-	known := map[string]bool{}
-	for _, a := range adrs {
-		known[a.Number] = true
 	}
 	aset := audit.Resolve(p.Cfg.Audit)
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "plans"))
@@ -632,7 +630,7 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "plan-frontmatter", Detail: fmt.Sprintf("status %q not in {Proposed, Implemented}", pl.Status)})
 		}
 		for _, n := range pl.ADRs {
-			if !known[fmt.Sprintf("%04d", n)] {
+			if !corpus.Has(fmt.Sprintf("%04d", n)) {
 				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
 			}
 		}
@@ -699,13 +697,9 @@ func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
 	for _, d := range p.Cfg.Domains {
 		domains[d] = true
 	}
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil {
 		return nil, err
-	}
-	known := map[string]bool{}
-	for _, a := range adrs {
-		known[a.Number] = true
 	}
 	var drift []manifest.Drift
 	for _, e := range entries {
@@ -715,7 +709,7 @@ func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
 			}
 		}
 		for _, n := range e.Related {
-			if !known[fmt.Sprintf("%04d", n)] {
+			if !corpus.Has(fmt.Sprintf("%04d", n)) {
 				drift = append(drift, manifest.Drift{Path: pitfallsSidecarPath, Kind: "pitfall-adr-link", Detail: fmt.Sprintf("%q: ADR-%04d", e.Title, n)})
 			}
 		}
@@ -751,10 +745,11 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name: tags must be finer than domains", tag)})
 		}
 	}
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil { // reachable via a direct checkTagVocabulary call over a malformed ADR; pre-empted only inside full Check()
 		return nil, err
 	}
+	adrs := corpus.All()
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
 	for _, a := range adrs {
 		for _, tag := range a.Tags {
@@ -796,19 +791,16 @@ func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
 // invariant: adr-related-link-resolved
 func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {
-	adrs, err := adr.ParseDir(p.decisionsDir())
+	corpus, err := p.Corpus()
 	if err != nil { // reachable via a direct checkADRRelatedLinks call over a malformed ADR; pre-empted only inside full Check()
 		return nil, err
 	}
-	known := map[string]bool{}
-	for _, a := range adrs {
-		known[a.Number] = true
-	}
+	adrs := corpus.All()
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
 	var drift []manifest.Drift
 	for _, a := range adrs {
 		for _, n := range a.Related {
-			if !known[fmt.Sprintf("%04d", n)] {
+			if !corpus.Has(fmt.Sprintf("%04d", n)) {
 				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-link", Detail: fmt.Sprintf("ADR-%s: ADR-%04d", a.Number, n)})
 			}
 		}
