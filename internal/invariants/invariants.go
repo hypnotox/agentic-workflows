@@ -148,6 +148,10 @@ func DeclaringADRs(corpus adr.Corpus) (map[string]Decl, error) {
 	// carried by an Implemented ADR drops its slug from owed backing. Dangling
 	// detection scans every ADR's declarations - a slug declared only by a
 	// non-Implemented ADR is not owed, so retiring it is a no-op, not an error.
+	// Only Retires refs count: a `cites-invariant:` token carries a slug too
+	// (unlike an item token, which is excluded by the empty-slug guard alone),
+	// but it is an informational citation asserting no claim (ADR-0131), so
+	// without the relation filter it would silently drop the slug's backing.
 	// touches-invariant: token-retirement-implemented-only - the status test below; proof in invariants_test.go
 	// touches-invariant: token-retirement-dangling-errors - the declaredAnywhere refusal; proof in invariants_test.go
 	declaredAnywhere := map[string]bool{}
@@ -161,7 +165,7 @@ func DeclaringADRs(corpus adr.Corpus) (map[string]Decl, error) {
 			continue
 		}
 		for _, r := range corpus.RefsOf(a.Number) {
-			if r.Slug == "" {
+			if r.Slug == "" || r.Relation != adr.Retires {
 				continue
 			}
 			if !declaredAnywhere[r.Slug] {

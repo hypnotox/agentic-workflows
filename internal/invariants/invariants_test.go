@@ -742,6 +742,26 @@ func TestCheckTokenRetirementIgnoresItemTokens(t *testing.T) {
 	}
 }
 
+// A `cites-invariant:` token is an informational citation asserting no claim
+// (ADR-0131), so it must not drop the slug from owed backing. It carries a
+// non-empty Slug, unlike an item token, so only a relation filter excludes it.
+// invariant: token-retirement-implemented-only
+func TestCheckTokenRetirementIgnoresCitesInvariant(t *testing.T) {
+	dir, root := t.TempDir(), t.TempDir()
+	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-cited` - x.")
+	content := testsupport.ADR("Implemented", testsupport.WithDate("2026-07-16"), testsupport.WithTags("x"),
+		testsupport.WithTitle("X: T"),
+		testsupport.WithBody("## Decision\n\n1. Mentions `cites-invariant: ADR-0001#fixture-cited`.\n"))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-b.md"), content)
+	f, _, err := invariants.Check(mustCorpus(t, dir), root, goSrcConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f) != 1 || f[0].Slug != "fixture-cited" || f[0].Status != invariants.Unbacked {
+		t.Errorf("an informational citation must not retire the slug, got %#v", f)
+	}
+}
+
 // A token for a slug no ADR declares errors loudly; a slug declared only by a
 // Superseded ADR is not owed, so retiring it is a no-op, not an error.
 // invariant: token-retirement-dangling-errors
