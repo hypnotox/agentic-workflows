@@ -292,7 +292,7 @@ in those three files. Locate each site by its quoted text, not by number.
   ```
 
   `refines:` because only the note trigger is narrowed. Note the carrier claims the override is
-  "recorded via `related`" while that back-pointer is absent; Task 2.1 adds it.
+  "recorded via `related`" while that back-pointer is absent; Task 1.13 adds it.
 
   The citation of ADR-0045 Decision 3 at line 76 is informational ("is untouched") and takes no
   relation token; Plan C gives it `cites:`.
@@ -316,7 +316,7 @@ in those three files. Locate each site by its quoted text, not by number.
   This site is why ADR-0131 Decision 2 enumerates verb surface forms rather than generating them:
   the only override word here is "supersedence", which a stem-plus-suffix rule does not produce.
 
-- [ ] **Task 1.12: Tokenize ADR-0047's retirement of ADR-0040 item 1.** In
+- [ ] **Task 1.12: Tokenize ADR-0047's refinement of ADR-0040 item 1.** In
   `docs/decisions/0047-*.md`, replace lines 48-49:
 
   ```
@@ -328,19 +328,23 @@ in those three files. Locate each site by its quoted text, not by number.
 
   ```
   1. **Render the bootstrap at `.awf/bootstrap.sh`** (supersedes
-     [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1, `supersedes: ADR-0040#1`; recorded via
+     [ADR-0040](0040-self-pinning-rendered-bootstrap.md) Decision item 1, `refines: ADR-0040#1`; recorded via
   ```
 
-  `supersedes:` because ADR-0040 item 1 is the bootstrap's rendered path and filename, both of which
-  ADR-0047 replaces; the carrier itself says "supersedes", and names its surviving siblings
-  explicitly ("its self-pinning and checksum items are placement-independent and remain in force"),
-  which are other items, not surviving clauses of item 1.
+  `refines:`, despite the carrier's "supersedes". ADR-0040 item 1 bundles three clause groups: the
+  rendered path and filename, the script's behaviour (detect OS/arch, download the tarball and
+  `checksums.txt`, verify the SHA-256, extract, install into a cache dir, print the path), and the
+  URL convention (v-prefixed git tag in the path, no-v form in the asset filename). ADR-0047
+  replaces only the first. Neither survivor is carried by any of ADR-0040's six sibling items, so
+  both survive inside item 1 itself, and ADR-0047's own Context agrees: "no slug encodes the path,
+  so nothing retires: only the backing test's path assertion moves."
 
   This site was missed by the original audit sweep and by all three plan reviews, and found while
-  reading ADR-0040's frontmatter for an unrelated reason. ADR-0131's own Context names it
-  ("ADR-0047 Decision 1 records a supersession of ADR-0040's first Decision item in prose alone"),
-  so the ADR knew about it and the enumeration did not. It is also the only backfilled token that
-  asserts a retirement.
+  reading ADR-0040's frontmatter for an unrelated reason. ADR-0131's own Context names it, so the
+  ADR knew about it and the enumeration did not. Its first draft here also asserted `supersedes:`
+  on the strength of the carrier's verb without reading item 1's clause set, which is the exact
+  failure mode this plan's closing Note describes for the three overturned verdicts. It was caught
+  in the verify pass.
 
   The carrier claims the override is "recorded via `related`". It is not: ADR-0040's `related:` is
   `[24, 27, 30, 39, 85]`. Task 1.13 adds the edge.
@@ -401,13 +405,15 @@ in those three files. Locate each site by its quoted text, not by number.
   An `adr-token-backpointer` finding means a seventh edge exists that the audit missed. Add it here
   and note it; do not defer it, since this phase must gate clean.
 
-  An `adr-coverage-status` finding means a `supersedes:` token completed some target's coverage.
-  Only one backfilled token is a retirement (Task 1.12), and ADR-0040 reaches 2 covered anchors of 9
-  (seven Decision items, two declared slugs, one of which `bootstrap-pin` already carries a
-  retirement), so no flip is expected. Do not flip a status to silence it: stop and re-count.
+  An `adr-coverage-status` finding is **impossible** from this plan and means something else is
+  wrong. Every one of the 17 tokens here is `refines:`, and a refinement counts toward no anchor's
+  coverage (ADR-0128 Decision 4), so no target's status can move. If one appears, a token was
+  written with the wrong relation: find it rather than flipping a status.
 
-  Then run `./x gate`, `git add` the twelve carrier ADR files, the six target ADR files,
-  `docs/decisions/ACTIVE.md` and `.awf/awf.lock`, and commit:
+  Then run `./x gate` and stage the twelve carrier ADR files, the six target ADR files,
+  `docs/decisions/ACTIVE.md`, `.awf/awf.lock`, and any `docs/domains/*.md` that `./x sync` rewrote
+  (`git status --short docs/domains/` lists them; new annotations land there whenever a token is
+  added). Commit:
 
   ```commit
   docs(adr): backfill unencoded relation tokens and back-pointers
@@ -437,9 +443,9 @@ in those three files. Locate each site by its quoted text, not by number.
   the Architecture summary. Plan review confirmed the duplication is harmless in the supersession
   checks (`seenAnchor` is per-ADR, `isRetired` is boolean) but that it **does** double the rendered
   rows in `docs/decisions/ACTIVE.md` and `awf context`, because neither renderer dedups. Plan C
-  Task 3.6 adds (anchor, carrier, relation) dedup to both. Until that lands, the doubled rows in
+  Task 3.5 adds (anchor, carrier, relation) dedup to both. Until that lands, the doubled rows in
   ACTIVE.md are expected output of this plan, not drift.
-- **Three verdicts were overturned in plan review**, all from `supersedes:` to `refines:`
-  (ADR-0024#3, ADR-0030#4, ADR-0013#4). Each had a surviving clause the first reading missed, and in
+- **Four verdicts were overturned in review**, all from `supersedes:` to `refines:`
+  (ADR-0024#3, ADR-0030#4, ADR-0013#4, and ADR-0040#1 in the verify pass). Each had a surviving clause the first reading missed, and in
   two of the three the carrier's own prose says "reverses" or "is retired", which is what misled it.
   Carrier verbs describe intent; the relation follows from the target's clause set.

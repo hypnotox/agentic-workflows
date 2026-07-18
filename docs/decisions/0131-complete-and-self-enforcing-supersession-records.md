@@ -41,10 +41,20 @@ proviso still binding on the successor is a surviving clause.
 
 **Seventeen supersession claims are stated in prose and never encoded**, sixteen citing a Decision
 item and one an invariant slug. They share one signature: the carrier ADR states the override in its Decision
-section, often naming the exact item number, and writes no token. A first pass put this figure near
-forty; re-enumerating against the corpus found the surplus was informational citations, which item
-4 addresses with `cites:` rather than a relation token, plus sites whose claim the carrier had
-already tokenized elsewhere in the same Decision section.
+section, often naming the exact item number, and writes no token. ADR-0047 Decision 1 records an
+override of ADR-0040's first Decision item in prose alone. ADR-0075 Decision 4 and ADR-0087
+Decision 1 each claim the override is "recorded via `related`" when the `related:` back-pointer is
+also absent. ADR-0120 Decision 11 committed to hand-tokenizing "the freeform partial-supersession
+citations across the corpus (0105, 0119, 0081, 0108, 0020, and the rest of a grep sweep)"; the
+sweep caught the ADRs it named and every slug retirement, and missed the item-level claims in the
+0001-0109 range. The 0113-0130 chains are clean, so this is historical residue, not an ongoing
+practice failure.
+
+A first pass put this figure near forty; re-enumerating against the corpus found the surplus was
+informational citations, which item 4 addresses with `cites:` rather than a relation token, plus
+sites whose claim the carrier had already tokenized elsewhere in the same Decision section. A later
+pass found the enumeration had also *missed* one, ADR-0047's, which this Context had named all
+along. Both directions of error came from sweeping for a signal rather than reading the sites.
 
 Exactly one untokenized slug citation joins them, and its shape explains why the count is otherwise
 all item anchors. Item 1 tokenizes the `parts-convention` citation in ADR-0015 Decision item 6, the
@@ -58,13 +68,7 @@ one of its own. The same reasoning gives item 4 duplicate item-anchor tokens for
 One further slug citation was examined and rejected: ADR-0016 states that it narrows ADR-0015's
 `provenance-banner`, but that slug declares only that "every rendered file carries the awf
 generated-by banner as its first line" and names no path, so relocating the config root leaves it
-true and owing nothing. Its rejection is why ADR-0015 needs no `related:` edge to ADR-0016. ADR-0047 Decision 1 records a supersession of ADR-0040's first
-Decision item in prose alone. ADR-0075 Decision 4 and ADR-0087 Decision 1 each claim the override
-is "recorded via `related`" when the `related:` back-pointer is also absent. ADR-0120 Decision 11
-committed to hand-tokenizing "the freeform partial-supersession citations across the corpus (0105,
-0119, 0081, 0108, 0020, and the rest of a grep sweep)"; the sweep caught the ADRs it named and
-every slug retirement, and missed the item-level claims in the 0001-0109 range. The 0113-0130
-chains are clean, so this is historical residue, not an ongoing practice failure.
+true and owing nothing. Its rejection is why ADR-0015 needs no `related:` edge to ADR-0016.
 
 **Citation shapes are not uniform, and the majority shape is not the obvious one.** Across
 `docs/decisions`, item citations fall into four disjoint shapes totalling 193 occurrences:
@@ -149,10 +153,14 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    still declared, still owed, and no longer backed. The record is also more faithful this way: the
    ADR that displaced a slug is the ADR that says so.
 
-   The proof edits land with their tokens. The duplicated marker on
-   `internal/config/config_test.go:119` is deleted so that test backs `awf-config-root` alone, and
-   the marker at `internal/project/residue_scan_test.go` is retargeted from
-   `residue-exemptions-pinned` to the successor declared below.
+   The proof edits land with their tokens, and there are three. The duplicated marker on
+   `internal/config/config_test.go:119` is deleted so that test backs `awf-config-root` alone. The
+   marker at `internal/project/residue_scan_test.go` is retargeted from `residue-exemptions-pinned`
+   to the successor declared below. And the `parts-convention` marker at
+   `internal/project/render_tree_test.go:83` is deleted outright: that slug is backed today, so
+   retiring it without removing its proof would strand the marker, and its live successor
+   `no-replacewith` is already backed at `internal/config/config_test.go:249`, so the deletion costs
+   no real coverage.
 
    Only the third slug needs a successor declaration, and only this ADR can supply it. ADR-0016
    declared `awf-config-root` and ADR-0015 declared `no-replacewith`, both live and backed, so
@@ -350,7 +358,7 @@ are backed. The third retirement costs nothing, because item 1 redeclares it: th
 keeps a slug, keeps its proof, and gains a declaration that matches what the proof asserts.
 
 The check's recall is bounded by its trigger, and the bound is partly unmeasurable. Every one of
-the 15 owed tokens item 9 backfills carries one of item 2's enumerated verbs in its Decision item,
+the 17 owed tokens item 9 backfills carries one of item 2's enumerated verbs in its Decision item,
 so the trigger reaches all of them once the enumeration is correct. That figure must not be read
 as a recall estimate. The enumeration that produced it swept for override verbs, which is the
 signal the trigger keys on, so it could not have found a verbless claim: the measurement and the
@@ -372,10 +380,18 @@ the satisfying shapes to make the choice explicit at the point of failure.
 Correcting the 4 relations changes derived state. Each correction moves an anchor from
 uncontested to retired, and coverage completion forces a predecessor's status to `Superseded`
 (ADR-0128 Decision 4). The audit confirmed no ADR is within reach of full coverage from these 4
-alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. Exactly one
-backfilled token asserts a retirement rather than a refinement, ADR-0047's into ADR-0040 Decision
-item 1, and it takes ADR-0040 to 2 covered anchors of 9 (seven Decision items, two declared slugs,
-one of which `bootstrap-pin` already carries a retirement). Nothing here completes a coverage set. Item 1's
+alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. None of the 17
+backfilled tokens asserts a retirement at all, so the backfill cannot move any ADR's coverage. The
+last candidate fell during plan review: ADR-0047's claim on ADR-0040 Decision item 1 reads as a
+retirement and the carrier's own verb is "supersedes", but item 1 bundles three clause groups and
+ADR-0047 replaces only the rendered path and filename, leaving the script's download-and-verify
+behaviour and its URL convention in force. ADR-0047's Context says as much: "no slug encodes the
+path, so nothing retires: only the backing test's path assertion moves."
+
+That miscall is worth recording, because it is the same one this ADR's own audit made twice. The
+carrier's verb states an intent; the relation follows from what survives in the target. Reading the
+verb and stopping is how a refinement gets encoded as a retirement, and a retirement is the
+relation that can silently kill a live ADR through coverage. Item 1's
 retirements move ADR-0009 from zero to two covered anchors of fifteen (eight Decision items,
 seven declared slugs), and the two Decision items this ADR touches on it carry only refinements,
 which count toward nothing, so ADR-0009 also stays far from coverage-derived supersession.

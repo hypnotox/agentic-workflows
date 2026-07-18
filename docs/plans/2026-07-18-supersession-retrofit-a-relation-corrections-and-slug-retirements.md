@@ -48,7 +48,13 @@ ADR-0131 stays `Proposed` throughout; its status flip belongs to Plan C.
   `docs/decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md`,
   `docs/decisions/ACTIVE.md` (regenerated), `internal/config/config_test.go`,
   `internal/project/render_tree_test.go`, `internal/project/residue_scan_test.go`,
-  `.awf/awf.lock` (regenerated).
+  `.awf/awf.lock` (regenerated), and the five regenerated domain docs
+  `docs/domains/adr-system.md`, `docs/domains/config.md`, `docs/domains/invariants.md`,
+  `docs/domains/rendering.md`, `docs/domains/tooling.md`.
+
+  The domain docs are easy to miss: `./x sync` rewrites them because a corrected relation adds a
+  `superseded by ADR-NNNN` annotation to the affected decision rows. Leaving them unstaged ships a
+  stale rendered artifact and reds `./x check` at that commit.
 - **Deleted:** none.
 
 ## Phase 1: Relation corrections
@@ -152,8 +158,11 @@ kept `refines: ADR-0024#1` in Task 1.2.
   ADR-0131's headroom measurement said would not happen. Do **not** flip a status to silence it:
   stop, and reopen the measurement in ADR-0131 (still `Proposed`, so amendable).
 
-  Then run `./x gate`, `git add` the four ADR files plus `docs/decisions/ACTIVE.md` and
-  `.awf/awf.lock`, and commit:
+  Then run `./x gate` and stage exactly:
+  `docs/decisions/0015-*.md`, `docs/decisions/0093-*.md`, `docs/decisions/0105-*.md`,
+  `docs/decisions/0119-*.md`, `docs/decisions/ACTIVE.md`, `.awf/awf.lock`, and any
+  `docs/domains/*.md` that `./x sync` rewrote (`git status --short docs/domains/` lists them).
+  Commit:
 
   ```commit
   docs(adr): correct four downgraded relation tokens
@@ -187,7 +196,7 @@ Token and proof edit are inseparable, per the Architecture summary.
   // invariant: parts-convention
   ```
 
-  The successor `no-replacewith` is already backed at `internal/config/config_test.go:248`, so no
+  The successor `no-replacewith` is already backed at `internal/config/config_test.go:249`, so no
   coverage is lost. If the test's subject matter still warrants a pointer, replace the line with
   `// touches-invariant: no-replacewith - three-tier precedence; proof in config_test.go` instead;
   an advisory marker is not backing (ADR-0105) and cannot strand.
@@ -315,10 +324,12 @@ Token and proof edit are inseparable, per the Architecture summary.
   `residue-exemptions-pinned` (all three retired), and no dangling-marker note for
   `parts-convention` (its `render_tree_test.go` marker was removed in Task 2.1).
 
-  Then run `./x gate`, `git add` the four ADR files, `internal/config/config_test.go`,
-  `internal/project/render_tree_test.go`,
-  `internal/project/residue_scan_test.go`, `docs/decisions/ACTIVE.md`, and `.awf/awf.lock`, and
-  commit:
+  Then run `./x gate` and stage exactly:
+  `docs/decisions/0015-*.md`, `docs/decisions/0016-*.md`, `docs/decisions/0082-*.md`,
+  `docs/decisions/0085-*.md`, `internal/config/config_test.go`,
+  `internal/project/render_tree_test.go`, `internal/project/residue_scan_test.go`,
+  `docs/decisions/ACTIVE.md`, `.awf/awf.lock`, and any `docs/domains/*.md` that `./x sync` rewrote.
+  Commit:
 
   ```commit
   docs(adr): retire three stale invariant slugs
@@ -341,9 +352,7 @@ After both phases:
   returns `3`.
 - The stale markers are gone: `grep -c 'invariant: config-root$' internal/config/config_test.go`
   returns `0`, and `grep -c 'invariant: parts-convention' internal/project/render_tree_test.go`
-  returns `0`. Both use `$` or a full-line match deliberately: a bare substring search for
-  `invariant: config-root` also matches the surviving `awf-config-root` marker. Note `grep -c`
-  exits 1 when the count is 0, so do not chain these with `&&`.
+  returns `0`. Note `grep -c` exits 1 when the count is 0, so do not chain these with `&&`.
 - The ambiguous tokens were not touched:
   `grep -c 'refines: ADR-0115#7' docs/decisions/0119-*.md` returns `1`, and
   `grep -c 'refines: ADR-0002#5' docs/decisions/0101-*.md` returns `1`.

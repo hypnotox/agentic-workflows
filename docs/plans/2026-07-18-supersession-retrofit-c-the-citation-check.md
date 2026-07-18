@@ -49,7 +49,7 @@ a bug. The exemption belongs to the citation scanner alone.
   `internal/adr/adr_test.go`, `internal/adr/corpus.go` (the extraction method),
   `internal/adr/corpus_test.go`, `internal/adr/coverage.go` (guard, if needed),
   `internal/project/check.go` (wiring), `internal/project/residue_scan_test.go` (marker placement),
-  `internal/adr/coverage.go` and `internal/project/context.go` (annotation dedup, Task 3.5),
+  `internal/adr/coverage.go` (annotation dedup, Task 3.5, conditional),
   `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `.awf/docs/glossary.yaml`,
   `.awf/domains/parts/adr-system/current-state.md`,
   `.awf/domains/parts/invariants/current-state.md`, `.awf/agents/adr-reviewer.yaml`,
@@ -117,6 +117,11 @@ a bug. The exemption belongs to the citation scanner alone.
   `cites-token-unrendered`: rendering ACTIVE.md over a corpus containing a `cites:` token produces
   no supersedence annotation for that anchor, and `awf context` likewise.
 
+  One of the two tests must drive a **slug-anchored** token (`cites: ADR-NNNN#<slug>`) through
+  `citesInvRe`. No slug-anchored `cites:` exists anywhere in the corpus or in Phase 2's insertions,
+  all of which are item-anchored, so without a synthetic one that pattern is executed but never
+  behaviourally exercised: it would match nothing real, and a mistake in it would not fail.
+
   `cites-token-suppresses-citation-check` cannot be proved until the check exists; it lands in
   Phase 3 with the other check invariants.
 
@@ -126,14 +131,16 @@ a bug. The exemption belongs to the citation scanner alone.
   back-pointer on each target, for a token of any relation from a carrier of any status, so an inert
   token on a `Proposed` carrier is no exception.
 
-  The five targets are ADR-0015, ADR-0034, ADR-0065, ADR-0120 and ADR-0128. Confirm each names 131:
+  The five targets are ADR-0015, ADR-0034, ADR-0065, ADR-0120 and ADR-0128. As of writing, only
+  ADR-0015 and ADR-0128 name 131; **ADR-0034, ADR-0065 and ADR-0120 do not**, so this commit adds it
+  to all three. Expect the remedial branch below to fire; it is not a formality. Confirm:
 
   ```
   grep -h '^related:' docs/decisions/0015-*.md docs/decisions/0034-*.md docs/decisions/0065-*.md docs/decisions/0120-*.md docs/decisions/0128-*.md
   ```
 
-  Every line must contain `131`. Add any that is missing **in this commit**, or `./x check` reports
-  `adr-token-backpointer` and the phase fails its own gate.
+  Every line must contain `131` before this commit lands. Add any that is missing **in this
+  commit**, or `./x check` reports `adr-token-backpointer` and the phase fails its own gate.
 
   Then run `./x gate` (expect 100% coverage and `deadcodecheck: no production dead code`) and
   `./x check` (expect `awf check: clean`). Commit:
@@ -239,7 +246,7 @@ check without its caller. Landing the proofs alongside the flip is a coherence p
 than a second hard constraint: a proof marker naming a slug no `Implemented` ADR declares is an
 advisory note, not drift (`internal/invariants/invariants.go:180-182`), which is exactly why Phase 1
 can land two markers early without reding its own gate. Those two sit orphaned-but-advisory until
-Task 3.5 flips the ADR.
+Task 3.6 flips the ADR.
 
 - [ ] **Task 3.1: Extract citations as a `Corpus` method.** In `internal/adr`, add a method
   returning every anchor citation in an ADR's `## Decision` section, carrying: carrier number,
@@ -293,6 +300,11 @@ Task 3.5 flips the ADR.
 
   `cites-token-uncounted` and `cites-token-unrendered` landed in Phase 1 Task 1.3, and become owed
   rather than merely present once Task 3.6 flips the ADR.
+
+  Confirm the handoff from Plan A: `internal/project/residue_scan_test.go`'s attribution comment
+  (line 27) and its guard failure message (line 48) should already name ADR-0131, per Plan A Task
+  2.3. If Plan A left either citing only ADR-0082 and ADR-0085, update it here alongside the marker
+  move, because ADR-0131's Consequences owes both.
   `residue-exemptions-pinned-three` is backed already by Plan A Task 2.3; here, move its marker in
   `internal/project/residue_scan_test.go` from the `identityExempt` var onto the
   `len(identityExempt) != 3` assertion block inside `TestTemplateSourceResidue`, so the proof site
@@ -322,24 +334,48 @@ Task 3.5 flips the ADR.
 
   Run `./x sync` and commit the rendered files with their sources.
 
-- [ ] **Task 3.5: Dedup rendered supersedence annotations.** `Corpus.AnnotatedAnchors`
-  (`internal/adr/coverage.go:293`) returns raw `ClaimsOn` with no dedup, and neither the ACTIVE.md
-  renderer (`internal/adr/adr.go:258-283`) nor `awf context` (`internal/project/context.go:136`)
-  dedups either. ADR-0015 claims three anchors from both its Decision item 4 and its item 6, which
-  is correct under ADR-0131 Decision 2's per-item scoping, so ACTIVE.md renders each twice:
-  `- ADR-0009: item 4 refined by ADR-0015; item 4 refined by ADR-0015`.
+- [ ] **Task 3.5: Dedup rendered supersedence annotations, if the duplication has appeared.**
+  This task is **conditional**, and its first step decides whether it runs at all.
 
-  Dedup on the triple (anchor, carrier, relation) at the annotation seam, so two claim sites in one
-  carrier render one row. Do not dedup in the coverage model itself: the per-item tokens are the
+  The duplication does not exist in the corpus as of this plan's writing. Run:
+
+  ```
+  grep -o 'item [0-9]* refined by ADR-[0-9]*\|item [0-9]* superseded by ADR-[0-9]*' docs/decisions/ACTIVE.md | sort | uniq -d
+  ```
+
+  Today this returns empty. It can only become non-empty once Plans A and B have both landed,
+  because it needs two same-(anchor, carrier, relation) claims in *different* Decision items of one
+  carrier, which is exactly what ADR-0015 acquires: Plan A tokenizes three anchors in its Decision
+  item 6, and Plan B tokenizes the same three in its item 4. **If the command still returns empty
+  after Plans A and B, skip this task entirely and record that it was not needed.**
+
+  If it returns rows, dedup on the triple (anchor, carrier, relation) inside
+  `Corpus.AnnotatedAnchors` (`internal/adr/coverage.go`) and nowhere else. That function is the sole
+  seam: its only production consumers are the ACTIVE.md renderer (`internal/adr/adr.go:258`) and
+  `awf context` (`internal/project/context.go:136`), so one change fixes both, and `Corpus.Retirers`
+  in the same file is the established in-corpus precedent for this exact shape (a `seen` map over
+  claims). Do not dedup in the two renderers: that duplicates the logic and doubles the coverage
+  burden for no gain. Do not dedup in the coverage model itself: the per-item tokens are the
   rationale sites ADR-0129 Decision 2 requires, and collapsing them there would lose that.
 
-  Verify against the real corpus: `./x sync`, then confirm no line in `docs/decisions/ACTIVE.md`
-  repeats an identical `item N <relation> by ADR-NNNN` clause. Add a test carrying no new invariant
-  marker (the behaviour is a rendering property, not a declared invariant of ADR-0131).
+  The dedup key must include the carrier. Two *different* carriers claiming one anchor is a
+  legitimate distinct row that must survive: ADR-0034 today renders
+  `item 1 refined by ADR-0057; item 1 refined by ADR-0121`, and both belong.
 
-  This task is plan-originated, decided during plan review after the duplication was observed by
-  running `./x sync`. ADR-0131 does not mention it, because the duplication is a rendering defect
-  the per-item scoping merely exposed.
+  Test in `internal/adr/coverage_test.go`, beside the existing `Retirers` dedup tests, against
+  **synthetic fixtures** rather than the real corpus. Two cases are required, and the first is what
+  makes 100% statement coverage (ADR-0012) achievable at all, since the skip branch is unreachable
+  from the real corpus:
+  1. one carrier claiming one anchor from two different Decision items renders that clause once;
+  2. two different carriers claiming one anchor still render both clauses.
+
+  No invariant marker is owed: ADR-0131 declares no slug for this, and it is a rendering property
+  rather than a declared contract.
+
+  This task is plan-originated. It was added after a reviewer observed the duplication by applying
+  Plan B and running `./x sync`, and its first draft here wrongly reported that post-application
+  observation as a present-tense fact about the live corpus, quoting a rendered line that does not
+  exist today. The verify pass caught it. The conditional framing above is the correction.
 
 - [ ] **Task 3.6: Flip ADR-0131 to `Implemented`, verify, and commit.** Set `status: Implemented` in
   `docs/decisions/0131-*.md` and run `./x sync` to regenerate `docs/decisions/ACTIVE.md`.
@@ -374,7 +410,7 @@ Task 3.5 flips the ADR.
 ## Notes
 
 - **ADR-0131 Decision 9 requires this ADR to pass its own check.** The verification step above is
-  the proof, and it is why the ADR's Decision section carries seven `cites:` tokens: a check whose
+  the proof, and it is why the ADR's Decision section carries eight `cites:` tokens: a check whose
   defining document could not pass it would be evidence the token shape is wrong.
 - **The accepted recall gap has an owner, not a fix.** ADR-0131 Decision 6 assigns the verbless
   claim class to the `adr-reviewer` doc-currency lens. Task 3.4's `adr-reviewer.yaml` edit is what
