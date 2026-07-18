@@ -10,10 +10,9 @@
 `awf` renders an opinionated agentic-development workflow into your repo: a chain of
 skills that walk an agent from brainstorm through ADR, plan, implementation, review, and
 retrospective; independent review agents that read each artifact with fresh context; and
-the project docs both rely on. It renders for six coding-agent runtimes
-([Claude Code](https://www.anthropic.com/claude-code), Codex, Copilot, Cursor, Gemini,
-and Pi), each into its own native layout, from one config tree. All of it is generated from a small `.awf/` config tree you commit, and `awf check`
-fails the moment a rendered file drifts from the config that produced it.
+the project docs both rely on. All of it is generated from a small `.awf/` config tree
+you commit, rendered into the native layout of every coding-agent runtime you enable, and
+`awf check` fails the moment a rendered file drifts from the config that produced it.
 
 The tool is a single Go binary. The standard it renders is language-agnostic. Both are
 pre-1.0: interfaces may still move before a tagged release.
@@ -21,8 +20,9 @@ pre-1.0: interfaces may still move before a tagged release.
 ## Why
 
 Teams working with coding agents accumulate a folklore layer: prompt snippets,
-per-developer `CLAUDE.md` tweaks, rules that live in one person's head. Nothing reviews
-it, nothing enforces it, and it quietly drifts away from how the project actually works.
+per-developer tweaks to an agent-instruction file, rules that live in one person's head.
+Nothing reviews it, nothing enforces it, and it quietly drifts away from how the project
+actually works.
 
 awf treats the workflow as a build artifact instead. The source of truth is a committed
 config tree, so a change to how your agents work is a diff someone reviews, like any
@@ -35,19 +35,20 @@ instead of rotting.
 
 ## What gets rendered
 
-- **Workflow skills** (per target, e.g. `.claude/skills/<prefix>-*/`). The core chain: brainstorming,
+- **Workflow skills** (one tree per enabled runtime: `.pi/skills/<prefix>-*/`,
+  `.claude/skills/<prefix>-*/`, and so on). The core chain: brainstorming,
   ADR proposal and review, planning and plan review, a plan↔ADR resync, two execution
   styles (inline or subagent-per-task), implementation review, and a closing
   retrospective that promotes recurring findings toward deterministic checks. Task
-  skills (TDD, bugfix, debugging, a refactor coupling audit, a roadmap-graduation
-  pass) are opt-in.
-- **Review agents** (per target, e.g. `.claude/agents/`): `adr-reviewer`, `plan-reviewer`,
+  skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
+  roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
+- **Review agents**, likewise per runtime: `adr-reviewer`, `plan-reviewer`,
   `code-reviewer`. Each is dispatched with fresh context, so the author never grades
-  its own work. Agents are format-neutral: each target gets them in its own dialect
+  its own work. Agents are format-neutral: each runtime gets them in its own dialect
   (frontmatter Markdown for most, a TOML profile for Codex).
-- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` bridge), workflow and
-  documentation standards, plus opt-in project docs: architecture, testing,
-  development, debugging, glossary, pitfalls, roadmap.
+- **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` or `GEMINI.md` bridge where the
+  runtime expects one), workflow and documentation standards, plus opt-in project docs:
+  architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
   plus a generated index of that domain's ADRs. A domain's sidecar can declare
@@ -61,10 +62,13 @@ instead of rotting.
   self-ignoring `.gitignore`; agents keep per-effort session notes there without ever
   committing them.
 
-Claude Code is the default target. awf also supports Cursor, Pi, Codex, Gemini,
-and GitHub Copilot: skills and agents render into each runtime's native paths.
-Codex agents are TOML profiles; Gemini receives a `GEMINI.md` bridge. Pi 0.80.9+
-automatically receives a trusted project extension with `subagent_grounding`, `subagent_explore`,
+awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
+Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
+paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini receive a
+bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
+uses.
+
+Pi 0.80.9+ automatically receives a trusted project extension with `subagent_grounding`, `subagent_explore`,
 `subagent_review`, and `subagent_implement`. Grounding, exploration, and review are no-mutation
 prompt policy, not an OS sandbox; implementation shares the checkout, runs alone and sequentially,
 and commits only when its orchestrator sets `allowCommits`. Every role shows bounded inline child
@@ -75,11 +79,15 @@ progress while intermediate activity stays outside parent model content.
 ```
 .awf/  (you commit this)            rendered output (awf writes & tracks this)
 ├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
-│                 + vars            ├── CLAUDE.md            imports AGENTS.md
-├── <kind>/<name>.yaml  sidecars    ├── <target>/skills/...  workflow skills
-├── <kind>/parts/.../...  overrides ├── <target>/agents/...  review agents
+│                 + vars            ├── bridge file          imports AGENTS.md
+├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
+├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
+
+The rendered paths above show the default `claude` target; each enabled runtime gets its
+own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
+`.codex/`, Pi keeps both under `.pi/skills/`). `awf list target` shows the roster.
 
 You change the config and run `awf sync`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
@@ -134,8 +142,9 @@ Windows, put `awf` on `PATH` and call it directly.
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf sync` to restore missing or modified copies.
 
-`awf init` enables a curated core by default: the workflow-chain skills, the three
-review agents, and the workflow docs. Everything else in the catalog is opt-in via
+`awf init` enables a curated core by default: eleven skills (the ten-step workflow chain
+plus `adr-lifecycle`) and the three review agents. The workflow, documentation, and agent-guide standards sit outside
+the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 
 ## Worked example
@@ -154,11 +163,15 @@ disk.
 | `awf sync` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
-| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`. Enabling a reviewing skill pulls in the agent it dispatches. |
+| `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
-| `awf new skill\|agent <name> "<desc>"` | Scaffold a project-local skill or agent and enable it. |
+| `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
+| `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit [--base <ref>]` | Report workflow-conformance findings over the branch's commits. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
+| `awf config` | Describe every config key and var, with this project's live state when run inside one. |
+| `awf context <paths>` | Report the owning domains, backed invariants, and related ADRs for the given paths. |
+| `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. |
 | `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
@@ -223,5 +236,5 @@ work.
 
 [MIT](LICENSE) © hypnotox.
 
-`awf` renders configuration for, and interoperates with, Anthropic's Claude Code, but is
-an independent project, not affiliated with or endorsed by Anthropic.
+`awf` renders configuration for, and interoperates with, third-party coding agents. It is
+an independent project, not affiliated with or endorsed by any of their vendors.
