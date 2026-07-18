@@ -24,8 +24,8 @@ var residueADRRe = regexp.MustCompile(`ADR-[0-9]{4}`)
 // reference to awf-the-product, not residue: the bootstrap unit's download
 // sources (installer and upgrade porcelain) and the agent guide's awf-home
 // link. Entries fail when stale; extending the list is a successor-ADR act
-// (ADR-0082 Decision 2, extended to three entries by ADR-0085 Decision 5).
-// invariant: residue-exemptions-pinned
+// (ADR-0082 Decision 2, extended by ADR-0085 Decision 5, pinned at three by ADR-0131).
+// invariant: residue-exemptions-pinned-three
 var identityExempt = map[string]bool{
 	"bootstrap/awf-bootstrap.sh.tmpl": true,
 	"bootstrap/awf-upgrade.sh.tmpl":   true,
@@ -45,7 +45,7 @@ func TestTemplateSourceResidue(t *testing.T) {
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, and agents-doc templates - extending it requires a successor ADR (ADR-0082, last extended by ADR-0085)")
+		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, and agents-doc templates - extending it requires a successor ADR (ADR-0082, pinned at three by ADR-0131)")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {

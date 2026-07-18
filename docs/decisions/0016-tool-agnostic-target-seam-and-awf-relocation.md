@@ -147,7 +147,7 @@ Grounding discoveries that shape the design (verified against source):
    keep calling `gate()` before `project.Open` (`main.go:92-98`).
 
 7. **Supersedence scope.** This ADR overrides **ADR-0009 Decision item 1** (`refines: ADR-0009#1`) and its
-   `inv: config-root` (config now loads from `.awf/config.yaml`, lock at `.awf/awf.lock`), and
+   `inv: config-root` (`supersedes-invariant: ADR-0009#config-root`; config now loads from `.awf/config.yaml`, lock at `.awf/awf.lock`), and
    narrows **ADR-0015 `inv: provenance-banner`** only insofar as the banner text now names `.awf/`
    rather than `.claude/awf/`. Both predecessors keep their `Implemented` status (this is
    partial-item supersedence recorded via `related`, not a full replacement) and their backing

@@ -91,7 +91,7 @@ convention-only overrides is its enabling simplification.
    markers or provenance metadata"), narrowing it to permit the banner and `awf:edit` pointers,
    and its Context claim that "provenance lives only in `awf.lock`"; plus **ADR-0001 Decision item
    2** (`supersedes: ADR-0001#2`; the `replaceWith` overlay step, per Decision item 4). It also overrides **ADR-0009 Decision
-   item 4** (`refines: ADR-0009#4`) and its `inv: parts-convention`, collapsing that ADR's four-tier precedence
+   item 4** (`refines: ADR-0009#4`) and its `inv: parts-convention` (`supersedes-invariant: ADR-0009#parts-convention`), collapsing that ADR's four-tier precedence
    (`drop > explicit replaceWith > convention part > template default`) to the three-tier
    `drop > convention part > template default`. The rest of ADR-0001 remains in force: Engine B,
    `missingkey=zero`, and bullet 4's rule that `awf:section`/`awf:end` markers never appear in

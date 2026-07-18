@@ -101,7 +101,7 @@ Forces and observations shaping the design:
 5. **ADR-0082's identity-exemption list gains a third entry.** Per ADR-0082 Decision 2's own
    extension rule, this ADR amends that item: the exemption list is pinned at exactly three
    entries (bootstrap template, agents-doc template, and the upgrade-script template),
-   each still failing when stale. `inv: residue-exemptions-pinned` is reworded accordingly
+   each still failing when stale. `inv: residue-exemptions-pinned` (`supersedes-invariant: ADR-0082#residue-exemptions-pinned`) is reworded accordingly
    (ADR-0082 stays Implemented; partial-item amendment via `related:`).
 
 6. **Adjacent guards learn the new unit.** The markdown dead-link scan's non-markdown

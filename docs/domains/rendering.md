@@ -78,7 +78,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0075: Working-memory check is on-demand, not a startup step](../decisions/0075-working-memory-check-is-on-demand-not-a-startup-step.md)
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
-- [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md)
+- [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md) → superseded by ADR-0085
 - [ADR-0083: Whole-line part-marker advisory](../decisions/0083-whole-line-part-marker-advisory.md)
 - [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
 - [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)

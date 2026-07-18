@@ -80,7 +80,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
-// invariant: parts-convention
+// touches-invariant: no-replacewith - three-tier precedence; proof in config_test.go
 func TestConventionPartPrecedence(t *testing.T) {
 	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging]\nagents: []\n"
 	const part = "skills/parts/debugging/debugging-surfaces.md"

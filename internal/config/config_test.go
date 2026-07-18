@@ -116,7 +116,6 @@ func TestEnableListsAreArrays(t *testing.T) {
 	}
 }
 
-// invariant: config-root
 // invariant: awf-config-root
 // TestLoadReadsTreeRoot pins the config root to .awf/config.yaml and
 // co-owns (with the migrate package's TestLegacyReadOnlyInMigrate, ADR-0010

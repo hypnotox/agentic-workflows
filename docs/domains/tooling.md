@@ -94,7 +94,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0079: Release and CI supply-chain hygiene](../decisions/0079-release-and-ci-supply-chain-hygiene.md)
 - [ADR-0080: Catalog-derived test coverage for skill and agent templates](../decisions/0080-catalog-derived-test-coverage-for-skill-and-agent-templates.md)
 - [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
-- [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md)
+- [ADR-0082: Source-level template residue guard](../decisions/0082-source-level-template-residue-guard.md) → superseded by ADR-0085
 - [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
 - [ADR-0090: In-repo example adopter as onboarding artifact and rendered-output quality oracle](../decisions/0090-in-repo-example-adopter-as-onboarding-artifact-and-rendered-output-quality-oracle.md)
 - [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
