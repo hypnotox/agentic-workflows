@@ -169,6 +169,39 @@ func SetMappingScalar(src []byte, key, child string, value bool) ([]byte, error)
 	return encode(doc)
 }
 
+// RemoveMappingKey removes child from the mapping at top-level key, preserving
+// comments and every untouched key via the same yaml.Node round-trip as the
+// other editors (ADR-0026). When the removal empties the parent mapping, the
+// parent key goes too, so a retired setting leaves no vestigial block behind.
+// An absent parent, a non-mapping parent, or an absent child is a no-op
+// (returns src unchanged), so a schema migration can re-run safely.
+func RemoveMappingKey(src []byte, key, child string) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	val, _ := mapValue(root, key)
+	if val == nil || val.Kind != yaml.MappingNode {
+		return src, nil
+	}
+	for i := 0; i+1 < len(val.Content); i += 2 {
+		if val.Content[i].Value != child {
+			continue
+		}
+		val.Content = append(val.Content[:i], val.Content[i+2:]...)
+		if len(val.Content) == 0 {
+			for j := 0; j+1 < len(root.Content); j += 2 {
+				if root.Content[j].Value == key {
+					root.Content = append(root.Content[:j], root.Content[j+2:]...)
+					break
+				}
+			}
+		}
+		return encode(doc)
+	}
+	return src, nil
+}
+
 func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
 }

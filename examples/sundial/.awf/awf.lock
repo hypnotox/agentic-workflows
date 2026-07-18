@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.17.0",
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",

@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.17.0",
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "files": {
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",

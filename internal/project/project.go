@@ -35,6 +35,7 @@ var minVersionBySchema = map[int]string{
 	8:  "0.12.0",
 	9:  "0.17.0",
 	10: "0.17.0",
+	11: "0.17.0",
 }
 
 type Project struct {

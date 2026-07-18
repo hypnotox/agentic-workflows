@@ -135,6 +135,79 @@ func TestRemoveKey(t *testing.T) {
 	}
 }
 
+func TestRemoveMappingKey(t *testing.T) {
+	cases := []struct {
+		name, src, key, child, want string
+		wantErr                     bool
+	}{
+		{
+			name: "removes child, keeps siblings and their comments",
+			src:  "prefix: x\naudit:\n  baseBranch: develop\n  # keep me\n  diffThreshold: 400\n",
+			key:  "audit", child: "baseBranch",
+			want: "prefix: x\naudit:\n  # keep me\n  diffThreshold: 400\n",
+		},
+		{
+			// A comment directly above the removed key is that key's head
+			// comment, so it goes with it: the note described the setting
+			// being retired and would be orphaned otherwise.
+			name: "the removed key takes its own comment",
+			src:  "audit:\n  # base to compare against\n  baseBranch: develop\n  diffThreshold: 400\n",
+			key:  "audit", child: "baseBranch",
+			want: "audit:\n  diffThreshold: 400\n",
+		},
+		{
+			name: "sole child drops the parent mapping",
+			src:  "prefix: x\naudit:\n  baseBranch: develop\nskills:\n  - a\n",
+			key:  "audit", child: "baseBranch",
+			want: "prefix: x\nskills:\n  - a\n",
+		},
+		{
+			name: "absent child is a no-op",
+			src:  "audit:\n  diffThreshold: 400\n",
+			key:  "audit", child: "baseBranch",
+			want: "audit:\n  diffThreshold: 400\n",
+		},
+		{
+			name: "absent parent is a no-op",
+			src:  "prefix: x\n",
+			key:  "audit", child: "baseBranch",
+			want: "prefix: x\n",
+		},
+		{
+			name: "non-mapping parent is a no-op",
+			src:  "audit: nope\n",
+			key:  "audit", child: "baseBranch",
+			want: "audit: nope\n",
+		},
+		{"parse error", "audit: [a, b\n", "audit", "baseBranch", "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := RemoveMappingKey([]byte(tc.src), tc.key, tc.child)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Errorf("got:\n%q\nwant:\n%q", got, tc.want)
+			}
+			// Re-running must be a no-op, so a migration replay is safe.
+			again, aerr := RemoveMappingKey(got, tc.key, tc.child)
+			if aerr != nil {
+				t.Fatal(aerr)
+			}
+			if string(again) != string(got) {
+				t.Errorf("not idempotent: %q then %q", got, again)
+			}
+		})
+	}
+}
+
 func TestRemoveKeyPreservesComments(t *testing.T) {
 	src := "# top comment\nprefix: x # inline\nhooks:\n  - a\n"
 	got, err := RemoveKey([]byte(src), "hooks")

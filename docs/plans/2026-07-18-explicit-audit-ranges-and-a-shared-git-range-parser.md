@@ -519,6 +519,16 @@ signature threaded through callers plus a struct-field removal, not a convenienc
 
 ## Notes
 
+- **Implementation finding (Task 1.4).** The post-check's `grep -v '^./internal/git/'` filter
+  never matched: this repo's `grep -rln` emits paths without a `./` prefix, so the check
+  reported the parser's own file and could not pass. Corrected in-flight to
+  `grep -v 'internal/git/'`.
+- **Implementation finding (Task 2.5).** The task said to run `./x sync` for the schema bump.
+  Sync *refuses* at that point ("config schema is behind (generation 10 < 11); run awf
+  upgrade"), because bumping `Current()` puts the tree behind its own binary. The correct
+  step is `go run ./cmd/awf upgrade`, which applies the new migration and re-syncs. It must
+  also be run inside `examples/sundial` with a source-built binary, since `./x check` gates
+  the example adopter and it carries its own schema generation.
 - The migration lands in Phase 2 while `AuditConfig.BaseBranch` still exists (Phase 3 removes
   it). An adopter upgrading between those two commits would lose a configured value while the
   binary still reads the field, silently falling back to `main`. Both land before any
