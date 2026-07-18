@@ -305,8 +305,15 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    on the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0040 lacks 47,
    ADR-0045 lacks 87, ADR-0069 lacks 75, and ADR-0082 lacks 85. This
    matters because ADR-0128 Decision 5 requires a back-pointer on a target of any status
-   (`cites: ADR-0128#5`), so a missed edge fails the retrofit commit. The edges this ADR's own
-   tokens require are already in place, added in the commit that amended it.
+   (`cites: ADR-0128#5`), so a missed edge fails the retrofit commit.
+
+   This ADR's own `cites:` tokens owe edges on the same rule, and the rule bites earlier than it
+   looks: `internal/project/supersession.go:178` requires the back-pointer for a token of any
+   relation from a carrier of any status, so an inert `cites:` token is no exception and a
+   `Proposed` carrier is no exception either. Its eight tokens resolve to five targets. Two,
+   ADR-0015 and ADR-0128, already name this ADR. The other three, ADR-0034, ADR-0065 and ADR-0120,
+   do not, and gain the edge in the same commit that first makes `cites:` parseable, because that is
+   the moment the tokens go live and the edges become owed.
 
 ## Invariants
 
@@ -380,9 +387,14 @@ the satisfying shapes to make the choice explicit at the point of failure.
 Correcting the 4 relations changes derived state. Each correction moves an anchor from
 uncontested to retired, and coverage completion forces a predecessor's status to `Superseded`
 (ADR-0128 Decision 4). The audit confirmed no ADR is within reach of full coverage from these 4
-alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. None of the 17
-backfilled tokens asserts a retirement at all, so the backfill cannot move any ADR's coverage. The
-last candidate fell during plan review: ADR-0047's claim on ADR-0040 Decision item 1 reads as a
+alone: the nearest live ADR, ADR-0001, remains 2 anchors short after its correction. Fifteen of the
+17 backfilled tokens are refinements, and the two that do assert a retirement cannot move any ADR's
+coverage either: both sit on ADR-0015 Decision item 4 and duplicate anchors ADR-0015 already retires
+from its item 6, and a claim set is per-ADR, so re-asserting an anchor its own carrier has already
+retired adds no member to any coverage set. Encoding those two as refinements instead would be worse
+than redundant: it would give one anchor two contradictory relations from one carrier.
+
+A third candidate fell during plan review: ADR-0047's claim on ADR-0040 Decision item 1 reads as a
 retirement and the carrier's own verb is "supersedes", but item 1 bundles three clause groups and
 ADR-0047 replaces only the rendered path and filename, leaving the script's download-and-verify
 behaviour and its URL convention in force. ADR-0047's Context says as much: "no slug encodes the

@@ -405,10 +405,12 @@ in those three files. Locate each site by its quoted text, not by number.
   An `adr-token-backpointer` finding means a seventh edge exists that the audit missed. Add it here
   and note it; do not defer it, since this phase must gate clean.
 
-  An `adr-coverage-status` finding is **impossible** from this plan and means something else is
-  wrong. Every one of the 17 tokens here is `refines:`, and a refinement counts toward no anchor's
-  coverage (ADR-0128 Decision 4), so no target's status can move. If one appears, a token was
-  written with the wrong relation: find it rather than flipping a status.
+  An `adr-coverage-status` finding means a token was written with the wrong relation; find it rather
+  than flipping a status. Fifteen of this plan's 17 tokens are `refines:`, which counts toward no
+  anchor's coverage (ADR-0128 Decision 4). The two exceptions are Task 1.1's
+  `supersedes: ADR-0001#2` and `supersedes-invariant: ADR-0009#parts-convention`, and neither can
+  move coverage either: both duplicate anchors ADR-0015 retires from its own item 6 in Plan A, and a
+  claim set is per-ADR, so re-asserting an anchor the same carrier already retired adds nothing.
 
   Then run `./x gate` and stage the twelve carrier ADR files, the six target ADR files,
   `docs/decisions/ACTIVE.md`, `.awf/awf.lock`, and any `docs/domains/*.md` that `./x sync` rewrote
@@ -447,5 +449,6 @@ in those three files. Locate each site by its quoted text, not by number.
   ACTIVE.md are expected output of this plan, not drift.
 - **Four verdicts were overturned in review**, all from `supersedes:` to `refines:`
   (ADR-0024#3, ADR-0030#4, ADR-0013#4, and ADR-0040#1 in the verify pass). Each had a surviving clause the first reading missed, and in
-  two of the three the carrier's own prose says "reverses" or "is retired", which is what misled it.
+  three of the four the carrier's own prose says "reverses", "is retired", or "supersedes", which is
+  what misled it.
   Carrier verbs describe intent; the relation follows from the target's clause set.

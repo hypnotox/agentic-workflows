@@ -248,8 +248,9 @@ Token and proof edit are inseparable, per the Architecture summary.
   ```
 
   This edge is owed by *this* task's token (which targets ADR-0082 from ADR-0085), not by Plan B:
-  without it `./x check` reports `adr-token-backpointer` in this commit. Plan B's ADR-0082
-  back-pointer task is therefore already satisfied and must be struck when Plan B is executed.
+  without it `./x check` reports `adr-token-backpointer` in this commit. Plan B's back-pointer set
+  deliberately excludes ADR-0082 for exactly this reason; if this edit is missing when Plan B runs,
+  Plan A did not fully land.
 
   Second, in `docs/decisions/0085-self-contained-adopter-upgrade-flow.md:104`, replace:
 

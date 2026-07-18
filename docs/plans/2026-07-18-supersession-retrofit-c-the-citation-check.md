@@ -217,10 +217,22 @@ a bug. The exemption belongs to the citation scanner alone.
   ADR-0131's own eight `cites:` tokens are already written and need no edit. Line numbers predate
   Plans A and B, which touch ADR-0015, ADR-0049, ADR-0081 and ADR-0087; locate by quoted text.
 
-  Each insertion may owe a `related:` back-pointer on the target, because
-  `internal/project/supersession.go:178` requires one for a token of any relation. Add any the check
-  reports: the audit confirmed the carrier side complete but did not enumerate back-pointers for
-  informational citations.
+  These insertions owe six `related:` back-pointer edges, because
+  `internal/project/supersession.go:178` requires one for a token of any relation. Every one is
+  missing today and each would red this phase's own gate, so they land in this commit alongside the
+  tokens. Arrays below are the state **after** Phase 1 adds 131 to ADR-0034 and ADR-0065:
+
+  | Target ADR | add | result | position | required by |
+  |---|---|---|---|---|
+  | `0034-*.md` | 58, 128 | `[1, 15, 57, 58, 121, 128, 131]` | **mid-inserts** | ADR-0058, ADR-0128 |
+  | `0039-*.md` | 49 | `[30, 40, 49, 76]` | **mid-insert** | ADR-0049 |
+  | `0065-*.md` | 116 | `[12, 63, 79, 116, 131]` | **mid-insert** | ADR-0116 |
+  | `0086-*.md` | 88 | `[11, 22, 45, 68, 69, 70, 76, 77, 81, 83, 88]` | append | ADR-0088 |
+  | `0119-*.md` | 120 | `[8, 36, 39, 41, 48, 82, 86, 88, 94, 113, 115, 116, 117, 118, 120]` | append | ADR-0120 |
+
+  ADR-0097 already names 108, and ADR-0045 gains 87 in Plan B, so neither appears here. Four of the
+  six edges are mid-inserts; the arrays are ascending and must stay so. Add any further edge the
+  check reports as a backstop, but expect exactly these.
 
   Post-check: `./x check` reports `awf check: clean`. For the count, match only parseable tokens:
 
