@@ -294,3 +294,60 @@ func TestSupersessionKeysEdgeShapes(t *testing.T) {
 		}
 	})
 }
+
+// TestSupersessionKeysChainedSupersession pins the chained case: A supersedes
+// B, and B supersedes C. B gains its own bookkeeping Decision item, which is a
+// NEW anchor of B - so A's tokens, enumerated from the pre-migration parse,
+// would leave that anchor unclaimed. B would then be rewritten to bare
+// `Superseded` while deriving Partial, and the very next `awf check` would fail
+// with adr-coverage-status on a corpus the migration had just produced.
+// invariant: upgrade-migrates-supersession-keys
+func TestSupersessionKeysChainedSupersession(t *testing.T) {
+	const fm = "---\nstatus: %s\ndate: 2026-01-01\ntags: [x]\nrelated: %s\ndomains: []\nsupersedes: %s\nsuperseded_by: %q\n---\n"
+	root := writeSupersessionFixture(t, map[string]string{
+		"0001-a.md": fmt.Sprintf(fm, "Implemented", "[]", "[2]", "") +
+			"# ADR-0001: A\n\n## Decision\n\n1. a.\n",
+		"0002-b.md": fmt.Sprintf(fm, "Superseded by ADR-0001", "[]", "[3]", "0001") +
+			"# ADR-0002: B\n\n## Decision\n\n1. b.\n",
+		"0003-c.md": fmt.Sprintf(fm, "Superseded by ADR-0002", "[]", "[]", "0002") +
+			"# ADR-0003: C\n\n## Decision\n\n1. c.\n",
+	})
+	if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+		t.Fatalf("applySupersessionKeys: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-a.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// B ends up with two anchors: its original item 1 and the bookkeeping item 2
+	// the migration appends to it. A must retire both, or B is flipped to
+	// Superseded while only partially covered.
+	for _, want := range []string{"`supersedes: ADR-0002#1`", "`supersedes: ADR-0002#2`"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("ADR-0001 must retire %s, including the anchor the migration itself adds to ADR-0002:\n%s", want, b)
+		}
+	}
+
+	// The same chain with a slug anchor on the middle ADR: the pending item is
+	// slotted with the other items, so the emitted list reads in anchor order
+	// rather than trailing the slugs.
+	root = writeSupersessionFixture(t, map[string]string{
+		"0001-a.md": fmt.Sprintf(fm, "Implemented", "[]", "[2]", "") +
+			"# ADR-0001: A\n\n## Decision\n\n1. a.\n",
+		"0002-b.md": fmt.Sprintf(fm, "Superseded by ADR-0001", "[]", "[3]", "0001") +
+			"# ADR-0002: B\n\n## Decision\n\n1. b.\n\n## Invariants\n\n- `invariant: b-slug` - x.\n",
+		"0003-c.md": fmt.Sprintf(fm, "Superseded by ADR-0002", "[]", "[]", "0002") +
+			"# ADR-0003: C\n\n## Decision\n\n1. c.\n",
+	})
+	if err := applySupersessionKeys(root, &bytes.Buffer{}); err != nil {
+		t.Fatalf("applySupersessionKeys: %v", err)
+	}
+	b, err = os.ReadFile(filepath.Join(root, "docs", "decisions", "0001-a.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "`supersedes: ADR-0002#1`, `supersedes: ADR-0002#2`, `supersedes-invariant: ADR-0002#b-slug`"
+	if !strings.Contains(string(b), want) {
+		t.Errorf("want anchors in order %s, got:\n%s", want, b)
+	}
+}

@@ -111,6 +111,53 @@ func applySupersessionKeys(root string, out io.Writer) error {
 	type edge struct{ target, carrier string }
 	var edges []edge
 
+	// carriesBookkeeping records which ADRs will gain a bookkeeping Decision
+	// item of their own. That item is a NEW anchor, so a chained supersession
+	// (A supersedes B, B supersedes C) must have A retire it too: enumerating
+	// B's anchors from the pre-migration parse alone would leave B one anchor
+	// short of covered while its status was rewritten to Superseded, and the
+	// very next awf check would fail on a corpus this migration just produced.
+	carriesBookkeeping := map[string]bool{}
+	for _, a := range adrs {
+		b, err := load(a)
+		if err != nil { // coverage-ignore: LoadCorpus above already read this exact path
+			return err
+		}
+		raw := string(b)
+		fmEnd := strings.Index(raw[3:], "\n---") + 3 + 1
+		if m := supersedesValueRe.FindStringSubmatch(raw[:fmEnd]); m != nil && strings.TrimSpace(m[1]) != "" {
+			carriesBookkeeping[a.Number] = true
+		}
+	}
+
+	// pendingAnchors is a target's anchor set as it will stand AFTER the
+	// migration: its parsed anchors plus the bookkeeping item it is about to
+	// gain, if any.
+	pendingAnchors := func(target adr.ADR) []adr.Anchor {
+		anchors := corpus.Anchors(target.Number)
+		if !carriesBookkeeping[target.Number] {
+			return anchors
+		}
+		items := target.DecisionItems()
+		next := 1
+		if len(items) > 0 {
+			next = items[len(items)-1] + 1
+		}
+		// Slot the pending item with the other items rather than after the
+		// slugs, so the emitted token list reads in anchor order.
+		out := make([]adr.Anchor, 0, len(anchors)+1)
+		for _, a := range anchors {
+			if a.Slug != "" && len(out) == len(items) {
+				out = append(out, adr.Anchor{ADR: target.Number, Item: next})
+			}
+			out = append(out, a)
+		}
+		if len(out) == len(items) { // no slugs: the pending item goes last
+			out = append(out, adr.Anchor{ADR: target.Number, Item: next})
+		}
+		return out
+	}
+
 	// Pass 2: strip both keys, and append a bookkeeping item for each
 	// predecessor a supersedes: list named.
 	for _, a := range adrs {
@@ -149,7 +196,7 @@ func applySupersessionKeys(root string, out io.Writer) error {
 				if !ok {
 					return fmt.Errorf("supersession-keys: %s supersedes ADR-%s, which does not exist", a.Filename, pred)
 				}
-				anchors := corpus.Anchors(target.Number)
+				anchors := pendingAnchors(target)
 				if len(anchors) == 0 {
 					return fmt.Errorf("supersession-keys: %s supersedes ADR-%s, which has no Decision items to retire", a.Filename, pred)
 				}
