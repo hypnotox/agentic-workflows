@@ -147,7 +147,39 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 	}
 	got := buf.String()
 	if !strings.Contains(got, "clean over 1 commit(s) in "+base.String()+"..HEAD") {
-		t.Errorf("the verdict must name its scope, got: %q", got)
+		t.Errorf("the clean verdict must name its scope, got: %q", got)
+	}
+}
+
+// The scope suffix is on every verdict, not just the clean one: a warning or
+// error summary read without its scope is the same ambiguity (ADR-0127
+// Decision 9).
+// invariant: audit-reports-evaluated-scope
+func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
+	root, base := auditProject(t)
+	repo, err := git.PlainOpen(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Warning path: touches go.mod with no ADR -> dependency-adr warning, exit zero.
+	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
+	scope := "over 1 commit(s) in " + base.String() + "..HEAD"
+	var warnBuf bytes.Buffer
+	if err := runAudit(root, base.String(), &warnBuf); err != nil {
+		t.Fatalf("warnings-only run should exit zero, got: %v", err)
+	}
+	if !strings.Contains(warnBuf.String(), scope) {
+		t.Errorf("the warning verdict must name its scope, got: %q", warnBuf.String())
+	}
+	// Error path: a malformed subject is an Error finding, so runAudit returns
+	// non-nil and the scope must ride on the error itself.
+	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
+	err = runAudit(root, base.String(), out(t))
+	if err == nil {
+		t.Fatal("an Error finding must make runAudit return non-nil")
+	}
+	if !strings.Contains(err.Error(), "over 2 commit(s) in "+base.String()+"..HEAD") {
+		t.Errorf("the error verdict must name its scope, got: %q", err)
 	}
 }
 

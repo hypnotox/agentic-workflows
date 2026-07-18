@@ -78,8 +78,14 @@ func TestParseRangeIsTheOnlyRangeParser(t *testing.T) {
 			return rerr
 		}
 		if d.IsDir() {
+			// Hidden trees hold no production source; .claude/worktrees/
+			// carries session checkouts with their own internal/git, which
+			// would otherwise read as a second parser.
+			if path != root && strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
 			switch rel {
-			case "internal/git", "examples", ".git":
+			case "internal/git", "examples":
 				return filepath.SkipDir
 			}
 			return nil

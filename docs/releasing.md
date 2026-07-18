@@ -38,7 +38,9 @@ below `project.Version`, or the gate fails.
    ./x gate && ./x check && ./x audit <previous-tag>..HEAD
    ```
 
-   All three must pass (`audit` is advisory but should be clean for a release).
+   All three must pass (`audit` is advisory but should be clean for a release). The audit
+   range is required and has no default (ADR-0127): use the previous release tag as the base,
+   so the audit covers exactly the commits this release ships.
 
 2. **Verify `project.Version` equals the target version and promote the changelog.** A
    schema-coupled change bumps the const mid-cycle (ADR-0049 Decision 4), so it often already

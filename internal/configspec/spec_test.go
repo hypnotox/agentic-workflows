@@ -81,9 +81,6 @@ func TestNoAuditBaseConfigSurface(t *testing.T) {
 			t.Errorf("config field %q supplies an audit base; the range must be caller-supplied", path)
 		}
 	}
-	if reflect.TypeOf(audit.Settings{}).NumField() == 0 { // coverage-ignore: Settings always has fields; the loop below is the assertion
-		return
-	}
 	for i := range reflect.TypeOf(audit.Settings{}).NumField() {
 		if name := reflect.TypeOf(audit.Settings{}).Field(i).Name; strings.Contains(strings.ToLower(name), "basebranch") {
 			t.Errorf("audit.Settings.%s supplies a base; the range must be caller-supplied", name)
