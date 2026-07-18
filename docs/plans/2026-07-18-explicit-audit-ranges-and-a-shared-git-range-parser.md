@@ -311,9 +311,16 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   `/home/hypno/Projects/agentic-workflows/internal/project/configreference.go:146-147`.
 
   `/home/hypno/Projects/agentic-workflows/internal/audit/settings_test.go` asserts the deleted
-  field in four places and will not compile otherwise: drop the `BaseBranch` assertions at
-  lines 18-19 (`want main`) and 64-65 (`want develop`), and drop the `BaseBranch` entries from
-  the composite literals at lines 40-43 and 49.
+  field in four places, each a different shape, and will not compile otherwise:
+
+  - Lines 18-19 and 64-65: whole `if s.BaseBranch != ...` / `t.Errorf(...)` blocks. Delete
+    both blocks outright.
+  - Lines 40-43: a compound `if` condition whose first clause is `s.BaseBranch != "main"`,
+    followed by a `t.Errorf` whose format string opens with `base=%q` and passes
+    `s.BaseBranch` first. Drop the clause, the `base=%q` verb, and the argument together.
+    Dropping the field without the verb fails `go vet`'s printf check, which the gate runs.
+  - Line 49: a `BaseBranch: "develop",` entry in the `config.AuditConfig` composite literal.
+    Delete the line.
 
 - [ ] **Task 3.3: Change the CLI contract.** In
   `/home/hypno/Projects/agentic-workflows/internal/clispec/clispec.go`, the audit entry
@@ -350,18 +357,41 @@ signature threaded through callers plus a struct-field removal, not a convenienc
   `/home/hypno/Projects/agentic-workflows/internal/project/project.go:277-282`, `Audit` takes
   `(base, head string)` and drops the `baseOverride` block.
 
-- [ ] **Task 3.4: Move the value-flag fixture and add the refusal tests.** In
+- [ ] **Task 3.4: Update the audit command tests.**
+  `/home/hypno/Projects/agentic-workflows/cmd/awf/audit_test.go` exercises all three surfaces
+  this phase changes and must move with them:
+
+  - Line 150, inside `TestRunAuditDispatch`, calls
+    `run([]string{"awf", "audit", "--base", base.String()}, ...)` and expects exit 0. The flag
+    is gone, so it becomes `run([]string{"awf", "audit", base.String()}, ...)`; update the
+    function's doc comment at line 139-140, which says it covers "the `--base` flag plumbing",
+    to say it covers the positional range argument.
+  - Line 121, `runAudit(t.TempDir(), "", out(t))`, expects an error. It still errors, but now
+    for a different reason: the empty range is refused before the project is opened, so it no
+    longer reaches the not-a-project path. Split it into two cases, one asserting the
+    empty-argument usage error (this is the natural home for the
+    `// invariant: audit-requires-explicit-range` marker) and one passing a valid range
+    against a non-project directory to keep the original path covered.
+  - Line 129, `runAudit(root, "no-such-ref", out(t))`, still asserts an unresolvable base
+    errors. A bare ref is a legal bare base under `ParseRange(arg, true)`, so it now fails at
+    revision resolution rather than parsing; the assertion holds unchanged.
+
+  The remaining `runAudit(root, base.String(), ...)` call sites need no edit: a bare commit
+  hash is a valid bare base, resolving to `<hash>..HEAD`.
+
+- [ ] **Task 3.5: Move the value-flag fixture and add the refusal tests.** In
   `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go:145`, the "value flag without
   value" case uses `audit --base`; switch it to `context --range`, which still carries a
   ValueFlag. Add a case asserting bare `awf audit` exits non-zero with a message naming both
-  forms, carrying `// invariant: audit-requires-explicit-range`. In
+  forms. The proof marker for that refusal lives on the Task 3.4 case in
+  `cmd/awf/audit_test.go`, so do not repeat it here. In
   `/home/hypno/Projects/agentic-workflows/internal/configspec/spec_test.go`, add a test
   asserting no spec entry, config field, or resolved setting supplies an audit base, carrying
   `// invariant: audit-no-base-branch-config`. In
   `/home/hypno/Projects/agentic-workflows/cmd/repoaudit/main_test.go`, add
   `// invariant: repoaudit-requires-explicit-range` to the no-argument case.
 
-- [ ] **Task 3.5: Update the rendered sources.** Per ADR-0127 Decision 8. In
+- [ ] **Task 3.6: Update the rendered sources.** Per ADR-0127 Decision 8. In
   `/home/hypno/Projects/agentic-workflows/templates/skills/reviewing-impl/SKILL.md.tmpl:57`,
   replace ``run `awf audit` (or this project's runner alias for it) over the branch`` with
   ``run `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the
@@ -385,13 +415,13 @@ signature threaded through callers plus a struct-field removal, not a convenienc
 
   Then run `./x sync`.
 
-- [ ] **Task 3.6: Verify and commit.** Run:
+- [ ] **Task 3.7: Verify and commit.** Run:
 
   ```
   ./x gate && ./x check
   ```
 
-  Both must pass. Stage every file touched in Tasks 3.1-3.5 plus `.awf/awf.lock`, the
+  Both must pass. Stage every file touched in Tasks 3.1-3.6 plus `.awf/awf.lock`, the
   re-rendered `docs/`, every enabled target tree, and `examples/sundial/`. Commit:
 
   ```commit
