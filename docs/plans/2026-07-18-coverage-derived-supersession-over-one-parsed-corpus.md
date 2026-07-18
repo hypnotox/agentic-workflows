@@ -16,19 +16,21 @@ refinement relation, and no re-argument of the design, which lives in the three 
 
 ## Architecture summary
 
-Eight phases, bottom-up. The corpus view and its status predicates land first (phases 1 to 3) so
+Seven phases, bottom-up. The corpus view and its status predicates land first (phases 1 to 3) so
 the supersession work has a structure to hang on rather than threading a fifth one by hand. The
 refinement grammar and the coverage model follow (phases 4 and 5) while the old frontmatter
-encoding is still present and every check still passes. Phase 6 is a single coupled commit: the
-schema removal, the coverage checks, the generation-12 migration, and this repo's own corpus
-retrofit cannot be sliced, because the moment the keys leave the schema every ADR carrying them
-fails `supersession-keys-refused` until the migration has rewritten the corpus. Phases 7 and 8 land
-the rendering changes and the documentation, and flip all three ADRs plus this plan to
-`Implemented`.
+encoding is still present and every check still passes; the model reads the old `Supersedes` field
+transitionally so ACTIVE.md's chain rendering never goes dark. Phase 6 is a single coupled commit:
+the schema removal, the coverage checks, the generation-12 migration, this repo's corpus retrofit,
+and both rendering changes all hinge on the frontmatter keys disappearing, and none of them
+compiles without the others. Phase 7 lands the documentation and flips all three ADRs plus this
+plan to `Implemented`.
 
-Phase 6's shared commit is the exception the plan convention allows, and its size is why phases 1
-to 5 are sliced as finely as they are: everything that can pass the gate independently does so
-before the coupled step.
+Two rules govern the slicing. Every phase before 6 must pass `./x gate` alone, which means no
+production function may be introduced before the phase that first calls it. And every
+`supersedes-invariant:` retirement declared by these ADRs takes effect only when its carrier
+reaches `Implemented` in Phase 7, so no proof marker for a retired slug may be removed before
+that commit, however dead the code it marks becomes.
 
 ## File structure
 
@@ -36,22 +38,25 @@ before the coupled step.
   `internal/adr/corpus_test.go`, `internal/adr/coverage_test.go`,
   `internal/migrate/supersessionkeys.go`, `internal/migrate/supersessionkeys_test.go`
 - **Modified:** `internal/adr/adr.go`, `internal/adr/adr_test.go`, `internal/adr/domain.go`,
-  `internal/project/check.go`, `internal/project/supersession.go`,
-  `internal/project/supersession_test.go`, `internal/project/context.go`,
-  `internal/project/render.go`, `internal/project/project.go`,
+  `internal/adr/domain_test.go`, `internal/project/check.go`,
+  `internal/project/supersession.go`, `internal/project/supersession_test.go`,
+  `internal/project/context.go`, `internal/project/render.go`, `internal/project/project.go`,
   `internal/invariants/invariants.go`, `internal/audit/audit.go`, `internal/migrate/migrate.go`,
-  `.awf/parts/adr-template/frontmatter.md`, `templates/adr-template/template.md.tmpl`,
-  `templates/adr-readme/README.md.tmpl`, `templates/skills/adr-lifecycle/SKILL.md.tmpl`,
+  `internal/migrate/retirementtokens.go`, `internal/testsupport/testsupport.go`,
+  `internal/testsupport/testsupport_test.go`, `.awf/parts/adr-template/frontmatter.md`,
+  `templates/adr-template/template.md.tmpl`, `templates/adr-readme/README.md.tmpl`,
+  `templates/skills/adr-lifecycle/SKILL.md.tmpl`,
   `.awf/domains/parts/adr-system/current-state.md`, `docs/glossary.md`, `docs/pitfalls.md`,
   every file under `docs/decisions/`, `examples/sundial/docs/decisions/template.md`
 - **Deleted:** `SupersessionIndex`, `Override`, and `Override.Label` from `internal/adr/adr.go`;
-  `statusOf` and `domainsOf` from `internal/audit/audit.go`
+  `statusOf` and `domainsOf` from `internal/audit/audit.go`; `WithSupersededBy` and
+  `WithSupersedes` from `internal/testsupport/testsupport.go`
 
 ## Phase 1: Status predicates on the ADR value
 
-- [ ] **Task 1.1: Add `internal/adr/status.go` with the full status vocabulary.** Per ADR-0130
-  item 3 the predicates hang off the `ADR` value, not the corpus, so a consumer holding a single
-  parsed record can use them. Create the file with exactly:
+- [ ] **Task 1.1: Add `internal/adr/status.go`.** Per ADR-0130 item 3 the predicates hang off the
+  `ADR` value, not the corpus, so a consumer holding a single parsed record can use them. Create
+  the file with exactly:
 
   ```go
   package adr
@@ -85,11 +90,6 @@ before the coupled step.
   // IsProposed reports whether the ADR's body is still mutable.
   func (a ADR) IsProposed() bool { return a.Status == statusProposed }
 
-  // HasStatus reports whether the record carried a status at all. Audit needs the
-  // distinction between absent frontmatter, legitimate on an old commit, and a
-  // real status; see ADR-0130 item 3.
-  func (a ADR) HasStatus() bool { return a.Status != "" }
-
   // Bucket is the ACTIVE.md section an ADR belongs to. Every superseded ADR folds
   // into one group regardless of the successor its status names.
   func (a ADR) Bucket() string {
@@ -100,6 +100,9 @@ before the coupled step.
   }
   ```
 
+  `HasStatus` is deliberately absent: its only caller is `audit.go:218`, which lands in Phase 3,
+  and the dead-code gate refuses a production method no `main` can reach. It is added in Task 3.2.
+
 - [ ] **Task 1.2: Re-point every status literal comparison at the predicates (batch).**
 
   *Representative site*, `internal/project/supersession.go:169`:
@@ -109,8 +112,8 @@ before the coupled step.
   +		live := a.IsLive()
   ```
 
-  *Edge site*, `internal/adr/adr.go:27-32`, where `bucketKey` becomes a seam over the new
-  predicate rather than carrying the rule itself:
+  *Edge site*, `internal/adr/adr.go:27-32`. This one is not matched by the affected-site command
+  below, because `bucketKey`'s parameter is a lowercase `status` string rather than an `ADR` field:
 
   ```diff
   -func bucketKey(status string) string {
@@ -125,25 +128,25 @@ before the coupled step.
 
   Update `groupByStatus` (`internal/adr/adr.go:293-320`) to pass the ADR rather than its status.
 
-  *Affected-site set*, exactly the eleven sites this command lists:
+  *Affected-site set*, exactly the ten sites this command lists today:
 
   ```
   grep -rn 'Status == "Accepted"\|Status == "Implemented"\|Status != "Implemented"\|Status == "Proposed"\|HasPrefix(.*Status, "Superseded")' --include='*.go' internal/ | grep -v _test.go
   ```
 
-  Expected today: `adr.go:28`, `adr.go:128`, `adr.go:133`, `context.go:189`,
-  `supersession.go:155`, `supersession.go:169`, `supersession.go:194`, `supersession.go:207`,
-  `supersession.go:212`, `invariants.go:135`, `invariants.go:175`.
+  Expected today: `supersession.go:155`, `:169`, `:194`, `:207`, `:212`; `context.go:189`;
+  `invariants.go:135`, `:175`; `adr.go:128`, `:133`. Plus `adr.go:28`, handled by the edge diff
+  above and not matched by this pattern.
 
   Two exclusions. Leave `context.go:189` on its own prefix test: ADR-0129 item 4 enumerates it as
-  the one consumer that keeps one. Leave `internal/audit`'s three sites (`audit.go:218`, `:318`,
-  `:321`) alone in this phase; they move in Phase 3, when the bytes seam gives audit parsed records
-  to call predicates on.
+  the one consumer that keeps one. `internal/audit`'s literals (`audit.go:218`, `:318`, `:321`)
+  compare a local `st` variable rather than an ADR field, so this pattern never reaches them; they
+  move in Phase 3 when the bytes seam gives audit parsed records.
 
-  *Post-check*, after the batch only `context.go:189` remains outside `internal/audit`:
+  *Post-check*, only `context.go:189` remains:
 
   ```
-  grep -rn 'Status == "Accepted"\|Status == "Implemented"\|Status != "Implemented"\|Status == "Proposed"\|HasPrefix(.*Status, "Superseded")' --include='*.go' internal/ | grep -v _test.go | grep -v internal/audit | wc -l
+  grep -rn 'Status == "Accepted"\|Status == "Implemented"\|Status != "Implemented"\|Status == "Proposed"\|HasPrefix(.*Status, "Superseded")' --include='*.go' internal/ | grep -v _test.go | wc -l
   ```
 
   Expected output: `1`
@@ -151,13 +154,12 @@ before the coupled step.
 - [ ] **Task 1.3: Back `corpus-owns-status-literals` with a source-scan test.** Add to
   `internal/adr/adr_test.go` a test walking `internal/`, skipping `internal/adr`, `_test.go` files,
   and `internal/project/context.go`'s Tier-2 line, that fails on any ADR-status literal comparison.
-  Mark it `// invariant: corpus-owns-status-literals`. The test exempts `internal/audit` with a
-  comment naming Phase 3 as where that exemption is removed.
+  Mark it `// invariant: corpus-owns-status-literals`. Scope it to ADR-field comparisons only, so
+  `internal/audit`'s local-variable literals do not trip it before Phase 3 converts them; Task 3.2
+  widens the scan to cover them.
 
 - [ ] **Task 1.4: Verify and commit.** `./x gate` must end `prose-gate: clean` with
-  `coverage: 100.0%`. Stage `internal/adr/status.go`, `internal/adr/adr.go`,
-  `internal/adr/adr_test.go`, `internal/project/supersession.go`,
-  `internal/invariants/invariants.go`.
+  `coverage: 100.0%`.
 
   ```commit
   refactor(adr-system): name every ADR status predicate once
@@ -165,21 +167,22 @@ before the coupled step.
 
 ## Phase 2: The corpus view and one parse
 
-- [ ] **Task 2.1: Add `internal/adr/corpus.go`.** The view holds the parsed slice, a number-keyed
-  index, and the existence set the duplicated `known[a.Number]` builds recompute. Exported surface
-  for this phase: `NewCorpus([]ADR) Corpus`, `Corpus.All() []ADR`,
-  `Corpus.ByNumber(string) (ADR, bool)`, `Corpus.Has(string) bool`, `Corpus.Live() []ADR`,
+- [ ] **Task 2.1: Add `internal/adr/corpus.go`.** Exported surface for this phase, every method
+  having a production caller by the end of Task 2.3: `NewCorpus([]ADR) Corpus`,
+  `Corpus.All() []ADR`, `Corpus.ByNumber(string) (ADR, bool)`, `Corpus.Has(string) bool`,
   `Corpus.DecisionItems(string) []int`, `Corpus.DeclaredSlugs(string) []string`,
-  `Corpus.Claims(target string) []SupersessionRef`, and `Corpus.Raw(string) ([]byte, error)` for
-  the two enumerated raw consumers (ADR-0130 item 6). Every method needs a production caller by the
-  end of Task 2.3 or the dead-code gate fails.
+  `Corpus.Claims(target string) []SupersessionRef`, and `Corpus.Raw(string) ([]byte, error)`.
+
+  `Corpus.Live()` is deliberately absent: Phase 1's liveness sites are per-ADR `a.IsLive()` calls,
+  not list queries, so nothing in Phase 2 would call it and the dead-code gate would refuse it. It
+  is added in Phase 5, where the coverage model needs it.
 
 - [ ] **Task 2.2: Thread the corpus through `*Project` and collapse the load sites (batch).**
 
   *Representative site*, `internal/project/check.go:615`:
 
   ```diff
-  -	adrs, err := adr.ParseDir(p.adrDir())
+  -	adrs, err := adr.ParseDir(p.decisionsDir())
   -	if err != nil {
   -		return nil, err
   -	}
@@ -199,33 +202,46 @@ before the coupled step.
   configured domain: hoist the corpus above the loop and pass it into `adr.RenderDomainIndex`,
   whose signature changes to take a `Corpus`. `adr.RenderActiveMD` changes the same way.
 
-  *Affected-site set*, the ten production `ParseDir` callers:
+  *Affected-site set*, exactly these ten production `adr.ParseDir` call sites:
+  `supersession.go:23`, `:69`; `context.go:126`; `check.go:81`, `:615`, `:702`, `:754`, `:799`;
+  `invariants.go:242`; `migrate/retirementtokens.go:51`. Confirm with:
 
   ```
-  grep -rn 'adr\.ParseDir\|func ParseDir\|ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go
+  grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go
   ```
 
-  *Post-check*, exactly one production call site outside `internal/adr`:
+  That command returns twelve lines today: the ten above plus `check.go:454` and `:459`, which are
+  `coverage-ignore` comments whose text contains the literal `adr.ParseDir`. Leave both comments
+  alone; they are prose, and the post-check accounts for them.
+
+  Do not re-point `internal/adr/adr.go:427` (`NextNumber`): it runs on the `awf new adr` path,
+  which holds no corpus, and Task 2.4's test enumerates it as the one in-package exception.
+
+  *Post-check*, one real call site plus the two comment lines:
 
   ```
-  grep -rn 'adr\.ParseDir' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l
+  grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l
   ```
 
-  Expected output: `1`
+  Expected output: `3`
 
-- [ ] **Task 2.3: Move `ADR.Refs` and `ADR.Sections` reads behind the view.** `invariants.go:138`
-  and `:197` read `Sections["Invariants"]`; `invariants.go:178` and `supersession.go:171` read
-  `Refs`. Route each through `Corpus.DeclaredSlugs` and `Corpus.Claims`.
+- [ ] **Task 2.3: Move `ADR.Refs` and `ADR.Sections` reads behind the view, including
+  `internal/migrate`.** `invariants.go:138` and `:197` read `Sections["Invariants"]`;
+  `invariants.go:178` and `supersession.go:171` read `Refs`. Route each through
+  `Corpus.DeclaredSlugs` and `Corpus.Claims`. Route `migrate/retirementtokens.go:51`'s `ParseDir`
+  through the corpus and its `os.ReadFile` at `:71` through `Corpus.Raw`, so both enumerated raw
+  consumers (ADR-0130 item 6) go through the accessor from this phase on.
 
 - [ ] **Task 2.4: Back `corpus-parsed-once`, `corpus-owns-field-reads`, and
   `corpus-raw-access-enumerated`.** Three source-scan tests in `internal/adr/corpus_test.go`, each
-  marked with its slug. The parse-once test asserts one `ParseDir` caller outside `internal/adr`
-  and that neither `RenderDomainIndex` nor `RenderActiveMD` parses. The raw-access test asserts
-  `Corpus.Raw` has exactly two call sites and that no file outside `internal/adr` calls
-  `os.ReadFile` on an `ADR.Path`.
+  marked with its slug. The parse-once test asserts one real `ParseDir` caller outside
+  `internal/adr` (ignoring comment lines), that neither `RenderDomainIndex` nor `RenderActiveMD`
+  parses, and that `NextNumber` is the sole in-package exception. The raw-access test asserts
+  `Corpus.Raw` has exactly two call sites, `internal/migrate/retirementtokens.go` and
+  `internal/project/supersession.go`, and that no file outside `internal/adr` calls `os.ReadFile`
+  on an `ADR.Path`.
 
-- [ ] **Task 2.5: Verify and commit.** `./x gate`, then stage the corpus file, its test, and every
-  re-pointed consumer.
+- [ ] **Task 2.5: Verify and commit.** `./x gate`.
 
   ```commit
   refactor(adr-system): parse the ADR corpus once per invocation
@@ -236,19 +252,24 @@ before the coupled step.
 - [ ] **Task 3.1: Export a bytes-level parse entry point preserving the tri-state.** `parse`
   (`internal/adr/adr.go:208`) discards `frontmatter.Parse`'s `found` bool
   (`internal/frontmatter/frontmatter.go:31`). Export
-  `ParseBytes(name string, data []byte) (ADR, bool, error)` returning it, so a record with absent
-  frontmatter is distinguishable from a malformed one. `parse` becomes a thin caller.
+  `ParseBytes(name string, data []byte) (ADR, bool, error)`, returning that bool so a record with
+  absent frontmatter is distinguishable from a malformed one. `name` is the ADR's base filename:
+  `ParseBytes` populates `Filename` from it and derives `Number` via `FilenameRe`, and leaves
+  `Path` empty, since a blob-sourced record has no working-tree path. `parse` becomes a thin
+  caller.
 
-- [ ] **Task 3.2: Re-point `internal/audit` and delete its parsers.** Replace `statusOf`
-  (`audit.go:487-502`) and `domainsOf` (`audit.go:399-407`) with `adr.ParseBytes`. Preserve the
-  contract `audit.go:192` depends on: empty text and absent frontmatter both yield a clean empty
-  status while present-but-unparseable is a finding. Replace `audit.go:218`'s `st == ""` with
-  `!rec.HasStatus()`, and `:318`/`:321` with `rec.IsImplemented()`. Remove the `internal/audit`
-  exemption from the Task 1.3 test in the same task.
+- [ ] **Task 3.2: Re-point `internal/audit`, delete its parsers, and add `HasStatus`.** Add
+  `func (a ADR) HasStatus() bool { return a.Status != "" }` to `internal/adr/status.go` in this
+  task, where its first caller lands. Replace `statusOf` (`audit.go:487-502`) and `domainsOf`
+  (`audit.go:399-407`) with `adr.ParseBytes`. Preserve the contract `audit.go:192` depends on:
+  empty text and absent frontmatter both yield a clean empty status while present-but-unparseable
+  is a finding. Replace `audit.go:218`'s `st == ""` with `!rec.HasStatus()`, and `:318`/`:321`
+  with `rec.IsImplemented()`. Widen the Task 1.3 scan to cover local-variable status literals in
+  the same task.
 
 - [ ] **Task 3.3: Make the ADR number the sole identity.** `invariants.Decl.ADR`
   (`invariants.go:159`) holds `a.Filename`; change it to `a.Number` and delete the `byFile`
-  translation map at `context.go:145-148`, re-pointing its uses at the number directly.
+  translation map at `context.go:145-148`, re-pointing its uses at the number.
 
 - [ ] **Task 3.4: Back `audit-shares-adr-parser` and `corpus-single-identity-key`.** One test
   asserting `internal/audit` declares no frontmatter struct of its own, and one asserting every
@@ -268,14 +289,21 @@ before the coupled step.
   elsewhere in an ADR stays inert.
 
 - [ ] **Task 4.2: Render refinements.** ACTIVE.md's anchor annotations and `awf context`'s
-  counterpart distinguish "superseded by" from "refined by". `active-md-annotates-superseded-anchors`
-  and `context-annotates-superseded-anchors` keep their proof markers; extend both tests with a
+  counterpart distinguish "superseded by" from "refined by", which is what makes `Relation`
+  reachable in this phase. `active-md-annotates-superseded-anchors` and
+  `context-annotates-superseded-anchors` keep their proof markers; extend both tests with a
   refinement case.
 
 - [ ] **Task 4.3: Widen the back-pointer check to targets of any status.** Per ADR-0128 item 5,
-  remove `supersession.go:206`'s live-target guard; both relations owe the back-pointer. Retire
-  `supersession-backpointer`'s proof marker and add one for
-  `supersession-backpointer-any-status`.
+  remove `supersession.go:206`'s live-target guard; both relations owe the back-pointer. Add a
+  proof marker for `supersession-backpointer-any-status`.
+
+  Do **not** remove `supersession-backpointer`'s existing marker at
+  `internal/project/supersession_test.go:344`. ADR-0128 retires that slug, but retirement applies
+  only from an `Implemented` carrier (`internal/invariants/invariants.go:174-176`), and ADR-0128 is
+  `Proposed` until Phase 7. Removing the marker here leaves the slug owed by the still-Implemented
+  ADR-0120 and `awf check` reports it `Unbacked`, failing the gate. The marker is removed in
+  Task 7.3.
 
 - [ ] **Task 4.4: Verify and commit.** `./x gate`, then `./x check`, which must stay
   `awf check: clean`: no corpus ADR currently tokens a superseded target, so widening the
@@ -287,11 +315,17 @@ before the coupled step.
 
 ## Phase 5: The anchor-coverage model
 
-- [ ] **Task 5.1: Add `internal/adr/coverage.go`.** Per ADR-0129 items 2 and 3: anchors as nodes,
-  claims as edges carrying relation, claiming ADR number, and the claiming ADR's Decision item
-  number; derived `Live`/`Partial`/`Covered` with `Partial` as the residual by construction and a
-  zero-anchor ADR `Live` rather than vacuously `Covered`. Constructed inside `NewCorpus`, so
-  `corpus-model-not-rebuilt` holds by construction.
+- [ ] **Task 5.1: Add `internal/adr/coverage.go`, and `Corpus.Live()`.** Per ADR-0129 items 2
+  and 3: anchors as nodes, claims as edges carrying relation, claiming ADR number, and the claiming
+  ADR's Decision item number; derived `Live`/`Partial`/`Covered` with `Partial` as the residual by
+  construction and a zero-anchor ADR `Live` rather than vacuously `Covered`. Constructed inside
+  `NewCorpus`, so `corpus-model-not-rebuilt` holds by construction. Add `Corpus.Live()` here, where
+  the derivation first needs it.
+
+  **Transitional read.** Until Phase 6 deletes the field, the model also derives chains from the
+  `Supersedes` frontmatter list, so ACTIVE.md's `### Chains` section keeps rendering the three
+  legacy pairs across Phases 5 and 6 and `./x check` stays drift-free. Task 6.3 deletes that
+  branch when it deletes the field. Mark the branch with a comment naming Task 6.3.
 
 - [ ] **Task 5.2: Add the acyclicity and irreflexivity check.** Per ADR-0129 item 7: fail on a
   token whose target ADR is its own carrier, and on a cycle in the retirement relation restricted
@@ -301,7 +335,8 @@ before the coupled step.
 - [ ] **Task 5.3: Re-point the consumers and delete the old index.** `bucketKey` buckets from
   derived state and `statusOrder` orders on the derived bucket; `awf context`'s annotation path
   (`context.go:133`, `:269`, `:282`) queries the model; `SupersessionIndex`, `Override`, and
-  `Override.Label` are deleted.
+  `Override.Label` are deleted, their ACTIVE.md use replaced by the model's chain query from
+  Task 5.1.
 
   *Post-check*:
 
@@ -323,100 +358,123 @@ before the coupled step.
   feat(adr-system): derive supersession state from anchor coverage
   ```
 
-## Phase 6 (coupled, single commit): schema removal, coverage checks, migration, retrofit
+## Phase 6 (coupled, single commit): schema removal, checks, migration, retrofit, rendering
 
-**Why this cannot be sliced.** Deleting `supersedes:`/`superseded_by:` from the schema makes
-`supersession-keys-refused` fail on every ADR that still carries them, and the migration that
-strips them is part of the same change. Landing the migration first leaves it unreachable and the
-dead-code gate refuses it; landing the schema removal first leaves the tree red. This repo's corpus
-retrofit is in the same commit for the same reason. Tasks 6.1 to 6.6 share one closing commit.
+**Why this cannot be sliced.** Registering `{To: 12, ...}` makes `migrate.Current()`
+(`internal/migrate/migrate.go:46`) report 12 while this repo's lock says 11, and the
+binary-version gate (`cmd/awf/gate.go:43`) then refuses every gated command until `awf upgrade`
+runs. But the upgrade strips the very keys `computeSupersession`'s reverse-symmetry half
+(`supersession.go:155-157`) still reads, so the checks must go in the same change. Deleting the
+`SupersededBy` field likewise breaks `domain.go:38-39` and `internal/testsupport`, so the domain
+rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing commit.
 
 - [ ] **Task 6.1: Add the coverage-versus-status check.** Per ADR-0128 items 3 and 4: fail when a
   `Covered` ADR is not `Superseded`, naming the covering carriers, and when a `Superseded` ADR has
-  an uncovered anchor, naming the anchor. Retire the proof markers for
-  `supersession-full-symmetry`, `supersession-flavour-exclusive`, and
-  `supersession-conflict-advisory`; add `supersession-coverage-derives-status`,
-  `supersession-coverage-implemented-only`, `supersession-contested-anchor-advisory`, and
-  `refines-token-never-covers`.
+  an uncovered anchor, naming the anchor. Add proof markers for
+  `supersession-coverage-derives-status`, `supersession-coverage-implemented-only`,
+  `supersession-contested-anchor-advisory`, and `refines-token-never-covers`. Leave the existing
+  markers for `supersession-full-symmetry` (`supersession_test.go:191`),
+  `supersession-flavour-exclusive` (`:372`), and `supersession-conflict-advisory` (`:389`) in
+  place; they are removed in Task 7.3 for the reason Task 4.3 records.
 
-- [ ] **Task 6.2: Add `supersession-keys-refused` and delete the superseded checks.**
-  `computeSupersession`'s forward and reverse symmetry halves (`supersession.go:138-166`) and
-  `adr-token-exclusive` (`:174-177`) go. `adr-retired-key` (`:39-61`) stays and gains a sibling
+- [ ] **Task 6.2: Add `supersession-keys-refused` and delete the superseded checks.** Delete
+  `computeSupersession`'s `claimants` map build (`supersession.go:122-129`, which reads
+  `a.Supersedes` and feeds only the reverse-symmetry half), both symmetry halves (`:138-166`), and
+  `adr-token-exclusive` (`:174-177`). `adr-retired-key` (`:39-61`) stays and gains a sibling
   raw-frontmatter scan for the two removed keys.
 
-- [ ] **Task 6.3: Remove the keys from the parser and every template.** Drop `SupersededBy` and
-  `Supersedes` from `ADR` and `adrFrontmatter`; remove both lines from
-  `.awf/parts/adr-template/frontmatter.md`, `templates/adr-template/template.md.tmpl`, and
-  `examples/sundial/docs/decisions/template.md`.
+- [ ] **Task 6.3: Remove the keys from the parser, the model, the templates, and testsupport.**
+  Drop `SupersededBy` and `Supersedes` from `ADR` and `adrFrontmatter`, and delete Task 5.1's
+  transitional chain branch. Remove both lines from `.awf/parts/adr-template/frontmatter.md`,
+  `templates/adr-template/template.md.tmpl`, and `examples/sundial/docs/decisions/template.md`.
+  Delete `WithSupersededBy` and `WithSupersedes` from `internal/testsupport/testsupport.go:101-110`
+  and update their callers in `internal/project/supersession_test.go`,
+  `internal/adr/domain_test.go`, `internal/adr/adr_test.go`, and
+  `internal/testsupport/testsupport_test.go`.
 
-- [ ] **Task 6.4: Add `internal/migrate/supersessionkeys.go` as generation 12.** Register
+- [ ] **Task 6.4: Rewrite the domain index and the ACTIVE.md chains.** Per ADR-0129 item 5, a
+  domain entry for an ADR with claimed anchors names the claiming ADR numbers and no individual
+  anchor, replacing `domain.go:38-41`'s `SupersededBy` arrow, which no longer has a field to read.
+  Per ADR-0129 item 6, render a `Covered` ADR against every ADR that retired one of its anchors;
+  the `Superseded` bucket entry line stays a bare roster by design. Mark
+  `// invariant: domain-index-surfaces-partial` and `// invariant: active-md-chains-one-to-many`.
+
+- [ ] **Task 6.5: Add `internal/migrate/supersessionkeys.go` as generation 12.** Register
   `{To: 12, Name: "supersession-keys", Apply: applySupersessionKeys}` in
-  `internal/migrate/migrate.go` after the existing `{To: 11, ...}` entry. The migration runs in
-  this order: rewrite every pre-existing inline item token to the refinement relation against the
-  pre-append body; strip both keys; then for each ADR that carried a non-empty `supersedes:`,
-  append one bookkeeping Decision item carrying a retirement token per anchor of each named
-  predecessor, insert the carrier's number into each target's `related:` when absent, and rewrite
-  each predecessor's suffixed status to bare `Superseded`. The order is load-bearing: reversed, the
+  `internal/migrate/migrate.go` after the `{To: 11, ...}` entry. The migration runs in this order:
+  rewrite every pre-existing inline item token to the refinement relation against the pre-append
+  body; strip both keys; then for each ADR that carried a non-empty `supersedes:`, append one
+  bookkeeping Decision item carrying a retirement token per anchor of each named predecessor,
+  insert the carrier's number into each target's `related:` when absent, and rewrite each
+  predecessor's suffixed status to bare `Superseded`. The order is load-bearing: reversed, the
   rewrite would downgrade the retirement tokens the append had just written and deliver the three
   legacy pairs into a coverage failure. Idempotency rests on the generation gate. Mark
   `// invariant: upgrade-migrates-supersession-keys`.
 
-- [ ] **Task 6.5: Run the migration over this repo's corpus and hand-correct.** Run
-  `./x build && ./awf upgrade`. Then hand-correct ADR-0128's item-1 token back to the retirement
-  relation: it is a genuine retirement, and the mechanical downgrade is deliberately conservative
-  per ADR-0128 item 8. Confirm ADR-0129's `ADR-0120#10` token is now a refinement, which ADR-0129
-  item 6 requires before that ADR reaches `Implemented`.
+  The `related:` insertion is genuinely needed: ADR-0003's `related:` is `[2, 30]`, ADR-0031's is
+  `[8]`, and ADR-0113's is `[82, 112]`, none of which names its claimant.
 
-- [ ] **Task 6.6: Verify and commit.** `./x sync && ./x check` must report `awf check: clean`, and
-  `./x gate` must pass. Confirm nothing derived `Superseded` unintentionally:
+- [ ] **Task 6.6: Run the migration over this repo's corpus.** Run `./x build && ./awf upgrade`.
+
+- [ ] **Task 6.7: Hand-correct ADR-0128's retirement token.** In
+  `docs/decisions/0128-coverage-derived-adr-supersession.md`, Decision item 1, the migration will
+  have rewritten the inline token `supersedes: ADR-0120#3` to the refinement form. Change it back
+  to the retirement form: it is a genuine retirement, and the mechanical downgrade is deliberately
+  conservative per ADR-0128 item 8. Leave both `supersedes-invariant:` slug tokens in that same
+  item untouched; the migration does not rewrite slug tokens. Confirm that ADR-0128's tokens on
+  `ADR-0120#4` and `ADR-0120#5`, and ADR-0129's token on `ADR-0120#10`, all remain in the
+  refinement form, which is what ADR-0128 lines 94-99 and ADR-0129 item 6 require.
+
+- [ ] **Task 6.8: Verify and commit.** `./x sync && ./x check` must report `awf check: clean`, and
+  `./x gate` must pass. Confirm the status rewrite happened and nothing derived `Superseded`
+  unintentionally:
 
   ```
-  grep -l '^status: Superseded' docs/decisions/*.md | wc -l
+  grep -c '^status: Superseded$' docs/decisions/*.md | grep -v ':0' | wc -l
   ```
 
-  Expected output: `3` (ADR-0003, ADR-0031, ADR-0113 only, matching the pre-migration full pairs).
+  Expected output: `3` (ADR-0003, ADR-0031, ADR-0113 only). And:
+
+  ```
+  grep -l '^status: Superseded by' docs/decisions/*.md | wc -l
+  ```
+
+  Expected output: `0`
 
   ```commit
   feat(adr-system): derive full supersession from anchor coverage
   ```
 
-## Phase 7: Rendering
+## Phase 7: Documentation and the status flips
 
-- [ ] **Task 7.1: Bound the domain-index partial annotation.** Per ADR-0129 item 5, a domain entry
-  for an ADR with claimed anchors names the claiming ADR numbers and no individual anchor. Replace
-  `domain.go:38-41`'s `SupersededBy` arrow, which no longer has a field to read. Mark
-  `// invariant: domain-index-surfaces-partial`.
-
-- [ ] **Task 7.2: Make ACTIVE.md chains one-to-many.** Per ADR-0129 item 6, render a `Covered` ADR
-  against every ADR that retired one of its anchors. The `Superseded` bucket entry line stays a
-  bare roster by design. Mark `// invariant: active-md-chains-one-to-many`.
-
-- [ ] **Task 7.3: Verify and commit.** `./x sync` produces a large diff across
-  `docs/decisions/ACTIVE.md` and every `docs/domains/*.md`; stage it alongside the code. `./x gate`.
-
-  ```commit
-  feat(rendering): surface partial supersession in every index
-  ```
-
-## Phase 8: Documentation and the status flips
-
-- [ ] **Task 8.1: Update the authored prose.** The supersession section of
+- [ ] **Task 7.1: Update the authored prose.** The supersession section of
   `templates/adr-readme/README.md.tmpl` (two flavours become one relation plus refinement), the
   `supersedence-full` and `supersedence-partial` sections of
   `templates/skills/adr-lifecycle/SKILL.md.tmpl`, the back-pointer and supersession-token entries
   in `docs/glossary.md`, and `.awf/domains/parts/adr-system/current-state.md`, which still
   describes the scalar back-pointer, the three-way symmetry, and chains-as-pairs.
 
-- [ ] **Task 8.2: Record the token-example pitfall.** Add to `docs/pitfalls.md` that a token quoted
+- [ ] **Task 7.2: Record the token-example pitfall.** Add to `docs/pitfalls.md` that a token quoted
   as an example inside an ADR's Decision section parses as a real claim and demands a back-pointer
   from the cited target; the grammar has no escape for examples. This surfaced while writing
   ADR-0128 and cost one `awf check` failure.
 
-- [ ] **Task 8.3: Flip the statuses.** Set ADR-0128, ADR-0129, and ADR-0130 to `Implemented` and
-  this plan to `Implemented`, in this commit. The three ADRs' retirement tokens take effect at this
-  moment, so `./x check` here is the first run in which the retired ADR-0120 slugs stop being owed.
+- [ ] **Task 7.3: Flip the statuses and remove every retired proof marker, in one commit.** Set
+  ADR-0128, ADR-0129, and ADR-0130 to `Implemented` and this plan to `Implemented`. In the same
+  commit remove the proof markers for the five slugs these ADRs retire, which take effect only now
+  that their carriers are `Implemented`:
 
-- [ ] **Task 8.4: Verify and commit.** `./x sync && ./x check && ./x gate full`.
+  - `supersession-full-symmetry`, `internal/project/supersession_test.go:191`
+  - `supersession-backpointer`, `internal/project/supersession_test.go:344`
+  - `supersession-flavour-exclusive`, `internal/project/supersession_test.go:372`
+  - `supersession-conflict-advisory`, `internal/project/supersession_test.go:389`
+  - `active-md-supersedence-rendering`, `internal/adr/adr_test.go:144`, and its
+    `touches-invariant:` marker at `internal/adr/adr.go:260`
+
+  Removing any of these earlier fails the gate; leaving any of them now makes it a dangling marker
+  naming a slug no Implemented ADR declares.
+
+- [ ] **Task 7.4: Verify and commit.** `./x sync && ./x check && ./x gate full`.
 
   ```commit
   docs(adr): implement 0128, 0129, and 0130
@@ -425,25 +483,28 @@ retrofit is in the same commit for the same reason. Tasks 6.1 to 6.6 share one c
 ## Verification
 
 - `./x gate full` passes and `awf check` reports `clean` with no drift and no invariant issues.
-- `grep -rn 'adr\.ParseDir' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l` returns `1`.
+- `grep -rn 'adr\.ParseDir(' --include='*.go' internal/ cmd/ | grep -v _test.go | wc -l` returns
+  `3`: one real call site plus the two `coverage-ignore` comment lines at `check.go:454` and `:459`.
 - `grep -rn 'SupersessionIndex\|adr\.Override' --include='*.go' internal/ cmd/ | wc -l` returns `0`.
 - No file under `docs/decisions/` carries `supersedes:` or `superseded_by:` in frontmatter.
-- Exactly three ADRs carry `status: Superseded`, matching the pre-migration full pairs.
+- Exactly three ADRs carry the bare `status: Superseded`, and none carries the suffixed form.
 - `./awf upgrade` on an already-migrated tree reports no migrations applied.
-- Every invariant declared across ADR-0128, ADR-0129, and ADR-0130 has a proof marker, confirmed by
-  `./x check` reporting `awf invariants: clean`.
+- All 21 invariants declared across the three ADRs have proof markers, and no marker names a
+  retired slug, confirmed by `./x check` reporting `awf invariants: clean`.
 
 ## Notes
 
-- Phase 6 is the only shared-commit group. If Phase 5's model turns out to need the schema gone
-  before it can be built cleanly, merge Phase 5 into the Phase 6 group rather than splitting
-  Phase 6 further.
+- Phase 6 is the only shared-commit group, and it absorbed what were originally two separate
+  rendering tasks: deleting `SupersededBy` breaks `domain.go` and the ACTIVE.md chain path in the
+  same compile, so they cannot follow in a later phase.
+- The invariant-retirement rule caught this plan out once already: retirements apply only from an
+  `Implemented` carrier, so every marker for a retired slug survives until Task 7.3 even though its
+  code dies in Phase 4 or 6. Re-read `internal/invariants/invariants.go:174-176` before touching a
+  marker.
 - `internal/project/supersession.go` carries roughly 58 of the effort's ~90 field reads and is
-  touched by all three ADRs. It is the riskiest single file; if a phase runs long it will be one
-  that touches it.
-- The generation is 11 to 12, not 10 to 11: ADR-0127's `drop-audit-base` took 10 to 11 on
-  2026-07-18. Re-derive the head from `internal/migrate/migrate.go`'s registry before writing the
-  migration rather than trusting this line.
+  touched by all three ADRs. It is the riskiest single file.
+- The generation is 11 to 12: ADR-0127's `drop-audit-base` took 10 to 11 on 2026-07-18. Re-derive
+  the head from `internal/migrate/migrate.go`'s registry rather than trusting this line.
 - ADR-0130 items 4 and 5 (identity key, audit seam) are separable, as that ADR's Consequences
-  records. If the effort needs to shrink, Phase 3 is the one to defer; nothing in Phases 4 to 8
+  records. If the effort needs to shrink, Phase 3 is the one to defer; nothing in Phases 4 to 7
   depends on it.
