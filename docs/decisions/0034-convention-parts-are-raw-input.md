@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-29
 tags: [convention-parts, section-assembly]
-related: [1, 15, 57, 121]
+related: [1, 15, 57, 121, 131]
 domains: [rendering]
 ---
 # ADR-0034: Convention Parts Are Raw Input

@@ -2,6 +2,7 @@ package adr_test
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -145,5 +146,70 @@ func TestMultiGenerationChain(t *testing.T) {
 	}
 	if got := c.Retirers("0003"); len(got) != 1 || got[0] != "0002" {
 		t.Errorf("ADR-0003 retirers = %v, want [0002] - a Superseded carrier still retires", got)
+	}
+}
+
+// TestCitesTokenIsUncounted pins the citation token's inertness in the coverage
+// model: ADR-0002 names every one of ADR-0001's anchors, but only cites them, so
+// ADR-0001 keeps every anchor and stays live. A negative relation filter
+// anywhere in the coverage path would read these as retirements and kill a live
+// ADR, which is the failure this pins.
+//
+// It drives both keys deliberately. `cites-invariant:` has no corpus instance -
+// every real citation is item-anchored - so without a synthetic slug-anchored
+// token citesInvRe would be executed but never behaviourally exercised, and a
+// mistake in it would not fail.
+// invariant: cites-token-uncounted
+func TestCitesTokenIsUncounted(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2),
+			testsupport.WithBody("## Decision\n\n1. a.\n\n## Invariants\n\n- `invariant: a-slug` - x.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-carrier.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+			testsupport.WithBody("## Decision\n\n1. Mentions `cites: ADR-0001#1` and `cites-invariant: ADR-0001#a-slug`.\n")))
+	c := mustCorpus(t, dir)
+
+	if got := c.State("0001"); got != adr.StateLive {
+		t.Errorf("ADR-0001 state = %q, want Live - a citation retires nothing", got)
+	}
+	if got := c.Retirers("0001"); len(got) != 0 {
+		t.Errorf("ADR-0001 retirers = %v, want none - a citation is not a retirement", got)
+	}
+	// Both tokens must actually have parsed, or the assertions above would pass
+	// vacuously against a corpus that simply saw no tokens at all.
+	var relations []adr.Relation
+	for _, claim := range c.ClaimsOn("0001") {
+		relations = append(relations, claim.Relation)
+	}
+	if len(relations) != 2 || relations[0] != adr.Cites || relations[1] != adr.Cites {
+		t.Fatalf("claims on ADR-0001 = %v, want two Cites claims - both keys must parse", relations)
+	}
+}
+
+// TestCitesTokenIsUnrendered pins that a citation reaches neither rendered
+// surface. AnnotatedAnchors is the sole seam: RenderActiveMD and awf context
+// both consume it, and Claim.Verb renders anything that is not Refines as
+// "superseded by", so an unfiltered citation would render as a retirement it
+// never claimed.
+// invariant: cites-token-unrendered
+func TestCitesTokenIsUnrendered(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2),
+			testsupport.WithBody("## Decision\n\n1. a.\n\n## Invariants\n\n- `invariant: a-slug` - x.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-carrier.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+			testsupport.WithBody("## Decision\n\n1. Mentions `cites: ADR-0001#1` and `cites-invariant: ADR-0001#a-slug`.\n")))
+	c := mustCorpus(t, dir)
+
+	if got := c.AnnotatedAnchors(); len(got) != 0 {
+		t.Errorf("AnnotatedAnchors = %v, want none - a citation annotates nothing", got)
+	}
+	out := adr.RenderActiveMD(c)
+	for _, unwanted := range []string{"Superseded anchors on live ADRs", "superseded by", "refined by"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("ACTIVE.md contains %q over a cites-only corpus:\n%s", unwanted, out)
+		}
 	}
 }

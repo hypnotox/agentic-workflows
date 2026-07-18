@@ -297,6 +297,13 @@ func (c Corpus) AnnotatedAnchors() []Claim {
 			continue
 		}
 		for _, claim := range c.ClaimsOn(a.Number) {
+			// A citation claims nothing, so it annotates nothing (ADR-0131
+			// item 4). This is the sole seam: Verb() renders anything that is
+			// not Refines as "superseded by", so an unfiltered Cites claim
+			// would read as a retirement in both consumers.
+			if claim.Relation == Cites {
+				continue
+			}
 			// A claim from a Superseded carrier is not annotation-worthy: the
 			// carrier's own record is dead.
 			if carrier, ok := c.byNum[claim.Carrier]; ok && !carrier.IsSuperseded() {

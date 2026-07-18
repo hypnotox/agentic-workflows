@@ -55,10 +55,12 @@ type SupersessionRef struct {
 	CarrierItem int
 }
 
-// Relation distinguishes ADR-0128 item 2's two claims on an anchor. A
+// Relation distinguishes the three claims an ADR can record on an anchor. A
 // retirement replaces the anchor and counts toward the target's coverage; a
 // refinement adapts it and counts toward nothing, so an ADR whose items have
-// only ever been refined is still live.
+// only ever been refined is still live; a citation claims nothing at all and
+// exists only to mark the reference informational (ADR-0128 item 2 for the
+// first two, ADR-0131 item 4 for the third).
 //
 // The split is corpus-driven: of the 37 pre-existing item tokens, 22 were
 // refinements and only 13 genuine retirements. ADR-0034 item 1 is the live
@@ -72,6 +74,10 @@ const (
 	Retires Relation = "retires"
 	// Refines is `refines:`, items only.
 	Refines Relation = "refines"
+	// Cites is `cites:`: an informational citation asserting no claim on the
+	// anchor. It contributes to nothing and exists only to suppress the
+	// citation check (ADR-0131 item 4).
+	Cites Relation = "cites"
 )
 
 var (
@@ -83,6 +89,15 @@ var (
 	// refinesItemRe mirrors itemRefRe for the refinement relation (ADR-0128
 	// item 2). Items only: a slug anchor is atomic and cannot be adapted.
 	refinesItemRe = regexp.MustCompile("`refines: ADR-([0-9]{4})#([1-9][0-9]*)`")
+	// citesItemRe / citesInvRe mark a citation informational (ADR-0131 item 4).
+	// Inert: parsed so the citation check can see them, counted toward no
+	// anchor's coverage, rendered nowhere. Two keys, exactly as itemRefRe and
+	// invRefRe are two keys - the kind is named by the key, never inferred from
+	// the anchor (ADR-0120 item 1). One key with two anchor patterns would
+	// double-match, since [a-z0-9-]+ matches digits: an item-anchored citation
+	// would also emit a phantom slug anchor and fail the token-ref check.
+	citesItemRe = regexp.MustCompile("`cites: ADR-([0-9]{4})#([1-9][0-9]*)`")
+	citesInvRe  = regexp.MustCompile("`cites-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
 	// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
 	// anchoring is load-bearing: 0067 and 0115 carry indented numbered
 	// sub-lists that must not enumerate (ADR-0120 item 2).
@@ -113,6 +128,8 @@ func parseRefs(decision string) []SupersessionRef {
 	collect(itemRefRe, Retires, false)
 	collect(refinesItemRe, Refines, false)
 	collect(invRefRe, Retires, true)
+	collect(citesItemRe, Cites, false)
+	collect(citesInvRe, Cites, true)
 	return refs
 }
 
