@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-18
 tags: [adr-lifecycle, adr-parsing, frontmatter-validation, invariant-retirement, schema-migration]
-related: [8, 10, 14, 35, 42, 105, 116, 120, 129, 130]
+related: [8, 10, 14, 35, 42, 105, 116, 120, 129, 130, 131]
 domains: [adr-system, invariants, config]
 ---
 # ADR-0128: Coverage-Derived ADR Supersession

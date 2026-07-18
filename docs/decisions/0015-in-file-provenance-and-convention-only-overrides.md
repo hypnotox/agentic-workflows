@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-26
 tags: [provenance-markers, convention-parts]
-related: [1, 6, 9, 10, 11]
+related: [1, 6, 9, 10, 11, 131]
 domains: [rendering, config]
 ---
 # ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides

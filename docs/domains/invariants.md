@@ -33,6 +33,10 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 - [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
 
+### Proposed
+
+- [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md)
+
 ### Superseded
 
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120

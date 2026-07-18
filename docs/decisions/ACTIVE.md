@@ -132,6 +132,10 @@
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Implemented)
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Implemented)
 
+## Proposed
+
+- [ADR-0131: Complete and Self-Enforcing Supersession Records](0131-complete-and-self-enforcing-supersession-records.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded)
@@ -152,9 +156,10 @@
 - ADR-0002: item 5 refined by ADR-0101
 - ADR-0007: item 3 refined by ADR-0008
 - ADR-0008: item 4 refined by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
-- ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015
+- ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015; slug `config-root` superseded by ADR-0131; slug `parts-convention` superseded by ADR-0131
 - ADR-0013: slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
-- ADR-0016: item 6 refined by ADR-0076; slug `target-output-paths` superseded by ADR-0037
+- ADR-0015: item 6 refined by ADR-0131
+- ADR-0016: item 6 refined by ADR-0076; item 7 refined by ADR-0131; slug `target-output-paths` superseded by ADR-0037
 - ADR-0017: item 5 refined by ADR-0127; item 7 refined by ADR-0127
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
 - ADR-0024: item 1 refined by ADR-0093; item 6 refined by ADR-0093
@@ -181,3 +186,4 @@
 - ADR-0120: item 3 superseded by ADR-0128; item 4 refined by ADR-0128; item 5 refined by ADR-0128; item 10 refined by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128
 - ADR-0122: item 3 refined by ADR-0123; item 4 refined by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
 - ADR-0123: item 2 refined by ADR-0125; item 3 refined by ADR-0125; item 4 refined by ADR-0125; item 5 refined by ADR-0125; item 7 refined by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125
+- ADR-0128: item 2 refined by ADR-0131

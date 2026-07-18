@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-26
 tags: [target-seam, multi-target]
-related: [4, 9, 10, 15, 37, 76]
+related: [4, 9, 10, 15, 37, 76, 131]
 domains: [config, tooling, rendering]
 ---
 # ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter
