@@ -56,8 +56,13 @@ that commit, however dead the code it marks becomes.
   `examples/sundial/docs/decisions/template.md`
 - **Regenerated output committed alongside its source:** `docs/glossary.md`, `docs/pitfalls.md`,
   `docs/architecture.md`, `docs/domains/adr-system.md`, `docs/domains/invariants.md`,
-  `docs/decisions/ACTIVE.md`, and the rendered skill and agent files. None of these is hand-edited;
-  each carries the generated banner and is produced by `./x sync` from the sources above.
+  `docs/decisions/ACTIVE.md`, `docs/decisions/README.md`, the rendered skill and agent files, and
+  the whole `examples/sundial/` rendered tree (its ADR README and template, plus the skill and
+  agent renders under `.claude/`, `.agents/`, and `.github/`, once per enabled target). None of
+  these is hand-edited; each carries the generated banner and is produced by `./x sync` from the
+  sources above.
+- **Migrated by `awf upgrade`:** every file under `docs/decisions/` and under
+  `examples/sundial/docs/decisions/`.
 - **Deleted:** `SupersessionIndex`, `Override`, and `Override.Label` from `internal/adr/adr.go`;
   `statusOf` and `domainsOf` from `internal/audit/audit.go`; `WithSupersededBy` and
   `WithSupersedes` from `internal/testsupport/testsupport.go`
@@ -441,7 +446,11 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   The `related:` insertion is genuinely needed: ADR-0003's `related:` is `[2, 30]`, ADR-0031's is
   `[8]`, and ADR-0113's is `[82, 112]`, none of which names its claimant.
 
-- [ ] **Task 6.6: Run the migration over this repo's corpus.** Run `./x build && ./awf upgrade`.
+- [ ] **Task 6.6: Run the migration over both corpora.** Run `./x build && ./awf upgrade`, then
+  `(cd examples/sundial && ../../awf upgrade)`. The committed example adopter is not optional
+  here: `x:57` runs `awf check` inside `examples/sundial` as part of `./x check`, and all three of
+  its ADRs carry `supersedes: []` / `superseded_by: ""`, so Task 6.2's `supersession-keys-refused`
+  fails Task 6.8's own verify step until sundial is migrated too.
 
 - [ ] **Task 6.7: Hand-correct ADR-0128's retirement token.** In
   `docs/decisions/0128-coverage-derived-adr-supersession.md`, Decision item 1, the migration will
@@ -453,8 +462,20 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   refinement form, which is what ADR-0128 lines 94-99 and ADR-0129 item 6 require.
 
 - [ ] **Task 6.8: Verify and commit.** `./x sync && ./x check` must report `awf check: clean`, and
-  `./x gate` must pass. Confirm the status rewrite happened and nothing derived `Superseded`
-  unintentionally:
+  `./x gate` must pass. Stage the regenerated `docs/domains/adr-system.md`,
+  `docs/domains/invariants.md`, `docs/decisions/ACTIVE.md`, every migrated file under
+  `docs/decisions/`, and the migrated `examples/sundial/docs/decisions/` tree alongside their
+  sources; the repo forbids `git add -A`, so each path is staged explicitly.
+
+  Confirm the adopter tree migrated:
+
+  ```
+  grep -rn '^supersedes:\|^superseded_by:' examples/sundial/docs/decisions/
+  ```
+
+  Expected output: none.
+
+  Confirm the status rewrite happened and nothing derived `Superseded` unintentionally:
 
   ```
   grep -c '^status: Superseded$' docs/decisions/*.md | grep -v ':0' | wc -l
@@ -482,12 +503,19 @@ rendering and the test helpers come too. Tasks 6.1 to 6.8 share one closing comm
   - `templates/adr-readme/README.md.tmpl`: the supersession section, where two flavours become one
     relation plus refinement.
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl`: the `supersedence-full` and
-    `supersedence-partial` sections.
+    `supersedence-partial` sections, and also the `transitions` section (line 29) and
+    `procedure-predecessor-flip` (line 71), both of which still instruct the author to write the
+    suffixed `Superseded by ADR-NNNN` form that ADR-0128 item 4 retires. Replace it with the bare
+    `Superseded` status and item 4's trigger: the commit that brings the final covering carrier to
+    `Implemented`.
   - `templates/skills/proposing-adr/SKILL.md.tmpl`: line 31 lists `supersedes` and `superseded_by`
     as **required** frontmatter and line 49 tells the author to fill `supersedes`. After Phase 6
     those are keys `awf check` refuses, so the chain's own authoring skill would be instructing
-    every author to write a failing ADR. Also update its partial-supersedence description, which
-    predates the retirement/refinement split.
+    every author to write a failing ADR. Lines 33 (`Predecessor flip`) and 57 (procedure step 4)
+    likewise still say to write `status: Superseded by ADR-NNNN` "if fully superseding an earlier
+    ADR"; rewrite both to the bare `Superseded` status and ADR-0128 item 4's coverage-completion
+    trigger. Also update its partial-supersedence description, which predates the
+    retirement/refinement split.
   - `.awf/agents/adr-reviewer.yaml`: its lens checks only for a `supersedes:`/`supersedes-invariant:`
     token on a partial override "of a live ADR". Teach it both relations, drop the live-target
     restriction per ADR-0128 item 5, and add the rationale-site check ADR-0128 item 9 delegates to
