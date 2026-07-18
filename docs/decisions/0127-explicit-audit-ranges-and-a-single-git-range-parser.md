@@ -78,8 +78,9 @@ parser would entrench the drift.
    three-dot range, a multi-`..` input, and a `-`-prefixed side. All three existing call
    sites converge on it, so `cmd/repoaudit` and `cmd/awf/changelog` change without carrying
    a defect, purely to retire their duplicate implementations. Bare-base acceptance is
-   opt-in per caller rather than universal: `cmd/repoaudit` today requires a two-sided range
-   and keeps that contract, so convergence does not silently widen what it accepts.
+   opt-in per caller rather than universal: `cmd/repoaudit` rejects a *supplied* bare base
+   today and keeps that contract, so convergence does not silently widen what it accepts.
+   Its own no-argument default range is a separate question, out of scope here.
 
 6. **The terminal review passes its session range.** `awf-reviewing-impl` already derives
    `headSha` and `baseSha` (the commit before the session's first implementation commit) in
@@ -101,15 +102,18 @@ parser would entrench the drift.
 
 8. **The rendered sources that invoke or describe the audit are updated in the same commit.**
    `.awf/docs/parts/releasing/content.md` (whose `./x gate && ./x check && ./x audit` becomes
-   an erroring invocation) and `.awf/agents-doc.yaml` (which describes the audit as reporting
-   "over the branch's commits") are edited at their `.awf/` sources and re-rendered via
-   `awf sync`, per the docs-travel-with-the-change invariant.
+   an erroring invocation), `.awf/agents-doc.yaml` (which describes the audit as reporting
+   "over the branch's commits"), and `templates/skills/reviewing-impl/SKILL.md.tmpl` (whose
+   `run-audit` step Decision 6 changes) are edited at their sources and re-rendered via
+   `awf sync`, per the docs-travel-with-the-change invariant. The re-render reaches every
+   enabled target tree and `examples/sundial`, so those outputs land in the same commit.
 
 ## Invariants
 
 Backed slugs carry their `// invariant: <slug>` proof markers on `*_test.go` files (this
 repo sets `invariants.testGlobs` to `**/*_test.go`) in `internal/git` (the parser slugs),
-`cmd/awf` (the CLI refusal), and `internal/project` (the no-base-config assertion).
+`cmd/awf` (the CLI refusal), and `internal/config` with `internal/configspec` (the
+no-base-config assertion, which is about the absent key, struct field, and spec entry).
 
 - `` `invariant: audit-requires-explicit-range` ``: `awf audit` with no positional argument
   exits non-zero without evaluating any rule, and its message names both the `<base>` and
@@ -159,7 +163,7 @@ Converging `cmd/repoaudit` and `cmd/awf/changelog` on the shared parser touches 
 that have no reported defect. The risk is accepted because the alternative is a fourth
 divergent parser, and because the shared contract is the strictest of the three on every
 guard while preserving each caller's existing arity (bare-base acceptance is opt-in, so
-`cmd/repoaudit` keeps requiring a two-sided range).
+`cmd/repoaudit` keeps rejecting a supplied bare base).
 
 ## Alternatives Considered
 
