@@ -1,8 +1,8 @@
 ## Components
 
-- **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `enable`, `disable`, `new`,
-  `audit`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`, `changelog`, `version`
-  subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+- **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
+  `disable`, `new`, `audit`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
+  `changelog`, `version` subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
@@ -63,11 +63,22 @@
 - **`internal/coverage/`**: merges the gate's cover profile and enforces the
   `// coverage-ignore: <reason>` contract for `cmd/covercheck` (ADR-0012). Repo-only, not part
   of the rendered standard.
+- **`internal/testsupport/`**: shared test helpers and the `gitfixture/` in-memory repo builder;
+  the dead-code gate's reachability rule names it explicitly, so a helper reachable only from here
+  still counts as dead production code (ADR-0063). Repo-only, not part of the rendered standard.
+- **`internal/evals/`**: test-only chain and fixture evaluations over `internal/catalog`.
+  Repo-only, not part of the rendered standard.
 - **`internal/frontmatter/`**: the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`**: parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
   frontmatter, and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
   `awf sync` (`./x sync`) and `awf new adr`.
+- **`internal/plan/`**: parses plan files under `docs/plans` and scaffolds new ones
+  (`ParseDir`/`NewFile`); date-prefixed rather than sequentially numbered, unlike `internal/adr`
+  (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
+- **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
+  `worktreeConfig`-extension workaround) plus tracked-path and staged-blob readers; read-only,
+  shared by `awf audit`, `awf context`, and `awf prose-gate` (ADR-0092).
 - **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional

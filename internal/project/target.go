@@ -145,8 +145,9 @@ func (t Target) agentCommentStyle() render.CommentStyle {
 	return render.HTMLComment
 }
 
-// claudeTarget and cursorTarget are the built-in adapters. Adding a runtime is a
-// new Target value plus a registry entry, not a render-loop change (ADR-0037).
+// The built-in adapters are declared below and wired into targetRegistry. Adding
+// a runtime is a new Target value plus a registry entry, not a render-loop change
+// (ADR-0037, ADR-0122).
 var claudeTarget = Target{
 	Name:           "claude",
 	SkillDir:       ".claude/skills",

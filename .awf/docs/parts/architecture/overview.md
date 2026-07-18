@@ -10,8 +10,8 @@ convention part to edit (ADR-0015).
 The config tree (ADR-0009) lives under a single `.awf/` root:
 
 - **`config.yaml`**: the skeleton: `prefix`, `vars`, `invariants`, `docsDir`, and flat enable
-  arrays (`skills`, `agents`, `docs`, `targets`; a name's presence enables that artifact, or that
-  adapter runtime).
+  arrays (`skills`, `agents`, `docs`, `domains`, `targets`; a name's presence enables that artifact,
+  or that adapter runtime).
 - **`<kind>/<artifact>.yaml`**: optional per-artifact sidecars holding an artifact's structured
   `data`, its `sections` overrides (`drop`), and its `local` flag.
 - **`<kind>/parts/<artifact>/<section>.md`**: convention parts: if present, the file replaces that

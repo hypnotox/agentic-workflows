@@ -9,6 +9,8 @@ Runtime dependencies are deliberately few (see `go.mod`):
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: anchored path-glob matching behind
   `internal/pathglob` (ADR-0077).
+- **`github.com/BurntSushi/toml`**: encodes the Codex adapter's TOML agent profiles
+  (`internal/project/agent.go`).
 
 Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 `golangci-lint` (lint and format), `deadcode` (the dead-code gate, ADR-0063), and

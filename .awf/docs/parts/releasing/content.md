@@ -4,9 +4,12 @@ How to cut a release of the `awf` binary. The distribution model and its rationa
 A release is a `v*` git tag. Pushing the tag triggers `.github/workflows/release.yml`, which
 verifies the tag, `project.Version`, and changelog all pin the same release (see Versioning),
 verifies the tagged commit is on `main`, runs the full gate (`./x gate && ./x check`),
-then runs GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
+extracts the curated release notes for the tagged version (`awf changelog --version`), then runs
+GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/windows ×
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
-generate a Conventional-Commits changelog, and create the GitHub Release. Prebuilt binary download
+and create the GitHub Release whose body is those notes, passed as `--release-notes`. GoReleaser's
+own commit-derived changelog is disabled: deriving notes from commit subjects leaked internal
+commits whose scopes dodged the exclude filters (ADR-0096). Prebuilt binary download
 is the canonical install path; `go install` is the source fallback.
 
 ## Versioning

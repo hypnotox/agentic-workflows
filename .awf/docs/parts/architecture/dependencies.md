@@ -10,6 +10,8 @@
 - **`github.com/bmatcuk/doublestar/v4`**: the matcher behind `internal/pathglob`'s anchored
   full-path glob dialect: invariant source globs, dependency manifests, and domain `paths`
   all match through it (ADR-0077).
+- **`github.com/BurntSushi/toml`**: encodes and decodes the Codex adapter's TOML agent profiles
+  (`internal/project/agent.go`, the `codex` target's `TOMLAgentDialect`).
 - **`golangci-lint`**: pinned as a `go tool` dependency and run by the gate (`./x gate`); this
   repo only, not part of the rendered standard.
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
@@ -17,7 +19,8 @@
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
 - **Pi coding-agent/TUI 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi
   extension at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The test package pins coding-agent and Pi TUI directly at the minimum version.
+  of the awf binary. The test package pins pi-ai, pi-coding-agent, pi-tui, and TypeBox directly at
+  the minimum version, rather than resolving any of them transitively.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`

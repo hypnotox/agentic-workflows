@@ -2,7 +2,8 @@
 
 The gate is one command (`./x gate`) that must be green before every commit. Here it runs the
 profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
-(`cmd/covercheck`, ADR-0012), `go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), the
+(`cmd/covercheck`, ADR-0012), the containerized Pi-extension strict type check and its 100%
+line/function/branch coverage floor (ADR-0123, ADR-0126), `go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), the
 workflow-pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan (`awf prose-gate`, ADR-0119, opt-in
 for adopters and enabled here). Every step is deterministic: same tree in, same verdict out.
 
