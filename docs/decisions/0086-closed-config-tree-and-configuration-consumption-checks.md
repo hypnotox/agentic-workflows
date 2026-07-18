@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-10
 tags: [closed-config-tree, sidecar-fields]
-related: [11, 22, 45, 68, 69, 70, 76, 77, 81, 83]
+related: [11, 22, 45, 68, 69, 70, 76, 77, 81, 83, 88]
 domains: [config, rendering]
 ---
 # ADR-0086: Closed config tree and configuration-consumption checks

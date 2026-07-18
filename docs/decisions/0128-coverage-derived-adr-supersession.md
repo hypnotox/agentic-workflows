@@ -81,7 +81,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    item 5 of ADR-0017 "for its baseBranch field only; ADR-0017 stays live", which is
    a refinement wearing a retirement's name. Without the distinction, coverage would count
    those 22 toward killing ADRs that are demonstrably alive, and there is already a corpus
-   case where that misfires: ADR-0034 item 1 was refined by ADR-0057 and only genuinely
+   case where that misfires: ADR-0034 item 1 (`cites: ADR-0034#1`) was refined by ADR-0057 and only genuinely
    retired by ADR-0121 years later, so a coverage rule blind to the difference would have
    pre-claimed a live anchor for that whole interval.
 
@@ -151,7 +151,7 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    more live ADRs' `supersedes:` tokens remains an `awf check` note: two ADRs both declaring
    an anchor dead is a genuine conflict. Refinements do not contest. Multiple `refines:`
    claims on one anchor are the normal shape of an evolving decision, and a mixed pair
-   (refined by one ADR, later retired by another) is the ADR-0034 item 1 history item 2 cites
+   (refined by one ADR, later retired by another) is the ADR-0034 item 1 (`cites: ADR-0034#1`) history item 2 cites
    as healthy; neither notes. This `refines: ADR-0120#5` and
    `supersedes-invariant: ADR-0120#supersession-flavour-exclusive`. It also
    `supersedes-invariant: ADR-0120#supersession-conflict-advisory`, which bundles both

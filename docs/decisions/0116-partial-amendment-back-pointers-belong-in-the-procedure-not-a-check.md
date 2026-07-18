@@ -94,7 +94,7 @@ would fire only on newly-added amendments and would need no corpus backfill.
 3. **Scope the obligation precisely.** The back-pointer is owed when **this** ADR overrides a
    **live** (`Accepted` or `Implemented`) predecessor's **Decision item or Invariant**. Three
    cases are deliberately outside it: a citation that does not override (ADR-0079 cites ADR-0065
-   Decision 4 informationally while amending Decision 3, and owes a back-pointer only for the
+   Decision 4 informationally (`cites: ADR-0065#4`) while amending Decision 3 (`cites: ADR-0065#3`), and owes a back-pointer only for the
    latter); an amendment of a `Proposed` ADR, which can be edited in place instead; and an edit
    that changes wording without changing meaning, such as ADR-0115's retroactive title orthography.
 

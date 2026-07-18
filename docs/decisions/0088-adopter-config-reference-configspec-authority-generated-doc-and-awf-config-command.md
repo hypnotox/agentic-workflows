@@ -125,7 +125,7 @@ Forces and grounding discoveries shaping the design:
    project-aware, rendered from configspec plus the live tree: each config key with its
    current effective value; each var with its three-way ADR-0087 state, its consumers
    (enabled artifacts whose assembled sources or `gateCmd`/`checkCmd` part placeholders
-   reference it: the ADR-0086 Decision 3 union), and, when dormant, which catalog
+   reference it: the ADR-0086 Decision 3 union, `cites: ADR-0086#3`), and, when dormant, which catalog
    artifacts would consume it if enabled; each artifact's data keys with defaults,
    overrides, and descriptions. All computed state reaches the template as dedicated data
    keys; the template never ranges `.vars` or `.data` bare. Each generated section
@@ -135,7 +135,7 @@ Forces and grounding discoveries shaping the design:
    **full regeneration** (the generated-index class), not content hashing. Prose framing
    sections remain convention-part overridable; the generated reference tables are not.
    The config-reference sidecar is accordingly sections/local-only: a non-empty `data:`
-   on it fails every gated command at project open (the ADR-0086 Decision 5 pattern);
+   on it fails every gated command at project open (the ADR-0086 Decision 5 pattern, `cites: ADR-0086#5`);
    the reference's data namespace is injected at generation, so authored `data:` would be
    silently overwritten while the injected key names make it look consumed, defeating the
    unused-data check.

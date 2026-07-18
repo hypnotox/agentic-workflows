@@ -108,7 +108,7 @@ invariant, so folding docs into the graph reaches that ADR too.
    everything upstream of it; a sink like `retrospective` pulls nearly the
    whole closure; `brainstorming`, a pure source, cascades nothing). Agents
    left with no requiring skill stay enabled (agents are legal standalone
-   (ADR-0050 Decision item 3 unchanged)) with a note, and the existing
+   (ADR-0050 Decision item 3 unchanged, `cites: ADR-0050#3`)) with a note, and the existing
    orphaned-sidecar note loops over every removed plan node.
 
 6. **`--dry-run` on add and remove** prints the computed plan without

@@ -252,6 +252,15 @@ a bug. The exemption belongs to the citation scanner alone.
   grep -ho '`cites: ADR-[0-9]\{4\}#[a-z0-9-]*`' docs/decisions/*.md | wc -l
   ```
 
+  **Amended during execution: 12 insertions, not 13, so the total is 20.** The `0108-*.md:45` row
+  of the table above is not an unencoded citation. It sits inside ADR-0108 Decision item **1**,
+  which already carries `` `refines: ADR-0097#1` `` two lines above it, and the check is scoped per
+  (carrier item, cited anchor): the anchor is encoded at that rationale site, so no finding can
+  fire and no `cites:` is owed. Inserting one would make Decision item 1 assert two contradictory
+  relations on a single anchor, which is worse than the omission it would fix. The audit that built
+  this table counted citation *occurrences* rather than distinct (item, anchor) pairs, which is why
+  the row survived three reviews.
+
   This returns `8` before the task and must return `21` after (13 insertions plus ADR-0131's 8). Do
   **not** use the looser `grep -ho 'cites: ADR-'`, which returns 9 today: it also matches the
   grammar template `cites: ADR-NNNN#<anchor>` in ADR-0131's Decision 4, which is prose, not a token.

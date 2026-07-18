@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-16
 tags: [template-residue, doc-standard]
-related: [8, 36, 39, 41, 48, 82, 86, 88, 94, 113, 115, 116, 117, 118]
+related: [8, 36, 39, 41, 48, 82, 86, 88, 94, 113, 115, 116, 117, 118, 120]
 domains: [invariants, rendering, tooling, config]
 ---
 # ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-05
 tags: [coverage-gate]
-related: [12, 63, 79, 131]
+related: [12, 63, 79, 116, 131]
 domains: [tooling]
 ---
 # ADR-0065: Two-Report Codecov Coverage Convention

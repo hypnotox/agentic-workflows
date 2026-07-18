@@ -97,7 +97,7 @@ renders no such thing. That drift is repaired by making the claim true rather th
    degrade to advisory notes on `awf check`'s note channel rather than errors, because tokens
    are immutable prose and a hard error could turn permanently red with no legal remediation:
    a token (of either kind) whose target ADR has since been fully superseded, and one anchor
-   claimed by tokens in two or more live ADRs (clause-level splits of one item are legitimate, per ADR-0119's item 7
+   claimed by tokens in two or more live ADRs (clause-level splits of one item are legitimate, per ADR-0119's item 7 (`cites: ADR-0119#7`)
    treatment). These advisories live in `awf check`, not `awf audit`: audit rules are pure over
    the commit range (ADR-0025 records the single sanctioned exception), while check has native
    corpus access. The check cannot tell a token whose target died *after* authoring from one

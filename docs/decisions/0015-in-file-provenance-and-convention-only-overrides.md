@@ -82,7 +82,7 @@ convention-only overrides is its enabling simplification.
 5. **Migration.** `awf upgrade` (ADR-0010) bumps the config-tree schema version. A sidecar still
    carrying a `replaceWith:` is migrated by relocating the referenced part to the section's
    conventional path (`.claude/awf/<kind>/parts/<target>/<section>.md`, or
-   `.claude/awf/parts/agents-doc/<section>.md` for the agents-doc singleton (ADR-0009 item 7)) and
+   `.claude/awf/parts/agents-doc/<section>.md` for the agents-doc singleton (ADR-0009 item 7, `cites: ADR-0009#7`)) and
    dropping the field. If the conventional path is already occupied by a *different* file (an
    identical file is a no-op), or the referenced part is missing, `upgrade` fails with an
    actionable message rather than silently overwriting or dropping content.

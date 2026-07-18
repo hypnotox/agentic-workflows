@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-30
 tags: [version-authority, schema-migration]
-related: [30, 40, 76]
+related: [30, 40, 49, 76]
 domains: [tooling]
 ---
 # ADR-0039: Binary-Version Compatibility Gate

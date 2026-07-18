@@ -52,7 +52,7 @@ removes the split behind failures 1 and 2.
    unconditionally. The `main.version` ldflags var and the `debug.ReadBuildInfo()` branch are
    removed as identity sources, and `.goreleaser.yaml` stops injecting `-X main.version`. Gate
    errors, the check ahead-note, the lock stamp, and the bootstrap pin all read the same value;
-   `awf sync` therefore genuinely clears an ahead-note, making ADR-0039 Decision 3's
+   `awf sync` therefore genuinely clears an ahead-note, making ADR-0039 Decision 3's (`cites: ADR-0039#3`)
    parenthetical true as written. Amends ADR-0030 Decision 4 (`refines: ADR-0030#4`; the precedence chain is retired
    with its invariant, and ADR-0030's textual contract that `.goreleaser.yaml` injects
    `main.version` lapses with it).

@@ -68,7 +68,7 @@ neither the substitution pass nor the residual guard ever fires on text that mer
 
 **Relationship to ADR-0057 and ADR-0034.** This refines ADR-0057's raw-part surface only; ADR-0057
 stays `Implemented`, recorded via `related` with no status flip. It further narrows the
-byte-for-byte promise a second time: after ADR-0057 narrowed ADR-0034 item 1's "appears verbatim"
+byte-for-byte promise a second time: after ADR-0057 narrowed ADR-0034 item 1's (`cites: ADR-0034#1`) "appears verbatim"
 clause for the sentinel, the escape adds one more narrow exception (a lone `\{{=...awf` drops its
 backslash). Neither `parts-raw` nor `part-placeholder-sandboxed` is retired (`retires_invariants:
 []`): the load-bearing "never run through `text/template`" clause stays true, and the escape is a
