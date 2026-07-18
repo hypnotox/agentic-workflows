@@ -22,8 +22,10 @@ be mechanised, so the migration maps the ambiguous old token to the reading that
 concern." That correction ran for exactly one token, ADR-0128's own `supersedes: ADR-0120#3`.
 Today all 13 `supersedes:` item tokens in the corpus are migration bookkeeping (ADR-0003 x3,
 ADR-0031 x5, ADR-0113 x4, plus that one), and **zero** of the 37 pre-existing tokens assert a
-retirement. The audit re-classified them by reading both sides of each token and found 8
-confident retirements among them, consistent with ADR-0128's own estimate.
+retirement. Re-reading both sides of each token found 8 confident retirements against ADR-0128's
+estimate of 13. The 5-token difference is residue the re-reading judged ambiguous: each has a
+target item with at least one surviving clause, so each stays `refines:` under the rule that the
+relation asserting less is correct when the reading is contested.
 
 **Roughly 40 supersession claims are stated in prose and never encoded.** They share one
 signature: the carrier ADR states the override in its Decision section, often naming the exact
@@ -44,25 +46,20 @@ carrying both `// invariant: config-root` and `// invariant: awf-config-root` wh
 `.claude/awf.yaml` decoy and asserts `Load` ignores it. The proof demonstrates the declaration is
 false.
 
-This is not an oversight. ADR-0016 Decision 7 chose it: "Both predecessors keep their
-`Implemented` status ... and their backing tests (`config-root`, ...) update in the same commit."
-ADR-0015's Consequences say the same for `parts-convention`. **The mechanism they chose was never
-available.** An invariant's declaration is prose in a frozen ADR body; ADR-0116 Decision 2 (as
-narrowed by ADR-0120 Decision 9) freezes that body's meaning once the ADR leaves `Proposed`. So
-"amend the invariant and update its test" can only ever move the test, leaving a frozen
-declaration contradicted by its own proof. Retire-and-redeclare is the only coherent option under
-append-only, and it is what ADR-0121 and ADR-0125 do correctly. ADR-0015 and ADR-0016 predate the
-token mechanism and reached for an amendment that the lifecycle does not offer.
+**The mechanism the predecessors chose was available, ran as designed, and is incoherent.**
+ADR-0016 Decision 7 commits that the predecessors' "backing tests (`config-root`, ...) update in
+the same commit"; ADR-0015 Decision 6 says "its `parts-convention` backing test is updated in
+lockstep when this ADR reaches `Implemented`." Both are test-only commitments, and both were
+executed. Neither ADR proposed amending an invariant's declaration, and neither could have: an
+invariant's declaration is prose in a frozen ADR body, and ADR-0116 Decision 2, as narrowed by
+ADR-0120 Decision 9, permits in-place edits only to `status` and cross-reference metadata.
 
-**The relation grammar cannot express every claim authors make.** `internal/adr/adr.go:71-85`
-defines three patterns: `supersedes:` (retires an item), `refines:` (adapts an item, items only),
-and `supersedes-invariant:` (retires a slug). There is no refinement form for a slug. ADR-0016
-Decision 7 says it "narrows ADR-0015 `inv: provenance-banner` only insofar as the banner text now
-names `.awf/`"; the only legal token there asserts full retirement, which is false. ADR-0128
-Decision 2 reasoned that "a slug is atomic, so narrowing one means retiring it and re-declaring a
-successor", and that holds for a slug whose *meaning* narrows. It does not cover a slug whose
-declaration is merely re-scoped by a successor while remaining in force, which is what ADR-0016
-describes.
+That is precisely the defect. Moving a proof to track new reality, while the declaration it
+proves stays frozen at the old reality, does not preserve the invariant: it produces a green
+check whose declared claim is false and whose test asserts something else. The slug survives as a
+name with two contradictory definitions, one binding on readers and one binding on CI.
+Retire-and-redeclare is the lifecycle's answer, and ADR-0121 and ADR-0125 use it correctly.
+ADR-0015 and ADR-0016 predate the token mechanism and reached for the only tool then visible.
 
 **Citation spelling is not uniform.** ADR-0105 unified the *declaration* token to `invariant:`,
 but prose citations were untouched: 87 `` `inv: <slug>` `` citations survive across 34 ADRs
@@ -87,25 +84,13 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    The retirement drops the stale slugs from owed backing, and the duplicated proof marker on
    `internal/config/config_test.go:119` is deleted so that test backs `awf-config-root` alone.
 
-   This reverses the keep-alive clause of ADR-0016 Decision 7 (`refines: ADR-0016#7`) and of
+   This reverses the test-update clause of ADR-0016 Decision 7 (`refines: ADR-0016#7`) and of
    ADR-0015 Decision 6 (`refines: ADR-0015#6`). Both items survive: their substantive override
-   claims, path relocations, and precedence collapse all stand. Only their chosen bookkeeping
-   mechanism, which the append-only rule made unavailable, is replaced.
+   claims, path relocations, and precedence collapse all stand. Only the bookkeeping instruction
+   to move a proof under a frozen declaration is replaced, by the retirement that instruction was
+   reaching for.
 
-2. **A slug gains a refinement relation: `refines-invariant: ADR-NNNN#<slug>`.** It records that
-   a successor re-scopes a declared invariant that remains in force, and counts toward nothing,
-   exactly as `refines:` does for an item. `internal/adr/adr.go` gains the pattern, `Relation`
-   gains no new constant (the existing `Refines` value carries it, keyed by token name), and
-   `coverage.go` excludes it from coverage on the same branch that excludes `refines:`.
-
-   This narrows ADR-0128 Decision 2's "`supersedes-invariant:` gains no sibling"
-   (`refines: ADR-0128#2`). That item's reasoning holds for a slug whose meaning narrows, which
-   still owes retire-and-redeclare; it did not consider a slug re-scoped by a successor while
-   remaining in force. The atomicity argument is preserved: a `refines-invariant:` claim never
-   changes what the target slug asserts, which is why it can count toward nothing and leave the
-   declaration binding.
-
-3. **`awf check` reports a supersession claim stated in prose and not encoded.** The check is
+2. **`awf check` reports a supersession claim stated in prose and not encoded.** The check is
    verb-anchored and scoped to `## Decision`: it fires when an override verb (`supersedes`,
    `overrides`, `replaces`, `reverses`, `amends`, `revises`, `narrows`, `generalizes`) occurs in
    the same Decision item as a citation of another ADR's anchor, and that Decision item carries no
@@ -117,7 +102,7 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    reference for slugs. Section scoping disambiguates the slug spellings for free: the same string
    inside `## Invariants` is a declaration, already parsed by `declRe`, and is never a citation.
 
-4. **The check is unconditional and data-driven; it ships behind no config key.**
+3. **The check is unconditional and data-driven; it ships behind no config key.**
    `internal/project/check.go` runs every check for every adopter, and AGENTS.md's "`awf check` is
    the drift oracle" invariant means the same thing in every tree. A gating key would make "check
    is clean" adopter-relative for the first time. Instead the check reports nothing when no ADR
@@ -128,12 +113,13 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    because it scans every tracked file, including prose awf does not own; this check reads only
    `docsDir/decisions`, whose grammar awf defines.
 
-5. **`cites: ADR-NNNN#<anchor>` declares a citation informational.** It joins the inline token
+4. **`cites: ADR-NNNN#<anchor>` declares a citation informational.** It joins the inline token
    family as an inert relation: recognized only inside `## Decision`, counting toward nothing,
-   surfaced nowhere. It exists because a Decision item can legitimately mention another ADR's
-   anchor without claiming it. ADR-0116 Decision 3 names the case (ADR-0079 "cites ADR-0065
-   Decision 4 informationally while amending Decision 3"), and third-party narration is another:
-   ADR-0058 recounts that "ADR-0057 narrowed ADR-0034 item 1" without itself claiming that anchor.
+   surfaced in no ACTIVE.md or `awf context` rendering. It exists because a Decision item can
+   legitimately mention another ADR's anchor without claiming it. ADR-0116 Decision 3 names the
+   case (ADR-0079 "cites ADR-0065 Decision 4 informationally while amending Decision 3"), and
+   third-party narration is another: ADR-0058 recounts that "ADR-0057 narrowed ADR-0034 item 1"
+   without itself claiming that anchor.
 
    A comment-shaped marker was rejected for this. ADR-0121's `<!-- awf:comment -->` is a
    whole-line directive stripped at ingestion, so it cannot mark a mid-sentence citation, and
@@ -141,7 +127,7 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    token family keeps one grammar and lets the corpus view carry the suppression as parsed data
    rather than an out-of-band regex.
 
-6. **Four citation classes are exempt by construction, not by marker.** The check never demands a
+5. **Four citation classes are exempt by construction, not by marker.** The check never demands a
    token when the cited target is `Proposed` (ADR-0120 Decision 2 forbids the token outright, so
    demanding one would red a second check), when the citation is a self-citation (already a
    `GraphFaults` report), when the cited invariant bullet carries no slug (ADR-0001's bullets are
@@ -155,6 +141,15 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    untokenized; the alternative, appending a bookkeeping item under ADR-0120 Decision 9's shape 2,
    is available to an author who judges a specific case worth it, and is not required here.
 
+6. **The `adr-reviewer` doc-currency lens remains the named owner of the verbless residue.**
+   ADR-0116 Decision 4 charged that lens with the partial-amendment back-pointer rule as "the
+   backstop for the case the procedure cannot reach", and item 2's verb anchoring leaves roughly
+   half the claim space to it: a claim whose prose carries no listed verb, such as ADR-0060
+   Decision 5's "every invariant listed in ADR-0043/0027 keeps its current wording". That lens is
+   reaffirmed unchanged in scope and gains one item, to check that a Decision item citing another
+   ADR's anchor carries a relation token or `cites:`. The accepted recall gap therefore has an
+   owner rather than only an acknowledgement.
+
 7. **This ADR does not extend ADR-0120 Decision 9's carve-out.** Correcting a `refines:` token to
    `supersedes:` needs no new permission: ADR-0128 Decision 4 already classifies it as "an
    ordinary authoring edit, not a migration concern", because the migration that downgraded it was
@@ -164,17 +159,21 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 
 8. **Citation extraction is a method on the corpus view.** ADR-0130's `corpus-owns-field-reads`
    forbids any file outside `internal/adr` from reading `ADR.Refs` or `Sections`, and that
-   invariant is currently clean. Extraction therefore lands in `internal/adr` as a `Corpus`
-   method, and `internal/project` consumes parsed citations only. The check itself lands in a new
-   `internal/project/citations.go` rather than growing the 254-line `supersession.go`.
+   invariant is currently clean and already backed at `internal/adr/corpus_test.go:123`.
+   Extraction therefore lands in `internal/adr` as a `Corpus` method, and `internal/project`
+   consumes parsed citations only. No new invariant is declared for this: ADR-0130's existing one
+   covers it. The check itself lands in a new `internal/project/citations.go` rather than growing
+   the 254-line `supersession.go`.
 
 9. **This repo completes its own retrofit before the check ships.** The 8 relation corrections,
    the roughly 40 backfilled tokens, the two retirements of item 1, and the three missing
-   `related:` back-pointers (ADR-0069 lacks 75, ADR-0045 lacks 87, ADR-0082 lacks 85) all land
-   before item 3's check is enabled, so it ships green. The corrections land separately from the
-   bulk backfill: flipping `refines:` to `supersedes:` can complete an anchor's coverage and force
-   a status flip, which is a different concern from inserting a token beside prose that already
-   states the claim.
+   `related:` back-pointers all land before item 2's check is enabled, so it ships green. The
+   audit verified the back-pointer edge for every one of the roughly 40 token sites and found
+   exactly three gaps (ADR-0069 lacks 75, ADR-0045 lacks 87, ADR-0082 lacks 85); this matters
+   because ADR-0128 Decision 5 requires a back-pointer on a target of any status, so a missed edge
+   fails the retrofit commit. The corrections land separately from the bulk backfill: flipping
+   `refines:` to `supersedes:` can complete an anchor's coverage and force a status flip, which is
+   a different concern from inserting a token beside prose that already states the claim.
 
 ## Invariants
 
@@ -186,26 +185,17 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
   `## Invariants` is never treated as a citation.
 - `` `invariant: citation-check-exempts-unanchorable` ``: the check produces no finding for a
   citation whose target is `Proposed`, for a self-citation, or for a cited invariant bullet that
-  declares no slug.
-- `` `invariant: cites-token-inert` ``: a `cites:` token suppresses the citation check for the
-  anchor it names, contributes nothing to anchor coverage, and appears in no ACTIVE.md or
-  `awf context` supersedence rendering.
-- `` `invariant: refines-invariant-counts-nothing` ``: a `refines-invariant:` claim never counts
-  toward its target's anchor coverage, so an invariant that has only ever been refined cannot
-  complete its declaring ADR's coverage.
-- `` `invariant: citation-extraction-owned-by-corpus` ``: prose-citation extraction is reachable
-  only as a method on `internal/adr`'s corpus view; no file outside `internal/adr` reads section
-  bodies to find citations.
-- `` `unbacked-invariant: unslugged-invariant-bullets-unanchorable` ``: an invariant bullet
-  declared without a slug cannot be named by any relation token, so a prose citation of one is
-  permanently unencodable rather than merely unencoded. **Verify:** read ADR-0001's `## Invariants`
-  section, which declares four bullets and no slugs, then confirm `internal/adr`'s anchor grammar
-  (`Anchor` in `coverage.go`) addresses a slug anchor only by slug string, with no ordinal form.
+  declares no slug, the last because `Anchor` addresses a slug only by slug string and offers no
+  ordinal form.
+- `` `invariant: cites-token-suppresses-citation-check` ``: a `cites:` token suppresses the
+  citation check for the anchor it names, and for that anchor only.
+- `` `invariant: cites-token-uncounted-and-unrendered` ``: a `cites:` token contributes nothing to
+  anchor coverage and appears in no ACTIVE.md or `awf context` supersedence rendering.
 
 ## Consequences
 
 The supersession record becomes complete for the first time: after item 9's retrofit, every
-override an ADR states in its Decision section is encoded, and item 3 keeps it that way. ACTIVE.md
+override an ADR states in its Decision section is encoded, and item 2 keeps it that way. ACTIVE.md
 and `awf context` annotations become trustworthy as a *complete* account of what no longer binds,
 rather than a lower bound on it.
 
@@ -216,13 +206,12 @@ item 1 removes is the false claim that the corpus was checking them; their live 
 are backed.
 
 The check's recall is bounded by its trigger, and the bound is known. The audit found roughly 40
-owed tokens by reading; a verb-anchored, Decision-scoped trigger covers roughly 20 of them. The
-remainder are claims whose prose carries no listed verb, such as ADR-0060 Decision 5's "every
-invariant listed in ADR-0043/0027 keeps its current wording". Item 9's backfill fixes those by
-hand; item 3 will not prevent their recurrence. This is an accepted precision-over-recall trade:
-a check that fires on every ADR cross-reference would be disabled within a release, and ADR-0116
-already measured the cite-a-Decision-item trigger as materially less precise. The gap is recorded
-here so a future observer does not read a green check as proof of completeness.
+owed tokens by reading; a verb-anchored, Decision-scoped trigger covers roughly 20 of them. Item 6
+assigns the remainder to the `adr-reviewer` lens rather than leaving them unowned, but a
+probabilistic reviewer is a weaker guarantee than a check, and that asymmetry is accepted here.
+The alternative, a trigger firing on every ADR cross-reference, was measured by ADR-0116 as
+materially less precise and would be disabled within a release. The gap is recorded so a future
+observer does not read a green check as proof of completeness.
 
 `cites:` is new vocabulary an adopter must learn, and its absence is silent: an author who omits
 it on a genuinely informational citation gets a finding and may encode a claim that was never
@@ -237,18 +226,34 @@ derived death lands with this ADR. That headroom is measured, not structural, an
 correction may complete a coverage set.
 
 Adopters upgrading past this release may see findings on their own corpora with no way to defer
-them, which is the cost of item 4's refusal of a config key. The findings name exact edits, and
+them, which is the cost of item 3's refusal of a config key. The findings name exact edits, and
 the token insertions they ask for are permitted by ADR-0120 Decision 9 shape 3 without reopening
 any ADR.
+
+**Doc-currency obligations.** `cites:` adds a token shape to the grammar, and several surfaces
+enumerate the legal shapes exhaustively or teach the rule this ADR changes. The commit that flips
+this ADR to `Implemented` updates, via the `.awf/` source and `./x sync` where the artifact is
+rendered: `.awf/skills/parts/adr-lifecycle/` (the rendered
+`templates/skills/adr-lifecycle/SKILL.md.tmpl` teaches the token family), `docs/decisions/README.md`
+(the supersedence section), `.awf/docs/glossary.yaml` (the supersession term entries),
+`.awf/domains/parts/adr-system/current-state.md` and `.awf/domains/parts/invariants/current-state.md`,
+`.awf/agents/adr-reviewer.yaml` (the doc-currency checklist enumerating legal tokens, plus item
+6's new lens item), and `.awf/agents-doc.yaml` with its rendered `AGENTS.md` invariant line.
+`internal/adr/adr.go`'s `Relation` doc comment is updated in the same change. The
+`adr-reviewer.yaml` edit is a wholesale-override hazard ADR-0116 Decision 4 already recorded:
+the file replaces the reviewer spine rather than extending it, so the edit must re-inject the
+default. `docs/decisions/ACTIVE.md` is regenerated by `./x sync` in the status-flip commit; no
+`docs/decisions/README.md` index row is owed (ADR-0005).
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
-| Opt-in config key, mirroring `proseGate` | The shape fits the migration problem but breaks the drift oracle: no check in `internal/project/check.go` is config-gated today, and a key makes "`awf check` is clean" mean different things in different trees. Item 4's data-driven silence gets the same adopter experience without that cost. |
+| Add a `refines-invariant:` relation for re-scoped slugs | Withdrawn during review for want of an instance. The motivating case, ADR-0016 "narrowing" ADR-0015's `provenance-banner`, is not one: that slug declares "every rendered file carries the awf generated-by banner as its first line" and names no path, so relocating the config root leaves it literally true and owes no token. Without a decidable test separating "re-scoped but in force" from "meaning narrowed", the relation would also license the frozen-declaration-versus-moved-reality state item 1 exists to end. ADR-0128 Decision 2's retire-and-redeclare stands. |
+| Opt-in config key, mirroring `proseGate` | The shape fits the migration problem but breaks the drift oracle: no check in `internal/project/check.go` is config-gated today, and a key makes "`awf check` is clean" mean different things in different trees. Item 3's data-driven silence gets the same adopter experience without that cost. |
 | Advisory `repoaudit` rule, as ADR-0116 sketched | Range-scoped and needing no backfill, but repo-local: adopters get no mechanism at all, and the residue this ADR measures is exactly what an ignorable channel failed to prevent. |
-| Cite-anchored trigger (any anchor citation owes a token or a `cites:`) | Closes the recall gap item 3 accepts, at the price of marking every informational citation corpus-wide. ADR-0116 already judged this trigger materially less precise, and a gate that fires on ordinary cross-references gets disabled. |
-| Amend ADR-0009's invariant prose in place | Forbidden by the append-only rule, and it is precisely the unavailable mechanism ADR-0015 and ADR-0016 reached for. Retire-and-redeclare is the lifecycle's answer. |
+| Cite-anchored trigger (any anchor citation owes a token or a `cites:`) | Closes the recall gap item 2 accepts, at the price of marking every informational citation corpus-wide. ADR-0116 already judged this trigger materially less precise, and a gate that fires on ordinary cross-references gets disabled. |
+| Keep moving proofs under frozen declarations, as ADR-0015 and ADR-0016 instructed | The instruction was followed and produced the defect: a green check whose declared claim is false and whose test asserts something else. Amending the declaration instead is forbidden by the append-only rule, so retirement is the only remaining coherent option. |
 | Leave `config-root` and `parts-convention` alone | Preserves two prior decisions verbatim at the cost of leaving two invariants green whose proofs assert their negation. A check asserting something untrue is worse than one fewer check. |
 | Extend ADR-0120 Decision 9's carve-out for relation corrections | Unnecessary: ADR-0128 Decision 4 already classifies the correction as ordinary authoring. Widening an exhaustive carve-out without need weakens the append-only rule. |
-| One ADR per workstream (retirements, grammar, detector) | They share one commitment and one failure mode; the detector needs `refines-invariant:` to offer a truthful remedy for slug citations, and the retirements are the motivating instance. Splitting would spread one decision across three review cycles. |
+| One ADR per workstream (retirements, detector) | They share one commitment and one failure mode, and the retirements are the motivating instance for the detector. Splitting would spread one decision across two review cycles. |
