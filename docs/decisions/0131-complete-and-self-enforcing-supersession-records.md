@@ -71,10 +71,22 @@ generated-by banner as its first line" and names no path, so relocating the conf
 true and owing nothing. Its rejection is why ADR-0015 needs no `related:` edge to ADR-0016.
 
 **Citation shapes are not uniform, and the majority shape is not the obvious one.** Across
-`docs/decisions`, item citations fall into four disjoint shapes totalling 193 occurrences:
-`ADR-NNNN item N` (74), `ADR-NNNN Decision N` (69), `ADR-NNNN Decision item N` (49), and
-`ADR-NNNN DN` (1). Any detector keyed to the longest and most explicit shape alone sees about a
-quarter of the citation space. Slug citations diverge the same way: ADR-0105 unified the
+`docs/decisions`, item citations fall into four disjoint shapes totalling 186 occurrences:
+`ADR-NNNN item N` (78), `ADR-NNNN Decision item N` (59), `ADR-NNNN Decision N` (48), and
+`ADR-NNNN DN` (1). Any detector keyed to the longest and most explicit shape alone sees under a
+third of the citation space.
+
+These figures are measured over `docs/decisions/*.md` excluding this ADR and the generated
+`ACTIVE.md`, with newlines folded to spaces first, because a citation wrapped across a line break
+is invisible to a line-scoped `grep`:
+
+```
+cat <files> | tr '\n' ' ' | tr -s ' ' | grep -ohE "ADR-[0-9]{4}('s)? Decision item [0-9]+" | wc -l
+```
+
+and the same for the other three shapes. The command is recorded because an earlier draft of this
+paragraph carried a `Decision N` count of 69 that no method reproduces; the shapes are disjoint by
+construction, since each pattern requires its own literal between the ADR number and the digit. Slug citations diverge the same way: ADR-0105 unified the
 *declaration* token to `invariant:`, but prose citations were untouched, so 87 `` `inv: <slug>` ``
 citations survive across 34 ADRs alongside the `` `invariant: <slug>` `` spelling. Rarer shapes
 exist too: ADR-0015 Decision 6 refers to ADR-0001's first Invariants bullet by ordinal, and
@@ -206,7 +218,7 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 
    Item citations are recognized in all four shapes the corpus uses: `ADR-NNNN Decision item N`,
    `ADR-NNNN Decision N`, `ADR-NNNN item N`, and `ADR-NNNN DN`. Recognizing only the first would
-   cover 49 of 193 citations. Slug citations are recognized in both the `` `inv: <slug>` `` and
+   cover 59 of 186 citations. Slug citations are recognized in both the `` `inv: <slug>` `` and
    `` `invariant: <slug>` `` spellings, adjacent to an `ADR-NNNN` reference. Section scoping
    disambiguates the slug spellings for free: the same string inside `## Invariants` is a
    declaration, already parsed by `declRe`, and is never a citation.
@@ -289,8 +301,11 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 
 9. **This repo completes its own retrofit, this ADR included, before the check ships.** The 4
    relation corrections, the 17 backfilled tokens, item 1's three retirements and one
-   redeclaration, the missing `related:` back-pointers, and this ADR's own `cites:` tokens all land
-   before item 2's check is enabled, so it ships green. Including this ADR is not a formality: its
+   redeclaration, the corpus-wide tokenization of informational citations with `cites:`, the
+   missing `related:` back-pointers, and this ADR's own `cites:` tokens all land before item 2's
+   check is enabled, so it ships green. The informational half is not an afterthought: item 4's
+   token has to be applied everywhere it is owed, or the check fires on citations that assert
+   nothing. Including this ADR is not a formality: its
    Decision section carries 10 item citations and 3 slug citations, and a check whose own defining
    document could not pass it would be evidence the token shape is wrong.
 
@@ -301,9 +316,11 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    refinement to a retirement can complete an anchor's coverage and force a status flip, which is a
    different concern from inserting a token beside prose that already states the claim.
 
-   The audit verified the back-pointer edge for every token site and found seven missing edges, all
-   on the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0040 lacks 47,
-   ADR-0045 lacks 87, ADR-0069 lacks 75, and ADR-0082 lacks 85. This
+   The audit verified the back-pointer edge for every relation-token site and found seven missing
+   edges there, all on the target side: ADR-0004 lacks 28, ADR-0022 lacks 43, ADR-0024 lacks 26, ADR-0040 lacks 47,
+   ADR-0045 lacks 87, ADR-0069 lacks 75, and ADR-0082 lacks 85. The `cites:` insertions owe a
+   further six edges of their own, on ADR-0034 (twice), ADR-0039, ADR-0065, ADR-0086 and ADR-0119.
+   This
    matters because ADR-0128 Decision 5 requires a back-pointer on a target of any status
    (`cites: ADR-0128#5`), so a missed edge fails the retrofit commit.
 
@@ -451,7 +468,7 @@ changes, not a repo-local part override.
 | Opt-in config key, mirroring `proseGate` | The shape fits the migration problem but breaks the drift oracle: no check in `internal/project/check.go` is config-gated today, and a key makes "`awf check` is clean" mean different things in different trees. Item 3's data-driven silence gets the same adopter experience without that cost. |
 | Advisory `repoaudit` rule, as ADR-0116 sketched | Range-scoped and needing no backfill, but repo-local: adopters get no mechanism at all, and the residue this ADR measures is exactly what an ignorable channel failed to prevent. |
 | Cite-anchored trigger (any anchor citation owes a token or a `cites:`) | Closes the recall gap item 2 accepts, at the price of marking every informational citation corpus-wide. ADR-0116 already judged this trigger materially less precise, and a gate that fires on ordinary cross-references gets disabled. |
-| Recognize only the `ADR-NNNN Decision item N` citation shape | Measured at 49 of 193 corpus citations. The check would pass its declared invariants while missing three quarters of the claim space, and would not even recognize the majority of this ADR's own citations. |
+| Recognize only the `ADR-NNNN Decision item N` citation shape | Measured at 59 of 186 corpus citations. The check would pass its declared invariants while missing more than two thirds of the claim space, and would not even recognize the majority of this ADR's own citations. |
 | Keep moving proofs under frozen declarations, as ADR-0015 and ADR-0016 instructed | The instruction was followed and produced the defect: a green check whose declared claim is false and whose test asserts something else. Amending the declaration instead is forbidden by the append-only rule, so retirement is the only remaining coherent option. |
 | Leave `config-root` and `parts-convention` alone | Preserves two prior decisions verbatim at the cost of leaving two invariants green whose proofs assert their negation. A check asserting something untrue is worse than one fewer check. |
 | Extend ADR-0120 Decision 9's carve-out for relation corrections | Unnecessary: ADR-0128 Decision 4 already classifies the correction as ordinary authoring. Widening an exhaustive carve-out without need weakens the append-only rule. |
