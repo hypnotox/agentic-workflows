@@ -493,3 +493,55 @@ func TestTokenBackpointerAnyStatus(t *testing.T) {
 		}
 	})
 }
+
+// TestSupersessionGraphFaults covers ADR-0129 item 7: irreflexivity, and
+// acyclicity scoped to covered ADRs. A cycle among live ADRs is deliberately
+// legal - two current ADRs may each refine or retire some of the other's
+// anchors - so the check fires only when every member is fully retired, where
+// the loop asserts each is dead because the other is.
+// invariant: supersession-graph-acyclic
+func TestSupersessionGraphFaults(t *testing.T) {
+	t.Run("an ADR claiming its own anchor is drift", func(t *testing.T) {
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-self.md": testsupport.ADR("Implemented", testsupport.WithTitle("0001: Self"),
+				testsupport.WithRelated(1),
+				testsupport.WithBody("## Decision\n\n1. a.\n2. Retires `supersedes: ADR-0001#1`.\n")),
+		})
+		if !hasKindDetail(drift, "adr-supersession-graph", "claims its own anchor ADR-0001#1") {
+			t.Fatalf("want a self-claim drift, got %#v", drift)
+		}
+	})
+
+	t.Run("a cycle between two fully covered ADRs is drift", func(t *testing.T) {
+		// Both carriers are Implemented, which is what makes their retirements
+		// count; each ADR's single item is then retired by the other, so both
+		// derive Covered and the loop closes.
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-a.md": testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"),
+				testsupport.WithRelated(2),
+				testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0002#1`.\n")),
+			"0002-b.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"),
+				testsupport.WithRelated(1),
+				testsupport.WithBody("## Decision\n\n1. Retires `supersedes: ADR-0001#1`.\n")),
+		})
+		if !hasKindDetail(drift, "adr-supersession-graph", "retirement cycle") {
+			t.Fatalf("want a cycle drift, got %#v", drift)
+		}
+	})
+
+	t.Run("mutual claims between live ADRs are legal", func(t *testing.T) {
+		// Each retires one of the other's two items, so neither is covered and
+		// the loop is a legitimate pair of partial supersessions.
+		drift, _ := runSupersession(t, map[string]string{
+			"0001-a.md": testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"),
+				testsupport.WithRelated(2),
+				testsupport.WithBody("## Decision\n\n1. a.\n2. Retires `supersedes: ADR-0002#1`.\n")),
+			"0002-b.md": testsupport.ADR("Implemented", testsupport.WithTitle("0002: B"),
+				testsupport.WithRelated(1),
+				testsupport.WithBody("## Decision\n\n1. b.\n2. Retires `supersedes: ADR-0001#1`.\n")),
+		})
+		if hasKindDetail(drift, "adr-supersession-graph", "retirement cycle") {
+			t.Fatalf("mutual partial claims between live ADRs must be legal, got %#v", drift)
+		}
+	})
+}

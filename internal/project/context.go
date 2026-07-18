@@ -130,9 +130,12 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	}
 	adrs := corpus.All()
 
-	// Superseded-anchor annotations, computed once per context run from the
-	// already-parsed corpus (ADR-0120 item 10).
-	_, overrides := adr.SupersessionIndex(adrs)
+	// Superseded-anchor annotations, read from the corpus's coverage model
+	// rather than a second derivation of the same relation (ADR-0129 item 4).
+	overrides := map[string][]adr.Claim{}
+	for _, claim := range corpus.AnnotatedAnchors() {
+		overrides[claim.Anchor.ADR] = append(overrides[claim.Anchor.ADR], claim)
+	}
 
 	// Tier 1 - "governs this code": ADRs declaring an invariant slug present as a
 	// marker under a queried path (one-to-one slug -> declaring Implemented ADR).
@@ -264,7 +267,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 // anchors. Tier 3 collapsed lines are counts, not entries, and are never
 // annotated.
 // touches-invariant: context-annotates-superseded-anchors - the Title suffix below; proof in context_test.go
-func adrRefOf(a adr.ADR, lay Layout, overrides map[string][]adr.Override) ADRRef {
+func adrRefOf(a adr.ADR, lay Layout, overrides map[string][]adr.Claim) ADRRef {
 	return ADRRef{
 		Number: a.Number,
 		Title:  strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ") + overrideAnnotation(overrides[a.Number]),
@@ -278,7 +281,7 @@ func adrRefOf(a adr.ADR, lay Layout, overrides map[string][]adr.Override) ADRRef
 // claimants grouped where both the claimant and the relation match:
 // " [item 2, item 5 superseded by ADR-0120, item 7 refined by ADR-0121]".
 // Empty overrides render nothing, so an ADR without overrides is unchanged.
-func overrideAnnotation(list []adr.Override) string {
+func overrideAnnotation(list []adr.Claim) string {
 	if len(list) == 0 {
 		return ""
 	}
@@ -291,11 +294,11 @@ func overrideAnnotation(list []adr.Override) string {
 	var order []key
 	grouped := map[key][]string{}
 	for _, o := range list {
-		k := key{successor: o.Successor, verb: o.Verb()}
+		k := key{successor: o.Carrier, verb: o.Verb()}
 		if _, ok := grouped[k]; !ok {
 			order = append(order, k)
 		}
-		grouped[k] = append(grouped[k], o.Label())
+		grouped[k] = append(grouped[k], o.Anchor.Label())
 	}
 	parts := make([]string, len(order))
 	for i, k := range order {

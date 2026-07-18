@@ -1,0 +1,111 @@
+package adr_test
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+)
+
+// TestAnchorRendering covers both anchor shapes in both renderings. The token
+// form is what the grammar itself writes, so a fault message quoting an anchor
+// reads back as something an author can grep for.
+func TestAnchorRendering(t *testing.T) {
+	item := adr.Anchor{ADR: "0120", Item: 3}
+	slug := adr.Anchor{ADR: "0120", Slug: "some-slug"}
+	if got, want := item.Label(), "item 3"; got != want {
+		t.Errorf("item Label = %q, want %q", got, want)
+	}
+	if got, want := slug.Label(), "slug `some-slug`"; got != want {
+		t.Errorf("slug Label = %q, want %q", got, want)
+	}
+	if got, want := item.String(), "ADR-0120#3"; got != want {
+		t.Errorf("item String = %q, want %q", got, want)
+	}
+	if got, want := slug.String(), "ADR-0120#some-slug"; got != want {
+		t.Errorf("slug String = %q, want %q", got, want)
+	}
+}
+
+// TestStateOfUnknownADR pins the fallback: a number the corpus does not hold
+// has no anchors anyone could have retired, so it is Live rather than a zero
+// value that would read as some other state.
+func TestStateOfUnknownADR(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: A"), testsupport.WithBody("## Decision\n\n1. x.\n")))
+	if got := mustCorpus(t, dir).State("9999"); got != adr.StateLive {
+		t.Errorf("State of an absent ADR = %q, want Live", got)
+	}
+}
+
+// TestClaimsSortedByAnchorThenCarrier pins the ordering the renderers depend
+// on: item anchors before slug anchors, then by carrier. Rendered output is
+// drift-checked by regeneration, so an unstable order would flap the gate.
+func TestClaimsSortedByAnchorThenCarrier(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2, 3),
+			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: z-slug` - x.\n- `invariant: a-slug` - y.\n")))
+	// Written slug-first and high-carrier-first, so a stable input order cannot
+	// produce the expected output by accident.
+	testsupport.WriteFile(t, filepath.Join(dir, "0003-late.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0003: Late"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes-invariant: ADR-0001#z-slug`, `supersedes: ADR-0001#2`.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-early.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Early"),
+			testsupport.WithBody("## Decision\n\n1. `supersedes-invariant: ADR-0001#a-slug`, `supersedes: ADR-0001#1`.\n")))
+
+	var got []string
+	for _, claim := range mustCorpus(t, dir).ClaimsOn("0001") {
+		got = append(got, claim.Anchor.String()+"<-"+claim.Carrier)
+	}
+	want := []string{"ADR-0001#1<-0002", "ADR-0001#2<-0003", "ADR-0001#a-slug<-0002", "ADR-0001#z-slug<-0003"}
+	if len(got) != len(want) {
+		t.Fatalf("claims: got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("claims order: got %v, want %v", got, want)
+		}
+	}
+}
+
+// TestClaimOrderingTiebreaks covers the last two comparator arms, both of which
+// only fire on inputs the grammar admits but an author would not write:
+// one ADR claiming the same anchor twice with different relations, and two ADRs
+// each claiming one of their own anchors. Rendered output is drift-checked by
+// regeneration, so even a contradictory corpus must order deterministically
+// rather than flap the gate on sort.Slice's instability.
+func TestClaimOrderingTiebreaks(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2),
+			testsupport.WithBody("## Decision\n\n1. a.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-both.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Both"), testsupport.WithRelated(2, 3),
+			testsupport.WithBody("## Decision\n\n1. b.\n2. `refines: ADR-0001#1`, `supersedes: ADR-0001#1`, `supersedes: ADR-0002#1`.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0003-selfer.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0003: Selfer"), testsupport.WithRelated(3),
+			testsupport.WithBody("## Decision\n\n1. c.\n2. `supersedes: ADR-0003#1`.\n")))
+	c := mustCorpus(t, dir)
+
+	// Same anchor, same carrier, differing relation: refinement sorts first.
+	claims := c.ClaimsOn("0001")
+	if len(claims) != 2 {
+		t.Fatalf("want two claims on ADR-0001, got %#v", claims)
+	}
+	if claims[0].Relation != adr.Refines || claims[1].Relation != adr.Retires {
+		t.Errorf("relation tiebreak: got %q then %q, want refines then retires", claims[0].Relation, claims[1].Relation)
+	}
+
+	// Two self-claiming ADRs sort by number.
+	self, _ := c.GraphFaults()
+	if len(self) != 2 {
+		t.Fatalf("want two self-claims, got %#v", self)
+	}
+	if self[0].ADR != "0002" || self[1].ADR != "0003" {
+		t.Errorf("self-claims must sort by ADR number, got %s then %s", self[0].ADR, self[1].ADR)
+	}
+}

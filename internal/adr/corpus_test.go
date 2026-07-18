@@ -281,3 +281,52 @@ func TestCorpusSingleIdentityKey(t *testing.T) {
 		}
 	}
 }
+
+// TestSupersessionModelSingleSource enforces ADR-0129's
+// supersession-model-single-source and ADR-0130's corpus-model-not-rebuilt: the
+// anchor-coverage model is constructed in exactly one place, inside
+// internal/adr, and no other package derives the supersession relation for
+// itself. Before this, the relation was derived twice differently - once in
+// SupersessionIndex and once in the symmetry check - and read a third way off
+// the frontmatter scalar.
+// invariant: supersession-model-single-source
+// invariant: corpus-model-not-rebuilt
+func TestSupersessionModelSingleSource(t *testing.T) {
+	// The model is built by exactly one call, in Corpus construction.
+	var builders []string
+	for _, f := range []string{"corpus.go", "coverage.go", "adr.go", "domain.go", "status.go", "declarations.go"} {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range codeLines(string(data)) {
+			if strings.Contains(line, "buildCoverage(") && !strings.Contains(line, "func buildCoverage") {
+				builders = append(builders, fromLine(f, i, line))
+			}
+		}
+	}
+	if len(builders) != 1 {
+		t.Errorf("the coverage model must be built exactly once, in Corpus construction; found %d call(s):\n\t%s",
+			len(builders), strings.Join(builders, "\n\t"))
+	}
+
+	// No package outside internal/adr reconstructs the relation. The model's
+	// derivation identifiers are greppable on purpose.
+	var outside []string
+	goSources(t, func(path, body string) {
+		if strings.HasPrefix(path, "../../internal/adr/") {
+			return
+		}
+		for i, line := range codeLines(body) {
+			for _, ident := range []string{"buildCoverage(", "deriveState(", "isRetired("} {
+				if strings.Contains(line, ident) {
+					outside = append(outside, fromLine(path, i, line))
+				}
+			}
+		}
+	})
+	if len(outside) != 0 {
+		t.Errorf("the supersession model is derived outside internal/adr; ask the corpus instead (ADR-0129):\n\t%s",
+			strings.Join(outside, "\n\t"))
+	}
+}

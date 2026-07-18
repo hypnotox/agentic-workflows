@@ -278,7 +278,7 @@ func TestSupersessionRefExtraction(t *testing.T) {
 		{
 			name: "both kinds extracted",
 			body: "## Decision\n\n1. Overrides `supersedes: ADR-0116#2`.\n2. Retires `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires, CarrierItem: 1}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires, CarrierItem: 2}},
 		},
 		{
 			name: "token outside the Decision section is inert",
@@ -293,12 +293,12 @@ func TestSupersessionRefExtraction(t *testing.T) {
 		{
 			name: "fenced tokens are inert while real tokens remain visible",
 			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n## Fake\n1. Fake.\n```\n\n~~~\n`supersedes-invariant: ADR-0998#fake`\n~~~\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires, CarrierItem: 1}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires, CarrierItem: 2}},
 		},
 		{
 			name: "faux fence closer leaves fenced ADR syntax inert",
 			body: "## Decision\n\n```\n`supersedes: ADR-0999#7`\n``` not-a-closer\n## Fake\n`supersedes-invariant: ADR-0998#fake`\n```\n\n1. Real `supersedes: ADR-0116#2`.\n2. Real `supersedes-invariant: ADR-0031#retired-slug`.\n",
-			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires}},
+			want: []adr.SupersessionRef{{Target: "0116", Item: 2, Relation: adr.Retires, CarrierItem: 1}, {Target: "0031", Slug: "retired-slug", Relation: adr.Retires, CarrierItem: 2}},
 		},
 	}
 	for _, tc := range cases {
@@ -347,7 +347,11 @@ func TestDecisionSectionOffsetsIgnoreFencedHeadings(t *testing.T) {
 	}
 }
 
-func TestSupersessionIndex(t *testing.T) {
+// TestSupersessionModel covers ADR-0129's derived model: anchors as nodes,
+// claims as edges carrying relation and rationale site, chains rendered
+// one-to-many, and annotations scoped to live targets.
+// invariant: supersession-model-anchor-nodes
+func TestSupersessionModel(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
 		// Two chains, written successor-first to exercise the chain sort.
@@ -356,43 +360,137 @@ func TestSupersessionIndex(t *testing.T) {
 			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n\n## Invariants\n\n- `invariant: s-one` - x.\n- `invariant: s-two` - y.\n")),
 		"0003-elder.md": testsupport.ADR("Superseded by ADR-0005", testsupport.WithSupersededBy("0005"), testsupport.WithTitle("0003: Elder")),
 		// 0004 carries every ref shape: items out of order, two slugs out of
-		// order, a ref into a Superseded target (dropped), a dangling ref
-		// (dropped), and claims chain 0001.
+		// order, a ref into a Superseded target, a dangling ref, and it claims
+		// chain 0001.
 		"0004-citer.md": testsupport.ADR("Implemented", testsupport.WithSupersedes(1), testsupport.WithTitle("0004: Citer"),
 			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#2`, `supersedes: ADR-0002#1`, "+
 				"`supersedes-invariant: ADR-0002#s-two`, `supersedes-invariant: ADR-0002#s-one`, "+
 				"`supersedes: ADR-0003#1`, `supersedes: ADR-0042#1`.\n")),
-		// 0005 claims chain 0003 and re-claims 0002 item 1 (successor tiebreak).
-		// It also both retires and refines 0002 item 2 - a self-contradictory
-		// pair, but one the grammar admits, so the ordering must stay
-		// deterministic rather than depend on sort.Slice's instability.
+		// 0005 claims chain 0003 and re-claims 0002 item 1.
 		"0005-later.md": testsupport.ADR("Accepted", testsupport.WithSupersedes(3), testsupport.WithTitle("0005: Later"),
-			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`, `supersedes: ADR-0002#2`, `refines: ADR-0002#2`.\n")),
+			testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0002#1`.\n2. `refines: ADR-0002#2`.\n")),
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	adrs, err := adr.ParseDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	c := mustCorpus(t, dir)
+
+	// Nodes: items and slugs are independently claimable anchors, observable
+	// through the claims recorded against each. 0002 carries two items and two
+	// slugs, and every one of them is claimed.
+	wantAnchors := []string{"ADR-0002#1", "ADR-0002#2", "ADR-0002#s-one", "ADR-0002#s-two"}
+	seen := map[string]bool{}
+	for _, claim := range c.ClaimsOn("0002") {
+		seen[claim.Anchor.String()] = true
 	}
-	chains, overrides := adr.SupersessionIndex(adrs)
-	if !reflect.DeepEqual(chains, [][2]string{{"0001", "0004"}, {"0003", "0005"}}) {
-		t.Errorf("chains: got %#v", chains)
+	for _, want := range wantAnchors {
+		if !seen[want] {
+			t.Errorf("anchor %s carries no claim; items and slugs must both be nodes", want)
+		}
 	}
-	want := map[string][]adr.Override{"0002": {
-		{Item: 1, Successor: "0004", Relation: adr.Retires},
-		{Item: 1, Successor: "0005", Relation: adr.Retires},
-		{Item: 2, Successor: "0004", Relation: adr.Retires},
-		{Item: 2, Successor: "0005", Relation: adr.Refines},
-		{Item: 2, Successor: "0005", Relation: adr.Retires},
-		{Slug: "s-one", Successor: "0004", Relation: adr.Retires},
-		{Slug: "s-two", Successor: "0004", Relation: adr.Retires},
-	}}
-	if !reflect.DeepEqual(overrides, want) {
-		t.Errorf("overrides:\ngot  %#v\nwant %#v", overrides, want)
+
+	// Edges carry the rationale site: 0005's refinement sits in its item 2.
+	var refine adr.Claim
+	for _, claim := range c.ClaimsOn("0002") {
+		if claim.Carrier == "0005" && claim.Relation == adr.Refines {
+			refine = claim
+		}
+	}
+	if refine.CarrierItem != 2 {
+		t.Errorf("refinement CarrierItem = %d, want 2 (the item whose prose justifies it)", refine.CarrierItem)
+	}
+
+	// 0002 is fully covered: every item and slug carries a retirement from an
+	// Implemented carrier. 0004's own anchors are untouched, so it stays Live.
+	if got := c.State("0002"); got != adr.StateCovered {
+		t.Errorf("0002 state = %q, want Covered", got)
+	}
+	if got := c.State("0004"); got != adr.StateLive {
+		t.Errorf("0004 state = %q, want Live", got)
+	}
+
+	// Chains merge the derived coverage with the transitional frontmatter
+	// pairs, one-to-many.
+	want := []adr.Chain{
+		{Predecessor: "0001", Successors: []string{"0004"}},
+		{Predecessor: "0002", Successors: []string{"0004"}},
+		{Predecessor: "0003", Successors: []string{"0005"}},
+	}
+	if got := c.Chains(); !reflect.DeepEqual(got, want) {
+		t.Errorf("chains:\ngot  %#v\nwant %#v", got, want)
+	}
+
+	// A Covered ADR drops out of the per-anchor annotations: the chains
+	// subsection already names its retirers.
+	for _, claim := range c.AnnotatedAnchors() {
+		if claim.Anchor.ADR == "0002" {
+			t.Errorf("covered ADR-0002 must not carry per-anchor annotations: %#v", claim)
+		}
+	}
+}
+
+// TestSupersessionStates covers the three derived states including both
+// residuals, and the zero-anchor case that must not be vacuously Covered.
+// invariant: supersession-model-derives-state
+func TestSupersessionStates(t *testing.T) {
+	const twoItems = "## Decision\n\n1. a.\n2. b.\n"
+	cases := []struct {
+		name    string
+		carrier string
+		want    adr.State
+	}{
+		{
+			name:    "no claims at all is Live",
+			carrier: testsupport.ADR("Implemented", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. x.\n")),
+			want:    adr.StateLive,
+		},
+		{
+			name:    "claims on every anchor from an Implemented carrier is Covered",
+			carrier: testsupport.ADR("Implemented", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n")),
+			want:    adr.StateCovered,
+		},
+		{
+			name:    "some anchors retired is Partial",
+			carrier: testsupport.ADR("Implemented", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`.\n")),
+			want:    adr.StatePartial,
+		},
+		{
+			// Residual one: refinements never count toward coverage, so an ADR
+			// whose every item is merely adapted is still Live.
+			name:    "every anchor refined is Live, never Covered",
+			carrier: testsupport.ADR("Implemented", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `refines: ADR-0001#1`, `refines: ADR-0001#2`.\n")),
+			want:    adr.StateLive,
+		},
+		{
+			// Residual two: a Proposed successor must not kill its predecessor.
+			name:    "retirements from a non-Implemented carrier do not count",
+			carrier: testsupport.ADR("Proposed", testsupport.WithTitle("0002: C"), testsupport.WithBody("## Decision\n\n1. `supersedes: ADR-0001#1`, `supersedes: ADR-0001#2`.\n")),
+			want:    adr.StateLive,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+				testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"),
+					testsupport.WithRelated(2), testsupport.WithBody(twoItems)))
+			testsupport.WriteFile(t, filepath.Join(dir, "0002-carrier.md"), tc.carrier)
+			if got := mustCorpus(t, dir).State("0001"); got != tc.want {
+				t.Errorf("state = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	// A zero-anchor ADR is Live, not vacuously Covered: "every anchor retired"
+	// is trivially true of an empty set, and believing that would retire an ADR
+	// nobody superseded.
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-empty.md"),
+		"---\nstatus: Accepted\n---\n# ADR-0001: Empty\n\n## Context\n\nNo decision section.\n")
+	if got := mustCorpus(t, dir).State("0001"); got != adr.StateLive {
+		t.Errorf("zero-anchor state = %q, want Live", got)
 	}
 }
 

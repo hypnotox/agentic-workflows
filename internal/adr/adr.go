@@ -45,10 +45,16 @@ type ADR struct {
 // as an inline code token inside a Decision section. Exactly one of
 // Item/Slug is set; the key names the kind, never the anchor's shape.
 type SupersessionRef struct {
-	Target   string   // 4-digit target ADR number, e.g. "0116"
-	Item     int      // Decision item number; 0 for an invariant ref
-	Slug     string   // invariant slug; "" for an item ref
-	Relation Relation // whether the claim retires the anchor or adapts it
+	Target string // 4-digit target ADR number, e.g. "0116"
+	Item   int    // Decision item number; 0 for an invariant ref
+	Slug   string // invariant slug; "" for an item ref
+	// Relation is whether the claim retires the anchor or adapts it.
+	Relation Relation
+	// CarrierItem is the carrying ADR's own Decision item number - the item
+	// whose prose justifies the claim. ADR-0129 item 2 makes the rationale site
+	// addressable, which is the whole reason the token sits inside a Decision
+	// item rather than in frontmatter. 0 when the token precedes the first item.
+	CarrierItem int
 }
 
 // Relation distinguishes ADR-0128 item 2's two claims on an anchor. A
@@ -89,19 +95,52 @@ var (
 // Tokens anywhere else in the ADR are inert prose (ADR-0120 item 1), which
 // parse guarantees by passing only Sections["Decision"].
 func parseRefs(decision string) []SupersessionRef {
+	spans := decisionItemSpans(decision)
 	var refs []SupersessionRef
-	for _, m := range itemRefRe.FindAllStringSubmatch(decision, -1) {
-		n, _ := strconv.Atoi(m[2]) // the regex admits only digits
-		refs = append(refs, SupersessionRef{Target: m[1], Item: n, Relation: Retires})
+	collect := func(re *regexp.Regexp, rel Relation, slug bool) {
+		for _, m := range re.FindAllStringSubmatchIndex(decision, -1) {
+			ref := SupersessionRef{
+				Target:      decision[m[2]:m[3]],
+				Relation:    rel,
+				CarrierItem: itemAt(spans, m[0]),
+			}
+			if slug {
+				ref.Slug = decision[m[4]:m[5]]
+			} else {
+				ref.Item, _ = strconv.Atoi(decision[m[4]:m[5]]) // the regex admits only digits
+			}
+			refs = append(refs, ref)
+		}
 	}
-	for _, m := range refinesItemRe.FindAllStringSubmatch(decision, -1) {
-		n, _ := strconv.Atoi(m[2]) // the regex admits only digits
-		refs = append(refs, SupersessionRef{Target: m[1], Item: n, Relation: Refines})
-	}
-	for _, m := range invRefRe.FindAllStringSubmatch(decision, -1) {
-		refs = append(refs, SupersessionRef{Target: m[1], Slug: m[2], Relation: Retires})
-	}
+	collect(itemRefRe, Retires, false)
+	collect(refinesItemRe, Refines, false)
+	collect(invRefRe, Retires, true)
 	return refs
+}
+
+// decisionItemSpans returns the byte offset at which each column-0 numbered
+// Decision item begins, paired with its number, in document order.
+func decisionItemSpans(decision string) [][2]int {
+	var spans [][2]int
+	for _, m := range decisionItemRe.FindAllStringSubmatchIndex(decision, -1) {
+		n, _ := strconv.Atoi(decision[m[2]:m[3]])
+		spans = append(spans, [2]int{m[0], n})
+	}
+	return spans
+}
+
+// itemAt reports which Decision item encloses the byte offset off - the
+// rationale site for a claim written there (ADR-0129 item 2). A token before
+// the first numbered item belongs to no item and reports 0.
+func itemAt(spans [][2]int, off int) int {
+	item := 0
+	for _, s := range spans {
+		if s[0] > off {
+			break
+		}
+		item = s[1]
+	}
+	return item
 }
 
 // DecisionItems returns the numbers of the column-0 numbered items of the
@@ -113,88 +152,6 @@ func (a ADR) DecisionItems() []int {
 		items = append(items, n)
 	}
 	return items
-}
-
-// Override is one superseded anchor on a live ADR: the anchor (item number or
-// slug) and the successor that superseded it (ADR-0120 item 10).
-type Override struct {
-	Item      int      // 0 for a slug override
-	Slug      string   // "" for an item override
-	Successor string   // 4-digit successor number
-	Relation  Relation // whether the successor retired the anchor or refined it
-}
-
-// Verb renders the override's relation for a human line: an anchor that was
-// retired reads "superseded by", one that was adapted reads "refined by". The
-// distinction is the whole point of ADR-0128 item 2 - a reader must be able to
-// tell a replaced decision from an adapted one at a glance.
-func (o Override) Verb() string {
-	if o.Relation == Refines {
-		return "refined by"
-	}
-	return "superseded by"
-}
-
-// SupersessionIndex derives the render view: full chains (predecessor,
-// successor) sorted by predecessor, and per-target overrides from every
-// non-Superseded ADR's refs, item refs before slug refs, in (anchor,
-// successor) order. Only entries whose target is live (Accepted/Implemented)
-// are kept - ADR-0120 item 10 scopes annotations to live ADRs whose anchors
-// are superseded; a token into a Superseded target is already surfaced as a
-// check advisory rather than an annotation on a dead record. Proposed
-// carriers are deliberately included where the conflict advisory excludes
-// them: the annotation is discoverability, not enforcement.
-func SupersessionIndex(adrs []ADR) ([][2]string, map[string][]Override) {
-	byNum := map[string]ADR{}
-	for _, a := range adrs {
-		byNum[a.Number] = a
-	}
-	var chains [][2]string
-	overrides := map[string][]Override{}
-	for _, a := range adrs {
-		for _, n := range a.Supersedes {
-			chains = append(chains, [2]string{fmt.Sprintf("%04d", n), a.Number})
-		}
-		if a.IsSuperseded() {
-			continue
-		}
-		for _, r := range a.Refs {
-			t, ok := byNum[r.Target]
-			if !ok || !t.IsLive() {
-				continue
-			}
-			overrides[r.Target] = append(overrides[r.Target], Override{Item: r.Item, Slug: r.Slug, Successor: a.Number, Relation: r.Relation})
-		}
-	}
-	sort.Slice(chains, func(i, j int) bool { return chains[i][0] < chains[j][0] })
-	for _, list := range overrides {
-		sort.Slice(list, func(i, j int) bool {
-			a, b := list[i], list[j]
-			if (a.Slug == "") != (b.Slug == "") {
-				return a.Slug == "" // item refs before slug refs
-			}
-			if a.Slug == "" && a.Item != b.Item {
-				return a.Item < b.Item
-			}
-			if a.Slug != b.Slug {
-				return a.Slug < b.Slug
-			}
-			if a.Successor != b.Successor {
-				return a.Successor < b.Successor
-			}
-			return a.Relation < b.Relation
-		})
-	}
-	return chains, overrides
-}
-
-// Label renders the override's anchor for a human line: "item N" or
-// "slug `<slug>`".
-func (o Override) Label() string {
-	if o.Slug != "" {
-		return "slug `" + o.Slug + "`"
-	}
-	return fmt.Sprintf("item %d", o.Item)
 }
 
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
@@ -302,28 +259,34 @@ func RenderActiveMD(corpus Corpus) string {
 	// when empty: publication-safe degradation, and a supersession-free corpus
 	// renders byte-identically to the pre-ADR-0120 index.
 	// touches-invariant: active-md-supersedence-rendering - the section render below; proof in adr_test.go
-	chains, overrides := SupersessionIndex(adrs)
-	if len(chains) > 0 || len(overrides) > 0 {
+	chains := corpus.Chains()
+	annotated := corpus.AnnotatedAnchors()
+	if len(chains) > 0 || len(annotated) > 0 {
 		sb.WriteString("\n## Supersedence\n")
 		if len(chains) > 0 {
+			// One-to-many by construction (ADR-0129 item 6): coverage may split
+			// across successors, so a chain names every retirer, not one.
+			// invariant: active-md-chains-one-to-many
 			sb.WriteString("\n### Chains\n\n")
 			for _, c := range chains {
-				fmt.Fprintf(&sb, "- ADR-%s superseded by ADR-%s\n", c[0], c[1])
+				fmt.Fprintf(&sb, "- ADR-%s superseded by %s\n", c.Predecessor, joinADRs(c.Successors))
 			}
 		}
-		if len(overrides) > 0 {
+		if len(annotated) > 0 {
 			sb.WriteString("\n### Superseded anchors on live ADRs\n\n")
-			targets := make([]string, 0, len(overrides))
-			for num := range overrides {
-				targets = append(targets, num)
+			var targets []string
+			byTarget := map[string][]string{}
+			for _, claim := range annotated {
+				num := claim.Anchor.ADR
+				if _, ok := byTarget[num]; !ok {
+					targets = append(targets, num)
+				}
+				byTarget[num] = append(byTarget[num],
+					claim.Anchor.Label()+" "+claim.Verb()+" ADR-"+claim.Carrier)
 			}
 			sort.Strings(targets)
 			for _, num := range targets {
-				parts := make([]string, len(overrides[num]))
-				for i, o := range overrides[num] {
-					parts[i] = o.Label() + " " + o.Verb() + " ADR-" + o.Successor
-				}
-				fmt.Fprintf(&sb, "- ADR-%s: %s\n", num, strings.Join(parts, "; "))
+				fmt.Fprintf(&sb, "- ADR-%s: %s\n", num, strings.Join(byTarget[num], "; "))
 			}
 		}
 	}

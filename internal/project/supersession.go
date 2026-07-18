@@ -220,6 +220,23 @@ func computeSupersession(corpus adr.Corpus, rel string) ([]manifest.Drift, []str
 		}
 	}
 
+	// Structural faults in the retirement relation (ADR-0129 item 7). Nothing
+	// forbade these before: the single-claimant check that stood in for them
+	// died with the frontmatter encoding, and either fault derives a
+	// coherent-looking state from a contradiction.
+	// invariant: supersession-graph-acyclic
+	selfClaims, cycles := corpus.GraphFaults()
+	for _, s := range selfClaims {
+		if a, ok := corpus.ByNumber(s.ADR); ok {
+			add(a, "adr-supersession-graph", fmt.Sprintf("ADR-%s: token claims its own anchor %s", s.ADR, s.Anchor))
+		}
+	}
+	for _, cyc := range cycles {
+		if a, ok := corpus.ByNumber(cyc[0]); ok {
+			add(a, "adr-supersession-graph", "retirement cycle among fully covered ADRs: "+strings.Join(cyc, " -> ")+" -> "+cyc[0])
+		}
+	}
+
 	// Advisory: one anchor claimed by two or more live ADRs. The kind prefix
 	// is keying only; the note names the anchor as written.
 	for _, anchor := range slices.Sorted(maps.Keys(anchorClaim)) {

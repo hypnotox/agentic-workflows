@@ -15,6 +15,9 @@ import (
 type Corpus struct {
 	all   []ADR
 	byNum map[string]ADR
+	// cov is ADR-0129's anchor-coverage model, built as a facet of this view
+	// rather than beside it, so no consumer can rebuild or diverge from it.
+	cov coverage
 }
 
 // NewCorpus builds the view over an already-parsed slice. Construction is the
@@ -25,7 +28,7 @@ func NewCorpus(adrs []ADR) Corpus {
 	for _, a := range adrs {
 		byNum[a.Number] = a
 	}
-	return Corpus{all: adrs, byNum: byNum}
+	return Corpus{all: adrs, byNum: byNum, cov: buildCoverage(adrs, byNum)}
 }
 
 // LoadCorpus parses a decisions directory into the view. It is the single
