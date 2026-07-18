@@ -24,7 +24,7 @@ Two years of corpus say the frontmatter path is both redundant and rationale-fre
 `superseded_by: "0120"` encode the same fact in the same file. The reverse half of the
 symmetry check (`internal/project/supersession.go:157`) exists to validate one against the
 other, which is to say it validates a field against itself. Its only other consumer is the
-domain-doc index (`internal/adr/domain.go:34-37`), which could read the status suffix.
+domain-doc index (`internal/adr/domain.go:38-41`), which could read the status suffix.
 
 **Full supersession carries no rationale, and that is the asymmetry ADR-0120 half-fixed.**
 A partial token is placed inside the Decision item that overrides the anchor, so the claim
@@ -34,9 +34,10 @@ at all. ADR-0120 explains in prose why it replaced ADR-0031; ADR-0032 and ADR-01
 per-predecessor justification whatsoever. The mechanism that exists to make supersession
 explicit and reasoned applies to the fine-grained case and skips the coarse one.
 
-**The corpus is overwhelmingly partial.** A sweep on 2026-07-18 across `docs/decisions`
-counts 55 anchors (37 `supersedes:` item tokens, 18 `supersedes-invariant:` slug tokens) over
-32 distinct target ADRs from 32 carrier files, against exactly 3 full pairs: ADR-0003 to
+**The corpus is overwhelmingly partial.** A sweep on 2026-07-18 across `docs/decisions`,
+excluding this ADR's own tokens, counts 55 anchors (37 `supersedes:` item tokens, 18
+`supersedes-invariant:` slug tokens) over 32 distinct target ADRs from 32 carrier files,
+against exactly 3 full pairs: ADR-0003 to
 ADR-0032, ADR-0031 to ADR-0120, ADR-0113 to ADR-0115. The frontmatter mechanism serves three
 relationships and duplicates machinery the other 55 already have.
 
@@ -58,7 +59,14 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    fails, with upgrade guidance, on any ADR whose raw frontmatter carries either key, empty
    or not, mirroring ADR-0120 item 7's treatment of `retires_invariants:`. This
    `supersedes: ADR-0120#3` for its frontmatter encoding of full supersession; that item's
-   three-way symmetry has nothing left to bind.
+   three-way symmetry has nothing left to bind, so its
+   `supersedes-invariant: ADR-0120#supersession-full-symmetry` retires with it.
+
+   Deleting the keys also removes the only input from which full-supersession *chains* were
+   computed, so `supersedes-invariant: ADR-0120#active-md-supersedence-rendering` retires
+   here rather than lapsing quietly: its chain clause becomes uncomputable the moment this
+   item lands. Its anchor-annotation clause survives, re-declared narrowed below, and the
+   replacement chain rendering over the coverage model is ADR-B's to specify.
 
 2. **Full supersession is derived from anchor coverage.** An ADR is fully superseded when
    every one of its anchors is claimed by a token: every column-0 Decision item number, and
@@ -82,9 +90,11 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    commit that brings the final covering carrier to `Implemented`; that commit is one
    concern, the completion of the supersession, even though it touches two ADR files.
 
-   awf does not write the flip. `awf sync` writing into an authored ADR would take permanent
-   ownership of a file awf does not generate (ADR-0035 item 2), and ADRs are hand-authored
-   source, never rendered artifacts. Enforcement without authorship is the whole point: the
+   awf does not write the flip. ADR-0035 item 1 makes lock membership the test of what awf
+   owns: a path recorded in the lock is awf's own output, overwritten freely. ADRs are
+   hand-authored source and are never in the lock, so having `awf sync` write one would make
+   awf the author of a source document on every routine run. Enforcement without authorship
+   is the whole point: the
    human types the field and has no discretion about its value, because the check names the
    required edit exactly.
 
@@ -95,13 +105,19 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    naming no successor, `related:` is the only surface on the predecessor that names its
    claimants, and under the narrow rule a claimant landing after the flip would owe no
    back-pointer and be unrecoverable from the predecessor. Editing a frozen ADR's `related:`
-   is permitted in place by ADR-0116 item 2.
+   is permitted in place by ADR-0116 item 2. This
+   `supersedes-invariant: ADR-0120#supersession-backpointer`, whose live-targets-only scope
+   this item replaces.
 
 5. **Flavour exclusivity is retired and the superseded-target advisory is dropped; the
    contested-anchor advisory is retained.** With one flavour there is nothing to be exclusive
    about, and a token targeting a `Superseded` ADR becomes the normal shape of every
    completed supersession rather than a degradation worth noting. An anchor claimed by two or
-   more live ADRs remains an `awf check` note. This `supersedes: ADR-0120#5`.
+   more live ADRs remains an `awf check` note. This `supersedes: ADR-0120#5` and
+   `supersedes-invariant: ADR-0120#supersession-flavour-exclusive`. It also
+   `supersedes-invariant: ADR-0120#supersession-conflict-advisory`, which bundles both
+   advisories in one slug: slugs are atomic, so dropping one of the pair means retiring the
+   slug and re-declaring the surviving half narrowed.
 
 6. **No aggregate token.** There is no shorthand that claims every anchor of a target at
    once. Full supersession costs one token per anchor, each placed at the Decision item that
@@ -118,7 +134,10 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    carried a non-empty `supersedes:` appends one bookkeeping Decision item carrying a token
    per anchor of each named predecessor, inserting the carrier's number into each target's
    `related:` when absent and rewriting each predecessor's suffixed status to bare
-   `Superseded`. Appending is guarded so a re-run is a no-op, as key-stripping is naturally.
+   `Superseded`. Appending is triggered only by a non-empty `supersedes:` key, which the same
+   migration strips, so a re-run finds no trigger and is a no-op; no separate marker is
+   needed. Anchor enumeration runs against the post-generation-10 body, so the bookkeeping
+   items ADR-0120 item 8 already appended are themselves anchors this migration must claim.
    The appended item is permitted by ADR-0120 item 9's carve-out shape 2, a numbered
    bookkeeping item encoding an obligation the ADR already carried: `supersedes: [3]` already
    asserted replacement of all of ADR-0003.
@@ -154,13 +173,16 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
   anchor of each named predecessor, inserts the carrier's number into each target's `related:`
   when absent, rewrites each predecessor's status to bare `Superseded`, and is a no-op on a
   corpus it has already migrated.
+- `invariant: active-md-annotates-superseded-anchors` - ACTIVE.md renders an annotation on
+  each live ADR that has a superseded anchor. This is the surviving half of ADR-0120's
+  `active-md-supersedence-rendering`, retired at item 1; how ACTIVE.md renders claimants for a
+  fully-superseded ADR, now that no scalar successor name exists, is ADR-B's to declare.
 
-Retired by this ADR: `supersedes-invariant: ADR-0120#supersession-full-symmetry` (item 1
-removes the keys it binds), `supersedes-invariant: ADR-0120#supersession-flavour-exclusive`
-(item 5, vacuous with one flavour), `supersedes-invariant: ADR-0120#supersession-backpointer`
-(item 4 widens its scope), and
-`supersedes-invariant: ADR-0120#supersession-conflict-advisory` (item 5 drops one of its two
-advisories).
+The five slugs this ADR retires are claimed by `supersedes-invariant:` tokens at the Decision
+items that override them: `supersession-full-symmetry` and `active-md-supersedence-rendering`
+at item 1, `supersession-backpointer` at item 4, `supersession-flavour-exclusive` and
+`supersession-conflict-advisory` at item 5. Tokens are recognised only inside `## Decision`
+(ADR-0120 item 1), so this paragraph is a reader's summary and carries no claim of its own.
 
 ## Consequences
 
@@ -176,13 +198,17 @@ advisories).
   items record what was claimed, not why, because no such reasoning was ever written and
   inventing it now would be a content edit the append-only rule forbids. The rule is
   prospective; the corpus carries three grandfathered records.
+- Migration-appended bookkeeping items are themselves permanent anchors. A future successor of
+  ADR-0032, ADR-0115, or ADR-0120 must write a rationale-bearing token against a bookkeeping
+  item that carries no rationale to supersede, so the retirement cost of those three ADRs is
+  inflated by pure ceremony. The same already holds for the items ADR-0120 item 8 appended.
 - `awf upgrade` appends numbered Decision items to adopters' authored, frozen ADR bodies.
   This is a stronger intrusion than the sync-writing rejected in item 3, and is accepted on a
   narrower ground: `upgrade` is one-shot, invoked deliberately, and lands as a reviewable
   diff, where `sync` is routine and continuous. ADR-0120 item 8's migration writing under
   `docsDir` is the precedent.
 - Rendered output loses the successor name in two places. The domain-doc index
-  (`internal/adr/domain.go:34-37`) can no longer print `-> superseded by ADR-NNNN` from a
+  (`internal/adr/domain.go:38-41`) can no longer print `-> superseded by ADR-NNNN` from a
   scalar field, and ACTIVE.md's `Superseded` bucket becomes an undifferentiated list. Both
   recover the claimants from the coverage model instead; how they render is ADR-B's concern.
 - Nothing here gives an ADR withdrawn without a successor a terminal state. `Superseded` now
