@@ -338,6 +338,17 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    matters for the same reason: ADR-0047 Decision 1 (`cites: ADR-0047#1`), the one claim this
    ADR's Context records the enumeration as having *missed*, is written that way.
 
+   **The plural shape cites several anchors from one reference and is recognized as all of them.**
+   `ADR-NNNN Decision items 1 and 6`, and the comma-separated and `items`-without-`Decision`
+   spellings of it, yield one claim per number in the run. It needs a pattern of its own because
+   the singular shapes demand a digit immediately after the noun and the trailing `s` makes every
+   branch fail, so before this both anchors were invisible rather than one; ADR-0093 Decision 2
+   (`cites: ADR-0093#2`) carries the corpus instance. Tokenizing one number of a run settles that
+   anchor alone and leaves the rest owed, which is the same per-anchor rule the singular shapes
+   follow. No unencoded claim was hiding behind the gap when it was closed, ADR-0093 having
+   tokenized both its anchors already, so this widens recall against future prose rather than
+   correcting a present miss.
+
    Not recognized: a bare `item N` whose ADR reference sits earlier in the same Decision item, as
    in ADR-0032 item 7 (`cites: ADR-0032#7`)'s "partially supersedes ADR-0023 ... item 2 ... item
    3". Resolving those against the nearest preceding `ADR-NNNN` was measured over the corpus and

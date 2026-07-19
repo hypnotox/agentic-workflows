@@ -38,6 +38,17 @@ var (
 	citeItemRe = regexp.MustCompile(adrRef + `\s+(?:Decision\s+item|Decision|item)\s+([0-9]+)`)
 	// citeDRe is the fourth shape, "ADR-NNNN DN".
 	citeDRe = regexp.MustCompile(adrRef + `\s+D([0-9]+)`)
+	// citePluralRe is the plural shape, "ADR-NNNN Decision items 1 and 6",
+	// which cites SEVERAL anchors from one reference and so cannot be
+	// expressed by the single-capture shapes: their noun alternation demands a
+	// digit straight after the noun, and the trailing "s" makes every branch
+	// fail, so both anchors were invisible rather than one. ADR-0093 carries
+	// the corpus instance. The second group captures the whole number run and
+	// digits are extracted from it, since a fixed capture count cannot express
+	// a list of unbounded length.
+	citePluralRe = regexp.MustCompile(adrRef + `\s+(?:Decision\s+items|items)\s+((?:[0-9]+(?:\s*,\s*|\s+and\s+))*[0-9]+)`)
+	// pluralNumRe pulls each anchor out of that run.
+	pluralNumRe = regexp.MustCompile(`[0-9]+`)
 	// citeSlugRe matches both slug spellings (ADR-0131 item 2). It reads raw
 	// text, not masked: a slug citation is always written inside a code span,
 	// so masking would erase every one of them. Section scoping is what makes
@@ -119,6 +130,16 @@ func (c Corpus) Citations(num string) []Citation {
 		for _, m := range re.FindAllStringSubmatchIndex(masked, -1) {
 			n, _ := strconv.Atoi(masked[m[4]:m[5]]) // the regex admits only digits
 			add(m[0], Anchor{ADR: masked[m[2]:m[3]], Item: n})
+		}
+	}
+	// The plural shape yields one anchor per number in its run. It cannot
+	// double-report against the singular shapes: those require a digit
+	// immediately after the noun, and "items" never provides one.
+	for _, m := range citePluralRe.FindAllStringSubmatchIndex(masked, -1) {
+		target := masked[m[2]:m[3]]
+		for _, num := range pluralNumRe.FindAllString(masked[m[4]:m[5]], -1) {
+			n, _ := strconv.Atoi(num) // the regex admits only digits
+			add(m[0], Anchor{ADR: target, Item: n})
 		}
 	}
 	for _, m := range citeSlugRe.FindAllStringSubmatchIndex(decision, -1) {

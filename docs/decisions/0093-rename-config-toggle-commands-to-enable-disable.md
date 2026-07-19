@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-11
 tags: [cli-dispatch, enable-closure]
-related: [24, 37, 39, 92, 94]
+related: [24, 37, 39, 92, 94, 131]
 domains: [tooling, config]
 ---
 # ADR-0093: Rename config-toggle commands to `enable`/`disable`

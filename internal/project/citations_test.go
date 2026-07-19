@@ -356,3 +356,47 @@ func TestCheckCitationsADRParseError(t *testing.T) {
 		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
 	}
 }
+
+// The plural shape cites several anchors from one reference. It needs its own
+// pattern because the singular shapes demand a digit straight after the noun
+// and the trailing "s" makes every branch fail, so before this both anchors
+// were invisible rather than one. Each number in the run is a separate claim,
+// and tokenizing one leaves the others owed.
+// invariant: citation-check-item-shapes
+func TestCitationsPluralItemShape(t *testing.T) {
+	p := citeProject(t, map[string]string{
+		"0001-a.md": citeTarget(""),
+		"0002-b.md": citeCarrier("1. **X.** This supersedes ADR-0001 Decision items 1 and 6 outright.\n"),
+	})
+	got := detailsOf(citeDrift(t, p))
+	if !strings.Contains(got, "ADR-0001#1") || !strings.Contains(got, "ADR-0001#6") {
+		t.Fatalf("both anchors of a plural citation must be reported, got:\n%s", got)
+	}
+	if n := strings.Count(got, "\n"); n != 2 {
+		t.Errorf("want exactly two findings, got %d:\n%s", n, got)
+	}
+
+	// A comma-separated run, and the bare "items N and M" spelling without the
+	// "Decision" noun, resolve the same way.
+	p = citeProject(t, map[string]string{
+		"0001-a.md": citeTarget(""),
+		"0002-b.md": citeCarrier("1. **X.** This supersedes ADR-0001 items 1, 4 and 6 outright.\n"),
+	})
+	got = detailsOf(citeDrift(t, p))
+	for _, want := range []string{"ADR-0001#1", "ADR-0001#4", "ADR-0001#6"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %s from a comma-separated run:\n%s", want, got)
+		}
+	}
+
+	// Tokenizing one anchor of the run leaves the rest owed.
+	p = citeProject(t, map[string]string{
+		"0001-a.md": citeTarget(""),
+		"0002-b.md": citeCarrier(
+			"1. **X.** This supersedes ADR-0001 Decision items 1 and 6 (`supersedes: ADR-0001#1`).\n"),
+	})
+	got = detailsOf(citeDrift(t, p))
+	if strings.Contains(got, "ADR-0001#1 ") || !strings.Contains(got, "ADR-0001#6") {
+		t.Errorf("a token for one anchor must settle only that one, got:\n%s", got)
+	}
+}
