@@ -902,9 +902,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:cc371be57d4d2a9ef405aab733da50abac6da7c7b58cfebb76e7d180c05f4f94",
+      "templateHash": "sha256:bfae06aabe3c2c2357df7d3207334bbbbf754b5dc6e16f2c12a30667d920b87c",
       "configHash": "sha256:b882341c1377ee1d0520b779158e9f7683ea565c6e81ea9b717b24a600d7fd2c",
-      "outputHash": "sha256:a0ebe8404e0c0c63d7db70b271b4632f8f71d1ffc1fdb0c2e86a9297cda2f62a"
+      "outputHash": "sha256:67ffd75d464ad8ddbe9afbbd5f928641c324c35235351192922460e3db65ce87"
     },
     "x": {
       "templateId": "runner/x.tmpl",

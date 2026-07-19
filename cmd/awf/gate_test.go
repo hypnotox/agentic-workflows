@@ -108,6 +108,12 @@ func TestNewGatesInHandler(t *testing.T) {
 	if err := runNew(root, "plan", []string{"x"}, &out); err == nil {
 		t.Error("runNew plan: expected gate error on ahead schema")
 	}
+	if err := runNew(root, "topic", []string{"rendering", "x"}, &out); err == nil {
+		t.Error("runNew topic: expected gate error on ahead schema")
+	}
+	if err := runNew(root, "topic", []string{"rendering"}, &out); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
+		t.Errorf("runNew topic must validate usage before gating, got %v", err)
+	}
 	if err := runNew(root, "skill", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew skill: expected gate error on ahead schema")
 	}

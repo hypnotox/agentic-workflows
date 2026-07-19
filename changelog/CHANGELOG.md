@@ -137,6 +137,13 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf new topic <domain> "<title>"` scaffolds exactly the paired current-state metadata and authored
+  part without syncing or mutating config, lock, or rendered docs. It allocates a collision-free
+  kebab slug, protects the reserved `index` and either orphaned half, rolls back the first file if the
+  second write fails, and prints both repository-relative paths. The scaffold contains a valid path
+  placeholder, generic prose, and no invented claims; adopters must edit and author it manually. A
+  zero-claim shell renders but does not satisfy scoped coverage. This is still unreleased bridge
+  preparation, not migration readiness or runtime authority, and no intermediate release is allowed.
 - The unreleased current-state topic producer strictly pairs
   `.awf/topics/metadata/<domain>/<topic>.yaml` with
   `.awf/topics/parts/<domain>/<topic>/current-state.md`, parses canonical rule and invariant claims,

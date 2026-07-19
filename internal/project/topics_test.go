@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -24,6 +25,56 @@ func topicProject(t *testing.T) string {
 	writeADR(t, root, "0001-topic.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Topic"), testsupport.WithBody("## Decision\n\n1. Topic.\n")))
 	return root
 }
+func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
+	root := topicProject(t)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := topic.ScaffoldFiles(root, p.Cfg, "rendering", "Prepared Shell")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
+	}
+	adrs, err := adr.LoadCorpus(filepath.Join(root, "docs/decisions"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := topic.LoadCorpus(root, p.Cfg, adrs)
+	if err != nil {
+		t.Fatalf("load scaffold corpus: %v", err)
+	}
+	shell, ok := corpus.ByTopicID("rendering/prepared-shell")
+	if !ok || len(shell.Claims) != 0 {
+		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)
+	}
+	op, err := p.OutputPlan()
+	if err != nil {
+		t.Fatalf("output plan: %v", err)
+	}
+	found := false
+	for _, node := range op.Nodes {
+		if node.Path == "docs/topics/rendering/prepared-shell.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("scaffolded topic missing from output plan")
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("render scaffold: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/topics/rendering/prepared-shell.md")); err != nil {
+		t.Fatal(err)
+	}
+	coverage := topic.CoverageForTopic(shell, corpus.DomainPaths["rendering"], corpus.Markers)
+	if coverage.HasClaims || coverage.SatisfiesScopedCoverage || len(coverage.EffectiveSelectors) == 0 {
+		t.Fatalf("zero-claim coverage = %#v", coverage)
+	}
+}
+
 func TestTopicHashIsRepositoryRelative(t *testing.T) {
 	model := topic.TopicRenderModel{Title: "Same", Summary: "Same.", Part: "Same part.\n"}
 	var hashes []string

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,10 +25,12 @@ func runNew(root, kind string, args []string, stdout io.Writer) error {
 		return newADR(root, args, stdout)
 	case "plan":
 		return newPlan(root, args, stdout)
+	case "topic":
+		return newTopic(root, args, stdout)
 	case "skill", "agent", "doc":
 		return newLocal(root, kind, args, stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, skill, agent, doc)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, skill, agent, doc)", kind)}
 	}
 }
 
@@ -67,6 +71,51 @@ func newPlan(root string, titleWords []string, stdout io.Writer) error {
 	fmt.Fprintln(stdout, path)
 	return nil
 }
+
+func newTopic(root string, args []string, stdout io.Writer) error {
+	if len(args) < 2 {
+		return &usageErr{"usage: awf new topic <domain> <title>"}
+	}
+	if err := gate(root); err != nil {
+		return err
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	files, err := topic.ScaffoldFiles(root, p.Cfg, args[0], strings.Join(args[1:], " "))
+	if err != nil {
+		return err
+	}
+	written := make([]string, 0, len(files))
+	for _, file := range files {
+		path := filepath.Join(root, filepath.FromSlash(file.Path))
+		if err := topicMkdirAll(filepath.Dir(path), 0o755); err != nil { // coverage-ignore: project.Open just read the writable project tree; failure requires a permission or I/O fault
+			return err
+		}
+		if err := topicWriteFile(path, file.Content, 0o644); err != nil {
+			var rollback []error
+			_ = topicRemove(path)
+			for _, prior := range written {
+				if removeErr := topicRemove(prior); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+					rollback = append(rollback, removeErr)
+				}
+			}
+			return errors.Join(append([]error{err}, rollback...)...)
+		}
+		written = append(written, path)
+	}
+	for _, file := range files {
+		fmt.Fprintln(stdout, file.Path)
+	}
+	return nil
+}
+
+var (
+	topicMkdirAll  = os.MkdirAll
+	topicWriteFile = os.WriteFile
+	topicRemove    = os.Remove
+)
 
 // newLocal scaffolds a project-local artifact (ADR-0068, ADR-0091): a skill,
 // agent, or doc. It validates the name (path-aware for doc), writes a declaring

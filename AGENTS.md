@@ -74,7 +74,7 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 - **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
 - **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue. Delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
 
-<!-- awf:edit commands: default; create .awf/parts/agents-doc/commands.md to override -->
+<!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
 ## Commands
 
 ```
@@ -85,6 +85,13 @@ awf upgrade: migrate the config tree to the current schema after upgrading awf
 awf audit: report workflow-conformance findings over an explicit commit range (advisory)
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
+
+`awf new topic <domain> "<title>"` scaffolds paired current-state metadata and an empty-claim authored
+part without syncing. Replace the anchored path placeholder and generic prose, then author and review
+claims manually. The command prints both repository-relative input paths and does not mutate config,
+the lock, or rendered docs. These topics remain unreleased bridge-preparation artifacts until the
+bridge-migration work lands.
+
 
 <!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->
 ## Document map

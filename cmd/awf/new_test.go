@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -39,9 +41,123 @@ func TestRunNewADRError(t *testing.T) {
 
 func TestRunNewUnknownKind(t *testing.T) {
 	root := scaffoldProject(t)
-	if err := runNew(root, "widget", []string{"x"}, os.Stdout); err == nil {
-		t.Fatal("expected error for unknown kind")
+	if err := runNew(root, "widget", []string{"x"}, os.Stdout); err == nil || !strings.Contains(err.Error(), "topic") {
+		t.Fatalf("expected error naming every kind, got %v", err)
 	}
+}
+
+func topicCLIProject(t *testing.T) string {
+	t.Helper()
+	root := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/rendering.yaml"), "paths: [\"internal/**\"]\n")
+	if err := runSync(root, io.Discard); err != nil {
+		t.Fatalf("sync topic fixture: %v", err)
+	}
+	return root
+}
+
+func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
+	root := topicCLIProject(t)
+	beforeConfig := mustReadCLIFile(t, filepath.Join(root, ".awf/config.yaml"))
+	beforeLock := mustReadCLIFile(t, filepath.Join(root, ".awf/awf.lock"))
+	var out bytes.Buffer
+	if err := runNew(root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	wantOut := ".awf/topics/metadata/rendering/scheduling-contracts.yaml\n.awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
+	if out.String() != wantOut {
+		t.Errorf("output = %q, want %q", out.String(), wantOut)
+	}
+	metadata := mustReadCLIFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/scheduling-contracts.yaml"))
+	part := mustReadCLIFile(t, filepath.Join(root, ".awf/topics/parts/rendering/scheduling-contracts/current-state.md"))
+	if !strings.Contains(metadata, "title: Scheduling Contracts") || !strings.Contains(metadata, "replace/with/project/path/**") {
+		t.Errorf("metadata:\n%s", metadata)
+	}
+	if strings.Contains(part, "### `") || !strings.HasSuffix(part, "## Claims\n") {
+		t.Errorf("part invented a claim or lacks final Claims:\n%s", part)
+	}
+	if got := mustReadCLIFile(t, filepath.Join(root, ".awf/config.yaml")); got != beforeConfig {
+		t.Error("topic scaffold mutated config")
+	}
+	if got := mustReadCLIFile(t, filepath.Join(root, ".awf/awf.lock")); got != beforeLock {
+		t.Error("topic scaffold mutated lock")
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/topics/rendering/scheduling-contracts.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("topic scaffold unexpectedly synced: %v", err)
+	}
+}
+
+func TestRunNewTopicUsageAndValidation(t *testing.T) {
+	root := topicCLIProject(t)
+	for _, args := range [][]string{nil, {"rendering"}} {
+		if err := runNew(root, "topic", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
+			t.Fatalf("args %v: %v", args, err)
+		}
+	}
+	for _, tc := range []struct{ domain, want string }{{"Rendering", "lowercase kebab-case"}, {"tooling", "not configured"}} {
+		if err := runNew(root, "topic", []string{tc.domain, "Title"}, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("domain %q: %v", tc.domain, err)
+		}
+	}
+}
+
+func TestRunNewTopicRollback(t *testing.T) {
+	for _, rollbackFails := range []bool{false, true} {
+		t.Run(fmt.Sprintf("rollback-fails-%t", rollbackFails), func(t *testing.T) {
+			root := topicCLIProject(t)
+			writes := 0
+			testsupport.SwapVar(t, &topicWriteFile, func(path string, data []byte, mode os.FileMode) error {
+				writes++
+				if writes == 2 {
+					return errors.New("second write failed")
+				}
+				return os.WriteFile(path, data, mode)
+			})
+			if rollbackFails {
+				testsupport.SwapVar(t, &topicRemove, func(string) error { return errors.New("rollback failed") })
+			}
+			err := runNew(root, "topic", []string{"rendering", "Rollback"}, io.Discard)
+			if err == nil || !strings.Contains(err.Error(), "second write failed") {
+				t.Fatalf("error = %v", err)
+			}
+			metadata := filepath.Join(root, ".awf/topics/metadata/rendering/rollback.yaml")
+			if rollbackFails {
+				if !strings.Contains(err.Error(), "rollback failed") {
+					t.Fatalf("joined error = %v", err)
+				}
+			} else if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("first file survived rollback: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
+	if err := runNew(t.TempDir(), "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "awf init") {
+		t.Fatalf("unadopted project error = %v", err)
+	}
+
+	root := topicCLIProject(t)
+	testsupport.SwapVar(t, &topicWriteFile, func(string, []byte, os.FileMode) error { return errors.New("write failed") })
+	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("write error = %v", err)
+	}
+
+	root = topicCLIProject(t)
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\ndocs: [ghost-doc]\n")
+	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil {
+		t.Fatal("expected project.Open error")
+	}
+}
+
+func mustReadCLIFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 func TestRunNewScaffoldsPlan(t *testing.T) {
@@ -186,6 +302,31 @@ func TestRunNewMissingArgs(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "new", "adr"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for missing title, got %d", code)
+	}
+}
+
+func TestRunNewTopicDispatchAndHelp(t *testing.T) {
+	root := topicCLIProject(t)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "new", "topic", "rendering", "Dispatch", "Topic"}, &out, &errb); code != 0 {
+		t.Fatalf("dispatch exit = %d: %s", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "dispatch-topic.yaml") {
+		t.Errorf("dispatch output = %q", out.String())
+	}
+	out.Reset()
+	if code := run([]string{"awf", "new", "topic", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "awf new topic <domain> <title>") {
+		t.Fatalf("help exit = %d, output = %q, error = %q", code, out.String(), errb.String())
+	}
+}
+
+func TestRunNewTopicMissingArgsDispatch(t *testing.T) {
+	root := topicCLIProject(t)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	var out, errb bytes.Buffer
+	if code := run([]string{"awf", "new", "topic", "rendering"}, &out, &errb); code != 2 {
+		t.Fatalf("expected exit 2, got %d (%s)", code, errb.String())
 	}
 }
 

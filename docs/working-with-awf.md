@@ -25,6 +25,7 @@ by this repository's own checks (ADR-0090).
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf context <path>...`: report the committed context awf holds for a set of repo-relative paths, namely the owning domain(s), the invariant slugs backed under those paths, related ADRs, and each domain's current-state doc. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git.
 - `awf new adr "<title>"`: scaffold the next ADR.
+- `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
 - `awf new doc <name> "<description>"`: scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
 - `awf upgrade`: migrate the config tree after upgrading the awf binary.
@@ -59,6 +60,12 @@ one final `## Claims`; each claim starts with exactly `` ### `rule: <slug>` `` o
 optional direct `References`, and invariant-only `Backing`/conditional `Verify` lines. Provenance ADRs
 must be Implemented. Rendering writes `<docsDir>/topics/<domain>/<topic>.md` and a sorted
 `<docsDir>/topics/<domain>/index.md`; both join the normal lock, drift, collision, and prune lifecycle.
+Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It derives a
+collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
+a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
+Replace the placeholder, revise the generic summary and prose, and add reviewed claims manually; a
+zero-claim shell renders but does not satisfy scoped coverage.
+
 This is unreleased preparation substrate. Do not publish or treat it as shadow authority: legacy ADR
 context and invariant enforcement remain authoritative until the following bridge-migration plan
 adds readiness, attestation, and ordinary-command refusal.

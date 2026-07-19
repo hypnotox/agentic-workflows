@@ -269,8 +269,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:7a725eab1d76c064c571a950c1ca00eac809d149749a9fbd11bcd91f2295155c",
-      "configHash": "sha256:d22ded8183b446d5ad75e0bb9a1d4293cb7df8b34fa9eea3c465be79dbe9aa7c",
-      "outputHash": "sha256:ee1f73560c2bf12385b047346e96bdea5c0f2a8572142a1910874adbc2e2607a"
+      "configHash": "sha256:2540233f93bab6b8980612edc88667be04f7673901195255da08aae826eaac62",
+      "outputHash": "sha256:83cd1c2dc750f1b460bb357d51957615d6709daecfd7996cf2259e52dfa4076b"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -360,7 +360,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:68c66f2dbaec4dc7add481f5b5662984134db506f4f33137c5fadc7807f85e38",
+      "outputHash": "sha256:55f2465bab1711c19396be84f1e0cead5fd6311f054b96995d07942228a560fa",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -413,9 +413,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:cc371be57d4d2a9ef405aab733da50abac6da7c7b58cfebb76e7d180c05f4f94",
+      "templateHash": "sha256:bfae06aabe3c2c2357df7d3207334bbbbf754b5dc6e16f2c12a30667d920b87c",
       "configHash": "sha256:da2f47f774f909db6d8ca9fa42ea3f247e5f3dd09a2f6cd40124929a4b44e976",
-      "outputHash": "sha256:9787d0f09cd276924dd3fd9f9db2bf2c8755f70470dc1bccfde153fdf92e7aa6"
+      "outputHash": "sha256:89114a1b99abdfc3f269063bab0290fe3511d2f7d871b8fffcfb6a3d4c2d739c"
     }
   }
 }

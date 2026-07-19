@@ -53,14 +53,19 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 5 {
-		t.Errorf("new has %d children, want 5", len(newCmd.Children))
+	if len(newCmd.Children) != 6 {
+		t.Errorf("new has %d children, want 6", len(newCmd.Children))
 	}
 	if _, ok := newCmd.Child("adr"); !ok {
 		t.Error("new.Child(adr) missing")
 	}
 	if _, ok := newCmd.Child("plan"); !ok {
 		t.Error("new.Child(plan) missing")
+	}
+	if topic, ok := newCmd.Child("topic"); !ok {
+		t.Error("new.Child(topic) missing")
+	} else if topic.MinPos != 2 || topic.MaxPos != -1 || !strings.Contains(topic.HelpBody, "without syncing") {
+		t.Errorf("new topic spec = %#v", topic)
 	}
 	if _, ok := newCmd.Child("nope"); ok {
 		t.Error("new.Child(nope) should miss")

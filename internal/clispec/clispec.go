@@ -165,14 +165,15 @@ Flags:
 `,
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, skill, agent, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf new <kind> <args>
 
-Scaffold a new artifact. <kind> is adr, plan, skill, agent, or doc.
+Scaffold a new artifact. <kind> is adr, plan, topic, skill, agent, or doc.
 
 - awf new adr "Some Decision Title"
 - awf new plan "Some Plan Title"
+- awf new topic <domain> "Some Topic Title"
 - awf new skill <name> "<description>"   (a project-local skill)
 - awf new agent <name> "<description>"   (a project-local agent)
 - awf new doc <name> "<description>"     (a project-local doc; name may be nested, e.g. guides/ci)
@@ -192,6 +193,14 @@ the rendered template with its date and title heading filled in.
 
 Scaffold a new plan under docs/plans, date-prefixed (no sequential number),
 from the rendered plans template with its date and title heading filled in.
+`,
+			},
+			{
+				Name: "topic", Summary: "Scaffold paired current-state topic inputs", MinPos: 2, MaxPos: -1,
+				HelpBody: `Usage: awf new topic <domain> <title>
+
+Scaffold paired topic metadata and authored current-state inputs without syncing.
+Edit the path placeholder and author reviewed claims manually.
 `,
 			},
 			{

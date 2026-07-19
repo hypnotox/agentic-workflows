@@ -103,6 +103,11 @@ with canonical rule/invariant headings, prose, ordered Implemented-ADR provenanc
 and invariant backing metadata. Valid pairs render to `docs/topics/<domain>/<topic>.md` and a sorted
 `docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift, brownfield
 backup, and prune lifecycle, and add compact topic navigation while retaining domain Decisions.
+`awf new topic <domain> "<title>"` writes exactly the metadata and authored part with a
+collision-free kebab slug, a valid anchored path placeholder, generic editable prose, and no claims.
+It prints both repository-relative paths, does not sync or mutate config, lock, or rendered docs, and
+requires manual path, prose, and claim authoring. A zero-claim shell renders but does not satisfy
+scoped coverage.
 
 This substrate sits beside unchanged legacy `invariants` and does not switch normal context or
 invariant authority. Plans 1 and 2 are one unreleased bridge tranche: no intermediate release is
@@ -190,6 +195,7 @@ disk.
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
 | `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
+| `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
