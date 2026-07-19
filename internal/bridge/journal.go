@@ -314,7 +314,7 @@ func restorePriors(root string, j Journal, log io.Writer) error {
 	for i := len(j.Operations) - 1; i >= 0; i-- {
 		op := j.Operations[i]
 		current, err := imageOf(root, op.Path)
-		if err != nil { // coverage-ignore: a journaled path reads cleanly unless a concurrent removal races
+		if err != nil {
 			return fmt.Errorf("read %s: %w", op.Path, err)
 		}
 		if !imagesEqual(current, op.Prior) && !imagesEqual(current, op.Replacement) {
