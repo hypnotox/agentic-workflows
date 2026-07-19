@@ -3,7 +3,7 @@ status: Proposed
 date: 2026-07-19
 tags: [multi-target, subagent-dispatch, workflow-chain]
 related: [38, 122, 123, 125]
-domains: [rendering, tooling]
+domains: [config, rendering, tooling]
 ---
 # ADR-0132: Structured Cross-Runtime Exploration Workflow
 

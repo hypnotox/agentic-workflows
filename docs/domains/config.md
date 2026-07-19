@@ -68,3 +68,7 @@ precedent) - empty or absent means no stripping. Migrations validate serialized 
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
 - [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md)
 
+### Proposed
+
+- [ADR-0132: Structured Cross-Runtime Exploration Workflow](../decisions/0132-structured-cross-runtime-exploration-workflow.md)
+

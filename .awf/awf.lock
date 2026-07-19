@@ -327,7 +327,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:9b336121c594d637169a7079d8c8e7532c39f467302328b3bb3a664d955b11bc",
+      "outputHash": "sha256:971ee7ca067acf422d3a6536e492944cf76aa1779e31f724e4380848bfab1cfb",
       "regenChecked": true
     },
     "docs/domains/invariants.md": {

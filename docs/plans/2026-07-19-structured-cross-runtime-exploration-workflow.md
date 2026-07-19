@@ -130,13 +130,131 @@ All paths below are absolute.
     }
   ```
 
-- [ ] Treat `/home/hypno/Projects/agentic-workflows/internal/project/resolve_test.go` as a repeated-site batch. The affected-site set is the output of:
+- [ ] Treat `/home/hypno/Projects/agentic-workflows/internal/project/resolve_test.go` as a repeated-site batch. Apply this literal import and helper diff:
 
-  ```bash
-  rg -n 'len\(plan|ops  int|11-skill|11 skills|planning side' /home/hypno/Projects/agentic-workflows/internal/project/resolve_test.go
+  ```diff
+   import (
+  +    "maps"
+  +    "slices"
+       "testing"
+
+       "github.com/hypnotox/agentic-workflows/internal/catalog"
+   )
+  +
+  +func planNodes(plan []PlanOp) map[catalog.Node]bool {
+  +    got := make(map[catalog.Node]bool, len(plan))
+  +    for _, op := range plan {
+  +        got[op.Node] = true
+  +    }
+  +    return got
+  +}
+  +
+  +func closureNodes(nodes []catalog.Node) map[catalog.Node]bool {
+  +    got := make(map[catalog.Node]bool, len(nodes))
+  +    for _, node := range nodes {
+  +        got[node] = true
+  +    }
+  +    return got
+  +}
   ```
 
-  Representative exact diff: in `TestResolveEnableClosurePlan`, replace `if len(plan) != 14` with an expected-node set derived from `catalog.Closure(catalog.Standard, []catalog.Node{{Kind: "skill", Name: "brainstorming"}})` and compare every planned node to that set, while retaining the seed-first and `RequiredBy` assertions. Edge exact diff: for the partial-closure fixture, derive the wanted plan by filtering that same closure against the fixture's already-enabled node set and compare node sets rather than `len(plan3) != 9`. For `TestResolveDisableCascadeSizes`, replace `ops int` with `want []string` and compare sorted operation node names; obtain each list once from `ResolveDisable` after the catalog change and paste the names, not lengths. The deterministic post-check is that the command above returns no `ops int`, `len(plan`, `11-skill`, `11 skills`, or `planning side` match.
+  Replace the stale opening comments and all of `TestResolveDisableCascadeSizes` with this compilable edge assertion:
+
+  ```diff
+  -// openChainProject opens a project with the full 11-skill chain closure and
+  +// openChainProject opens a project with the full derived chain closure and
+   // its three agents enabled (the drift-test fixture builder).
+  @@
+  -// Cascade sizes are seed-dependent (ADR-0081 Decision 5): the closure has two
+  -// mutually-requiring cores (planning 5, execution 3) with edges only
+  -// planning→execution, brainstorming a pure source, and retrospective/
+  -// adr-lifecycle sinks. Counts verified against the catalog on 2026-07-09.
+  +// Cascade members are seed-dependent (ADR-0081 Decision 5). Pin names, not
+  +// corpus sizes, so an unrelated closure addition cannot silently shift scope.
+   // invariant: remove-refuses-dependents
+   func TestResolveDisableCascadeSizes(t *testing.T) {
+       p := openChainProject(t)
+       cases := []struct {
+           seed string
+  -        ops  int
+  +        want []string
+       }{
+  -        {"brainstorming", 1},    // pure source: nothing requires it
+  -        {"reviewing-plan", 7},   // planning core + brainstorming + plan-reviewer
+  -        {"executing-plans", 10}, // both cores + brainstorming + plan-reviewer
+  -        {"retrospective", 11},   // worst case: 10 skills + plan-reviewer
+  +        {"brainstorming", []string{"skill brainstorming"}},
+  +        {"reviewing-plan", []string{"agent plan-reviewer", "skill brainstorming", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-plan", "skill reviewing-plan-resync", "skill writing-plans"}},
+  +        {"executing-plans", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-plans", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
+  +        {"retrospective", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-plans", "skill proposing-adr", "skill retrospective", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
+       }
+       for _, tc := range cases {
+  -        if plan := p.ResolveDisable("skill", tc.seed); len(plan) != tc.ops {
+  -            t.Errorf("ResolveDisable(%q) = %d ops, want %d: %v", tc.seed, len(plan), tc.ops, plan)
+  +        plan := p.ResolveDisable("skill", tc.seed)
+  +        got := make([]string, 0, len(plan))
+  +        for _, op := range plan {
+  +            got = append(got, op.Node.Kind+" "+op.Node.Name)
+  +        }
+  +        slices.Sort(got)
+  +        if !slices.Equal(got, tc.want) {
+  +            t.Errorf("ResolveDisable(%q) = %v, want %v", tc.seed, got, tc.want)
+           }
+       }
+   }
+  ```
+
+  Replace the representative full-closure length assertion and the partial-closure edge with these literal diffs; retain the existing seed-first, `RequiredBy`, enabled-leaf, and enabled-dependency assertions around them:
+
+  ```diff
+  -// The add plan on an empty config is the seed's full forward closure - the
+  -// 11-skill chain unit plus its three agents from the brainstorming seed.
+  +// The add plan on an empty config is the seed's full forward closure.
+   // invariant: add-applies-closure-plan
+   func TestResolveEnableClosurePlan(t *testing.T) {
+  @@
+       }
+       plan := p.ResolveEnable("skill", "brainstorming")
+  -    if len(plan) != 14 {
+  -        t.Fatalf("ResolveEnable(brainstorming) = %d ops, want 14 (11 skills + 3 agents): %v", len(plan), plan)
+  +    closure := catalog.Closure(catalog.Standard, []catalog.Node{{Kind: "skill", Name: "brainstorming"}})
+  +    if got, want := planNodes(plan), closureNodes(closure); !maps.Equal(got, want) {
+  +        t.Fatalf("ResolveEnable(brainstorming) nodes = %v, want %v", got, want)
+       }
+  @@
+  -    // Enabled-subtree skip mid-walk: with the execution core already enabled,
+  -    // brainstorming's closure plans only the planning side (7 skills incl. the
+  -    // seed + adr-reviewer + plan-reviewer = 9 ops), never re-adding members.
+  +    // Enabled-subtree skip mid-walk never re-adds an enabled member.
+       p3, err := Open(scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer]\n"))
+  @@
+       }
+       plan3 := p3.ResolveEnable("skill", "brainstorming")
+  -    if len(plan3) != 9 {
+  -        t.Fatalf("partial-closure add = %d ops, want 9: %v", len(plan3), plan3)
+  +    enabled := map[catalog.Node]bool{
+  +        {Kind: "skill", Name: "executing-plans"}:             true,
+  +        {Kind: "skill", Name: "retrospective"}:               true,
+  +        {Kind: "skill", Name: "reviewing-impl"}:              true,
+  +        {Kind: "skill", Name: "subagent-driven-development"}: true,
+  +        {Kind: "agent", Name: "code-reviewer"}:               true,
+  +    }
+  +    want3 := map[catalog.Node]bool{}
+  +    for _, node := range closure {
+  +        if !enabled[node] {
+  +            want3[node] = true
+  +        }
+  +    }
+  +    if got := planNodes(plan3); !maps.Equal(got, want3) {
+  +        t.Fatalf("partial-closure add nodes = %v, want %v", got, want3)
+       }
+  ```
+
+  The deterministic post-check is:
+
+  ```bash
+  if rg -n 'ops  int|len\(plan|11-skill|11 skills|planning side' /home/hypno/Projects/agentic-workflows/internal/project/resolve_test.go; then exit 1; fi
+  ```
 
 - [ ] In `/home/hypno/Projects/agentic-workflows/internal/migrate/migrate_test.go`, append `exploring-skill-closure` to both exact ordered migration-name strings in `TestUpgradeAppliesInOrderIdempotent` and `TestUpgradeStampsTreeLock`, rename `TestCurrentIsTwelve` to `TestCurrentIsThirteen`, and assert `Current() == 13`.
 
@@ -179,9 +297,85 @@ All paths below are absolute.
 
   This uses `applyCloseEnabledSet` and `catalog.Standard`, so it proves the shipped generation-13 operation. Keep the existing synthetic `closeEnabledSet` test because it proves the distinct dormant-doc interaction, not exploration migration.
 
-- [ ] In `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go`, add `TestRunUpgradeAddsExploringAtSchemaThirteen`: use `testsupport.WriteAwfConfig` to write a real test-root config with `skills: [debugging]`, an empty agents list, and a lock stamped at schema 12; call `runUpgrade`; assert output contains `close-enabled-set: enabled skill "exploring" (required by "debugging")` and the applied migration name `exploring-skill-closure`; load the resulting lock and assert schema 13; load the config and assert `exploring` is enabled; finally assert `runCheck(root, io.Discard) == nil`. This is distinct from the direct migration test because it proves registry selection, lock stamping, terminal sync, and project-open/check behavior.
+- [ ] In `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go`, add the `config` import and this literal compilable test. It constructs a real schema-12 lock, calls the existing upgrade handler, and uses only current package APIs:
 
-- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/version_test.go`, retain `TestVersionCoversCurrentSchema` unchanged. Its exact terminal assertion after production changes is `migrate.Current() == 13`, `minVersionBySchema[13] == "0.17.0"`, and `Version == "0.17.0"`; add those three comparisons to the test. There is no implementation-time version decision.
+  ```diff
+   import (
+  @@
+       "testing"
+
+  +    "github.com/hypnotox/agentic-workflows/internal/config"
+       "github.com/hypnotox/agentic-workflows/internal/manifest"
+       "github.com/hypnotox/agentic-workflows/internal/testsupport"
+   )
+  @@
+  +func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
+  +    root := t.TempDir()
+  +    testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [debugging]\nagents: []\n")
+  +    lock := &manifest.Lock{AWFVersion: "0.17.0", SchemaVersion: 12, Files: map[string]manifest.Entry{}}
+  +    if err := lock.Save(config.LockPath(root)); err != nil {
+  +        t.Fatal(err)
+  +    }
+  +
+  +    var out bytes.Buffer
+  +    if err := runUpgrade(root, &out); err != nil {
+  +        t.Fatalf("runUpgrade: %v", err)
+  +    }
+  +    for _, want := range []string{
+  +        `close-enabled-set: enabled skill "exploring" (required by "debugging")`,
+  +        "awf upgrade: applied exploring-skill-closure",
+  +    } {
+  +        if !strings.Contains(out.String(), want) {
+  +            t.Errorf("upgrade output missing %q:\n%s", want, out.String())
+  +        }
+  +    }
+  +    upgradedLock, err := manifest.Load(config.LockPath(root))
+  +    if err != nil {
+  +        t.Fatal(err)
+  +    }
+  +    if upgradedLock.SchemaVersion != 13 {
+  +        t.Errorf("lock schema = %d, want 13", upgradedLock.SchemaVersion)
+  +    }
+  +    cfg, err := config.Load(config.RootDir(root))
+  +    if err != nil {
+  +        t.Fatal(err)
+  +    }
+  +    found := false
+  +    for _, skill := range cfg.Skills {
+  +        if skill == "exploring" {
+  +            found = true
+  +        }
+  +    }
+  +    if !found {
+  +        t.Errorf("upgraded skills missing exploring: %v", cfg.Skills)
+  +    }
+  +    if err := runCheck(root, io.Discard); err != nil {
+  +        t.Errorf("post-upgrade check: %v", err)
+  +    }
+  +}
+  ```
+
+  This is distinct from the direct migration test because it proves registry selection, lock stamping, terminal sync, and project-open/check behavior.
+
+- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/version_test.go`, retain the existing generic coverage assertions and append these exact terminal assertions inside `TestVersionCoversCurrentSchema`:
+
+  ```diff
+       if semver.Compare("v"+Version, "v"+min) < 0 {
+           t.Errorf("project.Version %s is below the minimum %s for schema generation %d; bump the const (ADR-0049 Decision 4)", Version, min, migrate.Current())
+       }
+  +    if migrate.Current() != 13 {
+  +        t.Errorf("migrate.Current() = %d, want 13", migrate.Current())
+  +    }
+  +    if minVersionBySchema[13] != "0.17.0" {
+  +        t.Errorf("minVersionBySchema[13] = %q, want %q", minVersionBySchema[13], "0.17.0")
+  +    }
+  +    if Version != "0.17.0" {
+  +        t.Errorf("Version = %q, want %q", Version, "0.17.0")
+  +    }
+   }
+  ```
+
+  There is no implementation-time version decision.
 
 Run the focused red test command:
 
@@ -193,36 +387,237 @@ Expected: non-zero only because `exploring`, generation 13, and its compatibilit
 
 ### Task 1.2: Add exact failing render, publication-safety, composed-eval, and order tests
 
-- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/target_test.go`, replace `TestPiSubagentFourToolContract` with `TestPiStructuredExplorationContract` and replace `// invariant: pi-subagent-four-tool-contract` with `// invariant: pi-structured-exploration-contract`. Preserve the existing exactly-four registration loop and add exact assertions that the generated exploration registration contains required `task`, `breadth: StringEnum(["targeted", "bounded", "broad"] as const)`, `detail: StringEnum(["paths", "summary", "analysis"] as const)`, and `additionalProperties: false`; assert grounding still has `{task}`, review still has `{kind, task}`, and implementation still has `{task, allowCommits}` by extracting each registration block from one tool name to the next and checking only that block.
+- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/target_test.go`, replace the old contract test with this helper and literal test body. The helper slices each registration from its tool name to the next registration, so unchanged role schemas are checked independently:
 
-- [ ] In the same file add `TestCrossRuntimeExplorationDispatch` with `// invariant: cross-runtime-exploration-dispatch`. Render a fixture enabling `exploring`, `brainstorming`, `debugging`, and `refactor-coupling-audit` for every value returned by `KnownTargets()`. For each target assert its adapter's `example-exploring/SKILL.md` exists. In Pi, assert that skill invokes `subagent_explore` with `task`, `breadth`, and `detail`. In every non-Pi target assert the skill says `target-native fresh-context exploration subagent`, names all three fields, and contains no `subagent_explore`. In every consumer assert the invocation condition contains both `location is unknown` and `inline search would pollute the parent context`, joined by `and`; assert it retains the known-file/trivial exception.
-
-- [ ] Add `TestBoundedExplorationReporting` with `// invariant: bounded-exploration-reporting`. On Pi and one non-Pi edge target, assert the rendered exploring skill contains the ordered breadth and detail values, `adaptive maximum`, `tracked files plus non-ignored untracked`, all four exclusions, `Not found within <breadth> boundary:`, `inconclusive`, `unverified`, `one information need`, and `new fresh-context call`. Render the template once with an empty capability map and assert no `<no value>`, unresolved template action, or incoherent dangling Pi clause.
-
-- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go`, add `TestExploringTemplate` beside the other skill goldens. Render with prefix `example`, first with `.targetSubagentTools = true` and then with it absent. Assert the Pi result names `subagent_explore` and exact `{task, breadth, detail}` dispatch; assert the fallback names generic target-native fresh-context delegation and no Pi token. Both results must contain the conjunctive trigger and exact-known-file/trivial exceptions. `renderGolden` supplies the publication-safety leak assertions.
-
-- [ ] In `TestDebuggingTemplate` in that file, add this positional regression assertion after the existing phrase loop:
-
-  ```go
-    ordered := []string{
-        "**Form one falsifiable hypothesis.**",
-        "Invoke `example-exploring`",
-        "Pick the cheapest oracle",
-        "**Isolate with a failing test, written first.**",
-    }
-    position := -1
-    for _, phrase := range ordered {
-        next := strings.Index(out, phrase)
-        if next <= position {
-            t.Fatalf("debugging order violation at %q: positions must increase in %v", phrase, ordered)
-        }
-        position = next
-    }
+  ```diff
+  -// invariant: pi-subagent-four-tool-contract
+  -func TestPiSubagentFourToolContract(t *testing.T) {
+  +func registrationBlock(t *testing.T, content, name, nextMarker string) string {
+  +    t.Helper()
+  +    start := strings.Index(content, `name: "`+name+`"`)
+  +    if start < 0 {
+  +        t.Fatalf("cannot find registration %s", name)
+  +    }
+  +    relativeEnd := strings.Index(content[start:], nextMarker)
+  +    if relativeEnd <= 0 {
+  +        t.Fatalf("cannot isolate registration %s before %s", name, nextMarker)
+  +    }
+  +    return content[start : start+relativeEnd]
+  +}
+  +
+  +// invariant: pi-structured-exploration-contract
+  +func TestPiStructuredExplorationContract(t *testing.T) {
+       content := renderPiExtensionFile(t, "index.ts")
+       for _, name := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
+           if strings.Count(content, `name: "`+name+`"`) != 1 {
+  @@
+       if got := strings.Count(content, `name: "subagent_`); got != 4 {
+           t.Errorf("public subagent registration count = %d, want 4", got)
+       }
+  -    for _, want := range []string{
+  -        `name: "subagent_grounding"`, `rolePrompt("grounding")`,
+  -        `name: "subagent_explore"`, `rolePrompt("explore")`,
+  -        `name: "subagent_review"`, `StringEnum(["adr", "plan", "code"]`,
+  -        `name: "subagent_implement"`, `allowCommits: Type.Boolean()`,
+  -        `task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`,
+  -    } {
+  -        if !strings.Contains(content, want) {
+  -            t.Errorf("extension missing four-tool schema/role contract %q", want)
+  +    blocks := map[string]string{
+  +        "grounding": registrationBlock(t, content, "subagent_grounding", `name: "subagent_explore"`),
+  +        "explore":   registrationBlock(t, content, "subagent_explore", `name: "subagent_review"`),
+  +        "review":    registrationBlock(t, content, "subagent_review", `name: "subagent_implement"`),
+  +        "implement": registrationBlock(t, content, "subagent_implement", "export default async function"),
+  +    }
+  +    wants := map[string][]string{
+  +        "grounding": {`parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false })`, `rolePrompt("grounding")`},
+  +        "explore": {`task: Type.String({ minLength: 1 })`, `breadth: StringEnum(["targeted", "bounded", "broad"] as const)`, `detail: StringEnum(["paths", "summary", "analysis"] as const)`, `{ additionalProperties: false }`, `rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`},
+  +        "review": {`kind: StringEnum(["adr", "plan", "code"] as const)`, `task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`},
+  +        "implement": {`task: Type.String({ minLength: 1 })`, `allowCommits: Type.Boolean()`, `{ additionalProperties: false }`, `rolePrompt("implement", { allowCommits: params.allowCommits })`},
+  +    }
+  +    for role, required := range wants {
+  +        for _, want := range required {
+  +            if !strings.Contains(blocks[role], want) {
+  +                t.Errorf("%s registration missing %q:\n%s", role, want, blocks[role])
+  +            }
+           }
+       }
+   }
   ```
 
-  Also add `"exploring": true` to that test's `.skills` map. This proves hypothesis formation, exploration/evidence validation, oracle handling, then test-first isolation.
+- [ ] In the same file add these complete helpers and test bodies. They use only existing `scaffold`, `Open`, `RenderAll`, `KnownTargets`, and golden-render helpers:
 
-- [ ] In `/home/hypno/Projects/agentic-workflows/internal/evals/chain_test.go`, add `TestExplorationConsumerToPiToolSeam`. Use `syncFullCatalogForTarget(t, cat, "pi")`; for the three catalog consumers assert `namesOnInvocationLine(body, evalPrefix+"-exploring")`; read the rendered Pi exploring skill and generated extension, then assert the skill names `subagent_explore` on an invocation line and the extension registers `name: "subagent_explore"`. Do not copy prompt-policy assertions into this composed seam.
+  ```go
+  func explorationFixtureConfig(target string) string {
+      return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
+  }
+
+  func renderedByPath(t *testing.T, config string) map[string]string {
+      t.Helper()
+      p, err := Open(scaffold(t, config))
+      if err != nil {
+          t.Fatal(err)
+      }
+      files, err := p.RenderAll()
+      if err != nil {
+          t.Fatal(err)
+      }
+      got := map[string]string{}
+      for _, file := range files {
+          got[file.Path] = file.Content
+      }
+      return got
+  }
+
+  // invariant: cross-runtime-exploration-dispatch
+  func TestCrossRuntimeExplorationDispatch(t *testing.T) {
+      dirs := map[string]string{
+          "claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
+          "cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
+      }
+      for _, target := range KnownTargets() {
+          t.Run(target, func(t *testing.T) {
+              files := renderedByPath(t, explorationFixtureConfig(target))
+              base := dirs[target] + "/example-"
+              exploring := files[base+"exploring/SKILL.md"]
+              if exploring == "" {
+                  t.Fatalf("missing rendered exploring skill for %s", target)
+              }
+              if target == "pi" {
+                  for _, want := range []string{"subagent_explore", "task", "breadth", "detail"} {
+                      if !strings.Contains(exploring, want) {
+                          t.Errorf("Pi exploring skill missing %q", want)
+                      }
+                  }
+              } else {
+                  for _, want := range []string{"target-native fresh-context exploration subagent", "task", "breadth", "detail"} {
+                      if !strings.Contains(exploring, want) {
+                          t.Errorf("%s exploring skill missing %q", target, want)
+                      }
+                  }
+                  if strings.Contains(exploring, "subagent_explore") {
+                      t.Errorf("%s exploring skill leaks Pi tool name", target)
+                  }
+              }
+              for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+                  body := files[base+consumer+"/SKILL.md"]
+                  for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
+                      if !strings.Contains(body, want) {
+                          t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
+                      }
+                  }
+              }
+          })
+      }
+  }
+
+  // invariant: bounded-exploration-reporting
+  func TestBoundedExplorationReporting(t *testing.T) {
+      for _, target := range []string{"gemini", "pi"} {
+          files := renderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: ["+target+"]\n")
+          dir := map[string]string{"gemini": ".gemini/skills", "pi": ".pi/skills"}[target]
+          body := files[dir+"/example-exploring/SKILL.md"]
+          for _, want := range []string{
+              "targeted < bounded < broad", "paths < summary < analysis", "adaptive maximum",
+              "tracked files plus non-ignored untracked", "ignored files", ".git", "nested repositories", "external dependencies",
+              "Not found within <breadth> boundary:", "inconclusive", "unverified", "one information need", "new fresh-context call",
+          } {
+              if !strings.Contains(body, want) {
+                  t.Errorf("%s exploring skill missing %q", target, want)
+              }
+          }
+      }
+      fallback := renderSkillGolden(t, "exploring", map[string]any{
+          "prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+      })
+      if strings.Contains(fallback, "subagent_explore") || !strings.Contains(fallback, "target-native fresh-context exploration subagent") {
+          t.Errorf("empty-capability exploring render has incoherent dispatch:\n%s", fallback)
+      }
+  }
+  ```
+
+- [ ] In `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go`, insert this complete golden test beside the other skill goldens:
+
+  ```go
+  func TestExploringTemplate(t *testing.T) {
+      pi := renderSkillGolden(t, "exploring", map[string]any{
+          "prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+          "skills": map[string]bool{}, "targetSubagentTools": true,
+      })
+      fallback := renderSkillGolden(t, "exploring", map[string]any{
+          "prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+      })
+      for label, body := range map[string]string{"pi": pi, "fallback": fallback} {
+          for _, want := range []string{
+              "location is unknown and inline search would pollute the parent context",
+              "exact-known-file", "genuinely trivial",
+          } {
+              if !strings.Contains(body, want) {
+                  t.Errorf("%s exploring render missing %q:\n%s", label, want, body)
+              }
+          }
+      }
+      for _, want := range []string{"subagent_explore", "required task, breadth, and detail"} {
+          if !strings.Contains(pi, want) {
+              t.Errorf("Pi exploring render missing %q:\n%s", want, pi)
+          }
+      }
+      if !strings.Contains(fallback, "target-native fresh-context exploration subagent") || strings.Contains(fallback, "subagent_explore") {
+          t.Errorf("fallback exploring dispatch is not generic:\n%s", fallback)
+      }
+  }
+  ```
+
+  In `TestDebuggingTemplate`, apply this literal data and assertion diff after the existing phrase loop:
+
+  ```diff
+  -    "skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true},
+  +    "skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true, "exploring": true},
+  @@
+       for _, phrase := range loadBearing {
+  @@
+       }
+  +    ordered := []string{
+  +        "**Form one falsifiable hypothesis.**",
+  +        "Invoke `example-exploring`",
+  +        "Pick the cheapest oracle",
+  +        "**Isolate with a failing test, written first.**",
+  +    }
+  +    position := -1
+  +    for _, phrase := range ordered {
+  +        next := strings.Index(out, phrase)
+  +        if next <= position {
+  +            t.Fatalf("debugging order violation at %q: positions must increase in %v", phrase, ordered)
+  +        }
+  +        position = next
+  +    }
+   }
+  ```
+
+  This proves hypothesis formation, exploration/evidence validation, oracle handling, then test-first isolation.
+
+- [ ] In `/home/hypno/Projects/agentic-workflows/internal/evals/chain_test.go`, add this complete composed seam test. It uses the existing Pi full-catalog fixture and invocation-line helper and deliberately does not duplicate prompt-policy assertions:
+
+  ```go
+  func TestExplorationConsumerToPiToolSeam(t *testing.T) {
+      cat := loadCatalog(t)
+      root := syncFullCatalogForTarget(t, cat, "pi")
+      for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+          body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
+          if !namesOnInvocationLine(body, evalPrefix+"-exploring") {
+              t.Errorf("Pi consumer %q does not invoke %q", consumer, evalPrefix+"-exploring")
+          }
+      }
+      exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
+      if !namesOnInvocationLine(exploring, "subagent_explore") {
+          t.Error("Pi exploring skill does not invoke subagent_explore")
+      }
+      extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
+      if !strings.Contains(extension, `name: "subagent_explore"`) {
+          t.Error("Pi extension does not register subagent_explore")
+      }
+  }
+  ```
 
 Run:
 
@@ -310,11 +705,28 @@ Expected: catalog, scaffold, resolver, migration, and version tests pass; consum
   - `/home/hypno/Projects/agentic-workflows/templates/skills/debugging/SKILL.md.tmpl`
   - `/home/hypno/Projects/agentic-workflows/templates/skills/refactor-coupling-audit/SKILL.md.tmpl`
 
-  Representative exact diff in brainstorming: prepend step 1 with `When both the needed repository information's location is unknown and inline search would pollute the parent context, invoke {{ .prefix }}-exploring with one information need, breadth, and detail. Keep an exact-known-file read or genuinely trivial lookup inline.` Leave the later `subagent_grounding` step byte-for-byte unchanged.
+  Apply these literal before/after diffs. In brainstorming, replace only step 1; the later `subagent_grounding` branch stays byte-for-byte unchanged:
 
-  Debugging exact diff: in step 3, after its heading and before `Pick the cheapest oracle`, insert `Invoke \`{{ .prefix }}-exploring\` with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline.` Do not move hypothesis formation, oracle selection/handling, or test isolation.
+  ```diff
+  -1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `{{ .layout.domainsDir }}`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
+  +1. **Explore project context.** When both the needed repository information's location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` with one information need, breadth, and detail. Keep an exact-known-file read or genuinely trivial lookup inline. Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `{{ .layout.domainsDir }}`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
+  ```
 
-  Edge exact diff in refactor coupling audit: replace the whole size-threshold dispatch paragraph with `When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke {{ .prefix }}-exploring once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract.` Remove every direct `subagent_explore` reference from this consumer.
+  In debugging, replace only step 3, preserving hypothesis formation before it and test isolation after it:
+
+  ```diff
+  -3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+  +3. **Enumerate observable surfaces and validate the hypothesis.** Invoke `{{ .prefix }}-exploring` with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline. Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+  ```
+
+  In the refactor coupling audit, replace the complete current size-threshold paragraph:
+
+  ```diff
+  -**Pick the audit shape.** For a small-scope refactor (1-3 files), run the audit inline as a sequence of `grep` and file reads in the main session. {{ if .targetSubagentTools }}For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), call `subagent_explore` exactly once with all six audit categories and the required structured output in `task`.{{ else }}For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), dispatch a single fresh-context exploration subagent to absorb the grep transcript noise.{{ end }}
+  +**Pick the audit shape.** When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract.
+  ```
+
+  This removes every direct `subagent_explore` reference from all three consumers.
 
   Deterministic post-check:
 
@@ -325,11 +737,67 @@ Expected: catalog, scaffold, resolver, migration, and version tests pass; consum
 
   Expected: the first command finds the conjunctive trigger and exception in all three files; the second exits zero because its inner search finds nothing.
 
-- [ ] In `/home/hypno/Projects/agentic-workflows/templates/pi/awf-subagents/index.ts.tmpl`, make only these exact exploration changes:
-  - add `type ExplorationBreadth = "targeted" | "bounded" | "broad";` and `type ExplorationDetail = "paths" | "summary" | "analysis";`;
-  - change `rolePrompt` to `function rolePrompt(role: "grounding" | "explore" | "implement", options: { allowCommits?: boolean; breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string`; replace only its exploration branch with a joined fixed prompt containing the exact policy fragments asserted in Task 1.3 plus `Selected breadth maximum: ${options.breadth}` and `Selected report detail: ${options.detail}`; update the existing implementation branch to read `options.allowCommits` without changing its text;
-  - replace exploration parameters with `Type.Object({ task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const) }, { additionalProperties: false })`;
-  - call `rolePrompt("explore", { breadth: params.breadth, detail: params.detail })` only from exploration execution and change the existing implementation call mechanically to `rolePrompt("implement", { allowCommits: params.allowCommits })`.
+- [ ] In `/home/hypno/Projects/agentic-workflows/templates/pi/awf-subagents/index.ts.tmpl`, apply these literal diffs. First add the two types and replace `rolePrompt` in full; the grounding strings and implementation string remain unchanged except for reading `options.allowCommits`:
+
+  ```diff
+   type ReviewKind = keyof typeof REVIEWER_PATHS;
+  +type ExplorationBreadth = "targeted" | "bounded" | "broad";
+  +type ExplorationDetail = "paths" | "summary" | "analysis";
+   interface GitSnapshot { available: boolean; head?: string; status?: string; }
+  @@
+  -function rolePrompt(role: "grounding" | "explore" | "implement", allowCommits?: boolean): string {
+  +function rolePrompt(role: "grounding" | "explore" | "implement", options: { allowCommits?: boolean; breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
+       if (role === "grounding") {
+         return [
+           "You are a fresh-context grounding-check subagent. Read and run evidence-producing commands, but do not edit files or commit.",
+           "Verify the supplied design's factual premises against source and architecture. Surface unstated assumptions and edge cases. Assess whether the effort needs an ADR, a plan, or narrower scope. Check Accepted or Implemented ADR and invariant fit.",
+           "Return findings only as {kind: open-question | possible-issue, topic, detail, grounding, confidence: verified | interpreted | unverified}.",
+           "verified means mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed.",
+         ].join("\n");
+       }
+       if (role === "explore") {
+  -      return "You are a fresh-context exploration subagent. Read and run evidence-producing commands, but do not edit files or commit. Return concise findings with file:line grounding.";
+  +      return [
+  +        "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
+  +        "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
+  +        `Selected breadth maximum: ${options.breadth}`,
+  +        "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
+  +        "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
+  +        "For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.",
+  +        `Selected report detail: ${options.detail}`,
+  +        "Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.",
+  +        "Ground every material claim with file:line evidence.",
+  +        "Distinguish not-found, inconclusive, and unverified outcomes. A not-found result begins exactly: Not found within <breadth> boundary: <what was searched>. A not-found result may suggest one concise next refinement. An inconclusive or unverified result is not an absence claim.",
+  +        "Return only the relevant final report, never the search narrative or intermediate activity.",
+  +        "Any sequential refinement is parent-driven through a new fresh-context call; retain no search session or state.",
+  +      ].join("\n");
+       }
+  -    return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
+  +    return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${options.allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
+   }
+  ```
+
+  Then replace the complete exploration schema and execute call exactly:
+
+  ```diff
+  -    parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+  +    parameters: Type.Object({
+  +      task: Type.String({ minLength: 1 }),
+  +      breadth: StringEnum(["targeted", "bounded", "broad"] as const),
+  +      detail: StringEnum(["paths", "summary", "analysis"] as const),
+  +    }, { additionalProperties: false }),
+       async execute(_id, params, signal, onUpdate, ctx) {
+  -      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
+  +      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), signal, onUpdate, ctx));
+       },
+  ```
+
+  Finally change only the implementation prompt call shape:
+
+  ```diff
+  -        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", params.allowCommits), signal, onUpdate, ctx);
+  +        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), signal, onUpdate, ctx);
+  ```
 
   Do not modify `/home/hypno/Projects/agentic-workflows/templates/pi/awf-subagents/runner.ts.tmpl`, `RunRequest`, process/cwd/model/thinking inheritance, allowlists, event retention, renderers, cancellation, output bounds, review loading, or implementation serialization.
 
@@ -361,14 +829,47 @@ Expected: the main adopted tree reports `exploring-skill-closure`, reaches gener
   - `/home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md`: under Unreleased, announce the core skill, required Pi breadth/detail (including hand-authored-call breakage), and automatic schema-13 closure.
   - `/home/hypno/Projects/agentic-workflows/templates/skills/exploring/SKILL.md.tmpl`: retain the exact trigger and schema prose from Task 1.4 as the source of truth.
 
-  Deterministic post-check over actual retired phrases and required live surfaces, without fixed corpus counts:
+  Deterministic post-check over the actual retired variants and every required live surface, without a fixed corpus count or an aggregate positive match:
 
   ```bash
-  if rg -n 'eleven core skills|accepts only (a )?`?task`?|subagent_explore \{task\}|one-field exploration schema|fixed one-line prompt' /home/hypno/Projects/agentic-workflows/README.md /home/hypno/Projects/agentic-workflows/templates/agents-doc/AGENTS.md.tmpl /home/hypno/Projects/agentic-workflows/templates/docs/doc-standard.md.tmpl /home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl /home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/components.md /home/hypno/Projects/agentic-workflows/.awf/docs/parts/releasing/content.md /home/hypno/Projects/agentic-workflows/.awf/docs/parts/testing/layout.md /home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md /home/hypno/Projects/agentic-workflows/.awf/domains/parts/rendering/current-state.md /home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md /home/hypno/Projects/agentic-workflows/examples/sundial/README.md /home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md; then exit 1; fi
-  rg -n 'twelve core skills|task.*breadth.*detail|generation 13|exploring-skill-closure' /home/hypno/Projects/agentic-workflows/README.md /home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl /home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md /home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md /home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md
+  live=(
+    /home/hypno/Projects/agentic-workflows/README.md
+    /home/hypno/Projects/agentic-workflows/templates/agents-doc/AGENTS.md.tmpl
+    /home/hypno/Projects/agentic-workflows/templates/docs/doc-standard.md.tmpl
+    /home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl
+    /home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/components.md
+    /home/hypno/Projects/agentic-workflows/.awf/docs/parts/releasing/content.md
+    /home/hypno/Projects/agentic-workflows/.awf/docs/parts/testing/layout.md
+    /home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md
+    /home/hypno/Projects/agentic-workflows/.awf/domains/parts/rendering/current-state.md
+    /home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md
+    /home/hypno/Projects/agentic-workflows/examples/sundial/README.md
+    /home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md
+  )
+  if rg -n 'eleven core skills|eleven skills|eleven `core`-flagged workflow skills|accepts only (a )?`?task`?|subagent_explore \{task\}|one-field exploration schema|fixed one-line prompt' "${live[@]}"; then exit 1; fi
+
+  while IFS='|' read -r path pattern; do
+    if ! rg -q "$pattern" "$path"; then
+      printf 'missing terminal vocabulary /%s/ in %s\n' "$pattern" "$path" >&2
+      exit 1
+    fi
+  done <<'EOF'
+  /home/hypno/Projects/agentic-workflows/README.md|twelve core skills
+  /home/hypno/Projects/agentic-workflows/templates/agents-doc/AGENTS.md.tmpl|repository location is unknown.*inline search would pollute parent context
+  /home/hypno/Projects/agentic-workflows/templates/docs/doc-standard.md.tmpl|capability-selected integration.*subagent_explore
+  /home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl|task.*breadth.*detail
+  /home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/components.md|generation 13
+  /home/hypno/Projects/agentic-workflows/.awf/docs/parts/releasing/content.md|targeted.*paths
+  /home/hypno/Projects/agentic-workflows/.awf/docs/parts/testing/layout.md|instruction contracts
+  /home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md|exploring-skill-closure
+  /home/hypno/Projects/agentic-workflows/.awf/domains/parts/rendering/current-state.md|six-target semantic rendering
+  /home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md|twelve
+  /home/hypno/Projects/agentic-workflows/examples/sundial/README.md|cross-runtime semantic dispatch
+  /home/hypno/Projects/agentic-workflows/changelog/CHANGELOG.md|schema.?13
+  EOF
   ```
 
-  Expected: the first assertion exits zero with no old-phrase output; the second prints a match from every named required surface. Historical ADR and plan files are intentionally outside this live-surface assertion.
+  Expected: the retired-variant assertion exits zero with no output, and the loop independently proves each named surface contains its designated terminal-state vocabulary. Historical ADR and plan files are intentionally outside this live-surface assertion.
 
 ### Task 1.7: Complete adopter upgrade, regenerate exhaustive fanout, flip lifecycle, gate, and make the only commit
 
