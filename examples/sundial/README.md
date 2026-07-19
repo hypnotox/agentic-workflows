@@ -7,7 +7,7 @@ sunset times:
 
 The fiction is scenery. This directory's real purpose is to be a **complete,
 committed example of an awf adoption**: every catalog skill, agent, and doc
-enabled, domains with declared territories, authored convention parts, three ADRs,
+enabled, including the exploring skill's cross-runtime semantic dispatch, domains with declared territories, authored convention parts, three ADRs,
 a plan, and every rendered file checked in. It doubles as the awf repository's
 rendered-output quality oracle (its ADR-0090): the enclosing `./x sync` re-renders
 this directory from awf's source on every template change, and the enclosing

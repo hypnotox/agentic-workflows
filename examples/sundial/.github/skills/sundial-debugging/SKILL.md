@@ -27,7 +27,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
 <!-- awf:edit debugging-surfaces: default; create .awf/skills/parts/debugging/debugging-surfaces.md to override -->
-3. **Enumerate observable surfaces and validate the hypothesis.** Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+3. **Enumerate observable surfaces and validate the hypothesis.** Invoke `sundial-exploring` with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline. Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
 
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->

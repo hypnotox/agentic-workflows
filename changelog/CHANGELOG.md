@@ -9,6 +9,12 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Pi's `subagent_explore` now requires `{task, breadth, detail}` (ADR-0132). Breadth is
+  `targeted`, `bounded`, or `broad`; detail is `paths`, `summary`, or `analysis`. Hand-authored
+  calls that pass only `task` must add both fields.
+- The new core `exploring` skill gives every target one bounded exploration and reporting
+  protocol. schema-13 `exploring-skill-closure` automatically adds it to adopted configs that
+  enable brainstorming, debugging, or refactor-coupling-audit; run `awf upgrade`.
 - The `supersedes:` and `superseded_by:` ADR frontmatter keys are removed, and full ADR
   supersession is now derived from anchor coverage rather than declared (ADR-0128, ADR-0129,
   ADR-0130). **Run `awf upgrade`: the generation-12 migration rewrites `docs/decisions/`**,

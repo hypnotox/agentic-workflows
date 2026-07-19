@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"reflect"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -50,6 +51,19 @@ func TestClosureIsCycleSafe(t *testing.T) {
 	}
 }
 
+func TestExploringRequirementsAreOneWay(t *testing.T) {
+	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+		if !slices.Contains(Standard.Skills[consumer].RequiresSkills, "exploring") {
+			t.Errorf("%s does not require exploring", consumer)
+		}
+	}
+	for _, forbidden := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+		if slices.Contains(Standard.Skills["exploring"].RequiresSkills, forbidden) {
+			t.Errorf("exploring has reciprocal requirement on %s", forbidden)
+		}
+	}
+}
+
 // The Chain seeds' closure is exactly the 11-skill chain unit plus its three
 // agents (ADR-0081; counts verified against the catalog on 2026-07-09).
 func TestClosureChainUnit(t *testing.T) {
@@ -70,7 +84,7 @@ func TestClosureChainUnit(t *testing.T) {
 	}
 	sort.Strings(skills)
 	sort.Strings(agents)
-	wantSkills := []string{"adr-lifecycle", "brainstorming", "executing-plans", "proposing-adr",
+	wantSkills := []string{"adr-lifecycle", "brainstorming", "executing-plans", "exploring", "proposing-adr",
 		"retrospective", "reviewing-adr", "reviewing-impl", "reviewing-plan",
 		"reviewing-plan-resync", "subagent-driven-development", "writing-plans"}
 	wantAgents := []string{"adr-reviewer", "code-reviewer", "plan-reviewer"}

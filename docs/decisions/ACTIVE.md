@@ -132,10 +132,7 @@
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Implemented)
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Implemented)
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](0131-complete-and-self-enforcing-supersession-records.md) (Implemented)
-
-## Proposed
-
-- [ADR-0132: Structured Cross-Runtime Exploration Workflow](0132-structured-cross-runtime-exploration-workflow.md) (Proposed)
+- [ADR-0132: Structured Cross-Runtime Exploration Workflow](0132-structured-cross-runtime-exploration-workflow.md) (Implemented)
 
 ## Superseded
 

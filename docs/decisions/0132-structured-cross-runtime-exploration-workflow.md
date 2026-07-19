@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-19
 tags: [multi-target, subagent-dispatch, workflow-chain]
 related: [38, 122, 123, 125]

@@ -34,6 +34,40 @@ func closeFixture(t *testing.T, cfg string, files map[string]string) string {
 	return root
 }
 
+func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
+	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+		t.Run(consumer, func(t *testing.T) {
+			root := closeFixture(t, "prefix: ex\nskills: ["+consumer+"]\nagents: []\n", nil)
+			var out bytes.Buffer
+			if err := applyCloseEnabledSet(root, &out); err != nil {
+				t.Fatalf("applyCloseEnabledSet: %v", err)
+			}
+			want := `close-enabled-set: enabled skill "exploring" (required by "` + consumer + `")`
+			if !strings.Contains(out.String(), want) {
+				t.Errorf("diagnostic missing %q:\n%s", want, out.String())
+			}
+			before, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(before), "- exploring") {
+				t.Errorf("upgraded config missing exploring:\n%s", before)
+			}
+			var second bytes.Buffer
+			if err := applyCloseEnabledSet(root, &second); err != nil {
+				t.Fatalf("second applyCloseEnabledSet: %v", err)
+			}
+			after, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if second.Len() != 0 || !bytes.Equal(before, after) {
+				t.Errorf("second apply changed output=%q config=\n%s", second.String(), after)
+			}
+		})
+	}
+}
+
 // Dormant doc-gated skills are dropped (printed), missing requirements are
 // added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
 // Decision 8).

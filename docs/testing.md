@@ -101,7 +101,10 @@ structured event ordering and bounds, cumulative omissions, setup cleanup, and c
 in-memory Pi 0.80.9 `AgentSession` proves that partial details and result-middleware error patches
 survive the real runtime seam without entering model-visible content. Grounding schema/prompt tests
 and shared-renderer tests cover every role and state at narrow and normal widths, including
-omissions, diagnostics, usage, malformed details, and configurable expansion hints.
+omissions, diagnostics, usage, malformed details, and configurable expansion hints. TypeScript
+owns Pi's exact exploration schema and fixed-prompt behavior; Go owns catalog closure, migration,
+and cross-target render behavior. These tests prove schemas and instruction contracts, not
+arbitrary model compliance.
 `./x pi-test stop|reset` controls the container lifecycle.
 
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,

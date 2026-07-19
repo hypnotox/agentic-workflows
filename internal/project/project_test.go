@@ -1126,7 +1126,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	}{
 		{"missing skill requirement",
 			"prefix: example\nskills: [brainstorming]\nagents: []\n",
-			`skill "brainstorming" requires skill "proposing-adr"`},
+			`skill "brainstorming" requires skill "exploring"`},
 		{"missing doc requirement",
 			"prefix: example\nskills: [roadmap-graduation]\nagents: []\n",
 			`skill "roadmap-graduation" requires doc "roadmap"`},

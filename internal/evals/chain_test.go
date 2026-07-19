@@ -128,6 +128,25 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 
 // TestReviewerDispatchCarriesSpine asserts each reviewing skill dispatches its
 // reviewer agent (on an invocation line) and that agent carries the spine partial.
+func TestExplorationConsumerToPiToolSeam(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalogForTarget(t, cat, "pi")
+	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
+		if !namesOnInvocationLine(body, evalPrefix+"-exploring") {
+			t.Errorf("Pi consumer %q does not invoke %q", consumer, evalPrefix+"-exploring")
+		}
+	}
+	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
+	if !namesOnInvocationLine(exploring, "subagent_explore") {
+		t.Error("Pi exploring skill does not invoke subagent_explore")
+	}
+	extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
+	if !strings.Contains(extension, `name: "subagent_explore"`) {
+		t.Error("Pi extension does not register subagent_explore")
+	}
+}
+
 func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")

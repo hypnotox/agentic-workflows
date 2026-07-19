@@ -41,6 +41,8 @@ const MAX_FALLBACK_BYTES = 2 * 1024;
 const TASK_TRUNCATION = "[task truncated]";
 const DISPLAY_TRUNCATION = "[display truncated]";
 type ReviewKind = keyof typeof REVIEWER_PATHS;
+type ExplorationBreadth = "targeted" | "bounded" | "broad";
+type ExplorationDetail = "paths" | "summary" | "analysis";
 interface GitSnapshot { available: boolean; head?: string; status?: string; }
 export type SubagentState = "running" | "completed" | "failed" | "aborted";
 export interface SubagentDetails {
@@ -90,7 +92,7 @@ function projectRoot(extensionFile: string): string {
   return resolve(dirname(extensionFile), "../../..");
 }
 
-function rolePrompt(role: "grounding" | "explore" | "implement", allowCommits?: boolean): string {
+function rolePrompt(role: "grounding" | "explore" | "implement", options: { allowCommits?: boolean; breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
   if (role === "grounding") {
     return [
       "You are a fresh-context grounding-check subagent. Read and run evidence-producing commands, but do not edit files or commit.",
@@ -100,9 +102,22 @@ function rolePrompt(role: "grounding" | "explore" | "implement", allowCommits?: 
     ].join("\n");
   }
   if (role === "explore") {
-    return "You are a fresh-context exploration subagent. Read and run evidence-producing commands, but do not edit files or commit. Return concise findings with file:line grounding.";
+    return [
+      "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
+      "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
+      `Selected breadth maximum: ${options.breadth}`,
+      "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
+      "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
+      "For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.",
+      `Selected report detail: ${options.detail}`,
+      "Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.",
+      "Ground every material claim with file:line evidence.",
+      "Distinguish not-found, inconclusive, and unverified outcomes. Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>. A broad absence report must name the project search universe and searched surfaces. A not-found result may suggest one concise next refinement. An inconclusive or unverified result is not an absence claim.",
+      "Return only the relevant final report, never the search narrative or intermediate activity.",
+      "After a not-found, inconclusive, unverified, or insufficient report, the parent may issue a new fresh-context call that corrects the task, changes report detail, or widens breadth. Retain no search session or state.",
+    ].join("\n");
   }
-  return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
+  return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${options.allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
 }
 
 async function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKind): Promise<string> {
@@ -288,9 +303,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     description: "Run one fresh-context, no-mutation exploration child.",
     promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context",
     promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task."],
-    parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+    parameters: Type.Object({
+      task: Type.String({ minLength: 1 }),
+      breadth: StringEnum(["targeted", "bounded", "broad"] as const),
+      detail: StringEnum(["paths", "summary", "analysis"] as const),
+    }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
-      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore"), signal, onUpdate, ctx));
+      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), signal, onUpdate, ctx));
     },
     ...renderers("explore"),
   });
@@ -330,7 +349,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
         const before = await snapshot(pi, root);
-        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", params.allowCommits), signal, onUpdate, ctx);
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), signal, onUpdate, ctx);
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
         const gitDetails = { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };

@@ -82,7 +82,7 @@ test("unsupported version registers one startup notification and no tools", asyn
   }
 });
 
-test("registers exactly four governed public tools with closed grounding schema", () => {
+test("registers exactly four governed public tools with structured exploration schema", () => {
   const h = harness();
   assert.deepEqual([...h.tools.keys()], ["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
   assert.deepEqual(EXPLORE_TOOLS, ["read", "grep", "find", "ls", "bash"]);
@@ -94,6 +94,19 @@ test("registers exactly four governed public tools with closed grounding schema"
   assert.equal(Value.Check(schema, { task: "ground", extra: true }), false);
   assert.equal(schema.properties.task.minLength, 1);
   assert.equal(schema.additionalProperties, false);
+  const exploreSchema = h.tools.get("subagent_explore").parameters;
+  for (const breadth of ["targeted", "bounded", "broad"])
+    for (const detail of ["paths", "summary", "analysis"])
+      assert.equal(Value.Check(exploreSchema, { task: "inspect", breadth, detail }), true);
+  for (const invalid of [
+    {}, { task: "inspect" }, { task: "", breadth: "targeted", detail: "paths" },
+    { task: "inspect", breadth: "targeted" }, { task: "inspect", detail: "paths" },
+    { task: "inspect", breadth: "unbounded", detail: "paths" },
+    { task: "inspect", breadth: "targeted", detail: "verbose" },
+    { task: "inspect", breadth: "targeted", detail: "paths", extra: true },
+  ]) assert.equal(Value.Check(exploreSchema, invalid), false);
+  assert.deepEqual(exploreSchema.required, ["task", "breadth", "detail"]);
+  assert.equal(exploreSchema.additionalProperties, false);
   assert.deepEqual(REVIEW_TOOLS, EXPLORE_TOOLS);
   assert.deepEqual(IMPLEMENT_TOOLS, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
   assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/skills/adr-reviewer.md", plan: ".pi/skills/plan-reviewer.md", code: ".pi/skills/code-reviewer.md" });
@@ -197,9 +210,19 @@ test("renderer covers expanded, partial, failure, abort, and fallback states", (
   assert.doesNotMatch(noHint, /to expand/);
 });
 
+test("exploration forwards every breadth and detail into the fixed prompt", async () => {
+  for (const breadth of ["targeted", "bounded", "broad"])
+    for (const detail of ["paths", "summary", "analysis"]) {
+      const h = harness();
+      await execute(h.tools.get("subagent_explore"), { task: "inspect", breadth, detail }, h.ctx);
+      assert.match(h.requests[0].systemPrompt, new RegExp(`Selected breadth maximum: ${breadth}`));
+      assert.match(h.requests[0].systemPrompt, new RegExp(`Selected report detail: ${detail}`));
+    }
+});
+
 test("explore isolates partial activity from final content", async () => {
   const h = harness();
-  const { value, updates } = await execute(h.tools.get("subagent_explore"), { task: "inspect" }, h.ctx);
+  const { value, updates } = await execute(h.tools.get("subagent_explore"), { task: "inspect", breadth: "bounded", detail: "summary" }, h.ctx);
   assert.equal(value.content[0].text, "child output");
   assert.deepEqual(value.details.events, [event]);
   assert.equal(value.content[0].text.includes("working"), false);
@@ -209,10 +232,17 @@ test("explore isolates partial activity from final content", async () => {
   assert.equal(h.requests[0].cwd, "/repo");
   assert.equal(h.requests[0].thinkingLevel, "high");
   assert.deepEqual(h.requests[0].tools, EXPLORE_TOOLS);
-  assert.match(h.requests[0].systemPrompt, /do not edit files or commit/);
-  await assert.rejects(execute(h.tools.get("subagent_explore"), { task: " " }, h.ctx), /non-empty/);
-  await assert.rejects(execute(h.tools.get("subagent_explore"), { task: "x" }, { ...h.ctx, model: undefined }), /active parent model/);
-  await h.tools.get("subagent_explore").execute("id", { task: "without update" }, undefined, undefined, h.ctx);
+  const prompt = h.requests[0].systemPrompt;
+  for (const phrase of [
+    "adaptive maximum", "targeted locates one declaration", "bounded investigates within a named symbol", "broad searches across the project search universe",
+    "tracked files plus non-ignored untracked working-tree files", "ignored files", ".git", "nested repositories", "external dependencies",
+    "Not found within <breadth> boundary:", "successful execution", "project search universe", "searched surfaces", "inconclusive", "unverified", "insufficient",
+    "evidence-grounded", "one information need", "paths", "summary", "analysis", "do not edit files or commit", "do not recursively delegate",
+    "a new fresh-context call", "corrects the task", "changes report detail", "widens breadth",
+  ]) assert.ok(prompt.includes(phrase), `prompt missing ${phrase}`);
+  await assert.rejects(execute(h.tools.get("subagent_explore"), { task: " ", breadth: "bounded", detail: "summary" }, h.ctx), /non-empty/);
+  await assert.rejects(execute(h.tools.get("subagent_explore"), { task: "x", breadth: "bounded", detail: "summary" }, { ...h.ctx, model: undefined }), /active parent model/);
+  await h.tools.get("subagent_explore").execute("id", { task: "without update", breadth: "bounded", detail: "summary" }, undefined, undefined, h.ctx);
 });
 
 test("result middleware marks only failed awf subagents", async () => {
@@ -227,7 +257,7 @@ test("result middleware marks only failed awf subagents", async () => {
 test("failed runner results preserve details", async () => {
   const h = harness();
   h.deps.runner = { run: async () => ({ ...result, failed: true, failureMessage: "bounded failure", stopReason: "aborted", stderr: "diagnostic" }) };
-  const { value } = await execute(h.tools.get("subagent_explore"), { task: "fail" }, h.ctx);
+  const { value } = await execute(h.tools.get("subagent_explore"), { task: "fail", breadth: "bounded", detail: "summary" }, h.ctx);
   assert.equal(value.content[0].text, "bounded failure");
   assert.equal(value.details.state, "aborted");
   assert.equal(value.details.stderr, "diagnostic");
@@ -235,7 +265,7 @@ test("failed runner results preserve details", async () => {
 
   const fallback = harness();
   fallback.deps.runner = { run: async () => ({ ...result, failed: true, failureMessage: undefined, stopReason: "error" }) };
-  const failed = await execute(fallback.tools.get("subagent_explore"), { task: "fail" }, fallback.ctx);
+  const failed = await execute(fallback.tools.get("subagent_explore"), { task: "fail", breadth: "bounded", detail: "summary" }, fallback.ctx);
   assert.equal(failed.value.content[0].text, "Subagent failed");
   assert.equal(failed.value.details.state, "failed");
 });

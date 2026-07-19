@@ -120,8 +120,21 @@ func TestTargetOutputRenderError(t *testing.T) {
 	}
 }
 
-// invariant: pi-subagent-four-tool-contract
-func TestPiSubagentFourToolContract(t *testing.T) {
+func registrationBlock(t *testing.T, content, name, nextMarker string) string {
+	t.Helper()
+	start := strings.Index(content, `name: "`+name+`"`)
+	if start < 0 {
+		t.Fatalf("cannot find registration %s", name)
+	}
+	relativeEnd := strings.Index(content[start:], nextMarker)
+	if relativeEnd <= 0 {
+		t.Fatalf("cannot isolate registration %s before %s", name, nextMarker)
+	}
+	return content[start : start+relativeEnd]
+}
+
+// invariant: pi-structured-exploration-contract
+func TestPiStructuredExplorationContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, name := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
 		if strings.Count(content, `name: "`+name+`"`) != 1 {
@@ -131,16 +144,111 @@ func TestPiSubagentFourToolContract(t *testing.T) {
 	if got := strings.Count(content, `name: "subagent_`); got != 4 {
 		t.Errorf("public subagent registration count = %d, want 4", got)
 	}
-	for _, want := range []string{
-		`name: "subagent_grounding"`, `rolePrompt("grounding")`,
-		`name: "subagent_explore"`, `rolePrompt("explore")`,
-		`name: "subagent_review"`, `StringEnum(["adr", "plan", "code"]`,
-		`name: "subagent_implement"`, `allowCommits: Type.Boolean()`,
-		`task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`,
-	} {
-		if !strings.Contains(content, want) {
-			t.Errorf("extension missing four-tool schema/role contract %q", want)
+	blocks := map[string]string{
+		"grounding": registrationBlock(t, content, "subagent_grounding", `name: "subagent_explore"`),
+		"explore":   registrationBlock(t, content, "subagent_explore", `name: "subagent_review"`),
+		"review":    registrationBlock(t, content, "subagent_review", `name: "subagent_implement"`),
+		"implement": registrationBlock(t, content, "subagent_implement", "export default async function"),
+	}
+	wants := map[string][]string{
+		"grounding": {`parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false })`, `rolePrompt("grounding")`},
+		"explore":   {`task: Type.String({ minLength: 1 })`, `breadth: StringEnum(["targeted", "bounded", "broad"] as const)`, `detail: StringEnum(["paths", "summary", "analysis"] as const)`, `{ additionalProperties: false }`, `rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`},
+		"review":    {`kind: StringEnum(["adr", "plan", "code"] as const)`, `task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`},
+		"implement": {`task: Type.String({ minLength: 1 })`, `allowCommits: Type.Boolean()`, `{ additionalProperties: false }`, `rolePrompt("implement", { allowCommits: params.allowCommits })`},
+	}
+	for role, required := range wants {
+		for _, want := range required {
+			if !strings.Contains(blocks[role], want) {
+				t.Errorf("%s registration missing %q:\n%s", role, want, blocks[role])
+			}
 		}
+	}
+}
+
+func explorationFixtureConfig(target string) string {
+	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
+}
+
+func explorationRenderedByPath(t *testing.T, config string) map[string]string {
+	t.Helper()
+	p, err := Open(scaffold(t, config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, file := range files {
+		got[file.Path] = file.Content
+	}
+	return got
+}
+
+// invariant: cross-runtime-exploration-dispatch
+func TestCrossRuntimeExplorationDispatch(t *testing.T) {
+	dirs := map[string]string{
+		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
+		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
+	}
+	for _, target := range KnownTargets() {
+		t.Run(target, func(t *testing.T) {
+			files := explorationRenderedByPath(t, explorationFixtureConfig(target))
+			base := dirs[target] + "/example-"
+			exploring := files[base+"exploring/SKILL.md"]
+			if exploring == "" {
+				t.Fatalf("missing rendered exploring skill for %s", target)
+			}
+			if target == "pi" {
+				for _, want := range []string{"subagent_explore", "task", "breadth", "detail"} {
+					if !strings.Contains(exploring, want) {
+						t.Errorf("Pi exploring skill missing %q", want)
+					}
+				}
+			} else {
+				for _, want := range []string{"target-native fresh-context exploration subagent", "task", "breadth", "detail"} {
+					if !strings.Contains(exploring, want) {
+						t.Errorf("%s exploring skill missing %q", target, want)
+					}
+				}
+				if strings.Contains(exploring, "subagent_explore") {
+					t.Errorf("%s exploring skill leaks Pi tool name", target)
+				}
+			}
+			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+				body := files[base+consumer+"/SKILL.md"]
+				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
+					if !strings.Contains(body, want) {
+						t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
+					}
+				}
+			}
+		})
+	}
+}
+
+// invariant: bounded-exploration-reporting
+func TestBoundedExplorationReporting(t *testing.T) {
+	for _, target := range []string{"gemini", "pi"} {
+		files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: ["+target+"]\n")
+		dir := map[string]string{"gemini": ".gemini/skills", "pi": ".pi/skills"}[target]
+		body := files[dir+"/example-exploring/SKILL.md"]
+		for _, want := range []string{
+			"targeted < bounded < broad", "paths < summary < analysis", "adaptive maximum",
+			"tracked files plus non-ignored untracked", "ignored files", ".git", "nested repositories", "external dependencies",
+			"Not found within <breadth> boundary:", "successful execution", "project search universe", "searched surfaces", "inconclusive", "unverified", "insufficient", "correct the task", "change report detail", "widen breadth", "one information need", "new fresh-context call",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s exploring skill missing %q", target, want)
+			}
+		}
+	}
+	fallback := renderSkillGolden(t, "exploring", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+	})
+	if strings.Contains(fallback, "subagent_explore") || !strings.Contains(fallback, "target-native fresh-context exploration subagent") {
+		t.Errorf("empty-capability exploring render has incoherent dispatch:\n%s", fallback)
 	}
 }
 
@@ -289,7 +397,7 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 
 // invariant: pi-dedicated-grounding-dispatch
 func TestPiDedicatedGroundingDispatch(t *testing.T) {
-	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
+	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	dirs := map[string]string{
 		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
 		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
@@ -314,8 +422,8 @@ func TestPiDedicatedGroundingDispatch(t *testing.T) {
 			if !strings.Contains(brainstorm, "`subagent_grounding`") {
 				t.Error("Pi brainstorming does not name subagent_grounding")
 			}
-			if !strings.Contains(audit, "`subagent_explore`") {
-				t.Error("Pi coupling audit does not name subagent_explore")
+			if strings.Contains(audit, "`subagent_explore`") {
+				t.Error("Pi coupling audit bypasses the exploring skill")
 			}
 			continue
 		}

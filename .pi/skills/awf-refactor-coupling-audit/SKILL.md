@@ -30,7 +30,7 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 <!-- awf:edit audit-shape-selection: default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
 ### Audit shape
 
-**Pick the audit shape.** For a small-scope refactor (1-3 files), run the audit inline as a sequence of `grep` and file reads in the main session. For a large-scope refactor (10+ files or coupling surfaces across 5+ packages), call `subagent_explore` exactly once with all six audit categories and the required structured output in `task`.
+**Pick the audit shape.** When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract.
 
 <!-- awf:edit category-1-top-level-files: default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
 ### 1. Top-level package files

@@ -85,7 +85,7 @@ func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 // generic fallback prose (ADR-0045, ADR-0046).
 func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 	got := deadSkillRefs(t,
-		"prefix: example\nvars: {}\nskills: [tdd, bugfix, debugging, refactor-coupling-audit, roadmap-graduation]\ndocs: [roadmap]\nagents: []\n",
+		"prefix: example\nvars: {}\nskills: [tdd, bugfix, debugging, exploring, refactor-coupling-audit, roadmap-graduation]\ndocs: [roadmap]\nagents: []\n",
 		nil)
 	if len(got) != 0 {
 		t.Fatalf("expected no dead skill references, got %v", got)

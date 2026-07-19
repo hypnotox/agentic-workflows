@@ -60,7 +60,7 @@ func TestCheckIgnoresEmptyVar(t *testing.T) {
 // this role: the always-on plans-template singleton now references .vars.gateCmd
 // - ADR-0108 - so it is consumed in every project.)
 func TestPartPlaceholderConsumesVar(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - refactor-coupling-audit\nagents: []\n"
+	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: []\n"
 	locals := map[string]string{
 		"agents-doc.yaml": "local: true\n",
 		"workflow.yaml":   "local: true\n",
@@ -172,7 +172,7 @@ func TestDomainPartPlaceholderConsumesVar(t *testing.T) {
 // (ADR-0121 Decision 2; the stripped counterpart of
 // TestPartPlaceholderConsumesVar, same fixture).
 func TestCommentWrappedPlaceholderDoesNotConsumeVar(t *testing.T) {
-	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - refactor-coupling-audit\nagents: []\n"
+	cfg := "prefix: example\nvars:\n  checkCmd: awf check\nskills:\n  - exploring\n  - refactor-coupling-audit\nagents: []\n"
 	with := map[string]string{
 		"agents-doc.yaml": "local: true\n",
 		"workflow.yaml":   "local: true\n",

@@ -62,6 +62,8 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`, `{{ .prefix }}-retrospective`.{{ with .taskSkills }} **Task skills** (as needed): {{ . }}.{{ end }}
 
+Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
+
 {{ end }}{{ with .vars.gateCmd }}Run `{{ . }}` before every commit{{ with $.vars.gateCmdFull }}; `{{ . }}` is the full tier{{ end }}. {{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->
 

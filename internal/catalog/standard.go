@@ -7,7 +7,7 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Core: true, Chain: true, RequiresSkills: []string{"proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
+		"brainstorming": {Core: true, Chain: true, RequiresSkills: []string{"exploring", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "grounding-check-output-format",
 			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
@@ -41,9 +41,12 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"debugging": {Sections: []string{
+		"debugging": {RequiresSkills: []string{"exploring"}, Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
+		}},
+		"exploring": {Core: true, Sections: []string{
+			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
 		"proposing-adr": {
 			Core: true, Chain: true,
@@ -101,7 +104,7 @@ var Standard = &Catalog{
 		"retrospective": {Core: true, Chain: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {Sections: []string{
+		"refactor-coupling-audit": {RequiresSkills: []string{"exploring"}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",

@@ -77,7 +77,8 @@ bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your
 uses.
 
 Pi 0.80.9+ automatically receives a trusted project extension with `subagent_grounding`, `subagent_explore`,
-`subagent_review`, and `subagent_implement`. Grounding, exploration, and review are no-mutation
+`subagent_review`, and `subagent_implement`. Exploration requires `{task, breadth, detail}`: breadth is
+`targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`. Grounding, exploration, and review are no-mutation
 prompt policy, not an OS sandbox; implementation shares the checkout, runs alone and sequentially,
 and commits only when its orchestrator sets `allowCommits`. Every role shows bounded inline child
 progress while intermediate activity stays outside parent model content.
@@ -150,8 +151,8 @@ Windows, put `awf` on `PATH` and call it directly.
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf sync` to restore missing or modified copies.
 
-`awf init` enables a curated core by default: eleven skills (the ten-step workflow chain
-plus `adr-lifecycle`) and the three review agents. The workflow, documentation, and agent-guide standards sit outside
+`awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
+`adr-lifecycle`, and `exploring`) and the three review agents. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 

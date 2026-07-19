@@ -66,7 +66,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
-  compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Docs and always-on
+  compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`
+  skill provides six-target semantic rendering: Pi dispatches the structured extension tool while
+  other targets request native fresh-context delegation. Docs and always-on
   singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
   `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
 - **`internal/adr/`**: parses the decisions directory and exposes it as one `Corpus` view,
@@ -92,7 +94,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   (ADR-0120), the precedent for corpus-writing migrations; the generation-12
   `supersession-keys` migration strips the `supersedes:`/`superseded_by:` keys, downgrades every
   pre-existing item token to `refines:`, and appends a bookkeeping Decision item retiring each
-  predecessor's anchors (ADR-0128). Both resolve their own decisions directory and run before a
+  predecessor's anchors (ADR-0128). The generation 13 migration reuses `applyCloseEnabledSet` to add `exploring`
+  wherever an enabled brainstorming, debugging, or refactor coupling audit consumer requires it.
+  Both corpus-writing migrations resolve their own decisions directory and run before a
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
@@ -151,7 +155,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
-  language. Bounded structured details drive one shared inline renderer for all four tools, while
+  language. Exploration requires task, breadth, and detail, which feed Pi's dynamic fixed prompt;
+  the unchanged runner remains the process and context-isolation boundary. Bounded structured
+  details drive one shared inline renderer for all four tools, while
   only final report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for

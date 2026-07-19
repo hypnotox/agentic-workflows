@@ -1,12 +1,30 @@
 package project
 
 import (
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
-// openChainProject opens a project with the full 11-skill chain closure and
+func planNodes(plan []PlanOp) map[catalog.Node]bool {
+	got := make(map[catalog.Node]bool)
+	for _, op := range plan {
+		got[op.Node] = true
+	}
+	return got
+}
+
+func closureNodes(nodes []catalog.Node) map[catalog.Node]bool {
+	got := make(map[catalog.Node]bool, len(nodes))
+	for _, node := range nodes {
+		got[node] = true
+	}
+	return got
+}
+
+// openChainProject opens a project with the full derived chain closure and
 // its three agents enabled (the drift-test fixture builder).
 func openChainProject(t *testing.T) *Project {
 	t.Helper()
@@ -17,31 +35,34 @@ func openChainProject(t *testing.T) *Project {
 	return p
 }
 
-// Cascade sizes are seed-dependent (ADR-0081 Decision 5): the closure has two
-// mutually-requiring cores (planning 5, execution 3) with edges only
-// planning→execution, brainstorming a pure source, and retrospective/
-// adr-lifecycle sinks. Counts verified against the catalog on 2026-07-09.
+// Cascade members are seed-dependent (ADR-0081 Decision 5). Pin names, not
+// corpus sizes, so an unrelated closure addition cannot silently shift scope.
 // invariant: remove-refuses-dependents
 func TestResolveDisableCascadeSizes(t *testing.T) {
 	p := openChainProject(t)
 	cases := []struct {
 		seed string
-		ops  int
+		want []string
 	}{
-		{"brainstorming", 1},    // pure source: nothing requires it
-		{"reviewing-plan", 7},   // planning core + brainstorming + plan-reviewer
-		{"executing-plans", 10}, // both cores + brainstorming + plan-reviewer
-		{"retrospective", 11},   // worst case: 10 skills + plan-reviewer
+		{"brainstorming", []string{"skill brainstorming"}},
+		{"reviewing-plan", []string{"agent plan-reviewer", "skill brainstorming", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-plan", "skill reviewing-plan-resync", "skill writing-plans"}},
+		{"executing-plans", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-plans", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
+		{"retrospective", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-plans", "skill proposing-adr", "skill retrospective", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
 	}
 	for _, tc := range cases {
-		if plan := p.ResolveDisable("skill", tc.seed); len(plan) != tc.ops {
-			t.Errorf("ResolveDisable(%q) = %d ops, want %d: %v", tc.seed, len(plan), tc.ops, plan)
+		plan := p.ResolveDisable("skill", tc.seed)
+		got := make([]string, 0)
+		for _, op := range plan {
+			got = append(got, op.Node.Kind+" "+op.Node.Name)
+		}
+		slices.Sort(got)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("ResolveDisable(%q) = %v, want %v", tc.seed, got, tc.want)
 		}
 	}
 }
 
-// The add plan on an empty config is the seed's full forward closure - the
-// 11-skill chain unit plus its three agents from the brainstorming seed.
+// The add plan on an empty config is the seed's full forward closure.
 // invariant: add-applies-closure-plan
 func TestResolveEnableClosurePlan(t *testing.T) {
 	p, err := Open(scaffold(t, "prefix: example\nskills: []\nagents: []\n"))
@@ -49,8 +70,9 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := p.ResolveEnable("skill", "brainstorming")
-	if len(plan) != 14 {
-		t.Fatalf("ResolveEnable(brainstorming) = %d ops, want 14 (11 skills + 3 agents): %v", len(plan), plan)
+	closure := catalog.Closure(catalog.Standard, []catalog.Node{{Kind: "skill", Name: "brainstorming"}})
+	if got, want := planNodes(plan), closureNodes(closure); !maps.Equal(got, want) {
+		t.Fatalf("ResolveEnable(brainstorming) nodes = %v, want %v", got, want)
 	}
 	if plan[0].Node != (catalog.Node{Kind: "skill", Name: "brainstorming"}) || plan[0].RequiredBy != "" {
 		t.Errorf("plan must lead with the requested node, got %+v", plan[0])
@@ -62,19 +84,30 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 	}
 	// An enabled dependency is skipped with its whole subtree.
 	p2 := openChainProject(t)
-	if plan := p2.ResolveEnable("skill", "tdd"); len(plan) != 1 {
-		t.Errorf("adding a leaf to a closed config plans %d ops, want 1: %v", len(plan), plan)
+	if leafPlan := p2.ResolveEnable("skill", "tdd"); len(leafPlan) != 1 {
+		t.Errorf("adding a leaf to a closed config plans %d ops, want 1: %v", len(leafPlan), leafPlan)
 	}
-	// Enabled-subtree skip mid-walk: with the execution core already enabled,
-	// brainstorming's closure plans only the planning side (7 skills incl. the
-	// seed + adr-reviewer + plan-reviewer = 9 ops), never re-adding members.
+	// Enabled-subtree skip mid-walk never re-adds an enabled member.
 	p3, err := Open(scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	plan3 := p3.ResolveEnable("skill", "brainstorming")
-	if len(plan3) != 9 {
-		t.Fatalf("partial-closure add = %d ops, want 9: %v", len(plan3), plan3)
+	enabled := map[catalog.Node]bool{
+		{Kind: "skill", Name: "executing-plans"}:             true,
+		{Kind: "skill", Name: "retrospective"}:               true,
+		{Kind: "skill", Name: "reviewing-impl"}:              true,
+		{Kind: "skill", Name: "subagent-driven-development"}: true,
+		{Kind: "agent", Name: "code-reviewer"}:               true,
+	}
+	want3 := map[catalog.Node]bool{}
+	for _, node := range closure {
+		if !enabled[node] {
+			want3[node] = true
+		}
+	}
+	if got := planNodes(plan3); !maps.Equal(got, want3) {
+		t.Fatalf("partial-closure add nodes = %v, want %v", got, want3)
 	}
 	for _, op := range plan3 {
 		if op.Node.Name == "reviewing-impl" || op.Node.Name == "executing-plans" {
@@ -92,8 +125,8 @@ func TestResolveDisableSkipsLocalDependents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := p.ResolveDisable("skill", "retrospective")
-	if len(plan) != 1 {
-		t.Errorf("local reviewing-impl must not join the plan, got %d ops: %v", len(plan), plan)
+	disablePlan := p.ResolveDisable("skill", "retrospective")
+	if len(disablePlan) != 1 {
+		t.Errorf("local reviewing-impl must not join the plan, got %d ops: %v", len(disablePlan), disablePlan)
 	}
 }

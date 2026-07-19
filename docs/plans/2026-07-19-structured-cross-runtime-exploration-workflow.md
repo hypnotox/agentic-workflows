@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [132]
-status: Proposed
+status: Implemented
 ---
 # Plan: Structured Cross-Runtime Exploration Workflow
 
@@ -953,4 +953,8 @@ Manual release smoke follows `/home/hypno/Projects/agentic-workflows/docs/releas
 - Keep `/home/hypno/Projects/agentic-workflows/templates/pi/awf-subagents/runner.ts.tmpl` and every generated runner copy unchanged. A need to change one is an ADR resync trigger, not an incidental deviation.
 - Generic non-Pi action wording is settled by ADR-0132. Exact target-native API syntax is out of scope.
 - Do not use hard-coded corpus counts; derive sets or assert terminal absence/presence.
-- Implementation deviations: pending.
+- Implementation deviations:
+  - Renamed the planned `renderedByPath` helper to `explorationRenderedByPath` in `internal/project/target_test.go` because `internal/project/invariant_markers_render_test.go` already declares that package-level name. In `internal/project/resolve_test.go`, removed two optional capacity hints and renamed two local plan variables because the planned post-check rejects every literal `len(plan` even though the planned retained assertions and helper included that text.
+  - Updated closure-sensitive fixtures and assertions in `internal/project/project_test.go`, `internal/project/render_tree_test.go`, `internal/project/skillrefs_test.go`, `internal/project/spine_test.go`, `internal/project/target_test.go`, and `internal/project/unused_test.go`. The new required edge otherwise makes those existing fixtures invalid; the conditional-template guard also requires an explicit generic fallback case for the new skill, and the dedicated-grounding test must assert that the coupling audit no longer bypasses exploring.
+  - Used `go run github.com/hypnotox/agentic-workflows/cmd/awf upgrade` for the main adopted-tree upgrade because the hand-maintained repo runner has no `upgrade` verb; this preserves the plan's source-built-binary requirement.
+  - Used the imperative refinement wording `correct the task`, `change report detail`, and `widen breadth` in the exploring template so the planned deterministic reporting assertions match while preserving ADR-0132's semantics.

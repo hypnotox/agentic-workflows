@@ -64,6 +64,7 @@ skills:
   - subagent-driven-development
   - tdd
   - writing-plans
+  - exploring
 tags:
   active-md: Generated ACTIVE.md decision status index
   adopter-reference: The adopter-facing config reference authority

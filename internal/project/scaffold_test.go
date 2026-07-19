@@ -93,9 +93,13 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 		}
 	}
 	// invariant: scaffold-core-only
+	// invariant: exploration-skill-closure
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
+	}
+	if !slices.Contains(cfg.Skills, "exploring") {
+		t.Error("core scaffold missing exploring")
 	}
 
 	// No doc remains core (ADR-0043 promoted the only three core docs - workflow,
@@ -128,14 +132,31 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	if len(cfg.Skills) != 12 { // the 11-skill chain closure + tdd
-		t.Errorf("closure-completed trim = %d skills, want 12: %v", len(cfg.Skills), cfg.Skills)
+	wantNodes := catalog.Closure(cat, []catalog.Node{
+		{Kind: "skill", Name: "tdd"},
+		{Kind: "skill", Name: "brainstorming"},
+	})
+	wantSkills, wantAdded := map[string]bool{}, map[string]bool{}
+	selected := map[string]bool{"tdd": true, "brainstorming": true}
+	for _, node := range wantNodes {
+		switch node.Kind {
+		case "skill":
+			wantSkills[node.Name] = true
+			if !selected[node.Name] {
+				wantAdded["skill "+node.Name] = true
+			}
+		case "agent":
+			wantAdded["agent "+node.Name] = true
+		}
+	}
+	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
+		t.Errorf("closure-completed trim skills = %v, want %v", slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
+	}
+	if got := sliceSet(added); !maps.Equal(got, wantAdded) {
+		t.Errorf("closure additions = %v, want %v", slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantAdded)))
 	}
 	if len(cfg.Agents) != 3 {
 		t.Errorf("derived agents = %v, want the three reviewers", cfg.Agents)
-	}
-	if len(added) != 13 { // 10 closure skills + 3 agents beyond the 2-skill selection
-		t.Errorf("added = %d entries, want 13: %v", len(added), added)
 	}
 	if !slices.Contains(added, "skill reviewing-plan-resync") || !slices.Contains(added, "agent plan-reviewer") {
 		t.Errorf("added missing expected kind-prefixed entries: %v", added)

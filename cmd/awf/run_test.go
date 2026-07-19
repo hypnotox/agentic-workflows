@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -30,6 +31,51 @@ func scaffoldProject(t *testing.T) string {
 		t.Fatalf("scaffold sync: %v", err)
 	}
 	return root
+}
+
+func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [debugging]\nagents: []\n")
+	lock := &manifest.Lock{AWFVersion: "0.17.0", SchemaVersion: 12, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runUpgrade(root, &out); err != nil {
+		t.Fatalf("runUpgrade: %v", err)
+	}
+	for _, want := range []string{
+		`close-enabled-set: enabled skill "exploring" (required by "debugging")`,
+		"awf upgrade: applied exploring-skill-closure",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("upgrade output missing %q:\n%s", want, out.String())
+		}
+	}
+	upgradedLock, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgradedLock.SchemaVersion != 13 {
+		t.Errorf("lock schema = %d, want 13", upgradedLock.SchemaVersion)
+	}
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, skill := range cfg.Skills {
+		if skill == "exploring" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("upgraded skills missing exploring: %v", cfg.Skills)
+	}
+	if err := runCheck(root, io.Discard); err != nil {
+		t.Errorf("post-upgrade check: %v", err)
+	}
 }
 
 func TestRunSyncPrintsPrunedFiles(t *testing.T) {

@@ -24,6 +24,7 @@ skills:
   - subagent-driven-development
   - tdd
   - writing-plans
+  - exploring
 agents:
   - adr-reviewer
   - code-reviewer

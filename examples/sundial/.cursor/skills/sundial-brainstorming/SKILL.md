@@ -19,7 +19,7 @@ Per `docs/workflow.md`: hard prerequisite for any non-trivial change. Narrow exc
 
 Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles; create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
 
-1. **Explore project context.** Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
+1. **Explore project context.** When both the needed repository information's location is unknown and inline search would pollute the parent context, invoke `sundial-exploring` with one information need, breadth, and detail. Keep an exact-known-file read or genuinely trivial lookup inline. Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `docs/domains`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains, backed invariants, and related ADRs; read the current-state docs and ADRs it surfaces.
 
 <!-- awf:edit example-clarifying-questions: from .awf/skills/parts/brainstorming/example-clarifying-questions.md -->
 2. **Ask clarifying questions, one at a time.** For sundial that usually means:

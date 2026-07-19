@@ -431,7 +431,7 @@ func TestDebuggingTemplate(t *testing.T) {
 			"gateCmdFull": "./x gate full",
 		},
 		"data":   map[string]any{},
-		"skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true},
+		"skills": map[string]bool{"tdd": true, "bugfix": true, "brainstorming": true, "exploring": true},
 	}
 
 	out := renderSkillGolden(t, "debugging", data)
@@ -453,6 +453,48 @@ func TestDebuggingTemplate(t *testing.T) {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
+	}
+	ordered := []string{
+		"**Form one falsifiable hypothesis.**",
+		"Invoke `example-exploring`",
+		"Pick the cheapest oracle",
+		"**Isolate with a failing test, written first.**",
+	}
+	position := -1
+	for _, phrase := range ordered {
+		next := strings.Index(out, phrase)
+		if next <= position {
+			t.Fatalf("debugging order violation at %q: positions must increase in %v", phrase, ordered)
+		}
+		position = next
+	}
+}
+
+func TestExploringTemplate(t *testing.T) {
+	pi := renderSkillGolden(t, "exploring", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+		"skills": map[string]bool{}, "targetSubagentTools": true,
+	})
+	fallback := renderSkillGolden(t, "exploring", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+	})
+	for label, body := range map[string]string{"pi": pi, "fallback": fallback} {
+		for _, want := range []string{
+			"location is unknown and inline search would pollute the parent context",
+			"exact-known-file", "genuinely trivial",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s exploring render missing %q:\n%s", label, want, body)
+			}
+		}
+	}
+	for _, want := range []string{"subagent_explore", "required task, breadth, and detail"} {
+		if !strings.Contains(pi, want) {
+			t.Errorf("Pi exploring render missing %q:\n%s", want, pi)
+		}
+	}
+	if !strings.Contains(fallback, "target-native fresh-context exploration subagent") || strings.Contains(fallback, "subagent_explore") {
+		t.Errorf("fallback exploring dispatch is not generic:\n%s", fallback)
 	}
 }
 
@@ -913,6 +955,11 @@ var unsetFallbackCases = []fallbackCase{
 		ban: []string{"example-bugfix", "example-tdd", "example-brainstorming", "``"},
 	},
 	{
+		tmpl: "skills/exploring/SKILL.md.tmpl",
+		want: []string{"target-native fresh-context exploration subagent"},
+		ban:  []string{"subagent_explore"},
+	},
+	{
 		tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
 		want: []string{"<module-prefix>/", "the project's decision process"},
 		ban:  []string{"example-proposing-adr"},
@@ -1117,7 +1164,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its
 	// ADR-0081 closure (including adr-lifecycle, banned below) at open.
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - refactor-coupling-audit\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: []\n",
 		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
 	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {
@@ -1138,7 +1185,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := string(guide)
-	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`, `example-refactor-coupling-audit`.") {
+	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`, `example-exploring`, `example-refactor-coupling-audit`.") {
 		t.Errorf("expected a catalog-derived task-skills sentence:\n%s", out)
 	}
 	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle"} {

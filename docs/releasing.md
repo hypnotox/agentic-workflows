@@ -100,6 +100,13 @@ the workflow side; keep these two commands in step by hand (ADR-0079).
 commands run on every pull request via the `release-config` job in `.github/workflows/ci.yml`, so a
 broken release config fails CI before any tag is pushed.
 
+## Real Pi exploration smoke
+
+On Pi 0.80.9 or newer, run one successful exploration call with a named task, `targeted` breadth, and `paths` detail. Then run a named task with `bounded` breadth that returns not-found and follow
+it with a new fresh-context call using a corrected task or `broad` breadth; every call must name
+task, breadth, and detail. Confirm intermediate activity stays in tool details and only the final
+report enters model-visible content.
+
 ## Notes
 
 - **Repo visibility.** The repo is public, so release binaries download without authentication
