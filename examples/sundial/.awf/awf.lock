@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.17.0",
-  "schemaVersion": 13,
+  "awfVersion": "0.18.0",
+  "schemaVersion": 14,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -108,7 +108,7 @@
       "templateId": "bootstrap/awf-bootstrap.sh.tmpl",
       "templateHash": "sha256:a3518158b12fba6a3da725f28365e3ac329ddb4a9a100506f093b7b1228f70d2",
       "configHash": "sha256:4ba3d9769912748b9bfce235ca214bd85740235752b0fb17ad59fc9ea791e40b",
-      "outputHash": "sha256:1fa38e5f5ad6ce939b76845d0c9b6da1a237da7fdd562f202510da37924fe0f9"
+      "outputHash": "sha256:6e0cdb6a75e2b7177e23357350970a1b5bfcebaef43871f76bbd5e71772393f9"
     },
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -804,7 +804,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:f89b5f26504f92ef576582bb4163068659d0795df0d10a3fae70c66af633184e",
+      "outputHash": "sha256:a9eab1d48919ef5232e9978f5cda6176ff447d17fe8f60263816909855f79f7d",
       "regenChecked": true
     },
     "docs/debugging.md": {

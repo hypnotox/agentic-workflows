@@ -17,8 +17,16 @@ func changelogFS(content string) fstest.MapFS {
 func runOn(t *testing.T, fsys fstest.MapFS) (int, string, string) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	code := run(fsys, &out, &errb)
+	code := run(fsys, &out, &errb, true)
 	return code, out.String(), errb.String()
+}
+
+func TestRunRefusesIncompleteBridgeTranche(t *testing.T) {
+	var out, errb bytes.Buffer
+	code := run(changelogFS("not parsed while incomplete"), &out, &errb, project.BridgeTrancheComplete)
+	if code != 1 || out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
+		t.Fatalf("incomplete bridge result: code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
+	}
 }
 
 func TestRunPasses(t *testing.T) {

@@ -43,7 +43,10 @@ var registry = []Migration{
 	{To: 11, Name: "drop-audit-base", Apply: applyDropAuditBase},
 	{To: 12, Name: "supersession-keys", Apply: applySupersessionKeys},
 	{To: 13, Name: "exploring-skill-closure", Apply: applyCloseEnabledSet},
+	{To: 14, Name: "current-state-topic-substrate", Apply: applyCurrentStateTopicSubstrate},
 }
+
+func applyCurrentStateTopicSubstrate(string, io.Writer) error { return nil }
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }

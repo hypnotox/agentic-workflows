@@ -128,6 +128,28 @@ func (p *Project) currentValue(path string) string {
 		return strconv.Itoa(len(p.Cfg.Domains)) + " configured"
 	case "targets":
 		return "`" + strings.Join(p.Cfg.Targets, "`, `") + "`"
+	case "currentState.sources":
+		if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.Sources) == 0 {
+			return "(none)"
+		}
+		return strconv.Itoa(len(p.Cfg.CurrentState.Sources)) + " sources"
+	case "currentState.testGlobs":
+		if p.Cfg.CurrentState == nil || len(p.Cfg.CurrentState.TestGlobs) == 0 {
+			return "(none)"
+		}
+		return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
+	case "currentState.topicCoverage":
+		if p.Cfg.CurrentState == nil {
+			return "error (default)"
+		}
+		return withDefault(p.Cfg.CurrentState.TopicCoverage, p.Cfg.CurrentState.TopicCoverage == "error")
+	case "currentState.topicFanout":
+		if p.Cfg.CurrentState == nil {
+			return "warn (default)"
+		}
+		return withDefault(p.Cfg.CurrentState.TopicFanout, p.Cfg.CurrentState.TopicFanout == "warn")
+	case "currentState.maxTopicsPerPath":
+		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
 	case "invariants.disabled":
 		if p.Cfg.Invariants == nil {
 			return "(unset)"

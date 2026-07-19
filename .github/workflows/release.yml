@@ -26,7 +26,7 @@ jobs:
             echo "tag v${tag} does not match project.Version ${want}" >&2
             exit 1
           fi
-      - name: Verify changelog pins the release
+      - name: Verify bridge readiness and changelog pins
         run: go run ./cmd/releasecheck
       - name: Verify tagged commit is on main
         run: |

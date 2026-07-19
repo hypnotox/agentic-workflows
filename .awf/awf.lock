@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.17.0",
-  "schemaVersion": 13,
+  "awfVersion": "0.18.0",
+  "schemaVersion": 14,
   "files": {
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -287,14 +287,14 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:5e4cbfa6a040a6edf5e1efab3b17c8dc655de5d3f63f98ac9bfa8b0b62bdd5f5",
-      "outputHash": "sha256:1daa459f36e291dad886efe47ff57458bd9f2a738b119f98bf975b3b69b4d338"
+      "configHash": "sha256:8623419d375de3b9cbf94eeaf6281c4787017cb39716cc38ca5f531000843059",
+      "outputHash": "sha256:b31ecef55ee543a16b1d07cf78e5744a6c50936387434166029d28038d3ca25f"
     },
     "docs/config-reference.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:2c2f8b90c87340363f9a7bef01b853cfac42d3087a53152363163294b8403962",
+      "outputHash": "sha256:33e0a6db504aca2dc268c38777e9010b13e7d4ae067907b166d9282cff07d960",
       "regenChecked": true
     },
     "docs/decisions/ACTIVE.md": {
@@ -339,7 +339,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:1c9e28285bdd0167dc380fad011ed307e824c581e11df6d487e445de59e7b569",
+      "outputHash": "sha256:df35bb8c28b37d2a9ec9fe1d6cd2a87bb88a4af97903f67db24f4e71dfedf232",
       "regenChecked": true
     },
     "docs/domains/invariants.md": {

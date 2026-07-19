@@ -94,6 +94,12 @@ progress while intermediate activity stays outside parent model content.
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
+Version 0.18.0 and schema generation 14 add an optional, strictly validated `currentState`
+configuration block for current-state topic preparation. It sits beside the unchanged legacy
+`invariants` configuration and does not switch normal context or invariant authority. This is only
+the first half of an unreleased bridge tranche: Plans 1 and 2 must both land before any bridge
+release, and migration readiness is not available yet.
+
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
 `.codex/`, Pi keeps both under `.pi/skills/`). `awf list target` shows the roster.

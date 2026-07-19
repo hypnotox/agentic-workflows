@@ -55,7 +55,7 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   sweep,sweep_test,domains_test,project_test,drift_test,render_tree_test,version_test}.go`,
   `internal/migrate/{migrate,migrate_test}.go`, `cmd/releasecheck/{main,main_test}.go`,
   `.github/workflows/release.yml`, `templates/{embed.go,domains/domain.md.tmpl}`,
-  `internal/clispec/{clispec,clispec_test}.go`, `cmd/awf/{new,new_test,dispatch}.go`,
+  `internal/clispec/{clispec,clispec_test}.go`, `cmd/awf/{run_test,new,new_test,dispatch}.go`,
   `.awf/docs/parts/architecture/{components,data-flow}.md`,
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`,
   `templates/docs/working-with-awf.md.tmpl`, `templates/agents-doc/AGENTS.md.tmpl`, create
@@ -102,8 +102,9 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   conversion. Update the current-generation pin and registry coverage in
   `internal/migrate/migrate_test.go`. In `internal/project/project.go`, set `Version` to `0.18.0` and
   add `14: "0.18.0"` to `minVersionBySchema`; update the exact pins in
-  `internal/project/version_test.go`. Do not add attestation lock fields, invariant conversion, or
-  migration journaling here. Add `project.BridgeTrancheComplete = false`; make `cmd/releasecheck`
+  `internal/project/version_test.go` and update the terminal upgraded-lock schema expectation in
+  `cmd/awf/run_test.go`. Do not add attestation lock fields, invariant conversion, or migration
+  journaling here. Add `project.BridgeTrancheComplete = false`; make `cmd/releasecheck`
   refuse while false; test the false/true cases and pin release-workflow ordering before GoReleaser.
   Treat 0.18.0 as unreleased until Plan 2 flips the sentinel after bridge completion and publishes it.
 

@@ -125,6 +125,46 @@ var keys = []Entry{
 		Availability: "Always; only consulted by `awf context --uncovered`.",
 	},
 	{
+		Path: "currentState.sources", Type: "list of {globs, marker, close} mappings", Default: "none",
+		Description:  "Source families scanned for qualified current-state relevance, advisory, and invariant proof markers during topic validation and bridge preparation. This does not switch normal context or invariant authority away from the legacy model.",
+		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+	},
+	{
+		Path: "currentState.sources[].globs", Type: "string list", Default: "none",
+		Description:  "Non-empty, duplicate-free anchored path globs matched against slash-separated repository-relative paths for one current-state marker source.",
+		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+	},
+	{
+		Path: "currentState.sources[].marker", Type: "string", Default: "none",
+		Description:  "Non-empty literal opening comment token that prefixes a qualified current-state marker line.",
+		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+	},
+	{
+		Path: "currentState.sources[].close", Type: "string", Default: "none: no close token stripped",
+		Description:  "Optional non-empty literal closing comment token stripped from a matched current-state marker line.",
+		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+	},
+	{
+		Path: "currentState.testGlobs", Type: "string list", Default: "none",
+		Description:  "Duplicate-free anchored path globs identifying proof-eligible test files for current-state invariant claims.",
+		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+	},
+	{
+		Path: "currentState.topicCoverage", Type: "severity (error, warn, or off)", Default: "error",
+		Description:  "Severity for missing scoped current-state topic coverage during topic validation and bridge preparation. It does not switch normal context or invariant authority.",
+		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+	},
+	{
+		Path: "currentState.topicFanout", Type: "severity (error, warn, or off)", Default: "warn",
+		Description:  "Severity for paths exceeding the current-state topic fan-out budget during topic validation and bridge preparation. It does not switch normal context or invariant authority.",
+		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+	},
+	{
+		Path: "currentState.maxTopicsPerPath", Type: "positive int", Default: "8",
+		Description:  "Maximum path-scoped current-state topics permitted to match one path before the configured fan-out finding is emitted. It does not switch normal context or invariant authority.",
+		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+	},
+	{
 		Path: "invariants.disabled", Type: "bool", Default: "false",
 		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants; set `sources` or set this true.",
 		Availability: "Always.",

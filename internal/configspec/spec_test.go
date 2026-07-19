@@ -118,6 +118,37 @@ func TestConfigspecKeyParity(t *testing.T) {
 	}
 }
 
+func TestCurrentStateKeysPublished(t *testing.T) {
+	got := map[string]Entry{}
+	for _, entry := range Keys() {
+		got[entry.Path] = entry
+	}
+	for _, path := range []string{
+		"currentState.sources",
+		"currentState.sources[].globs",
+		"currentState.sources[].marker",
+		"currentState.sources[].close",
+		"currentState.testGlobs",
+		"currentState.topicCoverage",
+		"currentState.topicFanout",
+		"currentState.maxTopicsPerPath",
+	} {
+		entry, ok := got[path]
+		if !ok {
+			t.Errorf("missing current-state configspec entry %q", path)
+			continue
+		}
+		if !strings.Contains(entry.Description, "current-state") {
+			t.Errorf("entry %q does not describe current-state preparation: %q", path, entry.Description)
+		}
+	}
+	for _, path := range []string{"currentState.sources", "currentState.topicCoverage", "currentState.topicFanout", "currentState.maxTopicsPerPath"} {
+		if !strings.Contains(got[path].Description, "does not switch normal context or invariant authority") {
+			t.Errorf("entry %q omits the bridge authority boundary", path)
+		}
+	}
+}
+
 // expandedTemplate reads a template id from the embedded FS with includes
 // expanded - the per-artifact source whose .data references define the
 // describable data-key universe.

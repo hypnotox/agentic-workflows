@@ -24,7 +24,12 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.17.0"
+const Version = "0.18.0"
+
+// BridgeTrancheComplete blocks publication while the two-plan current-state
+// bridge tranche is only partially implemented. Plan 2 flips it after adding
+// migration readiness, attestation, and ordinary-command refusal.
+const BridgeTrancheComplete = false
 
 // minVersionBySchema maps each config-schema generation to the minimum
 // project.Version allowed to render it; adding a migration without an entry
@@ -38,6 +43,7 @@ var minVersionBySchema = map[int]string{
 	11: "0.17.0",
 	12: "0.17.0",
 	13: "0.17.0",
+	14: "0.18.0",
 }
 
 type Project struct {

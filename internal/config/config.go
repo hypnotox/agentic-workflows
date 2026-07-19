@@ -41,24 +41,25 @@ type Sidecar struct {
 // data/sections/local live in sidecars, not here. Targets is the adapter-runtime
 // enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
-	Prefix        string            `yaml:"prefix"`
-	DocsDir       string            `yaml:"docsDir"`
-	Vars          map[string]any    `yaml:"vars"`
-	Skills        []string          `yaml:"skills"`
-	Agents        []string          `yaml:"agents"`
-	Docs          []string          `yaml:"docs"`
-	Domains       []string          `yaml:"domains"`
-	Tags          map[string]string `yaml:"tags"`
-	ContextIgnore []string          `yaml:"contextIgnore"`
-	Targets       []string          `yaml:"targets"`
-	Invariants    *InvariantConfig  `yaml:"invariants"`
-	Audit         *AuditConfig      `yaml:"audit"`
-	Bootstrap     *BootstrapConfig  `yaml:"bootstrap"`
-	Hooks         *HooksConfig      `yaml:"hooks"`
-	Runner        *RunnerConfig     `yaml:"runner"`
-	ProseGate     *ProseGateConfig  `yaml:"proseGate"`
-	root          string            // <project>/.awf, for sidecar/part resolution
-	raw           []byte            // the exact config.yaml bytes Load read, for in-place byte edits
+	Prefix        string              `yaml:"prefix"`
+	DocsDir       string              `yaml:"docsDir"`
+	Vars          map[string]any      `yaml:"vars"`
+	Skills        []string            `yaml:"skills"`
+	Agents        []string            `yaml:"agents"`
+	Docs          []string            `yaml:"docs"`
+	Domains       []string            `yaml:"domains"`
+	Tags          map[string]string   `yaml:"tags"`
+	ContextIgnore []string            `yaml:"contextIgnore"`
+	Targets       []string            `yaml:"targets"`
+	Invariants    *InvariantConfig    `yaml:"invariants"`
+	CurrentState  *CurrentStateConfig `yaml:"currentState"`
+	Audit         *AuditConfig        `yaml:"audit"`
+	Bootstrap     *BootstrapConfig    `yaml:"bootstrap"`
+	Hooks         *HooksConfig        `yaml:"hooks"`
+	Runner        *RunnerConfig       `yaml:"runner"`
+	ProseGate     *ProseGateConfig    `yaml:"proseGate"`
+	root          string              // <project>/.awf, for sidecar/part resolution
+	raw           []byte              // the exact config.yaml bytes Load read, for in-place byte edits
 }
 
 // Source returns the exact config.yaml bytes Load read. A byte-level editor
@@ -93,6 +94,114 @@ type InvariantSource struct {
 	Globs  []string `yaml:"globs"`
 	Marker string   `yaml:"marker"`
 	Close  string   `yaml:"close"`
+}
+
+// CurrentStateConfig configures bridge-preparation validation for canonical
+// current-state topics. It is deliberately separate from the legacy invariant
+// authority, which remains active throughout the bridge tranche.
+type CurrentStateConfig struct {
+	Sources          []CurrentStateSource `yaml:"sources"`
+	TestGlobs        []string             `yaml:"testGlobs"`
+	TopicCoverage    string               `yaml:"topicCoverage"`
+	TopicFanout      string               `yaml:"topicFanout"`
+	MaxTopicsPerPath *int                 `yaml:"maxTopicsPerPath"`
+	coverageSet      bool
+	fanoutSet        bool
+}
+
+// UnmarshalYAML retains severity presence while preserving strict nested field
+// validation for the custom-decoded current-state mapping.
+func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("currentState must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("field %s already set in currentState", key)
+		}
+		seen[key] = true
+		switch key {
+		case "sources":
+			if err := value.Decode(&c.Sources); err != nil {
+				return err
+			}
+		case "testGlobs":
+			if err := value.Decode(&c.TestGlobs); err != nil {
+				return err
+			}
+		case "topicCoverage":
+			c.coverageSet = true
+			if err := value.Decode(&c.TopicCoverage); err != nil {
+				return err
+			}
+		case "topicFanout":
+			c.fanoutSet = true
+			if err := value.Decode(&c.TopicFanout); err != nil {
+				return err
+			}
+		case "maxTopicsPerPath":
+			if err := value.Decode(&c.MaxTopicsPerPath); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
+		}
+	}
+	return nil
+}
+
+// EffectiveMaxTopicsPerPath returns the configured fan-out budget, defaulting
+// to eight without materializing that default into the decoded config.
+func (c *CurrentStateConfig) EffectiveMaxTopicsPerPath() int {
+	if c == nil || c.MaxTopicsPerPath == nil {
+		return 8
+	}
+	return *c.MaxTopicsPerPath
+}
+
+// CurrentStateSource describes one marker-bearing source family. closeSet
+// distinguishes an omitted close token from an explicitly empty one.
+type CurrentStateSource struct {
+	Globs    []string `yaml:"globs"`
+	Marker   string   `yaml:"marker"`
+	Close    string   `yaml:"close"`
+	closeSet bool
+}
+
+// UnmarshalYAML retains close-token presence while preserving strict nested
+// field validation for the custom-decoded source mapping.
+func (s *CurrentStateSource) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("currentState source must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("field %s already set in currentState source", key)
+		}
+		seen[key] = true
+		switch key {
+		case "globs":
+			if err := value.Decode(&s.Globs); err != nil {
+				return err
+			}
+		case "marker":
+			if err := value.Decode(&s.Marker); err != nil {
+				return err
+			}
+		case "close":
+			s.closeSet = true
+			if err := value.Decode(&s.Close); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field %s not found in type config.CurrentStateSource", key)
+		}
+	}
+	return nil
 }
 
 // BootstrapConfig configures the rendered .awf/bootstrap.sh singleton (ADR-0040,
@@ -304,6 +413,43 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
+	if c.CurrentState != nil {
+		if !c.CurrentState.coverageSet {
+			c.CurrentState.TopicCoverage = "error"
+		}
+		if !c.CurrentState.fanoutSet {
+			c.CurrentState.TopicFanout = "warn"
+		}
+		for _, setting := range []struct{ name, severity string }{
+			{"topicCoverage", c.CurrentState.TopicCoverage},
+			{"topicFanout", c.CurrentState.TopicFanout},
+		} {
+			name, severity := setting.name, setting.severity
+			if severity != "error" && severity != "warn" && severity != "off" {
+				return fmt.Errorf("currentState.%s must be error, warn, or off; got %q", name, severity)
+			}
+		}
+		if c.CurrentState.MaxTopicsPerPath != nil && *c.CurrentState.MaxTopicsPerPath <= 0 {
+			return fmt.Errorf("currentState.maxTopicsPerPath must be positive; got %d", *c.CurrentState.MaxTopicsPerPath)
+		}
+		for i, src := range c.CurrentState.Sources {
+			if len(src.Globs) == 0 {
+				return fmt.Errorf("currentState.sources[%d] has no globs; list at least one path glob", i)
+			}
+			if src.Marker == "" {
+				return fmt.Errorf("currentState.sources[%d] has an empty marker", i)
+			}
+			if src.closeSet && src.Close == "" {
+				return fmt.Errorf("currentState.sources[%d] has an explicitly empty close token", i)
+			}
+			if err := validateUniquePathGlobs(src.Globs); err != nil {
+				return fmt.Errorf("currentState.sources[%d].globs: %w", i, err)
+			}
+		}
+		if err := validateUniquePathGlobs(c.CurrentState.TestGlobs); err != nil {
+			return fmt.Errorf("currentState.testGlobs: %w", err)
+		}
+	}
 	if c.Audit != nil {
 		for _, g := range c.Audit.DependencyManifests {
 			if err := validatePathGlob(g); err != nil {
@@ -416,4 +562,21 @@ func hasPathSep(s string) bool {
 // the any-depth form.
 func validatePathGlob(g string) error {
 	return pathglob.Validate(g)
+}
+
+func validateUniquePathGlobs(globs []string) error {
+	seen := map[string]bool{}
+	for _, g := range globs {
+		if g == "" {
+			return errors.New("glob must not be empty")
+		}
+		if seen[g] {
+			return fmt.Errorf("duplicate glob %q", g)
+		}
+		seen[g] = true
+		if err := validatePathGlob(g); err != nil {
+			return err
+		}
+	}
+	return nil
 }

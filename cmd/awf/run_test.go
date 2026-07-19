@@ -57,8 +57,8 @@ func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgradedLock.SchemaVersion != 13 {
-		t.Errorf("lock schema = %d, want 13", upgradedLock.SchemaVersion)
+	if upgradedLock.SchemaVersion != 14 {
+		t.Errorf("lock schema = %d, want 14", upgradedLock.SchemaVersion)
 	}
 	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {

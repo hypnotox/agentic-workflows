@@ -19,7 +19,9 @@
   coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
 - **`internal/config/`**: owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
-  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars.
+  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The optional
+  presence-aware `currentState` block is bridge-preparation input for strict topic validation; it
+  remains beside the untouched legacy `invariants` authority during the unreleased bridge tranche.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`
@@ -52,6 +54,9 @@
   pre-existing item token to `refines:`, and appends a bookkeeping Decision item retiring each
   predecessor's anchors (ADR-0128). The generation 13 migration reuses `applyCloseEnabledSet` to add `exploring`
   wherever an enabled brainstorming, debugging, or refactor coupling audit consumer requires it.
+  Generation 14, `current-state-topic-substrate`, is a no-op recognition boundary for prepared topic
+  inputs; it performs no authority conversion. Version 0.18.0 remains unreleasable until Plan 2
+  completes the bridge tranche, enforced by `cmd/releasecheck` before GoReleaser.
   Both corpus-writing migrations resolve their own decisions directory and run before a
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.

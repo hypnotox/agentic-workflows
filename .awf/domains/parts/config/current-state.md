@@ -1,5 +1,7 @@
 ## Current state
 
+Schema generation 14, `current-state-topic-substrate`, is an unreleased no-op migration that recognizes the optional bridge-preparation configuration without converting authority. Version 0.18.0 adds a presence-aware `currentState` block beside the untouched legacy `invariants` block. Its strict source and test globs, marker tokens, topic coverage and fan-out severities, and positive fan-out budget prepare topic validation only; normal context and invariant enforcement remain legacy-owned. The default severities are `error` and `warn`, and the default maximum is 8 without replacing an explicitly configured value. Plans 1 and 2 are one unreleased bridge tranche, and the release check refuses publication until both have landed.
+
 ADR-0132 adds schema generation 13 and the `exploring-skill-closure` migration. It reuses close-enabled-set to add `exploring` automatically when an adopted config enables brainstorming, debugging, or refactor-coupling-audit.
 
 ADR-0127 retires the `audit.baseBranch` key: a schema-11 migration strips it from `.awf/config.yaml` and announces the removal, and `config.RemoveMappingKey` is the new nested-key remover it needs (the existing `RemoveKey` walks only top-level entries, so it silently no-ops on a nested key).

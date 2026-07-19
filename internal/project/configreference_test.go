@@ -50,6 +50,8 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"`audit.diffThreshold` | int |",
 		"| 400 (default) |",
 		"`bootstrap.enabled`",
+		"`currentState.maxTopicsPerPath` | positive int | 8 | 8 (default) |",
+		"`currentState.topicCoverage` | severity (error, warn, or off) | error | error (default) |",
 		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, plans-template, skill tdd.",
 		"`checkCmd`",
 		"State: empty, an open to-do.",
@@ -235,6 +237,15 @@ invariants:
       marker: '//'
   testGlobs:
     - '**/*_test.go'
+currentState:
+  sources:
+    - globs: ['**/*.md']
+      marker: '#'
+  testGlobs:
+    - '**/*_test.md'
+  topicCoverage: off
+  topicFanout: error
+  maxTopicsPerPath: 5
 proseGate:
   enabled: true
   exemptions:
@@ -255,6 +266,11 @@ proseGate:
 		"| 1 sources |", // invariants.sources live-state count
 		"| 1 globs |",   // invariants.testGlobs live-state count (ADR-0088 projection)
 		"| 1 entries |", // proseGate.exemptions live-state count
+		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
+		"`currentState.testGlobs` | string list | none | 1 globs |",
+		"`currentState.topicCoverage` | severity (error, warn, or off) | error | off |",
+		"`currentState.topicFanout` | severity (error, warn, or off) | warn | error |",
+		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)

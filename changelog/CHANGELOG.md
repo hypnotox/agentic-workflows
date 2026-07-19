@@ -9,6 +9,12 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Version 0.18.0 introduces schema generation 14, `current-state-topic-substrate`, and the optional
+  strict `currentState` bridge-preparation config beside unchanged legacy `invariants`. The new keys
+  describe marker sources, proof test globs, topic coverage and fan-out severities, and a positive
+  per-path topic budget (default 8), but they do not switch normal context or invariant authority.
+  This is not migration readiness: Plans 1 and 2 are one unreleased bridge tranche and must both
+  land before any bridge release; the release check refuses publication in the interim.
 - Pi's `subagent_explore` now requires `{task, breadth, detail}` (ADR-0132). Breadth is
   `targeted`, `bounded`, or `broad`; detail is `paths`, `summary`, or `analysis`. Hand-authored
   calls that pass only `task` must add both fields.

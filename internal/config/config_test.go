@@ -498,6 +498,151 @@ func TestInvariantTestGlobsValidation(t *testing.T) {
 	}
 }
 
+func TestCurrentStateDefaultsAndPresence(t *testing.T) {
+	absent, err := Parse("staged/.awf", []byte("prefix: x\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if absent.CurrentState != nil || absent.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
+		t.Fatalf("absent currentState = %#v, effective max = %d", absent.CurrentState, absent.CurrentState.EffectiveMaxTopicsPerPath())
+	}
+
+	cfg, err := Parse("staged/.awf", []byte("prefix: x\ncurrentState: {}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CurrentState == nil {
+		t.Fatal("present currentState decoded as nil")
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CurrentState.TopicCoverage != "error" || cfg.CurrentState.TopicFanout != "warn" || cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 {
+		t.Errorf("defaults = %#v, effective max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath())
+	}
+
+	max := 3
+	direct := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, CurrentState: &CurrentStateConfig{MaxTopicsPerPath: &max}}
+	if err := direct.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if direct.CurrentState.MaxTopicsPerPath != &max || direct.CurrentState.EffectiveMaxTopicsPerPath() != 3 {
+		t.Errorf("explicit maximum was replaced: %#v", direct.CurrentState.MaxTopicsPerPath)
+	}
+}
+
+func TestCurrentStateSeverityValidation(t *testing.T) {
+	for _, field := range []string{"topicCoverage", "topicFanout"} {
+		for _, value := range []string{"error", "warn", "off"} {
+			t.Run(field+"_"+value, func(t *testing.T) {
+				body := "prefix: x\ncurrentState:\n  " + field + ": " + value + "\n"
+				cfg, err := Parse("staged/.awf", []byte(body))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := cfg.Validate(); err != nil {
+					t.Errorf("legal severity rejected: %v", err)
+				}
+			})
+		}
+	}
+	for _, tc := range []struct{ field, value string }{{"topicCoverage", "fatal"}, {"topicFanout", "quiet"}, {"topicCoverage", "''"}, {"topicFanout", "''"}} {
+		t.Run(tc.field+"_invalid", func(t *testing.T) {
+			body := "prefix: x\ncurrentState:\n  " + tc.field + ": " + tc.value + "\n"
+			cfg, err := Parse("staged/.awf", []byte(body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), tc.field) {
+				t.Errorf("Validate = %v", err)
+			}
+		})
+	}
+}
+
+func TestCurrentStateStrictValidation(t *testing.T) {
+	valid := `prefix: x
+currentState:
+  sources:
+    - globs: ['**/*.go']
+      marker: '//'
+      close: '*/'
+  testGlobs: ['**/*_test.go']
+  maxTopicsPerPath: 4
+`
+	cfg, err := Parse("staged/.awf", []byte(valid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("valid currentState rejected: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name, fragment, want string
+	}{
+		{"zero maximum", "  maxTopicsPerPath: 0\n", "must be positive"},
+		{"negative maximum", "  maxTopicsPerPath: -1\n", "must be positive"},
+		{"empty source globs", "  sources:\n    - globs: []\n      marker: '//'\n", "has no globs"},
+		{"duplicate source glob", "  sources:\n    - globs: ['**/*.go', '**/*.go']\n      marker: '//'\n", "duplicate glob"},
+		{"empty source glob", "  sources:\n    - globs: ['']\n      marker: '//'\n", "empty"},
+		{"malformed source glob", "  sources:\n    - globs: ['[']\n      marker: '//'\n", "malformed"},
+		{"empty marker", "  sources:\n    - globs: ['**/*.go']\n      marker: ''\n", "empty marker"},
+		{"empty close", "  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      close: ''\n", "empty close"},
+		{"duplicate test glob", "  testGlobs: ['**/*_test.go', '**/*_test.go']\n", "duplicate glob"},
+		{"empty test glob", "  testGlobs: ['']\n", "empty"},
+		{"malformed test glob", "  testGlobs: ['[']\n", "malformed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed, err := Parse("staged/.awf", []byte("prefix: x\ncurrentState:\n"+tc.fragment))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := parsed.Validate(); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("Validate = %v, want error containing %q", err, tc.want)
+			}
+		})
+	}
+
+	for _, tc := range []struct{ body, want string }{
+		{"prefix: x\ncurrentState:\n  unknown: true\n", "unknown"},
+		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      unknown: true\n", "unknown"},
+		{"prefix: x\ncurrentState:\n  topicCoverage: warn\n  topicCoverage: error\n", "already set"},
+		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      marker: '#'\n", "already set"},
+	} {
+		if _, err := Parse("staged/.awf", []byte(tc.body)); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("strict nested field was accepted: %v", err)
+		}
+	}
+}
+
+func TestCurrentStateMappingsRequired(t *testing.T) {
+	for _, body := range []string{
+		"prefix: x\ncurrentState: not-a-map\n",
+		"prefix: x\ncurrentState:\n  sources: [not-a-map]\n",
+	} {
+		if _, err := Parse("staged/.awf", []byte(body)); err == nil || !strings.Contains(err.Error(), "must be a mapping") {
+			t.Errorf("Parse = %v", err)
+		}
+	}
+}
+
+func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
+	for _, body := range []string{
+		"prefix: x\ncurrentState:\n  testGlobs: {}\n",
+		"prefix: x\ncurrentState:\n  topicCoverage: []\n",
+		"prefix: x\ncurrentState:\n  topicFanout: []\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: nope\n",
+		"prefix: x\ncurrentState:\n  sources:\n    - globs: {}\n",
+		"prefix: x\ncurrentState:\n  sources:\n    - marker: []\n",
+		"prefix: x\ncurrentState:\n  sources:\n    - close: []\n",
+	} {
+		if _, err := Parse("staged/.awf", []byte(body)); err == nil {
+			t.Errorf("wrong currentState value type was accepted:\n%s", body)
+		}
+	}
+}
+
 func TestAuditDependencyManifestValidation(t *testing.T) {
 	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Audit: &AuditConfig{
 		DependencyManifests: []string{"go.mod", "**/*.csproj", "src/go.mod"},
