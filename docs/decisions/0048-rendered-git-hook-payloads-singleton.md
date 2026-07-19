@@ -115,17 +115,17 @@ adopters own all hook *wiring*: awf never touches `.git/` or git config.
      bootstrap fetch fails (offline clones and unsupported platforms must not block
      commits). No render-context change is needed.
 
-4. **awf never activates hooks.** ADR-0032's activation removal is reaffirmed in full: no
-   code path writes to `.git/`, runs `git config`, or ships an installer. The payloads are
-   inert until the adopter invokes them from wiring they own: a hand-written stub, a
-   `core.hooksPath` directory, husky/lefthook, or CI. This ADR **partially supersedes
-   ADR-0032** (recorded via `related`; ADR-0032 stays `Implemented`): its Decision item 1
-   (`refines: ADR-0032#1`; no rendered hook files) and the `hooks`-key clause of its textual invariant "the
-   catalog and config schema declare no `hook` kind or `hooks` key" are superseded by
-   items 1-2 above; the rest of that invariant stays true: the catalog still declares no
-   `hook` kind, and `.githooks/` still receives no rendered files. Its Decision
-   items 2 (no activation) and 6 (`setup-guards-hookspath` retired) remain in force, and
-   `inv: hooks-config-dropped` remains valid for the legacy array shape.
+4. **awf never activates hooks.** ADR-0032's activation removal is reaffirmed in full: no code
+   path writes to `.git/`, runs `git config`, or ships an installer. The payloads are inert until
+   the adopter invokes them from wiring they own: a hand-written stub, a `core.hooksPath`
+   directory, husky/lefthook, or CI. This ADR **partially supersedes ADR-0032** (recorded via
+   `related`; ADR-0032 stays `Implemented`): its Decision item 1 (`refines: ADR-0032#1`; no
+   rendered hook files) and the `hooks`-key clause of its textual invariant "the catalog and
+   config schema declare no `hook` kind or `hooks` key" are superseded by items 1-2 above; the
+   rest of that invariant stays true: the catalog still declares no `hook` kind, and `.githooks/`
+   still receives no rendered files. Its Decision items 2 (no activation) and 6
+   (`setup-guards-hookspath` retired) remain in force, and `inv: hooks-config-dropped`
+   (`cites-invariant: ADR-0032#hooks-config-dropped`) remains valid for the legacy array shape.
 
 5. **`awf init` scaffolds the singleton enabled** (like the bootstrap), fixing the
    adopter floor out of the box. `ScaffoldConfig`'s referenced-var collection and the

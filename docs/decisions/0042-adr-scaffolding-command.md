@@ -68,14 +68,15 @@ deferred until a second concrete, freely-authored-content case exists (see Alter
    `project.Open`, exactly like `sync`/`check`/`invariants`/`audit`/`list` already do, since it reads
    the rendered `docs/decisions/template.md` and a version-mismatched binary could misparse its
    marker format. On success it prints the created file's path to stdout.
-4. **Partial-item supersedence of ADR-0039**, not an in-place edit: ADR-0039 is `Implemented`, so
-   per `awf-adr-lifecycle` ("once `Accepted` or `Implemented`, the body is frozen: only the
+4. **Partial-item supersedence of ADR-0039**, not an in-place edit: ADR-0039 is `Implemented`,
+   so per `awf-adr-lifecycle` ("once `Accepted` or `Implemented`, the body is frozen: only the
    `status` field is editable in place") its Invariants text is never hand-edited. This ADR's
-   frontmatter already carries `related: [0039]` (not `supersedes:`); its prose here is the citation
-   partial-item supersedence requires: **this ADR's Invariant `adr-new-version-gated` overrides
-   ADR-0039 Invariant `inv: version-compat-gate`'s command enumeration**, extending the gated-command
-   set it names (`sync`, `check`, `invariants`, `audit`, `list`) to six by adding `new`. ADR-0039's
-   own text and `status: Implemented` are untouched.
+   frontmatter already carries `related: [0039]` (not `supersedes:`); its prose here is the
+   citation partial-item supersedence requires: **this ADR's Invariant `adr-new-version-gated`
+   overrides ADR-0039 Invariant `inv: version-compat-gate`'s command enumeration**
+   (`cites-invariant: ADR-0039#version-compat-gate`), extending the gated-command set it names
+   (`sync`, `check`, `invariants`, `audit`, `list`) to six by adding `new`. ADR-0039's own text
+   and `status: Implemented` are untouched.
 5. `awf-proposing-adr`'s procedure changes: the current step 1 ("pick the next ADR number") and the
    file-creation half of step 2 ("copy section structure ... do not shell-copy the file") collapse
    into a single step that runs `awf new adr "<title>"` and then fills in every section and

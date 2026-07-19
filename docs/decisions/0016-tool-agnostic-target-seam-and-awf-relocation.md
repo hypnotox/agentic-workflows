@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-26
 tags: [target-seam, multi-target]
-related: [4, 9, 10, 15, 37, 76, 131]
+related: [4, 9, 10, 15, 23, 37, 76, 131]
 domains: [config, tooling, rendering]
 ---
 # ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter
@@ -146,15 +146,18 @@ Grounding discoveries that shape the design (verified against source):
    migrations then syncs; `Sync` stamps `SchemaVersion: migrate.Current()`. `runSync`/`runCheck`
    keep calling `gate()` before `project.Open` (`main.go:92-98`).
 
-7. **Supersedence scope.** This ADR overrides **ADR-0009 Decision item 1** (`refines: ADR-0009#1`) and its
-   `inv: config-root` (`supersedes-invariant: ADR-0009#config-root`; config now loads from `.awf/config.yaml`, lock at `.awf/awf.lock`), and
-   narrows **ADR-0015 `inv: provenance-banner`** only insofar as the banner text now names `.awf/`
-   rather than `.claude/awf/`. Both predecessors keep their `Implemented` status (this is
+7. **Supersedence scope.** This ADR overrides **ADR-0009 Decision item 1**
+   (`refines: ADR-0009#1`) and its `inv: config-root`
+   (`supersedes-invariant: ADR-0009#config-root`; config now loads from `.awf/config.yaml`, lock
+   at `.awf/awf.lock`), and narrows **ADR-0015 `inv: provenance-banner`**
+   (`cites-invariant: ADR-0015#provenance-banner`) only insofar as the banner text now names
+   `.awf/` rather than `.claude/awf/`. Both predecessors keep their `Implemented` status (this is
    partial-item supersedence recorded via `related`, not a full replacement) and their backing
-   tests (`config-root`, `provenance-banner`, any `awf:edit`-pointer assertion, **and the orphan/drift
-   tests asserting `.claude/awf/...` paths**: `drift_test.go`, `docs_sections_test.go`,
-   `coverage_test.go`) update in the same commit that flips this ADR to `Implemented`. ADR-0010 `legacy-read-isolation` is unaffected
-   (item 3). The CLAUDE.md bridge realises the AGENTS.md↔runtime link left open by ADR-0004.
+   tests (`config-root`, `provenance-banner`, any `awf:edit`-pointer assertion, **and the
+   orphan/drift tests asserting `.claude/awf/...` paths**: `drift_test.go`,
+   `docs_sections_test.go`, `coverage_test.go`) update in the same commit that flips this ADR to
+   `Implemented`. ADR-0010 `legacy-read-isolation` is unaffected (item 3). The CLAUDE.md bridge
+   realises the AGENTS.md↔runtime link left open by ADR-0004.
 
 Applying this to awf's own repo (running `awf upgrade` to relocate `.claude/awf/` → `.awf/` and
 re-syncing so rendered output is byte-identical except for the relocated paths/banner) is **not** a

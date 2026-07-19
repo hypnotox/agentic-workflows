@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-02
 tags: [version-authority, bootstrap-porcelain]
-related: [30, 39, 40, 48]
+related: [30, 39, 40, 48, 85]
 domains: [tooling]
 ---
 # ADR-0049: Single version authority

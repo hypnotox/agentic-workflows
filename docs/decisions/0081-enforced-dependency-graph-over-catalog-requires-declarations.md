@@ -114,18 +114,16 @@ invariant, so folding docs into the graph reaches that ADR too.
 6. **`--dry-run` on add and remove** prints the computed plan without
    touching the config; the resolver's plan/apply split makes it free.
 
-7. **`RequiresDoc` joins the hard graph; render suppression is removed.**
-   A doc-gated skill without its doc becomes a *refused config state*
-   (Decision 3), so the ADR-0013 Decision item 4 suppression semantics are
-   superseded (`refines: ADR-0013#4`): the render-time gate (`skillDocGateOpen` and the suppression
-   branch in `effectiveSkills`) is deleted and `inv:
-   doc-gated-skill-suppressed` retired (`retires_invariants`, ADR-0031). The
-   render context's effective skills set becomes exactly the enabled set
-   (local synthesis unchanged), amending the *semantics* of ADR-0046's `inv:
-   skills-context-effective-set` in place (partial-item supersedence; the slug
-   and marker survive on the simplified code). `local: true` doc sidecars are
-   orthogonal: validation reads the enable array, and a locally-owned doc
-   still satisfies the edge.
+7. **`RequiresDoc` joins the hard graph; render suppression is removed.** A doc-gated skill
+   without its doc becomes a *refused config state* (Decision 3), so the ADR-0013 Decision item 4
+   suppression semantics are superseded (`refines: ADR-0013#4`): the render-time gate
+   (`skillDocGateOpen` and the suppression branch in `effectiveSkills`) is deleted and
+   `inv:    doc-gated-skill-suppressed` retired (`retires_invariants`, ADR-0031). The render
+   context's effective skills set becomes exactly the enabled set (local synthesis unchanged),
+   amending the *semantics* of ADR-0046's `inv:    skills-context-effective-set`
+   (`cites-invariant: ADR-0046#skills-context-effective-set`) in place (partial-item supersedence;
+   the slug and marker survive on the simplified code). `local: true` doc sidecars are orthogonal:
+   validation reads the enable array, and a locally-owned doc still satisfies the edge.
 
 8. **Schema-8 migration `close-enabled-set`.** Two ordered steps: **first**,
    every **dormant doc-gated skill** (enabled while its doc is disabled,

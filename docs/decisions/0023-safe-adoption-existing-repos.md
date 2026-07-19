@@ -73,8 +73,9 @@ subdir-invocation defect that makes `setup` skip hook activation when run below 
    recorded through `related` (no full replacement); both predecessors keep their `Implemented`
    status. It narrows **ADR-0003**'s setup behaviour: the textual "unconditional `core.hooksPath`
    activation" and "idempotent" contracts now hold only when the existing value is unset or
-   `.githooks`. It refines **ADR-0016 `inv: init-collision-guard`**: under `--force`, `init` now
-   computes collisions and backs up rather than skipping the check, so that slug's backing test
+   `.githooks`. It refines **ADR-0016 `inv: init-collision-guard`**
+   (`cites-invariant: ADR-0016#init-collision-guard`): under `--force`, `init` now computes
+   collisions and backs up rather than skipping the check, so that slug's backing test
    (`TestInitGuardBlocksAndForceOverrides`) is augmented to assert the `.awf-bak` backup alongside
    the overwrite, in the commit that flips this ADR to `Implemented`.
 

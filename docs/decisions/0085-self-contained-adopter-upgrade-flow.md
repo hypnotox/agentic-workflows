@@ -62,28 +62,26 @@ Forces and observations shaping the design:
    intuitive contract.
 
 2. **A rendered `.awf/upgrade.sh` is the single-command upgrade porcelain.** It ships as the
-   second file of the existing `bootstrap` singleton: same `bootstrap.enabled` toggle, no
-   new config surface, no schema bump (unlike ADR-0040 there is no new key; the lock-version
-   gate already blocks stale binaries against a newer lock). The script:
-   - resolves the repo root from its own location (`cd "$(dirname "$0")/.."`) so it works
-     from any CWD, unlike hook payloads which inherit git's CWD guarantee;
-   - resolves the target version: `$1` when given; otherwise the newest release, by
-     following the GitHub `releases/latest` redirect with plain `curl` and extracting the
-     tag from the effective URL, failing loudly when the resolved URL carries no `/tag/`
-     segment (e.g. a repo with no releases). Both forms are normalized to the bare version
-     (`v` prefix stripped): the redirect tag is `vX.Y.Z` and the bootstrap composes
-     `v${AWF_VERSION}` for the URL but the no-`v` form for the asset name, so an unstripped
-     value fetches a nonexistent asset;
-   - fetches and verifies via the bootstrap: `binary="$(AWF_VERSION="$target" bash
-     .awf/bootstrap.sh)"`: zero duplicated download logic; a bootstrap failure aborts the
-     script (plain assignment propagates the substitution's exit status under `set -e`);
-   - hands off with `exec "$binary" upgrade` as its **final statement**. The `exec` is
-     load-bearing, not stylistic: the upgrade re-renders `.awf/upgrade.sh` itself
-     truncate-in-place, and replacing the shell process before the rewrite is what makes
-     self-modification unreachable.
-   Diagnostics go to stderr, matching the house shell style; the one-line-stdout contract
-   (ADR-0049 `inv: bootstrap-stdout-path-only`) remains a property of `bootstrap.sh` alone
-   and is explicitly *not* extended to the porcelain, whose stdout after `exec` belongs to
+   second file of the existing `bootstrap` singleton: same `bootstrap.enabled` toggle, no new
+   config surface, no schema bump (unlike ADR-0040 there is no new key; the lock-version gate
+   already blocks stale binaries against a newer lock). The script: - resolves the repo root from
+   its own location (`cd "$(dirname "$0")/.."`) so it works from any CWD, unlike hook payloads
+   which inherit git's CWD guarantee; - resolves the target version: `$1` when given; otherwise
+   the newest release, by following the GitHub `releases/latest` redirect with plain `curl` and
+   extracting the tag from the effective URL, failing loudly when the resolved URL carries no
+   `/tag/` segment (e.g. a repo with no releases). Both forms are normalized to the bare version
+   (`v` prefix stripped): the redirect tag is `vX.Y.Z` and the bootstrap composes
+   `v${AWF_VERSION}` for the URL but the no-`v` form for the asset name, so an unstripped value
+   fetches a nonexistent asset; - fetches and verifies via the bootstrap:
+   `binary="$(AWF_VERSION="$target" bash      .awf/bootstrap.sh)"`: zero duplicated download
+   logic; a bootstrap failure aborts the script (plain assignment propagates the substitution's
+   exit status under `set -e`); - hands off with `exec "$binary" upgrade` as its **final
+   statement**. The `exec` is load-bearing, not stylistic: the upgrade re-renders
+   `.awf/upgrade.sh` itself truncate-in-place, and replacing the shell process before the rewrite
+   is what makes self-modification unreachable. Diagnostics go to stderr, matching the house shell
+   style; the one-line-stdout contract (ADR-0049 `inv: bootstrap-stdout-path-only`
+   (`cites-invariant: ADR-0049#bootstrap-stdout-path-only`)) remains a property of `bootstrap.sh`
+   alone and is explicitly *not* extended to the porcelain, whose stdout after `exec` belongs to
    `awf upgrade`.
 
 3. **Bootstrap stays deterministic; all nondeterminism lives in the porcelain.** The
