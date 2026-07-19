@@ -28,9 +28,10 @@ import (
 const Version = "0.18.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
-// bridge tranche is only partially implemented. Plan 2 flips it after adding
-// migration readiness, attestation, and ordinary-command refusal.
-const BridgeTrancheComplete = false
+// bridge tranche is only partially implemented. Plans 1 and 2 have both landed
+// (migration readiness, attestation, and ordinary-command refusal are all
+// present), so the tranche is complete and publication is unblocked.
+const BridgeTrancheComplete = true
 
 // minVersionBySchema maps each config-schema generation to the minimum
 // project.Version allowed to render it; adding a migration without an entry

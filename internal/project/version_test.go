@@ -25,7 +25,7 @@ func TestVersionCoversCurrentSchema(t *testing.T) {
 	if Version != "0.18.0" {
 		t.Errorf("Version = %q, want %q", Version, "0.18.0")
 	}
-	if BridgeTrancheComplete {
-		t.Error("bridge tranche must remain incomplete until Plan 2 lands")
+	if !BridgeTrancheComplete {
+		t.Error("bridge tranche must be complete now that Plans 1 and 2 have both landed")
 	}
 }

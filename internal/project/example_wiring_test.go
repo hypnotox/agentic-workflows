@@ -4,7 +4,100 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
+
+// TestSundialUnattestedBridgeOracle pins the committed sundial fixture as the
+// unattested bridge oracle for the unreleased Plans 1-2 tranche: it sits at
+// schema generation 14 with legacy invariant authority, has performed no
+// current-state cutover (no attestation, journal, migration approval, or topic
+// corpus), yet already ships the rendered bridge check/attest/recover guidance
+// Phase 3 produced. Because there is no journal or attestation, ordinary
+// commands stay unguarded - the fixture models a plain schema-14 adopter, not
+// an attested one. Reading the fixture as data (never executing the binary)
+// keeps this a static contract alongside the other example-wiring assertions.
+func TestSundialUnattestedBridgeOracle(t *testing.T) {
+	// The whole tranche is pinned to schema generation 14; the fixture and every
+	// assertion below track that generation, so guard the anchor explicitly.
+	if migrate.Current() != 14 {
+		t.Fatalf("migrate.Current() = %d, want 14 for the unreleased Plans 1-2 tranche", migrate.Current())
+	}
+
+	// Lock: schema generation 14, no sealed bridge attestation.
+	lockPath := "../../examples/sundial/.awf/awf.lock"
+	lock, err := manifest.Load(lockPath)
+	if err != nil {
+		t.Fatalf("read sundial lock: %v", err)
+	}
+	if lock.SchemaVersion != migrate.Current() {
+		t.Errorf("sundial lock schemaVersion = %d, want %d (migrate.Current())", lock.SchemaVersion, migrate.Current())
+	}
+	if lock.BridgeAttestation != nil {
+		t.Errorf("sundial fixture must stay unattested, but its lock carries a bridgeAttestation")
+	}
+	rawLock, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read sundial lock bytes: %v", err)
+	}
+	if strings.Contains(string(rawLock), "bridgeAttestation") {
+		t.Errorf("sundial lock must not carry a bridgeAttestation field")
+	}
+
+	// No attestation/journal/topic cutover artifacts exist in the fixture.
+	for _, absent := range []string{
+		"../../examples/sundial/.awf/current-state-upgrade.journal",
+		"../../examples/sundial/.awf/current-state-migration.yaml",
+		"../../examples/sundial/.awf/topics",
+		"../../examples/sundial/docs/topics",
+	} {
+		if _, err := os.Stat(absent); err == nil {
+			t.Errorf("unattested sundial fixture must not contain %q", absent)
+		}
+	}
+
+	// Legacy authority: the config still carries an invariants block, not a
+	// currentState block.
+	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
+	if err != nil {
+		t.Fatalf("read sundial config: %v", err)
+	}
+	cfgStr := string(cfg)
+	if !strings.Contains(cfgStr, "\ninvariants:") {
+		t.Errorf("sundial config must keep its legacy invariants block")
+	}
+	if strings.Contains(cfgStr, "\ncurrentState:") {
+		t.Errorf("sundial config must not carry a currentState block while unattested")
+	}
+
+	// Rendered bridge guidance from Phase 3 is present in the fixture's outputs.
+	wwa, err := os.ReadFile("../../examples/sundial/docs/working-with-awf.md")
+	if err != nil {
+		t.Fatalf("read sundial working-with-awf: %v", err)
+	}
+	for _, phrase := range []string{
+		"awf upgrade --check",
+		"awf upgrade --attest-current-state",
+		"awf upgrade --recover",
+	} {
+		if !strings.Contains(string(wwa), phrase) {
+			t.Errorf("sundial working-with-awf.md missing rendered bridge guidance %q", phrase)
+		}
+	}
+	upgrade, err := os.ReadFile("../../examples/sundial/.awf/upgrade.sh")
+	if err != nil {
+		t.Fatalf("read sundial upgrade.sh: %v", err)
+	}
+	for _, phrase := range []string{
+		"awf upgrade --attest-current-state",
+		"awf upgrade --recover",
+	} {
+		if !strings.Contains(string(upgrade), phrase) {
+			t.Errorf("sundial upgrade.sh missing rendered bridge guidance %q", phrase)
+		}
+	}
+}
 
 // ADR-0090: the committed example adopter is kept deterministic through ./x -
 // sync re-renders it from source; check drift-, invariant-, note-, and

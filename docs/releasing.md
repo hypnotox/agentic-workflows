@@ -30,6 +30,15 @@ Schema-generation bumps raise the floor
 mechanically: `minVersionBySchema` must contain an entry for the current generation, at or
 below `project.Version`, or the gate fails.
 
+The same check also carries the current-state bridge-tranche sentinel
+`project.BridgeTrancheComplete` (`internal/project/project.go`). Plans 1 and 2 of the current-state
+bridge are one unreleased v0.18.0 tranche: `cmd/releasecheck` refuses publication while the const is
+`false`, so no release may be cut from an intermediate commit where only part of the tranche has
+landed. The const gates publication until both plans land; it flips to `true` in the commit that
+closes the bridge-release boundary, after which the tranche may be tagged as a single v0.18.0 release.
+The Release workflow runs `releasecheck` before GoReleaser, so the sentinel holds in CI as well as in
+the local pre-tag rehearsal.
+
 ## Cut a release
 
 1. **Confirm `main` is green and clean.** On `main`, working tree clean:

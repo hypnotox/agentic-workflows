@@ -287,8 +287,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:62e6bd9478e80808873d53e4db0d661ce98b8cf7ef7e01a8c13ccfabd4b6e2a2",
-      "outputHash": "sha256:ce9de4860daea3ae952151478ffe7b495faaa66594007b929863156350b55207"
+      "configHash": "sha256:50b85b9f83aa7347a9032cea171a430e1c17cda2a6f8568d302ef0679a14fe01",
+      "outputHash": "sha256:2519a5ddfc933027c8589f838b07109c18525c0f08c68ba00904b4108b07298a"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -339,7 +339,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:50238b570de35c3b5b031473c4cccfcb21fbde2f784dab28fd804b1be32afc8f",
+      "outputHash": "sha256:d2437a718a5215d0d785ad38137414feebfedc19ac476462d2b69b517e03e70c",
       "regenChecked": true
     },
     "docs/domains/invariants.md": {
@@ -360,7 +360,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:37af359c52876e776316637afe1ce5674ef202ee8b2e2eb233b13f80b9401a6b",
+      "outputHash": "sha256:32ebc5596a9bc9126d6cd7c6a7bb8b31440014bd6ba07b2fb15c9ce724b7a9fb",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -390,8 +390,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:78176baf2610a8469999a03e5deee95f0716b8ccb14b8fd2d28de34c0ffcd636",
-      "configHash": "sha256:33636066a8c7134ee8851686d8e96e745684d6b8fcb3432a38ff3d72b4f14dad",
-      "outputHash": "sha256:ff0659afda90190570e16e6581148f4f276e98c807115a4447a61661f258e9c9"
+      "configHash": "sha256:f64690d1b4eb727d0adaf1ef380c4cae928ac29c2c1a314cec3e67252874375e",
+      "outputHash": "sha256:d9f6caa0dfd633922d45d19fa63dce72bb15cf1fb890c777406cceb47cae8858"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",

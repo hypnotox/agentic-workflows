@@ -140,7 +140,10 @@ regenerating them, the attested project is deliberately index-pruned and refuses
 only `awf upgrade --recover` runs while a journal exists, only `awf upgrade --check` runs against an
 attested lock, and a malformed journal refuses every mode with Git-restoration guidance.
 `awf upgrade --recover` replays the journal recovery table idempotently. INDEX.md and the runtime
-authority switch remain later work in the unreleased bridge tranche.
+authority switch remain later work in the bridge tranche. Plans 1 and 2 of that bridge are one
+unreleased v0.18.0 tranche: the `project.BridgeTrancheComplete` sentinel gates publication and
+`cmd/releasecheck` refuses a release cut from any intermediate commit, so the tranche is released as a
+single v0.18.0 only once both plans have landed.
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into

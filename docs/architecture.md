@@ -117,8 +117,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   predecessor's anchors (ADR-0128). The generation 13 migration reuses `applyCloseEnabledSet` to add `exploring`
   wherever an enabled brainstorming, debugging, or refactor coupling audit consumer requires it.
   Generation 14, `current-state-topic-substrate`, is a no-op recognition boundary for prepared topic
-  inputs; it performs no authority conversion. Version 0.18.0 remains unreleasable until Plan 2
-  completes the bridge tranche, enforced by `cmd/releasecheck` before GoReleaser.
+  inputs; it performs no authority conversion. Version 0.18.0 is one bridge tranche of Plans 1 and 2:
+  the `project.BridgeTrancheComplete` sentinel gates publication so no release is cut from an
+  intermediate commit, enforced by `cmd/releasecheck` before GoReleaser, and flips to `true` once both
+  plans have landed.
   Both corpus-writing migrations resolve their own decisions directory and run before a
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.

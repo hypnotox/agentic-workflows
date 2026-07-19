@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -25,24 +24,29 @@ func runOn(t *testing.T, fsys fstest.MapFS) (int, string, string) {
 
 func TestRunRefusesIncompleteBridgeTranche(t *testing.T) {
 	var out, errb bytes.Buffer
-	code := run(changelogFS("not parsed while incomplete"), &out, &errb, project.BridgeTrancheComplete)
+	// Exercise run's incomplete-tranche refusal branch directly with a literal
+	// false: project.BridgeTrancheComplete is now true (the tranche landed), so
+	// only a forced false still reaches the refusal the 100% gate must cover.
+	code := run(changelogFS("not parsed while incomplete"), &out, &errb, false)
 	if code != 1 || out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
 		t.Fatalf("incomplete bridge result: code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
 	}
 }
 
-func TestMainRefusesIncompleteBridgeTranche(t *testing.T) {
+// TestMainClearsBridgeTranche proves the flipped sentinel is wired into
+// production main: the binary passes project.BridgeTrancheComplete (now true),
+// so it no longer emits the incomplete-tranche refusal. Pre-Phase-5 the
+// embedded changelog is not yet promoted, so the binary still exits 1 on the
+// changelog pin; that is a transient state Phase 5 fixes, so this asserts only
+// that the tranche message is gone, not the exit code or downstream messages.
+func TestMainClearsBridgeTranche(t *testing.T) {
 	cmd := exec.Command("go", "run", ".")
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
-	err := cmd.Run()
-	var exit *exec.ExitError
-	if !errors.As(err, &exit) || exit.ExitCode() == 0 {
-		t.Fatalf("production releasecheck error = %v, stdout=%q stderr=%q", err, out.String(), errb.String())
-	}
-	if out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
-		t.Fatalf("production releasecheck stdout=%q stderr=%q", out.String(), errb.String())
+	_ = cmd.Run()
+	if strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
+		t.Fatalf("production releasecheck still refuses the completed tranche: stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 

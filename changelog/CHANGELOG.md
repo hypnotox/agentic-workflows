@@ -169,6 +169,10 @@ query a single version or a range.
   (recovery included) with deterministic Git-restoration-and-bridge-reinstallation guidance, and
   `awf version`/`awf changelog`/`awf help` always bypass the transaction state. This is still one
   unreleased bridge tranche; no intermediate release may be cut.
+- `cmd/releasecheck` carries the `project.BridgeTrancheComplete` release sentinel. Plans 1 and 2 of
+  the current-state bridge are one unreleased v0.18.0 tranche, so the check refuses publication from
+  any intermediate commit while the const is `false`. The sentinel gates publication until both plans
+  land; with the bridge complete it is `true`, and the tranche is released as a single v0.18.0.
 - `awf topic <domain>/<topic>[:<claim>]` adds a version-gated, read-only active-state query with one
   deterministic human/JSON model. Defaults show current title/summary, claims, types, prose, and
   backing while hiding provenance and references. Independent `--history`, `--references`, and
