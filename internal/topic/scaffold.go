@@ -53,11 +53,11 @@ func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]Sca
 		metadataPath = filepath.ToSlash(filepath.Join(config.DirName, "topics", "metadata", domain, candidate+".yaml"))
 		partPath = filepath.ToSlash(filepath.Join(config.DirName, "topics", "parts", domain, candidate, "current-state.md"))
 		metadataExists, err := scaffoldPathExists(filepath.Join(root, filepath.FromSlash(metadataPath)))
-		if err != nil { // coverage-ignore: Stat errors other than not-exist require a filesystem permission or I/O fault
+		if err != nil {
 			return nil, err
 		}
 		partExists, err := scaffoldPathExists(filepath.Join(root, filepath.FromSlash(partPath)))
-		if err != nil { // coverage-ignore: as above for the paired part path
+		if err != nil {
 			return nil, err
 		}
 		if metadataExists != partExists {
@@ -83,15 +83,18 @@ func ScaffoldFiles(root string, cfg *config.Config, domain, title string) ([]Sca
 	return []ScaffoldFile{{Path: metadataPath, Content: metadata}, {Path: partPath, Content: part}}, nil
 }
 
-var slugNonAlnumRE = regexp.MustCompile(`[^a-z0-9]+`)
+var (
+	slugNonAlnumRE = regexp.MustCompile(`[^a-z0-9]+`)
+	scaffoldStat   = os.Stat
+)
 
 func scaffoldPathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
+	_, err := scaffoldStat(path)
 	if err == nil {
 		return true, nil
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
-	return false, fmt.Errorf("inspect topic scaffold path %q: %w", filepath.ToSlash(path), err) // coverage-ignore: Stat errors other than not-exist require a filesystem permission or I/O fault
+	return false, fmt.Errorf("inspect topic scaffold path %q: %w", filepath.ToSlash(path), err)
 }

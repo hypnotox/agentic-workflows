@@ -3,11 +3,11 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -102,34 +102,156 @@ func TestRunNewTopicUsageAndValidation(t *testing.T) {
 	}
 }
 
-func TestRunNewTopicRollback(t *testing.T) {
-	for _, rollbackFails := range []bool{false, true} {
-		t.Run(fmt.Sprintf("rollback-fails-%t", rollbackFails), func(t *testing.T) {
-			root := topicCLIProject(t)
-			writes := 0
-			testsupport.SwapVar(t, &topicWriteFile, func(path string, data []byte, mode os.FileMode) error {
-				writes++
-				if writes == 2 {
-					return errors.New("second write failed")
-				}
-				return os.WriteFile(path, data, mode)
-			})
-			if rollbackFails {
-				testsupport.SwapVar(t, &topicRemove, func(string) error { return errors.New("rollback failed") })
+type partialFailWriteCloser struct {
+	file *os.File
+	err  error
+}
+
+func (w *partialFailWriteCloser) Write(data []byte) (int, error) {
+	n, writeErr := w.file.Write(data[:3])
+	if writeErr != nil {
+		return n, writeErr
+	}
+	return n, w.err
+}
+
+func (w *partialFailWriteCloser) Close() error { return w.file.Close() }
+
+type errorWriteCloser struct {
+	write func([]byte) (int, error)
+	close func() error
+}
+
+func (w errorWriteCloser) Write(data []byte) (int, error) { return w.write(data) }
+func (w errorWriteCloser) Close() error                   { return w.close() }
+
+func TestWriteAndCloseTopicFileErrors(t *testing.T) {
+	closeErr := errors.New("close failed")
+	writer := errorWriteCloser{
+		write: func(data []byte) (int, error) { return len(data), nil },
+		close: func() error { return closeErr },
+	}
+	if err := writeAndCloseTopicFile("topic.yaml", writer, []byte("content")); !errors.Is(err, closeErr) || !strings.Contains(err.Error(), "close topic scaffold path") {
+		t.Fatalf("close error = %v", err)
+	}
+
+	writer = errorWriteCloser{
+		write: func([]byte) (int, error) { return 0, nil },
+		close: func() error { return nil },
+	}
+	if err := writeAndCloseTopicFile("topic.yaml", writer, []byte("content")); !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("short write error = %v", err)
+	}
+}
+
+func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
+	root := topicCLIProject(t)
+	mkdirErr := errors.New("second parent failed")
+	testsupport.SwapVar(t, &topicMkdirAll, func(path string, mode os.FileMode) error {
+		if strings.Contains(filepath.ToSlash(path), "/topics/parts/") {
+			return mkdirErr
+		}
+		return os.MkdirAll(path, mode)
+	})
+	err := runNew(root, "topic", []string{"rendering", "Mkdir Rollback"}, io.Discard)
+	if !errors.Is(err, mkdirErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/mkdir-rollback/current-state.md") {
+		t.Fatalf("error = %v", err)
+	}
+	metadata := filepath.Join(root, ".awf/topics/metadata/rendering/mkdir-rollback.yaml")
+	if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("first file survived rollback: %v", statErr)
+	}
+}
+
+func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
+	root := topicCLIProject(t)
+	writeErr := errors.New("partial second write failed")
+	opens := 0
+	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		opens++
+		file, err := os.OpenFile(path, flag, mode)
+		if err != nil || opens == 1 {
+			return file, err
+		}
+		return &partialFailWriteCloser{file: file, err: writeErr}, nil
+	})
+	var removed []string
+	testsupport.SwapVar(t, &topicRemove, func(path string) error {
+		removed = append(removed, filepath.ToSlash(path))
+		return os.Remove(path)
+	})
+	err := runNew(root, "topic", []string{"rendering", "Partial"}, io.Discard)
+	if !errors.Is(err, writeErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/partial/current-state.md") {
+		t.Fatalf("error = %v", err)
+	}
+	wantRemoved := []string{
+		filepath.ToSlash(filepath.Join(root, ".awf/topics/parts/rendering/partial/current-state.md")),
+		filepath.ToSlash(filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml")),
+	}
+	if !slices.Equal(removed, wantRemoved) {
+		t.Fatalf("rollback order = %v, want %v", removed, wantRemoved)
+	}
+	for _, path := range []string{
+		filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml"),
+		filepath.Join(root, ".awf/topics/parts/rendering/partial/current-state.md"),
+	} {
+		if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("created file survived rollback at %s: %v", path, statErr)
+		}
+	}
+}
+
+func TestRunNewTopicJoinsCleanupFailure(t *testing.T) {
+	root := topicCLIProject(t)
+	writeErr := errors.New("second write failed")
+	cleanupErr := errors.New("cleanup failed")
+	opens := 0
+	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		opens++
+		file, err := os.OpenFile(path, flag, mode)
+		if err != nil || opens == 1 {
+			return file, err
+		}
+		return &partialFailWriteCloser{file: file, err: writeErr}, nil
+	})
+	removes := 0
+	testsupport.SwapVar(t, &topicRemove, func(path string) error {
+		removes++
+		if removes == 1 {
+			return cleanupErr
+		}
+		return os.Remove(path)
+	})
+	err := runNew(root, "topic", []string{"rendering", "Cleanup"}, io.Discard)
+	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold path") {
+		t.Fatalf("joined error = %v", err)
+	}
+}
+
+func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {
+	root := topicCLIProject(t)
+	const existing = "existing authored bytes\n"
+	opens := 0
+	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		opens++
+		if opens == 2 {
+			if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+				t.Fatal(err)
 			}
-			err := runNew(root, "topic", []string{"rendering", "Rollback"}, io.Discard)
-			if err == nil || !strings.Contains(err.Error(), "second write failed") {
-				t.Fatalf("error = %v", err)
-			}
-			metadata := filepath.Join(root, ".awf/topics/metadata/rendering/rollback.yaml")
-			if rollbackFails {
-				if !strings.Contains(err.Error(), "rollback failed") {
-					t.Fatalf("joined error = %v", err)
-				}
-			} else if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
-				t.Fatalf("first file survived rollback: %v", statErr)
-			}
-		})
+		}
+		return os.OpenFile(path, flag, mode)
+	})
+	err := runNew(root, "topic", []string{"rendering", "Late Collision"}, io.Discard)
+	part := filepath.Join(root, ".awf/topics/parts/rendering/late-collision/current-state.md")
+	if !errors.Is(err, os.ErrExist) || !strings.Contains(err.Error(), filepath.ToSlash(part)) {
+		t.Fatalf("collision error = %v", err)
+	}
+	if got := mustReadCLIFile(t, part); got != existing {
+		t.Fatalf("existing bytes = %q, want %q", got, existing)
+	}
+	metadata := filepath.Join(root, ".awf/topics/metadata/rendering/late-collision.yaml")
+	if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("first file survived rollback: %v", statErr)
 	}
 }
 
@@ -139,9 +261,11 @@ func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
 	}
 
 	root := topicCLIProject(t)
-	testsupport.SwapVar(t, &topicWriteFile, func(string, []byte, os.FileMode) error { return errors.New("write failed") })
-	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("write error = %v", err)
+	testsupport.SwapVar(t, &topicOpenFile, func(string, int, os.FileMode) (topicWriteCloser, error) {
+		return nil, errors.New("open failed")
+	})
+	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "open failed") {
+		t.Fatalf("open error = %v", err)
 	}
 
 	root = topicCLIProject(t)

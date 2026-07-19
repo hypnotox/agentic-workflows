@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,6 +91,29 @@ func TestScaffoldFilesRefusesEitherOrphanHalf(t *testing.T) {
 			root := t.TempDir()
 			testsupport.WriteFile(t, filepath.Join(root, orphan), "orphan\n")
 			if _, err := ScaffoldFiles(root, scaffoldConfig(), "rendering", "Orphan"); err == nil || !strings.Contains(err.Error(), "orphaned scaffold half") {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
+func TestScaffoldFilesReportsMetadataAndPartStatErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, faultTree, wantPath string
+	}{
+		{name: "metadata tree", faultTree: "/topics/metadata/", wantPath: ".awf/topics/metadata/rendering/stat-failure.yaml"},
+		{name: "part tree", faultTree: "/topics/parts/", wantPath: ".awf/topics/parts/rendering/stat-failure/current-state.md"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			statErr := errors.New("staged stat failure")
+			testsupport.SwapVar(t, &scaffoldStat, func(path string) (os.FileInfo, error) {
+				if strings.Contains(filepath.ToSlash(path), tc.faultTree) {
+					return nil, statErr
+				}
+				return nil, os.ErrNotExist
+			})
+			_, err := ScaffoldFiles(t.TempDir(), scaffoldConfig(), "rendering", "Stat Failure")
+			if !errors.Is(err, statErr) || !strings.Contains(err.Error(), "inspect topic scaffold path") || !strings.Contains(err.Error(), tc.wantPath) {
 				t.Fatalf("error = %v", err)
 			}
 		})

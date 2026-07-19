@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -87,23 +88,20 @@ func newTopic(root string, args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	written := make([]string, 0, len(files))
+	created := make([]string, 0, len(files))
 	for _, file := range files {
 		path := filepath.Join(root, filepath.FromSlash(file.Path))
-		if err := topicMkdirAll(filepath.Dir(path), 0o755); err != nil { // coverage-ignore: project.Open just read the writable project tree; failure requires a permission or I/O fault
-			return err
+		if err := topicMkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return rollbackTopicFiles(fmt.Errorf("create parent for topic scaffold path %q: %w", filepath.ToSlash(path), err), created)
 		}
-		if err := topicWriteFile(path, file.Content, 0o644); err != nil {
-			var rollback []error
-			_ = topicRemove(path)
-			for _, prior := range written {
-				if removeErr := topicRemove(prior); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
-					rollback = append(rollback, removeErr)
-				}
-			}
-			return errors.Join(append([]error{err}, rollback...)...)
+		writer, err := topicOpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			return rollbackTopicFiles(fmt.Errorf("create topic scaffold path %q exclusively: %w", filepath.ToSlash(path), err), created)
 		}
-		written = append(written, path)
+		created = append(created, path)
+		if err := writeAndCloseTopicFile(path, writer, file.Content); err != nil {
+			return rollbackTopicFiles(err, created)
+		}
 	}
 	for _, file := range files {
 		fmt.Fprintln(stdout, file.Path)
@@ -111,10 +109,40 @@ func newTopic(root string, args []string, stdout io.Writer) error {
 	return nil
 }
 
+type topicWriteCloser interface {
+	io.Writer
+	Close() error
+}
+
+func writeAndCloseTopicFile(path string, writer topicWriteCloser, content []byte) error {
+	_, writeErr := io.Copy(writer, bytes.NewReader(content))
+	closeErr := writer.Close()
+	var failures []error
+	if writeErr != nil {
+		failures = append(failures, fmt.Errorf("write topic scaffold path %q: %w", filepath.ToSlash(path), writeErr))
+	}
+	if closeErr != nil {
+		failures = append(failures, fmt.Errorf("close topic scaffold path %q: %w", filepath.ToSlash(path), closeErr))
+	}
+	return errors.Join(failures...)
+}
+
+func rollbackTopicFiles(primary error, created []string) error {
+	failures := []error{primary}
+	for i := len(created) - 1; i >= 0; i-- {
+		if err := topicRemove(created[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
+			failures = append(failures, fmt.Errorf("remove created topic scaffold path %q: %w", filepath.ToSlash(created[i]), err))
+		}
+	}
+	return errors.Join(failures...)
+}
+
 var (
-	topicMkdirAll  = os.MkdirAll
-	topicWriteFile = os.WriteFile
-	topicRemove    = os.Remove
+	topicMkdirAll = os.MkdirAll
+	topicOpenFile = func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		return os.OpenFile(path, flag, mode)
+	}
+	topicRemove = os.Remove
 )
 
 // newLocal scaffolds a project-local artifact (ADR-0068, ADR-0091): a skill,
