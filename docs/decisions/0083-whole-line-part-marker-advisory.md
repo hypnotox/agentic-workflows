@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-09
 tags: [convention-parts, marker-scoping]
-related: [34, 70, 77, 82]
+related: [34, 70, 77, 82, 121]
 domains: [rendering]
 ---
 # ADR-0083: Whole-line part-marker advisory

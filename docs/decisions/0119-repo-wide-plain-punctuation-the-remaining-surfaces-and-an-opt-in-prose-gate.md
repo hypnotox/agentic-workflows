@@ -143,9 +143,9 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    tracked. This is the whole point: the surface list is the thing that decayed, so the surface
    list is what this ADR removes.
 
-   This supersedes nothing. ADR-0115 item 3's union of three surfaces remains exactly correct for
-   the check it governs, which item 7 below keeps intact; this item defines the scope of a
-   different check rather than overriding item 3's.
+   This supersedes nothing. ADR-0115 item 3 (`cites: ADR-0115#3`)'s union of three surfaces
+   remains exactly correct for the check it governs, which item 7 below keeps intact; this item
+   defines the scope of a different check rather than overriding item 3's.
 
 2. **The remaining 355 occurrences are swept**, across the six live surfaces measured above:
    `docs/research/`, the test fixtures, the three `.awf/` sidecar sources, the production Go
@@ -154,9 +154,9 @@ situation after ADR-0118; and because the maintainer has since required exactly 
    hand-editing a rendered file is forbidden outright.
 
    ADR-0118's method carries over unchanged and is the condition of the sweep, not a
-   recommendation: replacement is by sentence structure (ADR-0118 item 9, as amended by item 12
-   below), and a word-stream comparison must report zero delta across every swept file, proving
-   that only punctuation moved.
+   recommendation: replacement is by sentence structure (ADR-0118 item 9 (`cites: ADR-0118#9`), as
+   amended by item 12 below), and a word-stream comparison must report zero delta across every
+   swept file, proving that only punctuation moved.
 
 3. **`docs/research/` is swept.** This partially supersedes **ADR-0118 Decision item 1**
    (`refines: ADR-0118#1`), which
@@ -309,11 +309,12 @@ situation after ADR-0118; and because the maintainer has since required exactly 
     retroactively. This costs nothing already done: the ADR-0118 sweep used no hyphens, so no
     swept file changes.
 
-14. **The shipped documentation standard names the hyphen.** `templates/docs/doc-standard.md.tmpl`
-    enumerates "a colon, semicolon, comma, or parentheses where an em-dash would go" and omits the
-    hyphen. The enumeration gains it, so that the rule an adopter renders states what item 13
-    decides. ADR-0117 item 8 already widened that line's scope to "shipped or authored", so scope is
-    not touched here; only the replacement list is.
+14. **The shipped documentation standard names the hyphen.**
+    `templates/docs/doc-standard.md.tmpl` enumerates "a colon, semicolon, comma, or parentheses
+    where an em-dash would go" and omits the hyphen. The enumeration gains it, so that the rule an
+    adopter renders states what item 13 decides. ADR-0117 item 8 (`cites: ADR-0117#8`) already
+    widened that line's scope to "shipped or authored", so scope is not touched here; only the
+    replacement list is.
 
 15. **This overrides ADR-0117 Decision item 5's "never fails an adopter's build over house
     style".** (`refines: ADR-0117#5`)
@@ -328,9 +329,9 @@ situation after ADR-0118; and because the maintainer has since required exactly 
     changes is the letter: item 5 assumed the only severity awf would ever offer for prose was a
     warning, and this offers one more.
 
-    ADR-0117 item 6's reasoning is unaffected. It made advisory severity the depiction escape hatch
-    for its own rule, which has no exemption surface and needs none, because a warning an author
-    ignores costs nothing.
+    ADR-0117 item 6 (`cites: ADR-0117#6`)'s reasoning is unaffected. It made advisory severity the
+    depiction escape hatch for its own rule, which has no exemption surface and needs none,
+    because a warning an author ignores costs nothing.
 
 16. **The two rules diverge in scope and severity, deliberately.** After this ADR an adopter with
     the knob on runs two checks over the same subject, and they disagree in two ways that are stated

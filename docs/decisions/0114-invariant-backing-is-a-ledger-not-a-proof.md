@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-15
 tags: [invariant-backing, review-agents]
-related: [8, 12, 105, 106, 112]
+related: [8, 12, 105, 106, 112, 116]
 domains: [invariants, rendering]
 ---
 # ADR-0114: Invariant backing is a ledger, not a proof

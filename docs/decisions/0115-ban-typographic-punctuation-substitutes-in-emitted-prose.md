@@ -158,9 +158,10 @@ a blocklist of the characters that *substitute* for ASCII punctuation, not an al
 
     Item 9 is not sufficient on its own, and the gap is the reason this item exists. The
     documentation standard is a *documentation* authoring standard: it teaches whoever writes a
-    doc. A Go string literal is not a doc, so an agent adding an error message would meet this rule
-    only by tripping the gate, which is the precise failure ADR-0113 item 4 was written to prevent.
-    The guide bullet is where that author actually reads.
+    doc. A Go string literal is not a doc, so an agent adding an error message would meet this
+    rule only by tripping the gate, which is the precise failure ADR-0113 item 4
+    (`cites: ADR-0113#4`) was written to prevent. The guide bullet is where that author actually
+    reads.
 
     The bullet is one terse line naming the seven codepoints and the three surfaces, added to the
     `invariants:` list in the guide's sidecar data. It does not restate the mechanism: that lives

@@ -63,9 +63,10 @@ act or re-litigates it.
 ## Decision
 
 1. **The retroactive normalization carve-out widens from ADR headings to the full authored body of
-   every ADR and plan.** This is partial-item supersedence of **ADR-0115 Decision item 5**, whose
-   "the heading line only, never the body" clause is overridden; ADR-0115 stays Implemented and
-   every other item stands, and it carries `related: [118]` as the back-pointer (ADR-0116). The
+   every ADR and plan.** This is partial-item supersedence of **ADR-0115 Decision item 5**
+   (`refines: ADR-0115#5`), whose "the heading line only, never the body" clause is overridden;
+   ADR-0115 stays Implemented and every other item stands, and it carries `related: [118]` as the
+   back-pointer (ADR-0116). The
    scope is the **authored** files only: `docs/decisions/[0-9]*.md` and the dated plans under
    `docs/plans/`. Generated files are excluded by construction, not by exemption: `ACTIVE.md`,
    `docs/decisions/README.md`, and `docs/plans/template.md` are rendered, and hand-editing a

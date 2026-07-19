@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-18
 tags: [adr-parsing, adr-lifecycle, active-md, domain-index, context-tiering]
-related: [14, 92, 104, 116, 120, 128, 130]
+related: [14, 92, 104, 116, 120, 128, 130, 131]
 domains: [adr-system, rendering]
 ---
 # ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer
@@ -103,23 +103,23 @@ deleted on purpose.
    commit, as the docs-travel-with-the-change rule requires.
 
 6. **Supersession chains become one-to-many.** ACTIVE.md's chain rendering, which paired one
-   predecessor with one successor from the frontmatter list, renders a `Covered` ADR against
-   the full set of ADRs that retired its anchors. This is the replacement rendering ADR-0128
-   item 1 deferred when it retired `active-md-supersedence-rendering`; that slug's surviving
-   annotation clause, re-declared by ADR-0128 as `active-md-annotates-superseded-anchors`, is
-   unaffected and stays where it is.
+   predecessor with one successor from the frontmatter list, renders a `Covered` ADR against the
+   full set of ADRs that retired its anchors. This is the replacement rendering ADR-0128 item 1
+   (`cites: ADR-0128#1`) deferred when it retired `active-md-supersedence-rendering`; that slug's
+   surviving annotation clause, re-declared by ADR-0128 as
+   `active-md-annotates-superseded-anchors`, is unaffected and stays where it is.
 
-   The `### Chains` subsection is where claimants surface. ADR-0128 records that the
-   `Superseded` status bucket becomes an undifferentiated list once no scalar successor name
-   exists, and that stays true by design: the bucket is a status roster, and answering "who
-   retired this" there would duplicate the subsection that exists for the purpose. This is the
-   answer to that deferral. This `refines: ADR-0120#10` for its description of
-   chains as predecessor-to-successor pairs; under ADR-0128 item 2 the claim classifies as a
-   refinement, since item 10's annotation half and its requirement that the section exist both
-   stand, and the generation-12 migration will rewrite it accordingly. That rewrite must land
-   before this ADR reaches `Implemented`: a `supersedes:` token on an `Implemented` carrier
-   counts toward coverage, so left unmigrated it would become a genuine retirement claim
-   against ADR-0120 item 10.
+   The `### Chains` subsection is where claimants surface. ADR-0128 records that the `Superseded`
+   status bucket becomes an undifferentiated list once no scalar successor name exists, and that
+   stays true by design: the bucket is a status roster, and answering "who retired this" there
+   would duplicate the subsection that exists for the purpose. This is the answer to that
+   deferral. This `refines: ADR-0120#10` for its description of chains as predecessor-to-successor
+   pairs; under ADR-0128 item 2 (`cites: ADR-0128#2`) the claim classifies as a refinement, since
+   item 10's annotation half and its requirement that the section exist both stand, and the
+   generation-12 migration will rewrite it accordingly. That rewrite must land before this ADR
+   reaches `Implemented`: a `supersedes:` token on an `Implemented` carrier counts toward
+   coverage, so left unmigrated it would become a genuine retirement claim against ADR-0120 item
+   10.
 
 7. **The model refuses a claim graph it cannot traverse.** `awf check` fails on a token whose
    target ADR is its own carrier, and on any cycle in the retirement relation restricted to
@@ -137,16 +137,16 @@ deleted on purpose.
    status, with no recursion through another ADR's coverage, so the induced subgraph is fully
    determined before any cycle search begins.
 
-   The window this fires in is narrow, deliberately. Both members of a mutual pair must still
-   be `Implemented` for both to be `Covered`, because ADR-0128's
-   `supersession-coverage-implemented-only` makes a `Superseded` carrier cover nothing.
-   Flipping either status therefore collapses the pair to `Partial` and this check passes,
-   at which point ADR-0128 item 4's coverage-versus-status check refuses the same pathology
+   The window this fires in is narrow, deliberately. Both members of a mutual pair must still be
+   `Implemented` for both to be `Covered`, because ADR-0128's
+   `supersession-coverage-implemented-only` makes a `Superseded` carrier cover nothing. Flipping
+   either status therefore collapses the pair to `Partial` and this check passes, at which point
+   ADR-0128 item 4 (`cites: ADR-0128#4`)'s coverage-versus-status check refuses the same pathology
    from the other side. Two checks cover the two windows; neither alone covers both.
 
-   This is the item ADR-0128 dropped during
-   review, landing where its subject is defined; ADR-0120 item 3's single-claimant check
-   incidentally prevented full-supersession cycles, and ADR-0128 item 1 removes it.
+   This is the item ADR-0128 dropped during review, landing where its subject is defined; ADR-0120
+   item 3 (`cites: ADR-0120#3`)'s single-claimant check incidentally prevented full-supersession
+   cycles, and ADR-0128 item 1 (`cites: ADR-0128#1`) removes it.
 
 ## Invariants
 

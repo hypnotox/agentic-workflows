@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-09
 tags: [enable-closure, schema-migration]
-related: [13, 24, 31, 46, 49, 50, 68, 76, 77, 80]
+related: [13, 24, 31, 46, 49, 50, 68, 76, 77, 80, 131]
 domains: [config, rendering, tooling]
 ---
 # ADR-0081: Enforced dependency graph over catalog Requires declarations

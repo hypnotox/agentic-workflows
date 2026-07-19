@@ -73,25 +73,23 @@ carve-out minimal.
    silently). Mid-line occurrences are inert prose, per the ADR-0083 whole-line-vs-inline
    distinction. The directive is single-line; there is no block form.
 
-2. **Two ingestion seams, and only those two.** The strip runs (a) over template source
-   after `ExpandIncludes` and before `ParseSections`, covering every render unit
-   (markdown and shell alike, plus include partials and non-section skeleton text), and
-   (b) over each convention part's raw on-disk bytes in `planSections`, *before*
-   placeholder substitution (ADR-0083 Decision 4 rationale: a substituted value must
-   never create or mask a whole-line match; and an unknown `{{=awf:key}}` demonstrated
-   inside a comment must not hard-error). Downstream part scanners - the stub marker,
-   the part-marker advisory, placeholder var refs, and the confighash placeholder-folding
-   detectors - read the stripped body, so a placeholder or marker mentioned only inside
-   an authoring comment does not count as present. ADR-0083 Decision 4's raw-bytes
-   contract for the part-marker advisory is preserved in effect, not overridden: the
-   strip runs pre-substitution and removes only whole lines opening with the directive
-   literal, which the `awf:section`/`awf:end` prefix matcher can never match, so it
-   provably cannot add or remove a marker-shaped line; no override token is owed. `TemplateHash` and the part-byte
-   `ConfigHash` inputs remain the *unstripped* bytes: a comment-only edit reflags the
-   artifact stale and the next sync settles it with byte-identical output. In-place
-   read-back bodies (ADR-0100) are never stripped: they come from rendered output, a
-   different channel, and a directive-shaped line an adopter writes there survives
-   re-render verbatim.
+2. **Two ingestion seams, and only those two.** The strip runs (a) over template source after
+   `ExpandIncludes` and before `ParseSections`, covering every render unit (markdown and shell
+   alike, plus include partials and non-section skeleton text), and (b) over each convention
+   part's raw on-disk bytes in `planSections`, *before* placeholder substitution (ADR-0083
+   Decision 4 (`cites: ADR-0083#4`) rationale: a substituted value must never create or mask a
+   whole-line match; and an unknown `{{=awf:key}}` demonstrated inside a comment must not
+   hard-error). Downstream part scanners - the stub marker, the part-marker advisory, placeholder
+   var refs, and the confighash placeholder-folding detectors - read the stripped body, so a
+   placeholder or marker mentioned only inside an authoring comment does not count as present.
+   ADR-0083 Decision 4's raw-bytes contract for the part-marker advisory is preserved in effect,
+   not overridden: the strip runs pre-substitution and removes only whole lines opening with the
+   directive literal, which the `awf:section`/`awf:end` prefix matcher can never match, so it
+   provably cannot add or remove a marker-shaped line; no override token is owed. `TemplateHash`
+   and the part-byte `ConfigHash` inputs remain the *unstripped* bytes: a comment-only edit
+   reflags the artifact stale and the next sync settles it with byte-identical output. In-place
+   read-back bodies (ADR-0100) are never stripped: they come from rendered output, a different
+   channel, and a directive-shaped line an adopter writes there survives re-render verbatim.
 
 3. **Fences preserve; malformed openers fail.** Inside a fenced code block, directive
    lines (and malformed openers) are preserved verbatim, so parts and templates can

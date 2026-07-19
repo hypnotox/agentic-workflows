@@ -83,16 +83,17 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
    rather than rewrites an adopter's ADR title.
 
    This ADR draws the line differently for *advice*, and the honest framing is that it **adds** an
-   opinion rather than enforcing one awf already held. The shipped documentation standard currently
-   scopes its punctuation rule to "shipped prose", and ADR-0115 item 9 widens only that rule's
-   codepoint list, not its reach, so nothing awf ships today tells an adopter how to punctuate
-   their own ADRs. Warning them against an unstated rule would be the same defect ADR-0113 item 4
-   was written to prevent. Decision item 8 therefore widens the standard first; this rule then
-   enforces what the standard states, and the ordering is the whole argument.
+   opinion rather than enforcing one awf already held. The shipped documentation standard
+   currently scopes its punctuation rule to "shipped prose", and ADR-0115 item 9
+   (`cites: ADR-0115#9`) widens only that rule's codepoint list, not its reach, so nothing awf
+   ships today tells an adopter how to punctuate their own ADRs. Warning them against an unstated
+   rule would be the same defect ADR-0113 item 4 (`cites: ADR-0113#4`) was written to prevent.
+   Decision item 8 therefore widens the standard first; this rule then enforces what the standard
+   states, and the ordering is the whole argument.
 
-   The distinction that keeps this coherent with ADR-0115 item 6: awf never mutates adopter content
-   and never fails an adopter's build over house style, but it does state the convention in a
-   standard they render, and tell them once, in a warning they can switch off.
+   The distinction that keeps this coherent with ADR-0115 item 6 (`cites: ADR-0115#6`): awf never
+   mutates adopter content and never fails an adopter's build over house style, but it does state
+   the convention in a standard they render, and tell them once, in a warning they can switch off.
 
 6. **Advisory severity is the depiction escape hatch.** ADR-0115 Decision item 7 keeps a
    no-escape-hatch posture for the gate, which it can afford because its scope boundary leaves
@@ -110,8 +111,8 @@ awf cannot mechanically prove belongs in `awf audit` as a `Warning`.
    prose". Its scope clause widens to cover authored prose as well, so an adopter reads the
    convention in a standard they render before any warning cites it.
 
-   **This item amends ADR-0115 item 9's rendering of that line and depends on ADR-0115 landing
-   first.** The two are complementary and strictly ordered, not conflicting: item 9 widens the
+   **This item amends ADR-0115 item 9's rendering of that line (`refines: ADR-0115#9`) and
+   depends on ADR-0115 landing first.** The two are complementary and strictly ordered, not conflicting: item 9 widens the
    rule's *codepoint list* from one to seven, and this item then widens the *scope clause* of the
    text item 9 leaves behind. The baseline to edit is therefore the post-ADR-0115 line, not the
    line as it reads today. If the order ever reversed, an implementer following item 9 literally

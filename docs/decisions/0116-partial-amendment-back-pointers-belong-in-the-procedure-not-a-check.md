@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-15
 tags: [adr-lifecycle, cross-references, review-agents]
-related: [73, 79, 93, 103, 112, 114, 115, 120]
+related: [73, 79, 93, 103, 112, 114, 115, 120, 128, 131]
 domains: [adr-system, rendering]
 ---
 # ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check
@@ -101,8 +101,8 @@ would fire only on newly-added amendments and would need no corpus backfill.
 4. **Charge the `adr-reviewer` with the rule, on both surfaces.** The shipped `adr-reviewer`
    doc-currency lens gains an item requiring that an ADR overriding a live predecessor's Decision
    item leaves the predecessor's `related:` naming it. The lens is the backstop for the case the
-   procedure cannot reach, an author who did not realise they were amending. It is added in **two**
-   places in the same commit: the catalog default (`docCurrencyItems` in
+   procedure cannot reach, an author who did not realise they were amending. It is added in
+   **two** places in the same commit: the catalog default (`docCurrencyItems` in
    `internal/catalog/standard.go`), so every adopter inherits it, **and**
    `.awf/agents/adr-reviewer.yaml`, because that file already overrides `docCurrencyItems`
    wholesale and would otherwise silently drop the new item for awf's own reviewer.
@@ -110,8 +110,8 @@ would fire only on newly-added amendments and would need no corpus backfill.
    in a comment ("the first two entries are the catalog defaults, kept deliberately"), though that
    override restates the defaults it wants to keep while `adr-reviewer.yaml`'s `docCurrencyItems`
    restates none; the shared lesson is that a wholesale `data:` list override must be maintained
-   deliberately at both sites, not that the two files are shaped alike. The
-   ADR-0114 Decision 3 precedent is cited for *where the rule belongs* (the catalog, because the
+   deliberately at both sites, not that the two files are shaped alike. The ADR-0114 Decision 3
+   (`cites: ADR-0114#3`) precedent is cited for *where the rule belongs* (the catalog, because the
    property is general to the standard), not for the mechanism: 0114 extended a template section,
    which awf does not override, whereas this is a `data:` list, which awf does.
 

@@ -188,8 +188,8 @@
 - ADR-0099: slug `context-surfaces-pitfalls` superseded by ADR-0104
 - ADR-0102: slug `uncovered-lists-unowned-only` superseded by ADR-0110
 - ADR-0104: slug `context-tier1-governs` superseded by ADR-0106; slug `context-tier2-topical` superseded by ADR-0109
-- ADR-0115: item 4 superseded by ADR-0119; item 7 refined by ADR-0119
-- ADR-0116: item 2 refined by ADR-0120; item 5 refined by ADR-0120
+- ADR-0115: item 4 superseded by ADR-0119; item 5 refined by ADR-0118; item 7 refined by ADR-0119; item 9 refined by ADR-0117
+- ADR-0116: item 2 refined by ADR-0120; item 4 refined by ADR-0131; item 5 refined by ADR-0120; item 6 refined by ADR-0120
 - ADR-0117: item 5 refined by ADR-0119
 - ADR-0118: item 1 refined by ADR-0119; item 9 refined by ADR-0119
 - ADR-0120: item 3 superseded by ADR-0128; item 4 refined by ADR-0128; item 5 refined by ADR-0128; item 10 refined by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-05
 tags: [compile-time-catalog]
-related: [22, 27, 43, 45]
+related: [22, 27, 43, 45, 131]
 domains: [rendering, config]
 ---
 # ADR-0060: Catalog representation moves from embedded YAML to compile-time Go

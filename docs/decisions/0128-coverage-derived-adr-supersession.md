@@ -52,10 +52,10 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
 
 ## Decision
 
-1. **The `supersedes:` and `superseded_by:` frontmatter keys are removed from the ADR
-   schema.** Neither key is parsed, rendered by the ADR template, nor accepted: `awf check`
-   fails, with upgrade guidance, on any ADR whose raw frontmatter carries either key, empty
-   or not, mirroring ADR-0120 item 7's treatment of `retires_invariants:`. This
+1. **The `supersedes:` and `superseded_by:` frontmatter keys are removed from the ADR schema.**
+   Neither key is parsed, rendered by the ADR template, nor accepted: `awf check` fails, with
+   upgrade guidance, on any ADR whose raw frontmatter carries either key, empty or not, mirroring
+   ADR-0120 item 7 (`cites: ADR-0120#7`)'s treatment of `retires_invariants:`. This
    `supersedes: ADR-0120#3` for its frontmatter encoding of full supersession; that item's
    three-way symmetry has nothing left to bind, so its
    `supersedes-invariant: ADR-0120#supersession-full-symmetry` retires with it.
@@ -96,13 +96,13 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    rewrite all three to `refines:`, and the effort implementing this ADR corrects the first
    back to `supersedes:` by hand, exactly as any adopter would.
 
-3. **Full supersession is derived from anchor coverage.** An ADR is fully superseded when
-   every one of its anchors is claimed by a *retirement*: every column-0 Decision item number
-   claimed by a `supersedes:` token, and every slug its Invariants section declares claimed by
-   a `supersedes-invariant:` token. Coverage counts only tokens carried by an
-   `Implemented` ADR, matching the retirement gate of ADR-0120 item 6, so a `Proposed`
-   successor never kills its predecessor. Coverage may be split across several successors;
-   no single ADR need claim the whole.
+3. **Full supersession is derived from anchor coverage.** An ADR is fully superseded when every
+   one of its anchors is claimed by a *retirement*: every column-0 Decision item number claimed by
+   a `supersedes:` token, and every slug its Invariants section declares claimed by a
+   `supersedes-invariant:` token. Coverage counts only tokens carried by an `Implemented` ADR,
+   matching the retirement gate of ADR-0120 item 6 (`cites: ADR-0120#6`), so a `Proposed`
+   successor never kills its predecessor. Coverage may be split across several successors; no
+   single ADR need claim the whole.
 
    Requiring slug coverage alongside item coverage is what makes the status flip
    semantically inert. Under item 1 alone, completing item coverage would still silently
@@ -133,16 +133,15 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    required edit exactly.
 
 5. **The back-pointer requirement widens to targets of any status.** `awf check` fails when a
-   token of either relation targets an ADR whose `related:` lacks the carrier's number,
-   regardless of whether that target is live or `Superseded`. This `refines: ADR-0120#4`,
-   which scoped the check
-   to live targets only. The widening is load-bearing for item 4: with bare `Superseded`
+   token of either relation targets an ADR whose `related:` lacks the carrier's number, regardless
+   of whether that target is live or `Superseded`. This `refines: ADR-0120#4`, which scoped the
+   check to live targets only. The widening is load-bearing for item 4: with bare `Superseded`
    naming no successor, `related:` is the only surface on the predecessor that names its
    claimants, and under the narrow rule a claimant landing after the flip would owe no
-   back-pointer and be unrecoverable from the predecessor. Editing a frozen ADR's `related:`
-   is permitted in place by ADR-0116 item 2. This
-   `supersedes-invariant: ADR-0120#supersession-backpointer`, whose live-targets-only scope
-   this item replaces.
+   back-pointer and be unrecoverable from the predecessor. Editing a frozen ADR's `related:` is
+   permitted in place by ADR-0116 item 2 (`cites: ADR-0116#2`). This
+   `supersedes-invariant: ADR-0120#supersession-backpointer`, whose live-targets-only scope this
+   item replaces.
 
 6. **Flavour exclusivity is retired and the superseded-target advisory is dropped; the
    contested-anchor advisory is retained.** With one flavour there is nothing to be exclusive
@@ -164,17 +163,15 @@ separately buys a second mechanism, a second set of checks, and a rationale hole
    wholesale without someone stating, anchor by anchor, what replaces it.
 
 8. **`awf upgrade` gains a corpus migration at schema generation 11 to 12.** The migration
-   strips both keys from every ADR under the configured docs dir, and for each ADR that
-   carried a non-empty `supersedes:` appends one bookkeeping Decision item carrying a
-   `supersedes:` token per anchor of each named predecessor, inserting the carrier's number
-   into each target's
-   `related:` when absent and rewriting each predecessor's suffixed status to bare
-   `Superseded`. Anchor enumeration runs against the post-generation-10 body, so the
-   bookkeeping items ADR-0120 item 8 already appended are themselves anchors this migration
-   must claim.
-   The appended item is permitted by ADR-0120 item 9's carve-out shape 2, a numbered
-   bookkeeping item encoding an obligation the ADR already carried: `supersedes: [3]` already
-   asserted replacement of all of ADR-0003.
+   strips both keys from every ADR under the configured docs dir, and for each ADR that carried a
+   non-empty `supersedes:` appends one bookkeeping Decision item carrying a `supersedes:` token
+   per anchor of each named predecessor, inserting the carrier's number into each target's
+   `related:` when absent and rewriting each predecessor's suffixed status to bare `Superseded`.
+   Anchor enumeration runs against the post-generation-10 body, so the bookkeeping items ADR-0120
+   item 8 (`cites: ADR-0120#8`) already appended are themselves anchors this migration must claim.
+   The appended item is permitted by ADR-0120 item 9 (`cites: ADR-0120#9`)'s carve-out shape 2, a
+   numbered bookkeeping item encoding an obligation the ADR already carried: `supersedes: [3]`
+   already asserted replacement of all of ADR-0003.
 
    **Every pre-existing inline item token is rewritten to `refines:`.** Classification cannot
    be mechanised, so the migration maps the ambiguous old token to the reading that asserts

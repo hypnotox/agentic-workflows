@@ -2,7 +2,7 @@
 status: Superseded
 date: 2026-07-15
 tags: [template-residue, doc-standard]
-related: [82, 112, 115]
+related: [82, 112, 115, 117]
 domains: [rendering]
 ---
 # ADR-0113: Em-dash-free shipped templates

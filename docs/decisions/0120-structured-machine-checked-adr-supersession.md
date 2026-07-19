@@ -86,10 +86,10 @@ renders no such thing. That drift is repaired by making the claim true rather th
 
 4. **The partial back-pointer becomes a check.** When a token targets a live
    (`Accepted`/`Implemented`) ADR, `awf check` fails unless the target's `related:` contains the
-   successor's number. This `refines: ADR-0116#5` reverses ADR-0116's choice to keep
-   back-pointers procedure-only: the objection recorded there (a check would red the gate on
-   pre-existing violations) is answered by this ADR's retrofit, which backfills the missing
-   edges in the same effort that lands the check. ADR-0116 Decision 3's scoping of *when* a
+   successor's number. This `refines: ADR-0116#5` reverses ADR-0116's choice to keep back-pointers
+   procedure-only: the objection recorded there (a check would red the gate on pre-existing
+   violations) is answered by this ADR's retrofit, which backfills the missing edges in the same
+   effort that lands the check. ADR-0116 Decision 3 (`cites: ADR-0116#3`)'s scoping of *when* a
    back-pointer is owed is unchanged; the token is now simply how an owed override is written.
 
 5. **Flavour exclusivity and advisory degradations.** One successor must not both fully
@@ -168,8 +168,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
     `awf upgrade` migrates the 12 retiring ADRs and strips the key from the rest; the freeform
     partial-supersession citations across the corpus (0105, 0119, 0081, 0108, 0020, and the
     rest of a grep sweep) are hand-tokenized under the item-9 carve-out; the back-pointer edges
-    ADR-0116 Decision 6 deferred are backfilled as `related:` metadata edits; the nested example
-    adopter `examples/sundial` is upgraded and re-rendered; and the prose surfaces that describe
+    ADR-0116 Decision 6 deferred (`refines: ADR-0116#6`) are backfilled as `related:` metadata
+    edits; the nested example adopter `examples/sundial` is upgraded and re-rendered; and the
+    prose surfaces that describe
     retirement or supersession (the embedded adr-lifecycle skill template, the AGENTS.md
     invariants bullet, the decisions README template, the catalog's ADR-state mutability
     strings, this repo's domain current-state parts, glossary and pitfalls sidecars) are updated

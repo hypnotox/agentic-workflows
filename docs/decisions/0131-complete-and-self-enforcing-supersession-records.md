@@ -176,13 +176,14 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    sentence is false whatever substance survives. That promise is reversed here rather than
    contradicted, which is why it earns a token of its own below.
 
-   This item deliberately names each token by key and anchor rather than writing it out. A complete
-   token string inside a `## Decision` section **is** a token: the parser recognises it wherever it
-   appears there (ADR-0120 Decision 1), and an earlier draft of this item wrote them out in full,
-   which made this ADR their carrier and contradicted the sentence that follows. This ADR carries no
-   retirement token of its own, and the way to keep that true is to not write one. The citation
-   check's code-span exemption (item 5) does not help here, because it governs citations and verbs,
-   not token recognition; extending it to tokens would unparse the entire corpus.
+   This item deliberately names each token by key and anchor rather than writing it out. A
+   complete token string inside a `## Decision` section **is** a token: the parser recognises it
+   wherever it appears there (ADR-0120 Decision 1 (`cites: ADR-0120#1`)), and an earlier draft of
+   this item wrote them out in full, which made this ADR their carrier and contradicted the
+   sentence that follows. This ADR carries no retirement token of its own, and the way to keep
+   that true is to not write one. The citation check's code-span exemption (item 5) does not help
+   here, because it governs citations and verbs, not token recognition; extending it to tokens
+   would unparse the entire corpus.
 
    Carrier choice is not bookkeeping preference; it decides when the retirement takes effect. A
    `supersedes-invariant:` token retires a slug only while its carrier is `Implemented`, and a
@@ -276,19 +277,20 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    token shapes that would satisfy it.
 
    **Item claims are scoped per Decision item; slug claims are scoped per carrier.** For an item
-   anchor the carrier item is the rationale site (ADR-0129 Decision 2), and two items may hold
-   genuinely different relations to one target, so a token at item 7 does not answer a claim at
-   item 5. A slug anchor is not like that: a slug is atomic and dies once, so a carrier that
-   already retires it anywhere in its `## Decision` section has said everything there is to say.
-   Demanding a second token would ask an author to double-encode a retirement the corpus already
-   records, and there is no truthful token to write. An inert `cites-invariant:` would deny a
-   retirement the same ADR asserts, and a second `supersedes-invariant:` would claim one anchor
-   twice from one carrier.
+   anchor the carrier item is the rationale site (ADR-0129 Decision 2 (`cites: ADR-0129#2`)), and
+   two items may hold genuinely different relations to one target, so a token at item 7 does not
+   answer a claim at item 5. A slug anchor is not like that: a slug is atomic and dies once, so a
+   carrier that already retires it anywhere in its `## Decision` section has said everything there
+   is to say. Demanding a second token would ask an author to double-encode a retirement the
+   corpus already records, and there is no truthful token to write. An inert `cites-invariant:`
+   would deny a retirement the same ADR asserts, and a second `supersedes-invariant:` would claim
+   one anchor twice from one carrier.
 
-   Two corpus sites forced this and neither is hypothetical. ADR-0081 item 7 discusses retiring
-   ADR-0013's `doc-gated-skill-suppressed` while item 10 carries the token, and ADR-0085 item 1
-   discusses retiring ADR-0040's `bootstrap-pin` while item 9 carries it; `ACTIVE.md` records both
-   retirements as landed. A per-item rule reported both as unencoded.
+   Two corpus sites forced this and neither is hypothetical. ADR-0081 item 7 (`cites: ADR-0081#7`)
+   discusses retiring ADR-0013's `doc-gated-skill-suppressed` while item 10 carries the token, and
+   ADR-0085 item 1 (`cites: ADR-0085#1`) discusses retiring ADR-0040's `bootstrap-pin` while item
+   9 carries it; `ACTIVE.md` records both retirements as landed. A per-item rule reported both as
+   unencoded.
 
    Only the retirement key carries across items. A `cites-invariant:` suppresses at its own item
    and nowhere else, matching the anchor-only scope of the suppression rule below. The reason is
@@ -339,23 +341,23 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 
 4. **`cites: ADR-NNNN#<item>` and `cites-invariant: ADR-NNNN#<slug>` declare a citation
    informational.** They join the inline token family as an inert relation: recognized only inside
-   `## Decision`, counting toward nothing,
-   surfaced in no ACTIVE.md or `awf context` rendering. It exists because a Decision item can
-   legitimately mention another ADR's anchor without claiming it. ADR-0116 Decision 3 names the
-   case, an ADR that cites one Decision item informationally while amending a different one
-   (`cites: ADR-0065#4`, `cites: ADR-0065#3`), and third-party narration is another: ADR-0058
-   recounts a refinement one earlier ADR made to another's first Decision item without itself
-   claiming that anchor (`cites: ADR-0034#1`).
+   `## Decision`, counting toward nothing, surfaced in no ACTIVE.md or `awf context` rendering. It
+   exists because a Decision item can legitimately mention another ADR's anchor without claiming
+   it. ADR-0116 Decision 3 (`cites: ADR-0116#3`) names the case, an ADR that cites one Decision
+   item informationally while amending a different one (`cites: ADR-0065#4`, `cites: ADR-0065#3`),
+   and third-party narration is another: ADR-0058 recounts a refinement one earlier ADR made to
+   another's first Decision item without itself claiming that anchor (`cites: ADR-0034#1`).
 
-   **Two keys, not one, because the key names the anchor kind (ADR-0120 item 1).** A single `cites:`
-   key carrying both anchor shapes is not decidable: the slug grammar admits an all-digit slug, so
-   `#3` could be Decision item 3 or the slug `3`, and this is exactly why
-   `internal/project/supersession.go` keys anchors by kind prefix and treats an item ref and a slug
-   ref into one target as distinct anchors. Two patterns over one key do not resolve it either, they
-   double-match: every item-anchored citation would also register a phantom slug anchor and fail the
-   token-ref check against the target's declared slugs. The retirement tokens already avoid this the
-   same way, with `supersedes:` and `supersedes-invariant:` as separate keys, so the citation tokens
-   mirror that split rather than inventing a shape-inference rule the rest of the grammar rejects.
+   **Two keys, not one, because the key names the anchor kind (ADR-0120 item 1
+   (`cites: ADR-0120#1`)).** A single `cites:` key carrying both anchor shapes is not decidable:
+   the slug grammar admits an all-digit slug, so `#3` could be Decision item 3 or the slug `3`,
+   and this is exactly why `internal/project/supersession.go` keys anchors by kind prefix and
+   treats an item ref and a slug ref into one target as distinct anchors. Two patterns over one
+   key do not resolve it either, they double-match: every item-anchored citation would also
+   register a phantom slug anchor and fail the token-ref check against the target's declared
+   slugs. The retirement tokens already avoid this the same way, with `supersedes:` and
+   `supersedes-invariant:` as separate keys, so the citation tokens mirror that split rather than
+   inventing a shape-inference rule the rest of the grammar rejects.
 
    A comment-shaped marker was rejected for this. ADR-0121's `<!-- awf:comment -->` is a
    whole-line directive stripped at ingestion, so it cannot mark a mid-sentence citation, and
@@ -363,12 +365,12 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    token family keeps one grammar and lets the corpus view carry the suppression as parsed data
    rather than an out-of-band regex.
 
-5. **Five citation classes are exempt by construction, not by marker.** The check never demands a
-   token when the cited target is `Proposed` (ADR-0120 Decision 2 forbids the token outright, so
-   demanding one would red a second check), when the citation is a self-citation (already a
-   `GraphFaults` report), when the cited invariant bullet carries no slug (ADR-0001's bullets are
-   unslugged and therefore unanchorable in any grammar this project has), when the citation falls
-   outside `## Decision`, or when it falls inside an inline code span.
+5. **Five citation classes are exempt by construction, not by marker.** The check never demands
+   a token when the cited target is `Proposed` (ADR-0120 Decision 2 (`cites: ADR-0120#2`) forbids
+   the token outright, so demanding one would red a second check), when the citation is a
+   self-citation (already a `GraphFaults` report), when the cited invariant bullet carries no slug
+   (ADR-0001's bullets are unslugged and therefore unanchorable in any grammar this project has),
+   when the citation falls outside `## Decision`, or when it falls inside an inline code span.
 
    The code-span exemption is what lets an ADR discuss the grammar without triggering it. This
    ADR's own item 2 enumerates every override verb, and items 1, 7, and 9 name the `refines:` and
@@ -382,20 +384,22 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    both quotations.
 
    The outside-`## Decision` class is a permanent hole and is recorded as such. ADR-0120 Decision
-   1 recognizes tokens only inside `## Decision`, so a Context-section citation such as ADR-0034's
-   statement that it refines rather than replaces one of ADR-0015's Decision items
-   (`cites: ADR-0015#4`) cannot be encoded where it sits, and moving it is a content edit the
-   append-only rule forbids. Five ADRs carry this shape. They stay untokenized; the alternative,
-   appending a bookkeeping item under ADR-0120 Decision 9's shape 2, is available to an author who
-   judges a specific case worth it, and is not required here.
+   1 (`cites: ADR-0120#1`) recognizes tokens only inside `## Decision`, so a Context-section
+   citation such as ADR-0034's statement that it refines rather than replaces one of ADR-0015's
+   Decision items (`cites: ADR-0015#4`) cannot be encoded where it sits, and moving it is a
+   content edit the append-only rule forbids. Five ADRs carry this shape. They stay untokenized;
+   the alternative, appending a bookkeeping item under ADR-0120 Decision 9 (`cites: ADR-0120#9`)'s
+   shape 2, is available to an author who judges a specific case worth it, and is not required
+   here.
 
-6. **The `adr-reviewer` doc-currency lens is the named owner of the verbless residue.** ADR-0116
-   Decision 4 charged that lens with the partial-amendment back-pointer rule as "the backstop for
-   the case the procedure cannot reach", and item 2's verb anchoring leaves part of the claim
-   space to it: a claim whose prose carries no listed verb, such as ADR-0060 Decision 5's "every
-   invariant listed in ADR-0043/0027 keeps its current wording". That lens keeps its existing
-   charge and gains one item, widening its citation coverage from claimed anchors to cited ones.
-   The accepted recall gap therefore has an owner rather than only an acknowledgement.
+6. **The `adr-reviewer` doc-currency lens is the named owner of the verbless residue.**
+   ADR-0116 Decision 4 (`refines: ADR-0116#4`) charged that lens with the partial-amendment
+   back-pointer rule as "the backstop for the case the procedure cannot reach", and item 2's verb
+   anchoring leaves part of the claim space to it: a claim whose prose carries no listed verb,
+   such as ADR-0060 Decision 5 (`cites: ADR-0060#5`)'s "every invariant listed in ADR-0043/0027
+   keeps its current wording". That lens keeps its existing charge and gains one item, widening
+   its citation coverage from claimed anchors to cited ones. The accepted recall gap therefore has
+   an owner rather than only an acknowledgement.
 
 7. **This ADR does not extend ADR-0120 Decision 9's carve-out** (`cites: ADR-0120#9`). Correcting
    a `refines:` token to `supersedes:` needs no new permission: ADR-0128 Decision 4 already
@@ -468,11 +472,12 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    do not, and gain the edge in the same commit that first makes `cites:` parseable, because that is
    the moment the tokens go live and the edges become owed.
 
-   The two `refines:` tokens item 1 adds for ADR-0020 Decision 6 and ADR-0032 Decision 7 are live
-   the moment they are written, since `refines:` is already parseable, so ADR-0020 and ADR-0032
-   gain their back-pointer edge in the amending commit rather than later. That is the same rule
-   biting at a different time, and it is worth noting that the timing follows the parser's state,
-   not the ADR's: a token owes its edge as soon as the grammar recognizes it.
+   The two `refines:` tokens item 1 adds for ADR-0020 Decision 6 (`cites: ADR-0020#6`) and
+   ADR-0032 Decision 7 (`cites: ADR-0032#7`) are live the moment they are written, since
+   `refines:` is already parseable, so ADR-0020 and ADR-0032 gain their back-pointer edge in the
+   amending commit rather than later. That is the same rule biting at a different time, and it is
+   worth noting that the timing follows the parser's state, not the ADR's: a token owes its edge
+   as soon as the grammar recognizes it.
 
 ## Invariants
 
