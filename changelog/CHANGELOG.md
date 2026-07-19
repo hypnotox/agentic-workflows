@@ -132,8 +132,11 @@ query a single version or a range.
   recognized in six spellings: `ADR-NNNN Decision item N`, `ADR-NNNN Decision N`,
   `ADR-NNNN item N`, `ADR-NNNN DN`, plus the possessive `ADR-NNNN's ...` and markdown-link
   `[ADR-NNNN](path) ...` wrappers. Exemptions are structural, never a marker: a `Proposed` target,
-  a self-citation, a slug the target never declares, anything outside `## Decision`, and anything
-  inside an inline code span, so an ADR can discuss the grammar without tripping it.
+  a self-citation, a slug the target never declares, anything outside `## Decision`, and an **item**
+  citation inside an inline code span, so an ADR can discuss the item-citation grammar without
+  tripping it. A slug citation is recognized regardless of its code span: the backticks in
+  `` `inv: <slug>` `` are the citation syntax itself rather than a quoting device, so masking them
+  would recognize none. To record one as informational, write `cites-invariant:`.
 - **Two new relation tokens, `cites: ADR-NNNN#<item>` and `cites-invariant: ADR-NNNN#<slug>`**
   (ADR-0131), for a Decision item that mentions, quotes, or reasons from another ADR's anchor
   without changing it. A citation asserts nothing: it contributes no anchor coverage, so it cannot
