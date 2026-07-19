@@ -200,7 +200,7 @@
 - ADR-0116: item 2 refined by ADR-0120; item 4 refined by ADR-0131; item 5 refined by ADR-0120; item 6 refined by ADR-0120
 - ADR-0117: item 5 refined by ADR-0119
 - ADR-0118: item 1 refined by ADR-0119; item 9 refined by ADR-0119
-- ADR-0120: item 3 superseded by ADR-0128; item 4 refined by ADR-0128; item 5 refined by ADR-0128; item 10 refined by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128
+- ADR-0120: item 3 superseded by ADR-0128; item 4 refined by ADR-0128; item 5 refined by ADR-0128; item 9 refined by ADR-0136; item 10 refined by ADR-0129; slug `active-md-supersedence-rendering` superseded by ADR-0128; slug `supersession-backpointer` superseded by ADR-0128; slug `supersession-conflict-advisory` superseded by ADR-0128; slug `supersession-flavour-exclusive` superseded by ADR-0128; slug `supersession-full-symmetry` superseded by ADR-0128
 - ADR-0122: item 3 refined by ADR-0123; item 4 refined by ADR-0123; slug `pi-generic-review-dispatch` superseded by ADR-0123
 - ADR-0123: item 2 refined by ADR-0125; item 3 refined by ADR-0125; item 4 refined by ADR-0125; item 5 refined by ADR-0125; item 7 refined by ADR-0126; slug `pi-explicit-workflow-dispatch` superseded by ADR-0125; slug `pi-subagent-public-contract` superseded by ADR-0125
 - ADR-0125: item 1 superseded by ADR-0132; slug `pi-subagent-four-tool-contract` superseded by ADR-0132

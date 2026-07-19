@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-16
 tags: [adr-lifecycle, adr-parsing, invariant-retirement, schema-migration, active-md]
-related: [8, 10, 25, 39, 42, 105, 116, 128, 129, 131]
+related: [8, 10, 25, 39, 42, 105, 116, 128, 129, 131, 136]
 domains: [adr-system, invariants, config, tooling, rendering]
 ---
 # ADR-0120: Structured, machine-checked ADR supersession

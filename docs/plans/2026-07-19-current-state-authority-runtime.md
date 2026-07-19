@@ -158,8 +158,8 @@ commit follows seal consumption.
 ## Phase 5: Consume attestation, replace indexes, and delete legacy code
 
 - [ ] **Task 5.1: Verify only sealed facts.** Accept Plan 2 attestation version 1; require current HEAD
-  equals PreparedHead; recompute the exact sorted path/mode/content digest over config, domains, ADRs,
-  topic metadata/parts, configured marker sources, and `.awf/current-state-migration.yaml`; promote
+  equals PreparedHead; recompute the bridge's exact sorted slash-relative path/mode/content records over the post-normalization proposed result for config, domains, ADRs,
+  topic metadata/parts, configured marker sources, and the required `.awf/current-state-migration.yaml`, with no additional inputs; promote
   sealed cutoff/gaps; trust legacy inventory adjudication only through that unchanged seal. The final
   verifier reads the approval file only as sealed digest input and never reparses approvals. Recompute
   every permanent new-tree static, coverage, output-plan, and transition predicate. The final binary
@@ -167,12 +167,12 @@ commit follows seal consumption.
 
 - [ ] **Task 5.2: Run journaled final upgrade from the permanent package.** Move the version-1
   image/phase/recovery contract into `internal/upgrade`; delete `internal/bridge` and deny its import.
-  Validate the complete operation list, require exactly one journaled deletion of
+  Preserve the command guard so every valid journal phase permits only `awf upgrade --recover`, with postcommit recovery cleaning residue without authority rollback. Validate the complete operation list, require exactly one journaled deletion of
   `.awf/current-state-migration.yaml`, replace lock last, clear attestation, and store permanent cutoff/
   gaps. The permanent closed-tree sweep and runtime do not claim or consume that path after cutover.
   Tests in `cmd/awf/upgrade_test.go`, `internal/manifest/manifest_test.go`, journal tests, and exhaustive
   deletion fixtures cover version/HEAD/digest/path/mode mismatches; approval-file content, mode,
-  presence, replacement, and omitted/duplicate deletion failures; each journal phase; rollback/cleanup
+  presence, replacement, and omitted/duplicate deletion failures; exact post-normalization digest-universe additions/removals; each journal phase and all-command refusal except recovery; rollback/cleanup
   failures; lock-last failure; seal invalidation; cutoff/gap promotion; post-cutover file absence and
   nonconsumption; and current-state command enablement.
 
@@ -186,8 +186,8 @@ commit follows seal consumption.
   plans, changelog, and test fixtures. Deny identifiers `SupersessionRef`, `AnnotatedAnchors`, `Chains`,
   `Retirers`, `StateCovered`, `PartiallySuperseded`, `DeclaringADRs`, `RenderActiveMD`,
   `RenderDomainIndex`, and legacy context fields `Governing`, `Related`, `Background`; deny production
-  imports of migration inventory/readiness/snapshot/approval packages and any permanent parser or
-  runtime claim for `.awf/current-state-migration.yaml`; deny desired path
+  imports of migration inventory/readiness/snapshot/approval packages and any permanent parser,
+  claim, consumer, or runtime path ownership for `.awf/current-state-migration.yaml`; deny desired path
   `docs/decisions/ACTIVE.md`. Representative tests place a token in production; edge tests prove a
   historical fixture remains legal. Post-check:
 
@@ -218,13 +218,13 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
    digest-covered authored doc. Use only the pinned bridge binary for readiness, sync, and check; run
    source tests and `./x gate`; commit this **preparation commit**. All configured marker-source,
    approval, and other sealed paths are now frozen.
-3. Create two clean Git worktrees at that same preparation HEAD. In one, use the pinned bridge binary
+3. Build and hash the current-state binary from that preparation commit before attestation, verify its identity and availability for immediate seal consumption, then create two clean Git worktrees at the same HEAD. In one, use the pinned bridge binary
    to attest the root project; in the other, attest `examples/sundial`. Save both JSON readiness
    reports; require each disjoint patch's complete path/hash/mode set to equal its
    `plannedMutations`, require PreparedHead equality, assert neither unchanged approval file appears in
    those attestation mutations, and apply both patches to an integration worktree whose HEAD remains
    the preparation commit.
-4. Build the current-state binary from the preparation commit and run plain final upgrade for root and
+4. Reverify the already-built current-state binary from the preparation commit and run plain final upgrade for root and
    Sundial, consuming both seals through `internal/upgrade` and journal-deleting both approval files.
    Run the final runtime's `./x sync`, `./x check`, and `./x gate`.
 5. Assert both permanent locks carry cutoff/gaps and no attestation; INDEX has both sections;

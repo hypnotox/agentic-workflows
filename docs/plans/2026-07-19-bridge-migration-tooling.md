@@ -76,7 +76,7 @@ the coupled group.
   keys remaining live enter claim mapping. Reject a migration-history key that was never declared and
   reject any topic mapping or approval for a retired key. Do not call the narrower runtime
   `invariants.DeclaringADRs` and do not infer prose or topics. Create `internal/bridge/approvals.go` to
-  parse optional authored `.awf/current-state-migration.yaml` with exactly top-level `version: 1` and
+  parse authored `.awf/current-state-migration.yaml` when present with exactly top-level `version: 1` and
   `invariantApprovals`; require each sequence entry to contain exactly nonempty string scalars
   `key: ADR-NNNN#slug` and `destination: domain/topic:slug`. Reject unknown/duplicate fields,
   non-string or empty scalars, malformed identities, and duplicate keys without consulting topics.
@@ -94,7 +94,7 @@ the coupled group.
 - [ ] **Task 1.4: Add inventory/history/approval fixtures.** Create focused bridge tests for
   Implemented and Superseded declarers/carriers, inactive Proposed/Accepted tokens, lapsed tokens,
   encoded/migration entries, duplicates, unknown bases, missing rationale, fenced examples, byte
-  preservation, and idempotence. Test absent and valid approval files plus every strict-schema
+  preservation, and idempotence. Test parser acceptance of an absent pre-preparation file and valid empty/populated files, then make readiness require the file and exact `invariantApprovals: []` when no live mapping exists. Cover every strict-schema
   rejection: wrong version, missing/extra/duplicate top-level or entry fields, wrong node kinds,
   non-string and empty scalars, malformed keys/destinations, and duplicate keys. Keep generation-10
   retirement-token tests unchanged. Run `go test ./internal/adr ./internal/bridge`; expected: both
@@ -119,8 +119,8 @@ the coupled group.
 - [ ] **Task 2.2: Derive mappings, apply approval evidence, and plan qualified marker rewrites.**
   Extend `internal/bridge/normalize.go` to scan only legacy configured sources and independently map
   each live inventory key to exactly one Plan 1 topic invariant with matching legacy Origin and
-  backing class before consulting approval data. An approval cannot select among or disambiguate
-  candidates. Require exactly one `.awf/current-state-migration.yaml` entry whose key and destination
+  exactly preserved backing class before consulting approval data. An approval cannot select among or disambiguate
+  candidates. There is no reviewed-exception path: a genuine class change requires valid reviewed migration retirement rationale and a distinct current-state claim that is not mapped as the same obligation. Require the approval file at readiness and exactly one entry whose key and destination
   match each derived live mapping; reject missing, duplicate, unknown, retired-key, malformed, and
   destination-mismatch approvals. Retired records forbid entries and compute approval only from valid
   encoded history evidence or a valid migration rationale. Then rewrite proof markers to qualified
@@ -158,8 +158,8 @@ the coupled group.
 
   Over proposed in-memory bytes, independently require strict config conversion;
   `currentState.topicCoverage: error` (warn/off fail); canonical domain keys; no Proposed/Accepted ADR;
-  planned Superseded normalization; valid migration history; exact live-invariant mapping/class with
-  retired keys unmapped; independently derived mappings followed by exact approval matching; retired
+  planned Superseded normalization; valid migration history; exact live-invariant mapping with strict class preservation and
+  retired keys unmapped; a required approval file, including an empty list for zero live mappings; independently derived mappings followed by exact approval matching; retired
   records approved only by valid encoded history or migration rationale and absent from the allowlist;
   qualified markers; repository-wide domain-owned scoped topic coverage with
   empty/global topics excluded; topic parse/references/backing/render completeness; collision-free
@@ -212,10 +212,9 @@ the coupled group.
   `HeadAndClean`, returning HEAD and refusing staged, unstaged, untracked, conflicted, or unborn states
   while retaining linked-worktree/submodule support. In `internal/manifest/manifest.go`, add optional
   `BridgeAttestation {Version, PreparedHead, TreeDigest, ADRFormatV1From, LegacyADRGaps}` with stable
-  JSON and old-lock omission. Create `internal/bridge/digest.go` over sorted path/mode/content records
-  for config, domains, ADRs, topics, configured marker sources, and optional
+  JSON and old-lock omission. Create `internal/bridge/digest.go` over sorted slash-relative path/mode/content records from the post-normalization proposed result for exactly config, domains, ADRs, topics, configured marker sources, and the required
   `.awf/current-state-migration.yaml`. Its digest record includes the approval file's exact path, mode,
-  and content. Compute cutoff as highest ADR plus one and gaps as sorted absent lower identities. Test
+  and content; no other path enters the universe. Compute cutoff as highest ADR plus one and gaps as sorted absent lower identities. Test
   every dirty state, every digest input and approval-file content/mode/add/remove invalidation, JSON
   round trip, and old lock.
 
@@ -235,7 +234,7 @@ the coupled group.
   `lock-committed` plus another hash refuses rather than rolling authority back. Any third-party image
   or failed rollback preserves the journal and reports the exact path. Chmod is part of image restore.
   Before lock commit, any failure enters `rolling-back`; after lock commit, cleanup failure leaves the
-  attested lock plus journal. Repeated recovery is byte/mode idempotent.
+  attested lock plus journal. Every valid journal phase, including `lock-committed`, blocks all project commands except `awf upgrade --recover`; postcommit recovery only cleans residue and never rolls authority back. Repeated recovery is byte/mode idempotent.
 
 - [ ] **Task 3.3: Add attestation, recovery, and the command-state guard atomically.** Implement
   `upgrade --attest-current-state` as readiness plus clean HEAD plus journaled normalization/config/
@@ -265,8 +264,8 @@ the coupled group.
   expected: all report `ok`.
 
 - [ ] **Task 3.5: Document, sync, gate, and commit.** Update architecture, config, rendering, tooling,
-  working-with-awf, bootstrap-upgrade, workflow gate/hooks, README, and changelog sources with the
-  exact check/test/gate/clean-HEAD/attest/recover sequence and Git rollback guidance. Extend Plan 1's
+  working-with-awf, bootstrap-upgrade, workflow gate/hooks, README, release guidance, and changelog sources with the
+  exact check/test/gate/clean-HEAD/attest/recover sequence, the deliberate index-pruned command-refusing window, a requirement to obtain and verify the matching current-state binary before attestation, and Git-restoration-plus-bridge-reinstallation escape guidance. Extend Plan 1's
   commands part with bridge preparation, refusal, JSON, and recovery commands so root and Sundial
   AGENTS.md render in the same behavior commit. Run `./x sync`,
   `./x check`, and `./x gate`; commit:
@@ -330,8 +329,8 @@ the coupled group.
 - Inventory independently maps every live legacy invariant exactly once, then requires one matching
   authored approval without generating claim prose; retired entries derive approval only from valid
   history evidence or rationale.
-- The optional approval file is strict authored bridge input, participates in digest invalidation,
-  remains unchanged through attestation, and never enters planned mutations merely as a digest member.
+- The approval file is optional only before preparation, required at readiness even with `invariantApprovals: []`, participates in exact path/mode/content digest invalidation,
+  remains unchanged through attestation, is journal-deleted at final upgrade, and never enters attestation mutations merely as a digest member.
 - An unattested schema-14 project retains legacy authority; an attested project and any journal state
   follow the exact Task 3.3 command matrix and refuse ordinary commands.
 - The release pipeline cannot publish the Plan 1-only tranche or an incomplete Plan 2.

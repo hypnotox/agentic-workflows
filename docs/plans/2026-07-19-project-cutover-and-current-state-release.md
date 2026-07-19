@@ -22,7 +22,7 @@ final commit is followed by a separately gated annotated release boundary throug
 
 All paths are rooted at `/home/hypno/Projects/agentic-workflows`. The exact topic set below is the
 minimum prepared corpus; claim prose must state current behavior concretely and the bridge inventory
-must prove every surviving legacy invariant maps once with its backing class unchanged.
+must prove every surviving legacy invariant maps once with its backing class unchanged and no exception path.
 
 ## File structure
 
@@ -101,7 +101,7 @@ must prove every surviving legacy invariant maps once with its backing class unc
 
   The user approved semantic claim curation during implementation rather than implementation-sized
   prose in this plan. Author root `.awf/current-state-migration.yaml` with exactly `version: 1` and
-  `invariantApprovals`; after the bridge independently derives each live inventory mapping, add exactly
+  `invariantApprovals`; use the exact empty sequence `invariantApprovals: []` if a project has zero live mappings. After the bridge independently derives each live inventory mapping, add exactly
   one entry containing only nonempty string scalar `key: ADR-NNNN#slug` and
   `destination: domain/topic:slug` for that mapping. Repository review and commit review establish
   approval provenance; do not add reviewer, timestamp, signature, or authored `approved` fields.
@@ -113,7 +113,7 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `approved` to be true from an exact matching entry and every retired key's computed `approved` to be
   true only from valid encoded history evidence or valid migration rationale. Claims consolidate
   current contracts rather than mirroring ADR count. No inventory key may be missing, duplicated,
-  retired-and-mapped, retired-and-approved, class-changed, or destination-mismatched. Incremental
+  retired-and-mapped, retired-and-approved, class-changed, or destination-mismatched. A genuine class change must instead carry valid reviewed migration retirement rationale and produce a distinct current-state claim that is not mapped as the same obligation. Incremental
   readiness may still report in-flight ADRs until Task 1.5; require zero findings and all adjudications
   approved only afterward.
 
@@ -134,7 +134,7 @@ must prove every surviving legacy invariant maps once with its backing class unc
   ADR-0134, ADR-0135, ADR-0136 to Implemented after their resulting claims/runtime are present. Set
   Sundial ADR-0003 to Abandoned with rationale that the speculative cache/schedule seam was never
   implemented. Let bridge normalization change every Superseded legacy ADR to Implemented and append
-  required Migration history; do not fabricate State changes on legacy ADRs.
+  required Migration history; do not fabricate State changes on legacy ADRs. Assert ADR-0120's body remains byte-for-byte unchanged while its `related:` frontmatter includes ADR-0136, limiting the relation regression scope to frontmatter and generated indexes.
 
 - [ ] **Task 1.6: Apply all sealed Plan 3 and documentation changes.** Apply Plan 3 Phases 2-5 runtime,
   tests, deletion, templates, skills, agents, AGENTS parts, workflow/working-with-awf, architecture,
@@ -189,17 +189,24 @@ must prove every surviving legacy invariant maps once with its backing class unc
     git commit -m "feat(awf): prepare current-state authority cutover"
   ```
 
-  Record `prep_head`, require clean status, and do not amend this commit.
+  Record `prep_head`, require clean status, and do not amend this commit. Before any attestation, build the matching current-state binary from this exact commit, record and verify its SHA-256 and version, and keep it available for immediate seal consumption:
+
+  ```sh
+  go build -trimpath -o "$art/awf-current" ./cmd/awf
+  sha256sum "$art/awf-current" | tee "$art/awf-current.sha256"
+  sha256sum -c "$art/awf-current.sha256"
+  "$art/awf-current" version
+  ```
 
 ## Coupled Phases 2-3: Attest and immediately consume both seals
 
-No commit is legal between these phases: an attested bridge lock intentionally refuses ordinary
-commands until the current runtime consumes it.
+No commit is legal between these phases: an attested bridge lock intentionally prunes legacy indexes and refuses ordinary commands until the prebuilt, verified current runtime consumes it. If that binary is unavailable or fails identity verification, do not attest; escape from the window is Git restoration plus bridge reinstallation.
 
 - [ ] **Task 2.1: Produce exact disjoint attestation patches.** Run:
 
   ```sh
   prep_head="$(git rev-parse HEAD)"
+  sha256sum -c "$art/awf-current.sha256"
   git worktree add --detach /tmp/awf-cs-root "$prep_head"
   git worktree add --detach /tmp/awf-cs-sundial "$prep_head"
   (cd /tmp/awf-cs-root && sha256sum -c "$art/awf-bridge.sha256" &&
@@ -249,13 +256,12 @@ commands until the current runtime consumes it.
 - [ ] **Task 3.1: Build and run the current runtime.** In integration run:
 
   ```sh
-  go build -trimpath -o "$art/awf-current" ./cmd/awf
+  sha256sum -c "$art/awf-current.sha256"
   "$art/awf-current" upgrade
   (cd examples/sundial && "$art/awf-current" upgrade)
   ```
 
-  Each invocation verifies seal version 1, PreparedHead, and the digest including its approval file's
-  path, mode, and content; journals the complete final plan including deletion of that file; replaces
+  Each invocation verifies seal version 1, PreparedHead, and exactly the sorted slash-relative path/mode/content digest records over the post-normalization proposed result for config, domains, ADRs, topics, configured marker sources, and the required approval file; journals the complete final plan including deletion of that file; replaces
   lock last; clears attestation; promotes cutoff/gaps; and removes the bridge approval parser/runtime
   claim.
 
@@ -372,8 +378,8 @@ commands until the current runtime consumes it.
 
 ## Verification
 
-- Bridge readiness reports zero missing invariant mappings, approvals, markers, topic coverage, or
-  in-flight ADRs, and every adjudication has computed approval.
+- Bridge readiness requires each approval file, including exact `invariantApprovals: []` for zero live mappings, reports zero missing invariant mappings, approvals, markers, topic coverage, or
+  in-flight ADRs, and every adjudication has computed approval with strict backing-class preservation.
 - Both attestations share the preparation HEAD, have disjoint patches, preserve both approval files
   unchanged, and exclude those files from mutations merely due to digest membership.
 - Final upgrades journal-delete both approval files; permanent locks have exact cutoffs/gaps and no
