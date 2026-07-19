@@ -33,14 +33,16 @@ verification commands and affected sets remain exact.
 
 - **Created:** `internal/snapshot/{snapshot,index}.go` and tests in Phase 1; coupled slice adds
   `internal/snapshot/{working,commit,range}.go`, `internal/currentstate/{check,transition,
-  legacy_absence}.go`, `internal/adr/{format,operations,history,digest}.go`, and exact matching tests.
+  legacy_absence}.go`, `internal/adr/{format,operations,history,digest}.go`, permanent
+  `internal/upgrade/{journal,verify}.go`, and exact matching tests.
 - **Modified:** `internal/{git,audit,adr,topic,manifest,project,clispec,catalog}`; `cmd/awf/{main,
   upgrade,check,context,invariants,topic,dispatch}`; ADR/domain/hook/doc/skill/agent templates; authored
   `.awf/` workflow, agent-guide, ADR guide, architecture, glossary, pitfalls, config-reference, and
   domain sources; `README.md`; `changelog/CHANGELOG.md`.
 - **Deleted in the coupled slice:** `internal/adr/{coverage,citations,domain}.go` and tests; unused
-  declarations; legacy invariant runtime if replaced; migration-only bridge inventory/history/
-  normalize/readiness/snapshot code; desired `docs/decisions/ACTIVE.md`; every legacy authority caller.
+  declarations; legacy invariant runtime if replaced; the entire migration-only `internal/bridge`
+  package after moving only journal and sealed verification into `internal/upgrade`; desired
+  `docs/decisions/ACTIVE.md`; every legacy authority caller.
 - **Generated in the coupled slice:** `docs/decisions/INDEX.md`, topic-only domain docs, every changed
   root/runtime/Sundial rendering, and both permanent locks. Plan 4 enumerates the actual fan-out after
   `./x sync` with `git diff --name-only` and asserts it against the output plan.
@@ -158,8 +160,9 @@ before these runtime edits are applied. The shared final commit subject is defin
   coverage, output-plan, and transition predicate. The final binary imports no bridge inventory or
   cross-schema adapter.
 
-- [ ] **Task 5.2: Run journaled final upgrade.** Reuse the version-1 image/phase/recovery contract;
-  validate the complete operation list, replace lock last, clear attestation, and store permanent
+- [ ] **Task 5.2: Run journaled final upgrade from the permanent package.** Move the version-1
+  image/phase/recovery contract into `internal/upgrade`; delete `internal/bridge` and deny its import.
+  Validate the complete operation list, replace lock last, clear attestation, and store permanent
   cutoff/gaps. Tests in `cmd/awf/upgrade_test.go`, `internal/manifest/manifest_test.go`, and journal
   tests cover version/HEAD/digest/path/mode mismatches, each journal phase, rollback/cleanup failures,
   lock-last failure, seal invalidation, cutoff/gap promotion, and current-state command enablement.
@@ -185,7 +188,8 @@ before these runtime edits are applied. The shared final commit subject is defin
 
   Expected: package `ok` and `deadcodecheck: no production dead code`.
 
-- [ ] **Task 5.5: Update the exact authored fan-out.** Modify ADR template/readme and index part;
+- [ ] **Task 5.5: Put the exact authored fan-out into the sealed preparation commit.** Before
+  attestation, modify ADR template/readme and index part;
   brainstorming, proposing/reviewing/lifecycle/planning/execution/implementation-review/retrospective
   skill templates and project parts; all three reviewer agents; AGENTS invariants/workflow/commands/
   document-map parts; workflow and working-with-awf templates; architecture components/data-flow;
@@ -194,18 +198,25 @@ before these runtime edits are applied. The shared final commit subject is defin
 
 ## Shared Plan 4 closing sequence
 
-Plan 4 must name the preparation commit and execute this exact order:
+Plan 4 must name literal worktrees/commands and execute this approved order:
 
-1. Under the bridge binary, commit prepared awf/Sundial config/topics/markers/ADR normalization while
-   legacy authority still runs; run `./x sync`, `./x check`, configured tests, and `./x gate`.
-2. From that clean HEAD, attest both adopters. Do not commit attestation; HEAD must remain PreparedHead.
-3. Apply the complete uncommitted Plan 3 runtime patch without changing sealed paths; build it and run
-   plain final upgrade for root and Sundial, consuming both seals.
-4. Run the final runtime's `./x sync`, `./x check`, and `./x gate`. Assert both permanent locks carry
-   cutoff/gaps and no attestation; INDEX has both sections; ACTIVE/domain ADR indexes are absent; output
-   plan equals generated fan-out; legacy-absence tests are clean.
-5. Update Notes and set both Plan 3 and Plan 4 to Implemented; transition ADR-0133-0136 to their Plan 4
-   outcomes; sync/check/gate again; stage exact output-plan paths; commit with Plan 4's declared subject.
+1. At the last Plan 2 HEAD, build a pinned bridge binary outside every worktree and record its SHA-256.
+2. Apply the complete Plan 3 runtime patch plus Plan 4 adopter corpus/config/markers, ADR terminal
+   outcomes, templates, and every digest-covered authored doc. Use only the pinned bridge binary for
+   readiness, sync, and check; run source tests and `./x gate`; commit this **preparation commit**. All
+   configured marker-source and other sealed paths are now frozen.
+3. Create two clean Git worktrees at that same preparation HEAD. In one, use the pinned bridge binary
+   to attest the root project; in the other, attest `examples/sundial`. Export each disjoint
+   attestation/output patch, verify neither changes a sealed authored input, and apply both patches to
+   an integration worktree whose HEAD remains the preparation commit.
+4. Build the current-state binary from the preparation commit and run plain final upgrade for root and
+   Sundial, consuming both seals through `internal/upgrade`. Run the final runtime's `./x sync`,
+   `./x check`, and `./x gate`.
+5. Assert both permanent locks carry cutoff/gaps and no attestation; INDEX has both sections;
+   ACTIVE/domain ADR indexes are absent; output plan equals generated fan-out; legacy-absence tests
+   are clean. Update Notes and set Plans 3-4 Implemented; sync/check/gate again; commit the combined
+   attestation/final-upgrade/generated/lifecycle result with Plan 4's declared subject, then perform
+   Plan 4's separately gated release-tag task.
 
 ## Verification
 
