@@ -19,7 +19,7 @@ precedent) - empty or absent means no stripping. Migrations validate serialized 
 
 ### Implemented
 
-- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md)
+- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md) → superseded by ADR-0020
 - [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](../decisions/0009-tree-based-config-layout.md) → superseded by ADR-0015, ADR-0016
 - [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](../decisions/0010-versioned-lock-and-awf-upgrade.md)
 - [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)

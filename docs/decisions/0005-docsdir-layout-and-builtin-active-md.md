@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-25
 tags: [active-md, layout-namespace]
-related: [1, 4]
+related: [1, 4, 20, 131]
 domains: [config, adr-system]
 ---
 # ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation

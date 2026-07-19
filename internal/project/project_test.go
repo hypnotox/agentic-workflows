@@ -782,7 +782,7 @@ func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	}
 }
 
-// invariant: sync-generates-active-md
+// invariant: sync-always-writes-active-md
 // invariant: check-active-md-stale
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
@@ -830,7 +830,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	}
 }
 
-// invariant: sync-generates-active-md
+// invariant: sync-always-writes-active-md
 func TestSyncRendersPlaceholderActiveMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)

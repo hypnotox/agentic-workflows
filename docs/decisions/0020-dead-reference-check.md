@@ -61,10 +61,12 @@ dirs), and a dead internal link in awf's own output is a deterministic defect: t
    plus a placeholder line), so the document map's `ACTIVE.md` link resolves out of the box. This is
    a **partial-item supersedence** (recorded in this successor's prose with `related:` linkage, per
    `docs/decisions/README.md`) of two Implemented-ADR invariants:
-   - **ADR-0005 `inv: sync-generates-active-md`**: its "an absent or ADR-less decisions dir ... writes
-     **no** `ACTIVE.md` and prunes any previously locked one" clause no longer holds. `sync` now
-     always writes `ACTIVE.md`; the regenerate-and-compare drift path treats it as always-present
-     (it is never `orphaned`-to-absent for a zero-ADR tree). The with-ADRs grouping is unchanged.
+   - **ADR-0005 `inv: sync-generates-active-md`**
+     (`supersedes-invariant: ADR-0005#sync-generates-active-md`): its "an absent or ADR-less
+     decisions dir ... writes **no** `ACTIVE.md` and prunes any previously locked one" clause no
+     longer holds. `sync` now always writes `ACTIVE.md`; the regenerate-and-compare drift path
+     treats it as always-present (it is never `orphaned`-to-absent for a zero-ADR tree). The
+     with-ADRs grouping is unchanged.
    - **ADR-0006 `inv: render-active-md`**: its "returns `""` when the directory holds no ADRs"
      clause no longer holds. `internal/adr.RenderActiveMD` returns the zero-ADR placeholder index
      instead. Its "byte-identical to the pre-rename generator" clause for a populated directory is
