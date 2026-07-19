@@ -101,8 +101,12 @@ func ApplyApprovals(inventory Inventory, mappings []Mapping, approvals Approvals
 	for _, entry := range inventory.Entries {
 		if !entry.Active {
 			retired[string(entry.Key)] = true
-			if entry.History == nil {
-				return mappings, fmt.Errorf("retired invariant %s lacks migration history", entry.Key)
+			// Retirement is established by an effective token (Carrier set; normalization
+			// encodes its ledger line) or an authored migration ledger entry (History set).
+			// Read-only readiness cannot pre-write the encoded line, so a token alone is
+			// sufficient evidence.
+			if entry.Carrier == "" && entry.History == nil {
+				return mappings, fmt.Errorf("retired invariant %s lacks retirement evidence", entry.Key)
 			}
 		}
 	}

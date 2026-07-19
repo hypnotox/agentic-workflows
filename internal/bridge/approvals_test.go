@@ -74,4 +74,11 @@ func TestApplyApprovals(t *testing.T) {
 	if err != nil || !got[0].Approved {
 		t.Fatalf("valid: %#v %v", got, err)
 	}
+	// A token-retired invariant whose encoded ledger line is not yet present (the tool
+	// appends it during normalization, and read-only --check cannot pre-write it) is valid
+	// retirement evidence: the effective token carried by ADR-0002 establishes retirement.
+	tokenRetired := Inventory{Entries: []LegacyInvariant{{Key: "ADR-0001#x", Active: false, Carrier: "0002"}}}
+	if _, err := ApplyApprovals(tokenRetired, nil, Approvals{Present: true}); err != nil {
+		t.Fatalf("token-retired without ledger rejected: %v", err)
+	}
 }

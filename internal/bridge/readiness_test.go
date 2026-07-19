@@ -280,9 +280,12 @@ func TestReadinessHelpers(t *testing.T) {
 		t.Fatal("exclude")
 	}
 	var adjudicated Report
-	buildAdjudications(&adjudicated, Inventory{Entries: []LegacyInvariant{{Key: "ADR-0001#old", Declarer: "0001", Backing: "unbacked", Active: false, History: &MigrationHistoryEntry{Basis: "encoded"}}}}, nil)
-	if !adjudicated.InvariantAdjudications[0].Approved {
-		t.Fatal("retired approval")
+	buildAdjudications(&adjudicated, Inventory{Entries: []LegacyInvariant{
+		{Key: "ADR-0001#old", Declarer: "0001", Backing: "unbacked", Active: false, History: &MigrationHistoryEntry{Basis: "encoded"}},
+		{Key: "ADR-0002#tok", Declarer: "0002", Backing: "test", Active: false, Carrier: "0003"},
+	}}, nil)
+	if !adjudicated.InvariantAdjudications[0].Approved || !adjudicated.InvariantAdjudications[1].Approved {
+		t.Fatalf("retired approval: %#v", adjudicated.InvariantAdjudications)
 	}
 	copyRoot := t.TempDir()
 	mustWrite(t, filepath.Join(copyRoot, "file"), []byte("x"), 0o644)

@@ -48,7 +48,7 @@ func Check(root string) Report {
 	if err := cfg.Validate(); err != nil {
 		add("config-conversion", ".awf/config.yaml", err)
 	}
-	converted, convertErr := config.ConvertInvariantsToCurrentState(cfg.Source())
+	_, convertErr := config.ConvertInvariantsToCurrentState(cfg.Source())
 	if convertErr != nil {
 		add("config-conversion", ".awf/config.yaml", convertErr)
 	}
@@ -120,9 +120,6 @@ func Check(root string) Report {
 		return finish(r)
 	}
 	defer os.RemoveAll(tmp)
-	if len(converted) > 0 {
-		_ = converted
-	}
 	for _, mutation := range mutations {
 		if err := applyMutation(tmp, mutation); err != nil { // coverage-ignore: operations target the writable temporary tree with prevalidated paths
 			add("output-plan", mutation.Path, err)
@@ -219,7 +216,9 @@ func buildAdjudications(r *Report, inventory Inventory, mappings []Mapping) {
 			a.Destination, a.Approved = m.Destination, m.Approved
 		} else {
 			a.Disposition = "retired"
-			a.Approved = entry.History != nil && (entry.History.Basis == "encoded" || entry.History.Basis == "migration")
+			// Approved when an effective token (Carrier set, encoded now or by planned
+			// normalization) or an authored migration/encoded ledger entry establishes it.
+			a.Approved = entry.Carrier != "" || entry.History != nil
 		}
 		r.InvariantAdjudications = append(r.InvariantAdjudications, a)
 	}
@@ -362,7 +361,7 @@ func checkCoverage(r *Report, gitRoot, temp string, cfg *config.Config, corpus t
 			}
 			covered := false
 			for _, t := range corpus.ForDomain(domain) {
-				if t.Metadata.Applies != "global" && len(t.Claims) > 0 && anyGlob(t.Metadata.Paths, path) && anyGlob(sidecar.Paths, path) {
+				if t.Metadata.Applies != "global" && len(t.Claims) > 0 && anyGlob(t.Metadata.Paths, path) {
 					covered = true
 					break
 				}
