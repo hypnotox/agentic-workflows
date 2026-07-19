@@ -70,6 +70,11 @@ ADR-0131's per-carrier slug scoping. Every later site set comes from its output.
   the retirement token at item 9 must produce no finding, and the same carrier with only
   `cites-invariant:` at item 1 must still report the item 9 claim.
 
+  **The test carries `// invariant: citation-check-slug-claims-per-carrier`.** The amendment
+  declared that slug in ADR-0131's Invariants section, and a backed slug with no proof marker reds
+  `awf check` the moment ADR-0131 becomes `Implemented`. Both halves of the rule need exercising,
+  since the second is what keeps the scoping from costing recall.
+
   ```
   go build -o /tmp/awf-planD-bin ./cmd/awf
   /tmp/awf-planD-bin check 2>&1 | grep -E 'doc-gated-skill-suppressed|bootstrap-pin'
@@ -295,10 +300,22 @@ marker before trusting the declaration.
   leave it untouched. The successor is already declared in ADR-0131's Invariants section, so no ADR
   Invariants edit is needed.
 
+  **Third edit: ADR-0005 gains two `related:` entries in this same commit**, `20` and `131`
+  (`related: [1, 4]` today, so both append). They are different obligations and neither satisfies
+  the other. `20` is required by the check: `internal/project/supersession.go:179` demands the
+  target name the **carrier** of the token, and the carrier here is ADR-0020, not ADR-0131. `131`
+  is the documentation edge ADR-0131 Decision 1 asks for, so a reader of ADR-0005 reaches the ADR
+  that redeclared its slug. ADR-0009 is the landed precedent for carrying both: its `related:`
+  names its carriers `15` and `16` alongside `131`.
+
   ```
-  ./x sync && ./x gate
-  git add docs/decisions/0020-dead-reference-check.md internal/project/project_test.go docs/decisions/ACTIVE.md .awf/awf.lock
+  ./x sync && ./x check && ./x gate
+  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0005-docsdir-layout-and-builtin-active-md.md internal/project/project_test.go docs/decisions/ACTIVE.md .awf/awf.lock
   ```
+
+  `./x check` is not optional here and `./x gate` does not cover it: the gate runs tests, coverage,
+  vet, lint, deadcode, and pincheck, but never `awf check`. Every corpus finding this phase can
+  produce is invisible to the gate alone. Expected: `awf check: clean`.
 
   Expected: gate green, `awf invariants: clean`. The advisory note list grows by one, because the
   retargeted marker now names a slug only the still-`Proposed` ADR-0131 declares. A growing note
@@ -318,9 +335,13 @@ marker before trusting the declaration.
   `TestRenderActiveMDPlaceholderWhenNoADRs`) retargeted to
   `render-active-md-grouped-or-placeholder`.
 
+  **ADR-0006 gains `20` and `131` in `related:` in this same commit** (`related: [1, 5]` today, so
+  both append), for the reasons given in Task 2.2: `20` is the carrier edge the check enforces,
+  `131` the documentation edge Decision 1 asks for.
+
   ```
-  ./x sync && ./x gate
-  git add docs/decisions/0020-dead-reference-check.md internal/adr/adr_test.go docs/decisions/ACTIVE.md .awf/awf.lock
+  ./x sync && ./x check && ./x gate
+  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0006-frontmatter-parser-and-skill-validation.md internal/adr/adr_test.go docs/decisions/ACTIVE.md .awf/awf.lock
   ```
 
   ```commit
@@ -339,32 +360,33 @@ marker before trusting the declaration.
   narrowed the successor to what the marker asserts; re-establishing the lock-file-removal or
   authored-config-survival clauses is a successor ADR's job, with the assertion that earns it.
 
+  **ADR-0023 gains `131` only** (`related: [3, 16, 32]` today, so an append). Unlike Tasks 2.2 and
+  2.3 it already carries its carrier edge `32`, so only the documentation edge is owed here.
+
   ```
-  ./x sync && ./x gate
-  git add docs/decisions/0032-remove-automatic-hook-handling.md internal/project/install_test.go docs/decisions/ACTIVE.md .awf/awf.lock
+  ./x sync && ./x check && ./x gate
+  git add docs/decisions/0032-remove-automatic-hook-handling.md docs/decisions/0023-safe-adoption-existing-repos.md internal/project/install_test.go docs/decisions/ACTIVE.md .awf/awf.lock
   ```
 
   ```commit
   docs(adr): retire ADR-0023's stale uninstall invariant
   ```
 
-- [ ] **Task 2.5: Add the remaining back-pointer edges and commit.** ADR-0005, ADR-0006, and
-  ADR-0023 gain `131` in `related:` per ADR-0131 item 1 (all appends). Derive any others:
+- [ ] **Task 2.5: Sweep for any back-pointer edge still owed.** Tasks 2.2 to 2.4 each land their
+  own edges, because they must: `.awf/hooks/pre-commit.sh` runs `./x check`, and a
+  `supersedes-invariant:` token whose target does not name the carrier raises `adr-token-backpointer`
+  at commit time. Deferring the edges to a trailing commit would make those three tasks
+  uncommittable, which is the defect this plan records as having red-lined Plan B Phase 1.
+
+  This task is therefore a derived sweep, not a scheduled edit. Run:
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-token-backpointer'
   ```
 
-  Expected after the edits: no output.
-
-  ```
-  ./x sync && ./x check && ./x gate
-  git add docs/decisions/ .awf/awf.lock
-  ```
-
-  ```commit
-  docs(adr): add the retirement back-pointer edges
-  ```
+  Expected: no output, and no commit. If the command reports anything, an earlier task's edge was
+  missed; fix it in a follow-up commit naming the target, and record which task under-scheduled it
+  in the Notes.
 
 ## Verification
 
@@ -413,6 +435,18 @@ six resolve when Plan C Task 3.6 flips ADR-0131 to `Implemented`.
   ADR-0131's own amendment added claims to the Decision items defining the check, and the split was
   never right at any commit. Plan C's execution status carries a third figure. Correct that line
   when Plan C Phase 3 resumes, or delete it in favour of the command.
+- **Plan C Task 3.3's backing enumeration is stale.** It says "back all twelve ADR-0131
+  invariants", a list written before the amendment. The ADR now declares more: this plan's Task 0.2
+  adds a proof for `citation-check-slug-claims-per-carrier`, and Phase 2 retargets markers onto
+  `sync-always-writes-active-md`, `render-active-md-grouped-or-placeholder`, and
+  `uninstall-removes-lock-entries`. Task 3.3 must cover the residue rather than the twelve, or
+  ADR-0131's flip lands an unbacked slug. Enumerate from the ADR's Invariants section, not from the
+  plan's figure.
+- **Plan C Task 3.4's doc sweep names the right surfaces but predates the amendment.** Its surface
+  list (`.awf/docs/glossary.yaml`, the two `current-state.md` parts, `adr-reviewer.yaml`) is still
+  correct; its content is not. The sweep must additionally teach the per-carrier slug-scoping split
+  (slug claims satisfied anywhere in the carrier's Decision section, `cites-invariant:` suppressing
+  only at its own item) and name the three redeclared slugs in the invariants domain current-state.
 - **The `cites:` token has no changelog entry.** `grep -n cites changelog/CHANGELOG.md` returns
   nothing, yet the parser change landed in `b1be6de4` after `v0.16.0` and is adopter-facing. Plan C
   Task 3.4's doc sweep owes an `[Unreleased]` entry; recorded here because `repoaudit` cannot see it
