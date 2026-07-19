@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [133, 134, 135, 136]
-status: Proposed
+status: Implemented
 ---
 # Plan: Bridge Migration Tooling
 
@@ -344,3 +344,26 @@ the coupled group.
   consumer deletion. Plan 2 owns only the migration-safe terminal deletion projection and cross-schema
   attestation adapter.
 - Plan 4 authors and attests the real awf/Sundial corpora and cuts the breaking release.
+
+## Implementation findings
+
+- The coupled Phases 1-2 and Phase 3 each landed as a single commit, as the dead-code coupling
+  anticipated: their bridge functions have no main-reachable caller until `upgrade --check` and
+  `upgrade --attest-current-state` respectively.
+- Phases 1-2 review surfaced a readiness deadlock. A legacy invariant retired by an effective
+  retirement token, whose encoded `## Migration history` ledger line was not yet present, was rejected
+  at readiness even though normalization plans to append that exact line and read-only `upgrade --check`
+  cannot pre-write it (attestation needs readiness, but readiness demanded the line only attestation
+  writes). Fixed by treating the effective token as valid encoded-history evidence at the approval and
+  adjudication sites, per ADR-0136 Decisions 4-5. The plan's fixtures pre-wrote ledgers and masked it;
+  a regression test now exercises the token-without-ledger path.
+- Phase 3 review removed one false `coverage-ignore` on the journal rollback read: that branch is
+  reached deterministically by a directory sitting at the lock path during a halted rollback, not by a
+  concurrent-removal race, and an existing failure-injection test already covers it.
+- Phase 4.1's sentinel flip required inverting three test guards (two in `cmd/releasecheck/main_test.go`,
+  one in `internal/project/version_test.go`). The existing release-workflow-order pins already enforce
+  that GoReleaser cannot run while releasecheck refuses, so no new workflow steps were added.
+- Bridge command prose was not pushed into `examples/sundial` `AGENTS.md` `## Commands` (that section
+  renders each adopter's own commands sidecar). Sundial instead surfaces the bridge guidance through its
+  rendered `docs/working-with-awf.md`, `.awf/upgrade.sh`, and the shared `awf upgrade --help`, following
+  the Phase-2 precedent; Task 4.2's oracle test asserts those rendered surfaces.
