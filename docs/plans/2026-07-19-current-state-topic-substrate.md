@@ -39,11 +39,15 @@ Each production task is an exhaustive symbol-and-branch diff contract: add only 
 and behavior, preserve every explicitly retained path, and make no unrelated edit. Each new-file task
 owns the complete contents of that file family through the named types, functions, validation
 branches, and tests; formatting/import details are determined by `gofmt` and the compiler rather than
-copied as brittle pre-implementation boilerplate.
+copied as brittle pre-implementation boilerplate. During review, the user explicitly approved two
+narrow plan-convention exceptions for this effort: symbol-and-branch contracts replace implementation-
+sized literal Go patch hunks, and tightly coupled parser/render/test file families may share one task
+when they close under one package test and one phase commit. These exceptions do not permit vague
+behavior, deferred branches, unrelated edits, or multi-commit batching.
 
 ## File structure
 
-- **Created:** `internal/topic/{topic,corpus,markers,render,scaffold,query}.go` and matching `_test.go`
+- **Created:** `internal/topic/{topic,corpus,markers,coverage,render,scaffold,query}.go` and matching `_test.go`
   files; `internal/project/topics.go`, `internal/project/topics_test.go`;
   `templates/topics/{topic,index}.md.tmpl`; `cmd/awf/{topic,topic_test}.go`.
 - **Modified:** `internal/config/{config,config_test}.go`, `internal/configspec/{spec,spec_test}.go`,
@@ -69,9 +73,11 @@ copied as brittle pre-implementation boilerplate.
   `internal/config/config.go`, add `CurrentState *CurrentStateConfig `yaml:"currentState"`` to
   `Config` without modifying `Invariants`. Define `CurrentStateConfig` with `Sources
   []CurrentStateSource`, `TestGlobs []string`, `TopicCoverage string`, `TopicFanout string`, and
-  `MaxTopicsPerPath int`; define `CurrentStateSource` with exactly `Globs []string`, `Marker
-  string`, and optional `Close string`. In `Config.Validate`, normalize absent severity and maximum
-  values to `error`, `warn`, and `8`; accept only `error|warn|off`; require a positive maximum;
+  `MaxTopicsPerPath *int`; define `CurrentStateSource` with exactly `Globs []string`, `Marker
+  string`, and optional `Close string`. Keep the pointer presence-aware through strict YAML decoding,
+  expose an effective-value helper that returns 8 only when it is nil, and never replace an explicit
+  value during validation. In `Config.Validate`, normalize absent severities to `error` and `warn`;
+  accept only `error|warn|off`; reject an explicitly nonpositive maximum;
   reject duplicate or invalid anchored source/test globs, an empty source glob list, an empty marker,
   and an explicitly empty close token. Preserve the YAML decoder's `KnownFields(true)` rejection of
   unknown nested fields. Do not derive, copy, remove, or consult `Invariants` in this phase.
@@ -82,8 +88,8 @@ copied as brittle pre-implementation boilerplate.
   `currentState.topicCoverage`, `currentState.topicFanout`, and
   `currentState.maxTopicsPerPath`. Describe them as topic validation and bridge-preparation inputs,
   explicitly saying they do not switch normal context or invariant authority. Extend
-  `internal/project/configreference.go`'s `currentValue` projection so absent values display the
-  documented defaults and present values render deterministically. Extend
+  `internal/project/configreference.go`'s `currentValue` projection so a nil maximum displays the
+  documented default 8 while an explicit positive pointer value renders deterministically. Extend
   `internal/configspec/spec_test.go` parity coverage and
   `internal/project/configreference_test.go` golden/current-value cases; never add a second
   hand-maintained config-reference table.
@@ -182,16 +188,31 @@ copied as brittle pre-implementation boilerplate.
   and forbid a proof for an unbacked invariant. Effective path scope is the intersection of topic
   selectors and the owning domain's sidecar paths; only `applies: global` bypasses it.
 
-- [ ] **Task 2.4: Add focused parser/corpus tests.** Create
-  `internal/topic/{topic,corpus,markers}_test.go` with table fixtures for every accepted and rejected
-  grammar branch, paired-tree discovery, domain resolution, path bounding/global scope, provenance
-  statuses, duplicate identities, direct references/cycles, source comment forms, proof/test-glob
-  scope, and deterministic diagnostics. Use temporary repositories and the real ADR parser rather
-  than mocks. Run `go test ./internal/topic`; expected: `ok`.
+- [ ] **Task 2.4: Add the focused topic-coverage evaluator used by queries.** Create
+  `internal/topic/coverage.go` with `CoverageForTopic` and `TopicCoverage` result types. Given one
+  parsed topic, its owning domain's anchored paths, and its marker index, return declared applicability,
+  effective domain-intersected selectors, whether the topic contains at least one claim, and sorted
+  marker sites. `applies: global` reports global effective scope but never scoped-coverage
+  satisfaction; a path-scoped zero-claim shell reports its selectors but
+  `SatisfiesScopedCoverage: false`; a nonempty path-scoped topic reports true only for paths in the
+  domain/topic intersection. This evaluator does not enumerate the working tree, alter
+  `awf context --uncovered`, or apply configured severity; Plan 3 owns snapshot path universes and
+  repository-wide coverage diagnostics. Call it from the Phase 2 render-model builder to populate the
+  generated topic document's applicability summary, from `awf topic --coverage` in Phase 4, and from
+  the scaffold pipeline test in Phase 3; it is therefore production-reachable at the Phase 2 gate.
 
-- [ ] **Task 2.5: Add topic templates and deterministic render models.** Create
-  `templates/topics/topic.md.tmpl` with the generated title and summary followed by the authored
-  `current-state` part, and `templates/topics/index.md.tmpl` with a title/summary-sorted list linking
+- [ ] **Task 2.5: Add focused parser/corpus/coverage tests.** Create
+  `internal/topic/{topic,corpus,markers,coverage}_test.go` with table fixtures for every accepted and
+  rejected grammar branch, paired-tree discovery, domain resolution, path bounding/global scope,
+  provenance statuses, duplicate identities, direct references/cycles, source comment forms,
+  proof/test-glob scope, empty/global/nonempty scoped-coverage results, and deterministic diagnostics.
+  Use temporary repositories and the real ADR parser rather than mocks. Run
+  `go test ./internal/topic`; expected: `ok`.
+
+- [ ] **Task 2.6: Add topic templates and deterministic render models.** Create
+  `templates/topics/topic.md.tmpl` with the generated title, summary, and `CoverageForTopic`
+  applicability summary followed by the authored `current-state` part, and
+  `templates/topics/index.md.tmpl` with a title/summary-sorted list linking
   every topic in one domain. Embed `topics/**` in `templates/embed.go`. Create
   `internal/topic/render.go` with deterministic models for the individual document, per-domain index,
   and compact domain-navigation list. Route authored Markdown through the existing raw convention-part
@@ -201,7 +222,7 @@ copied as brittle pre-implementation boilerplate.
   current Decisions section and per-domain ADR index. Empty domains render coherent topic navigation
   rather than a no-value token.
 
-- [ ] **Task 2.6: Integrate the producer with project loading and output planning.** Create
+- [ ] **Task 2.7: Integrate the producer with project loading and output planning.** Create
   `internal/project/topics.go` with one lazily cached topic corpus per invocation, reset alongside the
   ADR corpus in `beginInvocation`. Extend `internal/project/render.go` and
   `internal/project/output_plan.go` so each paired topic produces
@@ -217,7 +238,7 @@ copied as brittle pre-implementation boilerplate.
   orphan metadata, orphan parts, unexpected sections/files, invalid path components, and unconfigured
   domain directories. Do not add topics to `kindDescriptors` or any enable array.
 
-- [ ] **Task 2.7: Prove the complete render lifecycle.** Create
+- [ ] **Task 2.8: Prove the complete render lifecycle.** Create
   `internal/topic/render_test.go` and `internal/project/topics_test.go`; extend
   `internal/project/{output_plan,sweep,domains,project,drift,render_tree}_test.go`. Cover a valid
   path-scoped and global topic, deterministic index order, compact domain links with Decisions still
@@ -231,7 +252,7 @@ copied as brittle pre-implementation boilerplate.
 
   Expected: both packages report `ok`.
 
-- [ ] **Task 2.8: Document the unreleased producer, sync, verify, and commit.** Update the authored
+- [ ] **Task 2.9: Document the unreleased producer, sync, verify, and commit.** Update the authored
   architecture component/data-flow parts and the `adr-system`, `config`, `invariants`, and `rendering`
   current-state parts listed in File structure. State precisely that topics are parsed and rendered
   preparation artifacts in this unreleased tranche, that legacy ADR and invariant authority still
@@ -408,9 +429,11 @@ copied as brittle pre-implementation boilerplate.
 
 ## Notes
 
-- User decision during full plan review: preserve the approved decomposition by treating this plan
-  and the bridge-migration plan as one unreleased tranche. No release may occur between them; Plan 2
-  must add bridge-lock refusal before publication.
+- User decisions during plan review: preserve the approved decomposition by treating this plan and
+  the bridge-migration plan as one unreleased tranche; allow the two narrow exact-patch and coupled-
+  file-task exceptions recorded under Path and diff notation; add the focused Plan 1 coverage
+  evaluator; and use a presence-aware `*int` for `maxTopicsPerPath`. No release may occur between
+  Plans 1 and 2; Plan 2 must add bridge-lock refusal before publication.
 - Migration inventory, readiness, attestation, recovery, and the transaction journal belong to the
   bridge-migration plan.
 - Topic-backed normal context/invariants, new-format ADR lifecycle and State changes, staged/range
