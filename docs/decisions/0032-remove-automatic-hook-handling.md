@@ -105,7 +105,8 @@ Grounding discoveries that shape the design:
    `Superseded by    ADR-0032`. It **partially supersedes ADR-0023** (recorded via `related`;
    ADR-0023 keeps `Implemented`): item 2 (`core.hooksPath` guard) and item 3 (subdir resolution
    for `setup`) go away with the `setup` command, and item 4's "unset `core.hooksPath`" clause is
-   dropped (`uninstall` now only removes lock-tracked files). ADR-0023's
+   dropped (`uninstall` now only removes lock-tracked files)
+   (`supersedes-invariant: ADR-0023#uninstall-removes-lock-tracked`). ADR-0023's
    `inv: init-force-backs-up` (`cites-invariant: ADR-0023#init-force-backs-up`) and the
    lock-tracked-removal substance of `inv: uninstall-removes-lock-tracked` remain in force and
    backed; only the retired slug above is dropped.

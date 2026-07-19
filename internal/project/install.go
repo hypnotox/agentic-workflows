@@ -99,7 +99,7 @@ func copyFile(src, dst string) error {
 // itself. It leaves the authored .awf/ config in place and returns the count of
 // files removed. It is a free function (not a *Project method) so a broken
 // config.yaml does not block uninstall - only the lock and root are needed.
-// touches-invariant: uninstall-removes-lock-tracked - lock-tracked file removal; proof in install_test.go
+// touches-invariant: uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
 func Uninstall(root string) (int, error) {
 	lockPath := config.LockPath(root)
 	lock, found, err := manifest.LoadOptional(lockPath)

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-27
 tags: [brownfield-adoption, git-hooks]
-related: [3, 16, 32]
+related: [3, 16, 32, 131]
 domains: [tooling]
 ---
 # ADR-0023: Safe Adoption Into Existing Repositories
