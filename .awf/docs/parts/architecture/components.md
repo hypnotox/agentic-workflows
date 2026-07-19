@@ -52,7 +52,11 @@
   config, migration-history, status, and qualified-marker normalization; adapts the prepared topic
   corpus and migration-safe output projection; and emits one sorted report for `upgrade --check`.
   Approval confirms an independently unique Origin/backing-preserving mapping and cannot disambiguate
-  it. This package does not answer normal context or invariant queries and does not attest or mutate.
+  it. It also owns attestation: `Digest` hashes the post-normalization prepared inputs, `CutoffFacts`
+  derives the ADR cutoff and gaps, and `CommitTransaction`/`Recover` drive the versioned
+  `.awf/current-state-upgrade.journal` (`journal.go`) so `upgrade --attest-current-state` seals a clean
+  prepared tree and `upgrade --recover` replays the recovery table. This package does not answer normal
+  context or invariant queries and switches no authority.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.

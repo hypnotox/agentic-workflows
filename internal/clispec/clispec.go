@@ -275,17 +275,31 @@ Flags:
 `,
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree or inspect current-state readiness",
-		BoolFlags: []string{"--check", "--json"}, MaxPos: 0, Gating: Ungated,
-		HelpBody: `Usage: awf upgrade [--check [--json]]
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree or attest current-state readiness",
+		BoolFlags: []string{"--check", "--json", "--attest-current-state", "--recover"}, MaxPos: 0, Gating: Ungated,
+		HelpBody: `Usage: awf upgrade [--check [--json] | --attest-current-state | --recover]
 
-Migrate the .awf/ config tree to the current schema version. With --check,
-inspect current-state migration readiness without changing the working tree,
-index, config, lock, or generated output. --json changes check presentation only.
+Migrate the .awf/ config tree to the current schema version. The mode flags are
+mutually exclusive:
+
+  --check                report exhaustive current-state migration readiness
+                         without touching the working tree, index, config, lock,
+                         or generated output; --json emits the machine-readable
+                         schema. Read-only; it does not require a clean tree.
+  --attest-current-state require readiness and a clean HEAD, then apply the
+                         normalization, marker, status, and terminal-output
+                         writes through a recoverable journal and seal the lock
+                         last. The project then refuses ordinary commands until
+                         the current-state release consumes the attestation.
+  --recover              replay the current-state upgrade journal's recovery
+                         table: roll an interrupted attestation back or clean up
+                         a committed one. The only mode a journal permits.
 
 Flags:
-  --check  report exhaustive current-state migration readiness without writes
-  --json   emit the stable machine-readable readiness schema (requires --check)
+  --check                 report readiness without writes
+  --json                  emit the stable readiness schema (requires --check)
+  --attest-current-state  seal a clean prepared tree through a journaled transaction
+  --recover               recover from an interrupted or committed attestation
 `,
 	},
 	{

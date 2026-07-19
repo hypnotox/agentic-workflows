@@ -74,6 +74,49 @@ func TestHeadBlobsAndWorkingPathsErrors(t *testing.T) {
 	}
 }
 
+func TestHeadAndClean(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	got, err := awfgit.HeadAndClean(dir)
+	if err != nil || got != head.String() {
+		t.Fatalf("clean tree: got %q err %v, want %q", got, err, head.String())
+	}
+	// An untracked file makes the tree unclean.
+	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("u"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.HeadAndClean(dir); err == nil || !strings.Contains(err.Error(), "not clean") {
+		t.Fatalf("untracked file accepted: %v", err)
+	}
+	if err := os.Remove(filepath.Join(dir, "untracked.txt")); err != nil {
+		t.Fatal(err)
+	}
+	// A staged modification makes the tree unclean.
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("aa"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("a.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.HeadAndClean(dir); err == nil || !strings.Contains(err.Error(), "not clean") {
+		t.Fatalf("staged change accepted: %v", err)
+	}
+}
+
+func TestHeadAndCleanErrors(t *testing.T) {
+	_, unborn := gitfixture.InitRepo(t)
+	if _, err := awfgit.HeadAndClean(unborn); err == nil || !strings.Contains(err.Error(), "resolve HEAD") {
+		t.Fatalf("unborn repository accepted: %v", err)
+	}
+	if _, err := awfgit.HeadAndClean(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
+		t.Fatalf("non-repository accepted: %v", err)
+	}
+}
+
 func TestChangedPathsRange(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "one", map[string]string{"a.txt": "a"})

@@ -128,8 +128,19 @@ invariant adjudication. JSON fields are `ready`, `findings`, `invariantAdjudicat
 `plannedMutations`; mutations use exact before/after presence, mode, and SHA-256 records, including
 terminal ACTIVE/domain-index deletions and excluding the unchanged approval input. The command writes
 nothing. Schema stays 14 because the approval file is ephemeral authored migration input, not a
-permanent config key. Attestation, recovery journals, ordinary-command refusal, INDEX.md, and the
-runtime authority switch remain later work in the unreleased bridge tranche.
+permanent config key.
+
+`awf upgrade --attest-current-state` promotes a ready, clean-HEAD prepared tree into a recoverable
+transaction: it records the clean HEAD, a post-normalization digest, and the ADR cutoff and gaps in an
+optional `bridgeAttestation` lock block, journals every normalization, marker, status, and terminal
+legacy-index deletion at `.awf/current-state-upgrade.journal`, and commits the attested lock last
+(obtain and verify the matching current-state binary first; it runs no project tests or gate). Because
+the terminal projection prunes `docs/decisions/ACTIVE.md` and the domain ADR indexes without
+regenerating them, the attested project is deliberately index-pruned and refuses ordinary commands:
+only `awf upgrade --recover` runs while a journal exists, only `awf upgrade --check` runs against an
+attested lock, and a malformed journal refuses every mode with Git-restoration guidance.
+`awf upgrade --recover` replays the journal recovery table idempotently. INDEX.md and the runtime
+authority switch remain later work in the unreleased bridge tranche.
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
@@ -221,7 +232,7 @@ disk.
 | `awf topic <domain>/<topic>[:<claim>]` | Query one active topic or claim; add direct detail with `--history`, `--references`, and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
-| `awf upgrade` | Migrate the `.awf/` tree to the current schema. |
+| `awf upgrade` | Migrate the `.awf/` tree to the current schema. `--check [--json]` reports current-state readiness read-only; `--attest-current-state` seals a ready, clean-HEAD prepared tree through a recoverable journal; `--recover` replays the journal recovery table. The four modes are mutually exclusive. |
 | `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
 | `awf version` | Print the awf version. |

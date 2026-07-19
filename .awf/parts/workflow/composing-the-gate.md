@@ -11,3 +11,9 @@ Rendered-file drift is not a gate step: `./x check` blocks separately through th
 hook payload (see the local-hooks section below). And there is no slower tier; `./x gate full`
 runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
 (see [docs/testing.md](testing.md)).
+
+The current-state bridge deliberately sits outside this gate. `awf upgrade --attest-current-state`
+runs the readiness check and a clean-HEAD test, then journals its writes and commits the attested lock;
+it never runs the project test suite or the gate and never claims to. Attest only after `./x check`,
+`./x gate`, and the readiness check are green on a clean HEAD, and with the matching current-state
+binary verified. `awf upgrade --recover` is the escape when a transaction is interrupted.

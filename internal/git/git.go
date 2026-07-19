@@ -147,6 +147,35 @@ func HeadBlobsUnder(repoRoot, prefix string) ([]HeadBlob, error) {
 	return out, nil
 }
 
+// HeadAndClean returns the HEAD commit hash and refuses any repository whose
+// working tree is not pristine: a staged, unstaged, untracked, or conflicted
+// entry, or an unborn HEAD (no commit yet), each fails. It is the read-only
+// snapshot-identity seam attestation pins before it mutates the tree, so a
+// recorded PreparedHead unambiguously identifies the pre-mutation commit. It
+// reads the repository only.
+func HeadAndClean(repoRoot string) (string, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("open repo: %w", err)
+	}
+	ref, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("resolve HEAD: %w", err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
+		return "", err
+	}
+	status, err := wt.Status()
+	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
+		return "", err
+	}
+	if !status.IsClean() {
+		return "", errors.New("working tree is not clean: commit, stash, or discard every change (staged, unstaged, or untracked) before attestation")
+	}
+	return ref.Hash().String(), nil
+}
+
 // WorkingPaths returns tracked HEAD paths that still exist plus nonignored
 // untracked paths. Deleted, ignored, and nested-repository files are excluded
 // by go-git's worktree status semantics.

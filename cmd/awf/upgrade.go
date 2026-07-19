@@ -5,16 +5,38 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/bridge"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
 
-func runUpgradeFlags(root string, check, jsonOutput bool, stdout io.Writer) error {
+// runUpgradeFlags routes the mutually exclusive upgrade modes. Plain upgrade
+// migrates the schema and syncs; --check reports readiness read-only; --json
+// requires --check; --attest-current-state seals a clean prepared tree through
+// the recoverable journal; --recover replays the journal recovery table.
+func runUpgradeFlags(root string, check, jsonOutput, attest, recoverMode bool, stdout io.Writer) error {
+	modes := 0
+	for _, on := range []bool{check, attest, recoverMode} {
+		if on {
+			modes++
+		}
+	}
+	if modes > 1 {
+		return &usageErr{"awf upgrade: --check, --attest-current-state, and --recover are mutually exclusive"}
+	}
 	if jsonOutput && !check {
 		return &usageErr{"awf upgrade: --json requires --check"}
 	}
-	if !check {
+	switch {
+	case recoverMode:
+		return runRecover(root, stdout)
+	case attest:
+		return runAttest(root, stdout)
+	case !check:
 		return runUpgrade(root, stdout)
 	}
 	if !migrate.ProjectPresent(root) {
@@ -35,6 +57,71 @@ func runUpgradeFlags(root string, check, jsonOutput bool, stdout io.Writer) erro
 		return errors.New("current-state upgrade is not ready")
 	}
 	return nil
+}
+
+// runRecover replays the current-state upgrade journal recovery table. It never
+// runs project tests or gates and prints deterministic operation lines.
+func runRecover(root string, stdout io.Writer) error {
+	if !migrate.ProjectPresent(root) {
+		return errors.New("not an awf project (run `awf init`)")
+	}
+	return bridge.Recover(root, stdout)
+}
+
+// runAttest seals a clean prepared tree. It requires readiness and a clean HEAD,
+// records the digest, cutoff, and gaps in the lock, and applies every
+// normalization, marker, status, and terminal-output write through a recoverable
+// journal with the attestation lock committed last. It never runs project tests
+// or gates and prints one deterministic operation line per applied path.
+func runAttest(root string, stdout io.Writer) error {
+	if !migrate.ProjectPresent(root) {
+		return errors.New("not an awf project (run `awf init`)")
+	}
+	report := bridge.Check(root)
+	if !report.Ready {
+		writeReadinessHuman(stdout, report)
+		return errors.New("current-state upgrade is not ready")
+	}
+	head, err := awfgit.HeadAndClean(root)
+	if err != nil {
+		return err
+	}
+	lockPath := config.LockPath(root)
+	lock, found, err := manifest.LoadOptional(lockPath)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errors.New("no .awf/awf.lock to attest (run `awf sync` first)")
+	}
+	priorBytes, err := os.ReadFile(lockPath)
+	if err != nil { // coverage-ignore: LoadOptional just read the lock successfully; failure requires a concurrent filesystem race
+		return err
+	}
+	priorInfo, err := os.Stat(lockPath)
+	if err != nil { // coverage-ignore: the same lock path was read immediately above; failure requires a concurrent filesystem race
+		return err
+	}
+	digest, err := bridge.Digest(root, report.PlannedMutations)
+	if err != nil { // coverage-ignore: readiness validated the same config and inputs the digest reads
+		return err
+	}
+	cutoff, gaps, err := bridge.CutoffFacts(root)
+	if err != nil { // coverage-ignore: readiness loaded the same corpus before this call
+		return err
+	}
+	lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: head, TreeDigest: digest, ADRFormatV1From: cutoff, LegacyADRGaps: gaps}
+	finalBytes, err := lock.Marshal()
+	if err != nil { // coverage-ignore: the lock marshals cleanly; see manifest.Marshal
+		return err
+	}
+	lockPrior := bridge.Image{Present: true, Mode: uint32(priorInfo.Mode().Perm()), Content: priorBytes}
+	lockFinal := bridge.Image{Present: true, Mode: 0o644, Content: finalBytes}
+	ops, err := bridge.OperationsFromMutations(root, report.PlannedMutations, lockPrior, lockFinal)
+	if err != nil { // coverage-ignore: readiness mutations are validated and unique; the lock op closes the set
+		return err
+	}
+	return bridge.CommitTransaction(root, ops, stdout)
 }
 
 func writeReadinessHuman(w io.Writer, report bridge.Report) {

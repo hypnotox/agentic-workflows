@@ -31,6 +31,8 @@ by this repository's own checks (ADR-0090).
 - `awf new doc <name> "<description>"`: scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
 - `awf upgrade`: migrate the config tree after upgrading the awf binary.
 - `awf upgrade --check [--json]`: report exhaustive current-state migration readiness without changing the worktree, index, config, lock, approval input, or generated output.
+- `awf upgrade --attest-current-state`: with readiness passing and a clean HEAD, seal the prepared tree through a recoverable journal and commit the attested lock last; obtain and verify the matching current-state binary first. The project then refuses ordinary commands until a later current-state release consumes the attestation.
+- `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted attestation back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory). The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf invariants`: report Implemented-ADR `invariant:` slugs that lack a backing proof comment in source.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
@@ -88,8 +90,21 @@ nothing. Human output and `--json` share one sorted model. JSON fields are `read
 `invariantAdjudications`, and `plannedMutations`; image records include presence, octal-mode value,
 and SHA-256, with absent content using mode 0 and the empty-byte digest. The unchanged approval file
 is retained and omitted from mutations. Legacy context and invariant enforcement remain authoritative.
-Attestation, recovery journals, ordinary-command refusal, INDEX.md, and the authority switch are not
-implemented in this phase.
+
+**Attestation and recovery.** With readiness passing, obtain and verify the matching current-state
+binary, ensure a clean HEAD (no staged, unstaged, or untracked change), and run
+`awf upgrade --attest-current-state`. It records the clean HEAD, a digest over the post-normalization
+config, domains, ADRs, topics, marker sources, and approval file, and the ADR cutoff and gaps in an
+optional `bridgeAttestation` lock block, then journals every normalization, marker, status, and
+terminal legacy-index deletion at `.awf/current-state-upgrade.journal`, applies them, and commits the
+attested lock last. It runs no project tests or gate. Because the terminal projection prunes
+`docs/decisions/ACTIVE.md` and the domain ADR indexes without regenerating them, the attested project
+is deliberately index-pruned and refuses every ordinary command: with a journal present only
+`awf upgrade --recover` proceeds, with an attested lock only `awf upgrade --check` inspects it, and a
+malformed journal refuses every mode with guidance to restore the working tree from Git and reinstall
+the bridge release. `awf upgrade --recover` rolls an interrupted attestation back to its prior images
+or cleans up a committed one, idempotently. The authority switch and INDEX.md arrive in a later
+current-state release.
 
 To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a

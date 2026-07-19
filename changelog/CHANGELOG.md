@@ -146,8 +146,29 @@ query a single version or a range.
   deletion, and emits deterministic human or `--json` findings, computed adjudications, and exact
   before/after path/mode/SHA-256 mutation records. The ephemeral approval input does not bump schema
   14, cannot disambiguate mappings, requires `invariantApprovals: []` for an empty live inventory,
-  and is omitted from mutations when unchanged. Attestation, journals, command refusal, and the
-  authority switch are intentionally not included yet.
+  and is omitted from mutations when unchanged. The authority switch and runtime consumption of the
+  attestation are intentionally still absent.
+- `awf upgrade --attest-current-state` seals a ready, clean-HEAD prepared tree through a recoverable
+  transaction. It reruns readiness, refuses any staged, unstaged, or untracked change, records the
+  clean HEAD, a digest over the post-normalization config, domains, ADRs, topics, marker sources, and
+  the required approval file, and the ADR cutoff and gaps in an optional `bridgeAttestation` lock
+  block (old locks omit it). It then journals every normalization, marker, status, and terminal
+  legacy-index deletion at `.awf/current-state-upgrade.journal`, applies them, and commits the
+  attested lock last; the unchanged approval file never enters the mutations. Obtain and verify the
+  matching current-state binary before attesting. Because the terminal projection prunes
+  `docs/decisions/ACTIVE.md` and the domain ADR indexes without generating their replacements, the
+  attested project is deliberately index-pruned and refuses every ordinary command until a later
+  current-state release consumes the attestation.
+- `awf upgrade --recover` replays the journal's recovery table: a precommit journal whose lock still
+  differs from the sealed hash rolls every prior image back in reverse; a precommit or lock-committed
+  journal already carrying the sealed lock cleans up the residue; a lock-committed journal with a
+  different lock refuses rather than rolling committed authority back; a third-party edit halts and
+  preserves the journal, naming the path. A committed journal or attestation now makes ordinary
+  commands non-operational: with a journal present only `awf upgrade --recover` proceeds, with an
+  attested lock only `awf upgrade --check` inspects it, a malformed journal refuses every mode
+  (recovery included) with deterministic Git-restoration-and-bridge-reinstallation guidance, and
+  `awf version`/`awf changelog`/`awf help` always bypass the transaction state. This is still one
+  unreleased bridge tranche; no intermediate release may be cut.
 - `awf topic <domain>/<topic>[:<claim>]` adds a version-gated, read-only active-state query with one
   deterministic human/JSON model. Defaults show current title/summary, claims, types, prose, and
   backing while hiding provenance and references. Independent `--history`, `--references`, and

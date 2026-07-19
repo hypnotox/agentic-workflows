@@ -9,7 +9,10 @@ exposes the prepared output plan with exact desired bytes/modes, policy, depende
 reservations. Its terminal view is identical except for explicit deletion reservations for ACTIVE.md
 and every generated domain ADR-index output; it emits no INDEX.md and refuses replacement at those
 paths. The approval file is retained byte-for-byte and mode-for-mode as authored input and does not
-become a planned mutation merely by participating in later digest membership.
+become a planned mutation merely by participating in later digest membership. Attestation
+(`awf upgrade --attest-current-state`) journals and applies that terminal view: the legacy-index
+deletions land as real removals through the recoverable transaction, leaving the attested project
+index-pruned until a later current-state release regenerates the index.
 
 ADR-0132 adds the core exploring skill with six-target semantic rendering. Pi's capability-selected branch invokes the structured `subagent_explore` contract; all non-Pi targets carry the same breadth, detail, boundary, outcome, and reporting semantics through generic native delegation.
 

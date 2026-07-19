@@ -53,7 +53,31 @@ including terminal legacy deletions and excluding an unchanged approval file. St
 failures use `invariant-approval` at `.awf/current-state-migration.yaml`. The strict file contains only
 `version: 1` and `invariantApprovals` entries with exact key/destination strings; an empty inventory
 requires `invariantApprovals: []`. Review in the repository and commit establishes attribution. This
-is preparation tooling, not runtime authority, attestation, recovery, or a command-state guard.
+is preparation tooling, not runtime authority: the authority switch stays with a later current-state
+release.
+
+`awf upgrade --attest-current-state` seals a ready, clean-HEAD prepared tree. It reruns readiness,
+requires `internal/git.HeadAndClean` (no staged, unstaged, untracked, conflicted, or unborn state),
+computes `internal/bridge.Digest` over the post-normalization config, domains, ADRs, topics,
+configured marker sources, and the required approval file, records the clean HEAD plus the ADR cutoff
+and gaps in an optional `bridgeAttestation` lock block (old locks omit it and still parse), and drives
+`internal/bridge.CommitTransaction`: a versioned `.awf/current-state-upgrade.journal` records every
+normalization, marker, status, and terminal legacy-index deletion with prior and replacement images,
+the writes apply, and the attested lock commits last. The unchanged approval file is journaled only if
+another edit already targets it. Attestation runs no project tests or gate and prints one deterministic
+operation line per applied path; obtain and verify the matching current-state binary before attesting.
+`awf upgrade --recover` replays the journal recovery table: a precommit journal whose lock still
+differs from the sealed hash restores every prior image in reverse; a precommit or lock-committed
+journal already carrying the sealed lock cleans up the residue; a lock-committed journal with a
+different lock refuses rather than rolling committed authority back; a third-party edit halts and
+preserves the journal, naming the path; repeated recovery is byte- and mode-idempotent. A central
+command-state guard in `cmd/awf` enforces the release matrix before gating: a valid journal permits
+only `awf upgrade --recover`; a committed attestation without a journal permits only
+`awf upgrade --check`; a malformed journal refuses every mode, recovery included, with deterministic
+Git-restoration-and-bridge-reinstallation guidance; a corrupt lock without a journal keeps the
+existing ADR-0076 refusal; and `awf version`, `awf changelog`, and `awf help` always bypass the
+transaction state. The attested project is deliberately index-pruned and non-operational until a later
+release regenerates the current-state index.
 
 `awf new adr "<title>"` (ADR-0042) scaffolds a new ADR file: `internal/adr.NextNumber` computes the next sequential number and `internal/adr.NewFile` copies the rendered `docs/decisions/template.md`, strips its marker comments, and fills in the date and title heading, replacing the free-hand copy/strip/number steps `awf-proposing-adr` used to spell out by hand. ADR-0068 widens `awf new` to project-local artifacts: `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` validates the kebab-case name (`config.ValidateArtifactName`), writes a declaring sidecar plus a starter `content` part, enables the name in the matching config array, and re-syncs, so a project adds its own skills and agents without forking the catalog. The scaffolded starter part opens with the whole-line `<!-- awf:stub -->` marker (ADR-0070), so `awf check` reports the artifact as unauthored until the author deletes the line. All `awf new` forms go through the ADR-0039 binary-version gate like the other project-reading commands.
 

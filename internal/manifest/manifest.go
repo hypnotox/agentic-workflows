@@ -27,6 +27,23 @@ type Lock struct {
 	AWFVersion    string           `json:"awfVersion"`
 	SchemaVersion int              `json:"schemaVersion"`
 	Files         map[string]Entry `json:"files"`
+	// BridgeAttestation seals a completed current-state upgrade attestation. It
+	// is optional (omitted when absent) so a lock written before the bridge
+	// tranche parses unchanged with a nil pointer.
+	BridgeAttestation *BridgeAttestation `json:"bridgeAttestation,omitempty"`
+}
+
+// BridgeAttestation records the sealed identity of a current-state upgrade
+// attestation: the format Version, the clean PreparedHead commit it was
+// computed against, the TreeDigest over the post-normalization prepared inputs,
+// the ADRFormatV1From cutoff (highest ADR number plus one), and the sorted
+// absent lower ADR numbers in LegacyADRGaps.
+type BridgeAttestation struct {
+	Version         int    `json:"version"`
+	PreparedHead    string `json:"preparedHead"`
+	TreeDigest      string `json:"treeDigest"`
+	ADRFormatV1From int    `json:"adrFormatV1From"`
+	LegacyADRGaps   []int  `json:"legacyADRGaps"`
 }
 
 type Drift struct{ Path, Kind, Detail string }
@@ -49,12 +66,22 @@ func Load(path string) (*Lock, error) {
 }
 
 func (l *Lock) Save(path string) error {
-	b, err := json.MarshalIndent(l, "", "  ")
-	if err != nil { // coverage-ignore: Lock holds only strings, an int, and a string-keyed map of string fields; MarshalIndent has no unsupported type to fail on
+	b, err := l.Marshal()
+	if err != nil { // coverage-ignore: Marshal fails only on an unsupported type, which Lock never holds
 		return err
 	}
-	b = append(b, '\n')
 	return WriteFileAtomic(path, b)
+}
+
+// Marshal returns the canonical lock serialization Save writes: indented JSON
+// with a trailing newline. Attestation reuses it so the sealed lock bytes match
+// what a subsequent Load/Save round-trips.
+func (l *Lock) Marshal() ([]byte, error) {
+	b, err := json.MarshalIndent(l, "", "  ")
+	if err != nil { // coverage-ignore: Lock holds only strings, ints, an int slice, a string-keyed map of string fields, and an optional attestation of the same; MarshalIndent has no unsupported type to fail on
+		return nil, err
+	}
+	return append(b, '\n'), nil
 }
 
 // LoadOptional is the corrupt-lock policy choke point (ADR-0076 Decision 2): a

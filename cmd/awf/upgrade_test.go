@@ -48,19 +48,19 @@ func TestUpgradeCheckJSONSchema(t *testing.T) {
 }
 func TestUpgradeFlagRules(t *testing.T) {
 	var out bytes.Buffer
-	if err := runUpgradeFlags(t.TempDir(), false, true, &out); err == nil || !strings.Contains(err.Error(), "requires --check") {
+	if err := runUpgradeFlags(t.TempDir(), false, true, false, false, &out); err == nil || !strings.Contains(err.Error(), "requires --check") {
 		t.Fatalf("%v", err)
 	}
-	if err := runUpgradeFlags(t.TempDir(), true, false, &out); err == nil || !strings.Contains(err.Error(), "not an awf project") {
+	if err := runUpgradeFlags(t.TempDir(), true, false, false, false, &out); err == nil || !strings.Contains(err.Error(), "not an awf project") {
 		t.Fatalf("%v", err)
 	}
 	root := scaffoldProject(t)
 	out.Reset()
-	if err := runUpgradeFlags(root, true, false, &out); err == nil || !strings.Contains(out.String(), "ready: false") {
+	if err := runUpgradeFlags(root, true, false, false, false, &out); err == nil || !strings.Contains(out.String(), "ready: false") {
 		t.Fatalf("human: %v %s", err, out.String())
 	}
 	out.Reset()
-	if err := runUpgradeFlags(root, true, true, &out); err == nil || !strings.HasPrefix(out.String(), "{\"ready\":false") {
+	if err := runUpgradeFlags(root, true, true, false, false, &out); err == nil || !strings.HasPrefix(out.String(), "{\"ready\":false") {
 		t.Fatalf("json: %v %s", err, out.String())
 	}
 	ready := scaffoldProject(t)
@@ -77,14 +77,14 @@ func TestUpgradeFlagRules(t *testing.T) {
 		}
 	}
 	out.Reset()
-	if err := runUpgradeFlags(ready, true, false, &out); err != nil {
+	if err := runUpgradeFlags(ready, true, false, false, false, &out); err != nil {
 		t.Fatalf("ready human: %v\n%s", err, out.String())
 	}
 	out.Reset()
-	if err := runUpgradeFlags(ready, true, true, &out); err != nil {
+	if err := runUpgradeFlags(ready, true, true, false, false, &out); err != nil {
 		t.Fatalf("ready json: %v\n%s", err, out.String())
 	}
-	if err := runUpgradeFlags(ready, true, true, failingWriter{}); err == nil {
+	if err := runUpgradeFlags(ready, true, true, false, false, failingWriter{}); err == nil {
 		t.Fatal("upgrade ignored JSON writer failure")
 	}
 }

@@ -12,6 +12,13 @@ same strict parser. The migration approval artifact is not a schema key, so gene
 `.awf/current-state-migration.yaml` is an optional-before-preparation authored input claimed by the
 bridge sweep, required by readiness, retained unchanged, and never generated.
 
+Attestation adds two more claimed paths without bumping the schema. `.awf/awf.lock` gains an optional
+`bridgeAttestation` block (format version, clean prepared HEAD, post-normalization tree digest, ADR
+cutoff, and legacy ADR gaps); a lock written before attestation omits it and still parses.
+`.awf/current-state-upgrade.journal` is the durable transaction record the closed-tree sweep already
+claims, so a present journal is recognized attestation state, never an orphan. Both are removed when
+recovery finishes.
+
 ADR-0132 adds schema generation 13 and the `exploring-skill-closure` migration. It reuses close-enabled-set to add `exploring` automatically when an adopted config enables brainstorming, debugging, or refactor-coupling-audit.
 
 ADR-0127 retires the `audit.baseBranch` key: a schema-11 migration strips it from `.awf/config.yaml` and announces the removal, and `config.RemoveMappingKey` is the new nested-key remover it needs (the existing `RemoveKey` walks only top-level entries, so it silently no-ops on a nested key).

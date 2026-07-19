@@ -5,6 +5,12 @@
 # config, re-renders every managed file, and re-pins the bootstrap.
 # Deliberately nondeterministic porcelain for humans; CI and hooks call the
 # deterministic .awf/bootstrap.sh instead.
+#
+# This porcelain performs only the ordinary schema migration. It never attests
+# the current-state bridge: sealing a prepared tree is the explicit, clean-HEAD
+# `awf upgrade --attest-current-state`, and recovering an interrupted attestation
+# is `awf upgrade --recover`. Verify the matching current-state binary and a
+# green check/test/gate on a clean HEAD before attesting by hand.
 set -euo pipefail
 
 REPO="hypnotox/agentic-workflows"

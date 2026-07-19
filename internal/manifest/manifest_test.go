@@ -140,6 +140,47 @@ func TestLoadOptional(t *testing.T) {
 	}
 }
 
+func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
+	// An old lock with no bridgeAttestation field parses with a nil pointer.
+	p := filepath.Join(t.TempDir(), "awf.lock")
+	if err := os.WriteFile(p, []byte(`{"awfVersion":"0.1.0","schemaVersion":6,"files":{}}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.BridgeAttestation != nil {
+		t.Fatalf("old lock gained an attestation: %#v", old.BridgeAttestation)
+	}
+	// A lock without an attestation omits the key entirely.
+	plain := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}}
+	if err := plain.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(p); strings.Contains(string(b), "bridgeAttestation") {
+		t.Fatalf("absent attestation still serialized: %s", b)
+	}
+	// A populated attestation round-trips byte-stably.
+	l := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}, BridgeAttestation: &BridgeAttestation{Version: 1, PreparedHead: "abc123", TreeDigest: "sha256:deadbeef", ADRFormatV1From: 137, LegacyADRGaps: []int{12, 44}}}
+	if err := l.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.BridgeAttestation == nil || got.BridgeAttestation.Version != 1 || got.BridgeAttestation.PreparedHead != "abc123" || got.BridgeAttestation.TreeDigest != "sha256:deadbeef" || got.BridgeAttestation.ADRFormatV1From != 137 || len(got.BridgeAttestation.LegacyADRGaps) != 2 || got.BridgeAttestation.LegacyADRGaps[1] != 44 {
+		t.Fatalf("attestation round trip mismatch: %#v", got.BridgeAttestation)
+	}
+	b1, _ := os.ReadFile(p)
+	_ = got.Save(p)
+	b2, _ := os.ReadFile(p)
+	if string(b1) != string(b2) {
+		t.Errorf("attested lock serialization not stable")
+	}
+}
+
 func TestSaveDirectoryAtPath(t *testing.T) {
 	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
 	dir := t.TempDir()

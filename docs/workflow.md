@@ -60,11 +60,23 @@ hook payload (see the local-hooks section below). And there is no slower tier; `
 runs the identical steps and exists only so the rendered pre-push hook payload works unchanged
 (see [docs/testing.md](testing.md)).
 
+The current-state bridge deliberately sits outside this gate. `awf upgrade --attest-current-state`
+runs the readiness check and a clean-HEAD test, then journals its writes and commits the attested lock;
+it never runs the project test suite or the gate and never claims to. Attest only after `./x check`,
+`./x gate`, and the readiness check are green on a clean HEAD, and with the matching current-state
+binary verified. `awf upgrade --recover` is the escape when a transaction is interrupted.
+
 
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
 This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check` then `./x gate`, `.awf/hooks/commit-msg.sh` runs `./x commit-gate` with the message file, and `.awf/hooks/pre-push.sh` runs `./x gate full`; all driven by the `checkCmd`/`gateCmd`/`gateCmdFull`/`commitGateCmd` vars and kept current by `./x sync`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
+
+A committed current-state upgrade journal or attestation makes every ordinary command
+non-operational, hook-driven ones included: `./x check` and `./x gate` refuse until the transaction
+resolves. Run `awf upgrade --recover` to roll an interrupted attestation back or clean up a committed
+one before the hooks pass again; a malformed journal refuses even recovery and asks you to restore the
+working tree from Git and reinstall the bridge release.
 
 `awf commit-gate` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
 

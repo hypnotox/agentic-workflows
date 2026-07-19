@@ -20,8 +20,8 @@ loads one corpus per invocation. It renders topic pages and per-domain indexes u
 `## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
 feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
 substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
-solely authoritative. The bridge migration now adds read-only readiness; its later phases add
-attestation and ordinary-command refusal before release.
+solely authoritative. The bridge migration adds read-only readiness plus a recoverable attestation and
+an ordinary-command refusal; the authority switch itself stays with a later release.
 
 `awf upgrade --check` now builds the bridge projection without mutation. It converts legacy
 `invariants` to strict `currentState` in memory, inventories shipped legacy declarations and effective
@@ -33,8 +33,21 @@ domain ADR-index outputs but creates no INDEX.md and switches no authority. Find
 slash-relative path, and detail. JSON carries `ready`, exhaustive findings and invariant adjudications,
 and exact planned before/after presence, octal-mode value, and SHA-256 records; absent images use mode
 0 and the SHA-256 of empty bytes. Repository and commit review own approval attribution; the file
-records only exact key/destination results and cannot choose among candidates. Attestation, journals,
-and command-state guards remain later bridge work.
+records only exact key/destination results and cannot choose among candidates.
+
+`awf upgrade --attest-current-state` promotes that read-only plan into a recoverable transaction. It
+reruns readiness, requires a clean HEAD (`internal/git.HeadAndClean`), digests the post-normalization
+config, domains, ADRs, topics, marker sources, and approval file, and records the clean HEAD, digest,
+ADR cutoff, and gaps in an optional `bridgeAttestation` lock block. It then writes a durable
+`.awf/current-state-upgrade.journal` (version `1`; phases prepared/applying/rolling-back/lock-committed;
+per-path prior and replacement images; the lock operation last), applies every normalization, marker,
+status, and terminal legacy-index deletion, and commits the attested lock last; a failure before the
+lock rolls back to the prior images, one after leaves the attested lock plus a recoverable journal.
+`awf upgrade --recover` replays the recovery table, and a central command-state guard refuses ordinary
+commands whenever a journal or attestation exists: a valid journal permits only `--recover`, an attested
+lock permits only `--check`, a malformed journal refuses every mode with Git-restoration guidance, and
+`version`/`changelog`/`help` always bypass it. The index-pruned attested tree stays non-operational
+until a later release regenerates the current-state index.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
