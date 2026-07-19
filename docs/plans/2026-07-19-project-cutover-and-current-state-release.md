@@ -174,11 +174,12 @@ must prove every surviving legacy invariant maps once with its backing class unc
   go test ./...
   (cd examples/sundial && go test ./...)
   ./x gate
+  (cd examples/sundial && ./x gate)
   git diff --check
   ```
 
   Expected: both readiness reports have zero findings and every adjudication has computed
-  `approved:true` after Task 1.5; bridge checks and source tests/gate are clean. `./x gate` is allowed
+  `approved:true` after Task 1.5; bridge checks and both projects' source tests and full gates are clean. `./x gate` is allowed
   because it runs source tests and authority-independent static
   tooling, not source context/invariants/check. Stage the exact authored and bridge-rendered set, then
   commit through the sanctioned hook:

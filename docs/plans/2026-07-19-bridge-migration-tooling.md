@@ -36,7 +36,7 @@ coupled package files may share a task under the review-approved program excepti
   migration approval schema and `internal/bridge/snapshot_test.go` for the cross-schema adapter;
   `cmd/awf/upgrade_test.go`.
 - **Modified:** `internal/adr/{adr,status,declarations}_test.go` and production siblings;
-  `internal/config/{config,edit,edit_test}.go`; `internal/project/{output_plan,output_plan_test,
+  `internal/config/{config,edit,edit_test}.go`; `internal/project/{project,output_plan,output_plan_test,
   sweep,sweep_test,example_wiring_test}.go`; `internal/manifest/{manifest,manifest_test}.go`;
   `internal/git/{git,git_test}.go`; `internal/testsupport/gitfixture/gitfixture.go`;
   `internal/clispec/{clispec,clispec_test}.go`; `cmd/awf/{main,main_test,dispatch,upgrade,gate_test,
@@ -47,8 +47,9 @@ coupled package files may share a task under the review-approved program excepti
   `.awf/docs/parts/{architecture/components,architecture/data-flow,releasing/content}.md`;
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`; `README.md`;
   `changelog/CHANGELOG.md`; and Plan 1's release-sentinel task during final resync.
-- **Generated:** root and Sundial locks plus rendered architecture, workflow, release, domain,
-  working-with-awf, bootstrap, hook, and agent-guide outputs selected by `./x sync`.
+- **Generated:** root and Sundial locks plus rendered architecture, workflow, release (including
+  `docs/releasing.md`), domain, working-with-awf, bootstrap, hook, and agent-guide outputs selected by
+  `./x sync`; release-guidance source changes and `docs/releasing.md` land in the same commit.
 - **Deleted:** none. The committed Sundial fixture remains unattested and legacy-authoritative.
 
 ## Coupled Phases 1-2: Inventory, normalization, and the first production caller
