@@ -145,7 +145,8 @@ record rather than an in-place edit.
    brainstorming's later dedicated grounding operation unchanged. Add
    exploring to the agent guide's task-skill guidance. In the behavior commits,
    update `README.md`, `docs/working-with-awf.md`, `docs/architecture.md`,
-   `docs/releasing.md`, `docs/testing.md`, `changelog/CHANGELOG.md`, the
+   `docs/releasing.md`, `docs/testing.md`, `docs/doc-standard.md`,
+   `changelog/CHANGELOG.md`, `templates/docs/doc-standard.md.tmpl`, the
    rendering and tooling current-state parts under `.awf/domains/parts/`,
    `templates/agents-doc/AGENTS.md.tmpl`, the Sundial config and README, and all
    generated AGENTS.md, domain-doc, target-skill, and example-adopter outputs.
