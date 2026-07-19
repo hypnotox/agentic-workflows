@@ -328,6 +328,28 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    disambiguates the slug spellings for free: the same string inside `## Invariants` is a
    declaration, already parsed by `declRe`, and is never a citation.
 
+   **Two wrappers around the ADR reference are recognized, and one shape is deliberately not.**
+   The possessive `ADR-NNNN's Decision item N` and the markdown link
+   `[ADR-NNNN](path.md) Decision item N` carry the ADR number in a form a bare `ADR-NNNN` prefix
+   match misses. Both are admitted, because each still names its target unambiguously and neither
+   costs precision. The possessive omission was a latent spec-to-code gap: this ADR's own Context
+   measured the corpus with `ADR-[0-9]{4}('s)? Decision item [0-9]+` while the implementation
+   dropped the `('s)?`, so the ADR asserted a coverage its check did not have. The link shape
+   matters for the same reason: ADR-0047 Decision 1 (`cites: ADR-0047#1`), the one claim this
+   ADR's Context records the enumeration as having *missed*, is written that way.
+
+   Not recognized: a bare `item N` whose ADR reference sits earlier in the same Decision item, as
+   in ADR-0032 item 7 (`cites: ADR-0032#7`)'s "partially supersedes ADR-0023 ... item 2 ... item
+   3". Resolving those against the nearest preceding `ADR-NNNN` was measured over the corpus and
+   rejected: it yields roughly 48 candidates of which the large majority are an ADR referring to
+   *its own* items ("item 5 below", "item 2's verb anchoring") or to hypothetical ones, including
+   this item's own "a token at item 7 does not answer a claim at item 5". No rule short of reading
+   the sentence separates them, and a check whose findings are mostly false teaches authors to
+   ignore it. The genuine instances are hand-encoded instead; ADR-0032 item 7's three were the
+   only ones the corpus still owed. This is an accepted recall boundary, recorded rather than
+   hidden, and it is the same standard this item applies to the verb list: a rule that reads as
+   though it covers a shape it does not is worse than one that says where it stops.
+
 3. **The check is unconditional and data-driven; it ships behind no config key.**
    `internal/project/check.go` runs every check for every adopter, and AGENTS.md's "`awf check` is
    the drift oracle" invariant means the same thing in every tree. A gating key would make "check

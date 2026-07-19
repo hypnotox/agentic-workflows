@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-02
 tags: [bootstrap-porcelain, config-tree]
-related: [9, 23, 32, 35, 40]
+related: [9, 23, 32, 35, 40, 131]
 domains: [rendering, tooling]
 ---
 # ADR-0047: Bootstrap relocation into the config tree
