@@ -43,9 +43,10 @@ const (
 type Backing string
 
 const (
-	NoBacking   Backing = ""
-	TestBacking Backing = "test"
-	Unbacked    Backing = "unbacked"
+	NoBacking         Backing = ""
+	ExplicitNoBacking Backing = "none"
+	TestBacking       Backing = "test"
+	Unbacked          Backing = "unbacked"
 )
 
 type Claim struct {

@@ -82,7 +82,11 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 		claims = []Claim{claim}
 	}
 	for _, claim := range claims {
-		result.Claims = append(result.Claims, QueryClaim{ID: claim.ID, Type: claim.Type, Prose: claim.Prose, Backing: claim.Backing, Verify: claim.Verify})
+		backing := claim.Backing
+		if backing == NoBacking {
+			backing = ExplicitNoBacking
+		}
+		result.Claims = append(result.Claims, QueryClaim{ID: claim.ID, Type: claim.Type, Prose: claim.Prose, Backing: backing, Verify: claim.Verify})
 	}
 	if opts.History {
 		result.History = make([]ClaimHistory, 0, len(claims))
@@ -111,9 +115,13 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 	}
 	if opts.Coverage {
 		coverage := CoverageForTopic(t, c.DomainPaths[t.ID.Domain], c.Markers)
+		markerSites := coverage.MarkerSites
+		if claimID != "" {
+			markerSites = c.Markers.ForClaim(claimID)
+		}
 		result.Coverage = &QueryCoverage{
 			DeclaredGlobal: coverage.DeclaredGlobal, DeclaredPaths: nonNil(coverage.DeclaredPaths),
-			EffectiveSelectors: nonNil(coverage.EffectiveSelectors), MarkerSites: nonNil(coverage.MarkerSites),
+			EffectiveSelectors: nonNil(coverage.EffectiveSelectors), MarkerSites: nonNil(markerSites),
 		}
 	}
 	return result, nil

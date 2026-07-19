@@ -47,6 +47,7 @@ Verify: compare snapshots.
 `)
 	writeTopic(t, root, "beta", "global", "title: Global\nsummary: Global contracts.\napplies: global\n", rulePart("shared", "0001", "alpha/contracts:stable"))
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// touches-state: alpha/contracts:order - scheduler entry point\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/stable_test.go"), "package schedule\n// touches-state: alpha/contracts:stable - snapshot boundary\n")
 	testsupport.WriteFile(t, filepath.Join(root, "pkg/global.go"), "package global\n// state: beta/global:shared\n")
 	corpus, err := LoadCorpus(root, cfg, adrs)
 	if err != nil {
@@ -64,7 +65,7 @@ func TestQueryDefaultTopicAndClaim(t *testing.T) {
 	if topicResult.Kind != "topic" || topicResult.Title != "Contracts" || topicResult.Summary != "Current contracts." || len(topicResult.Claims) != 2 {
 		t.Fatalf("topic result = %#v", topicResult)
 	}
-	if topicResult.Claims[0].Type != Rule || topicResult.Claims[0].Backing != NoBacking || topicResult.Claims[1].Backing != Unbacked || topicResult.Claims[1].Verify != "compare snapshots." {
+	if topicResult.Claims[0].Type != Rule || topicResult.Claims[0].Backing != ExplicitNoBacking || topicResult.Claims[1].Backing != Unbacked || topicResult.Claims[1].Verify != "compare snapshots." {
 		t.Fatalf("claims = %#v", topicResult.Claims)
 	}
 	if topicResult.History != nil || topicResult.References != nil || topicResult.Coverage != nil {
@@ -112,8 +113,15 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 	if got := combined.References[0].Incoming; len(got) != 0 {
 		t.Fatalf("query traversed references: %v", got)
 	}
-	if combined.Coverage.DeclaredGlobal || !reflect.DeepEqual(combined.Coverage.DeclaredPaths, []string{"internal/**"}) || len(combined.Coverage.EffectiveSelectors) != 1 || len(combined.Coverage.MarkerSites) != 1 {
+	if combined.Coverage.DeclaredGlobal || !reflect.DeepEqual(combined.Coverage.DeclaredPaths, []string{"internal/**"}) || len(combined.Coverage.EffectiveSelectors) != 1 || len(combined.Coverage.MarkerSites) != 2 {
 		t.Fatalf("coverage = %#v", combined.Coverage)
+	}
+	claim, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{Coverage: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claim.Coverage.DeclaredGlobal || !reflect.DeepEqual(claim.Coverage.DeclaredPaths, []string{"internal/**"}) || len(claim.Coverage.EffectiveSelectors) != 1 || len(claim.Coverage.MarkerSites) != 1 || claim.Coverage.MarkerSites[0].ClaimID != "alpha/contracts:stable" {
+		t.Fatalf("claim coverage included sibling markers or lost topic scope = %#v", claim.Coverage)
 	}
 	global, err := Query(corpus, adrs, "beta/global", QueryOptions{Coverage: true, References: true})
 	if err != nil {
@@ -157,7 +165,7 @@ func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	two, _ := json.Marshal(result)
-	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || strings.Contains(string(one), `"Origin"`) {
-		t.Fatalf("unstable JSON: %s / %s", one, two)
+	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || !strings.Contains(string(one), `"backing":"none"`) || strings.Contains(string(one), `"Origin"`) {
+		t.Fatalf("unstable or semantically incomplete JSON: %s / %s", one, two)
 	}
 }

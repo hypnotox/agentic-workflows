@@ -57,53 +57,58 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(result)
 	}
-	fmt.Fprintf(stdout, "%s %s\n", result.Kind, result.ID)
-	if result.Title != "" {
-		fmt.Fprintf(stdout, "Title: %s\nSummary: %s\n", result.Title, result.Summary)
-	}
-	fmt.Fprintln(stdout, "\n## Claims")
-	for _, claim := range result.Claims {
-		backing := string(claim.Backing)
-		if backing == "" {
-			backing = "none"
+	var writeErr error
+	write := func(context, format string, args ...any) {
+		if writeErr != nil {
+			return
 		}
-		fmt.Fprintf(stdout, "\n%s [%s] [backing: %s]\n%s\n", claim.ID, claim.Type, backing, claim.Prose)
+		if _, err := fmt.Fprintf(stdout, format, args...); err != nil {
+			writeErr = fmt.Errorf("write human topic %s: %w", context, err)
+		}
+	}
+	write("identity", "%s %s\n", result.Kind, result.ID)
+	if result.Title != "" {
+		write("metadata", "Title: %s\nSummary: %s\n", result.Title, result.Summary)
+	}
+	write("claims heading", "\n## Claims\n")
+	for _, claim := range result.Claims {
+		write("claim", "\n%s [%s] [backing: %s]\n%s\n", claim.ID, claim.Type, claim.Backing, claim.Prose)
 		if claim.Verify != "" {
-			fmt.Fprintf(stdout, "Verify: %s\n", claim.Verify)
+			write("claim verification", "Verify: %s\n", claim.Verify)
 		}
 	}
 	if result.History != nil {
-		fmt.Fprintln(stdout, "\n## History")
+		write("history heading", "\n## History\n")
 		for _, history := range result.History {
-			fmt.Fprintf(stdout, "%s\n  Origin: ADR-%s (%s) %s\n", history.ClaimID, history.Origin.Number, history.Origin.Status, history.Origin.Title)
+			write("claim history", "%s\n  Origin: ADR-%s (%s) %s\n", history.ClaimID, history.Origin.Number, history.Origin.Status, history.Origin.Title)
 			for _, revision := range history.RevisedBy {
-				fmt.Fprintf(stdout, "  Revised-by: ADR-%s (%s) %s\n", revision.Number, revision.Status, revision.Title)
+				write("claim revision", "  Revised-by: ADR-%s (%s) %s\n", revision.Number, revision.Status, revision.Title)
 			}
 		}
 	}
 	if result.References != nil {
-		fmt.Fprintln(stdout, "\n## References")
+		write("references heading", "\n## References\n")
 		for _, refs := range result.References {
-			fmt.Fprintf(stdout, "%s\n  Incoming: %v\n  Outgoing: %v\n", refs.ClaimID, refs.Incoming, refs.Outgoing)
+			write("claim references", "%s\n  Incoming: %v\n  Outgoing: %v\n", refs.ClaimID, refs.Incoming, refs.Outgoing)
 		}
 	}
 	if result.Coverage != nil {
-		fmt.Fprintln(stdout, "\n## Coverage")
+		write("coverage heading", "\n## Coverage\n")
 		if result.Coverage.DeclaredGlobal {
-			fmt.Fprintln(stdout, "Declared: global")
+			write("global coverage", "Declared: global\n")
 		} else {
-			fmt.Fprintf(stdout, "Declared paths: %v\n", result.Coverage.DeclaredPaths)
+			write("declared coverage paths", "Declared paths: %v\n", result.Coverage.DeclaredPaths)
 		}
 		for _, selector := range result.Coverage.EffectiveSelectors {
-			fmt.Fprintf(stdout, "Effective: domain %s + topic %s\n", selector.DomainPath, selector.TopicPath)
+			write("effective coverage selector", "Effective: domain %s + topic %s\n", selector.DomainPath, selector.TopicPath)
 		}
 		for _, site := range result.Coverage.MarkerSites {
-			fmt.Fprintf(stdout, "Marker: %s:%d [%s] %s", site.Path, site.Line, site.Kind, site.ClaimID)
+			write("coverage marker", "Marker: %s:%d [%s] %s", site.Path, site.Line, site.Kind, site.ClaimID)
 			if site.Note != "" {
-				fmt.Fprintf(stdout, " - %s", site.Note)
+				write("coverage marker note", " - %s", site.Note)
 			}
-			fmt.Fprintln(stdout)
+			write("coverage marker newline", "\n")
 		}
 	}
-	return nil
+	return writeErr
 }

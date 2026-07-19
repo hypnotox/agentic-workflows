@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -76,7 +77,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	if err := runTopic(root, "schedule/contracts", false, false, false, false, &defaults); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"topic schedule/contracts", "Title: Scheduling", "deterministic-order [rule]", "stable-output [invariant] [backing: test]"} {
+	for _, want := range []string{"topic schedule/contracts", "Title: Scheduling", "deterministic-order [rule] [backing: none]", "stable-output [invariant] [backing: test]"} {
 		if !strings.Contains(defaults.String(), want) {
 			t.Errorf("default output missing %q:\n%s", want, defaults.String())
 		}
@@ -118,8 +119,11 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	if err := json.Unmarshal(encoded.Bytes(), &result); err != nil {
 		t.Fatalf("JSON: %v\n%s", err, encoded.String())
 	}
-	if result.ID != "schedule/contracts" || len(result.Claims) != 2 || len(result.History) != 2 || len(result.References) != 2 || result.Coverage == nil {
+	if result.ID != "schedule/contracts" || len(result.Claims) != 2 || result.Claims[0].Backing != topic.ExplicitNoBacking || len(result.History) != 2 || len(result.References) != 2 || result.Coverage == nil {
 		t.Fatalf("JSON projection = %#v", result)
+	}
+	if !strings.Contains(encoded.String(), `"backing": "none"`) || !strings.Contains(defaults.String(), "[backing: none]") {
+		t.Fatalf("rule backing differs across JSON and human projections:\nJSON: %s\nhuman: %s", encoded.String(), defaults.String())
 	}
 	for _, semantic := range []string{result.Title, result.Claims[0].ID, result.History[0].Origin.Title, result.References[0].Outgoing[0], result.Coverage.MarkerSites[0].Path} {
 		if !strings.Contains(runTopicHuman(t, root), semantic) {
@@ -135,6 +139,48 @@ func runTopicHuman(t *testing.T, root string) string {
 		t.Fatal(err)
 	}
 	return out.String()
+}
+
+type failOnWrite struct {
+	failAt int
+	calls  int
+	err    error
+}
+
+func (w *failOnWrite) Write(p []byte) (int, error) {
+	w.calls++
+	if w.calls == w.failAt {
+		return 0, w.err
+	}
+	return len(p), nil
+}
+
+func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
+	sentinel := errors.New("writer failed")
+	base := topic.QueryResult{
+		Kind: "topic", ID: "schedule/contracts", Title: "Scheduling", Summary: "Summary.",
+		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
+		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
+		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
+		Coverage:   &topic.QueryCoverage{DeclaredPaths: []string{"internal/**"}, EffectiveSelectors: []topic.EffectiveSelector{{DomainPath: "internal/**", TopicPath: "internal/schedule*"}}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}},
+	}
+	for _, result := range []topic.QueryResult{base, func() topic.QueryResult {
+		global := base
+		global.Coverage = &topic.QueryCoverage{DeclaredGlobal: true}
+		return global
+	}()} {
+		counter := &failOnWrite{failAt: -1, err: sentinel}
+		if err := printTopic(counter, result, false); err != nil {
+			t.Fatal(err)
+		}
+		for failAt := 1; failAt <= counter.calls; failAt++ {
+			writer := &failOnWrite{failAt: failAt, err: sentinel}
+			err := printTopic(writer, result, false)
+			if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "write human topic") {
+				t.Fatalf("write %d/%d error = %v", failAt, counter.calls, err)
+			}
+		}
+	}
 }
 
 func TestPrintTopicOptionalHumanFields(t *testing.T) {
