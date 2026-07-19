@@ -20,8 +20,21 @@ loads one corpus per invocation. It renders topic pages and per-domain indexes u
 `## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
 feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
 substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
-solely authoritative until the following bridge-migration plan adds readiness, attestation, and
-ordinary-command refusal before release.
+solely authoritative. The bridge migration now adds read-only readiness; its later phases add
+attestation and ordinary-command refusal before release.
+
+`awf upgrade --check` now builds the bridge projection without mutation. It converts legacy
+`invariants` to strict `currentState` in memory, inventories shipped legacy declarations and effective
+retirements, normalizes append-only Migration history and bare Superseded status, independently maps
+each live key to one invariant claim with exact Origin and backing class, then matches the authored
+approval file. It plans qualified proof/touches rewrites and validates the proposed tree through the
+normal topic and output engines. The terminal projection reserves deletion of ACTIVE.md and generated
+domain ADR-index outputs but creates no INDEX.md and switches no authority. Findings sort by code,
+slash-relative path, and detail. JSON carries `ready`, exhaustive findings and invariant adjudications,
+and exact planned before/after presence, octal-mode value, and SHA-256 records; absent images use mode
+0 and the SHA-256 of empty bytes. Repository and commit review own approval attribution; the file
+records only exact key/destination results and cannot choose among candidates. Attestation, journals,
+and command-state guards remain later bridge work.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

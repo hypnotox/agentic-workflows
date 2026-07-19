@@ -18,6 +18,62 @@ import (
 
 func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
 
+func TestHeadBlobsAndWorkingPaths(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"src/a.txt": "a", "gone.txt": "gone", ".gitignore": "ignored.txt\n"})
+	if err := os.Chmod(filepath.Join(dir, "src", "a.txt"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("src/a.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Commit("mode", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
+		t.Fatal(err)
+	}
+	blobs, err := awfgit.HeadBlobsUnder(dir, "src")
+	if err != nil || len(blobs) != 1 || blobs[0].Path != "src/a.txt" || string(blobs[0].Bytes) != "a" || blobs[0].Mode != 0o755 {
+		t.Fatalf("blobs: %#v %v", blobs, err)
+	}
+	if err := os.Remove(filepath.Join(dir, "gone.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := awfgit.WorkingPaths(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(paths, ",")
+	if strings.Contains(joined, "gone.txt") || strings.Contains(joined, "ignored.txt") || !strings.Contains(joined, "new.txt") || !strings.Contains(joined, "src/a.txt") {
+		t.Fatalf("working paths: %v", paths)
+	}
+}
+
+func TestHeadBlobsAndWorkingPathsErrors(t *testing.T) {
+	_, unborn := gitfixture.InitRepo(t)
+	for _, fn := range []func(string) error{func(root string) error { _, e := awfgit.HeadBlobsUnder(root, "src"); return e }, func(root string) error { _, e := awfgit.WorkingPaths(root); return e }} {
+		if err := fn(unborn); err == nil {
+			t.Fatal("unborn repository accepted")
+		}
+	}
+	for _, fn := range []func(string) error{func(root string) error { _, e := awfgit.HeadBlobsUnder(root, "src"); return e }, func(root string) error { _, e := awfgit.WorkingPaths(root); return e }} {
+		if err := fn(t.TempDir()); err == nil {
+			t.Fatal("non-repository accepted")
+		}
+	}
+}
+
 func TestChangedPathsRange(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "one", map[string]string{"a.txt": "a"})

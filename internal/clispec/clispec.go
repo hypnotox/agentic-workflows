@@ -275,11 +275,17 @@ Flags:
 `,
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree to the current schema",
-		MaxPos: 0, Gating: Ungated,
-		HelpBody: `Usage: awf upgrade
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree or inspect current-state readiness",
+		BoolFlags: []string{"--check", "--json"}, MaxPos: 0, Gating: Ungated,
+		HelpBody: `Usage: awf upgrade [--check [--json]]
 
-Migrate the .awf/ config tree to the current schema version.
+Migrate the .awf/ config tree to the current schema version. With --check,
+inspect current-state migration readiness without changing the working tree,
+index, config, lock, or generated output. --json changes check presentation only.
+
+Flags:
+  --check  report exhaustive current-state migration readiness without writes
+  --json   emit the stable machine-readable readiness schema (requires --check)
 `,
 	},
 	{

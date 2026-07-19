@@ -1,6 +1,7 @@
 package project
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -52,6 +53,81 @@ type OutputNode struct {
 // OutputPlan is the single desired-output authority consumed by rendering,
 // sync, manifest/prune, checks, and planned-output reporting.
 type OutputPlan struct{ Nodes []OutputNode }
+
+// BridgeOutput is the migration-safe read-only projection of one output-plan
+// node or legacy-output deletion. It exposes no writer capability.
+type BridgeOutput struct {
+	Path             string
+	Bytes            []byte
+	Mode             uint32
+	Policy           OutputPolicy
+	DependencyHashes []string
+	Reservation      bool
+	Deletion         bool
+}
+
+// BridgeProjection returns the ordinary prepared output view, or the terminal
+// view that reserves deletion of legacy ADR indexes without introducing their
+// current-state replacements.
+func (p *Project) BridgeProjection(terminal bool) ([]BridgeOutput, error) {
+	op, err := p.OutputPlan()
+	if err != nil {
+		return nil, err
+	}
+	legacy := map[string]bool{p.layout().ActiveMd: true}
+	for _, domain := range p.Cfg.Domains {
+		legacy[p.layout().DomainsDir+"/"+domain+".md"] = true
+	}
+	plannedBytes := map[string][]byte{}
+	for _, node := range op.Nodes {
+		if node.file != nil {
+			plannedBytes[node.Path] = []byte(node.file.Content)
+		}
+	}
+	var out []BridgeOutput
+	for _, node := range op.Nodes {
+		if terminal && legacy[node.Path] {
+			continue
+		}
+		entry := BridgeOutput{Path: node.Path, Policy: node.Policy, Reservation: node.Reservation}
+		if node.file != nil {
+			entry.Bytes = []byte(node.file.Content)
+			entry.Mode = 0o644
+			if strings.HasPrefix(node.file.Content, "#!") {
+				entry.Mode = 0o755
+			}
+		}
+		for _, dep := range node.DependsOn {
+			b, ok := plannedBytes[dep]
+			if !ok {
+				var readErr error
+				b, readErr = os.ReadFile(filepath.Join(p.Root, filepath.FromSlash(dep)))
+				if readErr != nil { // coverage-ignore: OutputPlan loaded every authored dependency earlier in this invocation; failure requires a concurrent filesystem race
+					return nil, readErr
+				}
+			}
+			entry.DependencyHashes = append(entry.DependencyHashes, fmt.Sprintf("%x", sha256.Sum256(b)))
+		}
+		out = append(out, entry)
+	}
+	approvalPath := config.DirName + "/current-state-migration.yaml"
+	if data, readErr := os.ReadFile(filepath.Join(p.Root, filepath.FromSlash(approvalPath))); readErr == nil {
+		info, statErr := os.Stat(filepath.Join(p.Root, filepath.FromSlash(approvalPath)))
+		if statErr != nil { // coverage-ignore: ReadFile just succeeded for this same approval path; failure requires a concurrent filesystem race
+			return nil, statErr
+		}
+		out = append(out, BridgeOutput{Path: approvalPath, Bytes: data, Mode: uint32(info.Mode().Perm()), Reservation: true})
+	} else if !errors.Is(readErr, os.ErrNotExist) { // coverage-ignore: requires a permission or IO fault on the fixed optional authored input
+		return nil, readErr
+	}
+	if terminal {
+		for path := range legacy {
+			out = append(out, BridgeOutput{Path: path, Deletion: true})
+		}
+	}
+	slices.SortFunc(out, func(a, b BridgeOutput) int { return strings.Compare(a.Path, b.Path) })
+	return out, nil
+}
 
 func (op *OutputPlan) writeFiles() []RenderedFile {
 	files := make([]RenderedFile, 0, len(op.Nodes))

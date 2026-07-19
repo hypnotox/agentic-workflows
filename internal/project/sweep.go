@@ -48,8 +48,10 @@ func (m *claimedModel) claimedDir(dir string) bool {
 func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error) {
 	m := &claimedModel{
 		files: map[string]bool{
-			config.DirName + "/config.yaml": true,
-			config.DirName + "/awf.lock":    true,
+			config.DirName + "/config.yaml":                   true,
+			config.DirName + "/awf.lock":                      true,
+			config.DirName + "/current-state-migration.yaml":  true,
+			config.DirName + "/current-state-upgrade.journal": true,
 		},
 		dirs: map[string]bool{
 			config.DirName:             true,

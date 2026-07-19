@@ -30,6 +30,7 @@ by this repository's own checks (ADR-0090).
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
 - `awf new doc <name> "<description>"`: scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
 - `awf upgrade`: migrate the config tree after upgrading the awf binary.
+- `awf upgrade --check [--json]`: report exhaustive current-state migration readiness without changing the worktree, index, config, lock, approval input, or generated output.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory). The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf invariants`: report Implemented-ADR `invariant:` slugs that lack a backing proof comment in source.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
@@ -72,9 +73,23 @@ detail, and `--json` emits the same deterministic result model. Queries are read
 and never traverse references transitively. Removed identities and migration history are not yet
 available in this unreleased tranche.
 
-This is unreleased preparation substrate. Do not publish or treat it as shadow authority: legacy ADR
-context and invariant enforcement remain authoritative until the following bridge-migration plan
-adds readiness, attestation, and ordinary-command refusal.
+**Bridge readiness.** Author `.awf/current-state-migration.yaml` with exactly `version: 1` and an
+`invariantApprovals` sequence. Every entry has only nonempty string `key: ADR-NNNN#slug` and
+`destination: domain/topic:slug`; zero live mappings requires the exact `invariantApprovals: []`.
+Repository and commit review establish approval attribution; the file carries no reviewer, timestamp,
+signature, or `approved` field. `awf upgrade --check` independently derives one mapping per live
+legacy invariant from local slug, declaring Origin, and unchanged test/unbacked class before matching
+that evidence. Approval cannot choose among candidates. Retired keys forbid approval entries and are
+approved only by valid encoded history or reviewed migration rationale.
+
+The check converts config, normalizes migration bookkeeping, qualifies proof/touches markers, checks
+strict topic/domain coverage and terminal output deletion planning entirely in memory, and writes
+nothing. Human output and `--json` share one sorted model. JSON fields are `ready`, `findings`,
+`invariantAdjudications`, and `plannedMutations`; image records include presence, octal-mode value,
+and SHA-256, with absent content using mode 0 and the empty-byte digest. The unchanged approval file
+is retained and omitted from mutations. Legacy context and invariant enforcement remain authoritative.
+Attestation, recovery journals, ordinary-command refusal, INDEX.md, and the authority switch are not
+implemented in this phase.
 
 To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a

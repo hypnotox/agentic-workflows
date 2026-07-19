@@ -41,8 +41,15 @@ backing while hiding provenance and references. Independent `--history`, `--refe
 `--coverage` flags add only direct ADR details, direct incoming/outgoing edges, and declared/effective
 scope plus configured marker sites. It never traverses references, resolves tombstones, or writes the
 worktree, index, config, or lock; outside an adopted tree it prints a static reference before gating.
-This remains part of the unreleased two-plan bridge tranche: it is preparation tooling, not migration
-readiness or runtime authority.
+`awf upgrade --check` is now the first production caller for bridge preparation and is byte-for-byte
+read-only. Human and `--json` presentations share one sorted report. JSON is exactly `ready`,
+`findings`, `invariantAdjudications`, and `plannedMutations`; every inventory key appears once and its
+`approved` value is computed. Mutation images report path, presence, mode, and SHA-256 before/after,
+including terminal legacy deletions and excluding an unchanged approval file. Stable approval
+failures use `invariant-approval` at `.awf/current-state-migration.yaml`. The strict file contains only
+`version: 1` and `invariantApprovals` entries with exact key/destination strings; an empty inventory
+requires `invariantApprovals: []`. Review in the repository and commit establishes attribution. This
+is preparation tooling, not runtime authority, attestation, recovery, or a command-state guard.
 
 `awf new adr "<title>"` (ADR-0042) scaffolds a new ADR file: `internal/adr.NextNumber` computes the next sequential number and `internal/adr.NewFile` copies the rendered `docs/decisions/template.md`, strips its marker comments, and fills in the date and title heading, replacing the free-hand copy/strip/number steps `awf-proposing-adr` used to spell out by hand. ADR-0068 widens `awf new` to project-local artifacts: `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` validates the kebab-case name (`config.ValidateArtifactName`), writes a declaring sidecar plus a starter `content` part, enables the name in the matching config array, and re-syncs, so a project adds its own skills and agents without forking the catalog. The scaffolded starter part opens with the whole-line `<!-- awf:stub -->` marker (ADR-0070), so `awf check` reports the artifact as unauthored until the author deletes the line. All `awf new` forms go through the ADR-0039 binary-version gate like the other project-reading commands.
 

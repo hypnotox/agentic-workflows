@@ -142,10 +142,9 @@ func TestCorpusOwnsFieldReads(t *testing.T) {
 	}
 }
 
-// TestCorpusRawAccessEnumerated enforces ADR-0130 item 6: exactly two consumers
-// work below the semantic layer - the migration's offset surgery and the
-// retired-key frontmatter scan - and both go through the view's named
-// accessor rather than re-reading the file.
+// TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: ordered
+// schema migration, the retired-key frontmatter scan, and bridge normalization.
+// Each goes through the view's named accessor rather than re-reading the file.
 // invariant: corpus-raw-access-enumerated
 func TestCorpusRawAccessEnumerated(t *testing.T) {
 	raw := map[string]bool{}
@@ -166,17 +165,18 @@ func TestCorpusRawAccessEnumerated(t *testing.T) {
 			}
 		}
 	})
-	// internal/migrate appears twice because each schema migration that
-	// performs offset surgery is its own file; ADR-0130 item 6 enumerates the
-	// migration package and the retired-key scan, not a file count.
+	// internal/migrate appears twice because each ordered schema migration that
+	// performs offset surgery is its own file. The bridge adds one temporary
+	// migration-only raw seam for history and status normalization.
 	want := map[string]bool{
 		"../../internal/migrate/retirementtokens.go": true,
 		"../../internal/migrate/supersessionkeys.go": true,
 		"../../internal/project/supersession.go":     true,
+		"../../internal/bridge/normalize.go":         true,
 	}
 	for path := range raw {
 		if !want[path] {
-			t.Errorf("%s calls the raw-bytes accessor; only the migration and the retired-key scan may (ADR-0130 item 6). A third consumer means the view is missing a question.", path)
+			t.Errorf("%s calls the raw-bytes accessor; only the enumerated migration seams and retired-key scan may. Another consumer means the view is missing a question.", path)
 		}
 	}
 	for path := range want {
@@ -185,7 +185,7 @@ func TestCorpusRawAccessEnumerated(t *testing.T) {
 		}
 	}
 	if len(pathReads) != 0 {
-		t.Errorf("an ADR file is read directly rather than through the view's accessor (ADR-0130 item 6):\n\t%s",
+		t.Errorf("an ADR file is read directly rather than through the view's accessor:\n\t%s",
 			strings.Join(pathReads, "\n\t"))
 	}
 }

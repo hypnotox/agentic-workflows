@@ -24,6 +24,26 @@ const unclaimedDetail = "unclaimed file or directory: not part of the .awf confi
 const bakDetail = "stale awf-bak backup: review and delete"
 const localPartsDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 
+func TestSweepClaimsBridgeTransactionInputs(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.sweepConfigTree(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orphans := orphanedByPath(drift)
+	if orphans[".awf/current-state-migration.yaml"] != "" || orphans[".awf/current-state-upgrade.journal"] != "" {
+		t.Fatalf("bridge inputs orphaned: %#v", orphans)
+	}
+}
+
 // invariant: closed-config-tree
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{

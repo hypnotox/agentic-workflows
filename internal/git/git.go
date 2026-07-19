@@ -86,6 +86,114 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 	return out, nil
 }
 
+// HeadBlob is one ordinary or executable file from the committed HEAD tree.
+type HeadBlob struct {
+	Path  string
+	Bytes []byte
+	Mode  uint32
+}
+
+// HeadBlobsUnder returns sorted regular HEAD blobs below prefix. It is the
+// read-only snapshot seam used by cross-schema bridge validation.
+func HeadBlobsUnder(repoRoot, prefix string) ([]HeadBlob, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	ref, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("resolve HEAD: %w", err)
+	}
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil { // coverage-ignore: resolved HEAD points at a commit
+		return nil, err
+	}
+	tree, err := commit.Tree()
+	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+		return nil, err
+	}
+	prefix = strings.TrimSuffix(filepath.ToSlash(prefix), "/")
+	if prefix != "" {
+		prefix += "/"
+	}
+	var out []HeadBlob
+	err = tree.Files().ForEach(func(f *object.File) error {
+		if prefix != "" && !strings.HasPrefix(f.Name, prefix) {
+			return nil
+		}
+		reader, err := f.Reader()
+		if err != nil { // coverage-ignore: a tree file always supplies its blob reader
+			return err
+		}
+		data, err := io.ReadAll(reader)
+		closeErr := reader.Close()
+		if err != nil { // coverage-ignore: in-memory object readers do not fail
+			return err
+		}
+		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
+			return closeErr
+		}
+		mode := uint32(0o644)
+		if f.Mode == filemode.Executable {
+			mode = 0o755
+		}
+		out = append(out, HeadBlob{Path: f.Name, Bytes: data, Mode: mode})
+		return nil
+	})
+	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out, nil
+}
+
+// WorkingPaths returns tracked HEAD paths that still exist plus nonignored
+// untracked paths. Deleted, ignored, and nested-repository files are excluded
+// by go-git's worktree status semantics.
+func WorkingPaths(repoRoot string) ([]string, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	ref, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("resolve HEAD: %w", err)
+	}
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil { // coverage-ignore: resolved HEAD points at a commit
+		return nil, err
+	}
+	tree, err := commit.Tree()
+	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+		return nil, err
+	}
+	set := map[string]bool{}
+	if err := tree.Files().ForEach(func(f *object.File) error { set[f.Name] = true; return nil }); err != nil { // coverage-ignore: collector callback never errors
+		return nil, err
+	}
+	wt, err := repo.Worktree()
+	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
+		return nil, err
+	}
+	status, err := wt.Status()
+	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
+		return nil, err
+	}
+	for path, state := range status {
+		if state.Worktree == gogit.Deleted || state.Staging == gogit.Deleted {
+			delete(set, path)
+		} else {
+			set[path] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for path := range set {
+		out = append(out, path)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // TrackedPaths returns the sorted, unique repo-relative slash paths tracked at
 // HEAD. It reads the repository only.
 func TrackedPaths(repoRoot string) ([]string, error) {

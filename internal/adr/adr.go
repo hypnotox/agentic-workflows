@@ -27,6 +27,7 @@ type ADR struct {
 	Number        string            // e.g. "0001"
 	Title         string            // e.g. "ADR-0001: Template Overlay Rendering Engine"
 	Status        string            // e.g. "Accepted"
+	Date          string            // frontmatter date, retained verbatim as YYYY-MM-DD text
 	Filename      string            // e.g. "0001-template-overlay-rendering-engine.md"
 	Path          string            // path as globbed
 	Domains       []string          // `domains:` frontmatter (ADR-0014)
@@ -202,6 +203,7 @@ func ParseDir(dir string) ([]ADR, error) {
 // adrFrontmatter holds the YAML fields we care about.
 type adrFrontmatter struct {
 	Status  string   `yaml:"status"`
+	Date    string   `yaml:"date"`
 	Domains []string `yaml:"domains"`
 	Tags    []string `yaml:"tags"`
 	Related []int    `yaml:"related"`
@@ -225,7 +227,7 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Status: fm.Status, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
+	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
 	}

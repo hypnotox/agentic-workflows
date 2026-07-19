@@ -834,6 +834,30 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 // internal/project/context.go carries the single enumerated exception: ADR-0129
 // item 4 keeps its Tier-2 exclusion on a direct prefix test.
 // invariant: corpus-owns-status-literals
+func TestBridgeLegacyFacts(t *testing.T) {
+	for _, tc := range []struct {
+		status            string
+		shipped, inflight bool
+	}{
+		{"Implemented", true, false}, {"Superseded", true, false}, {"Accepted", false, true}, {"Proposed", false, true}, {"Superseded by ADR-0001", false, false},
+	} {
+		a, _, err := adr.ParseBytes("0001-test.md", []byte("---\nstatus: "+tc.status+"\ndate: 2026-07-19\n---\n# ADR-0001: Test\n\n## Invariants\n\n- `invariant: backed` - x.\n- `unbacked-invariant: manual` - y.\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if a.Date != "2026-07-19" || a.IsLegacyShipped() != tc.shipped || a.IsInflight() != tc.inflight {
+			t.Errorf("%s: %#v", tc.status, a)
+		}
+		if got := a.InvariantDecls(); len(got) != 2 || got[0].Unbacked || !got[1].Unbacked {
+			t.Errorf("declaration class drift: %#v", got)
+		}
+	}
+	a, _, err := adr.ParseBytes("0002-no-date.md", []byte("---\nstatus: Implemented\n---\n# ADR-0002: No date\n"))
+	if err != nil || a.Date != "" {
+		t.Fatalf("missing date must remain valid and empty: %#v %v", a, err)
+	}
+}
+
 func TestStatusLiteralsOwnedByADRPackage(t *testing.T) {
 	// Two shapes: a comparison against an ADR's .Status field, and a comparison
 	// of any local against a status literal. internal/audit used to hold the

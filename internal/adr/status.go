@@ -26,8 +26,23 @@ func (a ADR) IsSuperseded() bool { return strings.HasPrefix(a.Status, statusSupe
 // backing and token retirement are both gated on this.
 func (a ADR) IsImplemented() bool { return a.Status == statusImplemented }
 
+// IsLegacyShipped reports whether a legacy decision shipped, including the
+// historical Superseded state. Migration inventory uses this broader predicate;
+// normal legacy authority continues to use its existing predicates.
+func (a ADR) IsLegacyShipped() bool {
+	return a.Status == statusImplemented || a.Status == statusSuperseded
+}
+
 // IsProposed reports whether the ADR's body is still mutable.
 func (a ADR) IsProposed() bool { return a.Status == statusProposed }
+
+// IsInflight reports a legacy decision that must be resolved before bridge
+// attestation.
+func (a ADR) IsInflight() bool { return a.Status == statusProposed || a.Status == statusAccepted }
+
+// HasSameStatus reports exact status equality without exporting literal
+// comparisons to migration consumers.
+func (a ADR) HasSameStatus(other ADR) bool { return a.Status == other.Status }
 
 // HasStatus reports whether the record carries a frontmatter status at all.
 // The audit distinguishes an ADR with no status from one with a real status,

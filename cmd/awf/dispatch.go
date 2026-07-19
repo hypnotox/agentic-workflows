@@ -86,7 +86,9 @@ var handlers = map[string]handler{
 		}
 		return runDisable(c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout)
 	},
-	"upgrade":   func(c *cmdCtx) error { return runUpgrade(c.root, c.stdout) },
+	"upgrade": func(c *cmdCtx) error {
+		return runUpgradeFlags(c.root, c.inv.bools["--check"], c.inv.bools["--json"], c.stdout)
+	},
 	"uninstall": func(c *cmdCtx) error { return runUninstall(c.root, c.stdout) },
 	"changelog": func(c *cmdCtx) error {
 		return runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout)

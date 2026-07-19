@@ -114,10 +114,22 @@ backing while hiding provenance and references. The independent `--history`, `--
 `--json` changes presentation only. The query is read-only, active-only, and never traverses
 references transitively or invents removed-claim history.
 
-This substrate sits beside unchanged legacy `invariants` and does not switch normal context or
-invariant authority. Plans 1 and 2 are one unreleased bridge tranche: no intermediate release is
-allowed, and migration readiness, attestation, and ordinary-command refusal are not available until
-the following bridge-migration plan lands.
+`awf upgrade --check` adds the bridge's exhaustive read-only readiness report without switching
+normal context or invariant authority. It requires strict authored
+`.awf/current-state-migration.yaml`: exactly `version: 1` plus `invariantApprovals`, whose entries
+contain only an exact `ADR-NNNN#slug` key and `domain/topic:slug` destination; zero live mappings uses
+`invariantApprovals: []`. The bridge independently derives each unique local-slug, declaring-Origin,
+and backing-class-preserving mapping before approval matching, so evidence cannot disambiguate.
+Repository and commit review own attribution; no reviewer, timestamp, signature, or authored approved
+boolean exists.
+
+Human and `--json` output share one deterministic report over every readiness predicate and legacy
+invariant adjudication. JSON fields are `ready`, `findings`, `invariantAdjudications`, and
+`plannedMutations`; mutations use exact before/after presence, mode, and SHA-256 records, including
+terminal ACTIVE/domain-index deletions and excluding the unchanged approval input. The command writes
+nothing. Schema stays 14 because the approval file is ephemeral authored migration input, not a
+permanent config key. Attestation, recovery journals, ordinary-command refusal, INDEX.md, and the
+runtime authority switch remain later work in the unreleased bridge tranche.
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into

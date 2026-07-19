@@ -77,7 +77,8 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   constructed once per invocation and threaded to every consumer (ADR-0130). The view answers
   ADR questions rather than exposing fields to re-derive them from: status predicates on the
   parsed record, declared invariant slugs, existence and metadata lookups, an enumerated
-  raw-bytes accessor for the two consumers that legitimately work below the semantic layer, and
+  raw-bytes accessor for the enumerated schema-migration, retired-key, and temporary bridge
+  normalization consumers, and
   a bytes-level `ParseBytes` seam for `internal/audit`, which reads git blobs rather than the
   working tree. ADR-0129's anchor-coverage model is built as a facet of the view: anchors are
   nodes, claims are edges carrying relation and rationale site, and `Live`/`PartiallySuperseded`
@@ -89,6 +90,13 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   focused topic coverage, and builds deterministic topic, index, and domain-navigation render models.
   In this unreleased tranche these are parsed and rendered preparation artifacts only; legacy ADR
   context and invariant authority remain unchanged.
+- **`internal/bridge/`**: the bridge-release-only migration inventory and read-only readiness
+  orchestrator. It inventories exact legacy ADR declaration, retirement, date, carrier-item, and
+  backing facts; strictly parses authored `.awf/current-state-migration.yaml`; plans comment-preserving
+  config, migration-history, status, and qualified-marker normalization; adapts the prepared topic
+  corpus and migration-safe output projection; and emits one sorted report for `upgrade --check`.
+  Approval confirms an independently unique Origin/backing-preserving mapping and cannot disambiguate
+  it. This package does not answer normal context or invariant queries and does not attest or mutate.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -118,7 +126,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
   The discovered topic producer loads through a lazy invocation cache and contributes ordinary
   managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
-  prune all use the shared output plan rather than topic-specific lock state.
+  prune all use the shared output plan rather than topic-specific lock state. Its bridge projection
+  exposes sorted desired bytes, mode, policy, dependency hashes, reservations, and terminal legacy
+  ACTIVE/domain-index deletions without writing; the authored approval file is retained as a
+  reservation and is never generated.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
@@ -154,7 +165,8 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   (`ParseDir`/`NewFile`); date-prefixed rather than sequentially numbered, unlike `internal/adr`
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
 - **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
-  `worktreeConfig`-extension workaround) plus tracked-path and staged-blob readers; read-only,
+  `worktreeConfig`-extension workaround) plus tracked-path, eligible working-path, HEAD-blob, and
+  staged-blob readers; read-only,
   shared by `awf audit`, `awf context`, and `awf prose-gate` (ADR-0092). It is also the sole
   definition site for `<a>..<b>` range parsing (`ParseRange`, ADR-0127): every command taking
   a range parses through it, and a test fails the build if a second parser reappears.
@@ -210,8 +222,21 @@ loads one corpus per invocation. It renders topic pages and per-domain indexes u
 `## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
 feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
 substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
-solely authoritative until the following bridge-migration plan adds readiness, attestation, and
-ordinary-command refusal before release.
+solely authoritative. The bridge migration now adds read-only readiness; its later phases add
+attestation and ordinary-command refusal before release.
+
+`awf upgrade --check` now builds the bridge projection without mutation. It converts legacy
+`invariants` to strict `currentState` in memory, inventories shipped legacy declarations and effective
+retirements, normalizes append-only Migration history and bare Superseded status, independently maps
+each live key to one invariant claim with exact Origin and backing class, then matches the authored
+approval file. It plans qualified proof/touches rewrites and validates the proposed tree through the
+normal topic and output engines. The terminal projection reserves deletion of ACTIVE.md and generated
+domain ADR-index outputs but creates no INDEX.md and switches no authority. Findings sort by code,
+slash-relative path, and detail. JSON carries `ready`, exhaustive findings and invariant adjudications,
+and exact planned before/after presence, octal-mode value, and SHA-256 records; absent images use mode
+0 and the SHA-256 of empty bytes. Repository and commit review own approval attribution; the file
+records only exact key/destination results and cannot choose among candidates. Attestation, journals,
+and command-state guards remain later bridge work.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

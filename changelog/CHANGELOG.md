@@ -137,6 +137,17 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf upgrade --check` reports exhaustive current-state bridge readiness without writing the
+  worktree, index, config, lock, approval input, or generated output. It inventories exact shipped
+  legacy invariant declarations and retirements, plans idempotent Migration history/status/config and
+  qualified-marker normalization, requires repository-reviewed strict
+  `.awf/current-state-migration.yaml` evidence only after independently deriving each unique
+  Origin/backing-preserving mapping, checks scoped topic coverage and migration-safe terminal output
+  deletion, and emits deterministic human or `--json` findings, computed adjudications, and exact
+  before/after path/mode/SHA-256 mutation records. The ephemeral approval input does not bump schema
+  14, cannot disambiguate mappings, requires `invariantApprovals: []` for an empty live inventory,
+  and is omitted from mutations when unchanged. Attestation, journals, command refusal, and the
+  authority switch are intentionally not included yet.
 - `awf topic <domain>/<topic>[:<claim>]` adds a version-gated, read-only active-state query with one
   deterministic human/JSON model. Defaults show current title/summary, claims, types, prose, and
   backing while hiding provenance and references. Independent `--history`, `--references`, and

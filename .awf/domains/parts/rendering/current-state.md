@@ -3,7 +3,12 @@
 <!-- awf:comment touches-invariant: parts-raw-except-authoring-comments - the verbatim-parts contract and its carve-outs narrated below -->
 ## Current state
 
-The unreleased topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `<docsDir>/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page without removing `## Decisions`. Authored topic Markdown uses the raw-part convention and authoring-comment strip rather than YAML interpolation. Topic pages and indexes are ordinary managed Markdown output-plan nodes, so manifest hashing, brownfield backup, drift, and prune share the existing lifecycle with no topic-specific lock field. They remain preparation artifacts, not a second authority engine.
+The unreleased topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `<docsDir>/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page without removing `## Decisions`. Authored topic Markdown uses the raw-part convention and authoring-comment strip rather than YAML interpolation. Topic pages and indexes are ordinary managed Markdown output-plan nodes, so manifest hashing, brownfield backup, drift, and prune share the existing lifecycle with no topic-specific lock field. They remain preparation artifacts, not a second authority engine. The read-only bridge projection
+exposes the prepared output plan with exact desired bytes/modes, policy, dependency hashes, and local
+reservations. Its terminal view is identical except for explicit deletion reservations for ACTIVE.md
+and every generated domain ADR-index output; it emits no INDEX.md and refuses replacement at those
+paths. The approval file is retained byte-for-byte and mode-for-mode as authored input and does not
+become a planned mutation merely by participating in later digest membership.
 
 ADR-0132 adds the core exploring skill with six-target semantic rendering. Pi's capability-selected branch invokes the structured `subagent_explore` contract; all non-Pi targets carry the same breadth, detail, boundary, outcome, and reporting semantics through generic native delegation.
 
