@@ -209,9 +209,9 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
   if (!options.expanded) {
     const retainedSkipped = Math.max(0, details.events.length - COLLAPSED_EVENT_COUNT);
     const events = details.events.slice(-COLLAPSED_EVENT_COUNT).map(eventText);
-    const lines = [header];
+    const lines = [header, omission];
     if (retainedSkipped > 0) lines.push(`... ${retainedSkipped} earlier retained events`);
-    lines.push(...events, omission);
+    lines.push(...events);
     if (usage) lines.push(usage);
     if (!options.isPartial && (details.events.length > 0 || details.task)) lines.push(keyHint("app.tools.expand", "to expand"));
     return new Text(lines.join("\n"), 0, 0);

@@ -144,8 +144,8 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
   const events = Array.from({ length: 12 }, (_, index) => index % 3 === 0
     ? { sequence: index + 1, kind: "assistant", text: `assistant ${index}` }
     : index % 3 === 1
-      ? { sequence: index + 1, kind: "tool-start", toolCallId: `id-${index}`, toolName: "read", argsPreview: "{}" }
-      : { sequence: index + 1, kind: "tool-end", toolCallId: `id-${index}`, toolName: "read", isError: index === 2 });
+      ? { sequence: index + 1, kind: "tool-start", toolCallId: `id-${index}`, toolName: `read-${index}`, argsPreview: "{}" }
+      : { sequence: index + 1, kind: "tool-end", toolCallId: `id-${index}`, toolName: `read-${index}`, isError: index === 2 });
   const usage = { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, cost: 0.25, turns: 2 };
   for (const [name, role] of [["subagent_grounding", "grounding"], ["subagent_explore", "explore"], ["subagent_review", "review"], ["subagent_implement", "implement"]]) {
     const tool = h.tools.get(name);
@@ -159,6 +159,21 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
     assert.match(collapsed, /completed/);
     assert.match(collapsed, /earlier retained\s+events/);
     assert.match(collapsed, /7 older events omitted/);
+    const orderedActivity = [
+      collapsed.indexOf("7 older events omitted"),
+      collapsed.search(/earlier retained\s+events/),
+      collapsed.indexOf("<- read-2 error"),
+      collapsed.indexOf("assistant 3"),
+      collapsed.indexOf("-> read-4 {}"),
+      collapsed.indexOf("<- read-5 ok"),
+      collapsed.indexOf("assistant 6"),
+      collapsed.indexOf("-> read-7 {}"),
+      collapsed.indexOf("<- read-8 ok"),
+      collapsed.indexOf("assistant 9"),
+      collapsed.indexOf("-> read-10 {}"),
+      collapsed.indexOf("<- read-11 ok"),
+    ];
+    assert.ok(orderedActivity.every((position, index) => position >= 0 && (index === 0 || orderedActivity[index - 1] < position)), "collapsed activity is not chronological");
     assert.match(collapsed, /2 turns/);
     assert.match(collapsed, /to expand/);
   }
