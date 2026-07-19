@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -26,6 +28,21 @@ func TestRunRefusesIncompleteBridgeTranche(t *testing.T) {
 	code := run(changelogFS("not parsed while incomplete"), &out, &errb, project.BridgeTrancheComplete)
 	if code != 1 || out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
 		t.Fatalf("incomplete bridge result: code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
+	}
+}
+
+func TestMainRefusesIncompleteBridgeTranche(t *testing.T) {
+	cmd := exec.Command("go", "run", ".")
+	var out, errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	err := cmd.Run()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() == 0 {
+		t.Fatalf("production releasecheck error = %v, stdout=%q stderr=%q", err, out.String(), errb.String())
+	}
+	if out.Len() != 0 || !strings.Contains(errb.String(), "Plans 1 and 2 must both land before release") {
+		t.Fatalf("production releasecheck stdout=%q stderr=%q", out.String(), errb.String())
 	}
 }
 

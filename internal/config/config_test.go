@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -623,6 +624,35 @@ func TestCurrentStateMappingsRequired(t *testing.T) {
 	} {
 		if _, err := Parse("staged/.awf", []byte(body)); err == nil || !strings.Contains(err.Error(), "must be a mapping") {
 			t.Errorf("Parse = %v", err)
+		}
+	}
+}
+
+func TestCurrentStateRejectsNonStringScalars(t *testing.T) {
+	fields := []struct {
+		name, yaml, want string
+	}{
+		{"source_glob", "  sources:\n    - globs: [%s]\n", "currentState source.globs[0] must be a string scalar"},
+		{"marker", "  sources:\n    - marker: %s\n", "currentState source.marker must be a string scalar"},
+		{"close", "  sources:\n    - close: %s\n", "currentState source.close must be a string scalar"},
+		{"test_glob", "  testGlobs: [%s]\n", "currentState.testGlobs[0] must be a string scalar"},
+		{"topic_coverage", "  topicCoverage: %s\n", "currentState.topicCoverage must be a string scalar"},
+		{"topic_fanout", "  topicFanout: %s\n", "currentState.topicFanout must be a string scalar"},
+	}
+	values := []struct{ name, yaml string }{
+		{"numeric", "123"},
+		{"boolean", "true"},
+		{"null", "null"},
+	}
+	for _, field := range fields {
+		for _, value := range values {
+			t.Run(field.name+"_"+value.name, func(t *testing.T) {
+				body := "prefix: x\ncurrentState:\n" + fmt.Sprintf(field.yaml, value.yaml)
+				_, err := Parse("staged/.awf", []byte(body))
+				if err == nil || !strings.Contains(err.Error(), field.want) {
+					t.Fatalf("Parse = %v, want error containing %q", err, field.want)
+				}
+			})
 		}
 	}
 }

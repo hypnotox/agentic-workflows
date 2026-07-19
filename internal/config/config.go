@@ -128,17 +128,17 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 				return err
 			}
 		case "testGlobs":
-			if err := value.Decode(&c.TestGlobs); err != nil {
+			if err := decodeStringScalars(value, &c.TestGlobs, "currentState.testGlobs"); err != nil {
 				return err
 			}
 		case "topicCoverage":
 			c.coverageSet = true
-			if err := value.Decode(&c.TopicCoverage); err != nil {
+			if err := decodeStringScalar(value, &c.TopicCoverage, "currentState.topicCoverage"); err != nil {
 				return err
 			}
 		case "topicFanout":
 			c.fanoutSet = true
-			if err := value.Decode(&c.TopicFanout); err != nil {
+			if err := decodeStringScalar(value, &c.TopicFanout, "currentState.topicFanout"); err != nil {
 				return err
 			}
 		case "maxTopicsPerPath":
@@ -185,22 +185,44 @@ func (s *CurrentStateSource) UnmarshalYAML(node *yaml.Node) error {
 		seen[key] = true
 		switch key {
 		case "globs":
-			if err := value.Decode(&s.Globs); err != nil {
+			if err := decodeStringScalars(value, &s.Globs, "currentState source.globs"); err != nil {
 				return err
 			}
 		case "marker":
-			if err := value.Decode(&s.Marker); err != nil {
+			if err := decodeStringScalar(value, &s.Marker, "currentState source.marker"); err != nil {
 				return err
 			}
 		case "close":
 			s.closeSet = true
-			if err := value.Decode(&s.Close); err != nil {
+			if err := decodeStringScalar(value, &s.Close, "currentState source.close"); err != nil {
 				return err
 			}
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateSource", key)
 		}
 	}
+	return nil
+}
+
+func decodeStringScalar(node *yaml.Node, dst *string, field string) error {
+	if node.Kind != yaml.ScalarNode || node.Tag != "!!str" {
+		return fmt.Errorf("%s must be a string scalar", field)
+	}
+	*dst = node.Value
+	return nil
+}
+
+func decodeStringScalars(node *yaml.Node, dst *[]string, field string) error {
+	if node.Kind != yaml.SequenceNode {
+		return fmt.Errorf("%s must be a sequence of string scalars", field)
+	}
+	decoded := make([]string, len(node.Content))
+	for i, item := range node.Content {
+		if err := decodeStringScalar(item, &decoded[i], fmt.Sprintf("%s[%d]", field, i)); err != nil {
+			return err
+		}
+	}
+	*dst = decoded
 	return nil
 }
 
