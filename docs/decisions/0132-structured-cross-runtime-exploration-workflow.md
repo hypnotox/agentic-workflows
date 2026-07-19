@@ -54,7 +54,15 @@ record rather than an in-place edit.
    that name it declare a one-way `requiresSkills` dependency on it; exploring
    declares no reciprocal workflow dependency.
 
-2. Invoke exploring when the parent needs repository information whose location
+2. Bump the config schema generation and add an ordered migration that reruns
+   the existing close-enabled-set operation against the revised catalog. It
+   adds exploring to every adopted config whose enabled brainstorming,
+   debugging, or refactor coupling audit now requires it before ordinary
+   project-open validation runs. The migration reports each addition through
+   the existing closure diagnostics and updates the schema/version compatibility
+   tables required by the binary-version gate.
+
+3. Invoke exploring when the parent needs repository information whose location
    it does not know and the search transcript would pollute the main session.
    Keep an exact-known-file or genuinely trivial lookup inline. Each dispatch
    carries one information need; unrelated questions are not bundled. The
@@ -63,7 +71,7 @@ record rather than an in-place edit.
    fresh-context call with a corrected task, different report detail, or wider
    breadth.
 
-3. Require every exploration dispatch to supply a non-empty `task`, a breadth
+4. Require every exploration dispatch to supply a non-empty `task`, a breadth
    maximum, and a report detail. Breadth is the ordered enum
    `targeted | bounded | broad`:
    - `targeted` locates one declaration, implementation, file, or exact fact;
@@ -76,7 +84,7 @@ record rather than an in-place edit.
    evidence requires it, never beyond the selected maximum. If the boundary is
    exhausted, it reports that explicitly rather than silently widening.
 
-4. Define report detail as the ordered enum `paths | summary | analysis`,
+5. Define report detail as the ordered enum `paths | summary | analysis`,
    independent of breadth:
    - `paths` returns only relevant `file:line` or `file:start-end` locations,
      with minimal labels needed to distinguish them and no search narrative;
@@ -91,7 +99,7 @@ record rather than an in-place edit.
    refinement. An inconclusive or unverified result never becomes an absence
    claim. These are semantic text contracts, not a JSON result schema.
 
-5. Define the broad project search universe as tracked files plus non-ignored
+6. Define the broad project search universe as tracked files plus non-ignored
    untracked working-tree files under the current repository root. It includes
    tracked generated and vendored files. It excludes ignored files, `.git`,
    nested-repository contents, and external dependencies unless the task
@@ -99,19 +107,25 @@ record rather than an in-place edit.
    names this project universe and its searched surfaces rather than claiming
    unrestricted filesystem absence.
 
-6. Change Pi's existing `subagent_explore` public schema to require exactly
+7. Change Pi's existing `subagent_explore` public schema to require exactly
    `{task, breadth, detail}` with the enums above and reject additional
    properties. Its fixed child prompt receives the selected values and enforces
    the adaptive maximum, report contract, explicit outcome distinctions,
    project search universe, evidence grounding, and one-information-need
-   policy. The tool count, exploration allowlist, inherited model and thinking
-   level, no-session process, fixed output bounds, context-isolated progress,
-   renderers, cancellation, and failure behavior remain unchanged.
-   `refines: ADR-0125#1`
-   `refines: ADR-0125#2`
+   policy. The extension still exposes exactly grounding, exploration,
+   governed review, and serialized implementation; grounding keeps required
+   `{task}`, review keeps required `{kind, task}`, and implementation keeps
+   required `{task, allowCommits}`. The exploration allowlist, inherited model
+   and thinking level, no-session process, fixed output bounds,
+   context-isolated progress, renderers, cancellation, and failure behavior
+   remain unchanged. This replaces ADR-0125 item 1 because its
+   unchanged-existing-schemas clause is no longer true while preserving that
+   item's four-role boundary and every non-exploration schema.
+   `supersedes: ADR-0125#1`
+   `cites: ADR-0125#2`
    `supersedes-invariant: ADR-0125#pi-subagent-four-tool-contract`
 
-7. Render the exploring skill for every enabled target. Pi instructions call
+8. Render the exploring skill for every enabled target. Pi instructions call
    the awf-owned structured tool explicitly. Every other target instructs the
    parent to use an available target-native fresh-context exploration subagent
    and embeds the same task, breadth, detail, boundary, outcome, and report
@@ -120,32 +134,52 @@ record rather than an in-place edit.
    capability projection are out of scope. Pi remains awf's primary harness
    for deep custom orchestration because its extension model permits that
    integration; other targets receive semantic workflow parity, not a promise
-   of identical extension machinery.
+   of identical extension machinery. This deliberately adapts the
+   tool-agnostic prose rule: generic action language remains the standard, but
+   an awf-owned Pi tool is a project-specific identifier used only in the
+   capability-selected Pi rendering.
+   `refines: ADR-0038#1`
 
-8. Integrate the shared protocol into brainstorming's initial context search,
+9. Integrate the shared protocol into brainstorming's initial context search,
    debugging's evidence-location loop, and the refactor coupling audit. Keep
    brainstorming's later dedicated grounding operation unchanged. Add
-   exploring to the agent guide's task-skill guidance and update adopter docs,
-   rendering/tooling current state, core-skill counts, the full-surface Sundial
-   example, and generated target copies in the behavior commits.
+   exploring to the agent guide's task-skill guidance. In the behavior commits,
+   update `README.md`, `docs/working-with-awf.md`, `docs/architecture.md`,
+   `docs/releasing.md`, `docs/testing.md`, `changelog/CHANGELOG.md`, the
+   rendering and tooling current-state parts under `.awf/domains/parts/`,
+   `templates/agents-doc/AGENTS.md.tmpl`, the Sundial config and README, and all
+   generated AGENTS.md, domain-doc, target-skill, and example-adopter outputs.
 
-9. Preserve the report-only boundary as policy. Exploration receives `read`,
+10. Preserve the report-only boundary as policy. Exploration receives `read`,
    `grep`, `find`, `ls`, and `bash`; `bash` means neither no-mutation nor
    no-recursion is an OS-enforced sandbox. The skill and prompt prohibit edits,
    commits, and recursive delegation, while tests prove the closed direct tool
    allowlist and instruction contract rather than arbitrary model compliance.
 
-10. Test the revised exact Pi schema and prompt in the TypeScript extension
+11. Test the revised exact Pi schema and prompt in the TypeScript extension
     harness, including every enum value, rejected shapes, representative report
     combinations, not-found/refinement wording, and all unchanged process and
     context-isolation boundaries. Go catalog/render tests prove the core and
     dependency graph, six-target skill rendering, Pi structured dispatch,
-    generic non-Pi native dispatch, publication safety, generated-output fanout,
-    and replacement exact-contract invariant. `internal/evals` covers only a
-    composed cross-artifact skill-to-runtime seam, not single-prompt behavior.
+    generic non-Pi native dispatch, generated-output fanout, and replacement
+    exact-contract invariant. Every new or modified template preserves
+    `missingkey=zero`, renders coherent generic prose when variables are empty,
+    and emits no unresolved or no-value token. Each backed invariant below
+    receives a matching `// invariant: <slug>` annotation on an executed Go
+    test under `**/*_test.go`: Pi contract, cross-runtime dispatch, and bounded
+    reporting proofs live in `internal/project/target_test.go`, while the skill
+    closure proof lives in the catalog/scaffold test group. `internal/evals`
+    covers only a composed cross-artifact skill-to-runtime seam, not
+    single-prompt behavior.
     The existing credential-free gate remains deterministic; release smoke
     guidance adds one successful exploration and one not-found/refinement
     sequence on real Pi.
+
+12. In the final lifecycle commit, record implementation deviations, flip this
+    ADR to Implemented, and run `./x sync`. Commit the regenerated
+    `docs/decisions/ACTIVE.md` and rendering/tooling domain indexes with the
+    status change. No `docs/decisions/README.md` row is owed because ADR-0005
+    defines that file as a how-to guide rather than the decision index.
 
 ## Invariants
 
@@ -177,9 +211,9 @@ record rather than an in-place edit.
   means ignored build artifacts, nested repositories, and external dependencies
   require deliberate task scope rather than accidental discovery.
 - The standard gains a twelfth core skill and additional requirement edges.
-  Existing adopters that enable a referencing skill without exploring receive
-  it through normal dependency closure on enable; stale hand-edited configs are
-  refused until corrected through the existing enable/sync workflow.
+  Existing adopters receive exploring through the schema migration before the
+  revised requirement closure is validated; no otherwise-valid adopted tree is
+  stranded behind a project-open error it cannot repair.
 - Pi receives the strongest integration and deterministic schema checks. Other
   targets depend on their native delegation capabilities and generic semantic
   instructions, so invocation ergonomics may differ without weakening the
@@ -198,6 +232,7 @@ record rather than an in-place edit.
 | Alternative | Why not chosen |
 |---|---|
 | Keep `{task}` and encode every choice in prose | Preserves the public schema but leaves callers to reinvent vocabulary, boundaries, and output shape. |
+| Add optional breadth and detail with defaults | Preserves old calls, but silently retains an ambiguous search shape and defeats the requirement that every caller deliberately select both dimensions. |
 | Add structured Pi arguments without a shared skill | Improves Pi while leaving the standard workflow and native-subagent targets inconsistent. |
 | Put exploration rules directly in every consuming skill | Avoids one artifact but duplicates a policy expected to gain more call sites. |
 | Add exact dispatch syntax for every runtime | Requires a larger target projection, couples prose to changing runtime APIs, and conflicts with the existing tool-agnostic convention. |

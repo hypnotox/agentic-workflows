@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-29
 tags: [multi-target, doc-standard]
-related: [18, 37]
+related: [18, 37, 132]
 domains: [rendering]
 ---
 # ADR-0038: Tool-Agnostic Skill and Agent Prose
