@@ -161,9 +161,12 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    they are recorded as backing. ADR-0023's slug is a three-part conjunction whose middle clause
    unsets `core.hooksPath`; ADR-0032 Decision 7 says in terms that the clause "is dropped", so the
    sentence is false as written, while the marker at `internal/project/install_test.go:41` asserts
-   only the lock-entry half. ADR-0032 also says the slug remains "in force and backed", which is a
-   frozen self-contradiction rather than a reason to leave the declaration standing: a declaration
-   is false or it is not, and no later prose can make a dropped clause hold.
+   only the lock-entry half. ADR-0032 also promises that the "lock-tracked-removal substance" of
+   the slug remains "in force and backed", which is coherent prose and was true when written: it
+   preserves the substance while dropping a clause. It is not a reason to leave the declaration
+   standing, because the declaration is a conjunction and one conjunct is now false, so the
+   sentence is false whatever substance survives. That promise is reversed here rather than
+   contradicted, which is why it earns a token of its own below.
 
    This item deliberately names each token by key and anchor rather than writing it out. A complete
    token string inside a `## Decision` section **is** a token: the parser recognises it wherever it
@@ -410,9 +413,13 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    every genuine retirement the check surfaced was slug-anchored. Decision items are built upon;
    invariant declarations are falsified. The informational half is not an afterthought: item 4's
    token has to be applied everywhere it is owed, or the check fires on citations that assert
-   nothing. Including this ADR is not a formality: its Decision section carries 21 item citations
-   in the four recognized shapes, and a check whose own defining document could not pass it would
-   be evidence the token shape is wrong. It carries no slug citation at all, which is a fact about
+   nothing. Including this ADR is not a formality: its Decision section cites other ADRs' items
+   more densely than any other ADR in the corpus, and a check whose own defining document could
+   not pass it would be evidence the token shape is wrong. The exact figure is deliberately not
+   stated. It was written as 10, corrected to 21, and was wrong again within the same commit,
+   because item 1's rewrite added citations after the recount; a self-referential count in a
+   document that keeps being amended is a claim that goes stale faster than a reader can check
+   it. The check's own output is the authority. It carries no slug citation at all, which is a fact about
    the grammar rather than about this ADR: item 1 names the six retired slugs in bare backticks,
    and item 2 recognizes a slug citation only in the `` `inv: <slug>` `` and
    `` `invariant: <slug>` `` spellings adjacent to an `ADR-NNNN` reference. Naming a slug without
@@ -488,8 +495,8 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
   itself (item 1). The per-entry staleness rule is deliberately not restated: it belongs to
   ADR-0082's `template-source-residue`, which is live, backed, and unaffected by this ADR.
 - `` `invariant: sync-always-writes-active-md` ``: `awf sync` writes
-  `<docsDir>/decisions/ACTIVE.md` and records it in the lock for every decisions dir, rendering the
-  placeholder index when the dir holds no ADRs. This redeclares ADR-0005's
+  `<docsDir>/decisions/ACTIVE.md` for every decisions dir, recording it in the lock when the dir
+  holds ADRs and rendering the placeholder index when it holds none. This redeclares ADR-0005's
   `sync-generates-active-md` at the reality ADR-0020 Decision 6 established (item 1). The retired
   sentence's prune clause is deliberately not restated, because the file is no longer conditionally
   absent and so is never pruned; its grouping clause is not restated either, because neither
