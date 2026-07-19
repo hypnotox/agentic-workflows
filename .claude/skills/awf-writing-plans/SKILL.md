@@ -22,11 +22,24 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 <!-- awf:edit conventions-header: default; create .awf/skills/parts/writing-plans/conventions-header.md to override -->
 - **Required header:** a `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical fields as `## ` sections: Goal (stating what the plan achieves and, in one line, its non-goals), Architecture summary, and File structure (created / modified / deleted). Two optional trailing sections may follow the phases: **Verification** (whole-effort acceptance checks beyond the per-phase gates) and **Notes** (out-of-scope items, follow-ups, and findings surfaced during implementation). Above the header, the frontmatter carries `date`, `adrs: []`, and `status`.
 
-<!-- awf:edit conventions-tasks: default; create .awf/skills/parts/writing-plans/conventions-tasks.md to override -->
+<!-- awf:edit conventions-tasks: from .awf/skills/parts/writing-plans/conventions-tasks.md -->
 - **Tasks:** one reviewable, logically-coherent change each (a whole new file is a single task), checkbox syntax (`- [ ]`), grouped into phases. Each task specifies exact file paths, the exact content for new files or exact diff for modifications, the exact commands with expected output, and a commit step at the end of each phase. The plan must be executable by an agent with no prior conversation context.
 - **Commit subjects in a `commit` fence:** write each phase's closing-commit subject in a fenced code block tagged `commit`, so `awf check` validates its length and type at plan time; a subject too long is caught before implementation, not at review. Tag a display-only commit example `commit awf-ignore` to exclude it from the check.
 - **Batch tasks for repeated work:** when one transformation applies across multiple sites (3+ sites whose change is identical modulo the site, or sites sharing one rationale with only mechanical variation), a task may take the *batch* form instead of repeating N near-identical diffs. A batch task names four things: a **representative** site shown as an exact diff, with the instruction to apply the identical shape to every affected site; an **edge** site shown as an exact diff (omit only when the shape is identical at every site, and say so); the **affected-site set**, given either as an exhaustive list of paths or symbols or as a command whose output is exactly that set; and a **post-check**: a deterministic command that fails if any site is unconverted or wrong (a drift check, a test target, or a search whose match count must reach zero). Genuinely distinct per-site edits stay exact-diff tasks.
 - **Self-contained phases:** every phase's closing commit must pass `./x gate` on its own. Never introduce a function, type, or file whose first production use lands in a later phase. Place each definition in the phase that first uses it, merging or reordering phases as needed. When a change genuinely cannot be sliced into independently-gate-passing phases (a signature threaded through many callers, a struct-shape rewrite), mark the coupled phases as a group and share one closing commit, stating why it cannot be sliced: the exception, never a convenience.
+- **Assert a method, never a count.** A step's expected output is a command reaching a terminal
+  state (zero findings, empty diff, clean drift), not a literal figure. A count written into a plan
+  is a measurement of the corpus at authoring time, and the corpus moves: a rebase, a re-render, a
+  sibling ADR, or the plan's own earlier phases all shift it. When it drifts the plan does not fail
+  loudly, it fails misleadingly, because an executor who reads "expected 42" and sees 47 cannot tell
+  a stale plan from a broken step, and the safest-looking response (make the number match) is the
+  wrong one. This bites hardest where it looks safest: a plan that opens by counting its own work
+  and then derives every later figure from that total propagates one stale measurement through every
+  phase. Prefer "the finding count reaches zero", "this grep returns no output", "`awf check` is
+  clean". Where a magnitude genuinely helps a reader plan the work, mark it as indicative and keep
+  it out of the verification step. The same rule governs prose about the repo's own shape: see the
+  pitfalls entry on hard-coded counts drifting.
+
 
 <!-- awf:edit conventions-no-placeholders: default; create .awf/skills/parts/writing-plans/conventions-no-placeholders.md to override -->
 - **No placeholders:** no "TBD", "implement later", or vague "similar to task N" deferral. If a step changes a file, the step shows the change verbatim; or, for a batch task, shows the representative and edge diffs, the affected-site set, and the post-check (see Tasks). If a verify step runs a command, the expected output is exact.

@@ -41,8 +41,8 @@
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
-      "configHash": "sha256:48cff7e612c6c8838932e2b8637508a9820ed916d5d17296196bf5a10e06d5b7",
-      "outputHash": "sha256:f594adce6be62effb64ff5765317278e18a686c90e4210b7addafdfdcfd34efe"
+      "configHash": "sha256:e60c3205675f0e389a9b83d2ebb5b9e2b1a0e6a265d1d07c4a7cee2026e0aa50",
+      "outputHash": "sha256:909aca19bae0d539e624af910ad1c0307f29882aa0e8dadfe08dd36ecd7047f8"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -131,8 +131,8 @@
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
       "templateHash": "sha256:778c54436cf38bd7c8713a4a3c96b29ba4cc7c4b993fc8ae1dd1487cbcce28d9",
-      "configHash": "sha256:540f3cdf8b3861cc2bb7121363b2a2f34c76d7dd5c1ff8b6233ebb56ba9420cc",
-      "outputHash": "sha256:4adf90c8b1e2d95b2137a9cfcc86172fef8befa2542369b99ab228d7edb1f138"
+      "configHash": "sha256:c7292307117f1807bff878194835fba8b04b3d85215d647858607f8f4647223e",
+      "outputHash": "sha256:778a6483e8c5b5e97c0c9f03df884a7be9c908e68f820f38bae60448dfa741e0"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
@@ -239,8 +239,8 @@
     ".pi/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
       "templateHash": "sha256:778c54436cf38bd7c8713a4a3c96b29ba4cc7c4b993fc8ae1dd1487cbcce28d9",
-      "configHash": "sha256:bbf4f2abf5f322cfc08c24246b5f756cc614bfb13f544e45ef2696816cf0d240",
-      "outputHash": "sha256:4adf90c8b1e2d95b2137a9cfcc86172fef8befa2542369b99ab228d7edb1f138"
+      "configHash": "sha256:3347903db55e14c2086edf66a5e33f1e701e238b56374db32c07e67bf20854b4",
+      "outputHash": "sha256:778a6483e8c5b5e97c0c9f03df884a7be9c908e68f820f38bae60448dfa741e0"
     },
     ".pi/skills/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
@@ -251,8 +251,8 @@
     ".pi/skills/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:276642ed24af9a6eda5119a624bde0b55707019ef23c80fb94b42b658090fa6b",
-      "configHash": "sha256:4bfa7393d23ab4c1635efb6c02f26ffa0f041b75481eadfd2cdc5e43677f0770",
-      "outputHash": "sha256:f594adce6be62effb64ff5765317278e18a686c90e4210b7addafdfdcfd34efe"
+      "configHash": "sha256:f9fbcf310fa1599a94f6e54eaf8568292512719f63398022567280625a30dc00",
+      "outputHash": "sha256:909aca19bae0d539e624af910ad1c0307f29882aa0e8dadfe08dd36ecd7047f8"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
