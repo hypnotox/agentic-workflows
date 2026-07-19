@@ -67,10 +67,11 @@ dirs), and a dead internal link in awf's own output is a deterministic defect: t
      longer holds. `sync` now always writes `ACTIVE.md`; the regenerate-and-compare drift path
      treats it as always-present (it is never `orphaned`-to-absent for a zero-ADR tree). The
      with-ADRs grouping is unchanged.
-   - **ADR-0006 `inv: render-active-md`**: its "returns `""` when the directory holds no ADRs"
-     clause no longer holds. `internal/adr.RenderActiveMD` returns the zero-ADR placeholder index
-     instead. Its "byte-identical to the pre-rename generator" clause for a populated directory is
-     unchanged, so the rest of that invariant stands.
+   - **ADR-0006 `inv: render-active-md`**
+     (`supersedes-invariant: ADR-0006#render-active-md`): its "returns `""` when the directory
+     holds no ADRs" clause no longer holds. `internal/adr.RenderActiveMD` returns the zero-ADR
+     placeholder index instead. Its "byte-identical to the pre-rename generator" clause for a
+     populated directory is unchanged, so the rest of that invariant stands.
 
    The backing tests for both invariants are updated to assert the new behaviour, keeping their
    `// invariant:` markers; ADR-0005 and ADR-0006 stay live (status not flipped), per the

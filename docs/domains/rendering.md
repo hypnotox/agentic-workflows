@@ -39,7 +39,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 
 ### Implemented
 
-- [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md)
+- [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md) → superseded by ADR-0020
 - [ADR-0011: Docs Default Content and Per-Doc Section Taxonomy](../decisions/0011-docs-default-content-and-section-taxonomy.md)
 - [ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars](../decisions/0013-doc-cross-references-via-layout.md) → superseded by ADR-0043, ADR-0081
 - [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md)

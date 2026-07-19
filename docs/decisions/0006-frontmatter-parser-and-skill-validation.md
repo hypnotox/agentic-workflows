@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-25
 tags: [frontmatter-validation, adr-parsing]
-related: [1, 5]
+related: [1, 5, 20, 131]
 domains: [rendering, adr-system]
 ---
 # ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation

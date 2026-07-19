@@ -15,7 +15,7 @@ import (
 )
 
 // TestRenderActiveMDGroupsByStatus is a hermetic unit test using a temp dir.
-// invariant: render-active-md
+// invariant: render-active-md-grouped-or-placeholder
 func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 	dir := t.TempDir()
 
@@ -101,7 +101,7 @@ func TestRenderActiveMDGroupsByStatus(t *testing.T) {
 // suffixed status ("Superseded by ADR-NNNN") into one Superseded group: a
 // single section header ordered by statusOrder, per-entry full status kept -
 // not one alphabetical section per successor.
-// invariant: render-active-md
+// invariant: render-active-md-grouped-or-placeholder
 func TestRenderActiveMDGroupsSupersededVariants(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -190,7 +190,7 @@ func TestRenderActiveMDSupersedence(t *testing.T) {
 	}
 }
 
-// invariant: render-active-md
+// invariant: render-active-md-grouped-or-placeholder
 func TestRenderActiveMDPlaceholderWhenNoADRs(t *testing.T) {
 	dir := t.TempDir()
 	// A non-ADR markdown file must not count.
