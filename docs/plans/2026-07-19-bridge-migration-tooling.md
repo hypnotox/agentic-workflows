@@ -40,13 +40,21 @@ coupled package files may share a task under the review-approved program excepti
   `internal/clispec/{clispec,clispec_test}.go`; `cmd/awf/{main,main_test,dispatch,upgrade,gate_test,
   failure_paths_test}.go`; `cmd/releasecheck/{main,main_test}.go`; `.github/workflows/release.yml`;
   `templates/{docs/working-with-awf.md.tmpl,bootstrap/awf-upgrade.sh.tmpl,hooks/pre-commit.sh.tmpl}`;
-  `.awf/parts/workflow/{composing-the-gate,local-hooks}.md`;
+  `.awf/parts/workflow/{composing-the-gate,local-hooks}.md`; create
+  `.awf/parts/agents-doc/commands.md` as a `sectionDefault`-extending override;
   `.awf/docs/parts/{architecture/components,architecture/data-flow,releasing/content}.md`;
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`; `README.md`;
   `changelog/CHANGELOG.md`; and Plan 1's release-sentinel task during final resync.
 - **Generated:** root and Sundial locks plus rendered architecture, workflow, release, domain,
   working-with-awf, bootstrap, hook, and agent-guide outputs selected by `./x sync`.
 - **Deleted:** none. The committed Sundial fixture remains unattested and legacy-authoritative.
+
+## Coupled Phases 1-2: Inventory, normalization, and the first production caller
+
+Phases 1 and 2 share one closing commit. The bridge inventory/history/normalization functions have no
+truthful main-reachable caller until `upgrade --check`; a Phase 1 commit would fail the dead-code gate.
+Do not add a temporary caller. Tasks 1.1-1.5 remain review checkpoints, then Phase 2 closes and gates
+the coupled group.
 
 ## Phase 1: Inventory and normalize enumerable legacy obligations
 
@@ -60,7 +68,11 @@ coupled package files may share a task under the review-approved program excepti
   `InvariantKey`, `LegacyInvariant`, `Inventory`, and `BuildInventory`. Enumerate declarations from
   legacy-shipped ADRs; reject duplicate `ADR-NNNN#slug` anchors; subtract only effective legacy
   retirement tokens carried by legacy-shipped ADRs; retain declarer, slug, backing class, carrier,
-  carrier Decision item, and active/retired state. Do not call the narrower runtime
+  carrier Decision item, and active/retired state. After Migration history parsing, adjudicate the
+  inventory exactly once: an encoded entry validates but does not independently retire beyond its
+  matching effective token; a valid `basis: migration` entry retires its exact declared key; only
+  keys remaining live enter claim mapping. Reject a migration-history key that was never declared and
+  reject any topic mapping for a retired key. Do not call the narrower runtime
   `invariants.DeclaringADRs` and do not infer prose or topics.
 
 - [ ] **Task 1.3: Parse and plan append-only Migration history.** Create
@@ -78,14 +90,12 @@ coupled package files may share a task under the review-approved program excepti
   idempotence. Keep generation-10 retirement-token tests unchanged. Run
   `go test ./internal/adr ./internal/bridge`; expected: both packages report `ok`.
 
-- [ ] **Task 1.5: Commit the inventory foundation with current docs.** Update the invariants and
-  ADR-system authored current-state sources and Unreleased changelog in the same commit, explicitly
-  calling this migration-only inventory rather than runtime authority. Run `./x sync`, `./x check`,
-  and `./x gate`; stage only Phase 1 paths and generated fan-out; commit:
-
-  ```commit
-  feat(invariants): inventory legacy migration obligations
-  ```
+- [ ] **Task 1.5: Checkpoint the coupled implementation without committing.** Update the invariants
+  and ADR-system authored current-state sources and Unreleased changelog, explicitly calling this
+  migration-only inventory rather than runtime authority. Run
+  `go test ./internal/adr ./internal/bridge`; expected: both packages report `ok`. Do not run the
+  whole-program dead-code gate or commit until Phase 2 installs `upgrade --check` as the first real
+  caller.
 
 ## Phase 2: Assemble a read-only readiness report
 
@@ -104,21 +114,40 @@ coupled package files may share a task under the review-approved program excepti
   universe; ignore historical ADR prose and nested projects. Validate proposed bytes with Plan 1's
   marker parser.
 
-- [ ] **Task 2.3: Expose a deterministic prepared-output projection.** In
+- [ ] **Task 2.3: Expose the deterministic prepared and terminal projections.** In
   `internal/project/output_plan.go`, add a read-only bridge projection containing sorted path, bytes,
-  desired mode, policy, dependency hashes, and planned deletion/reservation facts. Prove it matches
-  normal output-plan bytes and modes. Reserve the fixed bridge journal path in `sweep.go`; an existing
-  journal is transaction state, not an orphan. Do not generate INDEX.md or remove ACTIVE/domain ADR
-  indexes in this plan.
+  desired mode, policy, dependency hashes, and planned deletion/reservation facts. Its prepared view
+  matches ordinary Plan 1 rendering. Its migration-safe terminal view is identical except that it
+  schedules `docs/decisions/ACTIVE.md` and every generated domain ADR-index output for deletion and
+  refuses any replacement at those paths. It does not generate INDEX.md, change domain prose, or
+  switch authority. Attestation journals and applies these deletions, after which command refusal
+  makes the index-less locked state non-operational until Plan 3's current-state release generates
+  INDEX.md. Prove both views byte/mode/deletion exact. Reserve the fixed bridge journal path in
+  `sweep.go`; an existing journal is transaction state, not an orphan.
 
-- [ ] **Task 2.4: Build the one readiness report.** Create `internal/bridge/readiness.go` with stable
-  `Finding {Code, Path, Detail}` and `Report`. Over proposed in-memory bytes, independently check:
-  strict config conversion; canonical domain keys; no Proposed/Accepted ADR; planned Superseded
-  normalization; valid migration history; exact live-invariant mapping/class; qualified markers;
-  repository-wide domain-owned scoped topic coverage with empty/global topics excluded; topic parse,
-  references, backing, and render completeness; and collision-free output planning. Model legacy
-  ACTIVE/domain-index removal as an explicit following-release output-plan prerequisite, not as a file
-  mutation or a readiness failure the bridge can never satisfy before Plan 3 supplies that plan.
+- [ ] **Task 2.4: Build the one readiness report and bridge snapshot adapter.** Create
+  `internal/bridge/readiness.go` with stable `Finding {Code, Path, Detail}` and `Report`. Findings sort
+  by Code, then slash-relative Path, then Detail; report every independent failure. Use these literal
+  codes and canonical paths: `config-conversion` and `coverage-severity` at `.awf/config.yaml`;
+  `domain-key` at the offending domain sidecar; `inflight-adr`, `migration-history`, and
+  `invariant-inventory` at the ADR path; `claim-mapping` at the claim part or declaring ADR when
+  absent; `marker-mapping` at the source site; `topic-coverage` at the uncovered repository path;
+  `topic-corpus` at the metadata/part input; `output-plan` at the colliding output; and
+  `legacy-output` at each ACTIVE/domain-index path.
+
+  Over proposed in-memory bytes, independently require strict config conversion;
+  `currentState.topicCoverage: error` (warn/off fail); canonical domain keys; no Proposed/Accepted ADR;
+  planned Superseded normalization; valid migration history; exact live-invariant mapping/class with
+  retired keys unmapped; qualified markers; repository-wide domain-owned scoped topic coverage with
+  empty/global topics excluded; topic parse/references/backing/render completeness; collision-free
+  terminal output planning; and terminal deletion of every legacy generated index.
+
+  Create `internal/bridge/snapshot.go` as the migration-only cross-schema adapter. It reads legacy HEAD
+  only for ADR identity/status, invariant declarations/effective retirements, legacy proof/touches
+  markers, and cutoff baseline; it reads the prepared tree entirely through the new config/topic
+  engine. It validates every final old-HEAD/prepared-tree inventory, mapping, marker, and cutoff fact
+  before readiness can seal them. It never assembles legacy context or supplies Plan 3's permanent
+  staged/range checker.
 
 - [ ] **Task 2.5: Add `awf upgrade --check`.** Add mutually exclusive upgrade flags to the one
   clispec table and pass parsed flags through dispatch. Refactor `cmd/awf/upgrade.go` so plain upgrade
@@ -126,10 +155,13 @@ coupled package files may share a task under the review-approved program excepti
   without writes, chmods, index changes, or lock changes. Invalid combinations fail before filesystem
   access. Add human-output ordering and full-tree digest no-mutation tests in `cmd/awf/upgrade_test.go`.
 
-- [ ] **Task 2.6: Test every readiness predicate and commit.** Use one valid fixture, then fail each
+- [ ] **Task 2.6: Test every readiness predicate and close the coupled commit.** Use one valid fixture,
+  then fail each
   predicate independently and assert its stable code/path. Cover tracked and nonignored untracked
   eligible files, generated/ignored/deleted/nested/contextIgnore exclusions, multi-domain gaps, empty
-  topics, and globals not satisfying scoped coverage. Run `go test ./internal/config ./internal/bridge
+  topics, globals not satisfying scoped coverage, warn/off severity refusal, migration-retired keys
+  omitted from mapping, mapped retired-key refusal, every legacy-HEAD/prepared-tree mismatch, and
+  every terminal legacy-output deletion. Run `go test ./internal/config ./internal/bridge
   ./internal/project ./internal/clispec ./cmd/awf`; expected: all packages report `ok`. Update config,
   rendering, invariants, tooling, architecture, README, working-with-awf, and changelog authored
   surfaces in the same behavior commit; sync/check/gate; commit:
@@ -149,30 +181,54 @@ coupled package files may share a task under the review-approved program excepti
   one and gaps as sorted absent lower identities. Test every dirty state, digest input, JSON round trip,
   and old lock.
 
-- [ ] **Task 3.2: Implement the versioned journal.** Create `internal/bridge/journal.go` with a fixed
-  `.awf/current-state-upgrade.journal` JSON file. Precompute all operations and replacements before
-  destination mutation; snapshot each path's prior absence or bytes and mode; record transaction
-  phase and final lock hash; use same-directory atomic writes; replace the lock last. Before lock
-  commit, any failure rolls back; rollback failure preserves the journal. After lock commit, cleanup
-  failure preserves a successful attestation plus stale journal. Recovery is idempotent and chooses
-  rollback or cleanup solely from the recorded commit phase and actual lock hash.
+- [ ] **Task 3.2: Implement the versioned journal contract.** Create
+  `internal/bridge/journal.go` at `.awf/current-state-upgrade.journal`. JSON version is integer `1`;
+  phases are exactly `prepared`, `applying`, `rolling-back`, and `lock-committed`; fields are
+  `version`, `phase`, `finalLockSHA256`, and ordered `operations`. Each operation contains a slash-
+  relative `path`, `prior` and `replacement`; each image contains `present`, octal `mode`, and base64
+  `content`, with absent encoded as `present:false`, mode 0, empty content. Paths are unique and sorted,
+  the lock operation is last, and the complete journal is atomically durable before mutation.
 
-- [ ] **Task 3.3: Add attestation and recovery modes.** Implement
+  Unknown versions, phases, duplicate/unsafe paths, invalid modes/base64, missing lock-last, and
+  malformed JSON refuse without mutation. Recovery uses this table: a precommit phase with lock hash
+  unequal to `finalLockSHA256` restores every operation in reverse order after verifying each current
+  image equals either prior or replacement; a precommit phase whose lock already has the final hash
+  treats the lock as committed and cleans up; `lock-committed` plus the final hash cleans up only;
+  `lock-committed` plus another hash refuses rather than rolling authority back. Any third-party image
+  or failed rollback preserves the journal and reports the exact path. Chmod is part of image restore.
+  Before lock commit, any failure enters `rolling-back`; after lock commit, cleanup failure leaves the
+  attested lock plus journal. Repeated recovery is byte/mode idempotent.
+
+- [ ] **Task 3.3: Add attestation, recovery, and the command-state guard atomically.** Implement
   `upgrade --attest-current-state` as readiness plus clean HEAD plus journaled normalization/config/
-  marker/status/output writes, with attestation lock last. Implement `upgrade --recover` before config
-  or project opening. `--check` remains read-only and does not require cleanliness. Plain upgrade
-  remains available only before attestation. Print deterministic operation lines and never claim to
-  have run project tests or gates.
+  marker/status/terminal-output writes, with attestation lock last. Implement `upgrade --recover`
+  before config or project opening. In `cmd/awf/main.go`, install refusal in the same change so no
+  committed journal/attestation state is reachable without protection.
 
-- [ ] **Task 3.4: Failure-inject every transaction edge.** Cover preparation, replacement, deletion,
-  chmod, lock replacement, rollback, and cleanup failures; compare full path bytes/modes after
-  recovery; assert every command refuses during a journal; assert cleanup recovery preserves the
-  committed lock. Run `go test ./internal/git ./internal/manifest ./internal/bridge ./cmd/awf`;
+  Pin this bridge-release matrix: with a valid journal, only `upgrade --recover` may touch the project;
+  `--check`, plain upgrade, attestation, and every ordinary project command refuse. With an attested
+  lock and no journal, only `upgrade --check` may inspect it; plain upgrade, re-attestation, recovery,
+  and ordinary commands refuse with an install-the-current-state-release diagnostic. Plan 3 changes
+  plain upgrade to consume the attestation. A malformed journal refuses all project modes including
+  recovery with deterministic Git-restoration guidance; a corrupt lock without a journal keeps the
+  existing hard refusal; a valid journal permits recovery even when the current lock is corrupt,
+  applying the journal state table. Help, version, and changelog bypass project transaction state.
+  Static config/context/topic fallback occurs only outside an adopted tree and therefore also bypasses
+  it. `--check` remains read-only and does not require cleanliness before attestation. Print
+  deterministic operation lines and never claim to have run project tests or gates.
+
+- [ ] **Task 3.4: Failure-inject every transaction edge and matrix cell.** Cover preparation,
+  replacement, deletion, chmod, lock replacement, rollback, and cleanup failures; compare full path
+  bytes/modes after recovery; exercise every journal/attestation/corruption/mode cell above; assert
+  refusal occurs before project/corpus loading; and assert cleanup recovery preserves the committed
+  lock. Run `go test ./internal/git ./internal/manifest ./internal/bridge ./cmd/awf`;
   expected: all report `ok`.
 
 - [ ] **Task 3.5: Document, sync, gate, and commit.** Update architecture, config, rendering, tooling,
   working-with-awf, bootstrap-upgrade, workflow gate/hooks, README, and changelog sources with the
-  exact check/test/gate/clean-HEAD/attest/recover sequence and Git rollback guidance. Run `./x sync`,
+  exact check/test/gate/clean-HEAD/attest/recover sequence and Git rollback guidance. Create
+  `.awf/parts/agents-doc/commands.md` with `sectionDefault` plus the bridge preparation, refusal, and
+  recovery commands so root and Sundial AGENTS.md render in the same behavior commit. Run `./x sync`,
   `./x check`, and `./x gate`; commit:
 
   ```commit
@@ -181,36 +237,34 @@ coupled package files may share a task under the review-approved program excepti
 
 ## Phase 4: Close the bridge release boundary
 
-- [ ] **Task 4.1: Centralize journal and attestation refusal.** In `cmd/awf/main.go`, after syntax
-  parsing and before handler dispatch, refuse every project command while a journal exists; permit
-  only recovery/inspection upgrade modes. When an attested bridge lock exists, refuse every ordinary
-  project command, including sync, check, context, invariants, topic, and new; permit migration-safe
-  upgrade modes. Preserve help/version/changelog and static fallbacks outside an adopted tree. Derive
-  normal command membership from clispec rather than a second list.
+- [ ] **Task 4.1: Flip the release sentinel only after the bridge is complete.** Final plan resync must
+  first add `project.BridgeTrancheComplete = false` and releasecheck refusal to Plan 1's schema/version
+  commit, so every Plan-1 implementation commit is mechanically unreleasable. In this phase, after
+  Phases 1-3 are committed and green, change only the sentinel to true. Extend releasecheck tests and
+  workflow-order pins so GoReleaser cannot run while false and still runs gate/check/releasecheck in
+  order when true.
 
-- [ ] **Task 4.2: Pin the command matrix.** Extend main/gate/failure-path/Plan-1-topic tests for every
-  command class, corrupt journal/lock, fallback order, and refusal before project/corpus loading.
-  Prove an unattested schema-14 project still runs the legacy runtime, while an attested lock cannot.
-
-- [ ] **Task 4.3: Mechanically prevent an incomplete bridge release.** During final plan resync, add a
-  Plan 1 task that introduces `project.BridgeTrancheComplete = false` and a releasecheck assertion.
-  Here, after all bridge tests/docs land, flip it to true. Extend releasecheck tests and workflow-order
-  pins so GoReleaser cannot run unless the sentinel is true, the gate/check precede it, and Unreleased
-  changelog rules still hold.
-
-- [ ] **Task 4.4: Keep Sundial as the unattested bridge oracle.** Extend
+- [ ] **Task 4.2: Keep Sundial as the unattested bridge oracle.** Extend
   `internal/project/example_wiring_test.go` to assert schema 14, no attestation/journal/topic cutover,
-  legacy invariants config and ordinary check/invariants behavior, and rendered bridge docs/help.
-  Do not author topics or rewrite markers there.
+  legacy invariants config and ordinary check/invariants behavior, rendered bridge docs/help, and the
+  exact command-state matrix from Task 3.3. Do not author topics or rewrite markers there.
 
-- [ ] **Task 4.5: Final documentation, verification, and plan freeze.** Update release guidance,
-  domain/architecture docs, README, and changelog in the same commit. Run `./x sync`, `./x check`,
-  `./x gate`, and `git diff --check`; expected: clean drift, 100% coverage, no dead code, clean prose,
-  and no diff-check output. Record findings, set only this plan to Implemented, leave all linked ADRs
-  Proposed, and commit:
+- [ ] **Task 4.3: Publish bridge-complete release guidance and commit behavior.** Update release
+  guidance, domain/architecture docs, README, and changelog with the sentinel and no-intermediate-
+  release rule. Run `./x sync`, `./x check`, `./x gate`, and `git diff --check`; expected: clean drift,
+  100% coverage, no dead code, clean prose, and no diff-check output. Stage the sentinel,
+  releasecheck/workflow tests, Sundial oracle, authored docs, and generated fan-out; commit:
 
   ```commit
-  docs(awf): complete current-state bridge tooling
+  feat(awf): close current-state bridge release
+  ```
+
+- [ ] **Task 4.4: Freeze only the plan.** Record implementation findings, set only this plan to
+  Implemented, and leave all linked ADRs Proposed. Run `./x sync`, `./x check`, and `./x gate`; stage
+  only this plan and generated plan/index/lock outputs; commit:
+
+  ```commit
+  docs(plans): implement bridge migration tooling
   ```
 
 ## Verification
@@ -220,12 +274,14 @@ coupled package files may share a task under the review-approved program excepti
   lock last; every injected failure restores or remains recoverable.
 - Inventory adjudicates every live legacy invariant exactly once without generating claim prose.
 - An unattested schema-14 project retains legacy authority; an attested project and any journal state
-  refuse ordinary commands.
+  follow the exact Task 3.3 command matrix and refuse ordinary commands.
 - The release pipeline cannot publish the Plan 1-only tranche or an incomplete Plan 2.
 - No Plan 3 runtime or Plan 4 adopter-cutover behavior appears in the diff.
 
 ## Notes
 
 - Plan 3 supplies the permanent current-state output plan, repository-wide coverage runtime,
-  new-format ADR lifecycle, State changes, staged/range checks, INDEX.md, and legacy deletion.
+  new-format ADR lifecycle, State changes, permanent staged/range checks, INDEX.md, and legacy
+  consumer deletion. Plan 2 owns only the migration-safe terminal deletion projection and cross-schema
+  attestation adapter.
 - Plan 4 authors and attests the real awf/Sundial corpora and cuts the breaking release.
