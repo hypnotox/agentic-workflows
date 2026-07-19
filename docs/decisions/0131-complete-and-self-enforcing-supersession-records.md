@@ -403,7 +403,21 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    the token outright, so demanding one would red a second check), when the citation is a
    self-citation (already a `GraphFaults` report), when the cited invariant bullet carries no slug
    (ADR-0001's bullets are unslugged and therefore unanchorable in any grammar this project has),
-   when the citation falls outside `## Decision`, or when it falls inside an inline code span.
+   when the citation falls outside `## Decision`, or when an **item** citation or an override verb
+   falls inside an inline code span.
+
+   **The code-span exemption reaches item citations and verbs, and cannot reach slug citations.**
+   Both of the former are scanned against masked text, so backticks make them specimens. A slug
+   citation cannot work that way: the backticks in `` `inv: <slug>` `` are the citation syntax
+   itself, carried as literal characters of the pattern that finds it, so it is scanned against
+   raw text and masking would recognize not fewer of them but none. An earlier wording of this
+   item and of the invariant below promised the exemption for every anchor kind without
+   qualification, which was false for slugs from the first commit that shipped the check and is
+   corrected here rather than left to a successor. The residual limit is inherent to the grammar
+   and not introduced by this decision: a slug *specimen* is syntactically indistinguishable from
+   a slug citation, so an author quoting one writes `cites-invariant:` to record it as
+   informational. A slug citation inside a fenced block is still exempt, fences being excluded
+   from section text upstream of this check.
 
    The code-span exemption is what lets an ADR discuss the grammar without triggering it. This
    ADR's own item 2 enumerates every override verb, and items 1, 7, and 9 name the `refines:` and
@@ -550,8 +564,10 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 - `` `invariant: citation-check-exempts-unslugged-bullet` ``: a citation of an invariant bullet
   that declares no slug produces no finding, because `Anchor` addresses a slug only by slug string
   and offers no ordinal form.
-- `` `invariant: citation-check-exempts-code-spans` ``: an anchor citation or override verb inside
-  an inline code span produces no finding.
+- `` `invariant: citation-check-exempts-code-spans` ``: an **item** citation or an override verb
+  inside an inline code span produces no finding. The exemption does not extend to a slug
+  citation, whose backticks are the citation syntax rather than a quoting device, so it is
+  recognized inside a code span by construction.
 - `` `invariant: cites-token-suppresses-citation-check` ``: a citation token (`cites:` or
   `cites-invariant:`) suppresses the citation check for the anchor it names, and for that anchor
   only.
