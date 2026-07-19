@@ -34,9 +34,15 @@ empty-claim authored part under `.awf/topics/parts/`, and prints both repository
 metadata carries a valid anchored path placeholder and the part carries generic editable prose plus
 an empty final `## Claims`; adopters must edit paths and prose and author reviewed claims manually.
 The command mutates no config, lock, or rendered doc, and rolls its first file back if the second
-write fails. A zero-claim shell can render but does not satisfy scoped coverage. This remains part of
-the unreleased two-plan bridge tranche: it is preparation tooling, not migration readiness or runtime
-authority.
+write fails. A zero-claim shell can render but does not satisfy scoped coverage. `awf topic` accepts
+exactly one active `<domain>/<topic>` or `<domain>/<topic>:<claim>` selector and uses one deterministic
+model for human and `--json` output. Defaults show active title/summary, claims, types, prose, and
+backing while hiding provenance and references. Independent `--history`, `--references`, and
+`--coverage` flags add only direct ADR details, direct incoming/outgoing edges, and declared/effective
+scope plus configured marker sites. It never traverses references, resolves tombstones, or writes the
+worktree, index, config, or lock; outside an adopted tree it prints a static reference before gating.
+This remains part of the unreleased two-plan bridge tranche: it is preparation tooling, not migration
+readiness or runtime authority.
 
 `awf new adr "<title>"` (ADR-0042) scaffolds a new ADR file: `internal/adr.NextNumber` computes the next sequential number and `internal/adr.NewFile` copies the rendered `docs/decisions/template.md`, strips its marker comments, and fills in the date and title heading, replacing the free-hand copy/strip/number steps `awf-proposing-adr` used to spell out by hand. ADR-0068 widens `awf new` to project-local artifacts: `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"` validates the kebab-case name (`config.ValidateArtifactName`), writes a declaring sidecar plus a starter `content` part, enables the name in the matching config array, and re-syncs, so a project adds its own skills and agents without forking the catalog. The scaffolded starter part opens with the whole-line `<!-- awf:stub -->` marker (ADR-0070), so `awf check` reports the artifact as unauthored until the author deletes the line. All `awf new` forms go through the ADR-0039 binary-version gate like the other project-reading commands.
 

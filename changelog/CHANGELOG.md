@@ -137,6 +137,13 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf topic <domain>/<topic>[:<claim>]` adds a version-gated, read-only active-state query with one
+  deterministic human/JSON model. Defaults show current title/summary, claims, types, prose, and
+  backing while hiding provenance and references. Independent `--history`, `--references`, and
+  `--coverage` flags add direct ADR details, direct incoming/outgoing claim IDs, and declared/effective
+  scope plus marker sites; no option traverses transitively or resolves removed history. Outside an
+  adopted tree the command prints a static reference without gating. This remains unreleased bridge
+  preparation until the bridge-migration tranche lands.
 - `awf new topic <domain> "<title>"` scaffolds exactly the paired current-state metadata and authored
   part without syncing or mutating config, lock, or rendered docs. It allocates a collision-free
   kebab slug, protects the reserved `index` and either orphaned half, rolls back the first file if the

@@ -2,7 +2,10 @@ package topic
 
 import "slices"
 
-type EffectiveSelector struct{ DomainPath, TopicPath string }
+type EffectiveSelector struct {
+	DomainPath string `json:"domainPath"`
+	TopicPath  string `json:"topicPath"`
+}
 type TopicCoverage struct {
 	DeclaredGlobal          bool
 	DeclaredPaths           []string

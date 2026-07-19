@@ -14,7 +14,7 @@ type Gating int
 const (
 	Ungated        Gating = iota // never gates (version, changelog, upgrade, uninstall, commit-gate, init)
 	Gated                        // the driver gates before the handler
-	GatedInHandler               // the handler gates itself (config/context after their static-fallback check; new after name validation)
+	GatedInHandler               // the handler gates itself (config/context/topic after their static-fallback check; new after name validation)
 )
 
 // Command is one CLI command (or subcommand). A command with Children is a group:
@@ -162,6 +162,23 @@ Flags:
   --staged             use the staged changed paths
   --range <a>..<b>     use the paths changed between revisions a and b
   --uncovered          report tracked paths owned by no domain (scan roots optional)
+`,
+	},
+	{
+		Name: "topic", Summary: "Query an active current-state topic or claim",
+		BoolFlags: []string{"--history", "--references", "--coverage", "--json"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
+		HelpBody: `Usage: awf topic <domain>/<topic>[:<claim>] [flags]
+
+Query one active current-state topic or claim. Default output includes title and
+summary for a topic plus claim types, prose, and backing state. Detail flags are
+independent and direct-only. Outside an awf project, a static command reference
+prints without version gating.
+
+Flags:
+  --history       add direct Origin and Revised-by ADR details
+  --references    add sorted direct incoming and outgoing claim IDs
+  --coverage      add declared scope, effective scope, and marker sites
+  --json          emit the same query result as deterministic JSON
 `,
 	},
 	{
@@ -331,7 +348,7 @@ func UsageLine() string { return "awf <" + strings.Join(Names(), "|") + ">" }
 
 // GatedCommandNames returns, in table order, every top-level command that runs
 // the binary-version gate - the driver-gated commands plus the ones that gate
-// in-handler (config/context after their static fallback, new after name
+// in-handler (config/context/topic after their static fallback, new after name
 // validation). Ungated commands are excluded; a group contributes only its own
 // token. This is the single source of the doc-published gated-command list.
 func GatedCommandNames() []string {

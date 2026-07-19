@@ -11,3 +11,5 @@ data:
     - ref: ADR-0002
       text: '**Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists.'
     - kind: scopes
+    - kind: gated-commands
+      ref: ADR-0039

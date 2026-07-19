@@ -45,7 +45,7 @@ Hard rules every change must respect:
 - **Plain punctuation, repo-wide.** No tracked text file carries a typographic punctuation substitute: not the embedded templates or changelog, not a string literal in production Go, and not a Go comment, a test, a sidecar, or the infrastructure scripts. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation, a bare hyphen included. Two layers enforce this: ADR-0115 gates the shipped surfaces unconditionally with no exemption list, and the opt-in `awf prose-gate` (ADR-0119, on in this repo, wired into `./x gate`) scans every tracked file, exempting only the handful of genuine depictions pinned in `proseGate.exemptions`. Notation (arrows, mathematical symbols, accented letters) stays legal. A doc that must show a banned glyph names it by codepoint or lands in the exemption list. (ADR-0115, ADR-0119)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
-- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `context`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config` and `context` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
@@ -89,7 +89,9 @@ awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered
 `awf new topic <domain> "<title>"` scaffolds paired current-state metadata and an empty-claim authored
 part without syncing. Replace the anchored path placeholder and generic prose, then author and review
 claims manually. The command prints both repository-relative input paths and does not mutate config,
-the lock, or rendered docs. These topics remain unreleased bridge-preparation artifacts until the
+the lock, or rendered docs. `awf topic <domain>/<topic>[:<claim>]` queries active state read-only;
+`--history`, `--references`, and `--coverage` independently add direct details, while `--json` changes
+presentation only. These topics remain unreleased bridge-preparation artifacts until the
 bridge-migration work lands.
 
 

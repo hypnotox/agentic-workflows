@@ -1,0 +1,163 @@
+package topic
+
+import (
+	"encoding/json"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+)
+
+func loadedQueryFixture(t *testing.T) (Corpus, adr.Corpus) {
+	t.Helper()
+	root, _, adrs := corpusFixture(t)
+	cfg, err := config.Parse(filepath.Join(root, ".awf"), []byte(`prefix: test
+domains: [alpha, beta]
+currentState:
+  sources:
+    - globs: ["internal/**", "pkg/**"]
+      marker: "//"
+  testGlobs: ["internal/**/*_test.go"]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	writeTopic(t, root, "alpha", "contracts", "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n", `Intro.
+
+## Claims
+
+### `+"`rule: order`"+`
+Deterministic order.
+Origin: ADR-0001
+Revised-by: ADR-0002
+References: beta/global:shared
+
+### `+"`invariant: stable`"+`
+Stable output.
+Origin: ADR-0001
+Backing: unbacked
+Verify: compare snapshots.
+`)
+	writeTopic(t, root, "beta", "global", "title: Global\nsummary: Global contracts.\napplies: global\n", rulePart("shared", "0001", "alpha/contracts:stable"))
+	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// touches-state: alpha/contracts:order - scheduler entry point\n")
+	testsupport.WriteFile(t, filepath.Join(root, "pkg/global.go"), "package global\n// state: beta/global:shared\n")
+	corpus, err := LoadCorpus(root, cfg, adrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return corpus, adrs
+}
+
+func TestQueryDefaultTopicAndClaim(t *testing.T) {
+	corpus, adrs := loadedQueryFixture(t)
+	topicResult, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if topicResult.Kind != "topic" || topicResult.Title != "Contracts" || topicResult.Summary != "Current contracts." || len(topicResult.Claims) != 2 {
+		t.Fatalf("topic result = %#v", topicResult)
+	}
+	if topicResult.Claims[0].Type != Rule || topicResult.Claims[0].Backing != NoBacking || topicResult.Claims[1].Backing != Unbacked || topicResult.Claims[1].Verify != "compare snapshots." {
+		t.Fatalf("claims = %#v", topicResult.Claims)
+	}
+	if topicResult.History != nil || topicResult.References != nil || topicResult.Coverage != nil {
+		t.Fatalf("default leaked detail = %#v", topicResult)
+	}
+	claimResult, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claimResult.Kind != "claim" || claimResult.ID != "alpha/contracts:stable" || claimResult.Title != "" || len(claimResult.Claims) != 1 {
+		t.Fatalf("claim result = %#v", claimResult)
+	}
+}
+
+func TestQueryIndependentDetailsAndCombination(t *testing.T) {
+	corpus, adrs := loadedQueryFixture(t)
+	cases := []struct {
+		name                          string
+		opts                          QueryOptions
+		history, references, coverage bool
+	}{
+		{"history", QueryOptions{History: true}, true, false, false},
+		{"references", QueryOptions{References: true}, false, true, false},
+		{"coverage", QueryOptions{Coverage: true}, false, false, true},
+		{"combined", QueryOptions{History: true, References: true, Coverage: true}, true, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Query(corpus, adrs, "alpha/contracts", tc.opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (got.History != nil) != tc.history || (got.References != nil) != tc.references || (got.Coverage != nil) != tc.coverage {
+				t.Fatalf("detail union = %#v", got)
+			}
+		})
+	}
+	combined, _ := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true})
+	if len(combined.History) != 2 || combined.History[0].Origin.Number != "0001" || len(combined.History[0].RevisedBy) != 1 || combined.History[0].RevisedBy[0].Number != "0002" {
+		t.Fatalf("history = %#v", combined.History)
+	}
+	if got := combined.References[0].Outgoing; !reflect.DeepEqual(got, []string{"beta/global:shared"}) {
+		t.Fatalf("outgoing = %v", got)
+	}
+	if got := combined.References[0].Incoming; len(got) != 0 {
+		t.Fatalf("query traversed references: %v", got)
+	}
+	if combined.Coverage.DeclaredGlobal || !reflect.DeepEqual(combined.Coverage.DeclaredPaths, []string{"internal/**"}) || len(combined.Coverage.EffectiveSelectors) != 1 || len(combined.Coverage.MarkerSites) != 1 {
+		t.Fatalf("coverage = %#v", combined.Coverage)
+	}
+	global, err := Query(corpus, adrs, "beta/global", QueryOptions{Coverage: true, References: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !global.Coverage.DeclaredGlobal || len(global.Coverage.EffectiveSelectors) != 0 || global.Coverage.MarkerSites[0].Path != "pkg/global.go" {
+		t.Fatalf("global coverage = %#v", global.Coverage)
+	}
+	if got := global.References[0].Incoming; !reflect.DeepEqual(got, []string{"alpha/contracts:order"}) {
+		t.Fatalf("sorted direct incoming = %v", got)
+	}
+}
+
+func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
+	for _, selector := range []string{"", "alpha", "Alpha/topic", "alpha/topic:", "alpha/topic:bad:more"} {
+		if _, _, err := ParseSelector(selector); err == nil {
+			t.Errorf("ParseSelector(%q) accepted", selector)
+		}
+	}
+	if _, err := Query(Corpus{}, adr.Corpus{}, "bad", QueryOptions{}); err == nil || !strings.Contains(err.Error(), "invalid topic selector") {
+		t.Fatalf("Query malformed selector = %v", err)
+	}
+	if topicID, claimID, err := ParseSelector("alpha/contracts"); err != nil || topicID != "alpha/contracts" || claimID != "" {
+		t.Fatalf("topic selector = %q %q %v", topicID, claimID, err)
+	}
+	if topicID, claimID, err := ParseSelector("alpha/contracts:stable"); err != nil || topicID != "alpha/contracts" || claimID != "alpha/contracts:stable" {
+		t.Fatalf("claim selector = %q %q %v", topicID, claimID, err)
+	}
+	corpus, adrs := loadedQueryFixture(t)
+	for _, selector := range []string{"alpha/missing", "alpha/contracts:missing"} {
+		if _, err := Query(corpus, adrs, selector, QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("Query(%q) = %v", selector, err)
+		}
+	}
+	result, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	one, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, _ := json.Marshal(result)
+	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || strings.Contains(string(one), `"Origin"`) {
+		t.Fatalf("unstable JSON: %s / %s", one, two)
+	}
+}

@@ -59,7 +59,7 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   `.awf/docs/parts/architecture/{components,data-flow}.md`,
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`,
   `templates/docs/working-with-awf.md.tmpl`, `templates/agents-doc/AGENTS.md.tmpl`, create
-  `.awf/parts/agents-doc/commands.md`, `README.md`, and
+  `.awf/parts/agents-doc/commands.md`, `examples/sundial/.awf/agents-doc.yaml`, `README.md`, and
   `changelog/CHANGELOG.md`.
 - **Generated/updated by migration and sync:** `.awf/awf.lock`, `docs/{architecture,
   config-reference,working-with-awf}.md`, `docs/domains/{adr-system,config,invariants,rendering,
@@ -379,7 +379,10 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   `templates/agents-doc/AGENTS.md.tmpl`, change the binary-version invariant
   sentence from `` `config` and `context` degrade`` to `` `config`, `context`, and `topic` degrade``;
   `./x sync` must update the root `AGENTS.md` and every enabled adopter rendering, including
-  `examples/sundial/AGENTS.md`. Run `./x sync`, `./x check`, and `./x gate`; expected: no drift, 100%
+  `examples/sundial/AGENTS.md`. Add Sundial's authored `kind: gated-commands` invariant entry with
+  `ref: ADR-0039` in `examples/sundial/.awf/agents-doc.yaml`, preserving its existing invariants, so
+  that adopter rendering consumes the shared command list and static-fallback sentence. Run
+  `./x sync`, `./x check`, and `./x gate`; expected: no drift, 100%
   coverage, no production dead code, and clean prose. Stage only Phase 4 paths and generated fan-out;
   commit:
 

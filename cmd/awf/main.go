@@ -82,7 +82,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return dispatchErr(stderr, err) // parseArgs only returns usageErr → exit 2
 	}
-	// The driver gates every Gated command before its handler; config/context/new
+	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
 	// Gating is read from top (the top-level command), not the resolved child: a
 	// group's children never set Gating, so a future Gated group must gate from

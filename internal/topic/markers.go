@@ -22,10 +22,11 @@ const (
 )
 
 type MarkerSite struct {
-	Path          string
-	Line          int
-	Kind          MarkerKind
-	ClaimID, Note string
+	Path    string     `json:"path"`
+	Line    int        `json:"line"`
+	Kind    MarkerKind `json:"kind"`
+	ClaimID string     `json:"claimId"`
+	Note    string     `json:"note,omitempty"`
 }
 type MarkerIndex struct{ sites map[string][]MarkerSite }
 

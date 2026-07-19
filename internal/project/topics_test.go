@@ -1,7 +1,9 @@
 package project
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -266,6 +268,200 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 		t.Fatalf("sweep: %#v", drift)
 	}
 }
+func TestQueryTopicLoadErrors(t *testing.T) {
+	badADRRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
+	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
+	p, err := Open(badADRRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.QueryTopic("schedule/contracts", topic.QueryOptions{}); err == nil {
+		t.Fatal("QueryTopic accepted malformed ADR corpus")
+	}
+
+	badTopicRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
+	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
+	p, err = Open(badTopicRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.QueryTopic("schedule/contracts", topic.QueryOptions{}); err == nil {
+		t.Fatal("QueryTopic accepted malformed topic corpus")
+	}
+}
+
+func TestTopicSubstrateEndToEnd(t *testing.T) {
+	root := scaffoldFiles(t, `prefix: example
+skills: []
+agents: []
+domains: [schedule]
+invariants:
+  sources:
+    - globs: ["internal/**"]
+      marker: "//"
+currentState:
+  sources:
+    - globs: ["internal/schedule*.go"]
+      marker: "//"
+  testGlobs: ["internal/**/*_test.go"]
+`, map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	writeADR(t, root, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule"), testsupport.WithTitle("0001: Scheduling contracts"), testsupport.WithBody("## Decision\n\n1. Define scheduling.\n\n## Invariants\n\n- `invariant: legacy-scheduling` - legacy authority remains stable.\n")))
+	testsupport.WriteFile(t, filepath.Join(root, "internal/legacy_test.go"), "package internal\n// invariant: legacy-scheduling\n// invariant: schedule\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scaffold, err := topic.ScaffoldFiles(root, p.Cfg, "schedule", "Contracts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scaffold) != 2 || strings.Contains(string(scaffold[1].Content), "Origin:") {
+		t.Fatalf("scaffold invented claims: %#v", scaffold)
+	}
+	for _, file := range scaffold {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
+	}
+	metadataPath := filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml")
+	partPath := filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md")
+	testsupport.WriteFile(t, metadataPath, "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
+	testsupport.WriteFile(t, partPath, `Scheduling contracts are explicit.
+
+## Claims
+
+### `+"`rule: deterministic-order`"+`
+Scheduling order is deterministic.
+Origin: ADR-0001
+
+### `+"`invariant: stable-output`"+`
+Scheduling output is stable.
+Origin: ADR-0001
+Backing: test
+`)
+	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output\n")
+
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := p.Topics()
+	if err != nil {
+		t.Fatalf("completed corpus: %v", err)
+	}
+	completed, ok := corpus.ByTopicID("schedule/contracts")
+	if !ok || len(completed.Claims) != 2 {
+		t.Fatalf("completed topic = %#v, found %v", completed, ok)
+	}
+	legacyBefore := legacyTopicBoundary(t, p)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"docs/topics/schedule/contracts.md", "docs/topics/schedule/index.md"} {
+		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
+			t.Fatalf("missing generated topic path %s: %v", path, err)
+		}
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"docs/topics/schedule/contracts.md", "docs/topics/schedule/index.md"} {
+		if _, ok := lock.Files[path]; !ok {
+			t.Fatalf("lock missing %s", path)
+		}
+	}
+
+	binary := filepath.Join(t.TempDir(), "awf")
+	repoRoot, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := exec.Command("go", "build", "-o", binary, "./cmd/awf")
+	build.Dir = repoRoot
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build awf: %v: %s", err, output)
+	}
+	runQuery := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command(binary, append([]string{"topic"}, args...)...)
+		cmd.Dir = root
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("awf topic %v: %v: %s", args, err, output)
+		}
+		return string(output)
+	}
+	human := runQuery("schedule/contracts", "--history", "--references", "--coverage")
+	encoded := runQuery("schedule/contracts", "--history", "--references", "--coverage", "--json")
+	var result topic.QueryResult
+	if err := json.Unmarshal([]byte(encoded), &result); err != nil {
+		t.Fatalf("query JSON: %v: %s", err, encoded)
+	}
+	for _, value := range []string{result.Title, result.Summary, result.Claims[0].ID, result.Claims[1].Prose, result.History[0].Origin.Title, result.Coverage.MarkerSites[0].Path} {
+		if !strings.Contains(human, value) {
+			t.Errorf("human/JSON query parity missing %q:\n%s", value, human)
+		}
+	}
+	if legacyAfter := legacyTopicBoundary(t, p); legacyAfter != legacyBefore {
+		t.Fatalf("topic sync changed legacy context/invariants:\nbefore %s\nafter  %s", legacyBefore, legacyAfter)
+	}
+
+	if err := os.Remove(metadataPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Dir(partPath)); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"internal/schedule.go", "internal/schedule_test.go"} {
+		if err := os.Remove(filepath.Join(root, path)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, pruned, err := p.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(pruned, ",") != "docs/topics/schedule/contracts.md,docs/topics/schedule/index.md" {
+		t.Fatalf("topic prune = %v", pruned)
+	}
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, topicPresent := lock.Files["docs/topics/schedule/contracts.md"]; topicPresent {
+		t.Fatal("pruned topic remains in lock")
+	}
+	if legacyAfter := legacyTopicBoundary(t, p); legacyAfter != legacyBefore {
+		t.Fatalf("topic prune changed legacy context/invariants:\nbefore %s\nafter  %s", legacyBefore, legacyAfter)
+	}
+}
+
+func legacyTopicBoundary(t *testing.T, p *Project) string {
+	t.Helper()
+	contextResult, err := p.ContextFor([]string{"internal/schedule.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, notes, err := p.CheckInvariants()
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(struct {
+		Context  ContextResult
+		Findings any
+		Notes    any
+	}{contextResult, findings, notes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
+}
+
 func mustRead(t *testing.T, path string) []byte {
 	t.Helper()
 	b, err := os.ReadFile(path)

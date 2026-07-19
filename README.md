@@ -107,7 +107,12 @@ backup, and prune lifecycle, and add compact topic navigation while retaining do
 collision-free kebab slug, a valid anchored path placeholder, generic editable prose, and no claims.
 It prints both repository-relative paths, does not sync or mutate config, lock, or rendered docs, and
 requires manual path, prose, and claim authoring. A zero-claim shell renders but does not satisfy
-scoped coverage.
+scoped coverage. `awf topic <domain>/<topic>[:<claim>]` reads active topics and claims through one
+deterministic human/JSON result. Defaults show current title/summary, claims, types, prose, and
+backing while hiding provenance and references. The independent `--history`, `--references`, and
+`--coverage` flags add direct ADR details, direct incoming/outgoing claim IDs, and scope/marker sites;
+`--json` changes presentation only. The query is read-only, active-only, and never traverses
+references transitively or invents removed-claim history.
 
 This substrate sits beside unchanged legacy `invariants` and does not switch normal context or
 invariant authority. Plans 1 and 2 are one unreleased bridge tranche: no intermediate release is
@@ -201,6 +206,7 @@ disk.
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report the owning domains, backed invariants, related ADRs, and current-state docs for the given paths. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits machine-readable output. `--uncovered` inverts it, listing tracked paths owned by no domain. |
+| `awf topic <domain>/<topic>[:<claim>]` | Query one active topic or claim; add direct detail with `--history`, `--references`, and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. |

@@ -15,6 +15,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// QueryTopic assembles one read-only active topic or claim projection. The
+// invocation reset keeps the ADR and topic views coherent with the current
+// working tree; the bridge migration can insert its lock refusal before the
+// first Topics call without changing the query model.
+func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
+	p.beginInvocation()
+	adrs, err := p.Corpus()
+	if err != nil {
+		return topic.QueryResult{}, err
+	}
+	corpus, err := p.Topics()
+	if err != nil {
+		return topic.QueryResult{}, err
+	}
+	return topic.Query(corpus, adrs, selector, opts)
+}
+
 func (p *Project) Topics() (topic.Corpus, error) {
 	if p.topics != nil {
 		return *p.topics, nil

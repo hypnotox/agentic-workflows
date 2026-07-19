@@ -24,6 +24,7 @@ by this repository's own checks (ADR-0090).
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf context <path>...`: report the committed context awf holds for a set of repo-relative paths, namely the owning domain(s), the invariant slugs backed under those paths, related ADRs, and each domain's current-state doc. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git.
+- `awf topic <domain>/<topic>[:<claim>]`: query one active current-state topic or claim. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR provenance with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR.
 - `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
@@ -64,7 +65,12 @@ Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It 
 collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
 a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
 Replace the placeholder, revise the generic summary and prose, and add reviewed claims manually; a
-zero-claim shell renders but does not satisfy scoped coverage.
+zero-claim shell renders but does not satisfy scoped coverage. Query an active topic as
+`awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults hide
+provenance and reference edges; `--history`, `--references`, and `--coverage` independently add direct
+detail, and `--json` emits the same deterministic result model. Queries are read-only, active-only,
+and never traverse references transitively. Removed identities and migration history are not yet
+available in this unreleased tranche.
 
 This is unreleased preparation substrate. Do not publish or treat it as shadow authority: legacy ADR
 context and invariant enforcement remain authoritative until the following bridge-migration plan

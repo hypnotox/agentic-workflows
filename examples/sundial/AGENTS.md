@@ -44,6 +44,7 @@ Hard rules every change must respect:
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)
 - **Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists. (ADR-0002)
 - **Conventional Commits, scopes `almanac`, `schedule`, `cli`, `docs`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
+- **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
