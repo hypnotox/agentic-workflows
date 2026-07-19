@@ -113,6 +113,10 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](../decisions/0129-single-anchor-coverage-model-for-every-supersession-consumer.md)
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md)
 
+### Proposed
+
+- [ADR-0132: Structured Cross-Runtime Exploration Workflow](../decisions/0132-structured-cross-runtime-exploration-workflow.md)
+
 ### Superseded
 
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md) → superseded by ADR-0115

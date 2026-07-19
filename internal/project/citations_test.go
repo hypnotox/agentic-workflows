@@ -202,20 +202,61 @@ func TestCitationsExemptsUnsluggedBullet(t *testing.T) {
 	}
 }
 
-// Text inside an inline code span is a specimen, not a claim. This is what
-// lets an ADR discuss the citation grammar itself without self-triggering,
-// and ADR-0131's own Decision section depends on it.
+// An item citation or an override verb inside an inline code span is a
+// specimen, not a claim, which is what lets an ADR discuss the citation grammar
+// without self-triggering; ADR-0131's own Decision section depends on it. The
+// exemption stops there. A slug citation's backticks ARE its syntax, carried as
+// literal characters of the pattern that finds it, so it is scanned raw and
+// masking would recognize none of them; it fires inside a span by construction,
+// and an author quoting one writes `cites-invariant:`. A fenced block is
+// excluded upstream, so that form exempts every anchor kind.
 // invariant: citation-check-exempts-code-spans
 func TestCitationsExemptsCodeSpans(t *testing.T) {
-	p := citeProject(t, map[string]string{
-		"0001-a.md": citeTarget(""),
-		"0002-b.md": citeCarrier(
-			"1. **Discussing the grammar.** A citation is written `ADR-0001 Decision item 1` and is\n" +
-				"   overridden only when it appears as prose.\n"),
+	t.Run("item citation inside a span is a specimen", func(t *testing.T) {
+		p := citeProject(t, map[string]string{
+			"0001-a.md": citeTarget(""),
+			"0002-b.md": citeCarrier(
+				"1. **Discussing the grammar.** A citation is written `ADR-0001 Decision item 1` and is\n" +
+					"   overridden only when it appears as prose.\n"),
+		})
+		if d := citeDrift(t, p); len(d) != 0 {
+			t.Fatalf("an item citation inside a code span must be exempt, got %s", detailsOf(d))
+		}
 	})
-	if d := citeDrift(t, p); len(d) != 0 {
-		t.Fatalf("a citation inside a code span must be exempt, got %s", detailsOf(d))
-	}
+
+	t.Run("a verb inside a span does not arm the item", func(t *testing.T) {
+		// Only the verb is quoted; the citation is bare prose. Nothing may fire.
+		// This is the clause that keeps an ADR from arming itself by naming a
+		// verb as data, which item 2 does for every form it enumerates.
+		p := citeProject(t, map[string]string{
+			"0001-a.md": citeTarget(""),
+			"0002-b.md": citeCarrier(
+				"1. **Naming a verb as data.** The word `overridden` is one of the listed forms, and\n" +
+					"   ADR-0001 Decision item 1 is merely mentioned beside it.\n"),
+		})
+		if d := citeDrift(t, p); len(d) != 0 {
+			t.Fatalf("a verb inside a code span must not arm the item, got %s", detailsOf(d))
+		}
+	})
+
+	t.Run("a slug citation fires inside a span, and is exempt only when fenced", func(t *testing.T) {
+		inv := "- `invariant: some-slug`: the target's sentence.\n"
+		p := citeProject(t, map[string]string{
+			"0001-a.md": citeTarget(inv),
+			"0002-b.md": citeCarrier("1. **X.** ADR-0001 `inv: some-slug` is overridden here.\n"),
+		})
+		if d := citeDrift(t, p); len(d) != 1 {
+			t.Fatalf("a slug citation is recognized inside its own backticks, got %s", detailsOf(d))
+		}
+		p = citeProject(t, map[string]string{
+			"0001-a.md": citeTarget(inv),
+			"0002-b.md": citeCarrier(
+				"1. **X.** An example:\n\n```\nADR-0001 `inv: some-slug` is overridden here.\n```\n"),
+		})
+		if d := citeDrift(t, p); len(d) != 0 {
+			t.Fatalf("a fenced slug citation must be exempt, got %s", detailsOf(d))
+		}
+	})
 }
 
 // A `cites:` token answers the check for the anchor it names and for no other.

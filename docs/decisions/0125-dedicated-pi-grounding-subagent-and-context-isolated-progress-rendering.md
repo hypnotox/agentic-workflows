@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-17
 tags: [multi-target, subagent-dispatch, workflow-chain]
-related: [123]
+related: [123, 132]
 domains: [rendering, tooling]
 ---
 # ADR-0125: Dedicated Pi Grounding Subagent and Context-Isolated Progress Rendering
