@@ -9,4 +9,6 @@
    - **Print/log debugging**: add `t.Logf(...)` or `fmt.Fprintf(os.Stderr, ...)` inline; remove before committing. For template render bugs, log the `data` map before `tmpl.Execute` to confirm what the renderer sees.
    - **`.awf/awf.lock`**: the lock file records the rendered content hash; `awf check` compares on-disk files against it. Inspect the lock directly if `awf check` reports false drift.
 
+   When the evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring`. Keep an exact-known-file read or genuinely trivial lookup inline.
+
    Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.

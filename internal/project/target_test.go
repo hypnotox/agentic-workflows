@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -135,32 +136,73 @@ func registrationBlock(t *testing.T, content, name, nextMarker string) string {
 
 // invariant: pi-structured-exploration-contract
 func TestPiStructuredExplorationContract(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	index := renderPiExtensionFile(t, "index.ts")
+	runner := renderPiExtensionFile(t, "runner.ts")
 	for _, name := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
-		if strings.Count(content, `name: "`+name+`"`) != 1 {
+		if strings.Count(index, `name: "`+name+`"`) != 1 {
 			t.Errorf("tool %s registration count differs from one", name)
 		}
 	}
-	if got := strings.Count(content, `name: "subagent_`); got != 4 {
+	if got := strings.Count(index, `name: "subagent_`); got != 4 {
 		t.Errorf("public subagent registration count = %d, want 4", got)
 	}
 	blocks := map[string]string{
-		"grounding": registrationBlock(t, content, "subagent_grounding", `name: "subagent_explore"`),
-		"explore":   registrationBlock(t, content, "subagent_explore", `name: "subagent_review"`),
-		"review":    registrationBlock(t, content, "subagent_review", `name: "subagent_implement"`),
-		"implement": registrationBlock(t, content, "subagent_implement", "export default async function"),
+		"grounding": registrationBlock(t, index, "subagent_grounding", `name: "subagent_explore"`),
+		"explore":   registrationBlock(t, index, "subagent_explore", `name: "subagent_review"`),
+		"review":    registrationBlock(t, index, "subagent_review", `name: "subagent_implement"`),
+		"implement": registrationBlock(t, index, "subagent_implement", "export default async function"),
 	}
-	wants := map[string][]string{
-		"grounding": {`parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false })`, `rolePrompt("grounding")`},
-		"explore":   {`task: Type.String({ minLength: 1 })`, `breadth: StringEnum(["targeted", "bounded", "broad"] as const)`, `detail: StringEnum(["paths", "summary", "analysis"] as const)`, `{ additionalProperties: false }`, `rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`},
-		"review":    {`kind: StringEnum(["adr", "plan", "code"] as const)`, `task: Type.String({ minLength: 1 })`, `{ additionalProperties: false }`},
-		"implement": {`task: Type.String({ minLength: 1 })`, `allowCommits: Type.Boolean()`, `{ additionalProperties: false }`, `rolePrompt("implement", { allowCommits: params.allowCommits })`},
+	schemas := map[string]string{
+		"grounding": `parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false })`,
+		"explore": `parameters: Type.Object({
+      task: Type.String({ minLength: 1 }),
+      breadth: StringEnum(["targeted", "bounded", "broad"] as const),
+      detail: StringEnum(["paths", "summary", "analysis"] as const),
+    }, { additionalProperties: false })`,
+		"review": `parameters: Type.Object({
+      kind: StringEnum(["adr", "plan", "code"] as const),
+      task: Type.String({ minLength: 1 }),
+    }, { additionalProperties: false })`,
+		"implement": `parameters: Type.Object({
+      task: Type.String({ minLength: 1 }),
+      allowCommits: Type.Boolean(),
+    }, { additionalProperties: false })`,
 	}
-	for role, required := range wants {
-		for _, want := range required {
-			if !strings.Contains(blocks[role], want) {
-				t.Errorf("%s registration missing %q:\n%s", role, want, blocks[role])
-			}
+	for role, schema := range schemas {
+		if strings.Count(blocks[role], "parameters:") != 1 || !strings.Contains(blocks[role], schema) {
+			t.Errorf("%s registration does not carry its exact closed schema:\n%s", role, blocks[role])
+		}
+	}
+	for _, want := range []string{
+		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
+		`rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`,
+		`model: { provider: ctx.model.provider, id: ctx.model.id }`,
+		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
+		`content: [{ type: "text", text: "(running...)" }]`,
+		`events: update.events`, `result.output`,
+		"Return only the relevant final report, never the search narrative or intermediate activity.",
+		"MAX_TASK_PREVIEW_BYTES = 512", "MAX_FALLBACK_BYTES = 2 * 1024",
+	} {
+		if !strings.Contains(index, want) {
+			t.Errorf("Pi extension index missing exploration boundary %q", want)
+		}
+	}
+	for _, absent := range []string{"appendEntry", "appendMessage", "sendMessage", "rawTranscript"} {
+		if strings.Contains(index+runner, absent) {
+			t.Errorf("Pi extension contains forbidden parent-context channel %q", absent)
+		}
+	}
+	for _, want := range []string{
+		`"--mode", "json", "-p", "--no-session"`,
+		"\"--model\", `${request.model.provider}/${request.model.id}`",
+		`"--thinking", request.thinkingLevel`, `"--tools", request.tools.join(",")`,
+		`spawn(invocation.command, args, { cwd: request.cwd, shell: false`,
+		"MAX_OUTPUT_BYTES = 50 * 1024", "MAX_OUTPUT_LINES = 2000", "MAX_STDERR_BYTES = 50 * 1024",
+		"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "MAX_FAILURE_BYTES = 2 * 1024",
+		`output: truncateOutput(output || "(no output)")`, `stderr: truncateStderr(stderr)`,
+	} {
+		if !strings.Contains(runner, want) {
+			t.Errorf("Pi runner missing exploration process or bound %q", want)
 		}
 	}
 }
@@ -188,6 +230,9 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 
 // invariant: cross-runtime-exploration-dispatch
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
+	if !catalog.Standard.Skills["exploring"].Core {
+		t.Fatal("exploring is not a core skill")
+	}
 	dirs := map[string]string{
 		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
 		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
@@ -200,8 +245,21 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 			if exploring == "" {
 				t.Fatalf("missing rendered exploring skill for %s", target)
 			}
+			shared := []string{
+				"targeted < bounded < broad", "targeted` locates one declaration", "bounded` investigates within a named symbol", "broad` searches across the project search universe",
+				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels needed to distinguish", "concise explanations", "evidence-grounded synthesis",
+				"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires", "never widen beyond the selected maximum", "boundary is exhausted, report that explicitly",
+				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
+				"not-found", "inconclusive", "unverified", "Not found within <breadth> boundary:", "successful execution", "one concise next refinement", "project search universe and searched surfaces", "Ground every material claim with file/line evidence",
+				"new fresh-context call", "correct the task", "change report detail", "widen breadth", "one information need", "relevant final findings",
+			}
+			for _, want := range shared {
+				if !strings.Contains(exploring, want) {
+					t.Errorf("%s exploring skill missing shared contract %q", target, want)
+				}
+			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "task", "breadth", "detail"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}
@@ -230,17 +288,34 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 
 // invariant: bounded-exploration-reporting
 func TestBoundedExplorationReporting(t *testing.T) {
-	for _, target := range []string{"gemini", "pi"} {
-		files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: ["+target+"]\n")
-		dir := map[string]string{"gemini": ".gemini/skills", "pi": ".pi/skills"}[target]
-		body := files[dir+"/example-exploring/SKILL.md"]
-		for _, want := range []string{
-			"targeted < bounded < broad", "paths < summary < analysis", "adaptive maximum",
-			"tracked files plus non-ignored untracked", "ignored files", ".git", "nested repositories", "external dependencies",
-			"Not found within <breadth> boundary:", "successful execution", "project search universe", "searched surfaces", "inconclusive", "unverified", "insufficient", "correct the task", "change report detail", "widen breadth", "one information need", "new fresh-context call",
-		} {
-			if !strings.Contains(body, want) {
-				t.Errorf("%s exploring skill missing %q", target, want)
+	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
+	guidance := files[".pi/skills/example-exploring/SKILL.md"]
+	prompt := renderPiExtensionFile(t, "index.ts")
+	contracts := map[string]struct {
+		body  string
+		wants []string
+	}{
+		"rendered exploring guidance": {guidance, []string{
+			"targeted < bounded < broad", "`targeted` locates one declaration, implementation, file, or exact fact", "`bounded` investigates within a named symbol, package, component, or subsystem", "`broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
+			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
+			"tracked files plus non-ignored untracked working-tree files under the repository root", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
+			"paths < summary < analysis", "`paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them", "`summary` returns grounded locations plus concise explanations of what each contains and why it matters", "`analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
+			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
+			"new fresh-context call to correct the task, change report detail, or widen breadth",
+		}},
+		"Pi fixed prompt": {prompt, []string{
+			"Breadth is ordered targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
+			"adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
+			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
+			"paths < summary < analysis", "paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative", "summary returns grounded locations plus concise explanations of what each contains and why it matters", "analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
+			"Ground every material claim with file:line evidence", "Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>", "broad absence report must name the project search universe and searched surfaces", "not-found result may suggest one concise next refinement", "inconclusive or unverified result is not an absence claim",
+			"new fresh-context call that corrects the task, changes report detail, or widens breadth",
+		}},
+	}
+	for label, contract := range contracts {
+		for _, want := range contract.wants {
+			if !strings.Contains(contract.body, want) {
+				t.Errorf("%s missing bounded-reporting clause %q", label, want)
 			}
 		}
 	}

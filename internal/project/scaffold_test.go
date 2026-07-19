@@ -98,8 +98,17 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
 	}
-	if !slices.Contains(cfg.Skills, "exploring") {
-		t.Error("core scaffold missing exploring")
+	exploring := cat.Skills["exploring"]
+	if !exploring.Core || !slices.Contains(cfg.Skills, "exploring") {
+		t.Errorf("exploring core = %t, scaffolded = %t, want both true", exploring.Core, slices.Contains(cfg.Skills, "exploring"))
+	}
+	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+		if !slices.Contains(cat.Skills[consumer].RequiresSkills, "exploring") {
+			t.Errorf("%s does not require exploring", consumer)
+		}
+		if slices.Contains(exploring.RequiresSkills, consumer) {
+			t.Errorf("exploring has reciprocal requirement on %s", consumer)
+		}
 	}
 
 	// No doc remains core (ADR-0043 promoted the only three core docs - workflow,
