@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [131]
-status: Proposed
+status: Implemented
 ---
 # Plan: Supersession retrofit D: the adjudicated citation backfill
 
@@ -498,6 +498,25 @@ six resolve when Plan C Task 3.6 flips ADR-0131 to `Implemented`.
   a status slug, while the test exercises relation. The fitting slug is ADR-0131's
   `cites-token-uncounted`, unusable while ADR-0131 is `Proposed`. Re-point it in Plan C Task 3.6;
   do not downgrade it to `touches-invariant:` meanwhile, which would leave the test unmarked.
+- **Execution finding: one Task 1.1 verdict was wrong and was re-adjudicated to `cites:`.**
+  ADR-0121 item 2's citation of ADR-0083 Decision 4 was scheduled as `refines:`, but that item
+  states the raw-bytes contract is "preserved in effect, not overridden" and that "no override
+  token is owed", and every clause of ADR-0083 item 4 survives. `refines:` would have asserted an
+  adaptation the carrier's own prose denies, so the site moved to Task 1.2's batch. Caught by the
+  plan's own instruction to re-read the target before writing each token; the instruction
+  anticipated only the retirement direction, not the inert one.
+- **Execution finding: Task 2.4 under-scheduled one marker.** It enumerated proof markers and so
+  missed the `touches-invariant: uninstall-removes-lock-tracked` pointer on `Uninstall`
+  (`internal/project/install.go`). An advisory marker is never backing, which is exactly why the
+  proof enumeration did not see it, and retiring the slug left it naming a slug no ADR declares.
+  It is retargeted in the same commit. Symptom to watch for: the advisory note count reaching
+  seven where this plan's Verification predicts six.
+- **Task 2.1 held three mid-array inserts, not the one it names.** ADR-0015 gaining `16` is the
+  one the plan flagged; ADR-0016 gaining `23` and ADR-0039 gaining `42` are the same shape. The
+  task's own instruction to read each target's array before editing is what covered them, which is
+  the argument for that instruction over an enumerated list.
+- **Phase 0's scoping change and its test are working state on `wip/citation-check`**, not in any
+  commit here, per the dead-code and coverage gates. Plan C Phase 3 carries them.
 - **Verdict provenance.** The claims were adjudicated by fresh-context agents, one per target ADR,
   each returning the target's surviving-or-dead clause quoted with a file:line, under the rule read
   the target's clause set, never the carrier's verb. If a site looks wrong during execution, re-read
