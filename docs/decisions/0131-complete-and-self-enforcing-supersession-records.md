@@ -141,16 +141,33 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 
 ## Decision
 
-1. **Retire all three stale slugs retroactively, with each retirement token carried by the ADR that
+1. **Retire all six stale slugs retroactively, with each retirement token carried by the ADR that
    displaced the slug.** ADR-0015 gains a `supersedes-invariant:` token naming ADR-0009's
    `parts-convention`, ADR-0016 one naming ADR-0009's `config-root`, and ADR-0085 one naming
-   ADR-0082's `residue-exemptions-pinned`. Each is inserted beside prose that already states the
-   claim, which is ADR-0120 Decision 9's third carve-out shape and needs no new permission
+   ADR-0082's `residue-exemptions-pinned`. ADR-0020 gains two, naming ADR-0005's
+   `sync-generates-active-md` and ADR-0006's `render-active-md`, and ADR-0032 gains one naming
+   ADR-0023's `uninstall-removes-lock-tracked`. Each is inserted beside prose that already states
+   the claim, which is ADR-0120 Decision 9's third carve-out shape and needs no new permission
    (`cites: ADR-0120#9`).
+
+   The last three were found by item 2's check rather than by the prose audit that found the first
+   three, which is the recall difference item 9 predicted, measured. Each shows the same pathology:
+   a frozen declaration whose stated claim the displacing ADR falsified, and a proof marker that
+   passes because it asserts the new behaviour instead. ADR-0005's slug declares that an ADR-less
+   decisions dir "writes no `ACTIVE.md` and prunes any previously locked one", and ADR-0006's that
+   `RenderActiveMD` "returns `\"\"` when the directory holds no ADRs"; ADR-0020 Decision 6 made
+   `ACTIVE.md` always render, and the markers at `internal/project/project_test.go:833` and
+   `internal/adr/adr_test.go:193` now assert the placeholder, which is the negation of the sentence
+   they are recorded as backing. ADR-0023's slug is a three-part conjunction whose middle clause
+   unsets `core.hooksPath`; ADR-0032 Decision 7 says in terms that the clause "is dropped", so the
+   sentence is false as written, while the marker at `internal/project/install_test.go:41` asserts
+   only the lock-entry half. ADR-0032 also says the slug remains "in force and backed", which is a
+   frozen self-contradiction rather than a reason to leave the declaration standing: a declaration
+   is false or it is not, and no later prose can make a dropped clause hold.
 
    This item deliberately names each token by key and anchor rather than writing it out. A complete
    token string inside a `## Decision` section **is** a token: the parser recognises it wherever it
-   appears there (ADR-0120 Decision 1), and an earlier draft of this item wrote all three in full,
+   appears there (ADR-0120 Decision 1), and an earlier draft of this item wrote them out in full,
    which made this ADR their carrier and contradicted the sentence that follows. This ADR carries no
    retirement token of its own, and the way to keep that true is to not write one. The citation
    check's code-span exemption (item 5) does not help here, because it governs citations and verbs,
@@ -165,7 +182,7 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    still declared, still owed, and no longer backed. The record is also more faithful this way: the
    ADR that displaced a slug is the ADR that says so.
 
-   The proof edits land with their tokens, and there are three. The duplicated marker on
+   The proof edits land with their tokens, at nine marker sites. The duplicated marker on
    `internal/config/config_test.go:119` is deleted so that test backs `awf-config-root` alone. The
    marker at `internal/project/residue_scan_test.go` is retargeted from `residue-exemptions-pinned`
    to the successor declared below. And the `parts-convention` marker at
@@ -174,15 +191,36 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    `no-replacewith` is already backed at `internal/config/config_test.go:249`, so the deletion costs
    no real coverage.
 
-   Only the third slug needs a successor declaration, and only this ADR can supply it. ADR-0016
+   The three later retirements are all retargets, because each backs behaviour that is still
+   wanted. The two `sync-generates-active-md` markers (`internal/project/project_test.go:785` and
+   `:833`) move to `sync-always-writes-active-md`, the three `render-active-md` markers
+   (`internal/adr/adr_test.go:18`, `:104`, `:193`) to `render-active-md-grouped-or-placeholder`, and
+   the `uninstall-removes-lock-tracked` marker (`internal/project/install_test.go:41`) to
+   `uninstall-removes-lock-entries`. None is deleted: the tests assert grouping by status, the
+   superseded-variant grouping, the placeholder render, sync's write-and-lock behaviour, and
+   uninstall's lock-entry removal, every one of which survives its slug.
+
+   Four of the six need a successor declaration, and only this ADR can supply them. ADR-0016
    declared `awf-config-root` and ADR-0015 declared `no-replacewith`, both live and backed, so
-   those two retirements strand nothing. ADR-0085 declared none: it instructed a reword of ADR-0082's
-   frozen declaration, which the append-only rule cannot execute, and it is itself frozen now. This
-   ADR therefore declares `residue-exemptions-pinned-three` in its Invariants section, pinning the
-   list at exactly the three entries the guard test already asserts. Retiring that slug bare would
-   delete a live, passing check rather than a false one, which is the opposite of this item's
-   purpose. The declaration lives outside its natural domain as a consequence; ADR-0082's and
-   ADR-0085's `related:` name this ADR so a reader arrives from either end.
+   those two retirements strand nothing. The other four displacing ADRs declared no successor at
+   all. ADR-0085 instructed a reword of ADR-0082's frozen declaration, which the append-only rule
+   cannot execute, and it is itself frozen now; ADR-0020's Invariants section declares only
+   `dead-reference-gated`, and ADR-0032's carries nothing covering the surviving lock-entry
+   substance. This ADR therefore declares `residue-exemptions-pinned-three`,
+   `sync-always-writes-active-md`, `render-active-md-grouped-or-placeholder`, and
+   `uninstall-removes-lock-entries` in its Invariants section, each pinning what its retargeted
+   markers already assert. Retiring any of the four bare would delete a live, passing check rather
+   than a false one, which is the opposite of this item's purpose. The declarations live outside
+   their natural domain as a consequence, so each ADR whose slug is redeclared here names this ADR
+   in its `related:` field and a reader arrives from either end. ADR-0082 and ADR-0085 already do;
+   ADR-0005, ADR-0006, and ADR-0023 gain the edge in the commit that lands their retirement.
+
+   The asymmetry is worth stating, because it is the general rule this item follows rather than an
+   accident of these six. A retirement strands nothing when the displacing ADR already declared a
+   successor slug covering the surviving substance, and strands a live check when it did not.
+   Declaring the successor is therefore not optional bookkeeping: it is the difference between
+   retiring a false claim and deleting a true one, and the author who retires is the only one who
+   can tell which case they are in.
 
    This reverses the test-update clause of ADR-0016 Decision 7 (`refines: ADR-0016#7`), of
    ADR-0015 Decision 6 (`refines: ADR-0015#6`), and the reword clause of ADR-0085 Decision 5
@@ -191,11 +229,36 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    instruction to move a proof under a frozen declaration, or to reword one, is replaced, by the
    retirement that instruction was reaching for.
 
+   The three later retirements reverse no such clause, because neither ADR-0020 Decision 6 nor
+   ADR-0032 Decision 7 instructed a proof move: each stated the override in prose, named the
+   falsified clause exactly, and stopped. That is the shape item 2's check exists to catch, and it
+   is why these three went unnoticed while the first three were found by reading. ADR-0032's
+   "remain in force and backed" is left standing rather than reversed: it is a statement about a
+   slug this ADR retires, so the retirement token beside it is the correction, and rewriting the
+   sentence would be the content edit the append-only rule forbids.
+
 2. **`awf check` reports a supersession claim stated in prose and not encoded.** The check is
    verb-anchored and scoped to `## Decision`: it fires when an override verb occurs in the same
    Decision item as a citation of another ADR's anchor, and that Decision item carries no relation
    token for that anchor. It names the carrier, the carrier's item, the cited anchor, and the
    token shapes that would satisfy it.
+
+   **Item claims are scoped per Decision item; slug claims are scoped per carrier.** For an item
+   anchor the carrier item is the rationale site (ADR-0129 Decision 2), and two items may hold
+   genuinely different relations to one target, so a token at item 7 does not answer a claim at
+   item 5. A slug anchor is not like that: a slug is atomic and dies once, so a carrier that
+   already retires it anywhere in its `## Decision` section has said everything there is to say.
+   Demanding a second token would ask an author to double-encode a retirement the corpus already
+   records, and there is no truthful token to write. An inert `cites-invariant:` would deny a
+   retirement the same ADR asserts, and a second `supersedes-invariant:` would claim one anchor
+   twice from one carrier.
+
+   Two corpus sites forced this and neither is hypothetical. ADR-0081 item 7 discusses retiring
+   ADR-0013's `doc-gated-skill-suppressed` while item 10 carries the token, and ADR-0085 item 1
+   discusses retiring ADR-0040's `bootstrap-pin` while item 9 carries it; `ACTIVE.md` records both
+   retirements as landed. A per-item rule reported both as unencoded. The narrower scoping costs
+   no recall: the carrier still owes exactly one token per retired slug, and a carrier that
+   retires nothing still reports every slug claim it leaves unencoded.
 
    The override verbs are `supersede`, `override`, `replace`, `reverse`, `amend`, `revise`,
    `narrow`, and `generalize`. Each contributes an **enumerated set of surface forms**, not a stem
@@ -311,10 +374,20 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    the 254-line `supersession.go`.
 
 9. **This repo completes its own retrofit, this ADR included, before the check ships.** The 4
-   relation corrections, the 17 backfilled tokens, item 1's three retirements and one
-   redeclaration, the corpus-wide tokenization of informational citations with `cites:`, the
+   relation corrections, the 17 backfilled tokens, item 1's six retirements and four
+   redeclarations, the corpus-wide tokenization of informational citations with `cites:`, the
    missing `related:` back-pointers, and this ADR's own `cites:` tokens all land before item 2's
-   check is enabled, so it ships green. The informational half is not an afterthought: item 4's
+   check is enabled, so it ships green.
+
+   The check's own first run against the corpus is the measurement this item promised, and it
+   revised the retrofit's size rather than confirming it. It reported 44 unencoded claims across
+   18 carriers, where the prose audit behind the corrections and backfills had found its last
+   straggler. Adjudicating all 44 against the cited target's clause set produced 3 retirements
+   (item 1's later three), 5 refinements, and 34 informational citations, plus the 2 slug claims
+   the per-carrier scoping in item 2 dissolves. The distribution is the finding, not the total:
+   no item anchor in the corpus was under-recorded as a refinement when it was a retirement, and
+   every genuine retirement the check surfaced was slug-anchored. Decision items are built upon;
+   invariant declarations are falsified. The informational half is not an afterthought: item 4's
    token has to be applied everywhere it is owed, or the check fires on citations that assert
    nothing. Including this ADR is not a formality: its
    Decision section carries 10 item citations and 3 slug citations, and a check whose own defining
@@ -368,6 +441,9 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
 - `` `invariant: cites-token-suppresses-citation-check` ``: a citation token (`cites:` or
   `cites-invariant:`) suppresses the citation check for the anchor it names, and for that anchor
   only.
+- `` `invariant: citation-check-slug-claims-per-carrier` ``: a slug claim is satisfied by a
+  relation token for that slug anywhere in the carrier's `## Decision` section, not only at the
+  citing item; an item claim is satisfied only at its own item.
 - `` `invariant: cites-token-uncounted` ``: a citation token of either key contributes nothing to
   anchor coverage.
 - `` `invariant: cites-token-unrendered` ``: a citation token of either key appears in no ACTIVE.md
@@ -378,6 +454,23 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
   `residue-exemptions-pinned` at the reality ADR-0085 established, which that ADR could not do
   itself (item 1). The per-entry staleness rule is deliberately not restated: it belongs to
   ADR-0082's `template-source-residue`, which is live, backed, and unaffected by this ADR.
+- `` `invariant: sync-always-writes-active-md` ``: `awf sync` writes
+  `<docsDir>/decisions/ACTIVE.md` and records it in the lock for every decisions dir, grouping the
+  entries by status when the dir holds ADRs and rendering the placeholder index when it holds
+  none. This redeclares ADR-0005's `sync-generates-active-md` at the reality ADR-0020 Decision 6
+  established (item 1); the retired sentence's prune clause is deliberately not restated, because
+  the file is no longer conditionally absent and so is never pruned.
+- `` `invariant: render-active-md-grouped-or-placeholder` ``: `internal/adr.RenderActiveMD` groups
+  its entries by status, keeping the superseded variants distinct, and returns the placeholder
+  index rather than the empty string for a decisions dir holding no ADRs. This redeclares
+  ADR-0006's `render-active-md` at the reality ADR-0020 Decision 6 established (item 1); the
+  retired sentence's byte-identical-to-the-pre-rename-generator clause is deliberately not
+  restated, because it pinned a one-time refactor against a generator that no longer exists.
+- `` `invariant: uninstall-removes-lock-entries` ``: `awf uninstall` removes exactly the files
+  recorded in the lock plus the lock file itself, leaving the authored `.awf/` config (config.yaml,
+  sidecars, parts) and every file outside the lock intact. This redeclares ADR-0023's
+  `uninstall-removes-lock-tracked` without its `core.hooksPath` clause, which ADR-0032 Decision 7
+  dropped along with the `setup` command (item 1).
 
 ## Consequences
 
@@ -390,8 +483,14 @@ Two invariants stop being enforced, and that is a reduction in real coverage, no
 dead weight. `config-root` and `parts-convention` describe properties nobody wants violated. What
 item 1 removes is the false claim that the corpus was checking them; their live successors
 (`awf-config-root`, `no-replacewith`) are what actually hold today, and the audit confirmed both
-are backed. The third retirement costs nothing, because item 1 redeclares it: the exemption list
-keeps a slug, keeps its proof, and gains a declaration that matches what the proof asserts.
+are backed. The other four retirements cost nothing, because item 1 redeclares each: the slug
+changes, the proof stays, and the new declaration matches what the proof asserts.
+
+Net enforcement therefore rises rather than falls. Before this ADR, four of the six slugs were
+green over a declaration their own proof contradicted, which is worse than an unbacked slug: an
+unbacked slug is reported, a falsely-backed one is not. After it, the same six tests run under
+declarations that state what they check. The cost is four slug renames and nine marker edits; the
+gain is that no surviving declaration in the corpus is known to be false.
 
 The check's recall is bounded by its trigger, and the bound is partly unmeasurable. Every one of
 the 17 owed tokens item 9 backfills carries one of item 2's enumerated verbs in its Decision item,
@@ -438,6 +537,15 @@ seven declared slugs), and the two Decision items this ADR touches on it carry o
 which count toward nothing, so ADR-0009 also stays far from coverage-derived supersession.
 ADR-0082 goes to one covered anchor of six (four Decision items, two declared slugs). That
 headroom is measured, not structural, and a future correction may complete a coverage set.
+
+The check's first run re-measured that headroom across every ADR it touched, and none is close.
+The worst case, in which all 44 findings had resolved to retirements, leaves ADR-0120 at 12
+covered anchors of 25, ADR-0115 at 5 of 13, ADR-0116 at 4 of 8, and ADR-0128 at 3 of 17. The
+actual verdicts add fewer still, because ADR-0120's twelve slug anchors are untouched by the
+entire backfill and its ten claims all resolved to citations: nine of them invoke one of its
+grammar or permission clauses as the premise of a new rule, and a carrier cannot both rely on a
+clause and retire it. Item 1's three later retirements each move a different target one anchor,
+so no ADR reaches coverage from this retrofit.
 
 Adopters upgrading past this release may see findings on their own corpora with no way to defer
 them, which is the cost of item 3's refusal of a config key. The findings name exact edits, and
