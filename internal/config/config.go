@@ -142,9 +142,14 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 				return err
 			}
 		case "maxTopicsPerPath":
-			if err := value.Decode(&c.MaxTopicsPerPath); err != nil {
-				return err
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!int" {
+				return errors.New("currentState.maxTopicsPerPath must be an integer scalar")
 			}
+			var maximum int
+			if err := value.Decode(&maximum); err != nil {
+				return fmt.Errorf("currentState.maxTopicsPerPath must be an integer scalar: %w", err)
+			}
+			c.MaxTopicsPerPath = &maximum
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
 		}

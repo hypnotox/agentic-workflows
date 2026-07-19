@@ -108,6 +108,10 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 	m.dirs[config.DirName+"/topics"] = true
 	m.dirs[config.DirName+"/topics/metadata"] = true
 	m.dirs[config.DirName+"/topics/parts"] = true
+	for _, domain := range p.Cfg.Domains {
+		m.dirs[config.DirName+"/topics/metadata/"+domain] = true
+		m.dirs[config.DirName+"/topics/parts/"+domain] = true
+	}
 	topics, err := p.Topics()
 	if err != nil { // coverage-ignore: Check builds a valid OutputPlan from the same cached topic corpus before sweeping
 		return nil, err

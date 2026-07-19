@@ -67,10 +67,59 @@ type Topic struct {
 }
 
 type metadataYAML struct {
-	Title   string   `yaml:"title"`
-	Summary string   `yaml:"summary"`
-	Paths   []string `yaml:"paths"`
-	Applies string   `yaml:"applies"`
+	Title   string
+	Summary string
+	Paths   []string
+	Applies string
+}
+
+func (m *metadataYAML) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return errors.New("topic metadata must be a mapping")
+	}
+	seen := map[string]bool{}
+	for i := 0; i < len(node.Content); i += 2 {
+		key, value := node.Content[i].Value, node.Content[i+1]
+		if seen[key] {
+			return fmt.Errorf("field %s already set in topic metadata", key)
+		}
+		seen[key] = true
+		switch key {
+		case "title":
+			if err := decodeMetadataString(value, &m.Title, "topic title"); err != nil {
+				return err
+			}
+		case "summary":
+			if err := decodeMetadataString(value, &m.Summary, "topic summary"); err != nil {
+				return err
+			}
+		case "paths":
+			if value.Kind != yaml.SequenceNode {
+				return errors.New("topic paths must be a sequence of string scalars")
+			}
+			m.Paths = make([]string, len(value.Content))
+			for j, item := range value.Content {
+				if err := decodeMetadataString(item, &m.Paths[j], fmt.Sprintf("topic paths[%d]", j)); err != nil {
+					return err
+				}
+			}
+		case "applies":
+			if err := decodeMetadataString(value, &m.Applies, "topic applies"); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field %s not found in topic metadata", key)
+		}
+	}
+	return nil
+}
+
+func decodeMetadataString(node *yaml.Node, dst *string, field string) error {
+	if node.Kind != yaml.ScalarNode || node.Tag != "!!str" {
+		return fmt.Errorf("%s must be a string scalar", field)
+	}
+	*dst = node.Value
+	return nil
 }
 
 func ParseMetadata(metadataRoot, path string, data []byte) (TopicID, Metadata, error) {

@@ -144,8 +144,47 @@ func TestWriteAndCloseTopicFileErrors(t *testing.T) {
 	}
 }
 
+func TestCreateTopicParentsErrors(t *testing.T) {
+	t.Run("file ancestor", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "file")
+		if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := createTopicParents(file); err == nil || !strings.Contains(err.Error(), "is not a directory") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("stat failure", func(t *testing.T) {
+		statErr := errors.New("stat failed")
+		testsupport.SwapVar(t, &topicStat, func(string) (os.FileInfo, error) { return nil, statErr })
+		if _, err := createTopicParents(filepath.Join(t.TempDir(), "child")); !errors.Is(err, statErr) {
+			t.Fatalf("error = %v", err)
+		}
+	})
+}
+
+func TestRollbackTopicScaffoldDirectoryInspection(t *testing.T) {
+	t.Run("missing directory is already clean", func(t *testing.T) {
+		primary := errors.New("primary")
+		err := rollbackTopicScaffold(primary, nil, []string{filepath.Join(t.TempDir(), "missing")})
+		if !errors.Is(err, primary) || strings.Contains(err.Error(), "inspect created") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("inspection failure is joined", func(t *testing.T) {
+		primary := errors.New("primary")
+		inspectErr := errors.New("inspect failed")
+		testsupport.SwapVar(t, &topicReadDir, func(string) ([]os.DirEntry, error) { return nil, inspectErr })
+		err := rollbackTopicScaffold(primary, nil, []string{t.TempDir()})
+		if !errors.Is(err, primary) || !errors.Is(err, inspectErr) || !strings.Contains(err.Error(), "inspect created topic scaffold directory") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+}
+
 func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
 	root := topicCLIProject(t)
+	before := topicTreeShape(t, root)
 	mkdirErr := errors.New("second parent failed")
 	testsupport.SwapVar(t, &topicMkdirAll, func(path string, mode os.FileMode) error {
 		if strings.Contains(filepath.ToSlash(path), "/topics/parts/") {
@@ -157,9 +196,8 @@ func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
 	if !errors.Is(err, mkdirErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/mkdir-rollback/current-state.md") {
 		t.Fatalf("error = %v", err)
 	}
-	metadata := filepath.Join(root, ".awf/topics/metadata/rendering/mkdir-rollback.yaml")
-	if _, statErr := os.Stat(metadata); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("first file survived rollback: %v", statErr)
+	if after := topicTreeShape(t, root); !slices.Equal(after, before) {
+		t.Fatalf("rollback changed tree shape:\nbefore %v\nafter  %v", before, after)
 	}
 }
 
@@ -184,12 +222,20 @@ func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
 	if !errors.Is(err, writeErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/partial/current-state.md") {
 		t.Fatalf("error = %v", err)
 	}
-	wantRemoved := []string{
+	wantFiles := []string{
 		filepath.ToSlash(filepath.Join(root, ".awf/topics/parts/rendering/partial/current-state.md")),
 		filepath.ToSlash(filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml")),
 	}
-	if !slices.Equal(removed, wantRemoved) {
-		t.Fatalf("rollback order = %v, want %v", removed, wantRemoved)
+	if len(removed) < len(wantFiles) || !slices.Equal(removed[:len(wantFiles)], wantFiles) {
+		t.Fatalf("file rollback order = %v, want prefix %v", removed, wantFiles)
+	}
+	lastDepth := int(^uint(0) >> 1)
+	for _, path := range removed[len(wantFiles):] {
+		depth := strings.Count(path, "/")
+		if depth > lastDepth {
+			t.Fatalf("directory rollback was not deepest-first: %v", removed)
+		}
+		lastDepth = depth
 	}
 	for _, path := range []string{
 		filepath.Join(root, ".awf/topics/metadata/rendering/partial.yaml"),
@@ -198,6 +244,31 @@ func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
 		if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
 			t.Fatalf("created file survived rollback at %s: %v", path, statErr)
 		}
+	}
+}
+
+func TestRunNewTopicPreservesPreExistingParentOnRollback(t *testing.T) {
+	root := topicCLIProject(t)
+	preExisting := filepath.Join(root, ".awf/topics/parts/rendering/preserved")
+	if err := os.MkdirAll(preExisting, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := topicTreeShape(t, root)
+	writeErr := errors.New("second write failed")
+	opens := 0
+	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		opens++
+		file, err := os.OpenFile(path, flag, mode)
+		if err != nil || opens == 1 {
+			return file, err
+		}
+		return &partialFailWriteCloser{file: file, err: writeErr}, nil
+	})
+	if err := runNew(root, "topic", []string{"rendering", "Preserved"}, io.Discard); !errors.Is(err, writeErr) {
+		t.Fatalf("error = %v", err)
+	}
+	if after := topicTreeShape(t, root); !slices.Equal(after, before) {
+		t.Fatalf("rollback did not preserve tree shape:\nbefore %v\nafter  %v", before, after)
 	}
 }
 
@@ -226,6 +297,58 @@ func TestRunNewTopicJoinsCleanupFailure(t *testing.T) {
 	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold path") {
 		t.Fatalf("joined error = %v", err)
 	}
+}
+
+func TestRunNewTopicJoinsDirectoryCleanupFailure(t *testing.T) {
+	root := topicCLIProject(t)
+	writeErr := errors.New("second write failed")
+	cleanupErr := errors.New("directory cleanup failed")
+	opens := 0
+	testsupport.SwapVar(t, &topicOpenFile, func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
+		opens++
+		file, err := os.OpenFile(path, flag, mode)
+		if err != nil || opens == 1 {
+			return file, err
+		}
+		return &partialFailWriteCloser{file: file, err: writeErr}, nil
+	})
+	testsupport.SwapVar(t, &topicRemove, func(path string) error {
+		info, err := os.Stat(path)
+		if err == nil && info.IsDir() {
+			return cleanupErr
+		}
+		return os.Remove(path)
+	})
+	err := runNew(root, "topic", []string{"rendering", "Directory Cleanup"}, io.Discard)
+	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold directory") {
+		t.Fatalf("joined error = %v", err)
+	}
+}
+
+func topicTreeShape(t *testing.T, root string) []string {
+	t.Helper()
+	var shape []string
+	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if entry.IsDir() {
+			rel += "/"
+		}
+		shape = append(shape, rel)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return shape
 }
 
 func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {

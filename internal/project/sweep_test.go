@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -132,5 +133,30 @@ func TestSweepClaimsOnlyTheTopicCurrentStatePart(t *testing.T) {
 	got := orphanedByPath(checkDrift(t, root))
 	if got[".awf/topics/parts/rendering/contracts/notes.md"] != unclaimedDetail {
 		t.Fatalf("topic sweep = %#v", got)
+	}
+}
+
+func TestSweepClaimsConfiguredEmptyTopicDomainDirectories(t *testing.T) {
+	root := topicProject(t)
+	for _, rel := range []string{".awf/topics/metadata/rendering", ".awf/topics/parts/rendering"} {
+		if err := os.MkdirAll(filepath.Join(root, rel), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, rel := range []string{".awf/topics/metadata/unconfigured", ".awf/topics/parts/unconfigured"} {
+		if err := os.MkdirAll(filepath.Join(root, rel), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := orphanedByPath(checkDrift(t, root))
+	for _, rel := range []string{".awf/topics/metadata/rendering", ".awf/topics/parts/rendering"} {
+		if detail, exists := got[rel]; exists {
+			t.Errorf("configured domain directory %s was rejected: %q", rel, detail)
+		}
+	}
+	for _, rel := range []string{".awf/topics/metadata/unconfigured", ".awf/topics/parts/unconfigured"} {
+		if got[rel] != unclaimedDetail {
+			t.Errorf("unconfigured domain directory %s = %q", rel, got[rel])
+		}
 	}
 }

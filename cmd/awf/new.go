@@ -88,19 +88,22 @@ func newTopic(root string, args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	created := make([]string, 0, len(files))
+	createdFiles := make([]string, 0, len(files))
+	var createdDirs []string
 	for _, file := range files {
 		path := filepath.Join(root, filepath.FromSlash(file.Path))
-		if err := topicMkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return rollbackTopicFiles(fmt.Errorf("create parent for topic scaffold path %q: %w", filepath.ToSlash(path), err), created)
+		dirs, err := createTopicParents(filepath.Dir(path))
+		createdDirs = append(createdDirs, dirs...)
+		if err != nil {
+			return rollbackTopicScaffold(fmt.Errorf("create parent for topic scaffold path %q: %w", filepath.ToSlash(path), err), createdFiles, createdDirs)
 		}
 		writer, err := topicOpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if err != nil {
-			return rollbackTopicFiles(fmt.Errorf("create topic scaffold path %q exclusively: %w", filepath.ToSlash(path), err), created)
+			return rollbackTopicScaffold(fmt.Errorf("create topic scaffold path %q exclusively: %w", filepath.ToSlash(path), err), createdFiles, createdDirs)
 		}
-		created = append(created, path)
+		createdFiles = append(createdFiles, path)
 		if err := writeAndCloseTopicFile(path, writer, file.Content); err != nil {
-			return rollbackTopicFiles(err, created)
+			return rollbackTopicScaffold(err, createdFiles, createdDirs)
 		}
 	}
 	for _, file := range files {
@@ -127,11 +130,61 @@ func writeAndCloseTopicFile(path string, writer topicWriteCloser, content []byte
 	return errors.Join(failures...)
 }
 
-func rollbackTopicFiles(primary error, created []string) error {
+func createTopicParents(parent string) ([]string, error) {
+	var missing []string
+	for current := filepath.Clean(parent); ; current = filepath.Dir(current) {
+		info, err := topicStat(current)
+		if err == nil {
+			if !info.IsDir() {
+				return nil, fmt.Errorf("parent path %q is not a directory", filepath.ToSlash(current))
+			}
+			break
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("inspect topic scaffold parent %q: %w", filepath.ToSlash(current), err)
+		}
+		missing = append(missing, current)
+		next := filepath.Dir(current)
+		if next == current { // coverage-ignore: scaffold paths are rooted below an existing project root
+			break
+		}
+	}
+	slices.Reverse(missing)
+	mkdirErr := topicMkdirAll(parent, 0o755)
+	created := make([]string, 0, len(missing))
+	for _, path := range missing {
+		if info, err := topicStat(path); err == nil && info.IsDir() {
+			created = append(created, path)
+		}
+	}
+	return created, mkdirErr
+}
+
+func rollbackTopicScaffold(primary error, createdFiles, createdDirs []string) error {
 	failures := []error{primary}
-	for i := len(created) - 1; i >= 0; i-- {
-		if err := topicRemove(created[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
-			failures = append(failures, fmt.Errorf("remove created topic scaffold path %q: %w", filepath.ToSlash(created[i]), err))
+	for i := len(createdFiles) - 1; i >= 0; i-- {
+		if err := topicRemove(createdFiles[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
+			failures = append(failures, fmt.Errorf("remove created topic scaffold path %q: %w", filepath.ToSlash(createdFiles[i]), err))
+		}
+	}
+	dirs := slices.Clone(createdDirs)
+	slices.SortStableFunc(dirs, func(a, b string) int {
+		return strings.Count(b, string(filepath.Separator)) - strings.Count(a, string(filepath.Separator))
+	})
+	for _, dir := range dirs {
+		entries, err := topicReadDir(dir)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			failures = append(failures, fmt.Errorf("inspect created topic scaffold directory %q: %w", filepath.ToSlash(dir), err))
+			continue
+		}
+		if len(entries) != 0 {
+			continue
+		}
+		if err := topicRemove(dir); err != nil && !errors.Is(err, os.ErrNotExist) {
+			failures = append(failures, fmt.Errorf("remove created topic scaffold directory %q: %w", filepath.ToSlash(dir), err))
 		}
 	}
 	return errors.Join(failures...)
@@ -139,6 +192,8 @@ func rollbackTopicFiles(primary error, created []string) error {
 
 var (
 	topicMkdirAll = os.MkdirAll
+	topicReadDir  = os.ReadDir
+	topicStat     = os.Stat
 	topicOpenFile = func(path string, flag int, mode os.FileMode) (topicWriteCloser, error) {
 		return os.OpenFile(path, flag, mode)
 	}

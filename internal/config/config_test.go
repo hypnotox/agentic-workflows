@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"gopkg.in/yaml.v3"
 )
 
 // writeConfig writes config.yaml into a fresh awf dir and returns that dir.
@@ -617,6 +618,17 @@ currentState:
 	}
 }
 
+func TestCurrentStateMaximumIntegerOverflow(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "maxTopicsPerPath"},
+		{Kind: yaml.ScalarNode, Tag: "!!int", Value: "999999999999999999999999999999999999"},
+	}}
+	var cfg CurrentStateConfig
+	if err := cfg.UnmarshalYAML(node); err == nil || !strings.Contains(err.Error(), "integer scalar") {
+		t.Fatalf("UnmarshalYAML = %v", err)
+	}
+}
+
 func TestCurrentStateMappingsRequired(t *testing.T) {
 	for _, body := range []string{
 		"prefix: x\ncurrentState: not-a-map\n",
@@ -662,7 +674,11 @@ func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 		"prefix: x\ncurrentState:\n  testGlobs: {}\n",
 		"prefix: x\ncurrentState:\n  topicCoverage: []\n",
 		"prefix: x\ncurrentState:\n  topicFanout: []\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: null\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: nope\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: true\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 1.5\n",
+		"prefix: x\ncurrentState:\n  maxTopicsPerPath: 999999999999999999999999999999999999\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - globs: {}\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - marker: []\n",
 		"prefix: x\ncurrentState:\n  sources:\n    - close: []\n",
