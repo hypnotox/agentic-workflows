@@ -41,8 +41,8 @@ coupled package files may share a task under the review-approved program excepti
   `internal/clispec/{clispec,clispec_test}.go`; `cmd/awf/{main,main_test,dispatch,upgrade,gate_test,
   failure_paths_test}.go`; `cmd/releasecheck/{main,main_test}.go`; `.github/workflows/release.yml`;
   `templates/{docs/working-with-awf.md.tmpl,bootstrap/awf-upgrade.sh.tmpl,hooks/pre-commit.sh.tmpl}`;
-  `.awf/parts/workflow/{composing-the-gate,local-hooks}.md`; create
-  `.awf/parts/agents-doc/commands.md` as a `sectionDefault`-extending override;
+  `.awf/parts/workflow/{composing-the-gate,local-hooks}.md`; modify Plan 1's
+  `.awf/parts/agents-doc/commands.md` override;
   `.awf/docs/parts/{architecture/components,architecture/data-flow,releasing/content}.md`;
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`; `README.md`;
   `changelog/CHANGELOG.md`; and Plan 1's release-sentinel task during final resync.
@@ -150,11 +150,16 @@ the coupled group.
   before readiness can seal them. It never assembles legacy context or supplies Plan 3's permanent
   staged/range checker.
 
-- [ ] **Task 2.5: Add `awf upgrade --check`.** Add mutually exclusive upgrade flags to the one
-  clispec table and pass parsed flags through dispatch. Refactor `cmd/awf/upgrade.go` so plain upgrade
-  retains ordered migration plus sync, while `--check` assembles and prints the readiness report
-  without writes, chmods, index changes, or lock changes. Invalid combinations fail before filesystem
-  access. Add human-output ordering and full-tree digest no-mutation tests in `cmd/awf/upgrade_test.go`.
+- [ ] **Task 2.5: Add `awf upgrade --check` with deterministic JSON.** Add mutually exclusive upgrade
+  flags to the one clispec table and pass parsed flags through dispatch. Plain upgrade retains ordered
+  migration plus sync; `--check` is read-only. Add independent `--json` presentation with sorted schema
+  `{ready,findings:[{code,path,detail}],invariantAdjudications:[{key,disposition,destination,origin,
+  backing,approved}],plannedMutations:[{path,beforePresent,beforeMode,beforeSHA256,afterPresent,
+  afterMode,afterSHA256}]}`. Every inventory key appears once; retired records forbid destination;
+  live records require qualified destination, declaring Origin, `test|unbacked` backing, and review
+  approval. Planned mutations exactly equal terminal journal operations including legacy deletions;
+  absent images use present false, mode 0, SHA-256 of empty bytes. Test human/JSON parity, sorting,
+  no mutation, adjudication completeness, and exact journal-plan equality.
 
 - [ ] **Task 2.6: Test every readiness predicate and close the coupled commit.** Use one valid fixture,
   then fail each
@@ -164,8 +169,9 @@ the coupled group.
   omitted from mapping, mapped retired-key refusal, every legacy-HEAD/prepared-tree mismatch, and
   every terminal legacy-output deletion. Run `go test ./internal/config ./internal/bridge
   ./internal/project ./internal/clispec ./cmd/awf`; expected: all packages report `ok`. Update config,
-  rendering, invariants, tooling, architecture, README, working-with-awf, and changelog authored
-  surfaces in the same behavior commit; sync/check/gate; commit:
+  rendering, invariants, tooling, architecture, AGENTS commands, README, working-with-awf, and
+  changelog authored surfaces with the JSON schema, read-only guarantee, curation/allowlist use, and
+  hash/mode semantics in the same behavior commit; sync/check/gate; commit:
 
   ```commit
   feat(tooling): report current-state upgrade readiness
@@ -227,9 +233,9 @@ the coupled group.
 
 - [ ] **Task 3.5: Document, sync, gate, and commit.** Update architecture, config, rendering, tooling,
   working-with-awf, bootstrap-upgrade, workflow gate/hooks, README, and changelog sources with the
-  exact check/test/gate/clean-HEAD/attest/recover sequence and Git rollback guidance. Create
-  `.awf/parts/agents-doc/commands.md` with `sectionDefault` plus the bridge preparation, refusal, and
-  recovery commands so root and Sundial AGENTS.md render in the same behavior commit. Run `./x sync`,
+  exact check/test/gate/clean-HEAD/attest/recover sequence and Git rollback guidance. Extend Plan 1's
+  commands part with bridge preparation, refusal, JSON, and recovery commands so root and Sundial
+  AGENTS.md render in the same behavior commit. Run `./x sync`,
   `./x check`, and `./x gate`; commit:
 
   ```commit
@@ -267,6 +273,19 @@ the coupled group.
   ```commit
   docs(plans): implement bridge migration tooling
   ```
+
+## Phase 5: Publish the bridge release
+
+- [ ] **Task 5.1: Create the dated v0.18.0 release commit.** After Plan 2 is Implemented and the
+  sentinel is true, set `release_date=$(date -u +%F)`, promote bridge notes to
+  `[0.18.0] - $release_date`, restore empty Unreleased, verify
+  Version/locks 0.18.0, and run sync/check/gate/audit/releasecheck plus pinned GoReleaser check and
+  snapshot. Commit `docs(awf): release 0.18.0` on main.
+
+- [ ] **Task 5.2: Publish annotated bridge tag.** From clean main fetch tags, reject an existing local/
+  remote v0.18.0, push main, verify origin/main equals HEAD, create annotated `v0.18.0` at that release
+  commit, verify its peeled commit, push the tag, and require the release workflow to pass. Sundial
+  remains unattested; Plan 4 performs both real attestations.
 
 ## Verification
 

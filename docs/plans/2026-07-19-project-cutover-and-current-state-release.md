@@ -32,7 +32,8 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `/tmp/awf-current-state-close`.
 - **Modified:** root and Sundial configs/domain ownership/markers/ADRs/locks; Plan 3 runtime and tests;
   every authored template/workflow/agent/ADR/domain/architecture/config-reference/glossary/pitfalls/
-  release source named by Plan 3; README/changelog; Plans 1-4 statuses/Notes.
+  release source named by Plan 3; README/changelog; Plans 3-4 statuses/Notes. Plans 1-2 are verified
+  Implemented prerequisites.
 - **Deleted:** both ACTIVE.md files, domain ADR indexes, legacy authority production code, bridge-only
   package, obsolete invariant markers/config, and stale rendered outputs selected by final output plans.
 
@@ -99,8 +100,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
 
   The user approved semantic claim curation during implementation rather than implementation-sized
   prose in this plan. Final resync adds `upgrade --check --json` to Plan 2 with schema
-  `{ready, findings:[{code,path,detail}], liveInvariants:[{key,unbacked}], plannedMutations:[{path,
-  beforeSHA256,afterSHA256}]}` and deterministic sorted arrays. Export `liveInvariants` as the
+  `{ready,findings:[{code,path,detail}],invariantAdjudications:[{key,disposition,destination,origin,
+  backing,approved}],plannedMutations:[{path,beforePresent,beforeMode,beforeSHA256,afterPresent,
+  afterMode,afterSHA256}]}` and deterministic sorted arrays. Export `invariantAdjudications` as the
   exhaustive affected-site table; for each key record qualified destination, exact Origin,
   backed/unbacked class, and reviewer approval. Claims consolidate current contracts rather than
   mirroring ADR count. No inventory key may be missing, duplicated, retired-and-mapped, or class-
@@ -208,9 +210,10 @@ commands until the current runtime consumes it.
 
 - [ ] **Task 2.2: Verify sealed-input exclusion and combine.** Final resync makes Plan 2's JSON
   `plannedMutations` the exact path/before/after-SHA allowlist and tests it against the journal plan.
-  Save root and Sundial JSON check reports before attestation; use a Python assertion to require each
-  patch path equals one listed mutation path, current bytes hash to its afterSHA256, and each lock's
-  PreparedHead equals `prep_head`. Any unlisted topic/domain/config/ADR/marker input fails. Then:
+  Save root and Sundial JSON check reports before attestation; use a Python assertion to require exact
+  set equality between patch paths and planned mutation paths; verify every before hash/mode/presence
+  against `prep_head`, every after hash/mode/presence in its attestation worktree, equality with journal
+  operations, and each lock's PreparedHead equals `prep_head`. Any mismatch fails. Then:
 
   ```sh
   git worktree add --detach /tmp/awf-cs-integration "$prep_head"
@@ -349,8 +352,9 @@ commands until the current runtime consumes it.
 - Permanent locks have exact cutoffs/gaps and no attestation; INDEX replaces ACTIVE everywhere.
 - Context/invariants/check consume topic claims only; denylist/import/deadcode checks find no legacy
   engine.
-- Plans 1-2 are already Implemented at the bridge tag; Plans 3-4 and ADR-0133-0136 close in the
-  cutover commit.
+- Plans 1-2 are already Implemented at the bridge tag. Root ADR-0001 and ADR-0133-0136 become
+  Implemented, and Sundial ADR-0003 becomes Abandoned, in the preparation commit; only Plans 3-4
+  close in the cutover commit.
 - `v0.19.0` is tagged only after the clean, gated cutover commit and release preflight.
 
 ## Notes

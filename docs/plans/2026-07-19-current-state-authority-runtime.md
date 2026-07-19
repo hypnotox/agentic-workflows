@@ -22,10 +22,10 @@ pairs. Plain upgrade verifies the unchanged Plan 2 seal, applies the new output 
 journal, promotes cutoff/gaps to permanent lock fields, and removes migration-only code.
 
 Only Phase 1 has a standalone commit. Phases 2-5 and Plan 4 are one coupled, unreleased closing slice:
-Plan 4 first commits prepared adopter content under the bridge runtime, obtains clean-HEAD attestations,
-then the executor applies the uncommitted runtime patch, runs final upgrades, sync/check/gate, and
-commits everything. This preserves the seal's HEAD while allowing dirty non-sealed runtime source; the
-sealed path digest must remain unchanged until consumed. Paths are rooted at
+the complete runtime source, adopter corpus, terminal ADR outcomes, templates, and sealed authored
+changes land in the clean preparation commit through Plan 4's SHA-verified pinned-bridge hook path.
+Two worktrees attest that same commit; the current binary built from it consumes both seals and the
+cutover outputs close separately. Paths are rooted at
 `/home/hypno/Projects/agentic-workflows`; approved symbol-contract/coupled-file exceptions apply, but
 verification commands and affected sets remain exact.
 
@@ -35,7 +35,7 @@ verification commands and affected sets remain exact.
   `internal/snapshot/{working,commit,range}.go`, `internal/currentstate/{check,transition,
   legacy_absence}.go`, `internal/adr/{format,operations,history,digest}.go`, permanent
   `internal/upgrade/{journal,verify}.go`, and exact matching tests.
-- **Modified:** `internal/{git,audit,adr,topic,manifest,project,clispec,catalog}`; `cmd/awf/{main,
+- **Modified:** `.githooks/pre-commit`; `internal/{git,audit,adr,topic,manifest,project,clispec,catalog}`; `cmd/awf/{main,
   upgrade,check,context,invariants,topic,dispatch}`; ADR/domain/hook/doc/skill/agent templates; authored
   `.awf/` workflow, agent-guide, ADR guide, architecture, glossary, pitfalls, config-reference, and
   domain sources; `README.md`; `changelog/CHANGELOG.md`.
@@ -79,8 +79,10 @@ verification commands and affected sets remain exact.
 
 ## Coupled Phases 2-5 and Plan 4: Implement and activate one authority engine
 
-Do not commit any Phase 2-5 task independently. Plan 4's preparation commit and attestations happen
-before these runtime edits are applied. The shared final commit subject is defined by Plan 4.
+Do not commit any Phase 2-5 task independently. These runtime and sealed authored edits land in Plan
+4's preparation commit before attestation. Plan 4's tested `AWF_PREP_BRIDGE`/
+`AWF_PREP_BRIDGE_SHA256` hook branch is the only allowed preparation commit path; the shared cutover
+commit follows seal consumption.
 
 ## Phase 2: Complete snapshots and the ADR/static model
 
@@ -194,7 +196,9 @@ before these runtime edits are applied. The shared final commit subject is defin
   skill templates and project parts; all three reviewer agents; AGENTS invariants/workflow/commands/
   document-map parts; workflow and working-with-awf templates; architecture components/data-flow;
   adr-system/invariants/rendering/tooling domain parts; config-reference descriptions; glossary terms;
-  pitfalls entries; README and Unreleased changelog. Render every enabled root target and Sundial copy.
+  pitfalls entries; README and Unreleased changelog. The pinned bridge renders bridge preparation
+  outputs only; after seal consumption the current runtime renders every enabled root target and
+  Sundial copy, INDEX, and topic-only domains.
 
 ## Shared Plan 4 closing sequence
 
@@ -206,8 +210,9 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
    readiness, sync, and check; run source tests and `./x gate`; commit this **preparation commit**. All
    configured marker-source and other sealed paths are now frozen.
 3. Create two clean Git worktrees at that same preparation HEAD. In one, use the pinned bridge binary
-   to attest the root project; in the other, attest `examples/sundial`. Export each disjoint
-   attestation/output patch, verify neither changes a sealed authored input, and apply both patches to
+   to attest the root project; in the other, attest `examples/sundial`. Save both JSON readiness
+   reports; require each disjoint patch's complete path/hash/mode set to equal its
+   `plannedMutations`, require PreparedHead equality, and apply both patches to
    an integration worktree whose HEAD remains the preparation commit.
 4. Build the current-state binary from the preparation commit and run plain final upgrade for root and
    Sundial, consuming both seals through `internal/upgrade`. Run the final runtime's `./x sync`,
@@ -216,7 +221,8 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
    ACTIVE/domain ADR indexes are absent; output plan equals generated fan-out; legacy-absence tests
    are clean. Update Notes and set Plans 3-4 Implemented; sync/check/gate again; commit the combined
    attestation/final-upgrade/generated/lifecycle result with Plan 4's declared subject, then perform
-   Plan 4's separately gated release-tag task.
+   Plan 4's dated `docs(awf): release 0.19.0` commit, full release preflight, canonical-main
+   assertions, and annotated v0.19.0 tag publication.
 
 ## Verification
 

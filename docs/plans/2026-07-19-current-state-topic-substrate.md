@@ -53,11 +53,13 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
 - **Modified:** `internal/config/{config,config_test}.go`, `internal/configspec/{spec,spec_test}.go`,
   `internal/project/{configreference,configreference_test,project,render,output_plan,output_plan_test,
   sweep,sweep_test,domains_test,project_test,drift_test,render_tree_test,version_test}.go`,
-  `internal/migrate/{migrate,migrate_test}.go`, `templates/{embed.go,domains/domain.md.tmpl}`,
+  `internal/migrate/{migrate,migrate_test}.go`, `cmd/releasecheck/{main,main_test}.go`,
+  `.github/workflows/release.yml`, `templates/{embed.go,domains/domain.md.tmpl}`,
   `internal/clispec/{clispec,clispec_test}.go`, `cmd/awf/{new,new_test,dispatch}.go`,
   `.awf/docs/parts/architecture/{components,data-flow}.md`,
   `.awf/domains/parts/{adr-system,config,invariants,rendering,tooling}/current-state.md`,
-  `templates/docs/working-with-awf.md.tmpl`, `templates/agents-doc/AGENTS.md.tmpl`, `README.md`, and
+  `templates/docs/working-with-awf.md.tmpl`, `templates/agents-doc/AGENTS.md.tmpl`, create
+  `.awf/parts/agents-doc/commands.md`, `README.md`, and
   `changelog/CHANGELOG.md`.
 - **Generated/updated by migration and sync:** `.awf/awf.lock`, `docs/{architecture,
   config-reference,working-with-awf}.md`, `docs/domains/{adr-system,config,invariants,rendering,
@@ -101,8 +103,9 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   `internal/migrate/migrate_test.go`. In `internal/project/project.go`, set `Version` to `0.18.0` and
   add `14: "0.18.0"` to `minVersionBySchema`; update the exact pins in
   `internal/project/version_test.go`. Do not add attestation lock fields, invariant conversion, or
-  migration journaling here. Treat 0.18.0 as an unreleased development version until Plan 2 makes the
-  bridge behavior release-complete; the release workflow must refuse a 0.18.0 tag before that plan.
+  migration journaling here. Add `project.BridgeTrancheComplete = false`; make `cmd/releasecheck`
+  refuse while false; test the false/true cases and pin release-workflow ordering before GoReleaser.
+  Treat 0.18.0 as unreleased until Plan 2 flips the sentinel after bridge completion and publishes it.
 
 - [ ] **Task 1.4: Test strict configuration before rendering consumes it.** Add table cases in
   `internal/config/config_test.go` for omission/defaults, both severities at every legal value,
@@ -311,7 +314,8 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
 - [ ] **Task 3.4: Document, sync, verify, and commit.** Update the tooling current-state authored
   part, `templates/docs/working-with-awf.md.tmpl`, `README.md`, and the Unreleased changelog in this
   behavior commit with the exact command, two outputs, no-sync behavior, manual-authoring requirement,
-  and the unreleased-tranche warning. Run `./x sync`, `./x check`, and `./x gate`; expected:
+  and the unreleased-tranche warning. Create `.awf/parts/agents-doc/commands.md` by extending
+  `sectionDefault` with `awf new topic` authoring guidance. Run `./x sync`, `./x check`, and `./x gate`; expected:
   no drift, 100% coverage, no production dead code, and clean prose. Stage only Phase 3 paths and the
   generated docs/locks changed by sync; commit:
 
@@ -370,7 +374,8 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
 - [ ] **Task 4.4: Document, sync, verify, and commit.** Update the tooling current-state authored
   part, working-with-awf template, `README.md`, and the Unreleased changelog in this behavior commit
   with selector grammar, default fields, independent detail flags, JSON behavior, and the active-only
-  unreleased limitation. In `templates/agents-doc/AGENTS.md.tmpl`, change the binary-version invariant
+  unreleased limitation. Extend the commands part with `awf topic` and its flags. In
+  `templates/agents-doc/AGENTS.md.tmpl`, change the binary-version invariant
   sentence from `` `config` and `context` degrade`` to `` `config`, `context`, and `topic` degrade``;
   `./x sync` must update the root `AGENTS.md` and every enabled adopter rendering, including
   `examples/sundial/AGENTS.md`. Run `./x sync`, `./x check`, and `./x gate`; expected: no drift, 100%
@@ -434,9 +439,9 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   file-task exceptions recorded under Path and diff notation; add the focused Plan 1 coverage
   evaluator; and use a presence-aware `*int` for `maxTopicsPerPath`. No release may occur between
   Plans 1 and 2; Plan 2 must add bridge-lock refusal before publication.
-- Migration inventory, readiness, attestation, recovery, and the transaction journal belong to the
-  bridge-migration plan.
-- Topic-backed normal context/invariants, new-format ADR lifecycle and State changes, staged/range
-  snapshot checks, INDEX.md, and deletion of legacy authority consumers belong to the runtime plan.
-- Authoring the awf and Sundial topic corpora, retargeting markers, normalizing legacy ADRs, and the
-  breaking release belong to the project-cutover plan.
+- Migration inventory, readiness, attestation, recovery, transaction journal, deterministic
+  `upgrade --check --json` (`ready`, `findings`, exhaustive adjudication records, and exact planned
+  mutation path/hash/mode records), and v0.18.0 publication belong to the bridge-migration plan.
+- Only runtime Plan 3 Phase 1 closes independently. Plan 3 Phases 2-5 and Plan 4's authored corpora,
+  marker/ADR preparation, two attestations, final upgrade, legacy deletion, shared cutover commit, and
+  separately gated v0.19.0 release form one coupled slice after published v0.18.0.
