@@ -125,6 +125,23 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- **`awf check` reports a supersession claim stated in prose and never encoded** (ADR-0131). The
+  new `adr-unencoded-claim` finding fires when an override verb occurs in the same Decision item
+  as a citation of another ADR's anchor and that item carries no relation token for it, naming the
+  carrier, its item, the anchor, and the token shapes that would satisfy it. Item citations are
+  recognized in six spellings: `ADR-NNNN Decision item N`, `ADR-NNNN Decision N`,
+  `ADR-NNNN item N`, `ADR-NNNN DN`, plus the possessive `ADR-NNNN's ...` and markdown-link
+  `[ADR-NNNN](path) ...` wrappers. Exemptions are structural, never a marker: a `Proposed` target,
+  a self-citation, a slug the target never declares, anything outside `## Decision`, and anything
+  inside an inline code span, so an ADR can discuss the grammar without tripping it.
+- **Two new relation tokens, `cites: ADR-NNNN#<item>` and `cites-invariant: ADR-NNNN#<slug>`**
+  (ADR-0131), for a Decision item that mentions, quotes, or reasons from another ADR's anchor
+  without changing it. A citation asserts nothing: it contributes no anchor coverage, so it cannot
+  retire an ADR or drop an invariant's backing, and it renders in no `ACTIVE.md` or domain-index
+  annotation. It exists so the check above has a truthful answer for an informational citation;
+  without it an author reaches for a relation token and records a supersession that never
+  happened. It still owes the `related:` back-pointer every relation owes. Judge the key by the
+  target's clause set, not the carrier's verb.
 - `awf check` reports `adr-related-order` when an ADR's `related:` array does not ascend, naming
   the first descent (ADR-0131). A back-pointer edge has exactly one correct position, so appending
   a low-numbered carrier to an array that already names a higher one is an authoring slip that

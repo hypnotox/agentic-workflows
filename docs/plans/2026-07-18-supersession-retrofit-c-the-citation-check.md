@@ -1,7 +1,7 @@
 ---
 date: 2026-07-18
 adrs: [131]
-status: Proposed
+status: Implemented
 ---
 # Plan: Supersession Retrofit C: The Citation Check
 
@@ -63,7 +63,7 @@ a bug. The exemption belongs to the citation scanner alone.
 
 ## Phase 1: The `cites:` token
 
-- [ ] **Task 1.1: Add `cites:` to the inline token grammar.** In `internal/adr/adr.go`, add a
+- [x] **Task 1.1: Add `cites:` to the inline token grammar.** In `internal/adr/adr.go`, add a
   pattern beside the existing three (lines 81-85):
 
   ```go
@@ -106,7 +106,7 @@ a bug. The exemption belongs to the citation scanner alone.
   `collect(citesItemRe, Cites, false)` and `collect(citesInvRe, Cites, true)`. No new argument and
   no shape detection. Update the `Relation` doc comment (lines 58-67) to name all three relations.
 
-- [ ] **Task 1.2: Keep `cites:` out of every derived count.** Read `buildCoverage` in
+- [x] **Task 1.2: Keep `cites:` out of every derived count.** Read `buildCoverage` in
   `internal/adr/coverage.go` and confirm it contributes only on `adr.Retires`. If it filters
   negatively (anything that is not `Refines`), change it to test `Retires` explicitly: a negative
   filter would count `cites:` as a retirement and kill live ADRs.
@@ -116,7 +116,7 @@ a bug. The exemption belongs to the citation scanner alone.
   back-pointer, and `Proposed`-target checks apply to every ref regardless of relation, which is
   intended: a `cites:` token names a real anchor and still owes a back-pointer.
 
-- [ ] **Task 1.3: Prove the two provable `cites:` invariants.** In `internal/adr/adr_test.go` and
+- [x] **Task 1.3: Prove the two provable `cites:` invariants.** In `internal/adr/adr_test.go` and
   `internal/adr/corpus_test.go`, add tests carrying these proof markers:
 
   ```go
@@ -137,7 +137,7 @@ a bug. The exemption belongs to the citation scanner alone.
   `cites-token-suppresses-citation-check` cannot be proved until the check exists; it lands in
   Phase 3 with the other check invariants.
 
-- [ ] **Task 1.4: Verify and commit.** Parsing is **not** unchanged in practice: ADR-0131 already
+- [x] **Task 1.4: Verify and commit.** Parsing is **not** unchanged in practice: ADR-0131 already
   carries 8 `cites:` tokens in its own Decision section, written when it was authored, and they go
   live the moment this task lands. `internal/project/supersession.go:178` then requires a `related:`
   back-pointer on each target, for a token of any relation from a carrier of any status, so an inert
@@ -163,7 +163,7 @@ a bug. The exemption belongs to the citation scanner alone.
 
 ## Phase 2: Tokenize the corpus's informational citations
 
-- [ ] **Task 2.1: Insert `cites:` at every informational citation site.** Batch task: one identical
+- [x] **Task 2.1: Insert `cites:` at every informational citation site.** Batch task: one identical
   shape across thirteen sites. An informational citation names another ADR's anchor inside a Decision
   item that also carries an override verb, without claiming that anchor. Each gets
   `cites: ADR-NNNN#<anchor>` inserted adjacent to the citation, changing no prose.
@@ -266,7 +266,7 @@ a bug. The exemption belongs to the citation scanner alone.
   grammar template `cites: ADR-NNNN#<anchor>` in ADR-0131's Decision 4, which is prose, not a token.
   Re-run the baseline immediately before starting rather than trusting these numbers.
 
-- [ ] **Task 2.2: Verify and commit.** Run `./x sync`, `./x check`, `./x gate`. Commit:
+- [x] **Task 2.2: Verify and commit.** Run `./x sync`, `./x check`, `./x gate`. Commit:
 
   ```commit
   docs(adr): mark informational citations with cites:
@@ -281,7 +281,7 @@ advisory note, not drift (`internal/invariants/invariants.go:180-182`), which is
 can land two markers early without reding its own gate. Those two sit orphaned-but-advisory until
 Task 3.6 flips the ADR.
 
-- [ ] **Task 3.1: Extract citations as a `Corpus` method.** In `internal/adr`, add a method
+- [x] **Task 3.1: Extract citations as a `Corpus` method.** In `internal/adr`, add a method
   returning every anchor citation in an ADR's `## Decision` section, carrying: carrier number,
   carrier Decision item, cited anchor (target plus item-or-slug), and whether an override verb
   occurs in the same Decision item.
@@ -301,7 +301,7 @@ Task 3.6 flips the ADR.
   Placement in `internal/adr` is forced: ADR-0130's `corpus-owns-field-reads` forbids
   `internal/project` from reading `Sections`.
 
-- [ ] **Task 3.2: Land the check in `internal/project/citations.go` and wire it.** A new file, per
+- [x] **Task 3.2: Land the check in `internal/project/citations.go` and wire it.** A new file, per
   ADR-0131 Decision 8, rather than growing the 254-line `supersession.go`.
 
   The check reports a finding when a Decision item contains an override verb, cites another ADR's
@@ -317,7 +317,7 @@ Task 3.6 flips the ADR.
   Wire it into `Check()` in `internal/project/check.go`, after `checkSupersessionAll`
   (lines 460-464), following the same error-handling shape.
 
-- [ ] **Task 3.3: Back all twelve ADR-0131 invariants.** In `internal/project/citations_test.go`
+- [x] **Task 3.3: Back all twelve ADR-0131 invariants.** In `internal/project/citations_test.go`
   (and `internal/adr` where the behaviour lives), add tests carrying one proof marker each:
 
   `citation-check-decision-scoped`, `citation-check-item-shapes`, `citation-check-slug-spellings`,
@@ -343,7 +343,7 @@ Task 3.6 flips the ADR.
   `len(identityExempt) != 3` assertion block inside `TestTemplateSourceResidue`, so the proof site
   contains the assertion that proves it. Do not disturb `template-source-residue`'s own marker.
 
-- [ ] **Task 3.4: Sweep the doc-currency surfaces.** Each is a `.awf/` source or a shipped template;
+- [x] **Task 3.4: Sweep the doc-currency surfaces.** Each is a `.awf/` source or a shipped template;
   none is a rendered artifact (never hand-edit one). Per ADR-0131's Consequences:
 
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl`: teach `cites:` in the token family. This is the
@@ -367,7 +367,7 @@ Task 3.6 flips the ADR.
 
   Run `./x sync` and commit the rendered files with their sources.
 
-- [ ] **Task 3.5: Dedup rendered supersedence annotations, if the duplication has appeared.**
+- [x] **Task 3.5: Dedup rendered supersedence annotations, if the duplication has appeared.**
   This task is **conditional**, and its first step decides whether it runs at all.
 
   The duplication does not exist in the corpus as of this plan's writing. Run:
@@ -410,7 +410,7 @@ Task 3.6 flips the ADR.
   observation as a present-tense fact about the live corpus, quoting a rendered line that does not
   exist today. The verify pass caught it. The conditional framing above is the correction.
 
-- [ ] **Task 3.6: Flip ADR-0131 to `Implemented`, verify, and commit.** Set `status: Implemented` in
+- [x] **Task 3.6: Flip ADR-0131 to `Implemented`, verify, and commit.** Set `status: Implemented` in
   `docs/decisions/0131-*.md` and run `./x sync` to regenerate `docs/decisions/ACTIVE.md`.
 
   Then run `./x check`. This is where the whole effort is verified: the check is live over the real
@@ -440,38 +440,51 @@ Task 3.6 flips the ADR.
 - `cmd/deadcodecheck` reports no production dead code, confirming the extraction method and the
   check are both reachable from `main`.
 
-## Execution status (2026-07-19): Phases 1 and 2 landed; Phase 3 paused mid-task
+## Execution status (2026-07-19): COMPLETE
 
-Phases 1 (`b1be6de4`) and 2 (`5aa664f3`) are on `main`. Phase 3 is **not** landed. Tasks 3.1 and
-3.2 are written and validated but live on the `wip/citation-check` branch, committed with
-`--no-verify` purely to preserve them: the gate reds there, correctly, because the check works and
-the corpus is not yet clean. Tasks 3.3 to 3.6 are untouched.
+Phases 1 (`b1be6de4`) and 2 (`5aa664f3`) landed first. Phase 3 paused mid-task when the check
+reported 44 unencoded claims where Task 3.6 expected a clean run: the check was correct and the
+corpus was not. That triage became retrofit D
+(`docs/plans/2026-07-19-supersession-retrofit-d-the-adjudicated-citation-backfill.md`), which
+adjudicated every claim and drove the check to zero. Phase 3 then resumed and landed whole.
 
-**Why it paused: the check reports 44 unencoded claims across 18 ADRs** (33 item-anchored, 11
-slug-anchored), where Task 3.6 expected a clean run. The check was validated before drawing that
-conclusion, and it is not over-triggering:
+**Findings from the resumed run:**
 
-- The code-span exemption holds. ADR-0131's own Decision section discusses the token grammar at
-  length inside backticks and self-triggers on none of it.
-- Findings dedup per (carrier item, anchor), so an item naming one anchor twice reports once.
-- ADR-0131's eight self-findings name anchors *different* from its own eight `cites:` tokens. Item
-  5 cites `ADR-0120#9` while the only token for that anchor sits at item 7, which is ADR-0129
-  Decision 2's per-item rationale-site rule behaving exactly as specified.
-- The single case ADR-0131 reasoned about explicitly resolves as the ADR predicted: ADR-0016 item
-  7's `provenance-banner` mention "owes nothing", which under Decision 4 means it owes the inert
-  `cites-invariant:` token, and that is what the check asks for.
+- **Task 3.3's enumeration was stale, and the plan's own Notes had flagged it.** The task says
+  "all twelve" and lists nine slugs. ADR-0131 declares **seventeen**, the difference being its
+  four amendments and the three redeclared successors. Ten proofs were actually owed: the nine
+  listed plus `citation-check-slug-claims-per-carrier`. Enumerating from the ADR's Invariants
+  section rather than the figure is what caught it, which is the standing correction.
+- **Three statements needed tests the plan did not budget for**, all reachable rather than
+  ignorable: `Citations` on an absent ADR, a slug citation with no preceding ADR reference in its
+  own item, and `checkCitations`'s parse-error branch. The coverage gate found them; none took a
+  `coverage-ignore`.
+- **Task 3.5 RAN.** The conditional probe returned rows, as the task predicted it would once
+  Plans A and B had both landed: ADR-0015 tokenizes ADR-0009's anchors in its item 4 and again in
+  its item 6, so ADR-0001 and ADR-0009 each rendered a duplicated clause. Deduped on
+  (anchor, carrier, relation) in `AnnotatedAnchors`. ADR-0034's two distinct carriers survive,
+  which is the case the carrier-in-the-key exists for.
+- **Task 3.4's content was stale where its surface list was not**, exactly as retrofit D's Notes
+  recorded. The sweep additionally teaches the per-carrier slug scoping, the two back-pointer
+  kinds, the three redeclared slugs, the six recognized citation spellings and the bare-`item N`
+  boundary, and the `adr-related-order` rule; and it lands the `cites:` changelog entry this plan
+  owed since `b1be6de4`.
+- **The marker re-point owed at the flip is done.** `TestCheckTokenRetirementIgnoresCitesInvariant`
+  carried the status slug `token-retirement-implemented-only` while testing relation; it now
+  carries `cites-token-uncounted`, which was unusable while ADR-0131 was Proposed.
 
-So the gap is real: the manual prose sweep behind Plans A and B found 4 corrections and 17
-backfills, and the mechanical check finds 44 more (item, anchor) pairs. That is ADR-0131 doing the
-job it was written to do, but it makes the remaining work 44 individual clause-set judgments rather
-than the handful of stragglers this plan budgeted for.
+**The check is live, not vacuous.** Deleting `` (`cites: ADR-0120#9`) `` from ADR-0131 Decision
+item 1 and running `awf check` produced exactly one finding, and restoring it went clean:
 
-**Decision taken (user, 2026-07-19): pause and plan the triage separately.** It is not deferrable
-*within* Phase 3 - the check cannot land red, and ADR-0131 Decision 3 forbids shipping it behind a
-config key - so the triage is a prerequisite for Phase 3's commit and warrants its own planned
-effort with a fresh-context review. Rushing 44 verdicts at the tail of a long session is the
-failure mode this effort already hit five times, four of them where the carrier's own verb misled
-the reading.
+```
+adr-unencoded-claim docs/decisions/0131-complete-and-self-enforcing-supersession-records.md:
+ADR-0131 Decision item 1 states an override of ADR-0120#9 but encodes no relation token for it
+at that item; add `supersedes: ADR-0120#9`, `refines: ADR-0120#9`, or `cites: ADR-0120#9` if the
+citation asserts no claim
+```
+
+**The advisory note list is empty.** All six notes retrofit D left standing resolved at the flip,
+as both plans predicted: each named a slug only the then-Proposed ADR-0131 declared.
 
 ## Notes
 

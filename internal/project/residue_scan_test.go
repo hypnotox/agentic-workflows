@@ -25,7 +25,6 @@ var residueADRRe = regexp.MustCompile(`ADR-[0-9]{4}`)
 // sources (installer and upgrade porcelain) and the agent guide's awf-home
 // link. Entries fail when stale; extending the list is a successor-ADR act
 // (ADR-0082 Decision 2, extended by ADR-0085 Decision 5, pinned at three by ADR-0131).
-// invariant: residue-exemptions-pinned-three
 var identityExempt = map[string]bool{
 	"bootstrap/awf-bootstrap.sh.tmpl": true,
 	"bootstrap/awf-upgrade.sh.tmpl":   true,
@@ -41,6 +40,9 @@ var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 // the explicit exemption list (ADR-0082).
 // invariant: template-source-residue
 func TestTemplateSourceResidue(t *testing.T) {
+	// The marker sits on the assertion rather than on the var it guards, so the
+	// proof site contains the check that proves it (ADR-0131 Task 3.3).
+	// invariant: residue-exemptions-pinned-three
 	if len(identityExempt) != 3 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||

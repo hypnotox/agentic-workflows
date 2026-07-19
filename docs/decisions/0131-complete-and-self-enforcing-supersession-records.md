@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-18
 tags: [adr-lifecycle, adr-parsing, invariant-retirement, invariant-backing, active-md]
 related: [5, 6, 8, 9, 15, 16, 20, 23, 32, 34, 57, 58, 65, 79, 82, 85, 105, 116, 119, 120, 121, 128, 129, 130]

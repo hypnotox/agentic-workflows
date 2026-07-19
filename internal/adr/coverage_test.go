@@ -213,3 +213,51 @@ func TestCitesTokenIsUnrendered(t *testing.T) {
 		}
 	}
 }
+
+// AnnotatedAnchors dedups on the triple (anchor, carrier, relation). One
+// carrier may tokenize the same anchor from two Decision items - each is a
+// distinct rationale site ADR-0129 Decision 2 requires, so the coverage model
+// keeps both - but the rendered line states one fact and must say it once.
+// This is exactly what ADR-0015 acquired: it tokenizes ADR-0009's anchors in
+// its item 4 and again in its item 6.
+func TestAnnotatedAnchorsDedupsPerCarrier(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2),
+			testsupport.WithBody("## Decision\n\n1. a.\n\n2. b.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-carrier.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+			testsupport.WithBody("## Decision\n\n"+
+				"1. Adapts it here: `refines: ADR-0001#1`.\n\n"+
+				"2. And explains the same adaptation again here: `refines: ADR-0001#1`.\n")))
+	c := mustCorpus(t, dir)
+
+	if got := c.AnnotatedAnchors(); len(got) != 1 {
+		t.Errorf("one carrier claiming one anchor from two items must annotate once, got %d: %v", len(got), got)
+	}
+	if n := strings.Count(adr.RenderActiveMD(c), "item 1 refined by ADR-0002"); n != 1 {
+		t.Errorf("rendered clause must appear once, got %d occurrences", n)
+	}
+}
+
+// The dedup key includes the carrier, so two different carriers claiming one
+// anchor stay two rows. ADR-0034 is the live case: it renders both
+// "item 1 refined by ADR-0057" and "item 1 refined by ADR-0121", and losing
+// either would erase a real claim.
+func TestAnnotatedAnchorsKeepsDistinctCarriers(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-target.md"),
+		testsupport.ADR("Accepted", testsupport.WithTitle("0001: Target"), testsupport.WithRelated(2, 3),
+			testsupport.WithBody("## Decision\n\n1. a.\n\n2. b.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0002-carrier.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0002: Carrier"),
+			testsupport.WithBody("## Decision\n\n1. Adapts it: `refines: ADR-0001#1`.\n")))
+	testsupport.WriteFile(t, filepath.Join(dir, "0003-other.md"),
+		testsupport.ADR("Implemented", testsupport.WithTitle("0003: Other"),
+			testsupport.WithBody("## Decision\n\n1. Adapts it too: `refines: ADR-0001#1`.\n")))
+	c := mustCorpus(t, dir)
+
+	if got := c.AnnotatedAnchors(); len(got) != 2 {
+		t.Errorf("two carriers claiming one anchor are two distinct claims, got %d: %v", len(got), got)
+	}
+}

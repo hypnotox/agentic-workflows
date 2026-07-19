@@ -131,10 +131,7 @@
 - [ADR-0128: Coverage-Derived ADR Supersession](0128-coverage-derived-adr-supersession.md) (Implemented)
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](0129-single-anchor-coverage-model-for-every-supersession-consumer.md) (Implemented)
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](0130-one-parsed-adr-corpus-view-for-every-consumer.md) (Implemented)
-
-## Proposed
-
-- [ADR-0131: Complete and Self-Enforcing Supersession Records](0131-complete-and-self-enforcing-supersession-records.md) (Proposed)
+- [ADR-0131: Complete and Self-Enforcing Supersession Records](0131-complete-and-self-enforcing-supersession-records.md) (Implemented)
 
 ## Superseded
 
@@ -152,14 +149,14 @@
 
 ### Superseded anchors on live ADRs
 
-- ADR-0001: item 2 superseded by ADR-0015; item 2 superseded by ADR-0015
+- ADR-0001: item 2 superseded by ADR-0015
 - ADR-0002: item 5 refined by ADR-0101
 - ADR-0004: item 1 refined by ADR-0028
 - ADR-0005: slug `sync-generates-active-md` superseded by ADR-0020
 - ADR-0006: slug `render-active-md` superseded by ADR-0020
 - ADR-0007: item 3 refined by ADR-0008
 - ADR-0008: item 4 superseded by ADR-0105; slug `invariants-glob-basename` superseded by ADR-0077
-- ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015; item 4 refined by ADR-0015; slug `config-root` superseded by ADR-0016; slug `parts-convention` superseded by ADR-0015; slug `parts-convention` superseded by ADR-0015
+- ADR-0009: item 1 refined by ADR-0016; item 4 refined by ADR-0015; slug `config-root` superseded by ADR-0016; slug `parts-convention` superseded by ADR-0015
 - ADR-0013: item 4 refined by ADR-0081; slug `doc-gated-skill-suppressed` superseded by ADR-0081; slug `workflow-ref-fallback` superseded by ADR-0043
 - ADR-0015: item 6 refined by ADR-0131
 - ADR-0016: item 6 refined by ADR-0076; item 7 refined by ADR-0131; slug `target-output-paths` superseded by ADR-0037

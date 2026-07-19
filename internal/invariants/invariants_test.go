@@ -745,7 +745,11 @@ func TestCheckTokenRetirementIgnoresItemTokens(t *testing.T) {
 // A `cites-invariant:` token is an informational citation asserting no claim
 // (ADR-0131), so it must not drop the slug from owed backing. It carries a
 // non-empty Slug, unlike an item token, so only a relation filter excludes it.
-// invariant: token-retirement-implemented-only
+//
+// The marker names the relation slug, not the status slug it carried while
+// ADR-0131 was Proposed: this test turns on what the token ASSERTS, and the
+// carrier's status is held constant at Implemented throughout.
+// invariant: cites-token-uncounted
 func TestCheckTokenRetirementIgnoresCitesInvariant(t *testing.T) {
 	dir, root := t.TempDir(), t.TempDir()
 	writeADR(t, dir, "0001-a.md", "Implemented", "- `invariant: fixture-cited` - x.")

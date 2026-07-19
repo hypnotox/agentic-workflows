@@ -111,9 +111,6 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0126: Editor-Quiet Pi Extension via ts-nocheck with Harness Strip](../decisions/0126-editor-quiet-pi-extension-via-ts-nocheck-with-harness-strip.md)
 - [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
 - [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](../decisions/0129-single-anchor-coverage-model-for-every-supersession-consumer.md)
-
-### Proposed
-
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md)
 
 ### Superseded

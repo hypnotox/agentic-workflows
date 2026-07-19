@@ -292,6 +292,13 @@ func (c Corpus) Chains() []Chain {
 // chains subsection already names its retirers.
 func (c Corpus) AnnotatedAnchors() []Claim {
 	var out []Claim
+	// One carrier may tokenize one anchor from several Decision items: each is
+	// a distinct rationale site (ADR-0129 Decision 2), so the coverage model
+	// keeps them all and the dedup lives here, at the sole rendering seam. The
+	// key includes the carrier because two DIFFERENT carriers claiming one
+	// anchor are two real rows - ADR-0034 renders both its ADR-0057 and its
+	// ADR-0121 refinement, and collapsing on the anchor alone would erase one.
+	seen := map[string]bool{}
 	for _, a := range c.all {
 		if !a.IsLive() || c.State(a.Number) == StateCovered {
 			continue
@@ -306,7 +313,12 @@ func (c Corpus) AnnotatedAnchors() []Claim {
 			}
 			// A claim from a Superseded carrier is not annotation-worthy: the
 			// carrier's own record is dead.
+			key := claim.Anchor.String() + "\x00" + claim.Carrier + "\x00" + string(claim.Relation)
+			if seen[key] {
+				continue
+			}
 			if carrier, ok := c.byNum[claim.Carrier]; ok && !carrier.IsSuperseded() {
+				seen[key] = true
 				out = append(out, claim)
 			}
 		}

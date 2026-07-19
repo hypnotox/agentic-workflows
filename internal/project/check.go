@@ -462,6 +462,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, supDrift...)
+	citeDrift, err := p.checkCitations()
+	if err != nil { // coverage-ignore: adr.ParseDir here is pre-empted by checkPlans
+		return nil, err
+	}
+	drift = append(drift, citeDrift...)
 	return drift, nil
 }
 
