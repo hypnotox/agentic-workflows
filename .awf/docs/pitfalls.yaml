@@ -958,3 +958,29 @@ data:
         meaning, and what it superseded stays superseded. The corrected rule counts any carrier
         that has shipped, `Implemented` or `Superseded`, which keeps the original point - a
         successor that has not shipped must not kill its predecessor - without the hole.
+    - title: "A scripted sweep over ADR prose can silently unmake the structure it edits"
+      domains: [adr-system]
+      related: [120, 131]
+      tags: [adr-parsing]
+      body: |
+        Backfilling relation tokens across the corpus is naturally scripted: find the citation,
+        insert the token, re-wrap the paragraph. Both halves of the re-wrap have a failure mode
+        that produces a file which still reads correctly to a human.
+
+        A code span must be atomic. Wrapping inside one splits a relation token across a
+        newline, and the token regexes do not match across newlines, so the parser goes blind
+        to a token a reader plainly sees. The claim silently becomes unencoded, and for a
+        `supersedes:` token the target's coverage silently changes with it.
+
+        A paragraph's trailing newline must survive. An item span ends exactly where the next
+        Decision item begins, so dropping it concatenates the last line onto the next item's
+        `N.` lead and MERGES TWO ITEMS, renumbering every anchor after them. That one is
+        caught: `checkDecisionFormat` requires items to run sequentially from 1, so the merge
+        leaves a gap and reds `awf check`. The token split is not caught by anything until the
+        citation check ships.
+
+        Verify a sweep by its effect on structure, not by reading its diff. Two commands settle
+        it: compare each ADR's Decision item list before and after (identical), and compare the
+        whitespace-normalised prose with relation tokens and `related:` arrays stripped from
+        BOTH sides (identical). Stripping only the new side reports every pre-existing token as
+        a prose change and buries the real finding in false positives.
