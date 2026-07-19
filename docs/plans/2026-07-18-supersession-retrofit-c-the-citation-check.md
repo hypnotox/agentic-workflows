@@ -491,6 +491,13 @@ the reading.
 - **Task 3.3's enumeration is stale in a second way.** Beyond the amendment already noted, ADR-0131
   now also declares `adr-related-ascending`, which is backed on `main` by
   `TestCheckADRRelatedAscending`. Enumerate from the ADR's Invariants section, never from a count.
+- **Task 3.4's doc sweep also owes the `adr-related-order` finding.** It shipped on `main` in
+  `12677a81` (ADR-0131 Decision 10) with a changelog entry, and `awf audit` reports
+  domain-code-staleness for `adr-system` and `rendering` across the retrofit-D range because the
+  domain current-state parts were not refreshed. Fold that into the sweep rather than landing a
+  partial update the sweep would immediately supersede. It should say what the finding is, that
+  `related:` order is now enforced rather than conventional, and that sorting an existing array is
+  a permitted cross-reference-metadata edit.
 - **ADR-0131 Decision 9 requires this ADR to pass its own check.** The verification step above is
   the proof, and it is why the ADR's Decision section carries eight `cites:` tokens: a check whose
   defining document could not pass it would be evidence the token shape is wrong.
