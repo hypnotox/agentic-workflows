@@ -509,11 +509,15 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
     executor who trusts a stated check appends and never learns it was wrong. Two corpus arrays had
     been out of order since before this ADR, ADR-0013 and ADR-0098, and nothing saw them.
 
-    Sorting an existing array is a permitted retroactive edit to a frozen ADR, on the same footing
-    as the mechanical normalizations ADR-0118 sanctions: `related:` carries an unordered set in
-    meaning, so reordering it changes no decision, and membership is asserted unchanged. Resolution
-    and ordering are scanned separately, so stopping at the first descent cannot also stop the
-    dangling-link scan.
+    Sorting an existing array needs no carve-out. Append-only permits editing status and
+    cross-reference metadata on a live ADR, as ADR-0118's alternatives table records when it
+    rejects amending ADR-0115 in place, and `related:` is cross-reference metadata; the array
+    carries an unordered set, so reordering it changes no decision and membership is unchanged.
+    ADR-0118's retroactive-normalization carve-out is deliberately *not* the warrant here: that one
+    is bounded to edits changing punctuation and nothing else, limited to the seven banned
+    codepoints, so it does not reach a frontmatter array and invoking it would imply a wider reach
+    than ADR-0118 grants. Resolution and ordering are scanned separately, so stopping at the first
+    descent cannot also stop the dangling-link scan.
 
 ## Invariants
 
