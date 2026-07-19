@@ -7,209 +7,215 @@ status: Proposed
 
 ## Goal
 
-Implement the following current-state release: permanent snapshots, new-format ADR lifecycle and
-claim operations, topic-backed context/invariants/coverage, static and transition checks, historical
-INDEX.md, attestation-consuming final upgrade, and removal of legacy authority engines. This plan does
-not author or attest the real awf/Sundial topic corpora, rewrite their markers/config, flip the four
-ADRs, or publish the breaking release; Plan 4 performs that project cutover.
+Implement the current-state release runtime: immutable snapshots, the current-state-v1 ADR lifecycle,
+topic-only context and invariants, static/staged/range checks, historical INDEX.md, sealed-attestation
+consumption, and removal of legacy authority. Plan 4 owns real awf/Sundial content, attestation, ADR
+outcomes, and release; all authority-changing work below closes with that cutover.
 
 ## Architecture summary
 
-Introduce immutable `internal/snapshot` trees for working, index, and commit views, and
-`internal/currentstate` for static graph checks and before/after transactions. Refocus `internal/adr`
-on legacy identity plus strict current-state-v1 format, State changes, status history, digests, and
-operation order. Replace ordinary context and invariant consumers with the Plan 1 topic corpus, drive
-staged and audit checks from snapshot pairs, replace ACTIVE/domain ADR indexes with INDEX/topic
-navigation, and make plain upgrade verify a Plan 2 attestation before a journaled final lock commit.
+`internal/snapshot` provides complete immutable working/index/commit trees; consumers apply eligibility
+filters. `internal/currentstate` loads one ADR/topic view per tree for static and before/after checks.
+`internal/adr` retains legacy identity/history below the lock cutoff and strictly parses format-v1 ADRs
+above it. Context, invariants, coverage, staged check, and audit consume topic claims and snapshot
+pairs. Plain upgrade verifies the unchanged Plan 2 seal, applies the new output plan through the
+journal, promotes cutoff/gaps to permanent lock fields, and removes migration-only code.
 
-Plan 3's final legacy-deletion phase and Plan 4's real adopter cutover are one unreleased execution
-tranche: after the legacy engine is deleted, source `./x sync`/`./x check` cannot operate on the still-
-bridge awf/Sundial trees. Render/check authored changes immediately before that switch, run `./x gate`
-after it, do not release, and execute Plan 4 next. All paths are rooted at
-`/home/hypno/Projects/agentic-workflows`; the previously approved symbol-contract and tightly-coupled-
-file exceptions apply to this program.
+Only Phase 1 has a standalone commit. Phases 2-5 and Plan 4 are one coupled, unreleased closing slice:
+Plan 4 first commits prepared adopter content under the bridge runtime, obtains clean-HEAD attestations,
+then the executor applies the uncommitted runtime patch, runs final upgrades, sync/check/gate, and
+commits everything. This preserves the seal's HEAD while allowing dirty non-sealed runtime source; the
+sealed path digest must remain unchanged until consumed. Paths are rooted at
+`/home/hypno/Projects/agentic-workflows`; approved symbol-contract/coupled-file exceptions apply, but
+verification commands and affected sets remain exact.
 
 ## File structure
 
-- **Created:** `internal/snapshot/{snapshot,working,git,range}.go` and tests;
-  `internal/currentstate/{check,transition,legacy_absence}.go` and tests;
-  `internal/adr/{format,operations,history,digest}.go` and tests.
-- **Modified:** `internal/{git,audit,adr,topic,manifest,project,clispec}` runtime/tests;
-  `cmd/awf/{main,upgrade,check,context,invariants,topic,dispatch}` and tests;
-  `templates/{adr-template,adr-readme,domains,hooks,skills,agents,agents-doc,docs}`;
-  `internal/catalog/standard.go`; `.awf/` authored ADR/workflow/agent/reviewer/domain/architecture
-  sources; `README.md`; `changelog/CHANGELOG.md`.
-- **Deleted:** `internal/adr/{coverage,citations,domain}.go` and tests; legacy declaration parsing after
-  bridge extraction; migration-only `internal/bridge/{inventory,history,normalize,readiness,snapshot}`
-  and tests; legacy runtime invariant implementation if replaced; desired `docs/decisions/ACTIVE.md`;
-  all supersession/tag-tier/domain-index runtime paths.
-- **Generated:** `docs/decisions/INDEX.md`, topic-only domain docs, updated standards/runtime copies,
-  and final-upgrade fixture locks. Real awf/Sundial generated cutover remains Plan 4.
+- **Created:** `internal/snapshot/{snapshot,index}.go` and tests in Phase 1; coupled slice adds
+  `internal/snapshot/{working,commit,range}.go`, `internal/currentstate/{check,transition,
+  legacy_absence}.go`, `internal/adr/{format,operations,history,digest}.go`, and exact matching tests.
+- **Modified:** `internal/{git,audit,adr,topic,manifest,project,clispec,catalog}`; `cmd/awf/{main,
+  upgrade,check,context,invariants,topic,dispatch}`; ADR/domain/hook/doc/skill/agent templates; authored
+  `.awf/` workflow, agent-guide, ADR guide, architecture, glossary, pitfalls, config-reference, and
+  domain sources; `README.md`; `changelog/CHANGELOG.md`.
+- **Deleted in the coupled slice:** `internal/adr/{coverage,citations,domain}.go` and tests; unused
+  declarations; legacy invariant runtime if replaced; migration-only bridge inventory/history/
+  normalize/readiness/snapshot code; desired `docs/decisions/ACTIVE.md`; every legacy authority caller.
+- **Generated in the coupled slice:** `docs/decisions/INDEX.md`, topic-only domain docs, every changed
+  root/runtime/Sundial rendering, and both permanent locks. Plan 4 enumerates the actual fan-out after
+  `./x sync` with `git diff --name-only` and asserts it against the output plan.
 
-## Phase 1: Add immutable snapshot trees
+## Phase 1: Add the independently reachable index snapshot seam
 
-- [ ] **Task 1.1: Create the snapshot value model.** Add `internal/snapshot/snapshot.go` with immutable
-  `File {Path, Mode, Bytes}` and sorted `Tree` lookup/list/subtree methods. Copy input bytes, reject
-  duplicate/unsafe paths and unsupported modes, and expose no filesystem handle.
+- [ ] **Task 1.1: Add immutable Tree and index loading only.** Create
+  `internal/snapshot/snapshot.go` with copied-byte `File {Path, Mode, Bytes}` and sorted Tree lookup/
+  list methods used by the index caller; reject duplicate/unsafe paths and unsupported modes. Create
+  `index.go` using `internal/git.OpenRepo` and stage-0 index blobs, preserving executable mode and
+  rejecting unmerged indexes. Do not add working, commit, range, or unused subtree APIs yet.
 
-- [ ] **Task 1.2: Load working, HEAD, index, and commit trees.** Add `working.go` for tracked plus
-  nonignored untracked regular files while excluding generated outputs, contextIgnore, nested adopted
-  projects/repositories, symlink traversal, deleted/missing paths; add `git.go` reusing
-  `internal/git.OpenRepo` and stage-0 index blobs without working-tree reads. Preserve executable mode.
+- [ ] **Task 1.2: Route an existing production caller.** Replace `cmd/awf/context.go`'s legacy staged
+  path-byte assembly with the index Tree while preserving current legacy output. Test staged additions,
+  deletions, executable modes, unstaged isolation, unmerged refusal, linked worktrees, byte copying,
+  and deterministic order in `internal/snapshot/{snapshot,index}_test.go` and context tests.
 
-- [ ] **Task 1.3: Enumerate explicit-range pairs.** Add `range.go`: every included commit yields its
-  parent-to-commit tree pair; root commits use empty before; merges use first parent as integration
-  baseline while included branch commits remain individually enumerated. Replace audit's merge-empty
-  shortcut. Test additions/deletions/modes, ignored/untracked/nested/symlink behavior, linked worktrees,
-  unmerged index refusal, merge pairs, and working/index isolation.
+- [ ] **Task 1.3: Document and commit.** Update `.awf/docs/parts/architecture/components.md` and
+  `data-flow.md` with the neutral snapshot seam, then run:
 
-- [ ] **Task 1.4: Integrate the first production caller and commit.** Route existing staged path
-  selection through snapshot trees without changing authority output, update architecture/git docs,
-  run `go test ./internal/snapshot ./internal/git ./internal/audit ./cmd/awf`, `./x sync`, `./x check`,
-  and `./x gate`; commit:
-
-  ```commit
-  refactor(tooling): add immutable repository snapshots
+  ```sh
+  go test ./internal/snapshot ./internal/git ./cmd/awf
+  ./x sync
+  ./x check
+  ./x gate
   ```
 
-## Phase 2: Implement the current-state ADR and static graph model
-
-- [ ] **Task 2.1: Parse the cutoff-aware ADR format.** Refactor `internal/adr`: below the permanent
-  lock cutoff parse legacy identity/title/status/date only where history/provenance needs it; at and
-  above cutoff require frontmatter exactly `format: current-state-v1`, status, date, and ordered
-  Context, Decision, State changes, Consequences, Alternatives Considered, Status history sections.
-  Accept Proposed, Accepted, Implemented, Abandoned with only the five legal edges; enforce sequential
-  Decision items. Recorded lower gaps can never be backfilled.
-
-- [ ] **Task 2.2: Parse State changes, history, digest, and sequences.** Add exact `None.` versus unique
-  add/update/remove qualified-ID operations; canonical five-section SHA-256; append-only dated history;
-  Accepted/terminal digest repetition; Abandoned rationale; terminal state sequence only for
-  Implemented mutation ADRs; unique contiguous sequences. Build corpus indexes by operation, claim,
-  removed identity, sequence, affected topic/domain, and Accepted pending topic. A removed ID is never
-  reused; rename/move/split/merge are expressed only through operation combinations.
-
-- [ ] **Task 2.3: Implement static bidirectional checking.** Create
-  `internal/currentstate/check.go` over one snapshot-loaded ADR/topic/marker view. Validate cutoff/gaps,
-  status/history/digests/sequences, add-update-remove order, Implemented operations against active or
-  absent claims, inverse Origin/Revised-by operations, pre-cutoff Origin exemption, Accepted destination
-  metadata, unapplied Abandoned operations, claim references/backing, and permanent coverage/fanout
-  severities. Static checks guarantee structure, never semantic fidelity.
-
-- [ ] **Task 2.4: Update scaffolding and lifecycle surfaces.** Make `awf new adr` emit new format and
-  Proposed history at/above cutoff. Rewrite ADR template/readme, proposing/review/lifecycle/execution/
-  retrospective skills and reviewer agents for Accepted/Abandoned, State changes, digest suggestions,
-  atomic claim mutation, and no supersession anchors/tags/relations/invariant declarations. Update
-  authored workflow/AGENTS/domain/architecture sources in the same commit.
-
-- [ ] **Task 2.5: Test, render, gate, and commit.** Cover every format/status/operation/history/digest/
-  sequence/provenance branch plus publication-safe scaffolds. Run `go test ./internal/adr
-  ./internal/currentstate ./cmd/awf`, `./x sync`, `./x check`, `./x gate`; commit:
+  Expected: packages report `ok`, both checks are drift-free, coverage is 100%, and deadcode/prose are
+  clean. Stage the named sources/tests, rendered architecture fan-out, and lock; commit:
 
   ```commit
-  feat(adr-system): add checked current-state impacts
+  refactor(tooling): add immutable index snapshots
   ```
 
-## Phase 3: Switch normal context, invariants, and coverage
+## Coupled Phases 2-5 and Plan 4: Implement and activate one authority engine
 
-- [ ] **Task 3.1: Replace context assembly.** Rewrite `internal/project/context.go` and CLI output so
-  each eligible file loads global plus owning-domain path topics, applies state markers only within an
-  already matching topic, unions claims per file, and prints topic summaries/current claims. Remove
-  Governing/Related ADRs, tags, supersession, plans, pitfalls, and background expansion. Add a separate
-  Pending accepted changes section selected only by Accepted operations targeting matched topics;
-  current claims remain authoritative.
+Do not commit any Phase 2-5 task independently. Plan 4's preparation commit and attestations happen
+before these runtime edits are applied. The shared final commit subject is defined by Plan 4.
 
-- [ ] **Task 3.2: Make snapshot semantics exact.** Explicit file/directory and uncovered queries use
-  working snapshots; `--staged` and `--uncovered --staged` use the index snapshot exclusively.
-  Directories expand eligible descendants. Missing/deleted/generated/ignored/nested/contextIgnore
-  paths stay excluded. Remove the old staged-uncovered rejection.
+## Phase 2: Complete snapshots and the ADR/static model
 
-- [ ] **Task 3.3: Extend permanent coverage/fanout.** Extend `internal/topic/coverage.go` to report
-  unowned paths and, independently per owning domain, missing scoped-topic coverage; empty/global
-  topics never satisfy it. Apply error/warn/off coverage and fanout modes, positive maximum, and
-  path-scoped topic count. `awf check`, normal uncovered output, and JSON share one result.
+- [ ] **Task 2.1: Complete faithful snapshot universes.** Add working and commit Trees containing the
+  complete selected filesystem/Git universe, not context-filtered views. Working includes tracked and
+  nonignored untracked regular files without following symlinks; commit/index never read working bytes.
+  Add range pairs: root uses empty parent; merges use first-parent only for transition pairs while
+  existing audit `Commit.Changes` keeps its legacy merge-empty semantics for unrelated rules. Context/
+  coverage later apply generated, contextIgnore, nested-adopter, symlink, deleted, and eligibility
+  filters. Test every universe and both merge semantics.
 
-- [ ] **Task 3.4: Replace standalone invariant authority.** Make `awf invariants` and Project checks
-  consume only typed topic invariant claims and qualified proof markers. Test-backed claims require a
-  proof in source plus testGlobs; unbacked claims require Verify and forbid proofs. Remove ADR
-  declaration/retirement imports from the runtime invariant package.
+- [ ] **Task 2.2: Parse cutoff-aware ADRs.** Below cutoff parse legacy identity/title/status/date and
+  provenance history only. At/above cutoff require exact format/status/date frontmatter; ordered six
+  sections; Proposed/Accepted/Implemented/Abandoned; five legal edges; sequential Decision items;
+  exact None or unique add/update/remove operations; canonical five-section digest; ordered Status
+  history; Abandoned rationale; mutation-only positive state sequence. Enforce cutoff gaps, contiguous
+  unique sequences, one add, ordered updates, at most one remove, and no ID reuse. Build pending and
+  removed-identity indexes.
 
-- [ ] **Task 3.5: Prove one authority engine and commit.** Test context selection/per-file union,
-  out-of-scope markers, Accepted conflicts, history exclusion, all snapshot universes, uncovered/fanout
-  severity, and topic-only invariant reporting. Update CLI help, working-with-awf, AGENTS, domain/
-  architecture docs, README, changelog; sync/check/gate; commit:
+- [ ] **Task 2.3: Build the complete static checker.** `internal/currentstate/check.go` validates
+  lifecycle/digest/sequence/operation/provenance/reference/backing facts. Proposed and Accepted adds
+  must be absent and their updates/removes present; Abandoned operations remain wholly unapplied;
+  Implemented operations and active Origin/Revised-by are bidirectional; only pre-cutoff Origin gets
+  the bootstrap exemption. Coverage/fanout is deferred to Phase 3's shared evaluator.
 
-  ```commit
-  feat(tooling): switch runtime to current-state claims
+- [ ] **Task 2.4: Update topic history and authoring.** `awf topic <removed-id>` fails normally but
+  resolves direct add/update/remove ADR history with `--history` in human and JSON; active selectors
+  retain Plan 1 behavior. Make `awf new adr`, templates, ADR README, lifecycle/proposing/review/
+  planning/execution/retrospective skills, and reviewer agents use new format, State changes, digest/
+  sequence guidance, Accepted/Abandoned, and no tags/relations/supersession/invariant declarations.
+
+- [ ] **Task 2.5: Test the model.** Add exhaustive parser/static/topic-history fixtures, including
+  partial Proposed/Accepted/Abandoned mutations and removed-with/without-history selectors. Do not
+  create `currentstate.Check` until the coupled slice provides its Phase 3 production caller; implement
+  Tasks 2.3 and 3.4 together if deadcode ordering requires it.
+
+## Phase 3: Replace normal authority and plain check
+
+- [ ] **Task 3.1: Implement one coverage result.** Extend topic coverage with findings keyed by
+  `(path, owner-domain, kind)`. Error findings make check/command exit nonzero; warn findings render in
+  human/JSON but exit zero; off emits nothing. Coverage is independent per owner; empty/global topics
+  do not satisfy scoped coverage. Fanout counts path-scoped topics once per path across owners, emits
+  one path finding, and excludes globals. Human/JSON/uncovered/check consume the same sorted result.
+
+- [ ] **Task 3.2: Replace context.** Working explicit/directory/uncovered queries and index staged/
+  staged-uncovered queries apply eligibility filters after Tree load. Select global and owner-bounded
+  topics per file; state markers narrow only their already-applicable topic; union per-file selections.
+  Output summaries/current claims plus a separate Accepted pending section targeted only by matched
+  topics. Delete ADR/tag/relation/plan/pitfall/background/supersession expansion.
+
+- [ ] **Task 3.3: Replace invariant authority.** Standalone invariants and project checks consume only
+  typed topic claims and qualified proof markers; test backing requires source plus testGlobs, unbacked
+  requires Verify and forbids proof. Remove ADR imports from the authority path.
+
+- [ ] **Task 3.4: Wire plain `awf check`.** Load exactly one working Tree, build ADR/topic/marker
+  corpora from it, run the complete static checker and coverage/fanout evaluator, and route errors versus
+  warnings exactly as Task 3.1. Test no mixed working/index reads and output parity.
+
+## Phase 4: Add atomic staged and range checks
+
+- [ ] **Task 4.1: Implement `CheckPair`.** HEAD/index or parent/commit Trees enforce matching ADR
+  transitions and claim add/update/remove mutations. Updates preserve Origin, retain prior Revised-by
+  as exact prefix, append once, and change a canonical nonformat/nonprovenance field. Reject unmatched
+  operations/mutations and run after-state static checks.
+
+- [ ] **Task 4.2: Wire staged check and audit.** Add `check --staged`; the hook invokes it. Audit checks
+  every explicit-range transition pair, including first-parent merge integration, while existing audit
+  rules retain their prior merge behavior. Update reviewing-impl prose. Test every split/mismatch,
+  whitespace/provenance-only update, merge, root, and no-working-read case.
+
+## Phase 5: Consume attestation, replace indexes, and delete legacy code
+
+- [ ] **Task 5.1: Verify only sealed facts.** Accept Plan 2 attestation version 1; require current HEAD
+  equals PreparedHead; recompute the exact sorted path/mode/content digest over config, domains, ADRs,
+  topic metadata/parts, and configured marker sources; promote sealed cutoff/gaps; trust legacy
+  inventory adjudication only through that unchanged seal. Recompute every permanent new-tree static,
+  coverage, output-plan, and transition predicate. The final binary imports no bridge inventory or
+  cross-schema adapter.
+
+- [ ] **Task 5.2: Run journaled final upgrade.** Reuse the version-1 image/phase/recovery contract;
+  validate the complete operation list, replace lock last, clear attestation, and store permanent
+  cutoff/gaps. Tests in `cmd/awf/upgrade_test.go`, `internal/manifest/manifest_test.go`, and journal
+  tests cover version/HEAD/digest/path/mode mismatches, each journal phase, rollback/cleanup failures,
+  lock-last failure, seal invalidation, cutoff/gap promotion, and current-state command enablement.
+
+- [ ] **Task 5.3: Generate INDEX and topic-only domains.** INDEX renders Proposed/Accepted In flight
+  and compact Implemented/Abandoned History. ACTIVE and domain ADR indexes are absent. Output-plan,
+  layout, catalog naming, ADR README, domain template, drift/prune tests assert exact paths and status
+  sections.
+
+- [ ] **Task 5.4: Delete and deterministically deny legacy authority.** Scan production `.go` outside
+  `_test.go`, embedded runtime templates, and desired-output declarations; exclude historical ADRs,
+  plans, changelog, and test fixtures. Deny identifiers `SupersessionRef`, `AnnotatedAnchors`, `Chains`,
+  `Retirers`, `StateCovered`, `PartiallySuperseded`, `DeclaringADRs`, `RenderActiveMD`,
+  `RenderDomainIndex`, and legacy context fields `Governing`, `Related`, `Background`; deny production
+  imports of migration inventory/readiness/snapshot packages; deny desired path
+  `docs/decisions/ACTIVE.md`. Representative tests place a token in production; edge tests prove a
+  historical fixture remains legal. Post-check:
+
+  ```sh
+  go test ./internal/currentstate -run '^TestLegacyAuthorityAbsent$' -count=1
+  go tool deadcode -json ./... | go run ./cmd/deadcodecheck
   ```
 
-## Phase 4: Enforce staged and range transactions
+  Expected: package `ok` and `deadcodecheck: no production dead code`.
 
-- [ ] **Task 4.1: Implement pair checking.** Create `internal/currentstate/transition.go` with
-  `CheckPair(before, after snapshot.Tree)`. Detect transitions into Implemented; require each add absent/
-  present with matching Origin, each update present in both with Origin preserved, prior Revised-by as
-  exact prefix and transitioning ADR appended once, plus a canonical nonformat/nonprovenance change;
-  require remove present/absent. Every claim mutation belongs to exactly one transition and every
-  operation has one mutation. Run after-state static checks.
+- [ ] **Task 5.5: Update the exact authored fan-out.** Modify ADR template/readme and index part;
+  brainstorming, proposing/reviewing/lifecycle/planning/execution/implementation-review/retrospective
+  skill templates and project parts; all three reviewer agents; AGENTS invariants/workflow/commands/
+  document-map parts; workflow and working-with-awf templates; architecture components/data-flow;
+  adr-system/invariants/rendering/tooling domain parts; config-reference descriptions; glossary terms;
+  pitfalls entries; README and Unreleased changelog. Render every enabled root target and Sundial copy.
 
-- [ ] **Task 4.2: Add `awf check --staged`.** Add the flag to clispec/dispatch, load HEAD and index
-  entirely from snapshots, and never mix working config/topics/markers. Replace rendered pre-commit
-  payload's plain check with `awf check --staged`. Cover direct Proposed-to-Implemented and every split
-  half/mismatch/whitespace/provenance-only update.
+## Shared Plan 4 closing sequence
 
-- [ ] **Task 4.3: Check every explicit-range pair.** Integrate transition findings into audit and
-  implementation review for every enumerated parent/commit pair, first-parent merges included. Remove
-  ACTIVE/domain-index cochange rules. Update reviewing-impl skill and audit docs to state that endpoint
-  comparison is reporting only and never atomicity proof.
+Plan 4 must name the preparation commit and execute this exact order:
 
-- [ ] **Task 4.4: Test, sync, gate, and commit.** Run `go test ./internal/currentstate ./internal/audit
-  ./internal/project ./cmd/awf`, `./x sync`, `./x check`, `./x gate`; commit:
-
-  ```commit
-  feat(tooling): check atomic current-state transitions
-  ```
-
-## Coupled Phases 5 and Plan 4: Final runtime and real adopter cutover
-
-This phase may be implemented and reviewed in Plan 3, but its closing production commit is coupled to
-Plan 4's awf/Sundial cutover. There is no gate-clean, source-checkable repository state after deleting
-the legacy engine but before migrating both adopters. Prepare docs/generated outputs and run
-`./x sync && ./x check` before the switch; share the final closing commit with Plan 4 and run `./x gate`
-after the complete cutover.
-
-- [ ] **Task 5.1: Consume the sealed attestation.** Refactor Plan 2's journal into the permanent final-
-  upgrade seam. Plain upgrade on an attested bridge verifies PreparedHead and relevant-tree digest,
-  validates the complete new tree, journals all replacements/deletions, replaces the lock last, clears
-  attestation, and promotes cutoff/gaps to permanent lock fields. Unattested/changed seals refuse.
-  Journal recovery remains available. Delete migration-only inventory/readiness/snapshot adapter code
-  from the current-state binary.
-
-- [ ] **Task 5.2: Generate historical INDEX and topic-only domains.** Rename layout ActiveMd to
-  DecisionIndex at `decisions/INDEX.md`; render Proposed/Accepted under In flight and Implemented/
-  Abandoned under compact History. Remove supersession/currentness prose. Delete Decisions data from
-  domain templates and render compact topic navigation only. Replace output-plan ACTIVE with INDEX;
-  final upgrade owns legacy deletion already projected by Plan 2.
-
-- [ ] **Task 5.3: Delete legacy authority.** Delete supersession coverage/citation/domain-index code,
-  tag-tier context, Implemented-ADR invariant authority, legacy status derivation, ACTIVE generators,
-  and migration inventory. Create `legacy_absence_test.go` denying their identifiers, desired paths,
-  and imports; add import-boundary tests proving context/invariants do not import ADR authority.
-  Deadcode remains the second removal proof.
-
-- [ ] **Task 5.4: Prepare documentation and hand off without a standalone commit.** Update all authored
-  architecture/domain/workflow/ADR/agent/reviewer docs, README, changelog, and templates; run
-  `./x sync`, `./x check`, then apply runtime deletion. Run focused tests and `./x gate`. Do not commit
-  or flip this plan yet: execute Plan 4's migration tasks, then close both plans in its final coupled
-  commit.
+1. Under the bridge binary, commit prepared awf/Sundial config/topics/markers/ADR normalization while
+   legacy authority still runs; run `./x sync`, `./x check`, configured tests, and `./x gate`.
+2. From that clean HEAD, attest both adopters. Do not commit attestation; HEAD must remain PreparedHead.
+3. Apply the complete uncommitted Plan 3 runtime patch without changing sealed paths; build it and run
+   plain final upgrade for root and Sundial, consuming both seals.
+4. Run the final runtime's `./x sync`, `./x check`, and `./x gate`. Assert both permanent locks carry
+   cutoff/gaps and no attestation; INDEX has both sections; ACTIVE/domain ADR indexes are absent; output
+   plan equals generated fan-out; legacy-absence tests are clean.
+5. Update Notes and set both Plan 3 and Plan 4 to Implemented; transition ADR-0133-0136 to their Plan 4
+   outcomes; sync/check/gate again; stage exact output-plan paths; commit with Plan 4's declared subject.
 
 ## Verification
 
-- Normal context and invariant reporting consume only topic claims; history requires explicit query.
-- Static, staged, and range checks share snapshot-loaded corpora and enforce the full operation graph.
-- INDEX is historical/navigation-only; domain docs contain topics, not ADR indexes.
-- Final upgrade accepts only the unchanged sealed attestation and remains recoverable until lock commit.
-- Source denylist, import boundaries, and deadcode prove the legacy authority engine is absent.
-- No real awf/Sundial current-state content or release occurs before Plan 4.
+- Normal context/invariants/plain check consume only current-state claims.
+- Static, staged, and range checks share faithful snapshot-loaded corpora.
+- Removed history is explicit; Accepted changes never override current claims.
+- Final upgrade accepts only the unchanged seal and remains journal-recoverable.
+- INDEX/domain outputs contain no currentness inference or ADR index.
+- Denylist, import boundaries, and deadcode prove the legacy engine is absent.
 
 ## Notes
 
-- Plan 4 owns the semantic curation and the shared closing commit for coupled Phase 5.
+- This plan deliberately has no independent closing commit after Phase 1; Plan 4 owns the shared close.
