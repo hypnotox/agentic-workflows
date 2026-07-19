@@ -7,141 +7,128 @@ status: Proposed
 
 ## Goal
 
-Land every relation token, back-pointer edge, invariant redeclaration, and proof-marker retarget
-that ADR-0131 decides, so that its citation check reports nothing and Plan C Phase 3 can enable it
-green. The verdicts are already adjudicated: the check's first run reported 44 unencoded claims,
-all 44 were judged against the cited target's clause set, and the result is 3 retirements, 5
-refinements, 34 informational citations, and 2 claims the per-carrier slug scoping dissolves.
+Land every relation token, back-pointer edge, and proof-marker retarget that ADR-0131 decides, so
+its citation check reports nothing and Plan C Phase 3 can enable it green.
 
 **Non-goals:** this plan changes no production Go, does not enable the check (Plan C Phase 3 owns
 that), and does not flip ADR-0131 to `Implemented`.
+
+**No step in this plan asserts a count.** Every verification is a command whose output must reach
+a terminal state, because the site set is live: it moved once when the branch fell behind main, and
+again when ADR-0131's own amendment added claims to the very Decision items that define the check.
+A literal figure written here is stale the moment the corpus moves, and a stale figure reads as a
+failed step. The check's output is the authority; the executor's job is to drive it to zero, not to
+match a number.
 
 ## Architecture summary
 
 Two phases split by blast radius, mirroring the Plan A/B split for the same reason.
 
-Phase 1 lands the item-anchored work: the inert `cites:` tokens and the `refines:` tokens, plus
-the `related:` back-pointer edges they owe. No item-anchored verdict retires anything, so no proof
-marker moves and no ADR's coverage advances. This is the bulk and it is mechanically safe.
+Phase 1 lands the item-anchored work: the `refines:` tokens where a clause of the target survives
+but the anchor is adapted, the inert `cites:` tokens everywhere else, and the `related:` edges they
+owe. No item-anchored verdict retires anything, so no proof marker moves and no ADR's coverage
+advances.
 
-Phase 2 lands the slug-anchored work, one commit per retirement. Every carrier is `Implemented`,
-so a `supersedes-invariant:` token retires its slug the moment it lands; the retirement, the
-successor declaration, and the proof-marker retarget therefore travel together. Splitting them
-would leave a marker naming a slug no ADR declares.
+Phase 2 lands the slug-anchored work, one commit per retirement. Every carrier is `Implemented`, so
+a `supersedes-invariant:` token retires its slug the moment it lands; the retirement and its
+proof-marker retarget therefore travel together.
 
-The batch tasks are keyed to the check's own output rather than a hand-copied site list. The
-affected-site set is a command, so a rebase, a re-render, or the slug-scoping change cannot stale
-it, and the post-check is the same command's count reaching zero.
+Bulk tasks take the batch form, keyed to the check's output rather than a copied list.
 
 ## File structure
 
 - **Created:** none.
 - **Modified:** `docs/decisions/*.md` (relation tokens on carriers, `related:` edges on targets),
-  `docs/decisions/ACTIVE.md` and `.awf/awf.lock` (regenerated every commit),
-  `internal/project/project_test.go`, `internal/adr/adr_test.go`,
-  `internal/project/install_test.go` (marker retargets).
+  `docs/decisions/ACTIVE.md` and `.awf/awf.lock` (regenerated), `internal/project/project_test.go`,
+  `internal/adr/adr_test.go`, `internal/project/install_test.go` (marker retargets).
 - **Deleted:** none.
 
-## Phase 0: make the check runnable
+## Phase 0: make the check runnable and current
 
 The check's code sits unlanded on `wip/citation-check`, which trails `main`, and it predates
-ADR-0131's per-carrier slug scoping. Every later task's site set comes from its output, so it must
-run and be correct before anything is written.
+ADR-0131's per-carrier slug scoping. Every later site set comes from its output.
 
-- [ ] **Task 0.1: Rebase the branch onto `main`.** `main` has moved by the backing-guard fix and
-  the ADR-0131 amendment.
+- [ ] **Task 0.1: Rebase onto `main` and record the result durably.**
 
   ```
   git worktree add /tmp/awf-planD wip/citation-check
   cd /tmp/awf-planD && git rebase main
   ```
 
-  Expected: the rebase applies cleanly. `internal/adr/citations.go` and
-  `internal/project/citations.go` are new files that `main` does not touch; the only shared file is
-  `internal/project/check.go`, whose Check() wiring is a single added call.
+  The rebase applies cleanly: `internal/adr/citations.go` and `internal/project/citations.go` are
+  new files `main` does not touch, and the only shared file is `internal/project/check.go`, whose
+  wiring is one added call.
+
+  Then force-update the branch so the rebased state survives this session:
+  `git branch -f wip/citation-check HEAD`. A `/tmp` worktree is not a durable record, and every
+  verification in this plan runs through a binary built from this branch.
 
 - [ ] **Task 0.2: Implement the per-carrier slug scoping (ADR-0131 Decision 2).** A slug claim is
   satisfied by a `supersedes-invariant:` token for that slug anywhere in the carrier's `## Decision`
   section; a `cites-invariant:` suppresses only at its own item; an item claim is satisfied only at
-  its own item. Write the test first, per `awf-tdd`: a carrier whose item 1 states a slug override
-  and whose item 9 carries the retirement token must produce no finding, and a carrier whose item 1
-  carries only `cites-invariant:` while item 9 states an unencoded override must still report.
-
-  Verify against the two corpus sites the ADR names:
+  its own item. Write the test first per `awf-tdd`: a carrier stating a slug override at item 1 with
+  the retirement token at item 9 must produce no finding, and the same carrier with only
+  `cites-invariant:` at item 1 must still report the item 9 claim.
 
   ```
   go build -o /tmp/awf-planD-bin ./cmd/awf
-  /tmp/awf-planD-bin check 2>&1 | grep -c 'adr-unencoded-claim'
-  ```
-
-  Expected: `42`. The two dissolved claims are ADR-0081 item 7 on
-  `ADR-0013#doc-gated-skill-suppressed` (token at item 10) and ADR-0085 item 1 on
-  `ADR-0040#bootstrap-pin` (token at item 9). Confirm both are absent:
-
-  ```
   /tmp/awf-planD-bin check 2>&1 | grep -E 'doc-gated-skill-suppressed|bootstrap-pin'
   ```
 
-  Expected: no output.
+  Expected: no output. Those are the two claims the scoping rule dissolves (ADR-0081 item 7, whose
+  token sits at item 10; ADR-0085 item 1, whose token sits at item 9). Their disappearance is the
+  assertion, not the total.
 
-- [ ] **Task 0.3: Record the site set.** The later batch tasks reference this command; run it once
-  here to confirm it produces the expected shape.
+- [ ] **Task 0.3: Confirm the site-set command works.** The batch tasks below reference it.
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' \
     | sed -E 's/.*decisions\/([0-9]+)-[^:]*\.md: ADR-[0-9]+ Decision item ([0-9]+) states an override of ADR-([0-9]+)#([^ ]+) but.*/\1 \2 \3 \4/'
   ```
 
-  Expected: 42 lines of `carrier item target anchor`. 30 have a numeric anchor (item-anchored,
-  Phase 1); 12 have a slug anchor (Phase 2).
+  Expected shape: lines of `carrier item target anchor`. A numeric fourth field is item-anchored
+  (Phase 1); a slug is slug-anchored (Phase 2). Read the split off this output rather than from any
+  figure written in this plan or in Plan C's execution status, both of which have been wrong.
 
-Phase 0 lands no commit of its own: the check code belongs to Plan C Phase 3, whose dead-code gate
-(ADR-0063) forbids landing the extraction without its caller. The rebased branch and the built
-binary are working state for this plan. Task 0.2's test and scoping change are carried into Plan C
-Phase 3's commit, and this plan's Notes record that hand-off.
+Phase 0 lands no commit. The check code belongs to Plan C Phase 3's commit, whose dead-code gate
+(ADR-0063, no ignore directive) forbids landing the extraction without its caller, and whose 100%
+coverage gate forbids landing it untested. Task 0.2's test and scoping change are carried into that
+commit; the Notes record the hand-off.
 
 ## Phase 1: item-anchored tokens and their back-pointers
 
-- [ ] **Task 1.1: Insert the 5 `refines:` tokens.** These are the item-anchored verdicts where a
-  clause of the target survives but the anchor is adapted. Each is a distinct judgment, so each is
-  an exact diff rather than a batch member. Insert the token adjacent to the prose citation that
-  already states the claim, which is ADR-0120 Decision 9's third carve-out shape.
-
-  Locate every site by its quoted text, never by line number: plan line numbers in this effort have
-  drifted repeatedly.
+- [ ] **Task 1.1: Insert the `refines:` tokens.** These are the item-anchored verdicts where a
+  clause of the target survives but the anchor is adapted. Each is a distinct clause-set judgment,
+  so each gets its own diff.
 
   | Carrier | Item | Token |
   |---|---|---|
-  | `docs/decisions/0120-structured-machine-checked-adr-supersession.md` | 11 | `refines: ADR-0116#6` |
-  | `docs/decisions/0131-complete-and-self-enforcing-supersession-records.md` | 6 | `refines: ADR-0116#4` |
-  | `docs/decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md` | 8 | `refines: ADR-0115#9` |
-  | `docs/decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md` | 1 | `refines: ADR-0115#5` |
-  | `docs/decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md` | 2 | `refines: ADR-0083#4` |
+  | `0120-structured-machine-checked-adr-supersession.md` | 11 | `refines: ADR-0116#6` |
+  | `0131-complete-and-self-enforcing-supersession-records.md` | 6 | `refines: ADR-0116#4` |
+  | `0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md` | 8 | `refines: ADR-0115#9` |
+  | `0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md` | 1 | `refines: ADR-0115#5` |
+  | `0121-whole-line-authoring-comments-in-templates-and-parts.md` | 2 | `refines: ADR-0083#4` |
 
-  Representative diff, ADR-0118 item 1, whose prose already states the claim:
+  Locate every site by its quoted text, never by line number: line numbers in this effort have
+  drifted repeatedly. Insert the token adjacent to the prose that already states the claim, which is
+  ADR-0120 Decision 9's third carve-out shape. Before writing each one, re-read the target item and
+  confirm a clause survives; if none does, the verdict is a retirement and belongs in Phase 2.
+
+  Representative, ADR-0118 item 1:
 
   ```diff
   -   This is partial-item supersedence of **ADR-0115 Decision item 5**, whose "the heading line
-  -   only, never the body" clause is overridden; ADR-0115 stays Implemented and every other item
-  -   stands.
   +   This is partial-item supersedence of **ADR-0115 Decision item 5** (`refines: ADR-0115#5`),
-  +   whose "the heading line only, never the body" clause is overridden; ADR-0115 stays
-  +   Implemented and every other item stands.
+  +   whose "the heading line
   ```
 
-  Verify each token parses and none was mistyped:
-
-  ```
-  /tmp/awf-planD-bin check 2>&1 | grep -c 'adr-unencoded-claim'
-  ```
-
-  Expected: `37` (42 minus these 5).
+  The other four follow the same shape at their own citation sites.
 
 - [ ] **Task 1.2: Insert the item-anchored `cites:` tokens (batch).** Every remaining item-anchored
-  finding takes an inert `cites:` token: the carrier mentions, quotes, narrates, or reasons from the
-  target without changing it.
+  finding takes an inert token: the carrier mentions, quotes, narrates, or reasons from the target
+  without changing it.
 
-  **Representative site**, ADR-0129 item 7 narrating ADR-0128's act on a third ADR:
+  **Representative**, ADR-0129 item 7 narrating ADR-0128's act on a third ADR:
 
   ```diff
   -   ADR-0120 item 3's single-claimant check incidentally prevented full-supersession cycles, and
@@ -150,9 +137,9 @@ Phase 3's commit, and this plan's Notes record that hand-off.
   +   full-supersession cycles, and ADR-0128 item 1 removes it (`cites: ADR-0128#1`).
   ```
 
-  **Edge site**, ADR-0131 item 5, where one item cites three anchors and each needs its own token
-  at that item (ADR-0129 Decision 2 scopes item claims per item, so a token at item 7 does not
-  answer a claim at item 5):
+  **Edge**, ADR-0131 item 5, where one item cites three anchors and each needs its own token at that
+  item, because ADR-0129 Decision 2 scopes item claims per item and a token at item 7 does not
+  answer a claim at item 5:
 
   ```diff
   -   ADR-0120 Decision 1 recognizes tokens only inside `## Decision`, so a Context-section citation
@@ -160,11 +147,18 @@ Phase 3's commit, and this plan's Notes record that hand-off.
   +   Context-section citation
   ```
 
-  **Affected-site set**, the item-anchored remainder after Task 1.1:
+  **Affected-site set**, item-anchored findings after Task 1.1:
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' | grep -E '#[0-9]+ '
   ```
+
+  Several of these sit in ADR-0131's own Decision items 2 and 9, added by its amendment: item 2
+  names ADR-0081 item 7, ADR-0085 item 1, and ADR-0129 Decision 2 while explaining the scoping rule,
+  and item 9 names ADR-0020 Decision 6 and ADR-0032 Decision 7 while explaining when their tokens go
+  live. All take `cites:`. Item 9's two are the subtle case and were decided explicitly: item 1
+  already carries `refines:` on both anchors, but item 9 asserts nothing about what those items
+  commit to, so every clause survives and the relation differs per item because the act does.
 
   **Post-check**, no item-anchored claim survives:
 
@@ -174,29 +168,24 @@ Phase 3's commit, and this plan's Notes record that hand-off.
 
   Expected: `0`.
 
-- [ ] **Task 1.3: Add the back-pointer edges the Phase 1 tokens owe.** A token of any relation from
-  a carrier of any status requires the target's `related:` to name the carrier
-  (`internal/project/supersession.go:178`); an inert `cites:` is no exception. This is what red-lined
-  Plan B Phase 1.
+- [ ] **Task 1.3: Add the back-pointer edges the Phase 1 tokens owe (batch).** A token of any
+  relation from a carrier of any status requires the target's `related:` to name the carrier
+  (`internal/project/supersession.go:178-179`); an inert `cites:` is no exception. This is what
+  red-lined Plan B Phase 1.
 
-  Derive the exact set rather than trusting a list, because ADR-0020 and ADR-0032 already gained
+  **Affected-site set**, derived rather than listed, because ADR-0020 and ADR-0032 already gained
   their edges in `a4aa636b`:
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-token-backpointer'
   ```
 
-  **Arrays are ascending, so check each insert position.** Several are mid-array, not appends;
-  appending produces an out-of-order array that reds the gate.
+  **Arrays are ascending.** An edge from a low-numbered carrier is a mid-array insert; appending
+  produces an out-of-order array that reds the gate. Read each target's current array before
+  editing rather than assuming a position: edges from ADR-0131 append because 131 is the corpus
+  maximum, but edges from ADR-0129 and other mid-corpus carriers do not.
 
-  Representative diff, a mid-array insert on ADR-0114:
-
-  ```diff
-  -related: [113, 115, 116]
-  +related: [113, 115, 116, 131]
-  ```
-
-  Post-check:
+  **Post-check:**
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep -c 'adr-token-backpointer'
@@ -207,113 +196,126 @@ Phase 3's commit, and this plan's Notes record that hand-off.
 - [ ] **Task 1.4: Verify and commit.** Run `./x sync` first: a relation token regenerates
   `.awf/awf.lock` and `docs/decisions/ACTIVE.md`. A `related:`-only edit regenerates nothing, and
   `docs/domains/*.md` moves only when a target gains a **new** retiring ADR, which no Phase 1
-  verdict does. Then `./x gate`, and stage the exact paths.
+  verdict does.
 
   ```
   ./x sync && ./x check && ./x gate
   git add docs/decisions/ .awf/awf.lock
   ```
 
-  Expected: `awf check: clean` except for the `adr-unencoded-claim` findings on the 12 remaining
-  slug anchors, and the three pre-existing advisory notes for slugs a still-`Proposed` ADR-0131
-  declares (`cites-token-uncounted`, `cites-token-unrendered`, `residue-exemptions-pinned-three`).
-  Notes never fail the gate.
+  Expected from `./x check`: a bare `awf check: clean`, with **no** citation findings at all. The
+  check is not wired into `awf check` on `main` (`internal/project/citations.go` does not exist
+  there), so the remaining slug claims are visible only through `/tmp/awf-planD-bin`. That is the
+  load-bearing reason this phase is independently gateable, and it means a clean run here is the
+  expected result rather than evidence the step did nothing.
 
   ```commit
   docs(adr): encode the item-anchored citation claims
   ```
 
-## Phase 2: slug retirements, redeclarations, and proof retargets
+## Phase 2: slug retirements and proof retargets
 
 Every carrier here is `Implemented`, so each `supersedes-invariant:` token retires its slug the
-instant it lands. The token, the successor declaration, and the marker retarget must therefore share
-a commit. This coupling is hygiene rather than a gate requirement: a stranded marker is only an
-advisory note and `awf invariants` still reports clean, so the gate will not catch a split. That is
-precisely why the plan states it.
+instant it lands.
 
-**The rule for every redeclaration in this phase: the successor pins what its retargeted marker
-asserts, never what the retired sentence claimed.** ADR-0131 dropped three clauses on exactly this
-ground during its own review. Read the marker before writing the declaration.
+**The splitting hazard is asymmetric, and only one direction is caught.** Landing a marker retarget
+without its token leaves the old slug declared by an Implemented ADR with no proof, which is an
+`Unbacked` finding and reds the gate. Landing the token without the retarget leaves a marker naming
+a retired slug, which is only an advisory `note:` and never enters the failure count
+(`internal/invariants/invariants.go`). So the gate protects the harmless order and not the harmful
+one. Land the token and its retarget together; if they must be separated, put the token last.
 
-- [ ] **Task 2.1: Insert the 9 `cites-invariant:` tokens (batch).** The slug-anchored findings that
-  are not retirements take the inert key: the carrier names the slug without falsifying its declared
+**Every redeclaration pins what its retargeted marker asserts, never what the retired sentence
+claimed.** ADR-0131 dropped three clauses on exactly this ground during its own review. Read the
+marker before trusting the declaration.
+
+- [ ] **Task 2.1: Insert the `cites-invariant:` tokens (batch).** Slug-anchored findings that are
+  not retirements take the inert key: the carrier names the slug without falsifying its declared
   sentence.
 
-  **Representative site**, ADR-0016 item 7 on ADR-0015's `provenance-banner`, the governing
-  precedent (the declaration names no path, so relocating the config root leaves it literally true):
+  **Representative**, ADR-0016 item 7 on ADR-0015's `provenance-banner`, the governing precedent
+  (the declaration names no path, so relocating the config root leaves it literally true):
 
   ```diff
   -   narrows **ADR-0015 `inv: provenance-banner`** only insofar as the banner text now names
-  -   `.awf/` rather than `.claude/awf/`.
   +   narrows **ADR-0015 `inv: provenance-banner`** (`cites-invariant: ADR-0015#provenance-banner`)
-  +   only insofar as the banner text now names `.awf/` rather than `.claude/awf/`.
+  +   only insofar as the banner text now names
   ```
 
-  The shape is identical at every site; there is no edge case, because each is a bare mention
-  adjacent to an `inv:` or `invariant:` citation.
+  **Edge**, ADR-0032 item 7, which Task 2.4 also edits for a retirement, so one Decision item ends
+  up carrying both keys for different slugs:
 
-  **Affected-site set**, the slug-anchored findings minus the three retirements in Task 2.2:
+  ```diff
+  -   ADR-0023's `inv: init-force-backs-up` and the lock-tracked-removal substance of
+  +   ADR-0023's `inv: init-force-backs-up` (`cites-invariant: ADR-0023#init-force-backs-up`) and
+  +   the lock-tracked-removal substance of
+  ```
+
+  **Affected-site set**, slug-anchored findings minus the three retirements below:
 
   ```
-  /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' | grep -vE '#[0-9]+ ' \
+  /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' | grep -v '#[0-9]* ' \
     | grep -vE 'sync-generates-active-md|render-active-md|uninstall-removes-lock-tracked'
   ```
 
   **Post-check**, only the three retirement claims remain:
 
   ```
-  /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' | grep -cv '#[0-9]* '
+  /tmp/awf-planD-bin check 2>&1 | grep 'adr-unencoded-claim' | grep -v '#[0-9]* ' \
+    | grep -cE 'sync-generates-active-md|render-active-md|uninstall-removes-lock-tracked'
   ```
 
-  Expected: `3`.
+  Expected: the output of the site-set command above is empty, and this count equals the number of
+  retirement claims still pending (three before Task 2.2, zero after Task 2.4).
 
-- [ ] **Task 2.2: Retire `ADR-0005#sync-generates-active-md` with its successor and proofs.** One
-  commit. ADR-0020 Decision 6 made `ACTIVE.md` always render, falsifying the declaration's "writes
-  no `ACTIVE.md` and prunes any previously locked one" clause.
+- [ ] **Task 2.2: Retire `ADR-0005#sync-generates-active-md`.** One commit. ADR-0020 Decision 6 made
+  `ACTIVE.md` always render, falsifying the declaration's "writes no `ACTIVE.md` and prunes any
+  previously locked one" clause.
 
-  Three edits:
+  Two edits. The token on `docs/decisions/0020-dead-reference-check.md` item 6, beside the prose
+  that already names the falsified clause:
 
-  1. `docs/decisions/0020-dead-reference-check.md` item 6 gains the token beside the prose that
-     already names the falsified clause:
+  ```diff
+  -   - **ADR-0005 `inv: sync-generates-active-md`**: its "an absent or ADR-less decisions dir ...
+  +   - **ADR-0005 `inv: sync-generates-active-md`**
+  +     (`supersedes-invariant: ADR-0005#sync-generates-active-md`): its "an absent or ADR-less
+  +     decisions dir ...
+  ```
 
-     ```diff
-     -   - **ADR-0005 `inv: sync-generates-active-md`**: its "an absent or ADR-less decisions dir ...
-     +   - **ADR-0005 `inv: sync-generates-active-md`**
-     +     (`supersedes-invariant: ADR-0005#sync-generates-active-md`): its "an absent or ADR-less
-     +     decisions dir ...
-     ```
+  And both markers in `internal/project/project_test.go` (on
+  `TestSyncGeneratesActiveMDAndCheckDetectsStaleness` and
+  `TestSyncRendersPlaceholderActiveMDWithoutADRs`) retargeted:
 
-  2. The successor is already declared in ADR-0131's Invariants section as
-     `sync-always-writes-active-md`; no ADR edit is needed for it.
+  ```diff
+  -// invariant: sync-generates-active-md
+  +// invariant: sync-always-writes-active-md
+  ```
 
-  3. Both markers retarget. `internal/project/project_test.go:785` and `:833`:
-
-     ```diff
-     -// invariant: sync-generates-active-md
-     +// invariant: sync-always-writes-active-md
-     ```
-
-     Leave the second marker on `:785` (`// invariant: check-active-md-stale`) untouched.
+  The adjacent `// invariant: check-active-md-stale` marker on the first test is a different slug;
+  leave it untouched. The successor is already declared in ADR-0131's Invariants section, so no ADR
+  Invariants edit is needed.
 
   ```
   ./x sync && ./x gate
   git add docs/decisions/0020-dead-reference-check.md internal/project/project_test.go docs/decisions/ACTIVE.md .awf/awf.lock
   ```
 
-  Expected: gate green. `awf invariants` reports no unbacked slug: the retirement drops
-  `sync-generates-active-md` from owed backing in the same commit the markers stop naming it.
+  Expected: gate green, `awf invariants: clean`. The advisory note list grows by one, because the
+  retargeted marker now names a slug only the still-`Proposed` ADR-0131 declares. A growing note
+  list across Phase 2 is expected, not a regression; notes never fail the gate.
 
   ```commit
   docs(adr): retire ADR-0005's stale active-md invariant
   ```
 
-- [ ] **Task 2.3: Retire `ADR-0006#render-active-md` with its successor and proofs.** One commit.
-  Same carrier item, same cause: the declaration's "returns `\"\"` when the directory holds no ADRs"
-  clause is false.
+- [ ] **Task 2.3: Retire `ADR-0006#render-active-md`.** One commit. Same carrier item, same cause:
+  the declaration's "returns `\"\"` when the directory holds no ADRs" clause is false.
 
-  Two edits: the token on `docs/decisions/0020-dead-reference-check.md` item 6 beside its
-  `ADR-0006 inv: render-active-md` prose, in the shape shown in Task 2.2; and all three markers in
-  `internal/adr/adr_test.go` (`:18`, `:104`, `:193`) retargeted to
+  The token on `docs/decisions/0020-dead-reference-check.md` item 6 beside its
+  `ADR-0006 inv: render-active-md` prose, in the shape shown above; and all three
+  `// invariant: render-active-md` markers in `internal/adr/adr_test.go` (on
+  `TestRenderActiveMDGroupsByStatus`, `TestRenderActiveMDGroupsSupersededVariants`, and
+  `TestRenderActiveMDPlaceholderWhenNoADRs`) retargeted to
   `render-active-md-grouped-or-placeholder`.
 
   ```
@@ -325,17 +327,17 @@ ground during its own review. Read the marker before writing the declaration.
   docs(adr): retire ADR-0006's stale render-active-md invariant
   ```
 
-- [ ] **Task 2.4: Retire `ADR-0023#uninstall-removes-lock-tracked` with its successor and proof.**
-  One commit. ADR-0032 Decision 7 dropped the declaration's middle conjunct, so the sentence is
-  false as written.
+- [ ] **Task 2.4: Retire `ADR-0023#uninstall-removes-lock-tracked`.** One commit. ADR-0032
+  Decision 7 dropped the declaration's middle conjunct, so the sentence is false as written.
 
-  Two edits: the token on `docs/decisions/0032-remove-automatic-hook-handling.md` item 7 beside the
-  prose naming the dropped clause; and `internal/project/install_test.go:41` retargeted to
+  The token on `docs/decisions/0032-remove-automatic-hook-handling.md` item 7 beside the prose
+  naming the dropped clause; and the `// invariant: uninstall-removes-lock-tracked` marker in
+  `internal/project/install_test.go` (inside `TestUninstallSkipsEscapingLockPaths`) retargeted to
   `uninstall-removes-lock-entries`.
 
   Do **not** widen that test to match the retired sentence's other clauses. ADR-0131 deliberately
-  narrowed the successor to what the marker asserts, and re-establishing the lock-file-removal or
-  authored-config-survival clauses is a successor ADR's job with the assertion that earns it.
+  narrowed the successor to what the marker asserts; re-establishing the lock-file-removal or
+  authored-config-survival clauses is a successor ADR's job, with the assertion that earns it.
 
   ```
   ./x sync && ./x gate
@@ -346,9 +348,8 @@ ground during its own review. Read the marker before writing the declaration.
   docs(adr): retire ADR-0023's stale uninstall invariant
   ```
 
-- [ ] **Task 2.5: Add the back-pointer edges Phase 2 owes and commit.** ADR-0005, ADR-0006, and
-  ADR-0023 gain `131` in `related:`, per ADR-0131 item 1. Derive any others from the check rather
-  than assuming:
+- [ ] **Task 2.5: Add the remaining back-pointer edges and commit.** ADR-0005, ADR-0006, and
+  ADR-0023 gain `131` in `related:` per ADR-0131 item 1 (all appends). Derive any others:
 
   ```
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-token-backpointer'
@@ -367,7 +368,7 @@ ground during its own review. Read the marker before writing the declaration.
 
 ## Verification
 
-The whole-effort acceptance check is that the citation check reports nothing on this corpus:
+The acceptance check is that the citation check reports nothing on this corpus:
 
 ```
 /tmp/awf-planD-bin check 2>&1 | grep -c 'adr-unencoded-claim'
@@ -375,48 +376,56 @@ The whole-effort acceptance check is that the citation check reports nothing on 
 
 Expected: `0`. This is the precondition Plan C Task 3.6 assumed and did not get.
 
-Then confirm no ADR's status drifted. No verdict in this plan retires an item anchor, and the three
-slug retirements each move a different target by one anchor, so no ADR reaches full coverage:
+No ADR's status may drift. No verdict here retires an item anchor, and the three slug retirements
+each move a different target by one anchor, so none reaches full coverage:
 
 ```
 ./x check
 ```
 
-Expected: `awf check: clean`, with only the three advisory notes for slugs ADR-0131 declares while
-still `Proposed`.
+Expected: `awf check: clean`.
 
-Finally, confirm the retirements cost no enforcement. Every retired slug's proof survives under its
-successor, so the test count is unchanged and no marker is stranded:
+The retirements must cost no enforcement: every retired slug's proof survives under its successor,
+so no marker is stranded and the test count is unchanged.
 
 ```
-./x gate
+./x gate && ./x invariants
 ```
 
-Expected: green at 100% coverage, and `awf invariants: clean`.
+Expected: green at 100% coverage, and `awf invariants: clean`. The advisory notes now cover six
+slugs rather than three: the original `cites-token-uncounted`, `cites-token-unrendered`, and
+`residue-exemptions-pinned-three`, plus the three successors this plan retargets markers onto. All
+six resolve when Plan C Task 3.6 flips ADR-0131 to `Implemented`.
 
 ## Notes
 
-- **This plan does not flip ADR-0131.** Plan C Task 3.6 owns the flip, and it must re-run `./x gate`
+- **This plan does not flip ADR-0131.** Plan C Task 3.6 owns the flip and must re-run `./x gate`
   afterwards: ADR-0131's own claims contribute zero coverage while it is `Proposed`
   (`internal/adr/coverage.go:166` excludes it), so they arm only at the flip. This plan's green does
   not carry across that boundary.
-- **Phase 0's scoping change belongs to Plan C Phase 3's commit**, not to this plan. The dead-code
-  gate (ADR-0063, no ignore directive) forbids landing the extraction or the check without its
-  caller, so the code lands once, wired, in Plan C. This plan consumes it as working state.
+- **Plan C Phase 3 inherits a second rebase.** `wip/citation-check` will trail `main` again by this
+  plan's commits, so its first step is to rebase onto this plan's final commit. Phase 0's Task 0.1
+  force-updates the branch so that rebase starts from the corrected state.
+- **Phase 0's scoping change belongs to Plan C Phase 3's commit**, not to this plan, under the
+  dead-code and coverage gates. This plan consumes it as working state.
+- **Counts are deliberately absent.** An earlier draft of this plan asserted a total of 44 and a
+  30/12 item/slug split. Both were wrong: 44 was a merge-base measurement that became 49 once
+  ADR-0131's own amendment added claims to the Decision items defining the check, and the split was
+  never right at any commit. Plan C's execution status carries a third figure. Correct that line
+  when Plan C Phase 3 resumes, or delete it in favour of the command.
 - **The `cites:` token has no changelog entry.** `grep -n cites changelog/CHANGELOG.md` returns
   nothing, yet the parser change landed in `b1be6de4` after `v0.16.0` and is adopter-facing. Plan C
-  Task 3.4's doc sweep owes an `[Unreleased]` entry for the whole citation-check feature; it is
-  recorded here because `repoaudit` cannot see it from a later commit range.
+  Task 3.4's doc sweep owes an `[Unreleased]` entry; recorded here because `repoaudit` cannot see it
+  from a later commit range.
 - **Deferred, unchanged from Plan C:** `refines: ADR-0034#1` at `docs/decisions/0057-*.md:86` parses
   with `CarrierItem: 0` and has no rationale site (ADR-0129 Decision 2). Fixing it needs its own
   decision, because moving the token is a content edit the append-only rule forbids.
 - **A marker re-point is owed at the flip.** `TestCheckTokenRetirementIgnoresCitesInvariant`
   (`internal/invariants/invariants_test.go`) carries `// invariant: token-retirement-implemented-only`,
-  a status slug, while the test exercises relation. The exactly-fitting slug is ADR-0131's
-  `cites-token-uncounted`, unusable while ADR-0131 is `Proposed`. Re-point it in Plan C Task 3.6.
-  Do not downgrade it to `touches-invariant:` in the meantime; that would leave the test unmarked.
-- **Verdict provenance.** All 44 claims were adjudicated by fresh-context agents, one per target
-  ADR, each returning the target's surviving-or-dead clause quoted with a file:line. The rule was
-  read the target's clause set, never the carrier's verb, which had overturned five verdicts earlier
-  in this effort. Any verdict this plan encodes can be re-derived from the cited target's text; if a
-  site looks wrong during execution, re-read the target rather than the carrier.
+  a status slug, while the test exercises relation. The fitting slug is ADR-0131's
+  `cites-token-uncounted`, unusable while ADR-0131 is `Proposed`. Re-point it in Plan C Task 3.6;
+  do not downgrade it to `touches-invariant:` meanwhile, which would leave the test unmarked.
+- **Verdict provenance.** The claims were adjudicated by fresh-context agents, one per target ADR,
+  each returning the target's surviving-or-dead clause quoted with a file:line, under the rule read
+  the target's clause set, never the carrier's verb. If a site looks wrong during execution, re-read
+  the target rather than the carrier.
