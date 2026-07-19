@@ -341,7 +341,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:546b0e7921483475f4f86556b889c516e89bb1fb67305a082f0f8273425117cd",
+      "outputHash": "sha256:2e699dbf115a5b3a7e4adc93a0d7968c29eeab2749599bd9556587811e95a889",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
