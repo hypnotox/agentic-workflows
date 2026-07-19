@@ -83,20 +83,24 @@ must prove every surviving legacy invariant maps once with its backing class unc
 
 - [ ] **Task 1.3: Author the exact root topic set and scopes.** Create paired metadata/current-state
   inputs with these exhaustive scopes: `adr-system/adr-lifecycle` -> `internal/adr/**`;
-  `plan-artifacts` -> `internal/plan/**`; `frontmatter` -> `internal/frontmatter/**`;
-  `config/configuration` -> `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`;
-  `migrations-and-locks` -> `internal/migrate/**`, `internal/manifest/**`;
-  `invariants/current-state-authority` -> `internal/currentstate/**`, `internal/invariants/**`;
-  `topics-and-markers` -> `internal/topic/**`; `rendering/render-engine` -> `internal/render/**`,
-  `internal/refs/**`; `catalog-and-targets` -> `internal/catalog/**`; `project-output-plan` ->
-  `internal/project/**`; `templates` -> `templates/**`; `tooling/cli` -> `cmd/**`,
-  `internal/clispec/**`, `internal/initspec/**`; `audit-and-snapshots` -> `internal/audit/**`,
-  `internal/git/**`, `internal/snapshot/**`; `quality-gates` -> `internal/coverage/**`,
-  `internal/prosegate/**`, `tools/**`, `x`; `changelog-and-release` -> `internal/changelog/**`;
-  `evaluations` -> `internal/evals/**`; `upgrade-runtime` -> `internal/upgrade/**`.
+  `adr-system/plan-artifacts` -> `internal/plan/**`; `adr-system/frontmatter` ->
+  `internal/frontmatter/**`; `config/configuration` -> `internal/config/**`,
+  `internal/configspec/**`, `internal/pathglob/**`; `config/migrations-and-locks` ->
+  `internal/migrate/**`, `internal/manifest/**`; `invariants/current-state-authority` ->
+  `internal/currentstate/**`, `internal/invariants/**`; `invariants/topics-and-markers` ->
+  `internal/topic/**`; `rendering/render-engine` -> `internal/render/**`, `internal/refs/**`;
+  `rendering/catalog-and-targets` -> `internal/catalog/**`; `rendering/project-output-plan` ->
+  `internal/project/**`; `rendering/templates` -> `templates/**`; `tooling/cli` -> `cmd/**`,
+  `internal/clispec/**`, `internal/initspec/**`; `tooling/audit-and-snapshots` ->
+  `internal/audit/**`, `internal/git/**`, `internal/snapshot/**`; `tooling/quality-gates` ->
+  `internal/coverage/**`, `internal/prosegate/**`, `tools/**`, `x`;
+  `tooling/changelog-and-release` -> `internal/changelog/**`; `tooling/evaluations` ->
+  `internal/evals/**`; `tooling/upgrade-runtime` -> `internal/upgrade/**`.
 
   The user approved semantic claim curation during implementation rather than implementation-sized
-  prose in this plan. Export the bridge `upgrade --check --json` live-invariant inventory as the
+  prose in this plan. Final resync adds `upgrade --check --json` to Plan 2 with schema
+  `{ready, findings:[{code,path,detail}], liveInvariants:[{key,unbacked}], plannedMutations:[{path,
+  beforeSHA256,afterSHA256}]}` and deterministic sorted arrays. Export `liveInvariants` as the
   exhaustive affected-site table; for each key record qualified destination, exact Origin,
   backed/unbacked class, and reviewer approval. Claims consolidate current contracts rather than
   mirroring ADR count. No inventory key may be missing, duplicated, retired-and-mapped, or class-
@@ -108,8 +112,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `longitude-shifts-solar-noon`, `polar-results-collapse`, `minutes-level-accuracy`, and
   `standard-library-only`, each stating the named current contract, plus test-backed invariant
   `almanac-clamped-latitude`. Add `cli/interface` for `cmd/**` with Origin ADR-0002 rules
-  `two-decimal-degree-positionals`, `usage-errors-exit-two`, `no-alternate-coordinate-formats`,
-  `table-output`, and `model-logic-stays-in-almanac`, each stating exactly its slug's contract. Remove the proof
+  `two-decimal-degree-positionals`, `usage-errors-exit-two`, and
+  `no-alternate-coordinate-formats`, each stating exactly its ADR-backed contract. Describe table
+  output and the CLI/almanac package boundary only as explanatory prose, not normative claims. Remove the proof
   marker from production and add
   `// invariant: almanac/model:almanac-clamped-latitude` to `TestClampLatitude`.
 
@@ -133,9 +138,18 @@ must prove every surviving legacy invariant maps once with its backing class unc
   path exactly. This is the sanctioned commit boundary, not `--no-verify`, and is removed or made inert
   after cutover.
 
-- [ ] **Task 1.7: Create the clean preparation commit.** In a detached preparation worktree at the
-  bridge HEAD, apply the complete runtime/adopter patch, then run only the pinned bridge for project
-  commands:
+- [ ] **Task 1.7: Create the clean preparation commit.** Materialize the reviewed runtime/adopter diff
+  as `$art/current-state-preparation.patch`, then create and verify the detached worktree:
+
+  ```sh
+  git worktree add --detach /tmp/awf-cs-prep "$bridge_head"
+  cd /tmp/awf-cs-prep
+  test "$(git rev-parse HEAD)" = "$bridge_head"
+  git apply --check "$art/current-state-preparation.patch"
+  git apply --binary "$art/current-state-preparation.patch"
+  ```
+
+  Run only the pinned bridge for readiness/sync/check project commands:
 
   ```sh
   sha256sum -c "$art/awf-bridge.sha256"
@@ -192,9 +206,11 @@ commands until the current runtime consumes it.
 
   Expected: both checks are clean, patches are nonempty, and the disjoint assertion emits no output.
 
-- [ ] **Task 2.2: Verify sealed-input exclusion and combine.** Compare each patch path against the
-  bridge report's exact planned-mutation allowlist and fail on any topic/domain/config/ADR/marker input
-  not explicitly normalized by that report. Assert each lock's PreparedHead equals `prep_head`. Then:
+- [ ] **Task 2.2: Verify sealed-input exclusion and combine.** Final resync makes Plan 2's JSON
+  `plannedMutations` the exact path/before/after-SHA allowlist and tests it against the journal plan.
+  Save root and Sundial JSON check reports before attestation; use a Python assertion to require each
+  patch path equals one listed mutation path, current bytes hash to its afterSHA256, and each lock's
+  PreparedHead equals `prep_head`. Any unlisted topic/domain/config/ADR/marker input fails. Then:
 
   ```sh
   git worktree add --detach /tmp/awf-cs-integration "$prep_head"
@@ -221,16 +237,30 @@ commands until the current runtime consumes it.
   Each invocation verifies seal version 1, PreparedHead, digest, and permanent predicates; journals
   the final plan; replaces lock last; clears attestation; promotes cutoff/gaps.
 
-- [ ] **Task 3.2: Assert permanent lock and output facts.** Run JSON assertions for root cutoff 137,
-  Sundial cutoff 4, empty gaps, absent bridgeAttestation, and version 0.19.0. Assert both INDEX files
-  contain `## In flight` and `## History`; both ACTIVE files are absent; and this returns no output:
+- [ ] **Task 3.2: Assert permanent lock and output facts.** Run:
 
   ```sh
-  find docs/domains examples/sundial/docs/domains -type f -path '*/decisions/*' -print
+  python3 - <<'PY'
+  import json
+  for path, cutoff in ((".awf/awf.lock", 137),
+                       ("examples/sundial/.awf/awf.lock", 4)):
+      lock = json.load(open(path, encoding="utf-8"))
+      assert lock["awfVersion"] == "0.19.0", path
+      assert lock["adrFormatV1From"] == cutoff, path
+      assert lock["legacyAdrGaps"] == [], path
+      assert "bridgeAttestation" not in lock, path
+  PY
+  for f in docs/decisions/INDEX.md examples/sundial/docs/decisions/INDEX.md; do
+    grep -q '^## In flight' "$f" && grep -q '^## History' "$f"
+  done
+  test ! -e docs/decisions/ACTIVE.md
+  test ! -e examples/sundial/docs/decisions/ACTIVE.md
+  test -z "$(find docs/domains examples/sundial/docs/domains -type f -path '*/decisions/*' -print)"
+  go test ./internal/project -run '^TestCurrentStateOutputPlanMatchesTree$' -count=1
   ```
 
-  Compare `awf planned-outputs` (or the permanent output-plan test API) with the sorted generated path
-  set and assert every configured topic has its document and domain index.
+  Expected: Python and filesystem assertions emit no output; the output-plan/tree/topic coverage test
+  reports `ok` and owns every configured topic document and domain index.
 
 - [ ] **Task 3.3: Run the final runtime gate.** Run:
 
@@ -289,11 +319,20 @@ commands until the current runtime consumes it.
   Expected: gate/check clean; audit has no blocking conformance finding; releasecheck passes;
   GoReleaser config and snapshot succeed outside tracked outputs.
 
-- [ ] **Task 4.3: Push main and tag `v0.19.0`.** Fetch main/tags; require clean local main, expected
-  origin URL, and no local or remote v0.19.0 tag. Let `release_head=$(git rev-parse HEAD)` after the
-  release commit, push `main:main`, fetch, and require `origin/main == release_head`; then run:
+- [ ] **Task 4.3: Push main and tag `v0.19.0`.** Run the exact safety assertions against the canonical
+  origin URL:
 
   ```sh
+  git fetch origin main --tags
+  test -z "$(git status --porcelain=v1)"
+  test "$(git branch --show-current)" = main
+  test "$(git remote get-url origin)" = 'git@github.com:hypnotox/agentic-workflows.git'
+  ! git show-ref --verify --quiet refs/tags/v0.19.0
+  test -z "$(git ls-remote --tags origin refs/tags/v0.19.0)"
+  release_head="$(git rev-parse HEAD)"
+  git push origin main:main
+  git fetch origin main
+  test "$(git rev-parse origin/main)" = "$release_head"
   git tag -a v0.19.0 "$release_head" -m "v0.19.0"
   test "$(git rev-parse 'v0.19.0^{commit}')" = "$release_head"
   git push origin refs/tags/v0.19.0
@@ -310,7 +349,8 @@ commands until the current runtime consumes it.
 - Permanent locks have exact cutoffs/gaps and no attestation; INDEX replaces ACTIVE everywhere.
 - Context/invariants/check consume topic claims only; denylist/import/deadcode checks find no legacy
   engine.
-- Plans 1-4 and ADR-0133-0136 close in the cutover commit.
+- Plans 1-2 are already Implemented at the bridge tag; Plans 3-4 and ADR-0133-0136 close in the
+  cutover commit.
 - `v0.19.0` is tagged only after the clean, gated cutover commit and release preflight.
 
 ## Notes
