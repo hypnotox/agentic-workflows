@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [133, 134, 136]
-status: Proposed
+status: Implemented
 ---
 # Plan: Current-State Topic Substrate
 
@@ -443,9 +443,17 @@ behavior, deferred branches, unrelated edits, or multi-commit batching.
   file-task exceptions recorded under Path and diff notation; add the focused Plan 1 coverage
   evaluator; and use a presence-aware `*int` for `maxTopicsPerPath`. No release may occur between
   Plans 1 and 2; Plan 2 must add bridge-lock refusal before publication.
+- Actual implementation required two user-approved exhaustive-file amendments: the schema-generation
+  pin in `cmd/awf/run_test.go` and gated-command rendering in
+  `examples/sundial/.awf/agents-doc.yaml`. Review also hardened strict scalar YAML and the release
+  sentinel; topic path, parser, marker, and render portability; atomic scaffold rollback; and query
+  projection, read-only, end-to-end, and unchanged-legacy boundaries.
 - Migration inventory, readiness, attestation, recovery, transaction journal, deterministic
   `upgrade --check --json` (`ready`, `findings`, exhaustive adjudication records, and exact planned
   mutation path/hash/mode records), and v0.18.0 publication belong to the bridge-migration plan.
+- Plans 1 and 2 remain one unreleased tranche. Release is forbidden until the bridge-migration plan
+  settles its inventory, normalization, readiness, attestation, ordinary-command refusal, and
+  recovery machinery. ADR-0133, ADR-0134, and ADR-0136 remain Proposed for those later commitments.
 - Only runtime Plan 3 Phase 1 closes independently. Plan 3 Phases 2-5 and Plan 4's authored corpora,
   marker/ADR preparation, two attestations, final upgrade, legacy deletion, shared cutover commit, and
   separately gated v0.19.0 release form one coupled slice after published v0.18.0.
