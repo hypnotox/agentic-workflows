@@ -137,6 +137,7 @@
 ## Proposed
 
 - [ADR-0133: Canonical Current-State Topics as Active Authority](0133-canonical-current-state-topics-as-active-authority.md) (Proposed)
+- [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](0134-domain-owned-current-state-topic-and-claim-schema.md) (Proposed)
 
 ## Superseded
 

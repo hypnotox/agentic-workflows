@@ -119,6 +119,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 ### Proposed
 
 - [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
+- [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](../decisions/0134-domain-owned-current-state-topic-and-claim-schema.md)
 
 ### Superseded
 
