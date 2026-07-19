@@ -38,6 +38,7 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 
 - [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
 - [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](../decisions/0134-domain-owned-current-state-topic-and-claim-schema.md)
+- [ADR-0136: Project-Atomic Migration to Current-State Authority](../decisions/0136-project-atomic-migration-to-current-state-authority.md)
 
 ### Superseded
 

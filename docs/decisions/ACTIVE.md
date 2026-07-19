@@ -139,6 +139,7 @@
 - [ADR-0133: Canonical Current-State Topics as Active Authority](0133-canonical-current-state-topics-as-active-authority.md) (Proposed)
 - [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](0134-domain-owned-current-state-topic-and-claim-schema.md) (Proposed)
 - [ADR-0135: ADR Lifecycle and Checked Current-State Impacts](0135-adr-lifecycle-and-checked-current-state-impacts.md) (Proposed)
+- [ADR-0136: Project-Atomic Migration to Current-State Authority](0136-project-atomic-migration-to-current-state-authority.md) (Proposed)
 
 ## Superseded
 

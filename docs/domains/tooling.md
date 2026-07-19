@@ -133,6 +133,7 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
 - [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](../decisions/0134-domain-owned-current-state-topic-and-claim-schema.md)
 - [ADR-0135: ADR Lifecycle and Checked Current-State Impacts](../decisions/0135-adr-lifecycle-and-checked-current-state-impacts.md)
+- [ADR-0136: Project-Atomic Migration to Current-State Authority](../decisions/0136-project-atomic-migration-to-current-state-authority.md)
 
 ### Superseded
 
