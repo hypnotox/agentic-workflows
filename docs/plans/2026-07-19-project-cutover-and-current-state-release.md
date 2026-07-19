@@ -27,15 +27,16 @@ must prove every surviving legacy invariant maps once with its backing class unc
 ## File structure
 
 - **Created:** root `.awf/topics/{metadata,parts}/**` for the listed topics; Sundial topic inputs for
-  `almanac/model` and `cli/interface`; rendered `docs/topics/**` and both
-  `docs/decisions/INDEX.md`; Plan 3 runtime files; temporary binaries/patches only under
-  `/tmp/awf-current-state-close`.
+  `almanac/model` and `cli/interface`; root and Sundial `.awf/current-state-migration.yaml` approval
+  files during preparation; rendered `docs/topics/**` and both `docs/decisions/INDEX.md`; Plan 3
+  runtime files; temporary binaries/patches only under `/tmp/awf-current-state-close`.
 - **Modified:** root and Sundial configs/domain ownership/markers/ADRs/locks; Plan 3 runtime and tests;
   every authored template/workflow/agent/ADR/domain/architecture/config-reference/glossary/pitfalls/
   release source named by Plan 3; README/changelog; Plans 3-4 statuses/Notes. Plans 1-2 are verified
   Implemented prerequisites.
-- **Deleted:** both ACTIVE.md files, domain ADR indexes, legacy authority production code, bridge-only
-  package, obsolete invariant markers/config, and stale rendered outputs selected by final output plans.
+- **Deleted:** both `.awf/current-state-migration.yaml` files during final upgrade, both ACTIVE.md
+  files, domain ADR indexes, legacy authority production code, bridge-only package, obsolete invariant
+  markers/config, and stale rendered outputs selected by final output plans.
 
 ## Phase 0: Verify the published bridge prerequisite
 
@@ -99,15 +100,22 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `internal/evals/**`; `tooling/upgrade-runtime` -> `internal/upgrade/**`.
 
   The user approved semantic claim curation during implementation rather than implementation-sized
-  prose in this plan. Final resync adds `upgrade --check --json` to Plan 2 with schema
-  `{ready,findings:[{code,path,detail}],invariantAdjudications:[{key,disposition,destination,origin,
-  backing,approved}],plannedMutations:[{path,beforePresent,beforeMode,beforeSHA256,afterPresent,
-  afterMode,afterSHA256}]}` and deterministic sorted arrays. Export `invariantAdjudications` as the
-  exhaustive affected-site table; for each key record qualified destination, exact Origin,
-  backed/unbacked class, and reviewer approval. Claims consolidate current contracts rather than
-  mirroring ADR count. No inventory key may be missing, duplicated, retired-and-mapped, or class-
-  changed. Incremental readiness may still report in-flight ADRs until Task 1.5; require zero findings
-  only afterward.
+  prose in this plan. Author root `.awf/current-state-migration.yaml` with exactly `version: 1` and
+  `invariantApprovals`; after the bridge independently derives each live inventory mapping, add exactly
+  one entry containing only nonempty string scalar `key: ADR-NNNN#slug` and
+  `destination: domain/topic:slug` for that mapping. Repository review and commit review establish
+  approval provenance; do not add reviewer, timestamp, signature, or authored `approved` fields.
+  Retired inventory entries receive no approval entries. Final resync adds `upgrade --check --json` to
+  Plan 2 with schema `{ready,findings:[{code,path,detail}],invariantAdjudications:[{key,disposition,
+  destination,origin,backing,approved}],plannedMutations:[{path,beforePresent,beforeMode,beforeSHA256,
+  afterPresent,afterMode,afterSHA256}]}` and deterministic sorted arrays. Export
+  `invariantAdjudications` as the exhaustive affected-site table; require every live key's computed
+  `approved` to be true from an exact matching entry and every retired key's computed `approved` to be
+  true only from valid encoded history evidence or valid migration rationale. Claims consolidate
+  current contracts rather than mirroring ADR count. No inventory key may be missing, duplicated,
+  retired-and-mapped, retired-and-approved, class-changed, or destination-mismatched. Incremental
+  readiness may still report in-flight ADRs until Task 1.5; require zero findings and all adjudications
+  approved only afterward.
 
 - [ ] **Task 1.4: Author Sundial topics and truthful proof.** Add `almanac/model` for
   `internal/almanac/**` with Origin ADR-0001 rules `cosine-day-length-model`,
@@ -118,7 +126,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `no-alternate-coordinate-formats`, each stating exactly its ADR-backed contract. Describe table
   output and the CLI/almanac package boundary only as explanatory prose, not normative claims. Remove the proof
   marker from production and add
-  `// invariant: almanac/model:almanac-clamped-latitude` to `TestClampLatitude`.
+  `// invariant: almanac/model:almanac-clamped-latitude` to `TestClampLatitude`. Author Sundial
+  `.awf/current-state-migration.yaml` under the same strict schema with exactly one matching approval
+  entry for each independently derived live mapping and no entries for retired inventory keys.
 
 - [ ] **Task 1.5: Resolve every in-flight ADR before attestation.** Set root ADR-0001 and ADR-0133,
   ADR-0134, ADR-0135, ADR-0136 to Implemented after their resulting claims/runtime are present. Set
@@ -167,8 +177,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
   git diff --check
   ```
 
-  Expected: both readiness reports have zero findings after Task 1.5; bridge checks and source tests/
-  gate are clean. `./x gate` is allowed because it runs source tests and authority-independent static
+  Expected: both readiness reports have zero findings and every adjudication has computed
+  `approved:true` after Task 1.5; bridge checks and source tests/gate are clean. `./x gate` is allowed
+  because it runs source tests and authority-independent static
   tooling, not source context/invariants/check. Stage the exact authored and bridge-rendered set, then
   commit through the sanctioned hook:
 
@@ -192,13 +203,15 @@ commands until the current runtime consumes it.
   git worktree add --detach /tmp/awf-cs-root "$prep_head"
   git worktree add --detach /tmp/awf-cs-sundial "$prep_head"
   (cd /tmp/awf-cs-root && sha256sum -c "$art/awf-bridge.sha256" &&
-    "$art/awf-bridge" upgrade --check && "$art/awf-bridge" upgrade --attest-current-state)
+    "$art/awf-bridge" upgrade --check --json > "$art/root-readiness.json" &&
+    "$art/awf-bridge" upgrade --attest-current-state)
   git -C /tmp/awf-cs-root diff --binary --full-index HEAD -- . \
     ':(exclude)examples/sundial/**' > "$art/root-attestation.patch"
   git -C /tmp/awf-cs-root diff --name-only -z HEAD -- . \
     ':(exclude)examples/sundial/**' | sort -zu > "$art/root-attestation.paths0"
   (cd /tmp/awf-cs-sundial/examples/sundial && sha256sum -c "$art/awf-bridge.sha256" &&
-    "$art/awf-bridge" upgrade --check && "$art/awf-bridge" upgrade --attest-current-state)
+    "$art/awf-bridge" upgrade --check --json > "$art/sundial-readiness.json" &&
+    "$art/awf-bridge" upgrade --attest-current-state)
   git -C /tmp/awf-cs-sundial diff --binary --full-index HEAD -- examples/sundial \
     > "$art/sundial-attestation.patch"
   git -C /tmp/awf-cs-sundial diff --name-only -z HEAD -- examples/sundial | sort -zu \
@@ -206,14 +219,18 @@ commands until the current runtime consumes it.
   test -z "$(comm -z -12 "$art/root-attestation.paths0" "$art/sundial-attestation.paths0")"
   ```
 
-  Expected: both checks are clean, patches are nonempty, and the disjoint assertion emits no output.
+  Expected: both reports are ready with every adjudication approved, patches are nonempty, both
+  approval files remain byte-for-byte and mode-for-mode equal to `prep_head`, neither appears in its
+  attestation patch, and the disjoint assertion emits no output.
 
 - [ ] **Task 2.2: Verify sealed-input exclusion and combine.** Final resync makes Plan 2's JSON
   `plannedMutations` the exact path/before/after-SHA allowlist and tests it against the journal plan.
   Save root and Sundial JSON check reports before attestation; use a Python assertion to require exact
   set equality between patch paths and planned mutation paths; verify every before hash/mode/presence
   against `prep_head`, every after hash/mode/presence in its attestation worktree, equality with journal
-  operations, and each lock's PreparedHead equals `prep_head`. Any mismatch fails. Then:
+  operations, and each lock's PreparedHead equals `prep_head`. Explicitly assert both approval files
+  are digest members but absent from `plannedMutations` and journal operations, and remain unchanged in
+  the attestation worktrees. Any mismatch fails. Then:
 
   ```sh
   git worktree add --detach /tmp/awf-cs-integration "$prep_head"
@@ -237,8 +254,10 @@ commands until the current runtime consumes it.
   (cd examples/sundial && "$art/awf-current" upgrade)
   ```
 
-  Each invocation verifies seal version 1, PreparedHead, digest, and permanent predicates; journals
-  the final plan; replaces lock last; clears attestation; promotes cutoff/gaps.
+  Each invocation verifies seal version 1, PreparedHead, and the digest including its approval file's
+  path, mode, and content; journals the complete final plan including deletion of that file; replaces
+  lock last; clears attestation; promotes cutoff/gaps; and removes the bridge approval parser/runtime
+  claim.
 
 - [ ] **Task 3.2: Assert permanent lock and output facts.** Run:
 
@@ -256,14 +275,17 @@ commands until the current runtime consumes it.
   for f in docs/decisions/INDEX.md examples/sundial/docs/decisions/INDEX.md; do
     grep -q '^## In flight' "$f" && grep -q '^## History' "$f"
   done
+  test ! -e .awf/current-state-migration.yaml
+  test ! -e examples/sundial/.awf/current-state-migration.yaml
   test ! -e docs/decisions/ACTIVE.md
   test ! -e examples/sundial/docs/decisions/ACTIVE.md
   test -z "$(find docs/domains examples/sundial/docs/domains -type f -path '*/decisions/*' -print)"
   go test ./internal/project -run '^TestCurrentStateOutputPlanMatchesTree$' -count=1
   ```
 
-  Expected: Python and filesystem assertions emit no output; the output-plan/tree/topic coverage test
-  reports `ok` and owns every configured topic document and domain index.
+  Expected: Python and filesystem assertions emit no output; both approval files are absent; the
+  output-plan/tree/topic coverage test reports `ok`, owns every configured topic document and domain
+  index, and confirms permanent sweep/runtime nonconsumption of the deleted migration path.
 
 - [ ] **Task 3.3: Run the final runtime gate.** Run:
 
@@ -285,8 +307,9 @@ commands until the current runtime consumes it.
   root ADR-0001 are Implemented, Sundial ADR-0003 Abandoned, and INDEX
   sections reflect them. Run final sync/check/gate again.
 
-- [ ] **Task 3.5: Commit the permanent cutover.** Stage exactly the two attestation patches, final
-  upgrade/output-plan changes, locks, plan statuses, and regenerated fan-out; commit:
+- [ ] **Task 3.5: Commit the permanent cutover.** Stage exactly the two attestation patches, both
+  journaled `.awf/current-state-migration.yaml` deletions, final upgrade/output-plan changes, locks,
+  plan statuses, and regenerated fan-out; commit:
 
   ```commit
   feat(awf): cut over to current-state authority
@@ -349,9 +372,13 @@ commands until the current runtime consumes it.
 
 ## Verification
 
-- Bridge readiness reports zero missing invariant mappings, markers, topic coverage, or in-flight ADRs.
-- Both attestations share the preparation HEAD, have disjoint patches, and preserve sealed inputs.
-- Permanent locks have exact cutoffs/gaps and no attestation; INDEX replaces ACTIVE everywhere.
+- Bridge readiness reports zero missing invariant mappings, approvals, markers, topic coverage, or
+  in-flight ADRs, and every adjudication has computed approval.
+- Both attestations share the preparation HEAD, have disjoint patches, preserve both approval files
+  unchanged, and exclude those files from mutations merely due to digest membership.
+- Final upgrades journal-delete both approval files; permanent locks have exact cutoffs/gaps and no
+  attestation; INDEX replaces ACTIVE everywhere; permanent runtime neither claims nor consumes the
+  deleted migration inputs.
 - Context/invariants/check consume topic claims only; denylist/import/deadcode checks find no legacy
   engine.
 - Plans 1-2 are already Implemented at the bridge tag. Root ADR-0001 and ADR-0133-0136 become

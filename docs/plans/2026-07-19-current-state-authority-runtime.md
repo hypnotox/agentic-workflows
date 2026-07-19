@@ -18,8 +18,9 @@ outcomes, and release; all authority-changing work below closes with that cutove
 filters. `internal/currentstate` loads one ADR/topic view per tree for static and before/after checks.
 `internal/adr` retains legacy identity/history below the lock cutoff and strictly parses format-v1 ADRs
 above it. Context, invariants, coverage, staged check, and audit consume topic claims and snapshot
-pairs. Plain upgrade verifies the unchanged Plan 2 seal, applies the new output plan through the
-journal, promotes cutoff/gaps to permanent lock fields, and removes migration-only code.
+pairs. Plain upgrade verifies the unchanged Plan 2 seal, including the migration approval file's exact
+path, mode, and content, applies the new output plan through the journal, promotes cutoff/gaps to
+permanent lock fields, journal-deletes the approval file, and removes migration-only code.
 
 Only Phase 1 has a standalone commit. Phases 2-5 and Plan 4 are one coupled, unreleased closing slice:
 the complete runtime source, adopter corpus, terminal ADR outcomes, templates, and sealed authored
@@ -41,8 +42,9 @@ verification commands and affected sets remain exact.
   domain sources; `README.md`; `changelog/CHANGELOG.md`.
 - **Deleted in the coupled slice:** `internal/adr/{coverage,citations,domain}.go` and tests; unused
   declarations; legacy invariant runtime if replaced; the entire migration-only `internal/bridge`
-  package after moving only journal and sealed verification into `internal/upgrade`; desired
-  `docs/decisions/ACTIVE.md`; every legacy authority caller.
+  package, including its approval parser and bridge-only claim for
+  `.awf/current-state-migration.yaml`, after moving only journal and sealed verification into
+  `internal/upgrade`; desired `docs/decisions/ACTIVE.md`; every legacy authority caller.
 - **Generated in the coupled slice:** `docs/decisions/INDEX.md`, topic-only domain docs, every changed
   root/runtime/Sundial rendering, and both permanent locks. Plan 4 enumerates the actual fan-out after
   `./x sync` with `git diff --name-only` and asserts it against the output plan.
@@ -157,17 +159,22 @@ commit follows seal consumption.
 
 - [ ] **Task 5.1: Verify only sealed facts.** Accept Plan 2 attestation version 1; require current HEAD
   equals PreparedHead; recompute the exact sorted path/mode/content digest over config, domains, ADRs,
-  topic metadata/parts, and configured marker sources; promote sealed cutoff/gaps; trust legacy
-  inventory adjudication only through that unchanged seal. Recompute every permanent new-tree static,
-  coverage, output-plan, and transition predicate. The final binary imports no bridge inventory or
-  cross-schema adapter.
+  topic metadata/parts, configured marker sources, and `.awf/current-state-migration.yaml`; promote
+  sealed cutoff/gaps; trust legacy inventory adjudication only through that unchanged seal. The final
+  verifier reads the approval file only as sealed digest input and never reparses approvals. Recompute
+  every permanent new-tree static, coverage, output-plan, and transition predicate. The final binary
+  imports no bridge inventory, approval parser, or cross-schema adapter.
 
 - [ ] **Task 5.2: Run journaled final upgrade from the permanent package.** Move the version-1
   image/phase/recovery contract into `internal/upgrade`; delete `internal/bridge` and deny its import.
-  Validate the complete operation list, replace lock last, clear attestation, and store permanent
-  cutoff/gaps. Tests in `cmd/awf/upgrade_test.go`, `internal/manifest/manifest_test.go`, and journal
-  tests cover version/HEAD/digest/path/mode mismatches, each journal phase, rollback/cleanup failures,
-  lock-last failure, seal invalidation, cutoff/gap promotion, and current-state command enablement.
+  Validate the complete operation list, require exactly one journaled deletion of
+  `.awf/current-state-migration.yaml`, replace lock last, clear attestation, and store permanent cutoff/
+  gaps. The permanent closed-tree sweep and runtime do not claim or consume that path after cutover.
+  Tests in `cmd/awf/upgrade_test.go`, `internal/manifest/manifest_test.go`, journal tests, and exhaustive
+  deletion fixtures cover version/HEAD/digest/path/mode mismatches; approval-file content, mode,
+  presence, replacement, and omitted/duplicate deletion failures; each journal phase; rollback/cleanup
+  failures; lock-last failure; seal invalidation; cutoff/gap promotion; post-cutover file absence and
+  nonconsumption; and current-state command enablement.
 
 - [ ] **Task 5.3: Generate INDEX and topic-only domains.** INDEX renders Proposed/Accepted In flight
   and compact Implemented/Abandoned History. ACTIVE and domain ADR indexes are absent. Output-plan,
@@ -179,7 +186,8 @@ commit follows seal consumption.
   plans, changelog, and test fixtures. Deny identifiers `SupersessionRef`, `AnnotatedAnchors`, `Chains`,
   `Retirers`, `StateCovered`, `PartiallySuperseded`, `DeclaringADRs`, `RenderActiveMD`,
   `RenderDomainIndex`, and legacy context fields `Governing`, `Related`, `Background`; deny production
-  imports of migration inventory/readiness/snapshot packages; deny desired path
+  imports of migration inventory/readiness/snapshot/approval packages and any permanent parser or
+  runtime claim for `.awf/current-state-migration.yaml`; deny desired path
   `docs/decisions/ACTIVE.md`. Representative tests place a token in production; edge tests prove a
   historical fixture remains legal. Post-check:
 
@@ -206,22 +214,24 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
 
 1. At the last Plan 2 HEAD, build a pinned bridge binary outside every worktree and record its SHA-256.
 2. Apply the complete Plan 3 runtime patch plus Plan 4 adopter corpus/config/markers, ADR terminal
-   outcomes, templates, and every digest-covered authored doc. Use only the pinned bridge binary for
-   readiness, sync, and check; run source tests and `./x gate`; commit this **preparation commit**. All
-   configured marker-source and other sealed paths are now frozen.
+   outcomes, templates, both authored `.awf/current-state-migration.yaml` approval files, and every
+   digest-covered authored doc. Use only the pinned bridge binary for readiness, sync, and check; run
+   source tests and `./x gate`; commit this **preparation commit**. All configured marker-source,
+   approval, and other sealed paths are now frozen.
 3. Create two clean Git worktrees at that same preparation HEAD. In one, use the pinned bridge binary
    to attest the root project; in the other, attest `examples/sundial`. Save both JSON readiness
    reports; require each disjoint patch's complete path/hash/mode set to equal its
-   `plannedMutations`, require PreparedHead equality, and apply both patches to
-   an integration worktree whose HEAD remains the preparation commit.
+   `plannedMutations`, require PreparedHead equality, assert neither unchanged approval file appears in
+   those attestation mutations, and apply both patches to an integration worktree whose HEAD remains
+   the preparation commit.
 4. Build the current-state binary from the preparation commit and run plain final upgrade for root and
-   Sundial, consuming both seals through `internal/upgrade`. Run the final runtime's `./x sync`,
-   `./x check`, and `./x gate`.
+   Sundial, consuming both seals through `internal/upgrade` and journal-deleting both approval files.
+   Run the final runtime's `./x sync`, `./x check`, and `./x gate`.
 5. Assert both permanent locks carry cutoff/gaps and no attestation; INDEX has both sections;
    ACTIVE/domain ADR indexes are absent; output plan equals generated fan-out; legacy-absence tests
    are clean. Update Notes and set Plan 3 Implemented while Plan 4 remains Proposed through release;
-   sync/check/gate again; commit the combined
-   attestation/final-upgrade/generated/lifecycle result with Plan 4's declared subject, then perform
+   sync/check/gate again; commit the combined attestation/final-upgrade/generated/lifecycle result,
+   including both staged approval-file deletions, with Plan 4's declared subject, then perform
    Plan 4's dated `docs(awf): release 0.19.0` commit, full release preflight, canonical-main
    assertions, and annotated v0.19.0 tag publication.
 
@@ -230,7 +240,8 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
 - Normal context/invariants/plain check consume only current-state claims.
 - Static, staged, and range checks share faithful snapshot-loaded corpora.
 - Removed history is explicit; Accepted changes never override current claims.
-- Final upgrade accepts only the unchanged seal and remains journal-recoverable.
+- Final upgrade accepts only the unchanged seal, journal-deletes the migration approval file, removes
+  its parser/runtime claim, proves post-cutover absence and nonconsumption, and remains recoverable.
 - INDEX/domain outputs contain no currentness inference or ADR index.
 - Denylist, import boundaries, and deadcode prove the legacy engine is absent.
 
