@@ -201,7 +201,8 @@ commit; the Notes record the hand-off.
 - [ ] **Task 1.4: Verify and commit.** Run `./x sync` first: a relation token regenerates
   `.awf/awf.lock` and `docs/decisions/ACTIVE.md`. A `related:`-only edit regenerates nothing, and
   `docs/domains/*.md` moves only when a target gains a **new** retiring ADR, which no Phase 1
-  verdict does.
+  verdict does: every Phase 1 token is a `refines:` or a `cites:`, and neither annotates a domain
+  index line. Phase 2 is the opposite case and stages domain files in three of its tasks.
 
   ```
   ./x sync && ./x check && ./x gate
@@ -273,6 +274,24 @@ marker before trusting the declaration.
   Expected: the output of the site-set command above is empty, and this count equals the number of
   retirement claims still pending (three before Task 2.2, zero after Task 2.4).
 
+  **This task commits on its own.** Its tokens owe back-pointer edges like any others, and the
+  pre-commit hook runs `./x check`, so they cannot be deferred to a later task. Derive them:
+
+  ```
+  /tmp/awf-planD-bin check 2>&1 | grep 'adr-token-backpointer'
+  ```
+
+  Expected after the edits: no output.
+
+  ```
+  ./x sync && ./x check && ./x gate
+  git add docs/decisions/ docs/domains/ .awf/awf.lock
+  ```
+
+  ```commit
+  docs(adr): encode the inert slug citations
+  ```
+
 - [ ] **Task 2.2: Retire `ADR-0005#sync-generates-active-md`.** One commit. ADR-0020 Decision 6 made
   `ACTIVE.md` always render, falsifying the declaration's "writes no `ACTIVE.md` and prunes any
   previously locked one" clause.
@@ -308,9 +327,14 @@ marker before trusting the declaration.
   that redeclared its slug. ADR-0009 is the landed precedent for carrying both: its `related:`
   names its carriers `15` and `16` alongside `131`.
 
+  **Domain docs move here, unlike in Phase 1.** A retirement annotates the target's generated
+  domain index line (`docs/domains/tooling.md:57` shows the landed shape,
+  `ADR-0023 ... -> superseded by ADR-0032`). ADR-0005 is indexed in `docs/domains/adr-system.md`
+  and `docs/domains/config.md`, both currently unannotated, so `./x sync` regenerates both.
+
   ```
   ./x sync && ./x check && ./x gate
-  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0005-docsdir-layout-and-builtin-active-md.md internal/project/project_test.go docs/decisions/ACTIVE.md .awf/awf.lock
+  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0005-docsdir-layout-and-builtin-active-md.md internal/project/project_test.go docs/decisions/ACTIVE.md docs/domains/adr-system.md docs/domains/config.md .awf/awf.lock
   ```
 
   `./x check` is not optional here and `./x gate` does not cover it: the gate runs tests, coverage,
@@ -339,9 +363,12 @@ marker before trusting the declaration.
   both append), for the reasons given in Task 2.2: `20` is the carrier edge the check enforces,
   `131` the documentation edge Decision 1 asks for.
 
+  ADR-0006 is indexed in `docs/domains/adr-system.md` and `docs/domains/rendering.md`, so both
+  gain the retirement annotation.
+
   ```
   ./x sync && ./x check && ./x gate
-  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0006-frontmatter-parser-and-skill-validation.md internal/adr/adr_test.go docs/decisions/ACTIVE.md .awf/awf.lock
+  git add docs/decisions/0020-dead-reference-check.md docs/decisions/0006-frontmatter-parser-and-skill-validation.md internal/adr/adr_test.go docs/decisions/ACTIVE.md docs/domains/adr-system.md docs/domains/rendering.md .awf/awf.lock
   ```
 
   ```commit
