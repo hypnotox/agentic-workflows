@@ -475,6 +475,22 @@ the reading.
 
 ## Notes
 
+- **Phase 3 must land two working-state changes that live on `wip/citation-check`, not in any
+  commit yet.** Retrofit D's review produced both, and neither can land on its own under the
+  dead-code and coverage gates:
+  1. The per-carrier slug scoping of ADR-0131 Decision 2, in `internal/project/citations.go`,
+     plus its test `internal/project/citations_test.go`
+     (`TestCitationsSlugClaimsScopePerCarrier`, backing
+     `citation-check-slug-claims-per-carrier`).
+  2. The widened citation grammar of the same Decision item, in `internal/adr/citations.go`: the
+     shared `adrRef` fragment admitting the possessive `ADR-NNNN's` and the markdown-link
+     `[ADR-NNNN](path)` wrappers. It needs a test of its own, which Task 3.3's backing
+     enumeration must cover.
+  Verify after landing: the check must still report zero on this corpus, which it did when the
+  grammar was widened (two new claims surfaced in ADR-0131's own amendment and were encoded).
+- **Task 3.3's enumeration is stale in a second way.** Beyond the amendment already noted, ADR-0131
+  now also declares `adr-related-ascending`, which is backed on `main` by
+  `TestCheckADRRelatedAscending`. Enumerate from the ADR's Invariants section, never from a count.
 - **ADR-0131 Decision 9 requires this ADR to pass its own check.** The verification step above is
   the proof, and it is why the ADR's Decision section carries eight `cites:` tokens: a check whose
   defining document could not pass it would be evidence the token shape is wrong.

@@ -498,6 +498,19 @@ six resolve when Plan C Task 3.6 flips ADR-0131 to `Implemented`.
   a status slug, while the test exercises relation. The fitting slug is ADR-0131's
   `cites-token-uncounted`, unusable while ADR-0131 is `Proposed`. Re-point it in Plan C Task 3.6;
   do not downgrade it to `touches-invariant:` meanwhile, which would leave the test unmarked.
+- **Review finding: this plan asserted an enforcement mechanism that did not exist.** Tasks 1.3 and
+  2.1 both say an out-of-order `related:` array "reds the gate", and commit `f80799eb`'s message
+  repeats it. Nothing enforced array order at the time. Two arrays had been out of order since long
+  before this effort (ADR-0013 and ADR-0098) with `awf check` clean throughout, so the three
+  mid-array inserts here were protected only by the read-each-array-before-editing instruction,
+  which is what the Notes below already credit. Resolved rather than merely corrected: ADR-0131
+  Decision 10 now makes the rule real, `awf check` reports `adr-related-order`, and both legacy
+  arrays are sorted, so the claim is true from `12677a81` onward. It was not true when written.
+- **Review finding: the check could not see the bare `item N` citation shape.** ADR-0032 item 7's
+  three claims on ADR-0023's items were genuinely unencoded and structurally invisible, in the same
+  Decision item this plan's Task 2.4 edited. ADR-0131 Decision 2 is amended to recognize the
+  possessive and markdown-link wrappers and to record the bare shape as an accepted recall
+  boundary; the ADR-0032 claims are hand-encoded in `294ed022`.
 - **Execution finding: one Task 1.1 verdict was wrong and was re-adjudicated to `cites:`.**
   ADR-0121 item 2's citation of ADR-0083 Decision 4 was scheduled as `refines:`, but that item
   states the raw-bytes contract is "preserved in effect, not overridden" and that "no override
