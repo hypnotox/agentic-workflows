@@ -527,6 +527,20 @@ data:
         occurrence. The real rule: **parallel sessions get separate git worktrees, full stop.** A
         shared checkout is single-writer; the moment a second effort starts, move it
         (`git worktree add`) or serialize.
+
+        **Third occurrence, 2026-07-19, in a direction the first two did not cover.** A concurrent
+        session did not merely add to the index, it reverted an uncommitted edit off disk between
+        one commit's gate run and the next. The result was a commit whose message described an ADR
+        amendment the commit did not contain: only the test half landed, leaving a proof marker
+        asserting the opposite of the invariant sentence it was marked as proving. The gate could
+        not see it, because prose is not gated and the *tree* was green both times. The same
+        session's in-progress ADR was swept in by a `git add -A`, which AGENTS.md forbids in as
+        many words and which is what let the mismatch pass unnoticed.
+
+        So the rule has a second half: **stage named paths, and verify what the commit CONTAINS,
+        not just that the gate was green.** `git show --stat HEAD` after committing costs nothing
+        and is the only thing that catches an edit lost to another writer. A green gate before the
+        commit proves the tree was good at that instant; it says nothing about what got captured.
     - title: "Link ADRs by their on-disk filename, never by constructing one from the title"
       domains: [adr-system]
       tags: [cross-references, link-resolution]
