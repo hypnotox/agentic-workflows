@@ -281,6 +281,13 @@ marker before trusting the declaration.
   /tmp/awf-planD-bin check 2>&1 | grep 'adr-token-backpointer'
   ```
 
+  **Arrays are ascending, and this task holds the one known mid-array insert.** The representative
+  token's carrier is ADR-0016, so ADR-0015 gains `16`, and its `related:` is
+  `[1, 6, 9, 10, 11, 131]`: the entry belongs between `11` and `131`, not appended. Read every
+  other target's array before editing rather than assuming a position. That edge exists only
+  because ADR-0131's Context withdrew its claim that this site owed nothing, so it is absent from
+  every earlier enumeration of this effort's edges.
+
   Expected after the edits: no output.
 
   ```
@@ -473,7 +480,12 @@ six resolve when Plan C Task 3.6 flips ADR-0131 to `Implemented`.
   list (`.awf/docs/glossary.yaml`, the two `current-state.md` parts, `adr-reviewer.yaml`) is still
   correct; its content is not. The sweep must additionally teach the per-carrier slug-scoping split
   (slug claims satisfied anywhere in the carrier's Decision section, `cites-invariant:` suppressing
-  only at its own item) and name the three redeclared slugs in the invariants domain current-state.
+  only at its own item), name the three redeclared slugs in the invariants domain current-state,
+  and teach the two back-pointer kinds: the documentation edge to the ADR that redeclares a slug,
+  and the edge the check enforces to the token's carrier, neither substituting for the other. That
+  last one is not a doc nicety. Stating only the documentation edge is what led this plan to
+  schedule the wrong edges and miss the enforced ones, so an adopter reading the same one-sided
+  account would make the same mistake.
 - **The `cites:` token has no changelog entry.** `grep -n cites changelog/CHANGELOG.md` returns
   nothing, yet the parser change landed in `b1be6de4` after `v0.16.0` and is adopter-facing. Plan C
   Task 3.4's doc sweep owes an `[Unreleased]` entry; recorded here because `repoaudit` cannot see it
