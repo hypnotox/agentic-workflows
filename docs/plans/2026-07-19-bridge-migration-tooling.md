@@ -360,9 +360,12 @@ the coupled group.
 - Phase 3 review removed one false `coverage-ignore` on the journal rollback read: that branch is
   reached deterministically by a directory sitting at the lock path during a halted rollback, not by a
   concurrent-removal race, and an existing failure-injection test already covers it.
-- Phase 4.1's sentinel flip required inverting three test guards (two in `cmd/releasecheck/main_test.go`,
-  one in `internal/project/version_test.go`). The existing release-workflow-order pins already enforce
-  that GoReleaser cannot run while releasecheck refuses, so no new workflow steps were added.
+- Phase 4.1's sentinel flip required adjusting three test guards: two inverted their assertion
+  (`TestMainClearsBridgeTranche` in `cmd/releasecheck/main_test.go` and `TestVersionCoversCurrentSchema`
+  in `internal/project/version_test.go`), and one (`TestRunRefusesIncompleteBridgeTranche`) kept its
+  refusal assertion but was re-parameterized to a literal `false` so the refusal branch stays covered.
+  The existing release-workflow-order pins already enforce that GoReleaser cannot run while releasecheck
+  refuses, so no new workflow steps were added.
 - Bridge command prose was not pushed into `examples/sundial` `AGENTS.md` `## Commands` (that section
   renders each adopter's own commands sidecar). Sundial instead surfaces the bridge guidance through its
   rendered `docs/working-with-awf.md`, `.awf/upgrade.sh`, and the shared `awf upgrade --help`, following
