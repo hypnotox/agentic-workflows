@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-27
 tags: [link-resolution]
-related: [5, 6, 11, 13, 19, 21]
+related: [5, 6, 11, 13, 19, 21, 131]
 domains: [rendering, adr-system]
 ---
 # ADR-0020: Dead-Reference Check in `awf check`

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-29
 tags: [git-hooks, schema-migration]
-related: [23, 30, 31, 48]
+related: [23, 30, 31, 48, 131]
 domains: [tooling, rendering]
 ---
 # ADR-0032: Remove Automatic Git-Hook Handling

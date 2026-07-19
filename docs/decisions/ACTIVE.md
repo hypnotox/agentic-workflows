@@ -162,12 +162,13 @@
 - ADR-0015: item 6 refined by ADR-0131
 - ADR-0016: item 6 refined by ADR-0076; item 7 refined by ADR-0131; slug `target-output-paths` superseded by ADR-0037
 - ADR-0017: item 5 refined by ADR-0127; item 7 refined by ADR-0127
+- ADR-0020: item 6 refined by ADR-0131
 - ADR-0022: item 4 refined by ADR-0043
 - ADR-0023: slug `setup-guards-hookspath` superseded by ADR-0032
 - ADR-0024: item 1 refined by ADR-0093; item 3 refined by ADR-0026; item 6 superseded by ADR-0093
 - ADR-0029: item 1 refined by ADR-0064
 - ADR-0030: item 4 refined by ADR-0049; slug `version-ldflags-precedence` superseded by ADR-0049
-- ADR-0032: item 1 refined by ADR-0048
+- ADR-0032: item 1 refined by ADR-0048; item 7 refined by ADR-0131
 - ADR-0034: item 1 refined by ADR-0057; item 1 refined by ADR-0121; slug `parts-raw` superseded by ADR-0121
 - ADR-0039: item 5 refined by ADR-0076
 - ADR-0040: item 1 refined by ADR-0047; slug `bootstrap-pin` superseded by ADR-0085
