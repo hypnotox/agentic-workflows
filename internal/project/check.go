@@ -804,6 +804,18 @@ func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {
 				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-link", Detail: fmt.Sprintf("ADR-%s: ADR-%04d", a.Number, n)})
 			}
 		}
+		// Ordering is scanned separately from resolution so that stopping at
+		// the first descent cannot also stop the dangling-link scan
+		// (adr-related-ascending). `related:` ascends, so a back-pointer edge
+		// has exactly one correct position and appending a low-numbered
+		// carrier is visibly wrong. One finding per array: the whole array is
+		// one authoring act to fix.
+		for i := 1; i < len(a.Related); i++ {
+			if a.Related[i] < a.Related[i-1] {
+				drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "adr-related-order", Detail: fmt.Sprintf("ADR-%s: related: descends at %d after %d; the array is ascending", a.Number, a.Related[i], a.Related[i-1])})
+				break
+			}
+		}
 	}
 	return drift, nil
 }

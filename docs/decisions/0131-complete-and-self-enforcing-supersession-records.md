@@ -479,6 +479,20 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    worth noting that the timing follows the parser's state, not the ADR's: a token owes its edge
    as soon as the grammar recognizes it.
 
+10. **`related:` is an ascending array, and `awf check` enforces it.** A back-pointer edge has
+    exactly one correct position, so appending a low-numbered carrier to an array that already
+    names a higher one is visibly wrong; three of this retrofit's edges were mid-array inserts for
+    that reason. The rule was previously an authoring convention that several plan steps described
+    as gate-enforced when nothing enforced it, which is the worse of the two failure modes: an
+    executor who trusts a stated check appends and never learns it was wrong. Two corpus arrays had
+    been out of order since before this ADR, ADR-0013 and ADR-0098, and nothing saw them.
+
+    Sorting an existing array is a permitted retroactive edit to a frozen ADR, on the same footing
+    as the mechanical normalizations ADR-0118 sanctions: `related:` carries an unordered set in
+    meaning, so reordering it changes no decision, and membership is asserted unchanged. Resolution
+    and ordering are scanned separately, so stopping at the first descent cannot also stop the
+    dangling-link scan.
+
 ## Invariants
 
 - `` `invariant: citation-check-decision-scoped` ``: the citation check considers only text
@@ -508,6 +522,9 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
   `supersedes-invariant:` token for that slug anywhere in the carrier's `## Decision` section, not
   only at the citing item; a `cites-invariant:` suppresses only at its own item, and an item claim
   is satisfied only at its own item.
+- `` `invariant: adr-related-ascending` ``: every ADR's `related:` array ascends, and `awf check`
+  reports `adr-related-order` naming the first descent when one does not. Resolution and ordering
+  are reported independently, so a descending array still has every entry checked for resolution.
 - `` `invariant: cites-token-uncounted` ``: a citation token of either key contributes nothing to
   anchor coverage.
 - `` `invariant: cites-token-unrendered` ``: a citation token of either key appears in no ACTIVE.md

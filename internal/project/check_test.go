@@ -173,6 +173,45 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 	}
 }
 
+// A related: array that descends anywhere yields adr-related-order drift; an
+// ascending one yields none. Both entries resolve, so adr-related-link cannot
+// fire and the ordering finding is the only one under test.
+// invariant: adr-related-ascending
+func TestCheckADRRelatedAscending(t *testing.T) {
+	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithRelated(42, 2), testsupport.WithTitle("0001: A"),
+			testsupport.WithBody("## Context\nx\n")))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-b.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithRelated(1, 42), testsupport.WithTitle("0002: B"),
+			testsupport.WithBody("## Context\nx\n")))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0042-c.md"),
+		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+			testsupport.WithTitle("0042: C"), testsupport.WithBody("## Context\nx\n")))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := p.checkADRRelatedLinks()
+	if err != nil {
+		t.Fatalf("checkADRRelatedLinks: %v", err)
+	}
+	n, detail := 0, ""
+	for _, d := range drift {
+		if d.Kind == "adr-related-order" {
+			n, detail = n+1, d.Detail
+		}
+	}
+	if n != 1 || !strings.Contains(detail, "ADR-0001") {
+		t.Fatalf("want one adr-related-order drift on ADR-0001, got %#v", drift)
+	}
+	if !strings.Contains(detail, "42") {
+		t.Errorf("detail should name the descending entry, got %q", detail)
+	}
+}
+
 // The two methods' adr.ParseDir branches are reachable via direct calls (they
 // are pre-empted only inside full Check() by checkPlans), so they are tested,
 // not coverage-ignored - mirroring TestCheckPitfallsADRParseError.

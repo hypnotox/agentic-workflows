@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-26
 tags: [cross-references, layout-namespace]
-related: [5, 11, 81, 43]
+related: [5, 11, 43, 81]
 domains: [rendering]
 ---
 # ADR-0013: Doc Cross-References via Awf-Given Layout, Not Vars

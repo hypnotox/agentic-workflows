@@ -125,6 +125,12 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- `awf check` reports `adr-related-order` when an ADR's `related:` array does not ascend, naming
+  the first descent (ADR-0131). A back-pointer edge has exactly one correct position, so appending
+  a low-numbered carrier to an array that already names a higher one is an authoring slip that
+  previously went unseen. Resolution and ordering are reported independently, so a descending
+  array still has every entry checked against the corpus. Sorting an existing array is a
+  meaning-preserving edit: `related:` carries an unordered set.
 - `awf audit` reports the range and commit count it evaluated on every run, so a verdict is never
   readable without its scope. A range resolving to zero commits says so explicitly instead of
   printing `clean`, which previously made "examined forty commits" and "examined none"
