@@ -300,8 +300,6 @@ query a single version or a range.
   `awf sync`.
 
 ### Bug fixes
-- Collapsed Pi subagent activity now presents bounded history chronologically: omitted older events,
-  hidden retained events, then the visible live event log with the newest event at the bottom.
 - Pi child failures now retain bounded progress and diagnostics in tool details while preserving
   error status through Pi's result middleware; intermediate child activity remains outside the
   parent model's visible content (ADR-0125).

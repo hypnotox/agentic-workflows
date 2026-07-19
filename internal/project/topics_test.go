@@ -8,6 +8,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 const topicProjectConfig = "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n"
@@ -23,6 +24,26 @@ func topicProject(t *testing.T) string {
 	writeADR(t, root, "0001-topic.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Topic"), testsupport.WithBody("## Decision\n\n1. Topic.\n")))
 	return root
 }
+func TestTopicHashIsRepositoryRelative(t *testing.T) {
+	model := topic.TopicRenderModel{Title: "Same", Summary: "Same.", Part: "Same part.\n"}
+	var hashes []string
+	for range 2 {
+		root := t.TempDir()
+		metadata := filepath.Join(root, ".awf/topics/metadata/rendering/same.yaml")
+		part := filepath.Join(root, ".awf/topics/parts/rendering/same/current-state.md")
+		testsupport.WriteFile(t, metadata, "title: Same\nsummary: Same.\npaths: [x]\n")
+		testsupport.WriteFile(t, part, model.Part)
+		hash, err := topicHash(root, model, metadata, part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hashes = append(hashes, hash)
+	}
+	if hashes[0] != hashes[1] {
+		t.Fatalf("repository location changed topic hash: %q != %q", hashes[0], hashes[1])
+	}
+}
+
 func TestTopicRenderLifecycle(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")

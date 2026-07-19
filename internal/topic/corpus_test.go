@@ -107,6 +107,9 @@ func TestLoadCorpusRejected(t *testing.T) {
 		"malformed metadata": func(t *testing.T, r string) {
 			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/alpha/x.yaml"), "title: [\n")
 		},
+		"nested metadata path": func(t *testing.T, r string) {
+			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/alpha/nested/x.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
+		},
 		"malformed part": func(t *testing.T, r string) {
 			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", "no claims\n")
 		},
@@ -129,6 +132,20 @@ func TestLoadCorpusRejected(t *testing.T) {
 				t.Fatal("wanted error")
 			}
 		})
+	}
+}
+
+func TestRecordTopicPathRejectsDuplicateID(t *testing.T) {
+	paths := map[string]string{}
+	id := TopicID{"alpha", "x"}
+	if err := recordTopicPath(paths, id, "first.yaml"); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordTopicPath(paths, id, "second.yaml"); err == nil {
+		t.Fatal("duplicate topic ID accepted")
+	}
+	if got := paths[id.String()]; got != "first.yaml" {
+		t.Fatalf("duplicate overwrote first path: %q", got)
 	}
 }
 

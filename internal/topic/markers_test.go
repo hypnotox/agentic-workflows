@@ -1,7 +1,11 @@
 package topic
 
 import (
+	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -17,9 +21,9 @@ func markerConfig() *config.CurrentStateConfig {
 }
 func TestBuildMarkerIndex(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// an ordinary comment\n // state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - reviewed here\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// an ordinary comment\n// state machine transition\n// invariant checking helper\n// touches-stateful code\n // state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - reviewed here\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable\n")
-	testsupport.WriteFile(t, filepath.Join(root, "web/x.html"), "<!-- ordinary comment without close\n<!-- state: alpha/contracts:rule -->\n")
+	testsupport.WriteFile(t, filepath.Join(root, "web/x.html"), "<!-- ordinary comment without close\n<!-- state machine comment without close\n<!-- state: alpha/contracts:rule -->\n")
 	testsupport.WriteFile(t, filepath.Join(root, "README.md"), "unmatched\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".git/ignored.go"), "// state: alpha/contracts:missing\n")
 	c := markerCorpus(TestBacking)
@@ -33,10 +37,59 @@ func TestBuildMarkerIndex(t *testing.T) {
 	if len(idx.All()) != 4 || len(idx.ForClaim("alpha/contracts:rule")) != 2 || idx.ForClaim("none") != nil {
 		t.Fatalf("sites %#v", idx.All())
 	}
-	if got := idx.All()[0]; got.Line != 2 || got.Path == "" {
+	if got := idx.All()[0]; got.Line != 5 || got.Path == "" {
 		t.Fatalf("first site = %#v", got)
 	}
 }
+func TestBuildMarkerIndexPrunesForeignTrees(t *testing.T) {
+	root := t.TempDir()
+	for _, path := range []string{
+		"internal/git-directory/.git/config",
+		"internal/git-directory/ignored.go",
+		"internal/gitfile/ignored.go",
+		"internal/adopter/.awf/config.yaml",
+		"internal/adopter/ignored.go",
+		"internal/vendor/ignored.go",
+		"internal/node_modules/ignored.go",
+	} {
+		body := "ignored\n"
+		if strings.HasSuffix(path, ".go") {
+			body = "// state: alpha/contracts:missing\n"
+		}
+		testsupport.WriteFile(t, filepath.Join(root, path), body)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "internal/gitfile/.git"), "gitdir: elsewhere\n")
+	// Hidden directories other than the explicitly reserved .git tree follow
+	// the current-state scanner's existing stance and remain eligible sources.
+	testsupport.WriteFile(t, filepath.Join(root, "internal/.cache/kept.go"), "// state: alpha/contracts:rule\n")
+	idx, err := BuildMarkerIndex(root, markerCorpus(Unbacked), markerConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := idx.ForClaim("alpha/contracts:rule"); len(got) != 1 || got[0].Path != "internal/.cache/kept.go" {
+		t.Fatalf("sites %#v", idx.All())
+	}
+}
+
+func TestBuildMarkerIndexWrapsDescendantWalkError(t *testing.T) {
+	root := t.TempDir()
+	want := errors.New("descendant unavailable")
+	walk := func(path string, fn fs.WalkDirFunc) error {
+		info, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+		if err := fn(path, fs.FileInfoToDirEntry(info), nil); err != nil {
+			return err
+		}
+		return fn(filepath.Join(path, "internal"), nil, want)
+	}
+	_, err := buildMarkerIndex(root, markerCorpus(Unbacked), markerConfig(), walk)
+	if !errors.Is(err, want) || !strings.Contains(err.Error(), "scan current-state markers") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestBuildMarkerIndexRejected(t *testing.T) {
 	cases := map[string]struct {
 		back       Backing

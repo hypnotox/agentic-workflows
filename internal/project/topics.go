@@ -55,11 +55,11 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 		}
 		model := topic.BuildTopicModel(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers)
 		content, err := topic.RenderTopic(model)
-		if err != nil {
+		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
 		content = injectBanner(content, "topics/topic.md.tmpl")
-		cfgHash, err := topicHash(model, t.MetadataPath, t.PartPath)
+		cfgHash, err := topicHash(p.Root, model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
@@ -87,7 +87,7 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 	}
 	return files, deps, nil
 }
-func topicHash(model topic.TopicRenderModel, paths ...string) (string, error) {
+func topicHash(root string, model topic.TopicRenderModel, paths ...string) (string, error) {
 	proj := map[string]any{"model": model}
 	inputs := map[string]string{}
 	for _, path := range paths {
@@ -95,7 +95,7 @@ func topicHash(model topic.TopicRenderModel, paths ...string) (string, error) {
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return "", err
 		}
-		inputs[filepath.ToSlash(path)] = manifest.Hash(b)
+		inputs[relSlash(root, path)] = manifest.Hash(b)
 	}
 	proj["inputs"] = inputs
 	enc, err := yaml.Marshal(proj)

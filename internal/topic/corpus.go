@@ -31,12 +31,11 @@ func LoadCorpus(root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error
 		if filepath.Ext(path) != ".yaml" {
 			return nil
 		}
-		id, _, err := readMetadata(path)
+		id, _, err := readMetadata(metadataRoot, path)
 		if err != nil {
 			return err
 		}
-		metadata[id.String()] = path
-		return nil
+		return recordTopicPath(metadata, id, path)
 	}); err != nil {
 		return Corpus{}, err
 	}
@@ -90,7 +89,7 @@ func LoadCorpus(root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error
 		if !po {
 			return Corpus{}, fmt.Errorf("topic %s has metadata but no current-state part", key)
 		}
-		id, m, err := readMetadata(mp)
+		id, m, err := readMetadata(metadataRoot, mp)
 		if err != nil { // coverage-ignore: discovery parsed this same metadata file earlier in this call
 			return Corpus{}, err
 		}
@@ -154,6 +153,15 @@ func LoadCorpus(root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error
 	}
 	c.Markers = markers
 	return c, nil
+}
+
+func recordTopicPath(paths map[string]string, id TopicID, path string) error {
+	key := id.String()
+	if prior, ok := paths[key]; ok {
+		return fmt.Errorf("duplicate topic ID %q discovered at %q and %q", key, filepath.ToSlash(prior), filepath.ToSlash(path))
+	}
+	paths[key] = path
+	return nil
 }
 
 func collectFiles(root string, fn func(string) error) error {

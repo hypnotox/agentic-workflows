@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	awfrender "github.com/hypnotox/agentic-workflows/internal/render"
 	"gopkg.in/yaml.v3"
 )
 
@@ -70,8 +72,8 @@ type metadataYAML struct {
 	Applies string   `yaml:"applies"`
 }
 
-func ParseMetadata(path string, data []byte) (TopicID, Metadata, error) {
-	id, err := idFromMetadataPath(path)
+func ParseMetadata(metadataRoot, path string, data []byte) (TopicID, Metadata, error) {
+	id, err := idFromMetadataPath(metadataRoot, path)
 	if err != nil {
 		return TopicID{}, Metadata{}, err
 	}
@@ -79,6 +81,13 @@ func ParseMetadata(path string, data []byte) (TopicID, Metadata, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(&raw); err != nil {
+		return TopicID{}, Metadata{}, fmt.Errorf("parse topic metadata %s: %w", filepath.ToSlash(path), err)
+	}
+	var extra yaml.Node
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = errors.New("multiple YAML documents are not allowed")
+		}
 		return TopicID{}, Metadata{}, fmt.Errorf("parse topic metadata %s: %w", filepath.ToSlash(path), err)
 	}
 	m := Metadata{Title: strings.TrimSpace(raw.Title), Summary: strings.TrimSpace(raw.Summary), Paths: raw.Paths, Applies: raw.Applies}
@@ -110,13 +119,17 @@ func ParseMetadata(path string, data []byte) (TopicID, Metadata, error) {
 	return id, m, nil
 }
 
-func idFromMetadataPath(path string) (TopicID, error) {
-	clean := filepath.ToSlash(filepath.Clean(path))
-	seg := strings.Split(clean, "/")
-	if len(seg) < 4 || seg[len(seg)-3] != "metadata" || filepath.Ext(seg[len(seg)-1]) != ".yaml" {
-		return TopicID{}, fmt.Errorf("topic metadata path %q must end in metadata/<domain>/<topic>.yaml", clean)
+func idFromMetadataPath(metadataRoot, path string) (TopicID, error) {
+	rel, err := filepath.Rel(metadataRoot, path)
+	if err != nil { // coverage-ignore: metadataRoot and discovered paths share the project root and therefore the same volume
+		return TopicID{}, fmt.Errorf("resolve topic metadata path %q: %w", filepath.ToSlash(path), err)
 	}
-	id := TopicID{seg[len(seg)-2], strings.TrimSuffix(seg[len(seg)-1], ".yaml")}
+	clean := filepath.ToSlash(rel)
+	seg := strings.Split(clean, "/")
+	if len(seg) != 2 || seg[0] == ".." || filepath.Ext(seg[1]) != ".yaml" {
+		return TopicID{}, fmt.Errorf("topic metadata path %q must be exactly <domain>/<topic>.yaml below %q", clean, filepath.ToSlash(metadataRoot))
+	}
+	id := TopicID{seg[0], strings.TrimSuffix(seg[1], ".yaml")}
 	if !kebabRE.MatchString(id.Domain) || !kebabRE.MatchString(id.Slug) {
 		return TopicID{}, fmt.Errorf("topic identity %q must use lowercase kebab-case components", id.String())
 	}
@@ -125,7 +138,11 @@ func idFromMetadataPath(path string) (TopicID, error) {
 
 func ParsePart(id TopicID, path string, data []byte) (Topic, error) {
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
-	lines := strings.Split(text, "\n")
+	semantic, err := awfrender.StripAuthoringComments(text)
+	if err != nil {
+		return Topic{}, err
+	}
+	lines := strings.Split(semantic, "\n")
 	claimsAt := -1
 	for i, line := range lines {
 		if line == "## Claims" {
@@ -315,10 +332,10 @@ func parseClaimList(v string) ([]string, error) {
 	return out, nil
 }
 
-func readMetadata(path string) (TopicID, Metadata, error) {
+func readMetadata(metadataRoot, path string) (TopicID, Metadata, error) {
 	b, err := os.ReadFile(path)
 	if err != nil { // coverage-ignore: callers pass files just discovered by WalkDir; failure requires a concurrent filesystem race
 		return TopicID{}, Metadata{}, err
 	}
-	return ParseMetadata(path, b)
+	return ParseMetadata(metadataRoot, path, b)
 }

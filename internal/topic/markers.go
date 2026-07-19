@@ -42,16 +42,31 @@ func (m MarkerIndex) All() []MarkerSite {
 var markerPayloadRE = regexp.MustCompile(`^(state|invariant): ([a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*)$`)
 var touchesPayloadRE = regexp.MustCompile(`^touches-state: ([a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*) - (.+)$`)
 
+type markerWalkDir func(string, fs.WalkDirFunc) error
+
 func BuildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerIndex, error) {
+	return buildMarkerIndex(root, corpus, cfg, filepath.WalkDir)
+}
+
+func buildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig, walk markerWalkDir) (MarkerIndex, error) {
 	idx := MarkerIndex{sites: map[string][]MarkerSite{}}
 	if cfg != nil {
-		err := filepath.WalkDir(root, func(path string, de fs.DirEntry, err error) error {
-			if err != nil { // coverage-ignore: the validated project root is readable; this requires a permission or concurrent filesystem fault
+		err := walk(root, func(path string, de fs.DirEntry, err error) error {
+			if err != nil {
 				return err
 			}
 			if de.IsDir() {
-				if path != root && filepath.Base(path) == ".git" {
+				switch de.Name() {
+				case ".git", "vendor", "node_modules":
 					return filepath.SkipDir
+				}
+				if path != root {
+					if _, err := os.Lstat(filepath.Join(path, ".git")); err == nil {
+						return filepath.SkipDir
+					}
+					if _, err := os.Lstat(filepath.Join(path, config.DirName)); err == nil {
+						return filepath.SkipDir
+					}
 				}
 				return nil
 			}
@@ -101,7 +116,7 @@ func BuildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig
 			return nil
 		})
 		if err != nil {
-			return MarkerIndex{}, err
+			return MarkerIndex{}, fmt.Errorf("scan current-state markers under %s: %w", filepath.ToSlash(root), err)
 		}
 	}
 	for id, claim := range corpus.byClaim {
@@ -138,7 +153,7 @@ func markerPayload(line string, src config.CurrentStateSource) (string, bool) {
 	return payload, true
 }
 func markerCandidate(payload string) bool {
-	for _, prefix := range []string{"state", "invariant", "touches-state"} {
+	for _, prefix := range []string{"state:", "invariant:", "touches-state:"} {
 		if strings.HasPrefix(payload, prefix) {
 			return true
 		}
