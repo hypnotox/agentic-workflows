@@ -31,8 +31,9 @@ coupled package files may share a task under the review-approved program excepti
 
 ## File structure
 
-- **Created:** `internal/bridge/{inventory,history,normalize,readiness,digest,journal,bridge}.go` and
-  matching tests; `cmd/awf/upgrade_test.go`.
+- **Created:** `internal/bridge/{inventory,history,normalize,readiness,snapshot,digest,journal,bridge}.go`
+  with exact matching `_test.go` files, including `internal/bridge/snapshot_test.go` for the
+  cross-schema adapter; `cmd/awf/upgrade_test.go`.
 - **Modified:** `internal/adr/{adr,status,declarations}_test.go` and production siblings;
   `internal/config/{config,edit,edit_test}.go`; `internal/project/{output_plan,output_plan_test,
   sweep,sweep_test,example_wiring_test}.go`; `internal/manifest/{manifest,manifest_test}.go`;
