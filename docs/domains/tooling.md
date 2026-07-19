@@ -128,6 +128,10 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
 - [ADR-0132: Structured Cross-Runtime Exploration Workflow](../decisions/0132-structured-cross-runtime-exploration-workflow.md)
 
+### Proposed
+
+- [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
+
 ### Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](../decisions/0003-binary-delivery-and-setup.md) → superseded by ADR-0032

@@ -116,6 +116,10 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md)
 - [ADR-0132: Structured Cross-Runtime Exploration Workflow](../decisions/0132-structured-cross-runtime-exploration-workflow.md)
 
+### Proposed
+
+- [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
+
 ### Superseded
 
 - [ADR-0113: Em-dash-free shipped templates](../decisions/0113-em-dash-free-shipped-templates.md) → superseded by ADR-0115

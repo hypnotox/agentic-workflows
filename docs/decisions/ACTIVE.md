@@ -134,6 +134,10 @@
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](0131-complete-and-self-enforcing-supersession-records.md) (Implemented)
 - [ADR-0132: Structured Cross-Runtime Exploration Workflow](0132-structured-cross-runtime-exploration-workflow.md) (Implemented)
 
+## Proposed
+
+- [ADR-0133: Canonical Current-State Topics as Active Authority](0133-canonical-current-state-topics-as-active-authority.md) (Proposed)
+
 ## Superseded
 
 - [ADR-0003: awf Binary Delivery and Hook-Activation Setup](0003-binary-delivery-and-setup.md) (Superseded)

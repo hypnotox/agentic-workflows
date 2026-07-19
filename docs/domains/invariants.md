@@ -34,6 +34,10 @@ ADR-0121 widens the scan surface to prose: an `invariants.sources` entry may dec
 - [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
 - [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md)
 
+### Proposed
+
+- [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
+
 ### Superseded
 
 - [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120
