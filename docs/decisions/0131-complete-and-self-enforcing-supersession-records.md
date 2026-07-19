@@ -65,10 +65,18 @@ to sit at its own rationale site. A token in item 6 therefore does not satisfy i
 one of its own. The same reasoning gives item 4 duplicate item-anchor tokens for `ADR-0001#2` and
 `ADR-0009#4`, both already counted above.
 
-One further slug citation was examined and rejected: ADR-0016 states that it narrows ADR-0015's
-`provenance-banner`, but that slug declares only that "every rendered file carries the awf
-generated-by banner as its first line" and names no path, so relocating the config root leaves it
-true and owing nothing. Its rejection is why ADR-0015 needs no `related:` edge to ADR-0016.
+One further slug citation was examined and rejected as a retirement: ADR-0016 states that it
+narrows ADR-0015's `provenance-banner`, but that slug declares only that "every rendered file
+carries the awf generated-by banner as its first line" and names no path, so relocating the config
+root leaves it true and owing no retirement.
+
+It does not follow that the site owes nothing at all, and an earlier draft of this paragraph drew
+that conclusion and used it to argue that ADR-0015 needs no `related:` edge to ADR-0016. Decision 4
+falsified it: the citation is informational, which is precisely what `cites-invariant:` is for, so
+the site takes an inert token and the edge becomes owed like any other. The reasoning was sound
+when written and stale by the time the citation grammar existed, which is the ordinary hazard of a
+Context section that argues from a decision the same ADR later revises. What survives is the
+narrower and still-correct claim: a slug whose declaration stays literally true owes no retirement.
 
 **Citation shapes are not uniform, and the majority shape is not the obvious one.** Across
 `docs/decisions`, item citations fall into four disjoint shapes totalling 186 occurrences:
@@ -217,6 +225,14 @@ work (0113-0130 clean) and did not retroactively repair the residue it inherited
    their natural domain as a consequence, so each ADR whose slug is redeclared here names this ADR
    in its `related:` field and a reader arrives from either end. ADR-0082 and ADR-0085 already do;
    ADR-0005, ADR-0006, and ADR-0023 gain the edge in the commit that lands their retirement.
+
+   That edge is documentation, and it is not the one the check enforces. A back-pointer is owed to
+   the **carrier of the token**, which for these retirements is the displacing ADR rather than this
+   one: ADR-0005 and ADR-0006 owe an edge to ADR-0020, and ADR-0023 already carries its edge to
+   ADR-0032. Both kinds are owed and neither substitutes for the other, so a target may name two
+   ADRs for one retirement. ADR-0009 is the landed example, naming its carriers ADR-0015 and
+   ADR-0016 alongside this ADR. Stating only the documentation edge is what led the implementing
+   plan to schedule it alone and miss the enforced one.
 
    The asymmetry is worth stating, because it is the general rule this item follows rather than an
    accident of these six. A retirement strands nothing when the displacing ADR already declared a
