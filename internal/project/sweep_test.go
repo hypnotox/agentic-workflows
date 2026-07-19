@@ -124,3 +124,13 @@ func TestSweepBaselineClean(t *testing.T) {
 		t.Fatalf("a hygienic tree with all render units enabled must sweep clean, got %#v", got)
 	}
 }
+
+func TestSweepClaimsOnlyTheTopicCurrentStatePart(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/contracts/notes.md"), "stray\n")
+	got := orphanedByPath(checkDrift(t, root))
+	if got[".awf/topics/parts/rendering/contracts/notes.md"] != unclaimedDetail {
+		t.Fatalf("topic sweep = %#v", got)
+	}
+}

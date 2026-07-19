@@ -4,7 +4,7 @@
 <!-- awf:edit current-state: from .awf/domains/parts/config/current-state.md -->
 ## Current state
 
-Schema generation 14, `current-state-topic-substrate`, is an unreleased no-op migration that recognizes the optional bridge-preparation configuration without converting authority. Version 0.18.0 adds a presence-aware `currentState` block beside the untouched legacy `invariants` block. Its strict source and test globs, marker tokens, topic coverage and fan-out severities, and positive fan-out budget prepare topic validation only; normal context and invariant enforcement remain legacy-owned. The default severities are `error` and `warn`, and the default maximum is 8 without replacing an explicitly configured value. Plans 1 and 2 are one unreleased bridge tranche, and the release check refuses publication until both have landed.
+Schema generation 14, `current-state-topic-substrate`, is an unreleased no-op migration that recognizes the optional bridge-preparation configuration without converting authority. Version 0.18.0 adds a presence-aware `currentState` block beside the untouched legacy `invariants` block. Its strict source and test globs, marker tokens, topic coverage and fan-out severities, and positive fan-out budget prepare topic validation only; normal context and invariant enforcement remain legacy-owned. The default severities are `error` and `warn`, and the default maximum is 8 without replacing an explicitly configured value. Plans 1 and 2 are one unreleased bridge tranche, and the release check refuses publication until both have landed. Prepared inputs now live in paired fixed trees: strict sidecars at `.awf/topics/metadata/<domain>/<topic>.yaml` and constrained Markdown at `.awf/topics/parts/<domain>/<topic>/current-state.md`. The closed-tree sweep claims only valid pairs and their structural directories; orphan halves, unknown files, invalid path components, and unconfigured domain directories fail. This producer does not make the bridge ready or change authority.
 
 ADR-0132 adds schema generation 13 and the `exploring-skill-closure` migration. It reuses close-enabled-set to add `exploring` automatically when an adopted config enables brainstorming, debugging, or refactor-coupling-audit.
 
@@ -18,6 +18,10 @@ ADR-0091 lets the `docs:` array carry project-local names absent from the catalo
 token for block-comment markers, additive with no schema-generation bump (the `testGlobs`
 precedent) - empty or absent means no stripping. Migrations validate serialized adopter data before destructive cleanup.
 
+
+## Topics
+
+_No current-state topics are recorded for this domain._
 
 ## Decisions
 

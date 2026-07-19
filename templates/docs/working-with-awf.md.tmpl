@@ -38,7 +38,23 @@ Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable a
 audit, invariants), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
 field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
-vars are set, what consumes them, and what enabling would activate. To change one section of a
+vars are set, what consumes them, and what enabling would activate.
+
+**Unreleased current-state topic inputs.** A prepared topic is exactly one strict sidecar at
+`.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at
+`.awf/topics/parts/<domain>/<topic>/current-state.md`. Identity comes from lowercase kebab-case path
+components. Metadata contains only a nonempty `title`, one-line `summary`, and exactly one
+applicability form: duplicate-free anchored `paths`, or `applies: global`. The authored part ends in
+one final `## Claims`; each claim starts with exactly `` ### `rule: <slug>` `` or
+`` ### `invariant: <slug>` ``, contains prose, and ends with ordered `Origin`, optional `Revised-by`,
+optional direct `References`, and invariant-only `Backing`/conditional `Verify` lines. Provenance ADRs
+must be Implemented. Rendering writes `<docsDir>/topics/<domain>/<topic>.md` and a sorted
+`<docsDir>/topics/<domain>/index.md`; both join the normal lock, drift, collision, and prune lifecycle.
+This is unreleased preparation substrate. Do not publish or treat it as shadow authority: legacy ADR
+context and invariant enforcement remain authoritative until the following bridge-migration plan
+adds readiness, attestation, and ordinary-command refusal.
+
+To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
 doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,
 `.awf/parts/<kind>/<section>.md`). A part **replaces that section's body** and inherits the rest of

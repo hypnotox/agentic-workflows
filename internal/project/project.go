@@ -19,6 +19,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // Version is the awf release version - the single version authority
@@ -59,6 +60,8 @@ type Project struct {
 	// corpus is the lazily-loaded parsed ADR view (ADR-0130 item 1), threaded
 	// to every consumer that needs an ADR fact instead of each one loading.
 	corpus *adr.Corpus
+	// topics is the lazily loaded current-state producer corpus for one invocation.
+	topics *topic.Corpus
 }
 
 func Open(root string) (*Project, error) {
@@ -294,7 +297,7 @@ func (p *Project) CheckInvariants() ([]invariants.Finding, []invariants.Note, er
 // beginInvocation drops any per-invocation cached state, so the operation that
 // follows observes the decisions directory as it is on disk now. Every public
 // operation that reads ADRs calls it before its first Corpus use.
-func (p *Project) beginInvocation() { p.corpus = nil }
+func (p *Project) beginInvocation() { p.corpus, p.topics = nil, nil }
 
 // Corpus returns the project's parsed ADR corpus, loading it on first use
 // within the current invocation and reusing it for the rest of that invocation

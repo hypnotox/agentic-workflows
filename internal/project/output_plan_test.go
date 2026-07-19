@@ -149,3 +149,22 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 		t.Fatal("zero policy must not scan")
 	}
 }
+
+func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	p, _ := Open(root)
+	op, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range op.Nodes {
+		if n.Path == "docs/topics/rendering/contracts.md" {
+			if len(n.DependsOn) != 2 || n.Reservation {
+				t.Fatalf("topic node = %#v", n)
+			}
+			return
+		}
+	}
+	t.Fatal("literal topic output was absent from the plan")
+}

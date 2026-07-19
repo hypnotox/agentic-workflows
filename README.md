@@ -95,10 +95,19 @@ progress while intermediate activity stays outside parent model content.
 ```
 
 Version 0.18.0 and schema generation 14 add an optional, strictly validated `currentState`
-configuration block for current-state topic preparation. It sits beside the unchanged legacy
-`invariants` configuration and does not switch normal context or invariant authority. This is only
-the first half of an unreleased bridge tranche: Plans 1 and 2 must both land before any bridge
-release, and migration readiness is not available yet.
+configuration block and an unreleased current-state topic producer. A topic pairs strict metadata at
+`.awf/topics/metadata/<domain>/<topic>.yaml` with constrained Markdown at
+`.awf/topics/parts/<domain>/<topic>/current-state.md`. Metadata permits only title, one-line summary,
+and either anchored paths or `applies: global`; the authored part has one final `## Claims` section
+with canonical rule/invariant headings, prose, ordered Implemented-ADR provenance, direct references,
+and invariant backing metadata. Valid pairs render to `docs/topics/<domain>/<topic>.md` and a sorted
+`docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift, brownfield
+backup, and prune lifecycle, and add compact topic navigation while retaining domain Decisions.
+
+This substrate sits beside unchanged legacy `invariants` and does not switch normal context or
+invariant authority. Plans 1 and 2 are one unreleased bridge tranche: no intermediate release is
+allowed, and migration readiness, attestation, and ordinary-command refusal are not available until
+the following bridge-migration plan lands.
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into

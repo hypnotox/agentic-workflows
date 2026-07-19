@@ -137,6 +137,16 @@ query a single version or a range.
   `domains:`, or a dangling `related:`. Schema bumps to 9 (awf `0.17.0`).
 
 ### Features
+- The unreleased current-state topic producer strictly pairs
+  `.awf/topics/metadata/<domain>/<topic>.yaml` with
+  `.awf/topics/parts/<domain>/<topic>/current-state.md`, parses canonical rule and invariant claims,
+  resolves Implemented-ADR provenance and direct references, and validates qualified configured
+  state, touches, and proof markers. It renders managed topic pages and sorted per-domain indexes,
+  adds compact domain navigation without removing Decisions, and joins ordinary output-plan,
+  manifest, brownfield backup, drift, collision, and prune behavior. This is preparation substrate,
+  not migration readiness or shadow authority: legacy context and invariant enforcement remain
+  unchanged, and no release may occur before the following bridge-migration plan adds readiness,
+  attestation, and ordinary-command refusal.
 - **`awf check` reports a supersession claim stated in prose and never encoded** (ADR-0131). The
   new `adr-unencoded-claim` finding fires when an override verb occurs in the same Decision item
   as a citation of another ADR's anchor and that item carries no relation token for it, naming the
@@ -290,6 +300,8 @@ query a single version or a range.
   `awf sync`.
 
 ### Bug fixes
+- Collapsed Pi subagent activity now presents bounded history chronologically: omitted older events,
+  hidden retained events, then the visible live event log with the newest event at the bottom.
 - Pi child failures now retain bounded progress and diagnostics in tool details while preserving
   error status through Pi's result middleware; intermediate child activity remains outside the
   parent model's visible content (ADR-0125).

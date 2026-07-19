@@ -848,14 +848,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3bcc335a8fba278cded15b886c93add68350d8e57fc5f2f33e7ea3b7f4807c7c",
+      "outputHash": "sha256:8b983f71300fb1e2a239f967583450638fab40bfb48eb4ab612463f2cd7c9b7f",
       "regenChecked": true
     },
     "docs/domains/cli.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:7efb8cc51eedea6bf393601b8cde662a95a0762cb4d6872a7b597fec384b8e12",
+      "outputHash": "sha256:47af09b5107293578a17543e2398456833f9a45efb7f7a1fb5c5a5698510ef27",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -902,9 +902,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:2e36b35fe79815f82016f0af0b7fd820f181215cda623d05beb21ad27274d3cd",
+      "templateHash": "sha256:cc371be57d4d2a9ef405aab733da50abac6da7c7b58cfebb76e7d180c05f4f94",
       "configHash": "sha256:b882341c1377ee1d0520b779158e9f7683ea565c6e81ea9b717b24a600d7fd2c",
-      "outputHash": "sha256:e2876a860a4bb865b972e0ae5018f56ca44643477a8cd7ba06e53a3360104129"
+      "outputHash": "sha256:a0ebe8404e0c0c63d7db70b271b4632f8f71d1ffc1fdb0c2e86a9297cda2f62a"
     },
     "x": {
       "templateId": "runner/x.tmpl",

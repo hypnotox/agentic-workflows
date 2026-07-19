@@ -187,3 +187,19 @@ func TestLocalFrontmatterEveryTarget(t *testing.T) {
 		t.Errorf("expected clean with both target copies present, got %v", fails)
 	}
 }
+
+func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.ReadFile(filepath.Join(root, "docs/topics/rendering/contracts.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "{{ .value }}") || strings.Contains(string(out), "awf:comment") || strings.Contains(string(out), "<no value>") {
+		t.Fatalf("topic output:\n%s", out)
+	}
+}

@@ -9,6 +9,10 @@ seconds: a deliberate ceiling. Anything touching the declination term or the
 clamp must keep `almanac-clamped-latitude` backed.
 
 
+## Topics
+
+_No current-state topics are recorded for this domain._
+
 ## Decisions
 
 ### Implemented

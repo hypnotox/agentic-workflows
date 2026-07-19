@@ -70,7 +70,7 @@ func declaredPolicy(kind string, regen bool) OutputPolicy {
 	switch kind {
 	case "skills", "agents":
 		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
-	case "docs", "agents-doc", "adr-readme", "plans-readme", "doc-standard", "agents-md-standard", "working-with-awf", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains":
+	case "docs", "agents-doc", "adr-readme", "plans-readme", "doc-standard", "agents-md-standard", "working-with-awf", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
 		policy.ScanReferences, policy.ScanSkillReferences = true, true
 	}
 	return policy
@@ -159,13 +159,13 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 		// accepted. Declarer identity is intentionally excluded here.
 
 		for i := range plan.Nodes {
-			if plan.Nodes[i].Path != f.Path { // coverage-ignore: unique base paths make the duplicate-only branch unreachable
+			if plan.Nodes[i].Path != f.Path {
 				continue
 			}
-			if plan.Nodes[i].Recipe != recipe { // coverage-ignore: target-output recipes are preflighted and all other base producer paths are unique
+			if plan.Nodes[i].Recipe != recipe {
 				return fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", f.Path)
 			}
-			// coverage-ignore: target-output duplicates coalesce before rendering and all other base producer paths are unique.
+			// coverage-ignore: target-output duplicates coalesce before rendering and all other producer paths are unique.
 			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, f.Declarer)
 			plan.Nodes[i].DeclarerProjections = append(plan.Nodes[i].DeclarerProjections, f.DeclarerProjection)
 			return nil
@@ -184,8 +184,30 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			return nil, err
 		}
 	}
-	active, err := p.generateActiveMD()
+	topicFiles, topicDeps, err := p.generateTopicDocs()
 	if err != nil {
+		return nil, err
+	}
+	localDocs := map[string]bool{}
+	for _, name := range p.Cfg.Docs {
+		sc, err := p.Cfg.Sidecar("docs", name)
+		if err != nil { // coverage-ignore: renderAllBase already read every enabled doc sidecar
+			return nil, err
+		}
+		if sc.Local {
+			localDocs[p.docOutPath(name)] = true
+		}
+	}
+	for _, f := range topicFiles {
+		if localDocs[f.Path] {
+			return nil, fmt.Errorf("local document and topic output render to the same output path %q", f.Path)
+		}
+		if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
+			return nil, err
+		}
+	}
+	active, err := p.generateActiveMD()
+	if err != nil { // coverage-ignore: topic generation loaded the same ADR corpus first
 		return nil, err
 	}
 	// coverage-ignore: generated ACTIVE.md has a reserved unique path.
@@ -202,7 +224,7 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			return nil, err
 		}
 	}
-	inputs := slices.Concat(base, domains)
+	inputs := slices.Concat(base, domains, topicFiles)
 	if cref, ok, err := p.generateConfigReference(inputs); err != nil {
 		return nil, err
 	} else if ok {

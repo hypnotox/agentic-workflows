@@ -104,6 +104,22 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 			m.files[config.DirName+"/parts/"+kind+"/"+sec+".md"] = true
 		}
 	}
+	// Topics are a discovered producer family rather than an enable-list kind.
+	m.dirs[config.DirName+"/topics"] = true
+	m.dirs[config.DirName+"/topics/metadata"] = true
+	m.dirs[config.DirName+"/topics/parts"] = true
+	topics, err := p.Topics()
+	if err != nil { // coverage-ignore: Check builds a valid OutputPlan from the same cached topic corpus before sweeping
+		return nil, err
+	}
+	for _, t := range topics.All() {
+		metadataDir := config.DirName + "/topics/metadata/" + t.ID.Domain
+		partsDomain := config.DirName + "/topics/parts/" + t.ID.Domain
+		partsTopic := partsDomain + "/" + t.ID.Slug
+		m.dirs[metadataDir], m.dirs[partsDomain], m.dirs[partsTopic] = true, true, true
+		m.files[metadataDir+"/"+t.ID.Slug+".yaml"] = true
+		m.files[partsTopic+"/current-state.md"] = true
+	}
 	// The runner is a section-bearing config-tree unit but not a SingletonKind, so
 	// its convention-part territory is claimed here when enabled - the two awf-owned
 	// sections whose `awf:edit ... create <part> to override` pointer invites a part

@@ -3,6 +3,8 @@
 <!-- awf:comment touches-invariant: parts-raw-except-authoring-comments - the verbatim-parts contract and its carve-outs narrated below -->
 ## Current state
 
+The unreleased topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `<docsDir>/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page without removing `## Decisions`. Authored topic Markdown uses the raw-part convention and authoring-comment strip rather than YAML interpolation. Topic pages and indexes are ordinary managed Markdown output-plan nodes, so manifest hashing, brownfield backup, drift, and prune share the existing lifecycle with no topic-specific lock field. They remain preparation artifacts, not a second authority engine.
+
 ADR-0132 adds the core exploring skill with six-target semantic rendering. Pi's capability-selected branch invokes the structured `subagent_explore` contract; all non-Pi targets carry the same breadth, detail, boundary, outcome, and reporting semantics through generic native delegation.
 
 ADR-0127 changes what the `reviewing-impl` skill renders: it now passes the session range it already derives (`${baseSha}..${headSha}`) to `awf audit` instead of auditing "the branch", so the terminal review audits the session it just reviewed under any branching strategy.

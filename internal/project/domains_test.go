@@ -193,6 +193,19 @@ func TestDomainDocSectionParity(t *testing.T) {
 	}
 }
 
+func TestDomainDocKeepsDecisionsBesideTopicNavigation(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	out := readDomainDoc(t, root, "rendering")
+	if !strings.Contains(out, "[Contracts](../topics/rendering/contracts.md)") || !strings.Contains(out, "## Decisions") {
+		t.Fatalf("domain doc:\n%s", out)
+	}
+}
+
 func hasDrift(drift []manifest.Drift, path, kind string) bool {
 	for _, d := range drift {
 		if d.Path == path && d.Kind == kind {

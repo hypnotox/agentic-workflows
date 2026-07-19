@@ -553,3 +553,20 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 		}
 	}
 }
+
+func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/contracts.yaml"), "title: Changed\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")
+	drift, err := p.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDrift(drift, "docs/topics/rendering/contracts.md", "stale") {
+		t.Fatalf("metadata drift = %#v", drift)
+	}
+}

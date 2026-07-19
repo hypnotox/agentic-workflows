@@ -4,6 +4,8 @@
 <!-- awf:edit current-state: from .awf/domains/parts/rendering/current-state.md -->
 ## Current state
 
+The unreleased topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `<docsDir>/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page without removing `## Decisions`. Authored topic Markdown uses the raw-part convention and authoring-comment strip rather than YAML interpolation. Topic pages and indexes are ordinary managed Markdown output-plan nodes, so manifest hashing, brownfield backup, drift, and prune share the existing lifecycle with no topic-specific lock field. They remain preparation artifacts, not a second authority engine.
+
 ADR-0132 adds the core exploring skill with six-target semantic rendering. Pi's capability-selected branch invokes the structured `subagent_explore` contract; all non-Pi targets carry the same breadth, detail, boundary, outcome, and reporting semantics through generic native delegation.
 
 ADR-0127 changes what the `reviewing-impl` skill renders: it now passes the session range it already derives (`${baseSha}..${headSha}`) to `awf audit` instead of auditing "the branch", so the terminal review audits the session it just reviewed under any branching strategy.
@@ -32,6 +34,10 @@ ADR-0091 extends the ADR-0068 local-artifact model to a third kind. `effectiveCa
 
 ADR-0100 adds **in-place-editable sections**, a second adopter override channel beside convention parts: a section declared with the `inplace` marker attribute has its body read back from the *existing rendered output* (bounded by its `awf:edit-in-place` provenance pointer and awf's next registered section pointer, matched by that pointer's expected string, never a generic pointer shape) and preserved across syncs, while awf regenerates every other section and the file structure from the template; the file is drift-checked by regeneration-with-read-back rather than the frozen `OutputHash`, made a first-class `RegenChecked` attribute on `RenderedFile`/`manifest.Entry` that also absorbed the former hardcoded generated-index path list. Two shell-script properties are rendered per target off the one `#!`-shebang predicate (shared with `injectBanner`): the surviving `awf:edit`-family pointers take the target's comment syntax: a `#`-line comment for a shebang script, HTML otherwise (`render.CommentStyle`), so an in-place shell file is valid, and a rendered `#!` file is written mode `0755` (executable, enforced every sync), so a runner is runnable as `./x`. ADR-0101 is the primitive's first consumer: an optional `runner` config-tree singleton renders a co-owned command-runner `x` at the repo root: four sections in order (an in-place setup/helpers block, an awf-owned awf-verb dispatch delegating each of `sync check invariants audit context commit-gate new` directly to `"$(bash .awf/bootstrap.sh)"`, an in-place project-verb block, an awf-owned usage tail), the two awf-owned regular sections bounding the in-place regions' read-back; it is not a catalog `DocEntry`, so it stays out of `SingletonKinds()`; awf-the-repo disables it, the example adopts it. ADR-0119 adds a `proseGateCmd` var and an unconditional `awf prose-gate` line to the rendered pre-commit hook payload; the payload's bootstrap-shim guard widens from `not .vars.checkCmd` to a disjunction over both command vars, so the shim is emitted whenever any call site would otherwise render a bare unshimmed `awf`.
 
+
+## Topics
+
+_No current-state topics are recorded for this domain._
 
 ## Decisions
 

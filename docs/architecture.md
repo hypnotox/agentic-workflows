@@ -83,6 +83,12 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   nodes, claims are edges carrying relation and rationale site, and `Live`/`PartiallySuperseded`
   /`Covered` are derived from it rather than stored. It also renders ACTIVE.md and the
   per-domain indexes, both of which take a `Corpus` rather than parsing.
+- **`internal/topic/`**: the strict, path-derived current-state topic parser and one per-invocation
+  corpus. It pairs metadata and constrained Markdown parts, resolves Implemented-ADR provenance and
+  direct claim references, validates configured relevance, touches, and proof markers, computes
+  focused topic coverage, and builds deterministic topic, index, and domain-navigation render models.
+  In this unreleased tranche these are parsed and rendered preparation artifacts only; legacy ADR
+  context and invariant authority remain unchanged.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -110,6 +116,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
+  The discovered topic producer loads through a lazy invocation cache and contributes ordinary
+  managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
+  prune all use the shared output plan rather than topic-specific lock state.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
@@ -191,6 +200,18 @@ sidecars/parts, and stale `ACTIVE.md`) while a stale schema generation gates wit
 upgrade`" message (ADR-0010). Target descriptors, including optional outputs and dispatch
 capabilities, enter every target-scoped config hash. Pi's target outputs use `//` provenance valid
 in TypeScript and otherwise follow ordinary planned-output, drift, sync-repair, and cleanup paths.
+
+The unreleased topic producer discovers paired
+`.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md` inputs, validates their path-derived identity,
+claim grammar, Implemented-ADR provenance, direct references, backing, and configured markers, then
+loads one corpus per invocation. It renders topic pages and per-domain indexes under
+`<docsDir>/topics/<domain>/`, and injects compact topic navigation into domain docs while retaining
+`## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
+feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
+substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
+solely authoritative until the following bridge-migration plan adds readiness, attestation, and
+ordinary-command refusal before release.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

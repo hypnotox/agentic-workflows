@@ -1,0 +1,5 @@
+# {{ .Domain }} topics
+
+{{ if .Topics }}{{ range .Topics }}- [{{ .Title }}]({{ .Link }}): {{ .Summary }}
+{{ end }}{{ else }}_No current-state topics are recorded for this domain._
+{{ end }}

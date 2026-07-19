@@ -39,6 +39,12 @@
   nodes, claims are edges carrying relation and rationale site, and `Live`/`PartiallySuperseded`
   /`Covered` are derived from it rather than stored. It also renders ACTIVE.md and the
   per-domain indexes, both of which take a `Corpus` rather than parsing.
+- **`internal/topic/`**: the strict, path-derived current-state topic parser and one per-invocation
+  corpus. It pairs metadata and constrained Markdown parts, resolves Implemented-ADR provenance and
+  direct claim references, validates configured relevance, touches, and proof markers, computes
+  focused topic coverage, and builds deterministic topic, index, and domain-navigation render models.
+  In this unreleased tranche these are parsed and rendered preparation artifacts only; legacy ADR
+  context and invariant authority remain unchanged.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -66,6 +72,9 @@
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
+  The discovered topic producer loads through a lazy invocation cache and contributes ordinary
+  managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
+  prune all use the shared output plan rather than topic-specific lock state.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).

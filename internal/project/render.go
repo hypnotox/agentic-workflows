@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -744,7 +745,7 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 // (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
 func (p *Project) generateActiveMD() (RenderedFile, error) {
 	corpus, err := p.Corpus()
-	if err != nil {
+	if err != nil { // coverage-ignore: OutputPlan loads the same corpus through topic generation before this producer
 		return RenderedFile{}, err
 	}
 	content := adr.RenderActiveMD(corpus)
@@ -764,12 +765,16 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	topics, err := p.Topics()
+	if err != nil { // coverage-ignore: OutputPlan generated topic documents from the same cached corpus before domain documents
+		return nil, err
+	}
 	lay := p.layout()
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
 		index := adr.RenderDomainIndex(corpus, name)
 		data := p.data(config.Sidecar{})
-		data["data"] = map[string]any{"domain": name, "decisions": index}
+		data["data"] = map[string]any{"domain": name, "decisions": index, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md")

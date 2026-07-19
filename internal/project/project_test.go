@@ -1165,3 +1165,19 @@ func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
 		t.Fatalf("local skill sidecar must skip the pairing check, got: %v", err)
 	}
 }
+
+func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
+	root := topicProject(t)
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
+	p, _ := Open(root)
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Files["docs/topics/rendering/contracts.md"]; !ok {
+		t.Fatal("topic output missing from manifest")
+	}
+}

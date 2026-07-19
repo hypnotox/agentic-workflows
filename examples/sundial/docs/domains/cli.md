@@ -7,6 +7,10 @@ the week-table print. It owns every exit code (2 for usage) and no model logic;
 ADR-0003's proposed cache would slot between it and the almanac.
 
 
+## Topics
+
+_No current-state topics are recorded for this domain._
+
 ## Decisions
 
 ### Implemented

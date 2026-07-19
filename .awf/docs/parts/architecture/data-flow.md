@@ -11,6 +11,18 @@ upgrade`" message (ADR-0010). Target descriptors, including optional outputs and
 capabilities, enter every target-scoped config hash. Pi's target outputs use `//` provenance valid
 in TypeScript and otherwise follow ordinary planned-output, drift, sync-repair, and cleanup paths.
 
+The unreleased topic producer discovers paired
+`.awf/topics/metadata/<domain>/<topic>.yaml` and
+`.awf/topics/parts/<domain>/<topic>/current-state.md` inputs, validates their path-derived identity,
+claim grammar, Implemented-ADR provenance, direct references, backing, and configured markers, then
+loads one corpus per invocation. It renders topic pages and per-domain indexes under
+`<docsDir>/topics/<domain>/`, and injects compact topic navigation into domain docs while retaining
+`## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
+feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
+substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
+solely authoritative until the following bridge-migration plan adds readiness, attestation, and
+ordinary-command refusal before release.
+
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
 skeleton is executed, then the raw part bodies are restored verbatim, so a literal `{{` in a part
