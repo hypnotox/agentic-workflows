@@ -219,7 +219,8 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
    `./x check`, and `./x gate`.
 5. Assert both permanent locks carry cutoff/gaps and no attestation; INDEX has both sections;
    ACTIVE/domain ADR indexes are absent; output plan equals generated fan-out; legacy-absence tests
-   are clean. Update Notes and set Plans 3-4 Implemented; sync/check/gate again; commit the combined
+   are clean. Update Notes and set Plan 3 Implemented while Plan 4 remains Proposed through release;
+   sync/check/gate again; commit the combined
    attestation/final-upgrade/generated/lifecycle result with Plan 4's declared subject, then perform
    Plan 4's dated `docs(awf): release 0.19.0` commit, full release preflight, canonical-main
    assertions, and annotated v0.19.0 tag publication.

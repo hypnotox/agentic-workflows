@@ -279,8 +279,9 @@ commands until the current runtime consumes it.
   Expected: sync self-settles; check/gate are clean; legacy-absence package reports `ok`; deadcode
   reports no production dead code.
 
-- [ ] **Task 3.4: Freeze plans and verify ADR history.** Require Plans 1-2 already Implemented at
-  bridge_head. Set only Plans 3-4 to Implemented and record actual Notes. Confirm ADR-0133-0136 and
+- [ ] **Task 3.4: Freeze Plan 3 and verify ADR history.** Require Plans 1-2 already Implemented at
+  bridge_head. Set only Plan 3 to Implemented and record its Notes; keep this Plan 4 Proposed through
+  the release phase. Confirm ADR-0133-0136 and
   root ADR-0001 are Implemented, Sundial ADR-0003 Abandoned, and INDEX
   sections reflect them. Run final sync/check/gate again.
 
@@ -297,8 +298,9 @@ commands until the current runtime consumes it.
 
 ## Phase 4: Tag and publish the breaking current-state release
 
-- [ ] **Task 4.1: Create the dated release commit on tag day.** Keep Unreleased during preparation and
-  cutover. On the UTC tag date, promote its breaking notes to `[0.19.0] - YYYY-MM-DD`, create a fresh
+- [ ] **Task 4.1: Create the dated release commit on tag day.** Keep Unreleased and this plan Proposed
+  during preparation and cutover. On the UTC tag date, record final Notes, set this Plan 4 to
+  Implemented, promote breaking notes to `[0.19.0] - YYYY-MM-DD`, create a fresh
   empty Unreleased, verify `project.Version == "0.19.0"` and both locks use 0.19.0, then run
   sync/check/gate/releasecheck and commit:
 
@@ -353,8 +355,8 @@ commands until the current runtime consumes it.
 - Context/invariants/check consume topic claims only; denylist/import/deadcode checks find no legacy
   engine.
 - Plans 1-2 are already Implemented at the bridge tag. Root ADR-0001 and ADR-0133-0136 become
-  Implemented, and Sundial ADR-0003 becomes Abandoned, in the preparation commit; only Plans 3-4
-  close in the cutover commit.
+  Implemented, and Sundial ADR-0003 becomes Abandoned, in preparation; Plan 3 closes in the cutover
+  commit and Plan 4 closes in the dated v0.19.0 release commit.
 - `v0.19.0` is tagged only after the clean, gated cutover commit and release preflight.
 
 ## Notes
