@@ -36,6 +36,22 @@ must prove every surviving legacy invariant maps once with its backing class unc
 - **Deleted:** both ACTIVE.md files, domain ADR indexes, legacy authority production code, bridge-only
   package, obsolete invariant markers/config, and stale rendered outputs selected by final output plans.
 
+## Phase 0: Verify the published bridge prerequisite
+
+- [ ] **Task 0.1: Publish or verify bridge release v0.18.0.** Final plan resync adds the bridge
+  publication task to Plan 2: promote its changelog, run gate/check/audit/releasecheck and pinned
+  GoReleaser snapshot, merge its clean release commit to main, create annotated `v0.18.0`, and verify
+  the release workflow. Before this plan continues run:
+
+  ```sh
+  git fetch origin main --tags
+  bridge_head="$(git rev-parse 'v0.18.0^{commit}')"
+  test "$bridge_head" = "$(git rev-parse origin/main)"
+  test "$(git show "$bridge_head:internal/project/project.go" | grep 'const Version =')" = 'const Version = "0.18.0"'
+  ```
+
+  Expected: no output. If v0.18.0 is absent or not the clean Plan 2 release on main, stop.
+
 ## Phase 1: Curate both projects under the pinned bridge
 
 - [ ] **Task 1.1: Pin the bridge artifact outside all worktrees.** At the final Plan 2 HEAD run:
@@ -46,14 +62,17 @@ must prove every surviving legacy invariant maps once with its backing class unc
   art=/tmp/awf-current-state-close
   rm -rf "$art" && mkdir -p "$art"
   cd "$repo"
-  bridge_head="$(git rev-parse HEAD)"
+  test -z "$(git status --porcelain=v1)"
+  bridge_head="$(git rev-parse 'v0.18.0^{commit}')"
+  test "$(git rev-parse HEAD)" = "$bridge_head"
   printf '%s\n' "$bridge_head" > "$art/bridge-head"
   go build -trimpath -o "$art/awf-bridge" ./cmd/awf
   sha256sum "$art/awf-bridge" | tee "$art/awf-bridge.sha256"
   "$art/awf-bridge" version
   ```
 
-  Expected: version 0.18.0 and one SHA-256 line; the artifact remains outside every worktree.
+  Expected: version 0.18.0 and one SHA-256 line; the artifact remains outside every worktree. Run
+  `sha256sum -c "$art/awf-bridge.sha256"` before every later bridge invocation; any mismatch stops.
 
 - [ ] **Task 1.2: Extend domain ownership and convert root config.** Add
   `internal/currentstate/**` and `internal/topic/**` to invariants ownership; add
@@ -62,21 +81,35 @@ must prove every surviving legacy invariant maps once with its backing class unc
   `testGlobs: ['**/*_test.go']`, coverage error, fanout warn, maximum 8. Apply the same mechanical
   conversion to Sundial and add testGlobs. No disabled or unqualified legacy marker remains.
 
-- [ ] **Task 1.3: Author the exact root topic set.** Create paired metadata/current-state inputs:
-  `adr-system/{adr-lifecycle,plan-artifacts,frontmatter}`;
-  `config/{configuration,migrations-and-locks}`;
-  `invariants/{current-state-authority,topics-and-markers}`;
-  `rendering/{render-engine,catalog-and-targets,project-output-plan,templates}`;
-  `tooling/{cli,audit-and-snapshots,quality-gates,changelog-and-release,evaluations,upgrade-runtime}`.
-  Use the path sets recorded in Plan 4 exploration and keep every path-scoped topic within its owner.
-  Claims consolidate current contracts rather than mirroring ADR count. Run bridge inventory readiness
-  after each domain until every surviving invariant maps exactly once and coverage reaches zero.
+- [ ] **Task 1.3: Author the exact root topic set and scopes.** Create paired metadata/current-state
+  inputs with these exhaustive scopes: `adr-system/adr-lifecycle` -> `internal/adr/**`;
+  `plan-artifacts` -> `internal/plan/**`; `frontmatter` -> `internal/frontmatter/**`;
+  `config/configuration` -> `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`;
+  `migrations-and-locks` -> `internal/migrate/**`, `internal/manifest/**`;
+  `invariants/current-state-authority` -> `internal/currentstate/**`, `internal/invariants/**`;
+  `topics-and-markers` -> `internal/topic/**`; `rendering/render-engine` -> `internal/render/**`,
+  `internal/refs/**`; `catalog-and-targets` -> `internal/catalog/**`; `project-output-plan` ->
+  `internal/project/**`; `templates` -> `templates/**`; `tooling/cli` -> `cmd/**`,
+  `internal/clispec/**`, `internal/initspec/**`; `audit-and-snapshots` -> `internal/audit/**`,
+  `internal/git/**`, `internal/snapshot/**`; `quality-gates` -> `internal/coverage/**`,
+  `internal/prosegate/**`, `tools/**`, `x`; `changelog-and-release` -> `internal/changelog/**`;
+  `evaluations` -> `internal/evals/**`; `upgrade-runtime` -> `internal/upgrade/**`.
+
+  The user approved semantic claim curation during implementation rather than implementation-sized
+  prose in this plan. Export the bridge `upgrade --check --json` live-invariant inventory as the
+  exhaustive affected-site table; for each key record qualified destination, exact Origin,
+  backed/unbacked class, and reviewer approval. Claims consolidate current contracts rather than
+  mirroring ADR count. No inventory key may be missing, duplicated, retired-and-mapped, or class-
+  changed. Incremental readiness may still report in-flight ADRs until Task 1.5; require zero findings
+  only afterward.
 
 - [ ] **Task 1.4: Author Sundial topics and truthful proof.** Add `almanac/model` for
-  `internal/almanac/**` with rules for cosine model, longitude shift, polar collapse, accuracy ceiling,
-  standard-library-only implementation, and test-backed invariant `almanac-clamped-latitude`, Origin
-  ADR-0001. Add `cli/interface` for `cmd/**` with exactly two decimal-degree positionals, usage exit 2,
-  no alternate coordinate formats, table output, and no model logic, Origin ADR-0002. Remove the proof
+  `internal/almanac/**` with Origin ADR-0001 rules `cosine-day-length-model`,
+  `longitude-shifts-solar-noon`, `polar-results-collapse`, `minutes-level-accuracy`, and
+  `standard-library-only`, each stating the named current contract, plus test-backed invariant
+  `almanac-clamped-latitude`. Add `cli/interface` for `cmd/**` with Origin ADR-0002 rules
+  `two-decimal-degree-positionals`, `usage-errors-exit-two`, `no-alternate-coordinate-formats`,
+  `table-output`, and `model-logic-stays-in-almanac`, each stating exactly its slug's contract. Remove the proof
   marker from production and add
   `// invariant: almanac/model:almanac-clamped-latitude` to `TestClampLatitude`.
 
@@ -89,15 +122,23 @@ must prove every surviving legacy invariant maps once with its backing class unc
 - [ ] **Task 1.6: Apply all sealed Plan 3 and documentation changes.** Apply Plan 3 Phases 2-5 runtime,
   tests, deletion, templates, skills, agents, AGENTS parts, workflow/working-with-awf, architecture,
   all domain parts, config-reference sources, glossary, pitfalls, README, releasing source, and
-  changelog before attestation. Set `project.Version` to 0.19.0 but keep the Plan 2 release sentinel
-  behavior usable through the pinned bridge binary. Do not change any configured marker-source or
-  other sealed path afterward.
+  changelog before attestation. Set `project.Version` to 0.19.0. The pinned bridge embeds its own
+  0.18.0 templates, so its preparation sync/check validates only bridge-rendered outputs; current-
+  template INDEX/domain/runtime fan-out is deliberately deferred to final upgrade and final source
+  sync/check. Do not change any configured marker-source or other sealed path afterward.
+
+  Add a tested preparation-only branch to `.githooks/pre-commit`: when both `AWF_PREP_BRIDGE` and
+  `AWF_PREP_BRIDGE_SHA256` are set, retain the staged-slice `go build`, verify the external binary hash,
+  and use that binary for root/Sundial staged drift checks; otherwise retain the normal source-binary
+  path exactly. This is the sanctioned commit boundary, not `--no-verify`, and is removed or made inert
+  after cutover.
 
 - [ ] **Task 1.7: Create the clean preparation commit.** In a detached preparation worktree at the
   bridge HEAD, apply the complete runtime/adopter patch, then run only the pinned bridge for project
   commands:
 
   ```sh
+  sha256sum -c "$art/awf-bridge.sha256"
   "$art/awf-bridge" upgrade --check
   (cd examples/sundial && "$art/awf-bridge" upgrade --check)
   "$art/awf-bridge" sync
@@ -110,45 +151,86 @@ must prove every surviving legacy invariant maps once with its backing class unc
   git diff --check
   ```
 
-  Expected: both readiness reports have zero findings; checks/tests/gate are clean. Stage the exact
-  authored/generated output-plan set and commit:
+  Expected: both readiness reports have zero findings after Task 1.5; bridge checks and source tests/
+  gate are clean. `./x gate` is allowed because it runs source tests and authority-independent static
+  tooling, not source context/invariants/check. Stage the exact authored and bridge-rendered set, then
+  commit through the sanctioned hook:
 
-  ```commit
-  feat(awf): prepare current-state authority cutover
+  ```sh
+  AWF_PREP_BRIDGE="$art/awf-bridge" \
+  AWF_PREP_BRIDGE_SHA256="$(cut -d' ' -f1 "$art/awf-bridge.sha256")" \
+    git commit -m "feat(awf): prepare current-state authority cutover"
   ```
 
   Record `prep_head`, require clean status, and do not amend this commit.
 
-## Phase 2: Produce and combine two clean attestations
+## Coupled Phases 2-3: Attest and immediately consume both seals
 
-- [ ] **Task 2.1: Attest root in its own worktree.** Create `/tmp/awf-cs-root` detached at
-  `prep_head`; run bridge `upgrade --check`, `--attest-current-state`, then `--check`. Export a binary
-  full-index patch excluding `examples/sundial/**` and a sorted path list.
+No commit is legal between these phases: an attested bridge lock intentionally refuses ordinary
+commands until the current runtime consumes it.
 
-- [ ] **Task 2.2: Attest Sundial independently.** Create `/tmp/awf-cs-sundial` detached at the same
-  HEAD; from `examples/sundial` run the same three bridge commands. Export a patch limited to
-  `examples/sundial/**` and its sorted path list. Assert `comm -12` over the two lists is empty.
+- [ ] **Task 2.1: Produce exact disjoint attestation patches.** Run:
 
-- [ ] **Task 2.3: Prove patches mutate no sealed authored input.** Permit only journaled normalized
-  ADR/config/marker bytes already predicted by readiness, generated-output deletions/replacements, and
-  lock changes. Fail if either patch changes topic parts/metadata, domain metadata/parts, unplanned
-  source markers, or any other digest input. Both attestations must name exactly `prep_head`.
+  ```sh
+  prep_head="$(git rev-parse HEAD)"
+  git worktree add --detach /tmp/awf-cs-root "$prep_head"
+  git worktree add --detach /tmp/awf-cs-sundial "$prep_head"
+  (cd /tmp/awf-cs-root && sha256sum -c "$art/awf-bridge.sha256" &&
+    "$art/awf-bridge" upgrade --check && "$art/awf-bridge" upgrade --attest-current-state)
+  git -C /tmp/awf-cs-root diff --binary --full-index HEAD -- . \
+    ':(exclude)examples/sundial/**' > "$art/root-attestation.patch"
+  git -C /tmp/awf-cs-root diff --name-only -z HEAD -- . \
+    ':(exclude)examples/sundial/**' | sort -zu > "$art/root-attestation.paths0"
+  (cd /tmp/awf-cs-sundial/examples/sundial && sha256sum -c "$art/awf-bridge.sha256" &&
+    "$art/awf-bridge" upgrade --check && "$art/awf-bridge" upgrade --attest-current-state)
+  git -C /tmp/awf-cs-sundial diff --binary --full-index HEAD -- examples/sundial \
+    > "$art/sundial-attestation.patch"
+  git -C /tmp/awf-cs-sundial diff --name-only -z HEAD -- examples/sundial | sort -zu \
+    > "$art/sundial-attestation.paths0"
+  test -z "$(comm -z -12 "$art/root-attestation.paths0" "$art/sundial-attestation.paths0")"
+  ```
 
-- [ ] **Task 2.4: Combine without moving HEAD.** Create `/tmp/awf-cs-integration` detached at
-  `prep_head`; `git apply --check` then `git apply --binary` root followed by Sundial patches. Assert
-  `git rev-parse HEAD` still equals `prep_head`. Do not commit the attestation patches.
+  Expected: both checks are clean, patches are nonempty, and the disjoint assertion emits no output.
+
+- [ ] **Task 2.2: Verify sealed-input exclusion and combine.** Compare each patch path against the
+  bridge report's exact planned-mutation allowlist and fail on any topic/domain/config/ADR/marker input
+  not explicitly normalized by that report. Assert each lock's PreparedHead equals `prep_head`. Then:
+
+  ```sh
+  git worktree add --detach /tmp/awf-cs-integration "$prep_head"
+  cd /tmp/awf-cs-integration
+  git apply --check "$art/root-attestation.patch"
+  git apply --binary "$art/root-attestation.patch"
+  git apply --check "$art/sundial-attestation.patch"
+  git apply --binary "$art/sundial-attestation.patch"
+  test "$(git rev-parse HEAD)" = "$prep_head"
+  ```
+
+  Expected: all checks emit no output; do not commit.
 
 ## Phase 3: Consume both seals and close the repository
 
-- [ ] **Task 3.1: Build and run the current runtime.** In integration, build
-  `/tmp/awf-current-state-close/awf-current`; run plain `upgrade` at root and Sundial. Each verifies
-  attestation version 1, PreparedHead, exact digest, and permanent predicates; journals the final plan;
-  replaces lock last; clears attestation; promotes cutoff/gaps.
+- [ ] **Task 3.1: Build and run the current runtime.** In integration run:
 
-- [ ] **Task 3.2: Assert permanent lock and output facts.** Root lock must have
-  `adrFormatV1From: 137`, no gaps, no bridgeAttestation; Sundial lock cutoff 4, no gaps, no attestation.
-  Both INDEX files exist with In flight and History; both ACTIVE files are absent; no domain decision
-  index remains; topic docs/indexes and topic-only domain navigation match the output plan.
+  ```sh
+  go build -trimpath -o "$art/awf-current" ./cmd/awf
+  "$art/awf-current" upgrade
+  (cd examples/sundial && "$art/awf-current" upgrade)
+  ```
+
+  Each invocation verifies seal version 1, PreparedHead, digest, and permanent predicates; journals
+  the final plan; replaces lock last; clears attestation; promotes cutoff/gaps.
+
+- [ ] **Task 3.2: Assert permanent lock and output facts.** Run JSON assertions for root cutoff 137,
+  Sundial cutoff 4, empty gaps, absent bridgeAttestation, and version 0.19.0. Assert both INDEX files
+  contain `## In flight` and `## History`; both ACTIVE files are absent; and this returns no output:
+
+  ```sh
+  find docs/domains examples/sundial/docs/domains -type f -path '*/decisions/*' -print
+  ```
+
+  Compare `awf planned-outputs` (or the permanent output-plan test API) with the sorted generated path
+  set and assert every configured topic has its document and domain index.
 
 - [ ] **Task 3.3: Run the final runtime gate.** Run:
 
@@ -164,8 +246,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
   Expected: sync self-settles; check/gate are clean; legacy-absence package reports `ok`; deadcode
   reports no production dead code.
 
-- [ ] **Task 3.4: Freeze plans and verify ADR history.** Set Plans 1-4 to Implemented and record actual
-  Notes. Confirm ADR-0133-0136 and root ADR-0001 are Implemented, Sundial ADR-0003 Abandoned, and INDEX
+- [ ] **Task 3.4: Freeze plans and verify ADR history.** Require Plans 1-2 already Implemented at
+  bridge_head. Set only Plans 3-4 to Implemented and record actual Notes. Confirm ADR-0133-0136 and
+  root ADR-0001 are Implemented, Sundial ADR-0003 Abandoned, and INDEX
   sections reflect them. Run final sync/check/gate again.
 
 - [ ] **Task 3.5: Commit the permanent cutover.** Stage exactly the two attestation patches, final
@@ -175,14 +258,22 @@ must prove every surviving legacy invariant maps once with its backing class unc
   feat(awf): cut over to current-state authority
   ```
 
-  Working tree must be clean after the commit.
+  Record `cutover_head="$(git rev-parse HEAD)"`; working tree must be clean. Return to the clean primary
+  checkout, fetch origin, require local main and origin/main equal `bridge_head`, then
+  `git merge --ff-only "$cutover_head"`; assert clean main contains the cutover commit before release.
 
 ## Phase 4: Tag and publish the breaking current-state release
 
-- [ ] **Task 4.1: Pin release version and changelog.** Promote complete breaking notes from Unreleased
-  to `[0.19.0] - <release-date>`, restore an empty Unreleased section, and ensure
-  `project.Version == "0.19.0"` plus both locks use 0.19.0. The preparation/cutover commits must already
-  contain these bytes; this task verifies rather than creates an extra release commit.
+- [ ] **Task 4.1: Create the dated release commit on tag day.** Keep Unreleased during preparation and
+  cutover. On the UTC tag date, promote its breaking notes to `[0.19.0] - YYYY-MM-DD`, create a fresh
+  empty Unreleased, verify `project.Version == "0.19.0"` and both locks use 0.19.0, then run
+  sync/check/gate/releasecheck and commit:
+
+  ```commit
+  docs(awf): release 0.19.0
+  ```
+
+  The release commit and annotated tag must be created on that same recorded UTC date.
 
 - [ ] **Task 4.2: Run release preflight.** From clean main after the cutover commit:
 
@@ -198,13 +289,14 @@ must prove every surviving legacy invariant maps once with its backing class unc
   Expected: gate/check clean; audit has no blocking conformance finding; releasecheck passes;
   GoReleaser config and snapshot succeed outside tracked outputs.
 
-- [ ] **Task 4.3: Push main and tag `v0.19.0`.** Verify the cutover commit is on main and remote is
-  correct, then run:
+- [ ] **Task 4.3: Push main and tag `v0.19.0`.** Fetch main/tags; require clean local main, expected
+  origin URL, and no local or remote v0.19.0 tag. Let `release_head=$(git rev-parse HEAD)` after the
+  release commit, push `main:main`, fetch, and require `origin/main == release_head`; then run:
 
   ```sh
-  git push origin main
-  git tag -a v0.19.0 -m "v0.19.0"
-  git push origin v0.19.0
+  git tag -a v0.19.0 "$release_head" -m "v0.19.0"
+  test "$(git rev-parse 'v0.19.0^{commit}')" = "$release_head"
+  git push origin refs/tags/v0.19.0
   ```
 
   Expected: the release workflow verifies tag/version equality, main ancestry, changelog pin, gate,
@@ -223,5 +315,12 @@ must prove every surviving legacy invariant maps once with its backing class unc
 
 ## Notes
 
-- Rollback before final lock commit uses journal recovery. After successful final upgrade, rollback is
-  Git restoration plus reinstalling the 0.18.0 bridge; no mixed-mode downgrade exists.
+- If a journal exists, run the matching binary's `upgrade --recover` in that project before any other
+  command; if only one project upgraded, recover/restore it before touching the other. Before the
+  cutover commit, discard the integration worktree and recreate it at `prep_head`. After a successful
+  unpushed cutover, reset the primary worktree to `bridge_head` and reinstall v0.18.0. After main is
+  pushed, rollback requires a new reviewed forward-revert commit, never history rewrite. If an
+  erroneous tag/release was pushed, stop publication, delete the GitHub Release, delete remote/local
+  tag only with maintainer approval, fix forward, rerun the complete preflight, and issue a new tag.
+- Remove `/tmp/awf-cs-{root,sundial,integration,prep}` with `git worktree remove` and prune only after
+  the release succeeds or rollback evidence has been preserved.
