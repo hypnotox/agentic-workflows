@@ -18,6 +18,21 @@ import (
 // empty inline code spans, no tables without body rows, and no dangling
 // list-introduction sentences.
 // invariant: rendering/templates:empty-init-coherent-render
+func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
+	forceNonInteractive(t)
+	_, root := gitfixture.InitRepo(t)
+	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+
+	var initOut, initErr bytes.Buffer
+	if code := run([]string{"awf", "init"}, &initOut, &initErr); code != 0 {
+		t.Fatalf("init before first commit: exit %d (%s)", code, initErr.String())
+	}
+	var checkOut, checkErr bytes.Buffer
+	if code := run([]string{"awf", "check"}, &checkOut, &checkErr); code != 0 {
+		t.Fatalf("check before first commit: exit %d (%s)\n%s", code, checkErr.String(), checkOut.String())
+	}
+}
+
 func TestEmptyInitRendersCoherently(t *testing.T) {
 	forceNonInteractive(t)
 	repo, root := gitfixture.InitRepo(t)

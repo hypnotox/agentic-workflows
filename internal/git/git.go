@@ -122,35 +122,42 @@ func HeadHash(repoRoot string) (string, error) {
 }
 
 // WorkingPaths returns tracked HEAD paths that still exist plus nonignored
-// untracked paths, rerooted to repoRoot. repoRoot may be an adopted project
-// nested inside a containing monorepo; paths outside that project are excluded.
-// Deleted, ignored, and nested-repository files are excluded by go-git's
-// worktree status semantics.
+// untracked paths, rerooted to repoRoot. A specifically unborn HEAD supplies an
+// empty committed baseline; every other repository, reference, or object error
+// still fails. repoRoot may be an adopted project nested inside a containing
+// monorepo; paths outside that project are excluded. Deleted, ignored, and
+// nested-repository files are excluded by go-git's worktree status semantics.
 func WorkingPaths(repoRoot string) ([]string, error) {
 	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
-	ref, err := repo.Head()
-	if err != nil {
-		return nil, fmt.Errorf("resolve HEAD: %w", err)
-	}
-	commit, err := repo.CommitObject(ref.Hash())
-	if err != nil { // coverage-ignore: resolved HEAD points at a commit
-		return nil, err
-	}
-	tree, err := commit.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+	hasHead, err := HeadExists(repoRoot)
+	if err != nil { // coverage-ignore: the repository was just opened above; only a concurrent ref-store fault can make this second open or HEAD resolution fail
 		return nil, err
 	}
 	set := map[string]bool{}
-	if err := tree.Files().ForEach(func(f *object.File) error {
-		if path, ok := rerootPath(f.Name, prefix); ok {
-			set[path] = true
+	if hasHead {
+		ref, err := repo.Head()
+		if err != nil { // coverage-ignore: HeadExists just resolved this HEAD
+			return nil, fmt.Errorf("resolve HEAD: %w", err)
 		}
-		return nil
-	}); err != nil { // coverage-ignore: collector callback never errors
-		return nil, err
+		commit, err := repo.CommitObject(ref.Hash())
+		if err != nil {
+			return nil, err
+		}
+		tree, err := commit.Tree()
+		if err != nil {
+			return nil, err
+		}
+		if err := tree.Files().ForEach(func(f *object.File) error {
+			if path, ok := rerootPath(f.Name, prefix); ok {
+				set[path] = true
+			}
+			return nil
+		}); err != nil { // coverage-ignore: collector callback never errors
+			return nil, err
+		}
 	}
 	wt, err := repo.Worktree()
 	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees

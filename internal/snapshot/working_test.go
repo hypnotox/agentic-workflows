@@ -93,9 +93,61 @@ func TestWorkingTree(t *testing.T) {
 	}
 }
 
-// TestWorkingTreeOutsideRepo wraps git.WorkingPaths' open-repo failure.
-func TestWorkingTreeOutsideRepo(t *testing.T) {
-	if _, err := snapshot.WorkingTree(t.TempDir()); err == nil {
-		t.Fatal("expected an error outside a repository")
+func TestWorkingTreeUnborn(t *testing.T) {
+	_, dir := gitfixture.InitRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, "eligible.txt"), []byte("working\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
+
+	tree, err := snapshot.WorkingTree(dir)
+	if err != nil {
+		t.Fatalf("WorkingTree on unborn HEAD: %v", err)
+	}
+	if file, ok := tree.Lookup("eligible.txt"); !ok || string(file.Bytes) != "working\n" {
+		t.Fatalf("eligible.txt = %q, %v; want unborn worktree bytes", file.Bytes, ok)
+	}
+}
+
+func TestWorkingTreeUnbornErrorControls(t *testing.T) {
+	t.Run("outside-repository", func(t *testing.T) {
+		if _, err := snapshot.WorkingTree(t.TempDir()); err == nil {
+			t.Fatal("expected an error outside a repository")
+		}
+	})
+
+	t.Run("corrupt-reference", func(t *testing.T) {
+		_, dir := gitfixture.InitRepo(t)
+		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a reference\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := snapshot.WorkingTree(dir); err == nil {
+			t.Fatal("corrupt HEAD accepted as unborn")
+		}
+	})
+
+	t.Run("dangling-reference", func(t *testing.T) {
+		_, dir := gitfixture.InitRepo(t)
+		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := snapshot.WorkingTree(dir); err == nil {
+			t.Fatal("dangling HEAD accepted as unborn")
+		}
+	})
+
+	t.Run("missing-object", func(t *testing.T) {
+		repo, dir := gitfixture.InitRepo(t)
+		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
+		commit, err := repo.CommitObject(head)
+		if err != nil {
+			t.Fatal(err)
+		}
+		treeObject := filepath.Join(dir, ".git", "objects", commit.TreeHash.String()[:2], commit.TreeHash.String()[2:])
+		if err := os.Remove(treeObject); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := snapshot.WorkingTree(dir); err == nil {
+			t.Fatal("missing committed tree object accepted as unborn")
+		}
+	})
 }

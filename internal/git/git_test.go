@@ -95,14 +95,69 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	}
 }
 
-func TestWorkingPathsErrors(t *testing.T) {
-	_, unborn := gitfixture.InitRepo(t)
-	if _, err := awfgit.WorkingPaths(unborn); err == nil {
-		t.Fatal("unborn repository accepted")
+func TestWorkingPathsUnborn(t *testing.T) {
+	_, dir := gitfixture.InitRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("ignored.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := awfgit.WorkingPaths(t.TempDir()); err == nil {
-		t.Fatal("non-repository accepted")
+	if err := os.WriteFile(filepath.Join(dir, "eligible.txt"), []byte("working\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	paths, err := awfgit.WorkingPaths(dir)
+	if err != nil {
+		t.Fatalf("WorkingPaths on unborn HEAD: %v", err)
+	}
+	if got := strings.Join(paths, ","); got != ".gitignore,eligible.txt" {
+		t.Fatalf("unborn working paths = %q, want %q", got, ".gitignore,eligible.txt")
+	}
+}
+
+func TestWorkingPathsUnbornErrorControls(t *testing.T) {
+	t.Run("outside-repository", func(t *testing.T) {
+		if _, err := awfgit.WorkingPaths(t.TempDir()); err == nil {
+			t.Fatal("non-repository accepted")
+		}
+	})
+
+	t.Run("corrupt-reference", func(t *testing.T) {
+		_, dir := gitfixture.InitRepo(t)
+		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a reference\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := awfgit.WorkingPaths(dir); err == nil {
+			t.Fatal("corrupt HEAD accepted as unborn")
+		}
+	})
+
+	t.Run("dangling-reference", func(t *testing.T) {
+		_, dir := gitfixture.InitRepo(t)
+		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := awfgit.WorkingPaths(dir); err == nil {
+			t.Fatal("dangling HEAD accepted as unborn")
+		}
+	})
+
+	t.Run("missing-object", func(t *testing.T) {
+		repo, dir := gitfixture.InitRepo(t)
+		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
+		commit, err := repo.CommitObject(head)
+		if err != nil {
+			t.Fatal(err)
+		}
+		treeObject := filepath.Join(dir, ".git", "objects", commit.TreeHash.String()[:2], commit.TreeHash.String()[2:])
+		if err := os.Remove(treeObject); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := awfgit.WorkingPaths(dir); err == nil {
+			t.Fatal("missing committed tree object accepted as unborn")
+		}
+	})
 }
 
 func TestHeadExists(t *testing.T) {
