@@ -47,16 +47,24 @@ must prove every surviving legacy invariant maps once with its backing class unc
 
   ```sh
   git fetch origin main --tags
-  bridge_head="$(git rev-parse 'v0.18.0^{commit}')"
-  test "$bridge_head" = "$(git rev-parse origin/main)"
-  test "$(git show "$bridge_head:internal/project/project.go" | grep 'const Version =')" = 'const Version = "0.18.0"'
+  bridge_release="$(git rev-parse 'v0.18.0^{commit}')"
+  prep_base="$(git rev-parse origin/main)"
+  # v0.18.0 is the published bridge release and an ancestor of the preparation base: Plan 3 Phase 1
+  # (the standalone snapshot seam) landed on main after it, so main advanced past the release.
+  git merge-base --is-ancestor "$bridge_release" "$prep_base"
+  # the bridge source is byte-identical between the release and the preparation base, so a bridge
+  # binary built from prep_base is the published 0.18.0 bridge.
+  test -z "$(git diff "$bridge_release" "$prep_base" -- internal/bridge)"
+  test "$(git show "$prep_base:internal/project/project.go" | grep 'const Version =')" = 'const Version = "0.18.0"'
   ```
 
-  Expected: no output. If v0.18.0 is absent or not the clean Plan 2 release on main, stop.
+  Expected: no output. If v0.18.0 is absent, is not an ancestor of origin/main, the bridge source
+  changed between the release and the preparation base, or the version constant is not 0.18.0, stop.
 
 ## Phase 1: Curate both projects under the pinned bridge
 
-- [ ] **Task 1.1: Pin the bridge artifact outside all worktrees.** At the final Plan 2 HEAD run:
+- [ ] **Task 1.1: Pin the bridge artifact outside all worktrees.** At the preparation base
+  (`prep_base`, the post-Phase-1 main HEAD from Task 0.1) run:
 
   ```sh
   set -euo pipefail
@@ -65,9 +73,11 @@ must prove every surviving legacy invariant maps once with its backing class unc
   rm -rf "$art" && mkdir -p "$art"
   cd "$repo"
   test -z "$(git status --porcelain=v1)"
-  bridge_head="$(git rev-parse 'v0.18.0^{commit}')"
-  test "$(git rev-parse HEAD)" = "$bridge_head"
-  printf '%s\n' "$bridge_head" > "$art/bridge-head"
+  # prep_base already contains Plan 3 Phase 1 and is still a 0.18.0-version source; the pinned
+  # bridge built from it is the published 0.18.0 bridge (Task 0.1 verified internal/bridge unchanged).
+  prep_base="$(git rev-parse origin/main)"
+  test "$(git rev-parse HEAD)" = "$prep_base"
+  printf '%s\n' "$prep_base" > "$art/prep-base"
   go build -trimpath -o "$art/awf-bridge" ./cmd/awf
   sha256sum "$art/awf-bridge" | tee "$art/awf-bridge.sha256"
   "$art/awf-bridge" version
@@ -139,7 +149,8 @@ must prove every surviving legacy invariant maps once with its backing class unc
 - [ ] **Task 1.6: Apply all sealed Plan 3 and documentation changes.** Apply Plan 3 Phases 2-5 runtime,
   tests, deletion, templates, skills, agents, AGENTS parts, workflow/working-with-awf, architecture,
   all domain parts, config-reference sources, glossary, pitfalls, README, releasing source, and
-  changelog before attestation. Set `project.Version` to 0.19.0. The pinned bridge embeds its own
+  changelog before attestation. Plan 3 Phase 1 (the immutable snapshot seam) is already present in
+  `prep_base` and is not part of this patch. Set `project.Version` to 0.19.0. The pinned bridge embeds its own
   0.18.0 templates, so its preparation sync/check validates only bridge-rendered outputs; current-
   template INDEX/domain/runtime fan-out is deliberately deferred to final upgrade and final source
   sync/check. Do not change any configured marker-source or other sealed path afterward.
@@ -154,9 +165,9 @@ must prove every surviving legacy invariant maps once with its backing class unc
   as `$art/current-state-preparation.patch`, then create and verify the detached worktree:
 
   ```sh
-  git worktree add --detach /tmp/awf-cs-prep "$bridge_head"
+  git worktree add --detach /tmp/awf-cs-prep "$prep_base"
   cd /tmp/awf-cs-prep
-  test "$(git rev-parse HEAD)" = "$bridge_head"
+  test "$(git rev-parse HEAD)" = "$prep_base"
   git apply --check "$art/current-state-preparation.patch"
   git apply --binary "$art/current-state-preparation.patch"
   ```
@@ -309,7 +320,7 @@ No commit is legal between these phases: an attested bridge lock intentionally p
   reports no production dead code.
 
 - [ ] **Task 3.4: Freeze Plan 3 and verify ADR history.** Require Plans 1-2 already Implemented at
-  bridge_head. Set only Plan 3 to Implemented and record its Notes; keep this Plan 4 Proposed through
+  prep_base. Set only Plan 3 to Implemented and record its Notes; keep this Plan 4 Proposed through
   the release phase. Confirm ADR-0133-0136 and
   root ADR-0001 are Implemented, Sundial ADR-0003 Abandoned, and INDEX
   sections reflect them. Run final sync/check/gate again.
@@ -323,7 +334,7 @@ No commit is legal between these phases: an attested bridge lock intentionally p
   ```
 
   Record `cutover_head="$(git rev-parse HEAD)"`; working tree must be clean. Return to the clean primary
-  checkout, fetch origin, require local main and origin/main equal `bridge_head`, then
+  checkout, fetch origin, require local main and origin/main equal `prep_base`, then
   `git merge --ff-only "$cutover_head"`; assert clean main contains the cutover commit before release.
 
 ## Phase 4: Tag and publish the breaking current-state release
@@ -395,10 +406,18 @@ No commit is legal between these phases: an attested bridge lock intentionally p
 
 ## Notes
 
+- Amended 2026-07-20 (execution finding): Plan 3 Phase 1 shipped as a standalone commit on main
+  (per Plan 3's design), advancing main past the published v0.18.0 bridge release. The preparation
+  base is therefore `prep_base` = post-Phase-1 main HEAD, distinct from the v0.18.0 commit; the
+  v0.18.0 tag stays put (it is a published release) and serves only as the release-audit floor
+  (`v0.18.0..HEAD`) and the bridge-release ancestor. Tasks 0.1, 1.1, 1.6, 1.7, 3.4, and 3.5 were
+  retargeted from `bridge_head` to `prep_base`. The pinned bridge binary is built from `prep_base`
+  and remains 0.18.0 because Phase 1 changed neither `internal/bridge` nor the version constant.
+  `prep_base` must equal `origin/main`, so the Phase 1 commits are pushed before this plan runs.
 - If a journal exists, run the matching binary's `upgrade --recover` in that project before any other
   command; if only one project upgraded, recover/restore it before touching the other. Before the
   cutover commit, discard the integration worktree and recreate it at `prep_head`. After a successful
-  unpushed cutover, reset the primary worktree to `bridge_head` and reinstall v0.18.0. After main is
+  unpushed cutover, reset the primary worktree to `prep_base` and reinstall the v0.18.0 bridge binary. After main is
   pushed, rollback requires a new reviewed forward-revert commit, never history rewrite. If an
   erroneous tag/release was pushed, stop publication, delete the GitHub Release, delete remote/local
   tag only with maintainer approval, fix forward, rerun the complete preflight, and issue a new tag.
