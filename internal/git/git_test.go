@@ -387,15 +387,18 @@ func TestIndexBlobs(t *testing.T) {
 	if len(got) != 3 { // base.txt plus the two regular staged files
 		t.Fatalf("IndexBlobs returned %d blobs, want 3: %+v", len(got), got)
 	}
-	for _, want := range []struct{ path, bytes string }{{"base.txt", "base"}, {"executable.sh", "executable bytes\n"}, {"ordinary.txt", "ordinary bytes\n"}} {
+	for _, want := range []struct {
+		path, bytes string
+		executable  bool
+	}{{"base.txt", "base", false}, {"executable.sh", "executable bytes\n", true}, {"ordinary.txt", "ordinary bytes\n", false}} {
 		found := false
 		for _, blob := range got {
-			if blob.Path == want.path && string(blob.Bytes) == want.bytes {
+			if blob.Path == want.path && string(blob.Bytes) == want.bytes && blob.Executable == want.executable {
 				found = true
 			}
 		}
 		if !found {
-			t.Errorf("missing exact staged blob %q (%q): %+v", want.path, want.bytes, got)
+			t.Errorf("missing exact staged blob %q (%q, executable=%v): %+v", want.path, want.bytes, want.executable, got)
 		}
 	}
 
